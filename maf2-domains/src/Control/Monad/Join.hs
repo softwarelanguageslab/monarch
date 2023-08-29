@@ -1,0 +1,58 @@
+module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..)) where
+
+import Domain.Lattice
+import Control.Monad.Reader hiding (mzero)
+import Control.Monad.Writer hiding (mzero)
+import Control.Monad.State hiding (mzero)
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Identity
+import Control.Applicative (liftA2)
+import Data.Functor.Identity
+
+-- | Non-deterministic computations that can be joined together into a single computation
+class (Monad m) => MonadJoin m where
+   mjoin :: Joinable v => m v -> m v -> m v
+   mjoins :: (Foldable t, JoinLattice v) => t (m v) -> m v
+   mjoins = foldr mjoin mzero
+   mzero :: JoinLattice a => m a
+   (<||>) :: JoinLattice v => m v -> m v -> m v
+   a <||> b = mjoin a b
+   infix 0 <||>
+   cond :: (JoinLattice v, BoolDomain b) => m b -> m v -> m v -> m v
+   cond cnd csq alt = mjoin t f
+      where t = cnd >>= (\b -> if isTrue b then csq else mzero)
+            f = cnd >>= (\b -> if isFalse b then alt else mzero)
+
+-- | Like `Alternative`, returns if a computation
+-- succeeds, otherwise tries the other one.
+--
+-- Difference is when a computation **might** fail,
+-- then the results of the first one are joined with the second one.
+class (Monad m) => MonadJoinAlternative m where
+   (<|>) :: JoinLattice v => m v -> m v -> m v
+
+-- Some instances for convenience
+
+instance (MonadJoin m) => MonadJoin (ReaderT r m) where
+   mjoin ma mb = ReaderT $ \r -> mjoin (runReaderT ma r) (runReaderT mb r)
+   mzero = lift Control.Monad.Join.mzero
+
+instance (MonadJoin m, JoinLattice w, Monoid w) => MonadJoin (WriterT w m) where
+   mjoin (WriterT ma) (WriterT mb) = WriterT (mjoin ma mb)
+   mzero = lift mzero
+
+instance (MonadJoin m, JoinLattice s) => MonadJoin (StateT s m) where
+   mjoin ma mb = StateT (\st -> mjoin (runStateT ma st) (runStateT mb st))
+   mzero = lift mzero
+
+instance (MonadJoin m) => MonadJoin (MaybeT m) where
+   mjoin ma mb = MaybeT $ mjoin (runMaybeT ma) (runMaybeT mb)
+   mzero = MaybeT mzero
+
+instance MonadJoin Identity where
+   mjoin = liftA2 Domain.Lattice.join
+   mzero = pure bottom
+
+instance (MonadJoin m) => MonadJoin (IdentityT m) where
+   mjoin (IdentityT ma) (IdentityT mb) = IdentityT $ mjoin ma mb
+   mzero = IdentityT mzero

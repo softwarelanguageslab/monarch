@@ -1,0 +1,52 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+-- | Serves as an extension (i.e., it requires) for the semantics in 'Analysis.Scheme.Semantics'.
+-- It adds support for the analysis of programs contain actor-based concurrency. 
+module Analysis.Actors.Semantics(Analysis.Actors.Semantics.eval) where
+
+import Domain.Scheme
+import Analysis.Monad
+import Data.Functor ((<&>), ($>))
+import Syntax.Scheme.AST
+import qualified Analysis.Scheme.Semantics as Base
+import Analysis.Actors.Monad
+import Analysis.Actors.Mailbox
+import qualified Analysis.Monad as Monad
+import Domain.Actors
+import Control.Monad.Join
+
+eval :: ActorEvalM m v msg => Exp -> m v
+eval (Spw beh args _) = initBehavior beh args spawn
+eval (Bec beh args _) = initBehavior beh args become $> unsp
+eval (Sen rcpt tag args _) = do
+   receiver <- Monad.eval rcpt >>= arefs
+   message  <- message <$> Monad.eval tag <*> mapM Monad.eval args
+   send receiver message $> unsp
+eval (Rcv hdls _) = do 
+   msg <- receive 
+   selectHandler msg hdls
+
+eval e@(Beh {}) = getEnv <&> curry beh e
+eval e@(Mir {}) = getEnv <&> curry beh e
+eval e = Base.eval e
+
+-- | Initialize the behavior in the first argument with the arguments in the second 
+-- then run the function in the third argument on the expression of the behavior
+initBehavior :: ActorEvalM m v msg => Exp -> [Exp] -> (Exp -> m a) -> m a
+initBehavior beh args run =
+   Monad.eval beh >>= withBehs (\(Beh prs bdy _, env) -> do
+      vlus <- mapM Monad.eval args
+      adrs <- mapM allocVar prs
+      mapM_ (uncurry writeAdr) (zip adrs vlus)
+      withEnv (const env) $ withExtendedEnv (zip (map name prs) adrs) $ run bdy)
+
+
+-- | Select a handler from the given list of handlers that matches the given message
+selectHandler :: ActorEvalM m v msg => msg -> [Hdl] -> m v
+selectHandler msg = mjoins . map runHandler . filter (matchesTag msg . nameOf)
+   where nameOf (Hdl (Ide nam _) _ _) = nam
+         runHandler (Hdl _ prs bdy) = do 
+            adrs <- mapM allocVar prs 
+            mapM_ (uncurry writeAdr) (zip adrs (payload msg))
+            withExtendedEnv (zip (map name prs) adrs) $ Monad.eval bdy

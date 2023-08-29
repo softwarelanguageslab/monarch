@@ -1,0 +1,109 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           maf2-domains
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/maf2-domains#readme>
+homepage:       https://github.com/githubuser/maf2-domains#readme
+bug-reports:    https://github.com/githubuser/maf2-domains/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2023 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/maf2-domains
+
+library
+  exposed-modules:
+      Domain
+      Domain.Lattice
+      Domain.ConstantPropagation
+      Domain.Dictionary
+      Domain.Scheme
+      Domain.Scheme.CPDomain
+      Control.Monad.Join
+      Control.Monad.DomainError
+  other-modules:
+      Data.LabeledProduct
+      Data.TypeLevel.HList
+      Data.TypeLevel.List
+      Data.TypeLevel.Pair
+      Data.TypeLevel.Struct
+      Domain.Actors
+      Paths_maf2_domains
+  hs-source-dirs:
+      src
+  default-extensions:
+      TypeFamilies
+      TupleSections
+      TemplateHaskell
+      NamedFieldPuns
+      TypeOperators
+      InstanceSigs
+      DeriveGeneric
+      TypeApplications
+      StandaloneDeriving
+      ScopedTypeVariables
+      DataKinds
+      MultiParamTypeClasses
+      FunctionalDependencies
+      GeneralizedNewtypeDeriving
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , data-default
+    , extra
+    , mtl
+    , transformers
+    , unordered-containers
+  default-language: Haskell2010
+
+test-suite maf2-domains-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      DictionaryDomainSpec
+      LatticeSpec
+      Paths_maf2_domains
+  hs-source-dirs:
+      test
+  default-extensions:
+      TypeFamilies
+      TupleSections
+      TemplateHaskell
+      NamedFieldPuns
+      TypeOperators
+      InstanceSigs
+      DeriveGeneric
+      TypeApplications
+      StandaloneDeriving
+      ScopedTypeVariables
+      DataKinds
+      MultiParamTypeClasses
+      FunctionalDependencies
+      GeneralizedNewtypeDeriving
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      HUnit
+    , QuickCheck >=2.14.2
+    , base >=4.7 && <5
+    , containers
+    , data-default
+    , extra
+    , hspec
+    , hspec-contrib
+    , maf2-domains
+    , mtl
+    , transformers
+    , unordered-containers
+  default-language: Haskell2010

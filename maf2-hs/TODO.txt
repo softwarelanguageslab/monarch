@@ -1,0 +1,29 @@
+TODO
+=====
+
+
+General
+-------
+
+- [ ] fix modf worklist algorithm
+- [ ] clean-up 
+     * Add documentation in more places
+     * Remove the `Cap` system. It might not be needed after all because we have MonadLayer
+     * Look at the directory structure see if it can be made more clear
+     * Write a tutorial on how to implement a very small toy language (such as an ANF abstract interpreter)
+
+Python Analysis
+---------------
+
+- [ ] implement setattr
+- [ ] expose setattr as a primitive function
+- [ ] expose getattr as a primitive function
+- [ ] fix intra analysis function for Python
+- [ ] implement superclasses and linearisation
+- [ ] provide syntax support for super classes, perhaps with some magic variable 
+      inside the body of a method that gives access to the current value in the linearisation of `self`. 
+- [ ] implementation of data descriptors
+- [ ] EVERYTHING is an object: remove the modular python value and wrap everything inside an object (i.e. we can assign 
+      attributes to a function object)
+- [ ] some values do not support mutation: integers and strings do not support it. So their setattr function should
+      always fail with an AttributError
