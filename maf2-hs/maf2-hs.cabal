@@ -33,11 +33,6 @@ library
       Analysis.ModF
       Analysis.ModX
       Analysis.Monad
-      Analysis.Python
-      Analysis.Python.Monad
-      Analysis.Python.OO
-      Analysis.Python.Primitives
-      Analysis.Python.Semantics
       Analysis.Scheme.Monad
       Analysis.Scheme.Primitives
       Analysis.Scheme.Semantics
@@ -47,7 +42,6 @@ library
       Control.Coroutine
       Control.Monad.Cond
       Control.Monad.Error
-      Control.Monad.Join
       Control.Monad.Layer
       Control.SVar
       Control.SVar.GenId

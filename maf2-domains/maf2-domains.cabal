@@ -30,6 +30,7 @@ library
       Domain.Dictionary
       Domain.Scheme
       Domain.Scheme.CPDomain
+      Domain.Actors
       Control.Monad.Join
       Control.Monad.DomainError
   other-modules:
@@ -38,7 +39,6 @@ library
       Data.TypeLevel.List
       Data.TypeLevel.Pair
       Data.TypeLevel.Struct
-      Domain.Actors
       Paths_maf2_domains
   hs-source-dirs:
       src

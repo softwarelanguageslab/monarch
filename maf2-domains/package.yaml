@@ -47,6 +47,7 @@ library:
     - Domain.Dictionary
     - Domain.Scheme
     - Domain.Scheme.CPDomain
+    - Domain.Actors
     - Control.Monad.Join
     - Control.Monad.DomainError
 

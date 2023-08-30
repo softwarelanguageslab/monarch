@@ -5,7 +5,7 @@
 -- It adds support for the analysis of programs contain actor-based concurrency. 
 module Analysis.Actors.Semantics(Analysis.Actors.Semantics.eval) where
 
-import Domain.Scheme
+import Domain.Scheme hiding (Exp)
 import Analysis.Monad
 import Data.Functor ((<&>), ($>))
 import Syntax.Scheme.AST

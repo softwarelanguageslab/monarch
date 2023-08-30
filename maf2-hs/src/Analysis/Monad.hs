@@ -30,8 +30,6 @@ module Analysis.Monad(
  runErr,
  runErr',
  runAlloc,
- runEval,
- runEval',
  -- Auxilary type aliases
  SEvalM,
 ) where
@@ -110,7 +108,7 @@ class (Monad m) => AllocM m from adr where
 class (Monad m) => CallM m env v where
    call :: (Exp, env) -> m v
 
-class (Monad m) => EvalM m v e  where
+class (Monad m) => EvalM m v e  | m -> v where
    eval :: e -> m v
    -- | Runs the evaluation action but return the result of the second argument instead.
    evalReturn :: e -> m v -> m v
@@ -174,7 +172,7 @@ instance (MonadJoin m) => MonadDomainError (ErrorT m) where
 instance (MonadJoin (t m), MonadTrans t, MonadError m, Monad m, Monad (t m)) => MonadError (t m) where
    raiseError = lift . Control.Monad.Error.raiseError
 instance (MonadJoin (t m), MonadTrans t, MonadError (t m), Monad m, Monad (t m)) => MonadDomainError (t m) where 
-   raiseError = lift . Control.Monad.Error.raiseError
+   raiseError = Control.Monad.Error.raiseError
 
 runErr :: (ErrorT m) a -> m (Maybe a, Set DomainError)
 runErr = runWriterT . runMaybeT . runErrorT
@@ -226,38 +224,38 @@ runAlloc = flip runReaderT
 -- Evaluator
 -- 
 
--- | Evaluation function
-type Evaluator e m v = e -> m v
+---- | Evaluation function
+--type Evaluator e m v = e -> m v
+--
+---- | A wrapper for the evaluation function, providing it to the analysis
+--newtype EvaluatorT l e v m a = EvaluatorT { runEvaluatorT :: ReaderT (Evaluator e (EvaluatorT l e v m) v) m a }
+--   deriving (Monad, Applicative, Functor)
+--
+--instance (MonadJoin m) => MonadJoin (EvaluatorT l e v m) where
+--   mjoin (EvaluatorT ma) (EvaluatorT mb) = EvaluatorT $ mjoin ma mb
+--   mzero = EvaluatorT mzero
+--
+--instance MonadTrans (EvaluatorT l e v) where
+--   lift = upperM
+--
+--instance (Monad m) => MonadLayer (EvaluatorT l e v m) where
+--   type Lower (EvaluatorT l e v m) = m
+--   upperM = EvaluatorT . lift
+--   lowerM f (EvaluatorT m) = EvaluatorT $ lowerM f m
+--
+--instance (Monad m) => EvalM (EvaluatorT l e v m) v e where
+--   eval e = EvaluatorT ask >>= ($ e)
 
--- | A wrapper for the evaluation function, providing it to the analysis
-newtype EvaluatorT l e v m a = EvaluatorT { runEvaluatorT :: ReaderT (Evaluator e (EvaluatorT l e v m) v) m a }
-   deriving (Monad, Applicative, Functor)
-
-instance (MonadJoin m) => MonadJoin (EvaluatorT l e v m) where
-   mjoin (EvaluatorT ma) (EvaluatorT mb) = EvaluatorT $ mjoin ma mb
-   mzero = EvaluatorT mzero
-
-instance MonadTrans (EvaluatorT l e v) where
-   lift = upperM
-
-instance (Monad m) => MonadLayer (EvaluatorT l e v m) where
-   type Lower (EvaluatorT l e v m) = m
-   upperM = EvaluatorT . lift
-   lowerM f (EvaluatorT m) = EvaluatorT $ lowerM f m
-
-instance (Monad m) => EvalM (EvaluatorT l e v m) v e where
-   eval e = EvaluatorT ask >>= ($ e)
-
-runEval :: Evaluator e (EvaluatorT l e v m) v -> (EvaluatorT l e v m) a -> m a
-runEval eval =  flip runReaderT eval . runEvaluatorT
+-- runEval :: Evaluator e (EvaluatorT l e v m) v -> (EvaluatorT l e v m) a -> m a
+-- runEval eval =  flip runReaderT eval . runEvaluatorT
 
 -- | Alternatively, a structure containing multiple evaluation functions can be used, as long
 -- as it contains a function of the correct type
 data EvalCap' v
 type SEvalM s v m l = (ReaderT s m)
 
-instance (Monad m, Select s (e -> (ReaderT s m) v)) => EvalM (ReaderT s m) v e where
-  eval e = ask >>= (($ e) . select)
+-- instance (Monad m, Select s (e -> (ReaderT s m) v)) => EvalM (ReaderT s m) v e where
+--   eval e = ask >>= (($ e) . select)
 
 runEval' :: forall v a l m s . s ->  (ReaderT s m) a -> m a
 runEval' = flip runReaderT

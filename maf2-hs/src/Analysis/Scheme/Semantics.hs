@@ -5,7 +5,7 @@
 module Analysis.Scheme.Semantics(eval) where
 
 import Analysis.Semantics
-import Domain.Scheme
+import Domain.Scheme hiding (Exp)
 import Analysis.Monad hiding (eval)
 import Analysis.Scheme.Monad
 import qualified Analysis.Monad as Monad

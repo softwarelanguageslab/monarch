@@ -13,15 +13,16 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Analysis.Monad
 import Analysis.Scheme.Monad
-import Domain.Scheme
-import Domain
+import Domain.Scheme hiding (Exp)
+import Domain 
+import Control.Monad.Join
 import Control.Monad ((>=>))
 import Syntax.Scheme.AST
 
 data Prim v = Prim { primName :: String, run :: forall m . PrimM m v => Exp -> [v] -> m v }
 
-class (DomainError m, SchemeDomain v, SchemeM m v) => PrimM m v
-instance (DomainError m, SchemeDomain v, SchemeM m v) => PrimM m v
+class (MonadDomainError m, MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
+instance (MonadDomainError m,  MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
 
 -- | Unary primitives 
 efix1 :: String -> (forall m . PrimM m v => Exp -> v -> m v) -> Prim v

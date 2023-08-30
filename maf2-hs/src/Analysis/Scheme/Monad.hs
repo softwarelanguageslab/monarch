@@ -4,7 +4,8 @@ module Analysis.Scheme.Monad(SchemeM, allocPai, allocVec, allocStr, allocVar, An
 import Data.Functor
 import Syntax.Scheme.AST
 import Domain
-import Domain.Scheme
+import Domain.Scheme hiding (Exp)
+import qualified Domain.Scheme as S
 import Analysis.Monad
 import Data.Kind
 import Control.Monad.Trans
@@ -29,7 +30,8 @@ type SchemeM m v = (
    PairDomain (Vlu (PAdr v)),
    VectorDomain (Vlu (VAdr v)),
    StringDomain (Vlu (SAdr v)),
-   DomainError m,
+   MonadJoin m,
+   MonadDomainError m,
    -- Environment
    EnvM m (Adr m) (Env v),
    -- Store interactions
@@ -48,7 +50,8 @@ type SchemeM m v = (
    CallM m (Env v) v,
    Boo v ~ v,
    EvalM m v Exp,
-   Vlu (Adr m) ~ v)
+   Vlu (Adr m) ~ v,
+   Exp ~ S.Exp v)
 
 allocPai :: SchemeM m v => Exp -> m (PAdr v)
 allocPai = alloc

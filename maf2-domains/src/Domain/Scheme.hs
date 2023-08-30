@@ -68,9 +68,9 @@ class
   sptr :: SAdr v -> v -- ^ a pointer to strings
 
   -- Pointer extraction 
-  pptrs :: (PAdr v ~ adr, Address adr, MonadDomainError m) => v -> m (Set adr)
-  vptrs :: (VAdr v ~ adr, Address adr, MonadDomainError m) => v -> m (Set adr)
-  sptrs :: (SAdr v ~ adr, Address adr, MonadDomainError m) => v -> m (Set adr)
+  pptrs :: (PAdr v ~ adr, Address adr, AbstractM m) => v -> m (Set adr)
+  vptrs :: (VAdr v ~ adr, Address adr, AbstractM m) => v -> m (Set adr)
+  sptrs :: (SAdr v ~ adr, Address adr, AbstractM m) => v -> m (Set adr)
 
   -- Closures
   injectClo :: (Exp v, Env v) -> v
@@ -86,7 +86,7 @@ class
   prim  :: String -> v
   prims :: v -> Set String
 
-  withProc :: (MonadDomainError m, JoinLattice a) => (Either String (Exp v, Env v) -> m a) -> v -> m a
+  withProc :: (AbstractM m, JoinLattice a) => (Either String (Exp v, Env v) -> m a) -> v -> m a
 
   -- | Differentiate between values
   -- Note that these predicates ought to be overapproximating, so they should return `True` if it could be a value of the given type
@@ -226,7 +226,7 @@ instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDo
 
 -- 
 
-chars :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, MonadDomainError m) => ModularSchemeValue r i c b pai vec str exp env -> m c
+chars :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) => ModularSchemeValue r i c b pai vec str exp env -> m c
 chars = foldr (mjoin . select) mzero . split
    where select ModularSchemeValue { character = Just c } = return c
          select ModularSchemeValue { } =
@@ -262,7 +262,7 @@ pattern IsReal    r = ModularSchemeValue { real    = Just r }
 
 -- TODO: `mjoin` might not keep the structure introduced by `split`, hence, `mjoin` should not be used here!
 -- | Exhaustivily extract all number-like values from the abstract Scheme value
-number :: (Ord exp, Ord i, Ord r, Ord c, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, Show env, MonadDomainError m) =>
+number :: (Ord exp, Ord i, Ord r, Ord c, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, Show env, AbstractM m) =>
    ModularSchemeValue r i c b pai vec str exp env -> m (ModularSchemeValue r i c b pai vec str exp env)
 number = foldr (mjoin . select) mzero . split
    where select (IsInteger i) = return $ def { integer = Just i }
@@ -270,20 +270,20 @@ number = foldr (mjoin . select) mzero . split
          select _ = raiseError $ DomainError "expected number"
 
 
-integers :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, MonadDomainError m) =>
+integers :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) =>
   ModularSchemeValue r i c b pai vec str exp env -> m i
 integers = foldr (mjoin . select) mzero . split
    where select (IsInteger i) = return i
          select _ = raiseError $ DomainError "expected integer"
 
-reals :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, MonadDomainError m) =>
+reals :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) =>
   ModularSchemeValue r i c b pai vec str exp env -> m r
 reals = foldr (mjoin . select) mzero . split
    where select (IsReal r) =  return r
          select _ = raiseError $ DomainError "expected integer"
 
 -- coerce :: (i -> i -> m a) -> (r -> r -> m a) -> (v -> v -> m a)
---coerce :: MonadDomainError m => (i -> i -> m a) -> (r -> r -> m a) -> (v -> v -> m a)
+--coerce :: AbstractM m => (i -> i -> m a) -> (r -> r -> m a) -> (v -> v -> m a)
 coerce intOp realOp v1 v2 = M.join $ liftA2 apply (number v1) (number v2)
    where apply (IsInteger i1) (IsInteger i2) = intOp i1 i2
          apply (IsReal    r1) (IsReal    r2) = realOp r1 r2

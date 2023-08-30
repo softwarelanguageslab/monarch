@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, UndecidableInstances, ConstraintKinds #-}
 {-# OPTIONS_GHC -Wno-dodgy-exports #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
@@ -21,6 +21,7 @@ module Domain(
    justOrBot,
    Address(..),
    Joinable(..),
+   AbstractM,
    module Control.Monad.DomainError
 ) where
 
@@ -29,6 +30,9 @@ import Domain.Lattice
 import Data.Kind
 import Control.Monad.DomainError
 
+-- | Monad used for implementing abstract operations
+type AbstractM m = (MonadDomainError m, MonadJoin m)
+
 -- | An address is an abstraction for a memory location on which a heap-allocated address resides
 class (Show a, Ord a) => Address a where
   -- | The type of the value referenced by the addresses
@@ -36,72 +40,72 @@ class (Show a, Ord a) => Address a where
 
 -- | Raises error using `raiseError` if the given value is not in the domain
 -- or returns () if it has not
-domain :: (MonadDomainError m, BoolDomain b, JoinLattice a) => b -> String -> m a
+domain :: (AbstractM m, BoolDomain b, JoinLattice a) => b -> String -> m a
 domain b msg
    | isTrue b = raiseError $ DomainError msg
    | otherwise = mzero
 
 class NumberDomain n where
    type Boo n :: Type
-   isZero :: MonadDomainError m => n -> m (Boo n)
-   random :: MonadDomainError m => n -> m n
-   plus :: MonadDomainError m => n -> n -> m n
-   minus :: MonadDomainError m => n -> n -> m n
-   times :: MonadDomainError m => n -> n -> m n
-   div :: MonadDomainError m => n -> n -> m n
-   expt :: MonadDomainError m => n -> n -> m n
-   lt :: MonadDomainError m => n -> n -> m (Boo n)
-   equals :: MonadDomainError m => n -> n -> m (Boo n)
+   isZero :: AbstractM m => n -> m (Boo n)
+   random :: AbstractM m => n -> m n
+   plus :: AbstractM m => n -> n -> m n
+   minus :: AbstractM m => n -> n -> m n
+   times :: AbstractM m => n -> n -> m n
+   div :: AbstractM m => n -> n -> m n
+   expt :: AbstractM m => n -> n -> m n
+   lt :: AbstractM m => n -> n -> m (Boo n)
+   equals :: AbstractM m => n -> n -> m (Boo n)
 
 class (Domain i Integer, NumberDomain i) => IntDomain i where
    type Str i :: Type
    type Rea i :: Type
 
-   toReal :: MonadDomainError m => i -> m (Rea i)
-   toString :: MonadDomainError m => i -> m (Str i )
-   quotient :: MonadDomainError m => i -> i -> m i
-   modulo :: MonadDomainError m => i -> i -> m i
-   remainder :: MonadDomainError m => i -> i -> m i
+   toReal :: AbstractM m => i -> m (Rea i)
+   toString :: AbstractM m => i -> m (Str i )
+   quotient :: AbstractM m => i -> i -> m i
+   modulo :: AbstractM m => i -> i -> m i
+   remainder :: AbstractM m => i -> i -> m i
 
 class (Domain s String) => StringDomain s where
    type IntS s :: Type
    type ChaS s :: Type
    type BooS s :: Type
-   length :: MonadDomainError m => s -> m (IntS s)
-   append :: MonadDomainError m => s -> s -> m s
-   ref :: MonadDomainError m => s -> IntS s -> m (ChaS s)
-   set :: MonadDomainError m => s -> IntS s -> ChaS s -> m s
-   stringLt :: MonadDomainError m => s -> s -> m (BooS s)
-   toNumber :: MonadDomainError m => s -> m (IntS s)
-   makeString :: MonadDomainError m => IntS s -> ChaS s -> m s
+   length :: AbstractM m => s -> m (IntS s)
+   append :: AbstractM m => s -> s -> m s
+   ref :: AbstractM m => s -> IntS s -> m (ChaS s)
+   set :: AbstractM m => s -> IntS s -> ChaS s -> m s
+   stringLt :: AbstractM m => s -> s -> m (BooS s)
+   toNumber :: AbstractM m => s -> m (IntS s)
+   makeString :: AbstractM m => IntS s -> ChaS s -> m s
 
 class (Domain c Char) => CharDomain c where
    type IntC c :: Type
 
-   downcase :: MonadDomainError m => c -> m c
-   upcase :: MonadDomainError m => c -> m c
-   charToInt :: MonadDomainError m => c -> m (IntC c)
-   isLower :: (MonadDomainError m, BoolDomain b) => c -> m b
-   isUpper :: (MonadDomainError m, BoolDomain b) => c -> m b
-   charEq :: (MonadDomainError m, BoolDomain b) => c -> c -> m b
-   charLt :: (MonadDomainError m, BoolDomain b) => c -> c -> m b
-   charEqCI :: (MonadDomainError m, BoolDomain b) => c -> c -> m b
-   charLtCI :: (MonadDomainError m, BoolDomain b) => c -> c -> m b
+   downcase :: AbstractM m => c -> m c
+   upcase :: AbstractM m => c -> m c
+   charToInt :: AbstractM m => c -> m (IntC c)
+   isLower :: (AbstractM m, BoolDomain b) => c -> m b
+   isUpper :: (AbstractM m, BoolDomain b) => c -> m b
+   charEq :: (AbstractM m, BoolDomain b) => c -> c -> m b
+   charLt :: (AbstractM m, BoolDomain b) => c -> c -> m b
+   charEqCI :: (AbstractM m, BoolDomain b) => c -> c -> m b
+   charLtCI :: (AbstractM m, BoolDomain b) => c -> c -> m b
 
 class (Domain r Double, NumberDomain r) => RealDomain r where
    type IntR r :: Type
-   toInt :: MonadDomainError m => r -> m (IntR r)
-   ceiling :: MonadDomainError m => r -> m r
-   floor :: MonadDomainError m => r -> m r
-   round :: MonadDomainError m => r -> m r
-   log :: MonadDomainError m => r -> m r
-   sin :: MonadDomainError m => r -> m r
-   asin :: MonadDomainError m => r -> m r
-   cos :: MonadDomainError m => r -> m r
-   acos :: MonadDomainError m => r -> m r
-   tan :: MonadDomainError m => r -> m r
-   atan :: MonadDomainError m => r -> m r
-   sqrt :: MonadDomainError m => r -> m r
+   toInt :: AbstractM m => r -> m (IntR r)
+   ceiling :: AbstractM m => r -> m r
+   floor :: AbstractM m => r -> m r
+   round :: AbstractM m => r -> m r
+   log :: AbstractM m => r -> m r
+   sin :: AbstractM m => r -> m r
+   asin :: AbstractM m => r -> m r
+   cos :: AbstractM m => r -> m r
+   acos :: AbstractM m => r -> m r
+   tan :: AbstractM m => r -> m r
+   atan :: AbstractM m => r -> m r
+   sqrt :: AbstractM m => r -> m r
 
 ------ 
 
@@ -135,8 +139,8 @@ class (JoinLattice v) => VectorDomain v where
    type VIndex   v :: Type
 
    makeVector :: VIndex v -> VContent v -> v
-   vectorRef :: MonadDomainError m => v -> VIndex v -> m (VContent v)
-   vectorSet :: MonadDomainError m => v -> VIndex v -> VContent v -> m v
+   vectorRef :: AbstractM m => v -> VIndex v -> m (VContent v)
+   vectorSet :: AbstractM m => v -> VIndex v -> VContent v -> m v
    vectorLength :: v -> VIndex v
 
 -- position insensitive vector
