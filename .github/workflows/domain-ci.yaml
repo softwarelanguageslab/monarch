@@ -37,7 +37,7 @@ jobs:
       working-directory: maf2-domains
       run: |
         stack update
-        stack build --only-dependencies --enable-tests --enable-benchmarks
+        stack build
     - name: Build
       working-directory: maf2-domains
       run: stack build
