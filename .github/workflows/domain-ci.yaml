@@ -1,4 +1,4 @@
-name: Haskell CI
+name: Domains CI
 
 on:
   push:
@@ -34,13 +34,13 @@ jobs:
           ${{ runner.os }}-
 
     - name: Install dependencies
-      working-directory: maf2-hs
+      working-directory: maf2-domains
       run: |
         stack update
         stack build --only-dependencies --enable-tests --enable-benchmarks
     - name: Build
-      working-directory: maf2-hs
+      working-directory: maf2-domains
       run: stack build
     - name: Run tests
-      working-directory: maf2-hs
+      working-directory: maf2-domains
       run: stack test
