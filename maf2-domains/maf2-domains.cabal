@@ -31,6 +31,7 @@ library
       Domain.Scheme
       Domain.Scheme.CPDomain
       Domain.Actors
+      Domain.TopLifted
       Control.Monad.Join
       Control.Monad.DomainError
   other-modules:

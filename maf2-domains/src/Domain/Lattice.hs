@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
-module Domain.Lattice (JoinLattice(..), Domain(..), SplitLattice(..), BoolDomain(..), justOrBot, Joinable(..)) where
+module Domain.Lattice (JoinLattice(..), Domain(..), TopLattice(..), SplitLattice(..), BoolDomain(..), justOrBot, Joinable(..)) where
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -8,11 +8,17 @@ import Data.Map (Map)
 class Joinable v where
    join :: v -> v -> v
 
-class (Joinable v) => JoinLattice v where -- TODO: we might want to elliminate the `Ord` bound here.
+class (Joinable v) => JoinLattice v where 
    bottom :: v
    subsumes :: v -> v -> Bool
    joins :: Foldable t => t v -> v
    joins = foldr join bottom
+
+-- | A lattice with a top element
+class (JoinLattice v) => TopLattice v where 
+   -- | Returns the top value of the lattice,
+   -- such that forall v, `subsumes top v` is true.
+   top :: v
 
 -- | Joinable for pairs of values
 instance (Joinable v, Joinable w) => Joinable (v, w) where

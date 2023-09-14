@@ -5,7 +5,6 @@ import Data.Map
 import Domain.Scheme
 import Domain
 import Domain.ConstantPropagation
-import Data.TypeLevel.Pair
 
 type CPValue ptr var exp = ModularSchemeValue
                                   (CP Double)
@@ -25,7 +24,7 @@ instance (Show ptr,  Ord ptr, Ord var, Ord exp) => Address (CPPaiAdr ptr var exp
 
 -- instance (Hashable ptr) => Hashable (CPVecAdr ptr var)
 newtype CPVecAdr ptr var exp = CPVecAdr { vecAdr :: ptr } deriving (Show, Eq, Ord, Generic)
-instance (Show ptr, Show var, Ord ptr, Ord var, Ord exp, Show exp) => Address (CPVecAdr ptr var exp) where
+instance (Show ptr, Show var, Ord ptr, Show exp) => Address (CPVecAdr ptr var exp) where
    type Vlu (CPVecAdr ptr var exp) = PIVector (CPValue ptr var exp) (CPValue ptr var exp)
 
 -- instance (Hashable ptr) => Hashable (CPStrAdr ptr var)
