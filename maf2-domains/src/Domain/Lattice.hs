@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
-module Domain.Lattice (JoinLattice(..), Domain(..), TopLattice(..), SplitLattice(..), BoolDomain(..), justOrBot, Joinable(..)) where
+module Domain.Lattice (JoinLattice(..), Domain(..), TopLattice(..), SplitLattice(..), BoolDomain(..), justOrBot, Joinable(..), WidenLattice(..)) where
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -8,11 +8,21 @@ import Data.Map (Map)
 class Joinable v where
    join :: v -> v -> v
 
+--- | A regular join-semilattice with bottom
+--- but without top.
 class (Joinable v) => JoinLattice v where 
    bottom :: v
    subsumes :: v -> v -> Bool
    joins :: Foldable t => t v -> v
    joins = foldr join bottom
+
+class (JoinLattice v) => WidenLattice v where 
+   -- | A widening operator, can be implemented
+   -- for infinite domains. 
+   widen :: v   -- ^ left value 
+         -> v   -- ^ right value 
+         -> Int -- ^ number of iterations 
+         -> v   -- ^ widened value
 
 -- | A lattice with a top element
 class (JoinLattice v) => TopLattice v where 
