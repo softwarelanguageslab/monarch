@@ -40,6 +40,7 @@ library
       Data.TypeLevel.List
       Data.TypeLevel.Pair
       Data.TypeLevel.Struct
+      Domain.Interval
       Paths_maf2_domains
   hs-source-dirs:
       src
