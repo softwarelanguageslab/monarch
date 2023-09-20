@@ -41,6 +41,7 @@ dependencies:
 - maf2-domains
 
 default-extensions:
+  - FlexibleContexts
   - TypeFamilies
   - TupleSections
   - TemplateHaskell

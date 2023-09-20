@@ -64,11 +64,10 @@ instance (JoinLattice v) => JoinLattice (Maybe v) where
    subsumes _ _ = False
 
 -- | Joinable for maps
-instance (Ord a, JoinLattice v) => Joinable (Map a v) where
-   join m1 m2 = 
-      foldr (\k -> Map.alter (\v -> Just $ join (justOrBot v) (Map.findWithDefault bottom k m2)) k) m1 (Set.union (Map.keysSet m1) (Map.keysSet m2))
+instance (Ord a, Joinable v) => Joinable (Map a v) where
+   join m1 m2 = Map.unionWith join m1 m2
 
-instance (Ord a, JoinLattice a, Eq v, JoinLattice v) => JoinLattice (Map a v) where
+instance (Ord a, Eq v, Joinable v) => JoinLattice (Map a v) where
    bottom = Map.empty
    subsumes m1 m2 =
       join m1 m2 == m1

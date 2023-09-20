@@ -39,11 +39,9 @@ library
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
-      Control.Coroutine
       Control.Monad.Cond
       Control.Monad.Error
       Control.Monad.Layer
-      Control.SVar
       Control.SVar.GenId
       Control.SVar.ModX
       Data.DMap
@@ -74,6 +72,7 @@ library
   hs-source-dirs:
       src
   default-extensions:
+      FlexibleContexts
       TypeFamilies
       TupleSections
       TemplateHaskell
@@ -122,6 +121,7 @@ executable maf2-hs-exe
   hs-source-dirs:
       app
   default-extensions:
+      FlexibleContexts
       TypeFamilies
       TupleSections
       TemplateHaskell
@@ -171,6 +171,7 @@ test-suite maf2-hs-test
   hs-source-dirs:
       test
   default-extensions:
+      FlexibleContexts
       TypeFamilies
       TupleSections
       TemplateHaskell
