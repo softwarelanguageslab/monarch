@@ -103,6 +103,7 @@ library
     , language-python
     , lens
     , maf2-domains
+    , maf2-syntax
     , mtl
     , optparse-applicative
     , parsec >=3.1
@@ -153,6 +154,7 @@ executable maf2-hs-exe
     , lens
     , maf2-domains
     , maf2-hs
+    , maf2-syntax
     , mtl
     , optparse-applicative
     , parsec >=3.1
@@ -203,6 +205,7 @@ test-suite maf2-hs-test
     , lens
     , maf2-domains
     , maf2-hs
+    , maf2-syntax
     , mtl
     , optparse-applicative
     , parsec >=3.1

@@ -37,8 +37,6 @@ library
       Domain.Python.CPDomain
       Control.Monad.Join
       Control.Monad.DomainError
-      Syntax.Python
-      Syntax.Python.AST
   other-modules:
       Control.Monad.Cond
       Data.LabeledProduct
@@ -47,8 +45,6 @@ library
       Data.TypeLevel.Pair
       Data.TypeLevel.Struct
       Domain.Interval
-      Syntax.Python.Compiler
-      Syntax.Python.Parser
       Paths_maf2_domains
   hs-source-dirs:
       src
@@ -73,7 +69,7 @@ library
     , containers
     , data-default
     , extra
-    , language-python
+    , maf2-syntax
     , mtl
     , transformers
     , unordered-containers
@@ -113,8 +109,8 @@ test-suite maf2-domains-test
     , extra
     , hspec
     , hspec-contrib
-    , language-python
     , maf2-domains
+    , maf2-syntax
     , mtl
     , transformers
     , unordered-containers

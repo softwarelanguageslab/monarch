@@ -39,6 +39,7 @@ dependencies:
 - optparse-applicative
 - IfElse
 - maf2-domains
+- maf2-syntax
 
 default-extensions:
   - FlexibleContexts
