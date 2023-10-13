@@ -33,6 +33,11 @@ library
       Analysis.ModF
       Analysis.ModX
       Analysis.Monad
+      Analysis.Python
+      Analysis.Python.Monad
+      Analysis.Python.OO
+      Analysis.Python.Primitives
+      Analysis.Python.Semantics
       Analysis.Scheme.Monad
       Analysis.Scheme.Primitives
       Analysis.Scheme.Semantics
@@ -59,10 +64,6 @@ library
       Interpreter.Scheme.Semantics
       Interpreter.Scheme.Values
       Lib
-      Syntax.Python
-      Syntax.Python.AST
-      Syntax.Python.Compiler
-      Syntax.Python.Parser
       Syntax.Scheme
       Syntax.Scheme.AST
       Syntax.Scheme.Parser

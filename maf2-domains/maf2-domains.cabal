@@ -32,9 +32,15 @@ library
       Domain.Scheme.CPDomain
       Domain.Actors
       Domain.TopLifted
+      Domain.Python
+      Domain.Python.ClassDomain
+      Domain.Python.CPDomain
       Control.Monad.Join
       Control.Monad.DomainError
+      Syntax.Python
+      Syntax.Python.AST
   other-modules:
+      Control.Monad.Cond
       Data.LabeledProduct
       Data.TypeLevel.HList
       Data.TypeLevel.List
@@ -42,6 +48,8 @@ library
       Data.TypeLevel.Struct
       Domain.Interval
       Domain.Python.DataFrame
+      Syntax.Python.Compiler
+      Syntax.Python.Parser
       Paths_maf2_domains
   hs-source-dirs:
       src
@@ -66,6 +74,7 @@ library
     , containers
     , data-default
     , extra
+    , language-python
     , mtl
     , transformers
     , unordered-containers
@@ -105,6 +114,7 @@ test-suite maf2-domains-test
     , extra
     , hspec
     , hspec-contrib
+    , language-python
     , maf2-domains
     , mtl
     , transformers

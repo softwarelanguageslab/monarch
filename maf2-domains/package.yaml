@@ -26,6 +26,7 @@ dependencies:
 - transformers
 - data-default
 - extra
+- language-python
 
 ghc-options:
 - -Wall
@@ -49,8 +50,13 @@ library:
     - Domain.Scheme.CPDomain
     - Domain.Actors
     - Domain.TopLifted
+    - Domain.Python
+    - Domain.Python.ClassDomain
+    - Domain.Python.CPDomain
     - Control.Monad.Join
     - Control.Monad.DomainError
+    - Syntax.Python
+    - Syntax.Python.AST
 
 default-extensions:
   - TypeFamilies
