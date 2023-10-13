@@ -2,7 +2,7 @@
 
 This library provides parsers and preprocessing passes for the languages supported in MAF.
 
-It exposes support for Scheme and Python syntax. The Python support is built on top of `language-python` and 
+It exposes support for Scheme and Python syntax. The Python support is built on top of `language-python` and provides a minimal version that is easier to implement analyses for.
 
 ## Usage
 
