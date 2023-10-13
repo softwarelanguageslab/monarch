@@ -64,10 +64,6 @@ library
       Interpreter.Scheme.Semantics
       Interpreter.Scheme.Values
       Lib
-      Syntax.Scheme
-      Syntax.Scheme.AST
-      Syntax.Scheme.Parser
-      Syntax.Scheme.Undefiner
   other-modules:
       Paths_maf2_hs
   hs-source-dirs:
@@ -106,7 +102,6 @@ library
     , maf2-syntax
     , mtl
     , optparse-applicative
-    , parsec >=3.1
     , transformers
     , unordered-containers
     , vector
@@ -157,7 +152,6 @@ executable maf2-hs-exe
     , maf2-syntax
     , mtl
     , optparse-applicative
-    , parsec >=3.1
     , transformers
     , unordered-containers
     , vector
@@ -208,7 +202,6 @@ test-suite maf2-hs-test
     , maf2-syntax
     , mtl
     , optparse-applicative
-    , parsec >=3.1
     , transformers
     , unordered-containers
     , vector

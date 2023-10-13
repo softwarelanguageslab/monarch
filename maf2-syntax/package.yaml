@@ -20,6 +20,9 @@ dependencies:
 - language-python
 - mtl
 - containers
+- hashable
+- parsec >= 3.1
+- data-default
 
 ghc-options:
 - -Wall
@@ -37,6 +40,9 @@ library:
   exposed-modules:
     - Syntax.Python
     - Syntax.Python.AST
+    - Syntax.Scheme
+    - Syntax.Scheme.AST
+    - Syntax.Scheme.Undefiner
 
 default-extensions:
   - StandaloneDeriving
@@ -44,6 +50,8 @@ default-extensions:
   - TypeFamilies
   - DeriveGeneric
   - TupleSections
+  - NamedFieldPuns
+  - RankNTypes
 
 tests:
   maf2-syntax-test:
