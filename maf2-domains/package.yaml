@@ -26,6 +26,7 @@ dependencies:
 - transformers
 - data-default
 - extra
+- language-python
 
 ghc-options:
 - -Wall
