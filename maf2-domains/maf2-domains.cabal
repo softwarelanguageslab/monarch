@@ -32,6 +32,7 @@ library
       Domain.Scheme.CPDomain
       Domain.Actors
       Domain.TopLifted
+      Domain.Python
       Control.Monad.Join
       Control.Monad.DomainError
   other-modules:
@@ -42,7 +43,6 @@ library
       Data.TypeLevel.Pair
       Data.TypeLevel.Struct
       Domain.Interval
-      Domain.Python
       Domain.Python.ClassDomain
       Domain.Python.CPDomain
       Syntax.Python

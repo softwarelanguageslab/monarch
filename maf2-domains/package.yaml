@@ -50,6 +50,7 @@ library:
     - Domain.Scheme.CPDomain
     - Domain.Actors
     - Domain.TopLifted
+    - Domain.Python
     - Control.Monad.Join
     - Control.Monad.DomainError
 
