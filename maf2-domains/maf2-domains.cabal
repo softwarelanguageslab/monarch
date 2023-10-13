@@ -33,8 +33,12 @@ library
       Domain.Actors
       Domain.TopLifted
       Domain.Python
+      Domain.Python.ClassDomain
+      Domain.Python.CPDomain
       Control.Monad.Join
       Control.Monad.DomainError
+      Syntax.Python
+      Syntax.Python.AST
   other-modules:
       Control.Monad.Cond
       Data.LabeledProduct
@@ -43,10 +47,6 @@ library
       Data.TypeLevel.Pair
       Data.TypeLevel.Struct
       Domain.Interval
-      Domain.Python.ClassDomain
-      Domain.Python.CPDomain
-      Syntax.Python
-      Syntax.Python.AST
       Syntax.Python.Compiler
       Syntax.Python.Parser
       Paths_maf2_domains

@@ -184,7 +184,7 @@ runErr' = fmap fst . runErr
 ---
 
 -- | Keeps track of a store using a state monad
-instance {-# OVERLAPPING #-} (Monad m, Hashable adr, JoinLattice (Vlu adr), Address adr, Typeable adr, Typeable (Vlu adr), Has ks (adr :-> Vlu adr))=> StoreM (StateT (DMap ks) m) adr where
+instance {-# OVERLAPPING #-} (Monad m, Hashable adr, JoinLattice (Vlu adr), Address adr, Typeable adr, Typeable (Vlu adr), Has ks (adr :-> Vlu adr)) => StoreM (StateT (DMap ks) m) adr where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    lookupAdr = gets  . Store.lookupSto
