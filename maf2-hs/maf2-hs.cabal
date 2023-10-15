@@ -38,6 +38,7 @@ library
       Analysis.Python.OO
       Analysis.Python.Primitives
       Analysis.Python.Semantics
+      Analysis.Scheme
       Analysis.Scheme.Monad
       Analysis.Scheme.Primitives
       Analysis.Scheme.Semantics

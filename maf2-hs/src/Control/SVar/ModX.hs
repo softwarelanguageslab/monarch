@@ -1,7 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes,  FlexibleInstances,  UndecidableInstances, RecordWildCards, TypeFamilyDependencies, GADTs #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
-module Control.SVar.ModX(MonadStateVar, ModX) where
+module Control.SVar.ModX(MonadStateVar, WorkList(..), ModX(..), StateTrackingDep(..), runModX) where
 
 import Prelude hiding (read, reads)
 import Control.Monad.Reader hiding (join)
@@ -164,13 +164,13 @@ instance MonadJoin StateVarM where
 
 -- | Tracking of read and writes to the state variables
 data StateTracking m = StateTracking {
-      writes :: [StateTrackingRep m],
-      reads  :: [StateTrackingRep m]
+      writes :: [StateTrackingDep m],
+      reads  :: [StateTrackingDep m]
 } 
 deriving instance Show (Rep m) => Show (StateTracking m)
 
-newtype StateTrackingRep m = StateTrackingRep (Rep m) 
-deriving instance Show (Rep m) => Show (StateTrackingRep m)
+newtype StateTrackingDep m = StateTrackingDep (Rep m)
+deriving instance Show (Rep m) => Show (StateTrackingDep m)
 
 newtype StateTrackingM m a = StateTrackingM (StateT (StateTracking m) m a) deriving (Monad, Applicative, Functor)
 
@@ -179,8 +179,8 @@ instance MonadTrans StateTrackingM where
 
 instance (MonadStateVar m) => MonadStateVar (StateTrackingM m) where
    type SVar (StateTrackingM m) = SVar m
-   type Rep  (StateTrackingM m) = StateTrackingRep m
-   rep r    = StateTrackingRep $ rep r
+   type Rep  (StateTrackingM m) = StateTrackingDep m
+   rep r    = StateTrackingDep $ rep r
    newSVar  = lift newSVar
    read vrr = do
       vll <- lift $ read vrr
@@ -223,11 +223,17 @@ class (Ord (Dep c), Ord (Component c)) => ModX c where
 -- within an analysis
 class (ModX c) => MonadModX m c where 
    -- | Spawn the given component within the analysis
-   spawn :: Component c -> m ()
+   spawn    :: Component c -> m ()
+   -- | Trigger a dependency
+   trigger  :: Dep c -> m () 
+   -- | Register a dependency 
+   register :: Dep c -> m () 
 
 -- | Sequential version of the ModX state
 data ModXState c = ModXState {
-   spawns :: [Component c]
+   spawns     :: [Component c], 
+   triggers   :: [Dep c], 
+   registers  :: [Dep c]
 }
 
 -- | A monad that keeps track of the set of spawned 
@@ -235,8 +241,10 @@ data ModXState c = ModXState {
 newtype ModxT c m a = ModxT (StateT (ModXState c) m a) deriving (Monad, Applicative, Functor)
 
 instance (Monad m, ModX c) => MonadModX (ModxT c m) c where 
-   spawn c = ModxT $ modify (\st -> st { spawns = c : spawns st })
-
+   spawn    c = ModxT $ modify (\st -> st { spawns    = c : spawns st })
+   trigger  d = ModxT $ modify (\st -> st { triggers  = d : triggers st })
+   register d = ModxT $ modify (\st -> st { registers = d : registers st })
+    
 
 integrate :: (WorkList wl (Component c), ModX c)
           => ModxLoop c -- ^ the original loop state 
@@ -267,6 +275,14 @@ data ModxLoop c = ModxLoop {
    state :: State c
 }
 
+initialModXLoopState :: (ModX c) => State c -> ModxLoop c
+initialModXLoopState initialState  = ModxLoop {
+   seen       = Set.empty,
+   dependents = Map.empty,
+   state      = initialState 
+}
+
+
 -- | ModX loop
 loop ::  ( ModX c,
            WorkList wl (Component c))
@@ -278,3 +294,9 @@ loop loopState@ModxLoop { .. } wl = if isEmpty wl then state else
       in uncurry loop (integrate loopState  wl st' spawns' r' w')
    where (cmp, _) = remove wl  
 
+-- | Run the ModX algorithm for the given ModX configuration `c`
+runModX :: (WorkList wl (Component c), ModX c) 
+        => wl -- ^ the initial worklist
+        -> State c -- ^ the initial state
+        -> State c
+runModX = undefined
