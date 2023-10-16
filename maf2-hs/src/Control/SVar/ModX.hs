@@ -299,4 +299,4 @@ runModX :: (WorkList wl (Component c), ModX c)
         => wl -- ^ the initial worklist
         -> State c -- ^ the initial state
         -> State c
-runModX = undefined
+runModX initialWl initialState = loop (initialModXLoopState initialState) initialWl

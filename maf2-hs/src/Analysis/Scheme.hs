@@ -71,6 +71,7 @@ newtype AnalysisResult ctx v = AnalysisResult (State (ModF ctx))
 -- result. It uses the default initial environment
 -- as specified in `Analysis.Scheme.Primitives`
 analyzeProgram :: forall v ctx wl . 
-                  (WorkList wl (Component (ModF ctx)), SchemeDomain v) 
+                  (WorkList wl (Component (ModF ctx)), SchemeDomain v, Ord ctx) 
                => Program -> wl -> AnalysisResult ctx v
-analyzeProgram exp initialWl = undefined
+analyzeProgram exp initialWl = AnalysisResult $ runModX initialWl undefined
+
