@@ -172,8 +172,8 @@ undefineHandler (Hdl tag prs bdy) =
 type Undefine = StateT Int (WriterT [(Ide, Exp)] (ReaderT IsAllowed (Except Error)))
 instance UndefineM Undefine
 
-undefineExp :: Exp -> Exp
-undefineExp e = either (error . (("could not undefine " ++) . show)) fst result
+undefineExp :: Exp -> Maybe Exp
+undefineExp e = either (const Nothing) (Just . fst) result
    where result = evalStateT (letrectify $ undefineM e) 0 &
                   runWriterT                              &
                   flip runReaderT def                     &

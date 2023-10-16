@@ -1,7 +1,6 @@
 module Run.Interpreter(main, Options, options) where
 
-import Syntax.Scheme.AST
-import Syntax.Scheme.Undefiner
+import Syntax.Scheme
 import Options.Applicative
 import Interpreter.Scheme
 import System.IO
@@ -21,7 +20,7 @@ repl = do
    hFlush stdout
    line <- getLine
    if line == ":q" then return () else do
-      let expr = undefineExp $ fromJust $ parseSchemeExp line
+      let expr = fromJust $ parseString line
       let (result, _) = runInterpreter expr
       print result 
       repl
@@ -32,4 +31,4 @@ main (Options Nothing) = do
    repl 
 
 main (Options (Just filename)) = 
-   (undefineExp . fromJust . parseSchemeExp <$> readFile filename) >>= pure . runInterpreter >>= print . fst
+   (fromJust . parseString <$> readFile filename) >>= pure . runInterpreter >>= print . fst

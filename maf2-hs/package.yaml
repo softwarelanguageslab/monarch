@@ -21,7 +21,6 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-- parsec >= 3.1
 - QuickCheck >= 2.14.2
 - hspec 
 - hspec-contrib
@@ -39,6 +38,7 @@ dependencies:
 - optparse-applicative
 - IfElse
 - maf2-domains
+- maf2-syntax
 
 default-extensions:
   - FlexibleContexts

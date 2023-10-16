@@ -1,0 +1,86 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.35.2.
+--
+-- see: https://github.com/sol/hpack
+
+name:           maf2-syntax
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/maf2-syntax#readme>
+homepage:       https://github.com/githubuser/maf2-syntax#readme
+bug-reports:    https://github.com/githubuser/maf2-syntax/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2023 Author name here
+license:        BSD-3-Clause
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/maf2-syntax
+
+library
+  exposed-modules:
+      Syntax.Python
+      Syntax.Python.AST
+      Syntax.Scheme
+      Syntax.Scheme.AST
+      Syntax.Scheme.Undefiner
+  other-modules:
+      Control.Monad.Cond
+      Lib
+      Syntax.Python.Compiler
+      Syntax.Python.Parser
+      Syntax.Scheme.Parser
+      Paths_maf2_syntax
+  autogen-modules:
+      Paths_maf2_syntax
+  hs-source-dirs:
+      src
+  default-extensions:
+      StandaloneDeriving
+      KindSignatures
+      TypeFamilies
+      DeriveGeneric
+      TupleSections
+      NamedFieldPuns
+      RankNTypes
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , data-default
+    , hashable
+    , language-python
+    , mtl
+    , parsec >=3.1
+  default-language: Haskell2010
+
+test-suite maf2-syntax-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_maf2_syntax
+  autogen-modules:
+      Paths_maf2_syntax
+  hs-source-dirs:
+      test
+  default-extensions:
+      StandaloneDeriving
+      KindSignatures
+      TypeFamilies
+      DeriveGeneric
+      TupleSections
+      NamedFieldPuns
+      RankNTypes
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , data-default
+    , hashable
+    , language-python
+    , maf2-syntax
+    , mtl
+    , parsec >=3.1
+  default-language: Haskell2010

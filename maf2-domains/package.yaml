@@ -26,7 +26,7 @@ dependencies:
 - transformers
 - data-default
 - extra
-- language-python
+- maf2-syntax
 
 ghc-options:
 - -Wall
@@ -55,8 +55,6 @@ library:
     - Domain.Python.CPDomain
     - Control.Monad.Join
     - Control.Monad.DomainError
-    - Syntax.Python
-    - Syntax.Python.AST
 
 default-extensions:
   - TypeFamilies
