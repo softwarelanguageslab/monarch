@@ -23,7 +23,7 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 
 -- | An abstract representation of a dictionary
-class DictionaryDomain d where
+class JoinLattice d => DictionaryDomain d where
    type DKey d :: Type
    type DVlu d :: Type
 
@@ -50,9 +50,8 @@ values _ = error "no values for bottom"
 -- Currently it is only implemented when values of the CP domain are used as keys.
 instance IsDict k v => JoinLattice (Dictionary k v) where
    bottom = Bottom
-   subsumes Bottom Bottom = True
-   subsumes Bottom _      = False
    subsumes _ Bottom      = True
+   subsumes Bottom _      = False
    subsumes d1 d2         =
       join d1 d2 == d1
 
