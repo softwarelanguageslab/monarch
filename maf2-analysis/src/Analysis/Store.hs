@@ -1,5 +1,5 @@
 {-# LANGUAGE  FlexibleInstances, AllowAmbiguousTypes,  FlexibleContexts, UndecidableInstances #-}
-module Analysis.Store(Store(..), Typeable, module Data.DMap, Associate) where
+module Analysis.Store(Store(..), Typeable, Associate) where
 
 import qualified Data.DMap as DMap
 import Data.Map (Map)

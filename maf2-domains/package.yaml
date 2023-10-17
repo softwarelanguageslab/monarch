@@ -27,6 +27,7 @@ dependencies:
 - data-default
 - extra
 - maf2-syntax
+- hashable
 
 ghc-options:
 - -Wall
@@ -55,6 +56,7 @@ library:
     - Domain.Python.CPDomain
     - Control.Monad.Join
     - Control.Monad.DomainError
+    - Data.DMap
 
 default-extensions:
   - TypeFamilies

@@ -44,7 +44,6 @@ type SchemeM m v = (
    AllocM m Exp (PAdr v),    -- pair allocation
    AllocM m Exp (VAdr v),    -- vector allocation
    AllocM m Exp (SAdr v),    -- string allocation
-   AllocM m Exp (Ctx m),     -- context allocation
    --
    CtxM m (Ctx m),
    CallM m (Env v) v,

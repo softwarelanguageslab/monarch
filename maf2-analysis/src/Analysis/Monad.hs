@@ -41,7 +41,7 @@ import Control.Monad.State hiding (mzero)
 import Syntax.Scheme.AST
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.TypeLevel.List
+import Data.TypeLevel.List hiding (Has)
 import Data.DMap
 import Domain
 import Analysis.Store hiding (lookupSto, extendSto, updateSto)

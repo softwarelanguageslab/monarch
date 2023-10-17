@@ -29,6 +29,7 @@ library
       TypeLevel.List
       TypeLevel.Pair
   other-modules:
+      Data.DMap
       TypeLevel.HList
       TypeLevel.HMap
       Paths_typelevel
