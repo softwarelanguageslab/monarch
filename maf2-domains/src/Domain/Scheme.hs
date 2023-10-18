@@ -1,6 +1,6 @@
-{-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-missing-fields -fno-warn-missing-pattern-synonym-signatures -fno-warn-incomplete-patterns #-}
-module Domain.Scheme (SchemeAdrs, Address(..), SchemeDomain (..), ModularSchemeValue(..),  SchemeString(..)) where
+module Domain.Scheme (SchemeAdrs, Address(..), SchemeConstraints,  SchemeDomain (..), ModularSchemeValue(..),  SchemeString(..)) where
 
 import Data.Coerce hiding (coerce)
 import qualified Data.Coerce as Coerce
@@ -17,6 +17,7 @@ import Data.List hiding (null)
 import Control.Monad.Join
 import Data.Maybe (isJust)
 import Data.DMap ((:->))
+import Data.Kind
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -25,8 +26,7 @@ maybeSingle (Just v) = Set.singleton v
 a ∪ b = Set.union a b
 infixl 0 ∪
 
--- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
-class
+type SchemeDomainPre v = 
   ( RealDomain v,
     IntDomain v,
     CharDomain v,
@@ -53,8 +53,10 @@ class
     -- booleans in the number domain should link back to the values in the scheme domain
     Boo v ~ v,
     -- variables should point to values
-    Vlu (Adr v) ~ v    
-  ) =>
+    Vlu (Adr v) ~ v)    
+
+-- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
+class (SchemeDomainPre v) =>
   SchemeDomain v
   where 
   -- types of addresses to variables
@@ -109,6 +111,13 @@ class
   isNil  :: v -> Bool
   isUnsp :: v -> Bool
   isPrim :: v -> Bool
+
+-----------------------------------------------------------------------------
+-- Constraints for when the type of variables and environments is known 
+-----------------------------------------------------------------------------
+
+type SchemeConstraints v exp var env = (Adr v ~ var, Env v ~ env, Exp v ~ exp) :: Constraint
+
 
 ----------------------------------------------
 -- Store interactions
