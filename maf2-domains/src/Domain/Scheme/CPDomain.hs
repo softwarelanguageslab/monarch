@@ -14,6 +14,7 @@ type CPValue ptr var exp = ModularSchemeValue
                                   (CPPaiAdr ptr var exp)
                                   (CPVecAdr ptr var exp)
                                   (CPStrAdr ptr var exp)
+                                  var
                                   exp
                                   (Map String var)
 

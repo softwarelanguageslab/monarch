@@ -31,9 +31,11 @@ class
     IntDomain v,
     CharDomain v,
     BoolDomain v,
+    Ord v,
     Address (PAdr v),
     Address (VAdr v),
     Address (SAdr v),
+    Address (Adr v),
     -- make sure that the strings adhere to the string domain
     StringDomain (Vlu (SAdr v)),
     -- make sure the vectors adhere to the vector domain
@@ -47,11 +49,16 @@ class
     VIndex (Vlu (VAdr v)) ~ v,
     -- make sure that `v` is used as the index and character in their corresponding lattices
     IntS (Vlu (SAdr v)) ~ v,
-    ChaS (Vlu (SAdr v)) ~ v
-
+    ChaS (Vlu (SAdr v)) ~ v,
+    -- booleans in the number domain should link back to the values in the scheme domain
+    Boo v ~ v,
+    -- variables should point to values
+    Vlu (Adr v) ~ v    
   ) =>
   SchemeDomain v
-  where
+  where 
+  -- types of addresses to variables
+  type Adr v :: Type
   -- Types of pointers to pairs, vectors and strings
   type PAdr v :: Type
   type VAdr v :: Type
@@ -116,6 +123,7 @@ class
 -- 
 -- This can be used as the basis for a `Data.DMap`. 
 type SchemeAdrs v = '[
+   Adr  v :-> Vlu (Adr v),
    PAdr v :-> Vlu (PAdr v),
    VAdr v :-> Vlu (VAdr v),
    SAdr v :-> Vlu (SAdr v) 
@@ -126,7 +134,7 @@ type SchemeAdrs v = '[
 ----------------------------------------------
 
 -- A generic instance for the Scheme domain, parametrized by their sublattices
-data ModularSchemeValue r i c b pai vec str exp env = ModularSchemeValue {
+data ModularSchemeValue r i c b pai vec str var exp env = ModularSchemeValue {
    real    :: Maybe r,
    integer :: Maybe i,
    character :: Maybe c ,
@@ -140,7 +148,7 @@ data ModularSchemeValue r i c b pai vec str exp env = ModularSchemeValue {
    primitives :: Maybe (Set String)
 } deriving (Ord, Eq)
 
-instance (SplitLattice (ModularSchemeValue r i c b pai vec str exp env), Show r, Show i, Show c, Show b, Show exp) => Show (ModularSchemeValue r i c b pai vec str exp env) where 
+instance (SplitLattice (ModularSchemeValue r i c b pai vec str var exp env), Show r, Show i, Show c, Show b, Show exp) => Show (ModularSchemeValue r i c b pai vec str var exp env) where 
    show = intercalate "," . Set.toList . Set.map select . split
       where select ModularSchemeValue { real = Just r } = "real ↦ "++ show r
             select ModularSchemeValue  { integer = Just i } = "integer ↦ " ++ show i
@@ -157,22 +165,22 @@ instance (SplitLattice (ModularSchemeValue r i c b pai vec str exp env), Show r,
                "primitive ↦ {" ++ intercalate "," (Set.toList (Set.map show prms)) ++ "}"
             select _ = "⊥"
 
-instance Default (ModularSchemeValue r i c b pai vec str exp env) where
+instance Default (ModularSchemeValue r i c b pai vec str var exp env) where
    def = ModularSchemeValue Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 -- Injection of simple literal values
-instance (Domain i Integer, JoinLattice (ModularSchemeValue r i c b pai vec str exp env)) => Domain (ModularSchemeValue r i c b pai vec str exp env) Integer where
+instance (Domain i Integer, JoinLattice (ModularSchemeValue r i c b pai vec str var exp env)) => Domain (ModularSchemeValue r i c b pai vec str var exp env) Integer where
    inject i = def { integer = Just $ inject i }
-instance (Domain c Char, JoinLattice (ModularSchemeValue r i c b pai vec str exp env)) => Domain (ModularSchemeValue r i c b pai vec str exp env) Char where
+instance (Domain c Char, JoinLattice (ModularSchemeValue r i c b pai vec str var exp env)) => Domain (ModularSchemeValue r i c b pai vec str var exp env) Char where
    inject c = def { character = Just $ inject c }
-instance (Domain b Bool, JoinLattice (ModularSchemeValue r i c b pai vec str exp env)) => Domain (ModularSchemeValue r i c b pai vec str exp env) Bool where
+instance (Domain b Bool, JoinLattice (ModularSchemeValue r i c b pai vec str var exp env)) => Domain (ModularSchemeValue r i c b pai vec str var exp env) Bool where
    inject b = def { boolean = Just $ inject b }
-instance (Domain r Double, JoinLattice (ModularSchemeValue r i c b pai vec str exp env)) => Domain (ModularSchemeValue r i c b pai vec str exp env) Double where
+instance (Domain r Double, JoinLattice (ModularSchemeValue r i c b pai vec str var exp env)) => Domain (ModularSchemeValue r i c b pai vec str var exp env) Double where
    inject r = def { real = Just $ inject r }
 
 -- Instance for lattice operations
 
-instance (RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, Ord exp) => Joinable (ModularSchemeValue r i c b pai vec str exp env) where 
+instance (RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, Ord exp) => Joinable (ModularSchemeValue r i c b pai vec str var exp env) where 
    -- pairwise join
    join a b = ModularSchemeValue {
       real = join (real a) (real b),
@@ -189,7 +197,7 @@ instance (RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Ad
    }
 
 instance (RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Ord exp) =>
-   JoinLattice (ModularSchemeValue r i c b pai vec str exp env) where
+   JoinLattice (ModularSchemeValue r i c b pai vec str var exp env) where
    -- bottom is when all fields of the modular value are nothing
    bottom = def
 
@@ -211,7 +219,7 @@ instance (RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Ad
 --
 
 instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env) =>
-   SplitLattice (ModularSchemeValue r i c b pai vec str exp env) where
+   SplitLattice (ModularSchemeValue r i c b pai vec str var exp env) where
 
    split v =
        Set.map (\a -> def { real = Just a }) (maybeSingle (real v)) ∪
@@ -229,7 +237,7 @@ instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDo
 ---
 
 instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env) =>
-   BoolDomain (ModularSchemeValue r i c b pai vec str exp env) where
+   BoolDomain (ModularSchemeValue r i c b pai vec str var exp env) where
 
    isTrue v = any trueish (split v)
       where trueish ModularSchemeValue { boolean = Just boolean } = isTrue boolean
@@ -245,7 +253,7 @@ instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDo
 
 -- 
 
-chars :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) => ModularSchemeValue r i c b pai vec str exp env -> m c
+chars :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) => ModularSchemeValue r i c b pai vec str var exp env -> m c
 chars = foldr (mjoin . select) mzero . split
    where select ModularSchemeValue { character = Just c } = return c
          select ModularSchemeValue { } =
@@ -253,9 +261,9 @@ chars = foldr (mjoin . select) mzero . split
 
 
 instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, IntC c ~ i, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env) =>
-   CharDomain (ModularSchemeValue r i c b pai vec str exp env) where
+   CharDomain (ModularSchemeValue r i c b pai vec str var exp env) where
 
-   type IntC (ModularSchemeValue r i c b pai vec str exp env) = (ModularSchemeValue r i c b pai vec str exp env)
+   type IntC (ModularSchemeValue r i c b pai vec str var exp env) = (ModularSchemeValue r i c b pai vec str var exp env)
 
    downcase = chars >=> downcase >=> (\c -> return $ def {character = Just c})
    upcase = chars >=> upcase >=>  (\c -> return $ def { character = Just c })
@@ -282,7 +290,7 @@ pattern IsReal    r = ModularSchemeValue { real    = Just r }
 -- TODO: `mjoin` might not keep the structure introduced by `split`, hence, `mjoin` should not be used here!
 -- | Exhaustivily extract all number-like values from the abstract Scheme value
 number :: (Ord exp, Ord i, Ord r, Ord c, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, Show env, AbstractM m) =>
-   ModularSchemeValue r i c b pai vec str exp env -> m (ModularSchemeValue r i c b pai vec str exp env)
+   ModularSchemeValue r i c b pai vec str var exp env -> m (ModularSchemeValue r i c b pai vec str var exp env)
 number = foldr (mjoin . select) mzero . split
    where select (IsInteger i) = return $ def { integer = Just i }
          select (IsReal r) = return $ def { real    = Just r }
@@ -290,13 +298,13 @@ number = foldr (mjoin . select) mzero . split
 
 
 integers :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) =>
-  ModularSchemeValue r i c b pai vec str exp env -> m i
+  ModularSchemeValue r i c b pai vec str var exp env -> m i
 integers = foldr (mjoin . select) mzero . split
    where select (IsInteger i) = return i
          select _ = raiseError $ DomainError "expected integer"
 
 reals :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) =>
-  ModularSchemeValue r i c b pai vec str exp env -> m r
+  ModularSchemeValue r i c b pai vec str var exp env -> m r
 reals = foldr (mjoin . select) mzero . split
    where select (IsReal r) =  return r
          select _ = raiseError $ DomainError "expected integer"
@@ -318,9 +326,9 @@ coerc1 intOp realOp = apply <=< number
          apply (IsReal    r) = realOp r
 
 instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b) =>
-   NumberDomain (ModularSchemeValue r i c b pai vec str exp env) where
+   NumberDomain (ModularSchemeValue r i c b pai vec str var exp env) where
 
-   type Boo (ModularSchemeValue r i c b pai vec str exp env) = ModularSchemeValue r i c b pai vec str exp env
+   type Boo (ModularSchemeValue r i c b pai vec str var exp env) = ModularSchemeValue r i c b pai vec str var exp env
 
    isZero = coerc1 (fmap insertBool . isZero)
                    (fmap insertBool . isZero)
@@ -341,9 +349,9 @@ instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDo
                    (\v1 v2 -> insertBool <$> equals v1 v2)
 
 instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b, IntR r  ~ i) =>
-   RealDomain (ModularSchemeValue r i c b pai vec str exp env) where
+   RealDomain (ModularSchemeValue r i c b pai vec str var exp env) where
 
-   type IntR (ModularSchemeValue r i c b pai vec str exp env) = (ModularSchemeValue r i c b pai vec str exp env)
+   type IntR (ModularSchemeValue r i c b pai vec str var exp env) = (ModularSchemeValue r i c b pai vec str var exp env)
 
    toInt   = (reals >=> toInt) >=> (return . insertInt)
    ceiling = coerc1R $ fmap insertReal . Domain.ceiling
@@ -359,10 +367,10 @@ instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDo
    sqrt    = coerc1R $ fmap insertReal . Domain.sqrt
 
 instance (Ord exp, Ord i, Ord c, Ord r, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b, Coercible (Str i) (Vlu str)) =>
-   IntDomain (ModularSchemeValue r i c b pai vec str exp env) where
+   IntDomain (ModularSchemeValue r i c b pai vec str var exp env) where
 
-   type Str (ModularSchemeValue r i c b pai vec str exp env) = Vlu str
-   type Rea (ModularSchemeValue r i c b pai vec str exp env) = (ModularSchemeValue r i c b pai vec str exp env)
+   type Str (ModularSchemeValue r i c b pai vec str var exp env) = Vlu str
+   type Rea (ModularSchemeValue r i c b pai vec str var exp env) = (ModularSchemeValue r i c b pai vec str var exp env)
    toReal    = integers >=> toReal >=> (return . insertReal)
    toString  = integers >=> toString >=> (return . Coerce.coerce)
    quotient  a b = insertInt <$> M.join (liftA2 quotient (integers a) (integers b))
@@ -385,11 +393,11 @@ instance (
    Ord exp, Ord i, Ord c, Ord b, Ord r, 
    StringDomain s, IntS s ~ i, ChaS s ~ c, BooS s ~ b,
    IntDomain i, CharDomain c, BoolDomain b, Ord env,
-   RealDomain r, SchemeDomain (ModularSchemeValue r i c b pai vec str exp env)
- ) => StringDomain (SchemeString s (ModularSchemeValue r i c b pai vec str exp env)) where
-   type IntS (SchemeString s (ModularSchemeValue r i c b pai vec str exp env)) = (ModularSchemeValue r i c b pai vec str exp env)
-   type ChaS (SchemeString s (ModularSchemeValue r i c b pai vec str exp env)) = (ModularSchemeValue r i c b pai vec str exp env)
-   type BooS (SchemeString s (ModularSchemeValue r i c b pai vec str exp env)) = (ModularSchemeValue r i c b pai vec str exp env)
+   RealDomain r, SchemeDomain (ModularSchemeValue r i c b pai vec str var exp env)
+ ) => StringDomain (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) where
+   type IntS (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) = (ModularSchemeValue r i c b pai vec str var exp env)
+   type ChaS (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) = (ModularSchemeValue r i c b pai vec str var exp env)
+   type BooS (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) = (ModularSchemeValue r i c b pai vec str var exp  env)
    length = (Domain.length . sconst) >=> (return . insertInt)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = insertChar <$> (ref (sconst s) =<< integers i)
@@ -414,23 +422,26 @@ instance
     Boo  r ~ b,
     IntR r ~ i,
     Coercible (Str  i) (Vlu str),
-    Content  (Vlu pai) ~ ModularSchemeValue r i c b pai vec str exp env,
-    VContent (Vlu vec) ~ ModularSchemeValue r i c b pai vec str exp env,
-    IntS (Vlu str) ~ ModularSchemeValue r i c b pai vec str exp env,
-    ChaS (Vlu str) ~ ModularSchemeValue r i c b pai vec str exp env,
-    VIndex (Vlu vec) ~ ModularSchemeValue r i c b pai vec str exp env,
-    Address  pai,
+    Content  (Vlu pai) ~ ModularSchemeValue r i c b pai vec str var exp env,
+    VContent (Vlu vec) ~ ModularSchemeValue r i c b pai vec str var exp env,
+    IntS (Vlu str) ~ ModularSchemeValue r i c b pai vec str var exp env,
+    ChaS (Vlu str) ~ ModularSchemeValue r i c b pai vec str var exp env,
+    VIndex (Vlu vec) ~ ModularSchemeValue r i c b pai vec str var exp env,
+    Vlu var ~ ModularSchemeValue r i c b pai vec str var exp env,
     Address  vec,
     Address  str,
+    Address pai,
+    Address var,
     Show env, Ord env
-  ) => SchemeDomain (ModularSchemeValue r i c b pai vec str exp env)
+  ) => SchemeDomain (ModularSchemeValue r i c b pai vec str var exp env)
   where
 
-  type PAdr (ModularSchemeValue r i c b pai vec str exp env)  = pai
-  type VAdr (ModularSchemeValue r i c b pai vec str exp env)  = vec
-  type SAdr (ModularSchemeValue r i c b pai vec str exp env)  = str
-  type Env  (ModularSchemeValue r i c b pai vec str exp env)  = env
-  type Exp  (ModularSchemeValue r i c b pai vec str exp env)  = exp
+  type Adr  (ModularSchemeValue r i c b pai vec str var exp env)  = var
+  type PAdr (ModularSchemeValue r i c b pai vec str var exp env)  = pai
+  type VAdr (ModularSchemeValue r i c b pai vec str var exp env)  = vec
+  type SAdr (ModularSchemeValue r i c b pai vec str var exp env)  = str
+  type Env  (ModularSchemeValue r i c b pai vec str var exp env)  = env
+  type Exp  (ModularSchemeValue r i c b pai vec str var exp env)  = exp
 
   -- Pointer injection
   pptr p = def { paiPtr = Just $ Set.singleton p }
