@@ -22,8 +22,8 @@ source-repository head
 library
   exposed-modules:
       Data.TypeLevel.HList
-      Data.TypeLevel.List
       Data.TypeLevel.Pair
+      Data.TypeLevel.List
       Data.TypeLevel.Struct
   other-modules:
       Lib
