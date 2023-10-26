@@ -1,10 +1,10 @@
 name:                maf2-domains
 version:             0.1.0.0
-github:              "githubuser/maf2-domains"
+github:              "softwarelanguageslab/maf-hs"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2023 Author name here"
+author:              "Software Languages Lab"
+maintainer:          ""
+copyright:           "2023 Software Languages Lab"
 
 extra-source-files:
 - README.md
@@ -27,6 +27,7 @@ dependencies:
 - data-default
 - extra
 - maf2-syntax
+- maf2-typelevel
 - hashable
 
 ghc-options:

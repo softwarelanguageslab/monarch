@@ -1,7 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables, ExistentialQuantification, FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables, ExistentialQuantification, FlexibleContexts, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
--- | Joinable HashMap where multiple key-value types can co-exist
-module Data.DMap(DMap, lookup, updateAt, Has, (:->), KV, Hashable(..), empty, alter, fromMap) where
+-- | Joinable hashMap where multiple key-value types can co-exist
+module Data.DMap(DMap, lookup, updateAt, KV, Hashable(..), (:->), empty, alter, fromMap) where
 
 import Data.Kind
 import Data.HashMap.Strict (HashMap)
@@ -17,8 +17,13 @@ import Data.Hashable
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.TypeLevel.List
+import Data.TypeLevel.Pair
 import Type.Reflection
 
+type (:->) a b = KV a b
+infix 1 :->
+
+data KV a b
 
 -- Hashable dynamic keys
 type MakeHash v = Int -> v -> Int
@@ -68,20 +73,14 @@ class (Typeable (Key k), Typeable (Val k)) => KeyVal k where
 -- the map is parametrized by the set of key-value mappings that is contains
 newtype DMap (ks :: [Type]) = DMap { getMap :: HashMap DynamicHashable DynamicJoinable }
 
--- | A key-value mapping
--- Since the type does not have any constructors it is only meant to be used on the type level
-data KV (k :: Type) (v :: Type)
-type (:->) k v = KV k v
-infix 6 :->
-
-instance (Typeable k, Typeable v) => KeyVal (KV k v) where
-   type Key (KV k v) = k
-   type Val (KV k v) = v
+instance (Typeable k, Typeable v) => KeyVal (k :-> v) where
+   type Key (k :-> v) = k
+   type Val (k :-> v) = v
 
 -- Safe abstractions around the DMap
 
 -- | Lookup a value in the given map at the specified key
-lookup :: (Hashable k, Typeable v, Typeable k, Has ks (KV k v)) => k -> DMap ks -> Maybe v
+lookup :: (Hashable k, Typeable v, Typeable k, Has ks (k :-> v)) => k -> DMap ks -> Maybe v
 lookup k =
    -- SAFETY: fromJust will always succeed since 
    -- the type constraint of `insert` and `extend`
@@ -90,7 +89,7 @@ lookup k =
    return . getMap >=> HashMap.lookup (toDynHashable k) >=> return . fromJust . fromDynamicJoinable
 
 -- | Update the value at the given key
-updateAt :: (Joinable v, Typeable k, Typeable v, Hashable k, Has ks (KV k v)) => k -> v -> DMap ks -> DMap ks
+updateAt :: (Joinable v, Typeable k, Typeable v, Hashable k, Has ks (k :-> v)) => k -> v -> DMap ks -> DMap ks
 updateAt k v =
    DMap . HashMap.insert (toDynHashable k) (toDynamicJoinable v) . getMap
 
@@ -99,7 +98,7 @@ empty :: DMap a
 empty = DMap HashMap.empty
 
 -- | Alter the dynamic map
-alter :: (Joinable v, Typeable k, Typeable v, Hashable k, Has ks (KV k v)) => (Maybe v -> Maybe v) -> k -> DMap ks -> DMap ks 
+alter :: (Joinable v, Typeable k, Typeable v, Hashable k, Has ks (k :-> v)) => (Maybe v -> Maybe v) -> k -> DMap ks -> DMap ks 
 alter f k = DMap . HashMap.alter (fmap toDynamicJoinable . f . fmap (fromJust . fromDynamicJoinable)) (toDynHashable k) . getMap
 
 -- | Convert a map to a DMap

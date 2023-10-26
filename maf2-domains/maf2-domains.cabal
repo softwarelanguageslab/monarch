@@ -7,11 +7,10 @@ cabal-version: 1.12
 name:           maf2-domains
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/maf2-domains#readme>
-homepage:       https://github.com/githubuser/maf2-domains#readme
-bug-reports:    https://github.com/githubuser/maf2-domains/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2023 Author name here
+homepage:       https://github.com/softwarelanguageslab/maf-hs#readme
+bug-reports:    https://github.com/softwarelanguageslab/maf-hs/issues
+author:         Software Languages Lab
+copyright:      2023 Software Languages Lab
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -20,7 +19,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/maf2-domains
+  location: https://github.com/softwarelanguageslab/maf-hs
 
 library
   exposed-modules:
@@ -42,11 +41,11 @@ library
       Control.Monad.Cond
       Data.LabeledProduct
       Data.TypeLevel.HList
-      Data.TypeLevel.List
-      Data.TypeLevel.Pair
       Data.TypeLevel.Struct
       Domain.Interval
       Domain.Python.DataFrame
+      Domain.Scheme.Class
+      Domain.Scheme.Modular
       Paths_maf2_domains
   hs-source-dirs:
       src
@@ -73,6 +72,7 @@ library
     , extra
     , hashable
     , maf2-syntax
+    , maf2-typelevel
     , mtl
     , transformers
     , unordered-containers
@@ -115,6 +115,7 @@ test-suite maf2-domains-test
     , hspec-contrib
     , maf2-domains
     , maf2-syntax
+    , maf2-typelevel
     , mtl
     , transformers
     , unordered-containers

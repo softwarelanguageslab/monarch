@@ -67,15 +67,15 @@ data Strings     -- ^ immutable strings
 data Objects     -- ^ pointers to heap allocated objects
 
 type ModularPythonValue i b a optr s env = Products '[
-   Voids      :-> (),
-   Nones      :-> (),
-   Ellipses   :-> (),
-   Bools      :-> b,
-   Integers   :-> i,
-   Funs       :-> Set ([Par a Micro], Stmt a Micro, env),
-   Primitives :-> Set String,
-   Strings    :-> s,
-   Objects    :-> Set optr]
+   Voids      :--> (),
+   Nones      :--> (),
+   Ellipses   :--> (),
+   Bools      :--> b,
+   Integers   :--> i,
+   Funs       :--> Set ([Par a Micro], Stmt a Micro, env),
+   Primitives :--> Set String,
+   Strings    :--> s,
+   Objects    :--> Set optr]
 
 instance Default (ModularPythonValue i b a o s env) where
    def = empty

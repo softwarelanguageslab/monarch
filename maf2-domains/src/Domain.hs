@@ -28,13 +28,14 @@ module Domain(
 import Control.Monad.Join
 import Domain.Lattice
 import Data.Kind
+import Data.Dynamic
 import Control.Monad.DomainError
 
 -- | Monad used for implementing abstract operations
 type AbstractM m = (MonadDomainError m, MonadJoin m)
 
 -- | An address is an abstraction for a memory location on which a heap-allocated address resides
-class (Show a, Eq a, Ord a) => Address a where
+class (Typeable a, Typeable (Vlu a), Show a, Eq a, Ord a) => Address a where
   -- | The type of the value referenced by the addresses
   type Vlu a :: Type
 
