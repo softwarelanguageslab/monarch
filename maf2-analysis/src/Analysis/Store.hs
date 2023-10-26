@@ -1,6 +1,7 @@
-{-# LANGUAGE  FlexibleInstances, AllowAmbiguousTypes,  FlexibleContexts, UndecidableInstances #-}
+{-# LANGUAGE  FlexibleInstances, AllowAmbiguousTypes,  FlexibleContexts, UndecidableInstances, TypeSynonymInstances #-}
 module Analysis.Store(Store(..), Typeable, Associate) where
 
+import Data.TypeLevel.List
 import qualified Data.DMap as DMap
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -25,7 +26,7 @@ instance (JoinLattice v, Ord a) => Store (Map a v) a v where
    updateSto adr vlu = Map.alter (Just . Domain.join vlu . justOrBot) adr
 
 -- | Simple DMap based store with weak updates
-instance (Has ks (KV adr v), Typeable adr, Typeable v, Hashable adr, JoinLattice v) => Store (DMap ks) adr v where
+instance (Has ks (adr :-> v), Typeable adr, Typeable v, Hashable adr, JoinLattice v) => Store (DMap ks) adr v where
    emptySto = DMap.empty
    lookupSto adr = fromJust . DMap.lookup adr
    extendSto adr vlu = DMap.alter (Just . Domain.join vlu . justOrBot) adr

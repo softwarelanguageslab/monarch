@@ -41,7 +41,7 @@ import Control.Monad.State hiding (mzero)
 import Syntax.Scheme.AST
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.TypeLevel.List hiding (Has)
+import Data.TypeLevel.List 
 import Data.DMap
 import Domain
 import Analysis.Store hiding (lookupSto, extendSto, updateSto)
@@ -50,7 +50,6 @@ import Control.Monad.Layer
 import Control.Monad.Trans.Maybe
 import Control.Monad.Writer hiding (mzero)
 import Control.Monad.Error
-import Data.TypeLevel.Struct
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -118,7 +117,9 @@ class (Monad m) => EvalM m v e  | m -> v where
 -- Instances
 ----------------------------------------------------------------------------------------------------
 
-instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (ReaderT env m) adr env where
+newtype EnvT env m a = EnvT (ReaderT env m a) deriving (MonadReader env, Monad, Applicative, MonadLayer, Functor)
+
+instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m) adr env where
    lookupEnv nam = asks (Analysis.Environment.lookup nam)
    withExtendedEnv bds = local (extends bds)
    getEnv = ask
@@ -131,20 +132,21 @@ instance forall env adr t . (Environment env adr, MonadLayer t, EnvM (Lower t) a
    withEnv f = lowerM (withEnv f)
 
 
-runEnv :: forall env m a .  env -> (ReaderT env m) a -> m a
-runEnv initialEnv m = runReaderT m initialEnv
+runEnv :: forall env m a .  env -> (EnvT env m) a -> m a
+runEnv initialEnv (EnvT m) = runReaderT m initialEnv
 
 ---
 
-instance {-# OVERLAPPING #-} Monad m => CtxM (ReaderT ctx m) ctx where
+newtype CtxT ctx m a = CtxT (ReaderT ctx m a) deriving (MonadReader ctx, Monad, Applicative, MonadLayer, Functor)
+instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask
    withCtx = local
 instance (MonadLayer t, CtxM (Lower t) ctx) => CtxM t ctx where
    getCtx =  upperM getCtx
    withCtx f = lowerM (withCtx f)
 
-runCtx :: ctx -> (ReaderT ctx m) a -> m a
-runCtx initialCtx m = runReaderT m initialCtx
+runCtx :: ctx -> (CtxT ctx m) a -> m a
+runCtx initialCtx (CtxT m) = runReaderT m initialCtx
 
 ---
 
@@ -171,7 +173,7 @@ instance (MonadJoin m) => MonadDomainError (ErrorT m) where
    raiseError = Control.Monad.Error.raiseError
 instance (MonadJoin (t m), MonadTrans t, MonadError m, Monad m, Monad (t m)) => MonadError (t m) where
    raiseError = lift . Control.Monad.Error.raiseError
-instance (MonadJoin (t m), MonadTrans t, MonadError (t m), Monad m, Monad (t m)) => MonadDomainError (t m) where 
+instance (MonadJoin (t m), MonadTrans t, MonadError (t m), Monad m, Monad (t m)) => MonadDomainError (t m) where
    raiseError = Control.Monad.Error.raiseError
 
 runErr :: (ErrorT m) a -> m (Maybe a, Set DomainError)
@@ -200,24 +202,23 @@ runSto =  flip runStateT
 -- Allocator
 --
 
-
 -- | Allocator represented as a function
 type Allocator from ctx to = (from -> ctx -> to)
 
 -- Allocator that turns a function into an allocator of the suiteable type
-type AllocT from ctx to m = (ReaderT (Allocator from ctx to) m)
+newtype AllocT from ctx to m a = AllocT (ReaderT (Allocator from ctx to) m a) deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadLayer)
 
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
    alloc from = do
-      ctx <- lift getCtx
+      ctx <- AllocT $ lift getCtx
       f   <- ask
       return $ f from ctx
 
 instance (Monad m, AllocM (Lower m) from to, MonadLayer m) => AllocM m from to where
    alloc = upperM . alloc
 
-runAlloc :: forall ctx from to m a . Allocator from ctx to -> (ReaderT (Allocator from ctx to) m) a ->  m a
-runAlloc = flip runReaderT
+runAlloc :: forall ctx from to m a . Allocator from ctx to -> AllocT from ctx to m a ->  m a
+runAlloc allocator (AllocT m) = runReaderT m allocator
 
 
 --

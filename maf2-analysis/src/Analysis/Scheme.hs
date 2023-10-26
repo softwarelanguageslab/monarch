@@ -62,7 +62,7 @@ data VarAdr v ctx = VarAdr Ide ctx
                   deriving (Ord, Eq, Show, Generic)
 
 instance (Hashable v, Hashable ctx) => Hashable (VarAdr v ctx)
-instance (Ord ctx, Ord v, Show v, Show ctx) => Address (VarAdr v ctx) where
+instance (Ord ctx, Ord v, Show v, Show ctx, Typeable v, Typeable ctx) => Address (VarAdr v ctx) where
   type Vlu (VarAdr v ctx) = v 
  
 -- | The initial environment used by 
@@ -104,7 +104,7 @@ class SchemeAlloc ctx v | ctx -> v where
   allocVar :: Ide -> ctx -> VarAdr v ctx 
   allocCtx :: ctx -> ctx
 
-instance (SchemeDomain v, SchemeConstraints v Exp (VarAdr v ctx) (Env ctx v), Eq ctx, Ord ctx) => ModX (ModF v ctx) where 
+instance (SchemeDomain v, SchemeConstraints v Exp (VarAdr v ctx) (Env v ctx), Typeable v, Typeable ctx, SchemeAlloc ctx v, Hashable v, Hashable ctx, Eq ctx, Ord ctx) => ModX (ModF v ctx) where 
   -- A component is a closure + a context
   type Component (ModF v ctx)  = (Exp, Env v ctx, ctx)
   -- | Global store
@@ -114,14 +114,15 @@ instance (SchemeDomain v, SchemeConstraints v Exp (VarAdr v ctx) (Env ctx v), Eq
   -- | The analysis of a single component runs the Scheme semantics
   -- on the body of that component
   analyze (exp, env, ctx) store = 
-       let _ =  eval exp >>= writeAdr (RetAdr (exp, env, ctx))
+       let ((_, _), sto) = (eval exp >>= writeAdr (RetAdr (exp, env, ctx)))
               & runErr
               & runSto store
               & runEnv env
-              & runAlloc allocPai
-              & runAlloc allocVec
-              & runAlloc allocStr
-              & runAlloc allocVar
+              & runAlloc (allocPai @ctx)
+              & runAlloc (allocVec @ctx)
+              & runAlloc (allocStr @ctx)
+              & runAlloc (allocVar @ctx)
+              & runCtx  ctx
        in undefined
   
 -----------------------------------------
@@ -135,7 +136,7 @@ newtype AnalysisResult v ctx = AnalysisResult (State (ModF v ctx))
 -- result. It uses the default initial environment
 -- as specified in `Analysis.Scheme.Primitives`
 analyzeProgram :: forall v ctx wl . 
-                  (WorkList wl (Component (ModF v ctx)), SchemeDomain v, SchemeConstraints v Exp (VarAdr v ctx) (Env ctx v), Ord ctx, Ord v, Hashable ctx, Hashable v, Typeable ctx, Typeable v) 
+                  (WorkList wl (Component (ModF v ctx)), SchemeDomain v, SchemeConstraints v Exp (VarAdr v ctx) (Env v ctx), Ord ctx, Ord v, Hashable ctx, Hashable v, Typeable ctx, Typeable v, SchemeAlloc ctx v) 
                => Program  -- ^ the program analyse
                -> wl       -- ^ the initial contents of the worklist, can be empty. This function will add the initial component to it. 
                -> (Exp -> ctx) -- ^ context allocation function for a given expression (usually associated with a function call)
