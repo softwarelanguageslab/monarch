@@ -1,0 +1,89 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.35.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           maf2-typelevel
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/softwarelanguageslab/maf-hs>
+homepage:       https://github.com/softwarelanguageslab/maf-hs#readme
+bug-reports:    https://github.com/softwarelanguageslab/maf-hs/issues
+author:         Software Languages Lab
+maintainer:     coen.de.roover@vub.be
+copyright:      2023 Software Languages Lab
+license:        BSD-3-Clause
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/softwarelanguageslab/maf-hs
+
+library
+  exposed-modules:
+      Data.TypeLevel.HList
+      Data.TypeLevel.Pair
+      Data.TypeLevel.List
+      Data.TypeLevel.Struct
+  other-modules:
+      Lib
+      Paths_maf2_typelevel
+  autogen-modules:
+      Paths_maf2_typelevel
+  hs-source-dirs:
+      src
+  default-extensions:
+      TypeFamilies
+      TupleSections
+      TemplateHaskell
+      NamedFieldPuns
+      TypeOperators
+      InstanceSigs
+      DeriveGeneric
+      TypeApplications
+      StandaloneDeriving
+      ScopedTypeVariables
+      DataKinds
+      MultiParamTypeClasses
+      FunctionalDependencies
+      GeneralizedNewtypeDeriving
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , hashable
+    , unordered-containers
+  default-language: Haskell2010
+
+test-suite maf2-typelevel-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_maf2_typelevel
+  autogen-modules:
+      Paths_maf2_typelevel
+  hs-source-dirs:
+      test
+  default-extensions:
+      TypeFamilies
+      TupleSections
+      TemplateHaskell
+      NamedFieldPuns
+      TypeOperators
+      InstanceSigs
+      DeriveGeneric
+      TypeApplications
+      StandaloneDeriving
+      ScopedTypeVariables
+      DataKinds
+      MultiParamTypeClasses
+      FunctionalDependencies
+      GeneralizedNewtypeDeriving
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , hashable
+    , maf2-typelevel
+    , unordered-containers
+  default-language: Haskell2010

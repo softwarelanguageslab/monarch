@@ -22,6 +22,7 @@ import Domain.Lattice hiding (top)
 import Control.Monad.Join
 import Control.SVar.GenId
 
+
 traceShow :: (Show a) => a -> a 
 traceShow v = trace (show v) v
 
@@ -288,15 +289,16 @@ loop ::  ( ModX c,
            WorkList wl (Component c))
       => ModxLoop c
       -> wl
-      -> State c 
-loop loopState@ModxLoop { .. } wl = if isEmpty wl then state else 
-      let (st', spawns', r', w') = analyze cmp state
-      in uncurry loop (integrate loopState  wl st' spawns' r' w')
+      -> (State c)
+loop loopState@ModxLoop { .. } wl = if isEmpty wl then state
+                                    else 
+                                       let (state, spawns, r, w) = analyze cmp state 
+                                       in uncurry loop $ integrate loopState wl state spawns r w
    where (cmp, _) = remove wl  
 
 -- | Run the ModX algorithm for the given ModX configuration `c`
 runModX :: (WorkList wl (Component c), ModX c) 
         => wl -- ^ the initial worklist
         -> State c -- ^ the initial state
-        -> State c
+        -> (State c)
 runModX initialWl initialState = loop (initialModXLoopState initialState) initialWl

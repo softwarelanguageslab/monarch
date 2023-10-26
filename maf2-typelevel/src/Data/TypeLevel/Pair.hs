@@ -1,5 +1,5 @@
 {-# LANGUAGE PolyKinds #-}
-module Data.TypeLevel.Pair(Fst, Snd, (:->)) where 
+module Data.TypeLevel.Pair(Fst, Snd, (:-->)) where 
 
 import Data.Kind
 
@@ -14,5 +14,5 @@ type family Snd (x :: (a, b)) where
    Snd '(a, b) = b
 
 -- | Pair constructor
-type (:->) a b = '(a, b)
-infix 1 :->
+type (:-->) a b = '(a, b)
+infix 1 :-->

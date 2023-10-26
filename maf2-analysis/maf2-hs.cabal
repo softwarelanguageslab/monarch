@@ -50,14 +50,9 @@ library
       Control.Monad.Layer
       Control.SVar.GenId
       Control.SVar.ModX
-      Data.DMap
       Data.LabeledProduct
       Data.ListExtra
       Data.SetExtra
-      Data.TypeLevel.HList
-      Data.TypeLevel.List
-      Data.TypeLevel.Pair
-      Data.TypeLevel.Struct
       Interpreter.Scheme
       Interpreter.Scheme.Eval
       Interpreter.Scheme.Monad
@@ -101,6 +96,7 @@ library
     , lens
     , maf2-domains
     , maf2-syntax
+    , maf2-typelevel
     , mtl
     , optparse-applicative
     , transformers
@@ -151,6 +147,7 @@ executable maf2-hs-exe
     , maf2-domains
     , maf2-hs
     , maf2-syntax
+    , maf2-typelevel
     , mtl
     , optparse-applicative
     , transformers
@@ -201,6 +198,7 @@ test-suite maf2-hs-test
     , maf2-domains
     , maf2-hs
     , maf2-syntax
+    , maf2-typelevel
     , mtl
     , optparse-applicative
     , transformers

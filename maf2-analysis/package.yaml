@@ -39,6 +39,7 @@ dependencies:
 - IfElse
 - maf2-domains
 - maf2-syntax
+- maf2-typelevel
 
 default-extensions:
   - FlexibleContexts
