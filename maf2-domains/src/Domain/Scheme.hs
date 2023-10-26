@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures -fno-warn-missing-fields -fno-warn-missing-pattern-synonym-signatures -fno-warn-incomplete-patterns #-}
-module Domain.Scheme (SchemeAdrs, Address(..), SchemeDomain (..), ModularSchemeValue(..),  SchemeString(..), module Domain.Scheme.Class, module Domain.Scheme.Modular) where
+module Domain.Scheme (SchemeAdrs, Address(..),  module Domain.Scheme.Class, module Domain.Scheme.Modular) where
 
 import Data.Coerce hiding (coerce)
 import qualified Data.Coerce as Coerce
