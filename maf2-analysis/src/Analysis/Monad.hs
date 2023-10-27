@@ -41,7 +41,7 @@ import Control.Monad.State hiding (mzero)
 import Syntax.Scheme.AST
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.TypeLevel.List 
+import Data.TypeLevel.List
 import Data.DMap
 import Domain
 import Analysis.Store hiding (lookupSto, extendSto, updateSto)
@@ -117,7 +117,11 @@ class (Monad m) => EvalM m v e  | m -> v where
 -- Instances
 ----------------------------------------------------------------------------------------------------
 
-newtype EnvT env m a = EnvT (ReaderT env m a) deriving (MonadReader env, Monad, Applicative, MonadLayer, Functor)
+newtype EnvT env m a = EnvT { getEnvReader ::  ReaderT env m a } deriving (MonadReader env, Monad, Applicative, MonadLayer, Functor)
+
+instance (Monad m, MonadJoin m) => MonadJoin (EnvT env m) where
+   mjoin (EnvT ma) = EnvT . mjoin ma . getEnvReader
+   mzero = EnvT mzero
 
 instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m) adr env where
    lookupEnv nam = asks (Analysis.Environment.lookup nam)
@@ -137,13 +141,17 @@ runEnv initialEnv (EnvT m) = runReaderT m initialEnv
 
 ---
 
-newtype CtxT ctx m a = CtxT (ReaderT ctx m a) deriving (MonadReader ctx, Monad, Applicative, MonadLayer, Functor)
+newtype CtxT ctx m a = CtxT { getContextReader :: (ReaderT ctx m a) } deriving (MonadReader ctx, Monad, Applicative, MonadLayer, Functor)
 instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask
    withCtx = local
 instance (MonadLayer t, CtxM (Lower t) ctx) => CtxM t ctx where
    getCtx =  upperM getCtx
    withCtx f = lowerM (withCtx f)
+
+instance (MonadJoin m) => MonadJoin (CtxT ctx m) where
+   mjoin (CtxT ma) = CtxT . mjoin ma . getContextReader
+   mzero = CtxT mzero
 
 runCtx :: ctx -> (CtxT ctx m) a -> m a
 runCtx initialCtx (CtxT m) = runReaderT m initialCtx
@@ -206,7 +214,11 @@ runSto =  flip runStateT
 type Allocator from ctx to = (from -> ctx -> to)
 
 -- Allocator that turns a function into an allocator of the suiteable type
-newtype AllocT from ctx to m a = AllocT (ReaderT (Allocator from ctx to) m a) deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadLayer)
+newtype AllocT from ctx to m a = AllocT { getAllocReader :: ReaderT (Allocator from ctx to) m a } deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadLayer)
+
+instance (MonadJoin m) => MonadJoin (AllocT from ctx to m) where
+   mjoin (AllocT ma) = AllocT . mjoin ma . getAllocReader
+   mzero = AllocT mzero
 
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
    alloc from = do

@@ -11,7 +11,7 @@ import Analysis.Monad hiding (eval, getEnv)
 import Control.SVar.ModX
 import Syntax.Scheme
 import Domain (Address, Vlu)
-import Domain.Scheme (SchemeDomain, SchemeConstraints, SchemeAdrs, SAdr, PAdr, VAdr)
+import Domain.Scheme (SchemeDomain, SchemeConstraints, SchemeAdrs, SAdr, PAdr, VAdr, StoreDefinedFor)
 import qualified Domain.Scheme
 
 import Data.DMap (DMap, (:->), fromMap, Hashable)
@@ -104,7 +104,7 @@ class SchemeAlloc ctx v | ctx -> v where
   allocVar :: Ide -> ctx -> VarAdr v ctx 
   allocCtx :: ctx -> ctx
 
-instance (SchemeDomain v, SchemeConstraints v Exp (VarAdr v ctx) (Env v ctx), Typeable v, Typeable ctx, SchemeAlloc ctx v, Hashable v, Hashable ctx, Eq ctx, Ord ctx) => ModX (ModF v ctx) where 
+instance (SchemeDomain v, StoreDefinedFor v, SchemeConstraints v Exp (VarAdr v ctx) (Env v ctx), Typeable v, Typeable ctx, SchemeAlloc ctx v, Hashable v, Hashable ctx, Eq ctx, Ord ctx) => ModX (ModF v ctx) where 
   -- A component is a closure + a context
   type Component (ModF v ctx)  = (Exp, Env v ctx, ctx)
   -- | Global store
@@ -136,7 +136,7 @@ newtype AnalysisResult v ctx = AnalysisResult (State (ModF v ctx))
 -- result. It uses the default initial environment
 -- as specified in `Analysis.Scheme.Primitives`
 analyzeProgram :: forall v ctx wl . 
-                  (WorkList wl (Component (ModF v ctx)), SchemeDomain v, SchemeConstraints v Exp (VarAdr v ctx) (Env v ctx), Ord ctx, Ord v, Hashable ctx, Hashable v, Typeable ctx, Typeable v, SchemeAlloc ctx v) 
+                  (WorkList wl (Component (ModF v ctx)), SchemeDomain v, SchemeConstraints v Exp (VarAdr v ctx) (Env v ctx), StoreDefinedFor v,  Ord ctx, Ord v, Hashable ctx, Hashable v, Typeable ctx, Typeable v, SchemeAlloc ctx v) 
                => Program  -- ^ the program analyse
                -> wl       -- ^ the initial contents of the worklist, can be empty. This function will add the initial component to it. 
                -> (Exp -> ctx) -- ^ context allocation function for a given expression (usually associated with a function call)

@@ -46,6 +46,7 @@ library
       Domain.Python.DataFrame
       Domain.Scheme.Class
       Domain.Scheme.Modular
+      Domain.Scheme.Store
       Paths_maf2_domains
   hs-source-dirs:
       src
