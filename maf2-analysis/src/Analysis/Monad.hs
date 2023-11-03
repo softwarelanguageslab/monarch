@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, UndecidableInstances, AllowAmbiguousTypes #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, UndecidableInstances, AllowAmbiguousTypes, PolyKinds #-}
 {-# LANGUAGE FunctionalDependencies, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
@@ -16,8 +16,8 @@
 --
 module Analysis.Monad(
  -- Typeclass interfaces
- EvalM(..),
  StoreM(..),
+ EvalM(..),
  EnvM(..),
  AllocM(..),
  CtxM(..),
@@ -30,8 +30,6 @@ module Analysis.Monad(
  runErr,
  runErr',
  runAlloc,
- -- Auxilary type aliases
- SEvalM,
 ) where
 
 import Analysis.Environment
@@ -43,6 +41,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.TypeLevel.List
 import Data.DMap
+import Data.Kind
+import Data.Functor.Identity
 import Domain
 import Analysis.Store hiding (lookupSto, extendSto, updateSto)
 import qualified Analysis.Store as Store
@@ -50,6 +50,7 @@ import Control.Monad.Layer
 import Control.Monad.Trans.Maybe
 import Control.Monad.Writer hiding (mzero)
 import Control.Monad.Error
+import GHC.TypeError
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -101,7 +102,7 @@ deref = lookups lookupAdr
 
 --
 
-class (Monad m) => AllocM m from adr where
+class (Monad m) => AllocM m from (t :: Type -> Type) adr  where
    alloc :: from -> m adr
 
 class (Monad m) => CallM m env v where
@@ -177,7 +178,7 @@ instance (Monad m) => MonadLayer (ErrorT m) where
 
 instance {-# OVERLAPPING #-} Monad m => MonadError (ErrorT m) where
    raiseError = ErrorT . lift . tell . Set.singleton >=> (\_ -> ErrorT $ MaybeT $ return Nothing)
-instance (MonadJoin m) => MonadDomainError (ErrorT m) where
+instance {-# OVERLAPPING #-} (MonadJoin m) => MonadDomainError (ErrorT m) where
    raiseError = Control.Monad.Error.raiseError
 instance (MonadJoin (t m), MonadTrans t, MonadError m, Monad m, Monad (t m)) => MonadError (t m) where
    raiseError = lift . Control.Monad.Error.raiseError
@@ -214,61 +215,28 @@ runSto =  flip runStateT
 type Allocator from ctx to = (from -> ctx -> to)
 
 -- Allocator that turns a function into an allocator of the suiteable type
-newtype AllocT from ctx to m a = AllocT { getAllocReader :: ReaderT (Allocator from ctx to) m a } deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadLayer)
+newtype AllocT from ctx t to m a = AllocT { getAllocReader :: ReaderT (Allocator from ctx to) m a } deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadLayer)
 
-instance (MonadJoin m) => MonadJoin (AllocT from ctx to m) where
+instance (MonadJoin m) => MonadJoin (AllocT from ctx t to m) where
    mjoin (AllocT ma) = AllocT . mjoin ma . getAllocReader
    mzero = AllocT mzero
 
-instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
+instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx t to m) from t to where
    alloc from = do
       ctx <- AllocT $ lift getCtx
       f   <- ask
       return $ f from ctx
 
-instance (Monad m, AllocM (Lower m) from to, MonadLayer m) => AllocM m from to where
-   alloc = upperM . alloc
+instance (Monad m, AllocM (Lower m) from t to, MonadLayer m) => AllocM m from t to where
+   alloc = upperM . alloc @(Lower m) @from @t @to
 
-runAlloc :: forall ctx from to m a . Allocator from ctx to -> AllocT from ctx to m a ->  m a
+runAlloc :: forall t from ctx to m a . Allocator from ctx to -> AllocT from ctx t to m a ->  m a
 runAlloc allocator (AllocT m) = runReaderT m allocator
 
 
---
--- Evaluator
+-- 
+-- CallM 
 -- 
 
----- | Evaluation function
---type Evaluator e m v = e -> m v
---
----- | A wrapper for the evaluation function, providing it to the analysis
---newtype EvaluatorT l e v m a = EvaluatorT { runEvaluatorT :: ReaderT (Evaluator e (EvaluatorT l e v m) v) m a }
---   deriving (Monad, Applicative, Functor)
---
---instance (MonadJoin m) => MonadJoin (EvaluatorT l e v m) where
---   mjoin (EvaluatorT ma) (EvaluatorT mb) = EvaluatorT $ mjoin ma mb
---   mzero = EvaluatorT mzero
---
---instance MonadTrans (EvaluatorT l e v) where
---   lift = upperM
---
---instance (Monad m) => MonadLayer (EvaluatorT l e v m) where
---   type Lower (EvaluatorT l e v m) = m
---   upperM = EvaluatorT . lift
---   lowerM f (EvaluatorT m) = EvaluatorT $ lowerM f m
---
---instance (Monad m) => EvalM (EvaluatorT l e v m) v e where
---   eval e = EvaluatorT ask >>= ($ e)
-
--- runEval :: Evaluator e (EvaluatorT l e v m) v -> (EvaluatorT l e v m) a -> m a
--- runEval eval =  flip runReaderT eval . runEvaluatorT
-
--- | Alternatively, a structure containing multiple evaluation functions can be used, as long
--- as it contains a function of the correct type
-data EvalCap' v
-type SEvalM s v m l = (ReaderT s m)
-
--- instance (Monad m, Select s (e -> (ReaderT s m) v)) => EvalM (ReaderT s m) v e where
---   eval e = ask >>= (($ e) . select)
-
-runEval' :: forall v a l m s . s ->  (ReaderT s m) a -> m a
-runEval' = flip runReaderT
+instance (Monad m, CallM (Lower m) env v, MonadLayer m) => CallM m env v where 
+   call = upperM . call

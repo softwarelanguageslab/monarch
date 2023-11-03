@@ -36,6 +36,7 @@ library:
     - Data.TypeLevel.Pair
     - Data.TypeLevel.List
     - Data.TypeLevel.Struct
+    - Data.TypeLevel.Ghost
 
 default-extensions:
   - TypeFamilies

@@ -25,6 +25,7 @@ library
       Data.TypeLevel.Pair
       Data.TypeLevel.List
       Data.TypeLevel.Struct
+      Data.TypeLevel.Ghost
   other-modules:
       Lib
       Paths_maf2_typelevel

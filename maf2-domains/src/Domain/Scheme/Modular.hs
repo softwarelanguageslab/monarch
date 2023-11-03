@@ -20,6 +20,7 @@ import Data.DMap ((:->))
 import Data.Kind
 import Data.Hashable
 import Data.Typeable
+import GHC.Generics
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -45,7 +46,20 @@ data ModularSchemeValue r i c b pai vec str var exp env = ModularSchemeValue {
    null :: Maybe (),
    unspecified :: Maybe (),
    primitives :: Maybe (Set String)
-} deriving (Ord, Eq)
+} deriving (Ord, Eq, Generic)
+
+instance (
+   Hashable r,
+   Hashable i,
+   Hashable c,
+   Hashable b,
+   Hashable pai, 
+   Hashable vec,
+   Hashable str,
+   Hashable var,
+   Hashable exp,
+   Hashable env
+  ) => Hashable (ModularSchemeValue r i c b pai vec str var exp env)
 
 instance (SplitLattice (ModularSchemeValue r i c b pai vec str var exp env), Show r, Show i, Show c, Show b, Show exp) => Show (ModularSchemeValue r i c b pai vec str var exp env) where 
    show = intercalate "," . Set.toList . Set.map select . split

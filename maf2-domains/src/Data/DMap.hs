@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, ExistentialQuantification, FlexibleContexts, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 -- | Joinable hashMap where multiple key-value types can co-exist
-module Data.DMap(DMap, lookup, updateAt, KV, Hashable(..), (:->), empty, alter, fromMap) where
+module Data.DMap(DMap, lookup, updateAt, KV, Hashable(..), (:->), empty, alter, fromMap, region) where
 
 import Data.Kind
 import Data.HashMap.Strict (HashMap)
@@ -42,6 +42,11 @@ instance Eq DynamicHashable where
       | Just HRefl <- t1 `eqTypeRep` t2 = eq1 v1 v2
       | otherwise = False
 
+fromDynamicHashable :: forall a  . (Typeable a) => DynamicHashable -> Maybe a
+fromDynamicHashable (DynamicHashable _ _ t v)
+   | Just HRefl <- t `eqTypeRep` rep = Just v
+   | otherwise = Nothing
+   where rep = typeRep :: TypeRep a
 --
 -- Joinable dynamic values
 --
@@ -102,7 +107,7 @@ alter :: (Joinable v, Typeable k, Typeable v, Hashable k, Has ks (k :-> v)) => (
 alter f k = DMap . HashMap.alter (fmap toDynamicJoinable . f . fmap (fromJust . fromDynamicJoinable)) (toDynHashable k) . getMap
 
 -- | Convert a map to a DMap
-fromMap :: (Hashable adr, Typeable adr, Joinable vlu, Typeable vlu, Has ks (adr :-> vlu)) => Map adr vlu -> DMap ks
+fromMap :: forall ks adr vlu . (Hashable adr, Typeable adr, Joinable vlu, Typeable vlu, Has ks (adr :-> vlu)) => Map adr vlu -> DMap ks
 fromMap = Map.foldrWithKey updateAt empty
 
 -- | DMap's can be joined together
@@ -115,3 +120,11 @@ instance Joinable (DMap ks) where
 
 
 instance JoinLattice (DMap ks) where 
+
+-- | Returns the given region as a map
+-- 
+-- NOTE: this is an expensive operation as the entire map
+-- needs to be traversed, its keys casted to their respective
+-- static types and then converted to a Map
+region :: forall k v ks . Has ks (KV k v) => DMap ks -> HashMap k v
+region (DMap m) = undefined -- TODO: HashMap.filterWithKey (const $ isJust . fromDynamicHashable @k) m

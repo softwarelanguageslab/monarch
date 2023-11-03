@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Scheme.Monad(SchemeM, allocPai, allocVec, allocStr, allocVar, stoPai, stoStr) where 
+module Analysis.Scheme.Monad(SchemeM, SchemeM', allocPai, allocVec, allocStr, allocVar, stoPai, stoStr) where 
 
 import Data.Functor
 import Syntax.Scheme.AST
@@ -7,9 +7,6 @@ import Domain
 import Domain.Scheme hiding (Exp)
 import qualified Domain.Scheme as S
 import Analysis.Monad
-import Data.Kind
-import Control.Monad.Trans
-import Control.Monad.Layer
 import Control.Monad.Join
 
 stoPai :: SchemeM m v => Exp -> Vlu (PAdr v) -> m v
@@ -17,7 +14,7 @@ stoPai ex v = allocPai ex >>= (\adr -> writeAdr adr v $> pptr adr)
 stoStr :: SchemeM m v => Exp -> Vlu (SAdr v) -> m v
 stoStr ex v = allocStr ex >>= (\adr -> writeAdr adr v $> sptr adr)
 
-type SchemeM m v = (
+type SchemeM' m v = (
    -- Domain
    SchemeDomain v,
    PairDomain (Vlu (PAdr v)),
@@ -33,24 +30,29 @@ type SchemeM m v = (
    StoreM m (VAdr v),
    StoreM m (SAdr v),
    -- Allocation
-   AllocM m Ide (Adr v),     -- variable allocation
-   AllocM m Exp (PAdr v),    -- pair allocation
-   AllocM m Exp (VAdr v),    -- vector allocation
-   AllocM m Exp (SAdr v),    -- string allocation
+   AllocM m Ide VrAdr (Adr v),     -- variable allocation
+   AllocM m Exp PaAdr (PAdr v),    -- pair allocation
+   AllocM m Exp VeAdr (VAdr v),    -- vector allocation
+   AllocM m Exp StAdr (SAdr v),    -- string allocation
    --
    CallM m (Env v) v,
    Boo v ~ v,
-   EvalM m v Exp,
    Vlu (Adr v) ~ v,
    Exp ~ S.Exp v)
 
+type SchemeM m v = (
+   SchemeM' m v, 
+   EvalM m v Exp)
+
 allocPai :: SchemeM m v => Exp -> m (PAdr v)
-allocPai = alloc
+allocPai = alloc @_ @_ @PaAdr
 allocVec :: SchemeM m v => Exp -> m (VAdr v)
-allocVec = alloc
+allocVec = alloc @_ @_ @VeAdr
 allocStr :: SchemeM m v => Exp -> m (SAdr v)
-allocStr = alloc
+allocStr = alloc @_ @_ @StAdr
 allocVar :: SchemeM m v => Ide -> m (Adr v)
-allocVar = alloc
+allocVar = alloc @_ @_ @VrAdr
+
+
 
 

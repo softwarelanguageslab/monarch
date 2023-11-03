@@ -42,6 +42,7 @@ library
       Analysis.Scheme.Monad
       Analysis.Scheme.Primitives
       Analysis.Scheme.Semantics
+      Analysis.Scheme.Simple
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs

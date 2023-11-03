@@ -1,11 +1,11 @@
 {-# LANGUAGE AllowAmbiguousTypes,  FlexibleInstances,  UndecidableInstances, RecordWildCards, TypeFamilyDependencies, GADTs #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
-module Control.SVar.ModX(MonadStateVar, WorkList(..), ModX(..), StateTrackingDep(..), runModX) where
+module Control.SVar.ModX(MonadStateVar, WorkList(..), ModX(..), ModxT(..), StateTrackingDep(..), runModX, MonadModX(..), runModxT) where
 
 import Prelude hiding (read, reads)
-import Control.Monad.Reader hiding (join)
-import Control.Monad.State hiding (join, state, State)
+import Control.Monad.Reader hiding (join, mzero)
+import Control.Monad.State hiding (join, state, State, mzero)
 import qualified Control.Monad as CM
 import Data.Functor.Identity
 import Data.Kind
@@ -21,9 +21,10 @@ import qualified Data.Set as Set
 import Domain.Lattice hiding (top)
 import Control.Monad.Join
 import Control.SVar.GenId
+import Control.Monad.Layer
 
 
-traceShow :: (Show a) => a -> a 
+traceShow :: (Show a) => a -> a
 traceShow v = trace (show v) v
 
 --------------------------------------------------
@@ -31,13 +32,13 @@ traceShow v = trace (show v) v
 --------------------------------------------------
 
 class WorkList wl e | wl -> e where
-   add :: e -> wl -> wl 
+   add :: e -> wl -> wl
    remove :: wl -> (e, wl)
    isEmpty :: wl -> Bool
    addAll :: [e] -> wl -> wl
    addAll es wl = foldr add wl es
 
-instance WorkList [a] a where 
+instance WorkList [a] a where
    add           = (:)
    remove (e:wl) = (e, wl)
    isEmpty []    = True
@@ -48,7 +49,7 @@ instance WorkList [a] a where
 
 
 -- | A language for managing state variables
-class (Monad m) => MonadStateVar m where 
+class (Monad m) => MonadStateVar m where
    -- | Representation of state variables
    type SVar m :: Type -> Type
    type Rep  m = a | a -> m
@@ -78,7 +79,7 @@ data DynamicJoinable = forall a . DynamicJoinable {
 }
 
 
-instance Joinable DynamicJoinable where 
+instance Joinable DynamicJoinable where
    join (DynamicJoinable t1 v1 join1 eq1) (DynamicJoinable t2 v2 join2 eq2)
     -- | Joining two values of the same type
     | Just HRefl <- t1 `eqTypeRep` t2 = DynamicJoinable {
@@ -90,10 +91,10 @@ instance Joinable DynamicJoinable where
     -- | Joining values of unrelated types in an error
     -- this is an inherently UNSAFE operation, use only when
     -- two values are known to share the same type.
-    | otherwise = error "cannot join unrelated values"
+    | otherwise = error "cannot join unrelated values"
 
-instance Eq DynamicJoinable where 
-   (==) (DynamicJoinable t1 v1 _ eq1) (DynamicJoinable t2 v2 _ eq2) 
+instance Eq DynamicJoinable where
+   (==) (DynamicJoinable t1 v1 _ eq1) (DynamicJoinable t2 v2 _ eq2)
       | Just HRefl <- t1 `eqTypeRep` t2 = eq1 v1 v2
       | otherwise = False
 
@@ -107,7 +108,7 @@ fromDynamicJoinable (DynamicJoinable t v join eq)
    where rep = typeRep :: TypeRep a
 
 -- | A state-var represented by an IdTree as its identifier
-data StateVar a where 
+data StateVar a where
    StateVar :: Typeable a => IdTree -> StateVar a
 
 idTree :: StateVar a -> IdTree
@@ -120,7 +121,7 @@ instance MonadStateVar StateVarM where
    type Rep  StateVarM = IdTree
 
    rep (StateVar id) = id
-   newSVar    = StateVarM $ StateVar <$> lift freshId 
+   newSVar    = StateVarM $ StateVar <$> lift freshId
    read vrr   = StateVarM $ get <&> (CM.join . fmap fromDynamicJoinable . Map.lookup (idTree vrr))
    assign vrr vlu = StateVarM $ modify (Map.insert (idTree vrr) (toDynamicJoinable vlu))
 
@@ -129,16 +130,16 @@ instance MonadStateVar StateVarM where
 -- | An opaque type to represent the state of the IdTree-backed state map
 data StateVarMState = StateVarMState {
    stateSt  :: Map IdTree DynamicJoinable,
-   idTreeSt :: IdTree 
+   idTreeSt :: IdTree
 }
 
-initialStateVarM :: StateVarMState 
+initialStateVarM :: StateVarMState
 initialStateVarM = StateVarMState Map.empty initialTree
 
 -- | Run MonadStateVarM and obtain a tuple consisting of the 
 -- result type and the final state.
 runStateVarM :: StateVarMState -> StateVarM a -> (a, StateVarMState)
-runStateVarM st (StateVarM m) = 
+runStateVarM st (StateVarM m) =
    let ((a, st'), tree) = runIdentity $ runIdGenT (idTreeSt st) $ runStateT m (stateSt st)
    in (a, StateVarMState st' tree)
 
@@ -156,7 +157,7 @@ runStateVarM st (StateVarM m) =
 -- This `join` function, however is only implemented for values that share 
 -- the same type. This is guaranteed by our implementation as only the 
 -- same keys are joined together, which will have the same type statically.
-instance MonadJoin StateVarM where 
+instance MonadJoin StateVarM where
    mjoin (StateVarM ma) (StateVarM mb) = StateVarM $ mjoin ma mb
 
 --------------------------------------------------
@@ -167,7 +168,7 @@ instance MonadJoin StateVarM where
 data StateTracking m = StateTracking {
       writes :: [StateTrackingDep m],
       reads  :: [StateTrackingDep m]
-} 
+}
 deriving instance Show (Rep m) => Show (StateTracking m)
 
 newtype StateTrackingDep m = StateTrackingDep (Rep m)
@@ -175,7 +176,7 @@ deriving instance Show (Rep m) => Show (StateTrackingDep m)
 
 newtype StateTrackingM m a = StateTrackingM (StateT (StateTracking m) m a) deriving (Monad, Applicative, Functor)
 
-instance MonadTrans StateTrackingM where 
+instance MonadTrans StateTrackingM where
    lift = StateTrackingM . lift
 
 instance (MonadStateVar m) => MonadStateVar (StateTrackingM m) where
@@ -185,10 +186,10 @@ instance (MonadStateVar m) => MonadStateVar (StateTrackingM m) where
    newSVar  = lift newSVar
    read vrr = do
       vll <- lift $ read vrr
-      StateTrackingM $ modify (\st -> st { reads = (rep vrr) : (reads st) })
+      StateTrackingM $ modify (\st -> st { reads = (rep vrr) : (reads st) })
       return vll
-   assign vrr vlu = do 
-      vll <- lift $ assign vrr vlu 
+   assign vrr vlu = do
+      vll <- lift $ assign vrr vlu
       StateTrackingM $ modify (\st -> st { writes = (rep vrr) : (writes st) })
 
 
@@ -206,10 +207,10 @@ runStateTracking (StateTrackingM m) = runStateT m (StateTracking [] [])
 --
 -- These components can depend on each-other through shared
 -- state variables. 
-class (Ord (Dep c), Ord (Component c)) => ModX c where 
+class (Ord (Dep c), Ord (Component c)) => ModX c where
    -- | The representation of components
    -- in the analysis
-   type Component c = a | a -> c 
+   type Component c = a | a -> c
    -- | The representation of shared state
    -- between these components
    type State c :: Type
@@ -219,33 +220,65 @@ class (Ord (Dep c), Ord (Component c)) => ModX c where
    -- must produce a state and the necessary set of 
    -- effects
    analyze :: Component c -> State c -> (State c, [Component c], [Dep c], [Dep c])
-      
+
 -- | Monad to keep track of ModX components
 -- within an analysis
-class (ModX c) => MonadModX m c where 
-   -- | Spawn the given component within the analysis
+class (ModX c) => MonadModX m c where
+   -- | Spawn the given component within the analysis @(Lower m) @(Lower m) @(Lower m)
    spawn    :: Component c -> m ()
    -- | Trigger a dependency
-   trigger  :: Dep c -> m () 
+   trigger  :: Dep c -> m ()
    -- | Register a dependency 
-   register :: Dep c -> m () 
+   register :: Dep c -> m ()
 
 -- | Sequential version of the ModX state
 data ModXState c = ModXState {
-   spawns     :: [Component c], 
-   triggers   :: [Dep c], 
-   registers  :: [Dep c]
+   spawns     :: Set (Component c),
+   triggers   :: Set (Dep c),
+   registers  :: Set (Dep c)
 }
+
+-- | Returns an empty ModxState 
+emptyModxState :: ModXState c
+emptyModxState = ModXState Set.empty Set.empty Set.empty
+
+instance (Ord (Component c), Ord (Dep c)) => Joinable (ModXState c) where 
+   join s1 s2 = ModXState {
+      spawns   = spawns s1 `Set.union` spawns s2,
+      triggers = triggers s1 `Set.union` triggers s2,
+      registers = registers s1 `Set.union` registers s2
+   }
+
+instance (Ord (Component c), Ord (Dep c)) => JoinLattice (ModXState c) where
+   bottom = emptyModxState
+   subsumes s1 s2 =
+      subsumes (spawns   s1) (spawns   s2) && 
+      subsumes (triggers s1) (triggers s2) &&
+      subsumes (registers s1) (registers s2) 
+
 
 -- | A monad that keeps track of the set of spawned 
 -- components
-newtype ModxT c m a = ModxT (StateT (ModXState c) m a) deriving (Monad, Applicative, Functor)
+newtype ModxT c m a = ModxT (StateT (ModXState c) m a) deriving (Monad, MonadLayer, Applicative, Functor)
 
-instance (Monad m, ModX c) => MonadModX (ModxT c m) c where 
-   spawn    c = ModxT $ modify (\st -> st { spawns    = c : spawns st })
-   trigger  d = ModxT $ modify (\st -> st { triggers  = d : triggers st })
-   register d = ModxT $ modify (\st -> st { registers = d : registers st })
-    
+instance MonadTrans (ModxT c) where
+   lift = ModxT . lift
+
+instance (Ord (Component c), Ord (Dep c), MonadJoin m) => MonadJoin (ModxT c m) where
+   mzero = ModxT mzero
+   mjoin (ModxT ma) (ModxT mb) = ModxT $ mjoin ma mb
+
+instance (Monad m, ModX c) => MonadModX (ModxT c m) c where
+   spawn    c = ModxT $ modify (\st -> st { spawns    = Set.insert c $ spawns st })
+   trigger  d = ModxT $ modify (\st -> st { triggers  = Set.insert d $ triggers st })
+   register d = ModxT $ modify (\st -> st { registers = Set.insert d $ registers st })
+
+
+runModxT :: forall c m a . Monad m => ModxT c m a -> m (a, ([Component c], [Dep c], [Dep c]))
+runModxT (ModxT m) = do
+   (a, state) <- runStateT m emptyModxState 
+   return $ let ModXState { .. } = state 
+            in (a, (Set.toList spawns, Set.toList triggers, Set.toList registers))
 
 integrate :: (WorkList wl (Component c), ModX c)
           => ModxLoop c -- ^ the original loop state 
@@ -254,25 +287,25 @@ integrate :: (WorkList wl (Component c), ModX c)
           -> [Component c] -- ^ a list of spawned components
           -> [Dep c]       -- ^ a list of read dependencies 
           -> [Dep c]       -- ^ a list of write dependencies
-          -> (ModxLoop c, wl) 
+          -> (ModxLoop c, wl)
 integrate loopState wl st' spawns' r' w' = (loopState', wl'')
-   where (cmp, wl')  = remove wl 
+   where (cmp, wl')  = remove wl
          seen'       = Set.union (seen loopState) (Set.fromList spawns')
          toSpawn     = Set.difference (Set.fromList spawns') (seen loopState)
-         dependents' = Map.unionWith Set.union 
+         dependents' = Map.unionWith Set.union
                            (Map.fromList (map (,Set.singleton cmp) r'))
                            (dependents loopState)
          toReanal    = Set.unions $ map (fromMaybe Set.empty . flip Map.lookup dependents') w'
          wl''        = addAll (Set.toList toReanal) wl'
          loopState'  = ModxLoop {
             seen = seen',
-            dependents = dependents', 
+            dependents = dependents',
             state = st'
          }
 
 data ModxLoop c = ModxLoop {
    seen :: Set (Component c),
-   dependents :: Map (Dep c) (Set (Component c)), 
+   dependents :: Map (Dep c) (Set (Component c)),
    state :: State c
 }
 
@@ -280,7 +313,7 @@ initialModXLoopState :: (ModX c) => State c -> ModxLoop c
 initialModXLoopState initialState  = ModxLoop {
    seen       = Set.empty,
    dependents = Map.empty,
-   state      = initialState 
+   state      = initialState
 }
 
 
@@ -291,14 +324,14 @@ loop ::  ( ModX c,
       -> wl
       -> (State c)
 loop loopState@ModxLoop { .. } wl = if isEmpty wl then state
-                                    else 
-                                       let (state, spawns, r, w) = analyze cmp state 
+                                    else
+                                       let (state, spawns, r, w) = analyze cmp state
                                        in uncurry loop $ integrate loopState wl state spawns r w
-   where (cmp, _) = remove wl  
+   where (cmp, _) = remove wl
 
 -- | Run the ModX algorithm for the given ModX configuration `c`
-runModX :: (WorkList wl (Component c), ModX c) 
+runModX :: (WorkList wl (Component c), ModX c)
         => wl -- ^ the initial worklist
         -> State c -- ^ the initial state
-        -> (State c)
+        -> State c
 runModX initialWl initialState = loop (initialModXLoopState initialState) initialWl

@@ -2,11 +2,13 @@
 module Control.Monad.Layer(MonadLayer(..)) where
 
 import Data.Kind
+import Data.Functor.Identity
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
+import GHC.TypeError
 
 -- | A Monad "Layer" is similar to a Monad transformer, but is also provides a function to remove one level from the monad transformer stack. 
 class (Monad (Lower m)) => MonadLayer (m :: Type -> Type) where
@@ -20,7 +22,6 @@ class (Monad (Lower m)) => MonadLayer (m :: Type -> Type) where
 
    -- | Same as `lift` but cannot be implemented directly here since `m` has the wrong kind.
    upperM :: Lower m a -> m a
-
 
 -- | StateT instance
 instance (Monad m) => MonadLayer (StateT s m) where

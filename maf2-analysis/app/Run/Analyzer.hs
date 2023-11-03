@@ -2,12 +2,9 @@
 -- | Runs a configurable analysis on the given file
 module Run.Analyzer(Options, options, main) where
 
-import Domain.Scheme.CPDomain
 import Options.Applicative
-import Analysis.ModF
-import Syntax.Scheme
-import Data.Maybe
-import qualified Data.Map as Map
+import Analysis.Scheme.Simple
+import Data.DMap
 
 newtype Options = Options String deriving Show
 
@@ -23,7 +20,7 @@ options =
       strOption (long "filename" <> short 'f' <> help "the file to analyse") 
 
 main :: Options -> IO ()
-main (Options filename) = do return ()
---   contents <- readFile filename
---   printResult $ analyseProgram $ undefineExp $ fromJust $ parseSchemeExp contents
+main (Options filename) = do 
+     contents <- readFile filename
+     putStrLn $ show (region @VariableAdr @V (runAnalysis contents))
 

@@ -65,23 +65,6 @@ type Sto = DMap '[Adr :-> PyVlu]
 -- Intra
 -- 
 
-data Evals v a = Evals {
-   evalStmt :: forall (m :: * -> *) . (PyM m v a) => Stmt a Micro -> m v,
-   evalExp' :: forall (m :: * -> *) . (PyM m v a) => Exp a Micro -> m v
-}
-
-instance (PyM (SEvalM (Evals v a) v m l) v a) => Select (Evals v a) (Stmt a Micro -> SEvalM (Evals v a) v m l v) where
-   select s = evalStmt s @(SEvalM (Evals v a) v m l)
-
-instance (PyM (SEvalM (Evals v a) v m l) v a) => Select (Evals v a) (Exp a Micro -> SEvalM (Evals v a) v m l v) where
-   select s = Analysis.Python.evalExp' s @(SEvalM (Evals v a) v m l)
-
-evals :: Evals PyVlu SrcSpan
-evals = Evals {
-   evalStmt = Sem.evalStm,
-   evalExp' = Sem.evalExp
-}
-
 
 intraAnalysis :: Env -> Sto -> Stmt SrcSpan Micro -> ((Maybe PyVlu, OutputIO PyVlu), Sto)
 intraAnalysis env sto mod = undefined

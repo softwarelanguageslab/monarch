@@ -16,6 +16,7 @@ import Analysis.IO (IOModel, IOHandle, IOVal, hstdout)
 import qualified Analysis.IO as AIO
 import Domain.Python.ClassDomain
 import Data.Set
+import Data.Functor.Identity
 
 --
 -- IO
@@ -76,8 +77,8 @@ class (PyConfig m,
        StoreM m (PyObjAdr m),
        OPtr (Vlu (PyObjAdr m)) ~ Set (PyObjAdr m),
        Vlu (PyAdr m) ~ v,
-       AllocM m (IdeLex a) (PyAdr m),
-       AllocM m (IdeLex a) (PyObjAdr m),
+       AllocM m (IdeLex a) Identity (PyAdr m),
+       AllocM m (IdeLex a) Identity (PyObjAdr m),
        Analysis.Monad.EvalM m v (Stmt a Micro),
        Analysis.Monad.EvalM m v (Exp a Micro)) => PyM m v a | m -> v where
 
@@ -85,7 +86,7 @@ class (PyConfig m,
    returnWith :: v -> m b
    -- | Allocate a variable 
    allocVar ::  IdeLex a -> m (PyAdr m)
-   allocVar = alloc
+   allocVar = alloc @_ @_ @Identity
    -- | Evaluate the given expression as the body of a function
    call :: Stmt a Micro -> m v
    -- | Dereference the given object pointer 
