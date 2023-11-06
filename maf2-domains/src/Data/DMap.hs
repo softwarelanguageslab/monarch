@@ -15,6 +15,7 @@ import qualified Data.HashSet as HashSet
 import Prelude hiding (lookup)
 import Data.Hashable
 import Data.Map (Map)
+import Data.Bifunctor
 import qualified Data.Map as Map
 import Data.TypeLevel.List
 import Data.TypeLevel.Pair
@@ -126,5 +127,9 @@ instance JoinLattice (DMap ks) where
 -- NOTE: this is an expensive operation as the entire map
 -- needs to be traversed, its keys casted to their respective
 -- static types and then converted to a Map
-region :: forall k v ks . Has ks (KV k v) => DMap ks -> HashMap k v
-region (DMap m) = undefined -- TODO: HashMap.filterWithKey (const $ isJust . fromDynamicHashable @k) m
+region :: forall k v ks . (Typeable v, Typeable k, Hashable k, Has ks (KV k v)) => DMap ks -> HashMap k v
+region (DMap m) = 
+      HashMap.fromList $ map (bimap castK castV) $ HashMap.toList $ HashMap.filterWithKey (\k _ -> isJust $ fromDynamicHashable @k k) m
+    where castK = fromJust . fromDynamicHashable @k
+          castV = fromJust . fromDynamicJoinable @v
+

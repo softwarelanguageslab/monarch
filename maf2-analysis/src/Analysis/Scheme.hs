@@ -36,9 +36,8 @@ import Data.Functor ((<&>))
 
 
 type Program              = Exp
--- | the initial environment
-type Env var v ctx dep    = Map String var
-type Sto var ctx v dep    = Map var v    -- ^ non-heap allocated values
+type Env var v ctx dep    = Map String var          -- ^ the initial environment
+type Sto var ctx v dep    = Map var v               -- ^ non-heap allocated values
 type DSto ctx v           = DMap (Adrs v ctx)       -- ^ combined store with heap allocated values
 
 -----------------------------------------
@@ -104,7 +103,7 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
 -- Open recursion for evaluation
 -----------------------------------------
 
-newtype BaseSchemeEvalT v m a = BaseSchemeEvalT (m a) deriving (Monad, Functor, Applicative)
+newtype BaseSchemeEvalT v m a = BaseSchemeEvalT { getInnerEvalT :: m a } deriving (Monad, Functor, Applicative)
 
 instance (Monad m) => MonadLayer (BaseSchemeEvalT v m) where
    type Lower (BaseSchemeEvalT v m) = m
@@ -156,8 +155,6 @@ runCallT' :: forall v ctx m a c dep var . (Monad m, c ~ ModF var v ctx dep)
          => CallT' var v ctx dep m a
          -> m (a, ([Component c], [Dep c], [Dep c]))
 runCallT' (CallT' m) = m <&> (, ([], [], []))
-
-
 
 
 newtype CallT var v ctx dep m a = CallT (ModxT (ModF var v ctx dep) m a) deriving (Monad, Functor, Applicative, MonadLayer)

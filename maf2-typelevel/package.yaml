@@ -19,7 +19,7 @@ dependencies:
 - containers
 
 ghc-options:
-- -Wall
+- -Weverything
 - -Wcompat
 - -Widentities
 - -Wincomplete-record-updates
