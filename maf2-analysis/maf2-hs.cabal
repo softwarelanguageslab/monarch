@@ -33,8 +33,6 @@ library
       Analysis.Actors.Semantics
       Analysis.Environment
       Analysis.IO
-      Analysis.ModF
-      Analysis.ModX
       Analysis.Monad
       Analysis.Python
       Analysis.Python.Monad
