@@ -42,6 +42,7 @@ instance WorkList [a] a where
    add           = (:)
    remove (e:wl) = (e, wl)
    isEmpty []    = True
+   isEmpty _     = False
 
 --------------------------------------------------
 -- State Variables
@@ -242,7 +243,7 @@ data ModXState c = ModXState {
 emptyModxState :: ModXState c
 emptyModxState = ModXState Set.empty Set.empty Set.empty
 
-instance (Ord (Component c), Ord (Dep c)) => Joinable (ModXState c) where 
+instance (Ord (Component c), Ord (Dep c)) => Joinable (ModXState c) where
    join s1 s2 = ModXState {
       spawns   = spawns s1 `Set.union` spawns s2,
       triggers = triggers s1 `Set.union` triggers s2,
@@ -252,14 +253,19 @@ instance (Ord (Component c), Ord (Dep c)) => Joinable (ModXState c) where
 instance (Ord (Component c), Ord (Dep c)) => JoinLattice (ModXState c) where
    bottom = emptyModxState
    subsumes s1 s2 =
-      subsumes (spawns   s1) (spawns   s2) && 
+      subsumes (spawns   s1) (spawns   s2) &&
       subsumes (triggers s1) (triggers s2) &&
-      subsumes (registers s1) (registers s2) 
+      subsumes (registers s1) (registers s2)
 
 
 -- | A monad that keeps track of the set of spawned 
 -- components
-newtype ModxT c m a = ModxT (StateT (ModXState c) m a) deriving (Monad, MonadLayer, Applicative, Functor)
+newtype ModxT c m a = ModxT { innerModxT :: StateT (ModXState c) m a } deriving (MonadLayer, Applicative, Functor)
+
+instance (Monad m) => Monad (ModxT c m) where
+   (ModxT m) >>= f = ModxT $ m >>= (innerModxT . f) 
+   return = pure
+
 
 instance MonadTrans (ModxT c) where
    lift = ModxT . lift
@@ -276,8 +282,8 @@ instance (Monad m, ModX c) => MonadModX (ModxT c m) c where
 
 runModxT :: forall c m a . Monad m => ModxT c m a -> m (a, ([Component c], [Dep c], [Dep c]))
 runModxT (ModxT m) = do
-   (a, state) <- runStateT m emptyModxState 
-   return $ let ModXState { .. } = state 
+   (a, state) <- runStateT m emptyModxState
+   return $ let ModXState { .. } = state
             in (a, (Set.toList spawns, Set.toList triggers, Set.toList registers))
 
 integrate :: (WorkList wl (Component c), ModX c)
@@ -296,7 +302,7 @@ integrate loopState wl st' spawns' r' w' = (loopState', wl'')
                            (Map.fromList (map (,Set.singleton cmp) r'))
                            (dependents loopState)
          toReanal    = Set.unions $ map (fromMaybe Set.empty . flip Map.lookup dependents') w'
-         wl''        = addAll (Set.toList toReanal) wl'
+         wl''        = addAll (Set.toList $ toSpawn `Set.union` toReanal) wl'
          loopState'  = ModxLoop {
             seen = seen',
             dependents = dependents',
@@ -322,8 +328,8 @@ loop ::  ( ModX c,
            WorkList wl (Component c))
       => ModxLoop c
       -> wl
-      -> (State c)
-loop loopState@ModxLoop { .. } wl = if isEmpty wl then state
+      -> State c
+loop loopState@ModxLoop { .. } wl = trace "loop" $ if isEmpty wl then state
                                     else
                                        let (state, spawns, r, w) = analyze cmp state
                                        in uncurry loop $ integrate loopState wl state spawns r w

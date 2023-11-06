@@ -71,9 +71,14 @@ ghc-options:
 - -fno-warn-type-defaults
 - -O0
 - -fprint-potential-instances
+- -fprof-auto
+- -fprof-cafs
 
 library:
   source-dirs: src
+  exposed-modules:
+  - Analysis.Scheme.Simple
+  - Interpreter.Scheme
 
 executables:
   maf2-hs-exe:

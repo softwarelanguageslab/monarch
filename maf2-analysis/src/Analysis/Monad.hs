@@ -1,18 +1,13 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, UndecidableInstances, AllowAmbiguousTypes, PolyKinds #-}
 {-# LANGUAGE FunctionalDependencies, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
+
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 -- | This module provides monadic operations shared between many analyses.
 --
 -- To make instantiations for combinations of these typeclasses easier, this module also provides an abstraction based on Monad **layers**.
 -- These layers corresponds to monads in a monad transformer stack. However, since `MonadTrans` lacks a method for peeling away a single layer
 -- from the monad transformer stack, the `MonadLayer` typeclass is used instead. 
---
--- We combine these layers with the `Cap` monad which collects the capabilities of the monad stack into a typelevel list and combines them
--- with monad stack itself. The advantage of this is that we do need to create additional `newtype`s for each element in the monad stack.
--- Instead, we pair the element in the monad stack with a capbility which can be used to distinguish multiple monads of the same type from each-other. 
---
--- To ensure that layers and capabilities remain paired, each layer should correspond to exactly one capability in the list of capabilities. 
 --
 module Analysis.Monad(
  -- Typeclass interfaces
@@ -42,7 +37,6 @@ import qualified Data.Set as Set
 import Data.TypeLevel.List
 import Data.DMap
 import Data.Kind
-import Data.Functor.Identity
 import Domain
 import Analysis.Store hiding (lookupSto, extendSto, updateSto)
 import qualified Analysis.Store as Store
@@ -50,7 +44,6 @@ import Control.Monad.Layer
 import Control.Monad.Trans.Maybe
 import Control.Monad.Writer hiding (mzero)
 import Control.Monad.Error
-import GHC.TypeError
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -142,7 +135,7 @@ runEnv initialEnv (EnvT m) = runReaderT m initialEnv
 
 ---
 
-newtype CtxT ctx m a = CtxT { getContextReader :: (ReaderT ctx m a) } deriving (MonadReader ctx, Monad, Applicative, MonadLayer, Functor)
+newtype CtxT ctx m a = CtxT { getContextReader :: ReaderT ctx m a } deriving (MonadReader ctx, Monad, Applicative, MonadLayer, Functor)
 instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask
    withCtx = local
@@ -204,7 +197,7 @@ instance (Monad t, Address adr, StoreM (Lower t) adr, MonadLayer t) => StoreM t 
    updateAdr adr =  upperM . updateAdr adr
    lookupAdr  =  upperM .  lookupAdr
 
-runSto :: forall ks l m a . DMap ks -> (StateT (DMap ks) m) a -> m (a, DMap ks)
+runSto :: forall ks m a . DMap ks -> (StateT (DMap ks) m) a -> m (a, DMap ks)
 runSto =  flip runStateT
 
 --
@@ -238,5 +231,5 @@ runAlloc allocator (AllocT m) = runReaderT m allocator
 -- CallM 
 -- 
 
-instance (Monad m, CallM (Lower m) env v, MonadLayer m) => CallM m env v where 
+instance (Monad m, CallM (Lower m) env v, MonadLayer m) => CallM m env v where
    call = upperM . call

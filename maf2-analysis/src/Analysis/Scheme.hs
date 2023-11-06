@@ -1,10 +1,12 @@
 {-# LANGUAGE UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
+{-# OPTIONS_GHC -Wall #-}
 module Analysis.Scheme where
 
 import Prelude hiding (exp, lookup)
 
+import Debug.Trace
+
 import Analysis.Scheme.Primitives
-import Analysis.Environment
 import qualified Analysis.Scheme.Semantics as Semantics
 import Analysis.Scheme.Monad (SchemeM)
 import Analysis.Monad hiding (getEnv)
@@ -14,9 +16,10 @@ import Control.Monad.Trans.Class
 import Control.Monad.Join
 import Control.Monad.Layer
 import Control.Monad.Error (MonadError)
+import Control.Monad.Cond (unlessM)
 
 import Syntax.Scheme
-import Domain (Address, Vlu)
+import Domain (Vlu, subsumes, JoinLattice, bottom)
 import Domain.Scheme hiding (Exp, Env)
 
 import Data.DMap (DMap, fromMap, Hashable)
@@ -25,8 +28,7 @@ import Data.Function ((&))
 import Data.Dynamic
 import Data.Functor.Identity
 import Data.TypeLevel.Ghost
-
-import GHC.Generics (Generic)
+import Data.Functor ((<&>))
 
 -----------------------------------------
 -- Shorthands
@@ -83,11 +85,11 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
   type Dep (ModF var v ctx dep)        = dep
   -- | The analysis of a single component runs the Scheme semantics
   -- on the body of that component
-  analyze (exp, env, ctx, _) store =
-       let (((_, error), (spawns, triggers, registers)), sto) = (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
+  analyze (exp, env, ctx, _) store = 
+       let (((_, error), (spawns, triggers, registers)), sto) = trace (show exp) $ (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
               & runEvalT
               & runErr
-              & runCallT @v @ctx
+              & runCallT' @v @ctx
               & runSto store
               & runEnv env
               & runAlloc @PaAdr (allocPai @ctx)
@@ -102,7 +104,12 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
 -- Open recursion for evaluation
 -----------------------------------------
 
-newtype BaseSchemeEvalT v m a = BaseSchemeEvalT (m a) deriving (Monad, Functor, Applicative, MonadLayer)
+newtype BaseSchemeEvalT v m a = BaseSchemeEvalT (m a) deriving (Monad, Functor, Applicative)
+
+instance (Monad m) => MonadLayer (BaseSchemeEvalT v m) where
+   type Lower (BaseSchemeEvalT v m) = m
+   upperM = BaseSchemeEvalT 
+   lowerM f (BaseSchemeEvalT m) = BaseSchemeEvalT (f m)
 
 instance (MonadJoin m) => MonadJoin (BaseSchemeEvalT v m) where
    mzero = BaseSchemeEvalT mzero
@@ -111,8 +118,8 @@ instance (MonadJoin m) => MonadJoin (BaseSchemeEvalT v m) where
 instance MonadTrans (BaseSchemeEvalT v) where
    lift = BaseSchemeEvalT
 
-instance (MonadError m, SchemeM (BaseSchemeEvalT v m) v, MonadLayer m, SchemeAnalysisConstraints var v ctx dep) => (Analysis.Monad.EvalM (BaseSchemeEvalT v m) v Exp) where
-   eval = Semantics.eval
+instance (MonadError m, SchemeM (BaseSchemeEvalT v m) v, SchemeAnalysisConstraints var v ctx dep) => (Analysis.Monad.EvalM (BaseSchemeEvalT v m) v Exp) where
+   eval = trace "eval" Semantics.eval
 
 
 runEvalT :: BaseSchemeEvalT v m a -> m a
@@ -129,29 +136,67 @@ class (Ord dep, Hashable dep) => Dependency adr dep | adr -> dep where
 -- CallM & StoreM implementation
 -----------------------------------------
 
+newtype CallT' var v ctx dep m a = CallT' (m a) deriving (Monad, Functor, Applicative)
+instance {-# OVERLAPPING #-} (Monad m, 
+      SchemeAnalysisConstraints var v ctx dep,
+      JoinLattice v
+   ) => CallM (CallT' var v ctx dep m) (Env var v ctx dep) v where
+   call = const $ return bottom
+
+instance (Monad m) => MonadLayer (CallT' var v ctx dep m) where
+   type (Lower (CallT' var v ctx dep m)) = m
+   upperM = CallT'
+   lowerM f (CallT' m) = CallT' (f m)
+
+instance (MonadJoin m) => MonadJoin (CallT' var v ctx dep m) where 
+   mzero = CallT' mzero
+   mjoin (CallT' ma) (CallT' mb) = CallT' $ mjoin ma mb
+
+runCallT' :: forall v ctx m a c dep var . (Monad m, c ~ ModF var v ctx dep)
+         => CallT' var v ctx dep m a
+         -> m (a, ([Component c], [Dep c], [Dep c]))
+runCallT' (CallT' m) = m <&> (, ([], [], []))
+
+
+
+
 newtype CallT var v ctx dep m a = CallT (ModxT (ModF var v ctx dep) m a) deriving (Monad, Functor, Applicative, MonadLayer)
 
 instance (Ord (Component (ModF var v ctx dep)), Ord (Dep (ModF var v ctx dep)), MonadJoin m) => MonadJoin (CallT var v ctx dep m) where
    mzero = CallT mzero
    mjoin (CallT ma) (CallT mb) = CallT $ mjoin ma mb
 
+needsUpdate :: forall m adr v . (JoinLattice v, Show v, Vlu adr ~ v, StoreM m adr) => adr -> v -> m Bool
+needsUpdate adr vlu' = trace (show vlu') $ do
+   _  <- trace "lookup before" $ return ()
+   vlu <- lookupAdr adr
+   if subsumes vlu' vlu then
+      return False
+   else
+      return True
+
 -- | When a store update occurs, registers that update as a write effect,
 -- when a store read occurs, registers that read as a read effect
 instance {-# OVERLAPPING #-} (
             Dependency adr dep,
             StoreM m adr,
+            JoinLattice (Vlu adr),
+            Show (Vlu adr),
             SchemeAnalysisConstraints var v ctx dep
    ) => StoreM (CallT var v ctx dep m) adr where
 
-   writeAdr adr vlu = CallT @var @v @ctx $ do
+   writeAdr adr vlu = trace ("writeAdr " ++ show vlu) $ CallT @var @v @ctx $ do
       -- TODO: it is rather strange that type inference
       -- cannot figure out that `c` must equal `ModF v ctx`
       -- hence the explicit type annotations
-      _ <- trigger @_ @(ModF var v ctx dep) (dep adr)
+      unlessM (lift $ needsUpdate adr vlu) $ do
+         trigger @_ @(ModF var v ctx dep) (dep adr)
+
       lift $ writeAdr adr vlu
 
    updateAdr adr vlu = CallT $ do
-      _ <- trigger @_ @(ModF var v ctx dep) (dep adr)
+      unlessM (lift $ needsUpdate adr vlu) $ do
+         trigger @_ @(ModF var v ctx dep) (dep adr)
       lift $ updateAdr adr vlu
 
    lookupAdr adr = CallT $ do
@@ -162,16 +207,17 @@ instance {-# OVERLAPPING #-} (
 -- | This instances spawns the called function as a component, 
 -- and reads the return value from the store.
 instance {-# OVERLAPPING #-} (CtxM m ctx,
-          StoreM m var,
+          Monad m,
+          StoreM (CallT var v ctx dep m) var,
           SchemeAnalysisConstraints var v ctx dep
          ) => CallM (CallT var v ctx dep m) (Env var v ctx dep) v where
-   call (e, env) = CallT @var @v @ctx $ do
+   call (e, env) = do
       -- get the current context
-      ctx <- lift getCtx
+      ctx <- CallT $ lift getCtx
       -- create a new component from this context
       let comp = (e, env, ctx, Ghost)
       --  spawn  the new component
-      _ <- spawn comp
+      _ <- CallT $ spawn comp
       -- lookup the return value of the component
       lookupAdr (retAdr comp)
 
@@ -189,6 +235,10 @@ runCallT (CallT m) = runModxT @c m
 -- TODO: too many constraints, makes it more difficult to parse the program
 -- as written, try to simplify
 type SchemeAnalysisConstraints var v ctx dep = (
+         Show v,
+         Show (Vlu (PAdr v)),
+         Show (Vlu (SAdr v)),
+         Show (Vlu (VAdr v)),
          SchemeDomain v,
          SchemeConstraints v Exp var (Env var v ctx dep),
          StoreDefinedFor v,

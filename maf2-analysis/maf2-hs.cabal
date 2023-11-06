@@ -25,6 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      Analysis.Scheme.Simple
+      Interpreter.Scheme
+  other-modules:
       Analysis.Actors.Mailbox
       Analysis.Actors.Monad
       Analysis.Actors.Semantics
@@ -42,7 +45,6 @@ library
       Analysis.Scheme.Monad
       Analysis.Scheme.Primitives
       Analysis.Scheme.Semantics
-      Analysis.Scheme.Simple
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
@@ -54,14 +56,12 @@ library
       Data.LabeledProduct
       Data.ListExtra
       Data.SetExtra
-      Interpreter.Scheme
       Interpreter.Scheme.Eval
       Interpreter.Scheme.Monad
       Interpreter.Scheme.Primitives
       Interpreter.Scheme.Semantics
       Interpreter.Scheme.Values
       Lib
-  other-modules:
       Paths_maf2_hs
   hs-source-dirs:
       src
@@ -81,7 +81,7 @@ library
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O0 -fprint-potential-instances
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O0 -fprint-potential-instances -fprof-auto -fprof-cafs
   build-depends:
       HUnit
     , IfElse
@@ -131,7 +131,7 @@ executable maf2-hs-exe
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O0 -fprint-potential-instances -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O0 -fprint-potential-instances -fprof-auto -fprof-cafs -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HUnit
     , IfElse
@@ -182,7 +182,7 @@ test-suite maf2-hs-test
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O0 -fprint-potential-instances -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O0 -fprint-potential-instances -fprof-auto -fprof-cafs -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HUnit
     , IfElse
