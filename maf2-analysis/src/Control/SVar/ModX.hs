@@ -95,7 +95,7 @@ instance Joinable DynamicJoinable where
     | otherwise = error "cannot join unrelated values"
 
 instance Eq DynamicJoinable where
-   (==) (DynamicJoinable t1 v1 _ eq1) (DynamicJoinable t2 v2 _ eq2)
+   (==) (DynamicJoinable t1 v1 _ eq1) (DynamicJoinable t2 v2 _ _)
       | Just HRefl <- t1 `eqTypeRep` t2 = eq1 v1 v2
       | otherwise = False
 
@@ -103,7 +103,7 @@ toDynamicJoinable :: (Eq v, Typeable v, Joinable v) => v -> DynamicJoinable
 toDynamicJoinable v = DynamicJoinable typeRep v join (==)
 
 fromDynamicJoinable :: forall a  . (Typeable a) => DynamicJoinable -> Maybe a
-fromDynamicJoinable (DynamicJoinable t v join eq)
+fromDynamicJoinable (DynamicJoinable t v _ _)
    | Just HRefl <- t `eqTypeRep` rep = Just v
    | otherwise = Nothing
    where rep = typeRep :: TypeRep a

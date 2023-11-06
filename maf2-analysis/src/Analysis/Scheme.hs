@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Weverything #-}
 module Analysis.Scheme where
 
 import Prelude hiding (exp, lookup)

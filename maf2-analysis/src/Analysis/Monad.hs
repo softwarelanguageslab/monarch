@@ -1,7 +1,5 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, UndecidableInstances, AllowAmbiguousTypes, PolyKinds #-}
 {-# LANGUAGE FunctionalDependencies, ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-name-shadowing #-}
-
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 -- | This module provides monadic operations shared between many analyses.
 --
@@ -77,8 +75,8 @@ class CtxM m ctx | m -> ctx where
 
 -- | Lookup
 lookups :: (JoinLattice a, MonadJoin m) => (adr -> m v) -> (adr -> v -> m a) -> Set adr -> m a
-lookups look f = Set.fold (mjoin . deref) Control.Monad.Join.mzero
-      where deref adr = look adr >>= f adr
+lookups look f = Set.fold (mjoin . deref') Control.Monad.Join.mzero
+      where deref' adr = look adr >>= f adr
 
 -- 
 
