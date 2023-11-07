@@ -21,7 +21,7 @@ The library can be used in a standalone-fashion (i.e. without `maf2-hs`) by addi
 
 ```yaml
 extra-deps:
-    - git: https://github.com/softwarelanguageslab/monaf
+    - git: https://github.com/softwarelanguageslab/maf-hs
       commit: XXX
       subdirs:
         - maf2-domains/
