@@ -4,13 +4,17 @@ module Run.Analyzer(Options, options, main) where
 
 import Options.Applicative
 import Analysis.Scheme.Simple
-import Syntax.Scheme
 import Data.DMap
-import Data.Maybe
+import qualified Data.DMap as DMap
 import Text.Printf
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate)
+import Analysis.Monad
+import Data.Map (Map)
+import qualified Data.Map as Map2
+import Data.Functor.Identity
+import Data.Function ((&))
 
 newtype Options = Options String deriving Show
 

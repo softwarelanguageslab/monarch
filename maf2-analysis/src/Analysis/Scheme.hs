@@ -3,8 +3,6 @@ module Analysis.Scheme where
 
 import Prelude hiding (exp, lookup)
 
-import Debug.Trace
-
 import Analysis.Scheme.Primitives
 import qualified Analysis.Scheme.Semantics as Semantics
 import Analysis.Scheme.Monad (SchemeM)
@@ -28,6 +26,7 @@ import Data.Dynamic
 import Data.Functor.Identity
 import Data.TypeLevel.Ghost
 import Data.Functor ((<&>))
+import Analysis.Monad (EnvM(..))
 
 -----------------------------------------
 -- Shorthands
@@ -182,13 +181,16 @@ instance {-# OVERLAPPING #-} (
 instance {-# OVERLAPPING #-} (CtxM m ctx,
           Monad m,
           StoreM (CallT var v ctx dep m) var,
+          EnvM m var (Env var v ctx dep),
           SchemeAnalysisConstraints var v ctx dep
          ) => CallM (CallT var v ctx dep m) (Env var v ctx dep) v where
-   call (Lam _ bdy _, env) = do
+   call (Lam _ bdy _, _) = do
+      -- get the extended environment 
+      env' <- CallT $ lift getEnv
       -- get the current context
       ctx <- CallT $ lift getCtx
       -- create a new component from this context
-      let comp = (bdy, env, ctx, Ghost)
+      let comp = (bdy, env', ctx, Ghost)
       --  spawn  the new component
       _ <- CallT $ spawn comp
       -- lookup the return value of the component
