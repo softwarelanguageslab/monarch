@@ -27,7 +27,7 @@ our analyses. These abstract domains are underpinned by abstract interpretation 
 and are formulated in terms of mathematical lattices.
 * `maf2-syntax`: this library contains syntax parsing and preprocessing facilities 
 for all targets of our analyses. Our analyses currently target Scheme and Python.
-* `maf2-hs`: this library contains our analyses.
+* `maf2-analysis`: this library contains our analyses.
 
 Each library contains additional documentation about their structure and usage
 in third-party libraries/applications.

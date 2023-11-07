@@ -160,9 +160,6 @@ test-suite maf2-hs-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      DictionaryDomainSpec
-      LatticeSpec
-      SchemeParserSpec
       Paths_maf2_hs
   hs-source-dirs:
       test

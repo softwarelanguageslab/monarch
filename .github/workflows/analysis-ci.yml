@@ -34,13 +34,13 @@ jobs:
           ${{ runner.os }}-
 
     - name: Install dependencies
-      working-directory: maf2-hs
+      working-directory: maf2-analysis
       run: |
         stack update
         stack build
     - name: Build
-      working-directory: maf2-hs
+      working-directory: maf2-analysis
       run: stack build
     - name: Run tests
-      working-directory: maf2-hs
+      working-directory: maf2-analysis
       run: stack test
