@@ -12,6 +12,7 @@ import Control.SVar.ModX
 import GHC.Generics
 import Data.Hashable
 import Data.Maybe
+import Text.Printf
 import Prelude hiding (exp)
 
 -- | The ModF instantation used in this analysis
@@ -24,7 +25,13 @@ instance Hashable PointerAdr
 data VariableAdr = Adr Ide [Exp]
                  | Prm String
                  | Ret (Component M)
-                 deriving (Eq, Ord, Generic, Show)
+                 deriving (Eq, Ord, Generic)
+
+instance Show VariableAdr where 
+   show (Adr ide ctx) = printf "Adr(%s, %s)" (show ide) (show ctx)
+   show (Prm nam)     = printf "Prm(%s)" nam 
+   show (Ret (exp, _, ctx, _)) = printf "Ret(%s, %s)" (show exp) (show ctx)
+
 instance Hashable VariableAdr
 instance Address VariableAdr where
   type Vlu VariableAdr = V
@@ -71,3 +78,10 @@ instance SchemeAlloc K VariableAdr V AdrDep where
 runAnalysis :: String -> DSto K V
 runAnalysis program = analyzeProgram @V exp [] []
    where exp = fromJust $ parseString program 
+
+testEval :: Exp -> DSto K V
+testEval exp = 
+   let (state, _, _, _) = analyze @(ModF VariableAdr V K AdrDep) 
+                          (exp, analysisEnvironment @VariableAdr, [], undefined)
+                          (analysisStore @V analysisEnvironment)
+   in state

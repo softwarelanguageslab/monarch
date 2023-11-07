@@ -1,5 +1,4 @@
 {-# LANGUAGE UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-{-# OPTIONS_GHC -Weverything #-}
 module Analysis.Scheme where
 
 import Prelude hiding (exp, lookup)
@@ -16,7 +15,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.Join
 import Control.Monad.Layer
 import Control.Monad.Error (MonadError)
-import Control.Monad.Cond (unlessM)
+import Control.Monad.Cond (unlessM, whenM)
 
 import Syntax.Scheme
 import Domain (Vlu, subsumes, JoinLattice, bottom)
@@ -85,10 +84,10 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
   -- | The analysis of a single component runs the Scheme semantics
   -- on the body of that component
   analyze (exp, env, ctx, _) store = 
-       let (((_, error), (spawns, triggers, registers)), sto) = trace (show exp) $ (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
+       let (((_, _), (spawns, registers, triggers)), sto) = (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
               & runEvalT
               & runErr
-              & runCallT' @v @ctx
+              & runCallT @v @ctx
               & runSto store
               & runEnv env
               & runAlloc @PaAdr (allocPai @ctx)
@@ -97,7 +96,7 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
               & runAlloc @VrAdr (allocVar @ctx)
               & runCtx  ctx
               & runIdentity
-       in (sto, spawns, triggers, registers)
+       in (sto, spawns, registers, triggers)
 
 -----------------------------------------
 -- Open recursion for evaluation
@@ -118,7 +117,7 @@ instance MonadTrans (BaseSchemeEvalT v) where
    lift = BaseSchemeEvalT
 
 instance (MonadError m, SchemeM (BaseSchemeEvalT v m) v, SchemeAnalysisConstraints var v ctx dep) => (Analysis.Monad.EvalM (BaseSchemeEvalT v m) v Exp) where
-   eval = trace "eval" Semantics.eval
+   eval = Semantics.eval
 
 
 runEvalT :: BaseSchemeEvalT v m a -> m a
@@ -135,28 +134,6 @@ class (Ord dep, Hashable dep) => Dependency adr dep | adr -> dep where
 -- CallM & StoreM implementation
 -----------------------------------------
 
-newtype CallT' var v ctx dep m a = CallT' (m a) deriving (Monad, Functor, Applicative)
-instance {-# OVERLAPPING #-} (Monad m, 
-      SchemeAnalysisConstraints var v ctx dep,
-      JoinLattice v
-   ) => CallM (CallT' var v ctx dep m) (Env var v ctx dep) v where
-   call = const $ return bottom
-
-instance (Monad m) => MonadLayer (CallT' var v ctx dep m) where
-   type (Lower (CallT' var v ctx dep m)) = m
-   upperM = CallT'
-   lowerM f (CallT' m) = CallT' (f m)
-
-instance (MonadJoin m) => MonadJoin (CallT' var v ctx dep m) where 
-   mzero = CallT' mzero
-   mjoin (CallT' ma) (CallT' mb) = CallT' $ mjoin ma mb
-
-runCallT' :: forall v ctx m a c dep var . (Monad m, c ~ ModF var v ctx dep)
-         => CallT' var v ctx dep m a
-         -> m (a, ([Component c], [Dep c], [Dep c]))
-runCallT' (CallT' m) = m <&> (, ([], [], []))
-
-
 newtype CallT var v ctx dep m a = CallT (ModxT (ModF var v ctx dep) m a) deriving (Monad, Functor, Applicative, MonadLayer)
 
 instance (Ord (Component (ModF var v ctx dep)), Ord (Dep (ModF var v ctx dep)), MonadJoin m) => MonadJoin (CallT var v ctx dep m) where
@@ -164,10 +141,9 @@ instance (Ord (Component (ModF var v ctx dep)), Ord (Dep (ModF var v ctx dep)), 
    mjoin (CallT ma) (CallT mb) = CallT $ mjoin ma mb
 
 needsUpdate :: forall m adr v . (JoinLattice v, Show v, Vlu adr ~ v, StoreM m adr) => adr -> v -> m Bool
-needsUpdate adr vlu' = trace (show vlu') $ do
-   _  <- trace "lookup before" $ return ()
+needsUpdate adr vlu' = do
    vlu <- lookupAdr adr
-   if subsumes vlu' vlu then
+   if subsumes vlu vlu' then
       return False
    else
       return True
@@ -182,17 +158,17 @@ instance {-# OVERLAPPING #-} (
             SchemeAnalysisConstraints var v ctx dep
    ) => StoreM (CallT var v ctx dep m) adr where
 
-   writeAdr adr vlu = trace ("writeAdr " ++ show vlu) $ CallT @var @v @ctx $ do
+   writeAdr adr vlu = CallT @var @v @ctx $ do
       -- TODO: it is rather strange that type inference
       -- cannot figure out that `c` must equal `ModF v ctx`
       -- hence the explicit type annotations
-      unlessM (lift $ needsUpdate adr vlu) $ do
+      whenM (lift $ needsUpdate adr vlu) $ do
          trigger @_ @(ModF var v ctx dep) (dep adr)
 
       lift $ writeAdr adr vlu
 
    updateAdr adr vlu = CallT $ do
-      unlessM (lift $ needsUpdate adr vlu) $ do
+      whenM (lift $ needsUpdate adr vlu) $ do
          trigger @_ @(ModF var v ctx dep) (dep adr)
       lift $ updateAdr adr vlu
 
@@ -208,11 +184,11 @@ instance {-# OVERLAPPING #-} (CtxM m ctx,
           StoreM (CallT var v ctx dep m) var,
           SchemeAnalysisConstraints var v ctx dep
          ) => CallM (CallT var v ctx dep m) (Env var v ctx dep) v where
-   call (e, env) = do
+   call (Lam _ bdy _, env) = do
       -- get the current context
       ctx <- CallT $ lift getCtx
       -- create a new component from this context
-      let comp = (e, env, ctx, Ghost)
+      let comp = (bdy, env, ctx, Ghost)
       --  spawn  the new component
       _ <- CallT $ spawn comp
       -- lookup the return value of the component

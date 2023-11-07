@@ -28,7 +28,7 @@ instance (JoinLattice v, Ord a) => Store (Map a v) a v where
 -- | Simple DMap based store with weak updates
 instance (Has ks (adr :-> v), Typeable adr, Typeable v, Hashable adr, JoinLattice v) => Store (DMap ks) adr v where
    emptySto = DMap.empty
-   lookupSto adr = fromJust . DMap.lookup adr
+   lookupSto adr = fromMaybe bottom . DMap.lookup adr
    extendSto adr vlu = DMap.alter (Just . Domain.join vlu . justOrBot) adr
    updateSto adr vlu = DMap.alter (Just . Domain.join vlu . justOrBot) adr
 

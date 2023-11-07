@@ -26,23 +26,24 @@ source-repository head
 library
   exposed-modules:
       Analysis.Scheme.Simple
+      Analysis.Scheme.Semantics
+      Analysis.Monad
+      Analysis.Scheme
+      Analysis.Scheme.Monad
       Interpreter.Scheme
+      Control.SVar.ModX
   other-modules:
       Analysis.Actors.Mailbox
       Analysis.Actors.Monad
       Analysis.Actors.Semantics
       Analysis.Environment
       Analysis.IO
-      Analysis.Monad
       Analysis.Python
       Analysis.Python.Monad
       Analysis.Python.OO
       Analysis.Python.Primitives
       Analysis.Python.Semantics
-      Analysis.Scheme
-      Analysis.Scheme.Monad
       Analysis.Scheme.Primitives
-      Analysis.Scheme.Semantics
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
@@ -50,7 +51,6 @@ library
       Control.Monad.Error
       Control.Monad.Layer
       Control.SVar.GenId
-      Control.SVar.ModX
       Data.LabeledProduct
       Data.ListExtra
       Data.SetExtra
@@ -89,6 +89,7 @@ library
     , criterion
     , data-default
     , hashable
+    , hashmap
     , hspec
     , hspec-contrib
     , language-python
@@ -139,6 +140,7 @@ executable maf2-hs-exe
     , criterion
     , data-default
     , hashable
+    , hashmap
     , hspec
     , hspec-contrib
     , language-python
@@ -190,6 +192,7 @@ test-suite maf2-hs-test
     , criterion
     , data-default
     , hashable
+    , hashmap
     , hspec
     , hspec-contrib
     , language-python
