@@ -4,15 +4,15 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 
-name:           maf2-hs
+name:           maf2-analysis
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/maf2-hs#readme>
-homepage:       https://github.com/githubuser/maf2-hs#readme
-bug-reports:    https://github.com/githubuser/maf2-hs/issues
+homepage:       https://github.com/github.com/softwarelanguageslab#readme
+bug-reports:    https://github.com/github.com/softwarelanguageslab/issues
 author:         Author name here
 maintainer:     example@example.com
 copyright:      2023 Author name here
-license:        BSD3
+license:        GPL3
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
@@ -21,7 +21,8 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/maf2-hs
+  location: https://github.com/github.com/softwarelanguageslab
+  subdir: maf-hs
 
 library
   exposed-modules:
@@ -60,7 +61,7 @@ library
       Interpreter.Scheme.Semantics
       Interpreter.Scheme.Values
       Lib
-      Paths_maf2_hs
+      Paths_maf2_analysis
   hs-source-dirs:
       src
   default-extensions:
@@ -104,14 +105,14 @@ library
     , vector
   default-language: Haskell2010
 
-executable maf2-hs-exe
+executable maf-exe
   main-is: Main.hs
   other-modules:
       Entrypoints
       Run.Analyzer
       Run.Interpreter
       Run.Python
-      Paths_maf2_hs
+      Paths_maf2_analysis
   hs-source-dirs:
       app
   default-extensions:
@@ -145,8 +146,8 @@ executable maf2-hs-exe
     , hspec-contrib
     , language-python
     , lens
+    , maf2-analysis
     , maf2-domains
-    , maf2-hs
     , maf2-syntax
     , maf2-typelevel
     , mtl
@@ -156,11 +157,11 @@ executable maf2-hs-exe
     , vector
   default-language: Haskell2010
 
-test-suite maf2-hs-test
+test-suite maf2-analysis-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_maf2_hs
+      Paths_maf2_analysis
   hs-source-dirs:
       test
   default-extensions:
@@ -194,8 +195,8 @@ test-suite maf2-hs-test
     , hspec-contrib
     , language-python
     , lens
+    , maf2-analysis
     , maf2-domains
-    , maf2-hs
     , maf2-syntax
     , maf2-typelevel
     , mtl

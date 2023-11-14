@@ -1,7 +1,7 @@
-name:                maf2-hs
+name:                maf2-analysis
 version:             0.1.0.0
-github:              "githubuser/maf2-hs"
-license:             BSD3
+github:              "github.com/softwarelanguageslab/maf-hs"
+license:             GPL3
 author:              "Author name here"
 maintainer:          "example@example.com"
 copyright:           "2023 Author name here"
@@ -87,7 +87,7 @@ library:
   - Control.SVar.ModX
 
 executables:
-  maf2-hs-exe:
+  maf-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -95,10 +95,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - maf2-hs
+    - maf2-analysis
 
 tests:
-  maf2-hs-test:
+  maf2-analysis-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -106,4 +106,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - maf2-hs
+    - maf2-analysis
