@@ -28,6 +28,7 @@ library
   exposed-modules:
       Analysis.Scheme.Simple
       Analysis.Scheme.Semantics
+      Analysis.Scheme.Primitives
       Analysis.Monad
       Analysis.Scheme
       Analysis.Scheme.Monad
@@ -44,7 +45,6 @@ library
       Analysis.Python.OO
       Analysis.Python.Primitives
       Analysis.Python.Semantics
-      Analysis.Scheme.Primitives
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs

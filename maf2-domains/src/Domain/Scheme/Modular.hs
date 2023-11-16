@@ -5,7 +5,6 @@ import Domain.Scheme.Class
 import Data.Coerce hiding (coerce)
 import qualified Data.Coerce as Coerce
 import Control.Applicative (Applicative(liftA2))
-import Data.Kind
 import Data.Set (Set)
 import Data.Default
 import qualified Data.Set as Set
@@ -410,3 +409,29 @@ instance
   isUnsp    = isJust . unspecified
   isNil     = isJust . null
   isPrim    = isJust . primitives
+
+
+-- | Generate a top value, since the set of closures
+-- string pointers, pair pointers and vector pointers
+-- cannot be known by the domain itself, it has to be 
+-- passed to explicitly.
+schemeTop :: (TopLattice r, 
+              TopLattice i,
+              TopLattice c,
+              TopLattice b)
+          => Set pai 
+          -> Set vec
+          -> Set str 
+          -> Set (exp, env)
+          -> ModularSchemeValue r i c b pai vec str var exp env
+schemeTop pai vec str clos = 
+   ModularSchemeValue {
+      real      = Just top,
+      integer   = Just top,
+      character = Just top, 
+      boolean   = Just top,
+      paiPtr    = Just pai,
+      vecPtr    = Just vec,
+      strPtr    = Just str,
+      clo       = Just clos
+   }

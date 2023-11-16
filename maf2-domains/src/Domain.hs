@@ -5,6 +5,7 @@
 
 module Domain(
    JoinLattice(..),
+   TopLattice(..),
    IntDomain(..),
    StringDomain(..),
    NumberDomain(..),

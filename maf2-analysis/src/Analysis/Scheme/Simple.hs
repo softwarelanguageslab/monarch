@@ -40,7 +40,6 @@ instance VarAdr VariableAdr V K AdrDep where
    retAdr = Ret
    prmAdr = Prm
 
-
 -- | Alias for k-sensitivity context
 type K = [Exp]
 
