@@ -26,6 +26,8 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Solver
+      Solver.Z3
       Symbolic.AST
       Symbolic.SMT
   other-modules:
@@ -34,11 +36,17 @@ library
       Paths_maf2_scv
   hs-source-dirs:
       src
+  default-extensions:
+      GeneralizedNewtypeDeriving
+      RankNTypes
+      TypeApplications
+      ScopedTypeVariables
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
     , containers
     , mtl
+    , process
   default-language: Haskell2010
 
 executable maf2-scv-exe
@@ -49,12 +57,18 @@ executable maf2-scv-exe
       Paths_maf2_scv
   hs-source-dirs:
       app
+  default-extensions:
+      GeneralizedNewtypeDeriving
+      RankNTypes
+      TypeApplications
+      ScopedTypeVariables
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , maf2-scv
     , mtl
+    , process
   default-language: Haskell2010
 
 test-suite maf2-scv-test
@@ -66,10 +80,16 @@ test-suite maf2-scv-test
       Paths_maf2_scv
   hs-source-dirs:
       test
+  default-extensions:
+      GeneralizedNewtypeDeriving
+      RankNTypes
+      TypeApplications
+      ScopedTypeVariables
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , maf2-scv
     , mtl
+    , process
   default-language: Haskell2010

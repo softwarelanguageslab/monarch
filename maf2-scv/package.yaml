@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - containers
 - mtl
+- process
 
 ghc-options:
 - -Wall
@@ -34,6 +35,12 @@ ghc-options:
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -Wredundant-constraints
+
+default-extensions:
+  - GeneralizedNewtypeDeriving
+  - RankNTypes
+  - TypeApplications
+  - ScopedTypeVariables
 
 library:
   source-dirs: src
