@@ -52,7 +52,7 @@ terminateZ3Solver = terminateProcess . getZ3Handle
 --
 -- Where the handle to become inactive (due to the process being killed)
 -- the Z3 process is spawned again and its setup code reevaluted.
-newtype Z3Solver a = Z3Solver { getSolver :: StateT (Maybe Z3SolverState) IO a }
+newtype Z3Solver a = Z3Solver (StateT (Maybe Z3SolverState) IO a)
                         deriving (Applicative, Functor, Monad, MonadState (Maybe Z3SolverState))
 
 -- | Terminate the current instance of the solver

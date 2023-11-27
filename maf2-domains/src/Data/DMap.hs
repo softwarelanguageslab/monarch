@@ -79,7 +79,7 @@ class (Typeable (Key k), Typeable (Val k)) => KeyVal k where
 -- the map is parametrized by the set of key-value mappings that is contains
 newtype DMap (ks :: [Type]) = DMap { getMap :: HashMap DynamicHashable DynamicJoinable }
 
-instance (Typeable k, Typeable v) => KeyVal (k :-> v) where
+instance (Typeable k, Typeable v) => KeyVal ((k :: Type) :-> (v :: Type)) where
    type Key (k :-> v) = k
    type Val (k :-> v) = v
 
