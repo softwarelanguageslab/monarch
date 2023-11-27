@@ -52,7 +52,3 @@ allocStr :: SchemeM m v => Exp -> m (SAdr v)
 allocStr = alloc @_ @_ @StAdr
 allocVar :: SchemeM m v => Ide -> m (Adr v)
 allocVar = alloc @_ @_ @VrAdr
-
-
-
-

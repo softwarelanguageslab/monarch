@@ -57,10 +57,13 @@ class (Ord (Dep c), Ord (Component c)) => ModX c where
    type State c :: Type
    -- | The representation of a dependency in the analysis 
    type Dep c :: Type
+   -- | Type of monad returned from analyze
+   -- used for keeping monadic effects between analysis iterations
+   type MM c :: Type -> Type
    -- | A function to analyze the component, 
    -- must produce a state and the necessary set of 
    -- effects
-   analyze :: Component c -> State c -> (State c, [Component c], [Dep c], [Dep c])
+   analyze :: Component c -> State c -> MM c (State c, [Component c], [Dep c], [Dep c])
 
 -- | Monad to keep track of ModX components
 -- within an analysis
@@ -165,19 +168,20 @@ initialModXLoopState initialState  = ModxLoop {
 
 -- | ModX loop
 loop ::  ( ModX c,
-           WorkList wl (Component c))
+           WorkList wl (Component c), 
+           Monad (MM c))
       => ModxLoop c
       -> wl
-      -> State c
-loop loopState@ModxLoop { .. } wl = if isEmpty wl then state
-                                    else
-                                       let (state', spawns, r, w) = analyze cmp state
-                                       in uncurry loop $ integrate loopState wl state' spawns r w
+      -> MM c (State c)
+loop loopState@ModxLoop { .. } wl = if isEmpty wl then return state
+                                    else do
+                                       (state', spawns, r, w) <- analyze cmp state
+                                       uncurry loop $ integrate loopState wl state' spawns r w
    where (cmp, _) = remove wl
 
 -- | Run the ModX algorithm for the given ModX configuration `c`
-runModX :: (WorkList wl (Component c), ModX c)
+runModX :: (WorkList wl (Component c), ModX c, Monad (MM c))
         => wl -- ^ the initial worklist
         -> State c -- ^ the initial state
-        -> State c
+        -> MM c (State c)
 runModX initialWl initialState = loop (initialModXLoopState initialState) initialWl

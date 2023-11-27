@@ -1,20 +1,9 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds #-}
 module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeDomainPre) where
 
-import Data.Coerce hiding (coerce)
-import qualified Data.Coerce as Coerce
-import Control.Applicative (Applicative(liftA2))
 import Data.Set (Set)
-import Data.Default
-import qualified Data.Set as Set
-import Control.Monad ((>=>), (<=<))
-import qualified Control.Monad as M
 import Domain
 import Prelude hiding (null)
-import Data.List hiding (null)
-import Control.Monad.Join
-import Data.Maybe (isJust)
-import Data.DMap ((:->))
 import Data.Kind
 import Data.Hashable
 import Data.Typeable

@@ -77,10 +77,3 @@ instance SchemeAlloc K VariableAdr V AdrDep where
 runAnalysis :: String -> DSto K V
 runAnalysis program = analyzeProgram @V exp [] []
    where exp = fromJust $ parseString program 
-
-testEval :: Exp -> DSto K V
-testEval exp = 
-   let (state, _, _, _) = analyze @(ModF VariableAdr V K AdrDep) 
-                          (exp, analysisEnvironment @VariableAdr, [], undefined)
-                          (analysisStore @V analysisEnvironment)
-   in state

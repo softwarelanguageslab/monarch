@@ -16,6 +16,7 @@ import Analysis.Scheme.Primitives
 import Control.Monad.Join
 import Control.Monad (zipWithM_)
 import Prelude hiding (exp, lex)
+import Debug.Trace
 
 -- | Base level evaluation function
 eval ::  forall m v . (SchemeDomain v, SchemeM m v) => Exp -> m v
@@ -24,7 +25,8 @@ eval (Bln b _)            = return (inject b)
 eval (Nll _)              = return nil
 eval e@(Str s _)          = stoStr e (inject s)
 eval (Var (Ide nam _))    = lookupEnv nam >>= lookupAdr
-eval (Iff prd csq alt _)  = cond (Monad.eval @_ @v prd) (Monad.eval csq) (Monad.eval alt)
+eval (Iff prd csq alt _)  = 
+   cond (Monad.eval @_ @v prd) (Monad.eval csq) (Monad.eval alt)
 eval (Bgn sqq _)          = evalSequence sqq 
 eval e@(Lam {})           = curry injectClo e <$> getEnv -- TODO: restrict env based on fv
 eval (Let bds bdy _)      = evalLet bds bdy

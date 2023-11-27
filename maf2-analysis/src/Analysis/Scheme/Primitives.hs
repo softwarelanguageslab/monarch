@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeApplications, RankNTypes #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, RankNTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
@@ -14,7 +14,7 @@ import qualified Data.Map as Map
 import Analysis.Monad
 import Analysis.Scheme.Monad
 import Domain.Scheme hiding (Exp)
-import Domain 
+import Domain
 import Control.Monad.Join
 import Control.Monad ((>=>))
 import Syntax.Scheme.AST
@@ -23,6 +23,10 @@ data Prim v = Prim { primName :: String, run :: forall m . PrimM m v => Exp -> [
 
 class (MonadDomainError m, MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
 instance (MonadDomainError m,  MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
+
+-- | No arguments
+fix0 :: String -> (forall m . PrimM m v => m v) -> Prim v
+fix0 nam f = Prim nam (\_ [] -> f)
 
 -- | Unary primitives 
 efix1 :: String -> (forall m . PrimM m v => Exp -> v -> m v) -> Prim v
@@ -52,7 +56,7 @@ allPrimitives = [
    fix1 "acos" Domain.acos,
    fix1 "atan" Domain.atan,
    -- fix1 "boolean?" (return . isBool),
-   fix1 "true?" (return . inject .isTrue),
+   fix1 "true?" (return . inject . isTrue),
    fix1 "false?" (return . inject . isFalse),
    fix1 "car" (pptrs >=> deref (const (return . car))),
    fix1 "cdr" (pptrs >=> deref (const (return . cdr))),
@@ -116,7 +120,8 @@ allPrimitives = [
    fix1 "vector?" $ return . inject . isVecPtr,
    fix2 "<" lt,
    fix2 "=" equals,
-   fix1 "random" Domain.random
+   fix1 "random" Domain.random,
+   fix0 "bool-top" $ return Domain.boolTop
    -- fix1 "error" todo
    ]
 

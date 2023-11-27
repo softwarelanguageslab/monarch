@@ -82,6 +82,7 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
   type Dep (ModF var v ctx dep)        = dep
   -- | The analysis of a single component runs the Scheme semantics
   -- on the body of that component
+  type MM (ModF var v ctx dep)         = Identity
   analyze (exp, env, ctx, _) store = 
        let (((_, _), (spawns, registers, triggers)), sto) = (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
               & runEvalT
@@ -95,7 +96,7 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
               & runAlloc @VrAdr (allocVar @ctx)
               & runCtx  ctx
               & runIdentity
-       in (sto, spawns, registers, triggers)
+       in return (sto, spawns, registers, triggers)
 
 -----------------------------------------
 -- Open recursion for evaluation
@@ -236,5 +237,5 @@ analyzeProgram :: forall v ctx wl dep var .
                -> wl       -- ^ the initial contents of the worklist, can be empty. This function will add the initial component to it. 
                -> ctx -- ^ context allocation function for a given expression (usually associated with a function call)
                -> State (ModF var v ctx dep)
-analyzeProgram exp initialWl initialCtx = runModX initialWl' (analysisStore @v analysisEnvironment)
+analyzeProgram exp initialWl initialCtx = runIdentity $ runModX initialWl' (analysisStore @v analysisEnvironment)
   where initialWl' = add (exp, analysisEnvironment, initialCtx, Ghost) initialWl

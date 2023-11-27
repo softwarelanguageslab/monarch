@@ -16,13 +16,15 @@ module Analysis.Monad(
  CtxM(..),
  CallM(..),
  deref,
- -- Interpretations
+ -- Implementations
  runSto,
  runEnv,
  runCtx,
  runErr,
  runErr',
  runAlloc,
+ runCallBottomT,
+ runNonDetT
 ) where
 
 import Analysis.Environment
@@ -42,6 +44,9 @@ import Control.Monad.Layer
 import Control.Monad.Trans.Maybe
 import Control.Monad.Writer hiding (mzero)
 import Control.Monad.Error
+import List.Transformer
+import GHC.TypeError
+import Data.Functor.Identity
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -126,7 +131,6 @@ instance forall env adr t . (Environment env adr, MonadLayer t, EnvM (Lower t) a
    withExtendedEnv bds =  lowerM (withExtendedEnv bds)
    getEnv = upperM getEnv
    withEnv f = lowerM (withEnv f)
-
 
 runEnv :: forall env m a .  env -> (EnvT env m) a -> m a
 runEnv initialEnv (EnvT m) = runReaderT m initialEnv
@@ -218,8 +222,11 @@ instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx t 
       f   <- ask
       return $ f from ctx
 
+instance {-# OVERLAPPING #-} TypeError (Text "No AllocM found on stack") => AllocM Identity from t to
+
 instance (Monad m, AllocM (Lower m) from t to, MonadLayer m) => AllocM m from t to where
    alloc = upperM . alloc @(Lower m) @from @t @to
+
 
 runAlloc :: forall t from ctx to m a . Allocator from ctx to -> AllocT from ctx t to m a ->  m a
 runAlloc allocator (AllocT m) = runReaderT m allocator
@@ -231,3 +238,52 @@ runAlloc allocator (AllocT m) = runReaderT m allocator
 
 instance (Monad m, CallM (Lower m) env v, MonadLayer m) => CallM m env v where
    call = upperM . call
+
+instance {-# OVERLAPPING #-} TypeError (Text "CallM not found on stack") => CallM Identity env v
+
+-- | Mock instance that ignores the call and always
+-- returns bottom.
+newtype CallBottomT m a = CallBottomT { getCallBottomT :: m a }
+                        deriving (Applicative, Functor, Monad)
+
+instance {-# OVERLAPPING #-} (Monad m, JoinLattice v) => CallM (CallBottomT m) env v where
+   call _ = CallBottomT $ return bottom 
+
+instance (MonadJoin m) => MonadJoin (CallBottomT m) where
+   mzero = CallBottomT mzero
+   mjoin (CallBottomT ma) = CallBottomT . mjoin ma . getCallBottomT
+
+instance (Monad m) => MonadLayer (CallBottomT m) where
+   type Lower (CallBottomT m) = m
+   upperM = CallBottomT
+   lowerM f (CallBottomT m) = CallBottomT $ f m
+
+runCallBottomT :: CallBottomT m a -> m a
+runCallBottomT (CallBottomT ma) = ma
+
+-- 
+-- NonDetT
+-- 
+
+-- | Useful for running the computation non-deterministically 
+-- and defering join to the end.
+newtype NonDetT m a = NonDetT (ListT m a)
+                           deriving (Functor, Applicative, Alternative, Monad)
+
+instance (Monad m) => MonadJoin (NonDetT m) where
+   mzero = List.Transformer.empty
+   mjoin (NonDetT ma) (NonDetT mb) = NonDetT $ ma List.Transformer.<|> mb
+
+instance (Monad m) => MonadLayer (NonDetT m) where
+   type Lower (NonDetT m) = m
+   upperM = NonDetT . lift
+   lowerM f (NonDetT m) =  NonDetT $ ListT $ f $ next m
+
+runNonDetT :: (Monad m) => NonDetT m a -> m [a]
+runNonDetT (NonDetT m) = do
+   s <- next m
+   case s of
+      Cons a nextM -> do
+         rest <- runNonDetT (NonDetT nextM)
+         return $ a : rest
+      Nil      -> return []
