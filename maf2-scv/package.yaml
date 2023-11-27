@@ -24,6 +24,7 @@ dependencies:
 - containers
 - mtl
 - process
+- file-embed
 
 ghc-options:
 - -Wall
@@ -41,6 +42,7 @@ default-extensions:
   - RankNTypes
   - TypeApplications
   - ScopedTypeVariables
+  - TemplateHaskell
 
 library:
   source-dirs: src

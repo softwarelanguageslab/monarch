@@ -1,67 +1,47 @@
--- | Solver + translation for Symbolic.AST formulas.
-module Symbolic.SMT(runSolver, checkSat, SolverResult(..)) where
+-- | Translation for Symbolic.AST formulas to and from SMTLib
+module Symbolic.SMT(prelude, translate, parseResult, SolverResult(..)) where
 
-import Data.Map (Map)
-import qualified Data.Map as Map
-
+import Text.Printf
 import Symbolic.AST
-import Control.Monad.State
-import Solver
-
--- | The result of solving an SMT formula.
-data SolverResult = Sat
-                  | Unsat
-                  | Unknown
-
---------------------------------------------------
--- Monad
---------------------------------------------------
-
--- | A cache for already solved SMT formulae
-newtype SolverState    = SolverState { getCache :: Map Formula SolverResult }
-
--- | Construct the initial contents of the cache
-initialState :: SolverState
-initialState = SolverState {
-      getCache = Map.empty
-   }
-
--- | The solver monad
-newtype Solver m a = Solver { getSolver ::  StateT SolverState m a }
-                     deriving (Applicative, Functor, Monad, MonadTrans, MonadState SolverState)
-
--- | Lookup the given value in the cache
-lookupCache :: Monad m => Formula -> Solver m (Maybe SolverResult)
-lookupCache formula = gets (Map.lookup formula . getCache)
-
--- | Put the given result in the cache
-putCache :: forall m . Monad m => Formula -> SolverResult -> Solver m SolverResult
-putCache formula solution =
-   modify (SolverState . Map.insert formula solution . getCache) >> return solution
-
--- | Run the solver monad
-runSolver :: Monad m => Solver m a -> m a
-runSolver = flip evalStateT initialState . getSolver
-
---------------------------------------------------
--- Solving
---------------------------------------------------
-
--- | Checks whether the given formula is satisfiable
-checkSat :: FormulaSolver m => Formula -> Solver m SolverResult
-checkSat formula = do
-   let query = translate formula
-   cacheHit <- lookupCache formula
-   maybe (lift (solve query) >>= putCache formula . parseResult) return cacheHit
+import Data.FileEmbed
 
 --------------------------------------------------
 -- Translation
 --------------------------------------------------
 
+prelude :: String
+prelude = $(embedStringFile "./smt/prelude.scm")
+
+-- | Translate the given proposition into 
+-- an SMTLib formula
+translateAtomic :: Proposition -> String
+translateAtomic (Variable nam) = nam
+translateAtomic (Literal (Num n)) =
+   printf "(VInteger %s)" (show n)
+translateAtomic (Literal (Str s)) =
+   printf "(VStr \"%s\")" s
+translateAtomic (Literal (Boo b)) =
+   printf "(VBool %s)" (if b then "true" else "false")
+translateAtomic (IsTrue prop) =
+   printf "(true?/v %s)" (translateAtomic prop)
+translateAtomic (IsFalse prop) = 
+   printf "(false?/v %s)" (translateAtomic prop)
+translateAtomic (Predicate nam props) =
+   printf "(%s %s)" nam (unwords $ map translateAtomic props)
+
 -- | Translate a formula to a string compatible
 -- with the SMTLib format.
 translate :: Formula -> String
-translate  = undefined
+translate (Conjunction f1 f2) =
+   printf "(and %s %s)" (translate f1) (translate f2)
+translate (Disjunction f1 f2) =
+   printf "(or %s %s)" (translate f1) (translate f2)
+translate (Negation f1) =
+   printf "(not %s)" (translate f1)
+translate (Atomic prop) =
+   printf (translateAtomic prop)
 
 parseResult :: String -> SolverResult
-parseResult = undefined
+parseResult "sat" = Sat
+parseResult "unsat" = Unsat
+parseResult _ = Unknown
