@@ -8,7 +8,8 @@ import Symbolic.SMT
 
 exampleFormula :: Formula
 exampleFormula = 
-   Atomic (IsFalse (Literal (Boo True)))
+   Conjunction (Atomic (IsFalse (Variable "x0")))
+               (Atomic (IsTrue  (Variable "x0")))
 
 runMain :: FormulaSolver m => m SolverResult
 runMain = do
@@ -21,4 +22,4 @@ runMain = do
 
 main :: IO ()
 main = 
-   runMain & runZ3Solver >>= print
+   runMain & runCachedSolver & runZ3Solver >>= print

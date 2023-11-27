@@ -128,7 +128,7 @@ instance FormulaSolver Z3Solver where
       -- Declare all variables as constants
       let names = variables script
       -- evaluate the mall in the solver
-      mapM_ (eval . printf "(declare-const %s V)" . show) names
+      mapM_ (eval . printf "(declare-const %s V)") names
       -- Evaluate all the assertions, and ignore any errors
       _ <- eval (printf "(assert %s)" (translate script))
       -- Check whether the model is satisfiable
