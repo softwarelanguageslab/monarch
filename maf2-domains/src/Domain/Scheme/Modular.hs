@@ -15,10 +15,7 @@ import Prelude hiding (null)
 import Data.List hiding (null)
 import Control.Monad.Join
 import Data.Maybe (isJust)
-import Data.DMap ((:->))
-import Data.Kind
 import Data.Hashable
-import Data.Typeable
 import GHC.Generics
 
 maybeSingle :: Maybe a -> Set a
