@@ -24,7 +24,9 @@ module Analysis.Monad(
  runErr',
  runAlloc,
  runCallBottomT,
- runNonDetT
+ runNonDetT,
+ -- Types for implementations
+ NonDetT
 ) where
 
 import Analysis.Environment
@@ -267,23 +269,11 @@ runCallBottomT (CallBottomT ma) = ma
 
 -- | Useful for running the computation non-deterministically 
 -- and defering join to the end.
-newtype NonDetT m a = NonDetT (ListT m a)
-                           deriving (Functor, Applicative, Alternative, Monad)
+newtype NonDetT a = NonDetT [a] deriving (Functor, Applicative, Monad)
 
-instance (Monad m) => MonadJoin (NonDetT m) where
-   mzero = List.Transformer.empty
-   mjoin (NonDetT ma) (NonDetT mb) = NonDetT $ ma List.Transformer.<|> mb
+instance MonadJoin NonDetT where
+   mzero = NonDetT []
+   mjoin (NonDetT ma) (NonDetT mb) = NonDetT $ ma ++ mb
 
-instance (Monad m) => MonadLayer (NonDetT m) where
-   type Lower (NonDetT m) = m
-   upperM = NonDetT . lift
-   lowerM f (NonDetT m) =  NonDetT $ ListT $ f $ next m
-
-runNonDetT :: (Monad m) => NonDetT m a -> m [a]
-runNonDetT (NonDetT m) = do
-   s <- next m
-   case s of
-      Cons a nextM -> do
-         rest <- runNonDetT (NonDetT nextM)
-         return $ a : rest
-      Nil      -> return []
+runNonDetT :: NonDetT a -> [a]
+runNonDetT (NonDetT a) = a

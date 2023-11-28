@@ -55,7 +55,7 @@ evalLetStar ((nam, ex) : rst) bdy = do
 evalLetRec :: forall v m . (SchemeDomain v, SchemeM m v) => [(Ide, Exp)] -> Exp -> m v
 evalLetRec bds bdy = do
    adrs  <- mapM allocVar vrs
-   mapM_ (uncurry writeAdr . (, unsp)) adrs
+   -- mapM_ (uncurry writeAdr . (, unsp)) adrs
    withExtendedEnv (zip (map name vrs) adrs) $ do
       vlus <- mapM Monad.eval eps
       mapM_ (uncurry writeAdr) (zip adrs vlus)
@@ -65,7 +65,7 @@ evalLetRec bds bdy = do
 evalLetrecStar :: forall v m . (SchemeDomain v, SchemeM m v) => [(Ide, Exp)] -> Exp -> m v
 evalLetrecStar bds bdy = do
    adrs  <- mapM (allocVar . fst) bds
-   mapM_ (uncurry writeAdr . (, unsp)) adrs
+   -- mapM_ (uncurry writeAdr . (, unsp)) adrs
    withExtendedEnv (zip (map (name . fst) bds) adrs) $ do
       -- difference with `letrec` is that the store is updated after each binding evaluation
       mapM_ (uncurry evalBinding) (zip adrs bds)
