@@ -215,7 +215,7 @@ type SchemeAnalysisConstraints var v ctx dep = (
          Show (Vlu (PAdr v)),
          Show (Vlu (SAdr v)),
          Show (Vlu (VAdr v)),
-         SchemeDomain v,
+         SchemeValue v,
          SchemeConstraints v Exp var (Env var v ctx dep),
          StoreDefinedFor v,
          Dependency var dep,

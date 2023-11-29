@@ -45,6 +45,7 @@ library
       Domain.Interval
       Domain.Python.DataFrame
       Domain.Scheme.Class
+      Domain.Scheme.Derived.Pair
       Domain.Scheme.Modular
       Domain.Scheme.Store
       Paths_maf2_domains

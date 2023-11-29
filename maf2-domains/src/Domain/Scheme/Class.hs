@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds #-}
-module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeDomainPre) where
+{-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
+module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue) where
 
 import Data.Set (Set)
 import Domain
@@ -9,40 +9,28 @@ import Data.Hashable
 import Data.Typeable
 
 -- | Reusable pre-conditions for a valid Scheme domain
-type SchemeDomainPre v = 
+type SchemeDomainPre v =
   ( RealDomain v,
     IntDomain v,
     CharDomain v,
     BoolDomain v,
     Ord v,
-    Address (PAdr v),
-    Address (VAdr v),
-    Address (SAdr v),
-    Address (Adr v),
-    -- make sure that the strings adhere to the string domain
-    StringDomain (Vlu (SAdr v)),
-    -- make sure the vectors adhere to the vector domain
-    VectorDomain (Vlu (VAdr v)),
-    -- make sute that the pairs adhere to the pair domain 
-    PairDomain (Vlu (PAdr v)),
-    -- make sure that the contents of the vectors and pairs point to Scheme values
-    Content  (Vlu (PAdr v)) ~ v,
-    VContent (Vlu (VAdr v)) ~ v,
-    -- make sure that `v` is used as an integer in the vector
-    VIndex (Vlu (VAdr v)) ~ v,
-    -- make sure that `v` is used as the index and character in their corresponding lattices
-    IntS (Vlu (SAdr v)) ~ v,
-    ChaS (Vlu (SAdr v)) ~ v,
-    -- booleans in the number domain should link back to the values in the scheme domain
-    Boo v ~ v,
-    -- variables should point to values
-    Vlu (Adr v) ~ v)    
-
+    Boo v ~ v)
 
 -- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
-class (SchemeDomainPre v) =>
-  SchemeDomain v
-  where 
+class (RealDomain v,
+       IntDomain v,
+       CharDomain v,
+       BoolDomain v,
+       Ord v,
+       -- all address type families should satisfy the address typeclass
+       Address (PAdr v),
+       Address (VAdr v),
+       Address (SAdr v),
+       Address (Adr v),
+       -- booleans in the number domain should link back to the values in the scheme domain
+       Boo v ~ v) => SchemeDomain v
+  where
   -- types of addresses to variables
   type Adr v :: Type
   -- Types of pointers to pairs, vectors and strings
@@ -62,9 +50,9 @@ class (SchemeDomainPre v) =>
   sptr :: SAdr v -> v -- ^ a pointer to strings
 
   -- Pointer extraction 
-  pptrs :: (PAdr v ~ adr, Address adr, AbstractM m) => v -> m (Set adr)
-  vptrs :: (VAdr v ~ adr, Address adr, AbstractM m) => v -> m (Set adr)
-  sptrs :: (SAdr v ~ adr, Address adr, AbstractM m) => v -> m (Set adr)
+  pptrs :: AbstractM m => v -> m (Set (PAdr v))
+  vptrs :: AbstractM m => v -> m (Set (VAdr v))
+  sptrs :: AbstractM m => v -> m (Set (SAdr v))
 
   -- Closures
   injectClo :: (Exp v, Env v) -> v
@@ -96,14 +84,49 @@ class (SchemeDomainPre v) =>
   isUnsp :: v -> Bool
   isPrim :: v -> Bool
 
+-- | Some `v` that can be used in semantics
+-- as 'the' Scheme value. It relates pointer-referenced
+-- domains to ensure that they refer back to this `v`
+-- in their contents. For example, for a pair, the content
+-- of the pair should be a `v` again. This important 
+-- for implementing primitives and other semantics 
+-- that rely on these things to be the case.
+--
+-- For implementing the Scheme domain itself, however,
+-- these constraints do not really apply and can simply
+-- be omitted from the set of constraints for a valid `SchemeDomain`. 
+-- In essence, a `SchemeDomain` is simply a combination of pointer sets,
+-- sets of closures and the numerical domain. All other domains are completely 
+-- seperate from this domain but can be integrated in a valid way into analysis
+-- using a `SchemeValue` constraint.
+type SchemeValue v  = (
+    -- the values should form a ShemeDomain
+    SchemeDomain v,
+    -- make sure that the strings adhere to the string domain
+    StringDomain (Vlu (SAdr v)),
+    -- make sure the vectors adhere to the vector domain
+    VectorDomain (Vlu (VAdr v)),
+    -- make sute that the pairs adhere to the pair domain 
+    PairDomain (Vlu (PAdr v)),
+    -- make sure that the contents of the vectors and pairs point to Scheme values
+    Content  (Vlu (PAdr v)) ~ v,
+    VContent (Vlu (VAdr v)) ~ v,
+    -- make sure that `v` is used as an integer in the vector
+    VIndex (Vlu (VAdr v)) ~ v,
+    -- make sure that `v` is used as the index and character in their corresponding lattices
+    IntS (Vlu (SAdr v)) ~ v,
+    ChaS (Vlu (SAdr v)) ~ v,
+    -- variables should point to values
+    Vlu (Adr v) ~ v)
+
 -----------------------------------------------------------------------------
 -- Constraints for when the type of variables and environments is known 
 -----------------------------------------------------------------------------
 
-type SchemeConstraints v exp var env = 
+type SchemeConstraints v exp var env =
    (Adr v ~ var,
-    Env v ~ env, 
-    Exp v ~ exp, 
+    Env v ~ env,
+    Exp v ~ exp,
     Typeable v,
     Typeable (PAdr v),
     Typeable (SAdr v),

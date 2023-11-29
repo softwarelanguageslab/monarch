@@ -16,7 +16,7 @@ stoStr ex v = allocStr ex >>= (\adr -> writeAdr adr v $> sptr adr)
 
 type SchemeM' m v = (
    -- Domain
-   SchemeDomain v,
+   SchemeValue v,
    PairDomain (Vlu (PAdr v)),
    VectorDomain (Vlu (VAdr v)),
    StringDomain (Vlu (SAdr v)),

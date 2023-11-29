@@ -322,21 +322,14 @@ instance
     IntDomain  i,
     CharDomain c,
     BoolDomain b,
-    StringDomain (Vlu str),
-    VectorDomain (Vlu vec),
-    PairDomain (Vlu pai),
     IntC c ~ i,
     Rea  i ~ r,
     Boo  i ~ b,
     Boo  r ~ b,
     IntR r ~ i,
     Coercible (Str  i) (Vlu str),
-    Content  (Vlu pai) ~ ModularSchemeValue r i c b pai vec str var exp env,
-    VContent (Vlu vec) ~ ModularSchemeValue r i c b pai vec str var exp env,
     IntS (Vlu str) ~ ModularSchemeValue r i c b pai vec str var exp env,
     ChaS (Vlu str) ~ ModularSchemeValue r i c b pai vec str var exp env,
-    VIndex (Vlu vec) ~ ModularSchemeValue r i c b pai vec str var exp env,
-    Vlu var ~ ModularSchemeValue r i c b pai vec str var exp env,
     Address  vec,
     Address  str,
     Address pai,
@@ -420,8 +413,9 @@ schemeTop :: (TopLattice r,
           -> Set vec
           -> Set str 
           -> Set (exp, env)
+          -> Set String
           -> ModularSchemeValue r i c b pai vec str var exp env
-schemeTop pai vec str clos = 
+schemeTop pai vec str closures primitives = 
    ModularSchemeValue {
       real      = Just top,
       integer   = Just top,
@@ -430,5 +424,8 @@ schemeTop pai vec str clos =
       paiPtr    = Just pai,
       vecPtr    = Just vec,
       strPtr    = Just str,
-      clo       = Just clos
+      clo       = Just closures,
+      null      = Just (),
+      unspecified = Just (),
+      primitives  = Just primitives
    }
