@@ -25,6 +25,7 @@ source-repository head
 
 library
   exposed-modules:
+      Domain.Symbolic
       Lib
       Solver
       Solver.Z3
@@ -42,11 +43,14 @@ library
       TypeApplications
       ScopedTypeVariables
       TemplateHaskell
+      TypeFamilies
+      MultiParamTypeClasses
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
     , containers
     , file-embed
+    , maf2-domains
     , mtl
     , process
   default-language: Haskell2010
@@ -65,11 +69,14 @@ executable maf2-scv-exe
       TypeApplications
       ScopedTypeVariables
       TemplateHaskell
+      TypeFamilies
+      MultiParamTypeClasses
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , file-embed
+    , maf2-domains
     , maf2-scv
     , mtl
     , process
@@ -90,11 +97,14 @@ test-suite maf2-scv-test
       TypeApplications
       ScopedTypeVariables
       TemplateHaskell
+      TypeFamilies
+      MultiParamTypeClasses
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , file-embed
+    , maf2-domains
     , maf2-scv
     , mtl
     , process

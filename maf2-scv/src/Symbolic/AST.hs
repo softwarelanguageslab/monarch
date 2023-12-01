@@ -4,9 +4,11 @@
 module Symbolic.AST(SolverResult(..), Formula(..), Proposition(..), Literal(..), SelectVariable(..)) where 
 
 -- | A literal as they appear in a source program
-data Literal   = Num  Int
+data Literal   = Num  Integer
+               | Rea  Double
                | Str  String
                | Boo  Bool
+               | Cha  Char
                deriving (Eq, Ord)
 
 -- | A proposition consists of an
@@ -15,11 +17,17 @@ data Literal   = Num  Int
 --
 -- All variables for our propositions are universivelly  
 -- quantified.
-data Proposition = Variable String
-                 | Literal  Literal
-                 | IsTrue   Proposition -- ^ assertion that the proposition's truth value is "true"
-                 | IsFalse  Proposition -- ^ assertion that the proposition's trught value is "false
+data Proposition = Variable  String
+                 | Literal   Literal
+                 | IsTrue    Proposition -- ^ assertion that the proposition's truth value is "true"
+                 | IsFalse   Proposition -- ^ assertion that the proposition's trught value is "false
                  | Predicate String [Proposition]
+                 -- | non-deterministic choice, both propositions could be valid, one of them or neither
+                 | Choice    Proposition Proposition
+                 | Fresh -- ^ Generate an unquantified fresh variable
+                 -- | Representation of the bottom value, nothing can be derived from this and a
+                 -- all assertions fail
+                 | Bottom
                  deriving (Eq, Ord)
 
 -- | Inductively defined formulae, these include

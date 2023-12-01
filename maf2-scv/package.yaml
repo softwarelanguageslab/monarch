@@ -25,6 +25,7 @@ dependencies:
 - mtl
 - process
 - file-embed
+- maf2-domains
 
 ghc-options:
 - -Wall
@@ -43,6 +44,8 @@ default-extensions:
   - TypeApplications
   - ScopedTypeVariables
   - TemplateHaskell
+  - TypeFamilies
+  - MultiParamTypeClasses
 
 library:
   source-dirs: src
