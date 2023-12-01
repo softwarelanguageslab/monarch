@@ -49,6 +49,8 @@ library:
     - Domain.ConstantPropagation
     - Domain.Dictionary
     - Domain.Scheme
+    - Domain.Scheme.Class
+    - Domain.Scheme.Modular
     - Domain.Scheme.CPDomain
     - Domain.Actors
     - Domain.TopLifted

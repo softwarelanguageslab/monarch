@@ -12,7 +12,6 @@ import Prelude hiding (div, ceiling, floor, round, log, sin, asin, cos, acos, ta
 import Domain
 import Domain.Scheme.Class
 import Control.Monad.Join
-import Data.Dynamic
 
 
 -- TODO: there are some problems with this approach, 
