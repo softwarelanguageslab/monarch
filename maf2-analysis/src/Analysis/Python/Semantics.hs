@@ -32,8 +32,9 @@ evalStm (Return _ expr _)               = maybe (returnWith none) (returnWith <=
 evalStm (Break _ _)                     = todo "eval break"
 evalStm (Continue _ _)                  = todo "eval continue"
 evalStm (Conditional _ grds els _ )     = evalIf grds els               -- if-elif-else
-evalStm (StmtExp _ e _)                 = M.evalReturn e (pure void)
-evalStm stmt = error "unrecognized statement" 
+evalStm (StmtExp _ e _)                 = do
+   M.eval e >> pure void
+evalStm stmt = error "unrecognized statement"
 
 -- | Assign the given value to the given left-hand-side expression
 assignTo :: PyM m v a => Lhs a Micro -> v -> m ()
