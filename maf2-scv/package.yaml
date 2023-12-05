@@ -26,6 +26,8 @@ dependencies:
 - process
 - file-embed
 - maf2-domains
+- maf2-syntax
+- maf2-analysis
 
 ghc-options:
 - -Wall
@@ -45,7 +47,10 @@ default-extensions:
   - ScopedTypeVariables
   - TemplateHaskell
   - TypeFamilies
+  - StandaloneDeriving
   - MultiParamTypeClasses
+  - FlexibleContexts
+  - ConstraintKinds
 
 library:
   source-dirs: src

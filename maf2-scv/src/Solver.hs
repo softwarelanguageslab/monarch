@@ -18,6 +18,13 @@ class Monad m => FormulaSolver m where
    -- there is some model for the given assertions in the SMTLib 
    -- script by outputting SMTLib compatible output.
    solve :: Formula -> m SolverResult
+   -- | Returns true whenever the formula is feasible (sat or unknown)
+   ifFeasible :: Formula -> m Bool
+   ifFeasible formula = do 
+      result <- solve formula
+      return (isSat result || isUnknown result)
+
+   
 
 --------------------------------------------------
 -- Caching Monad

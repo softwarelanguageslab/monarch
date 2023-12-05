@@ -2,25 +2,28 @@
 module Domain.Symbolic where
 
 import Symbolic.AST
+import qualified Syntax.Scheme as Scheme (Exp)
 import Domain
 import Domain.Scheme.Class
+import Control.Monad.Join
+import Data.Map (Map)
 
 --------------------------------------------------
 -- Declaration
 --------------------------------------------------
 
-newtype SymbolicValue sptr vptr pptr = SymbolicValue Proposition
+newtype SymbolicValue ptr sptr vptr pptr = SymbolicValue Proposition deriving (Eq, Ord)
 
 --------------------------------------------------
 -- Lattice instances
 --------------------------------------------------
 
-instance Joinable (SymbolicValue sptr vptr pptr) where
+instance Joinable (SymbolicValue ptr sptr vptr pptr) where
    join (SymbolicValue Bottom) (SymbolicValue p2) = SymbolicValue p2
    join (SymbolicValue p1) (SymbolicValue Bottom) = SymbolicValue p1
    join (SymbolicValue p1) (SymbolicValue p2) = SymbolicValue (Choice p1 p2)
 
-instance JoinLattice (SymbolicValue sptr vptr pptr) where
+instance JoinLattice (SymbolicValue ptr sptr vptr pptr) where
    bottom = SymbolicValue Bottom
    subsumes _ (SymbolicValue Bottom) = True
    subsumes (SymbolicValue p1) (SymbolicValue p2) = p1 == p2
@@ -29,8 +32,8 @@ instance JoinLattice (SymbolicValue sptr vptr pptr) where
 -- NumberDomain instance
 ------------------------------------------------------------
 
-instance NumberDomain (SymbolicValue sptr vptr pptr) where
-   type Boo (SymbolicValue sptr vptr pptr) = (SymbolicValue sptr vptr pptr)
+instance NumberDomain (SymbolicValue ptr sptr vptr pptr) where
+   type Boo (SymbolicValue ptr sptr vptr pptr) = (SymbolicValue ptr sptr vptr pptr)
    isZero (SymbolicValue n) = return $ SymbolicValue $ Predicate "zero?/v" [n]
    random _ = return $ SymbolicValue Fresh
    plus (SymbolicValue n1) (SymbolicValue n2) =
@@ -51,16 +54,16 @@ instance NumberDomain (SymbolicValue sptr vptr pptr) where
 -- IntDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicValue sptr vptr pptr) Integer where
+instance Domain (SymbolicValue ptr sptr vptr pptr) Integer where
    inject = SymbolicValue . Literal . Num
 
-instance IntDomain (SymbolicValue sptr vptr pptr) where
+instance IntDomain (SymbolicValue ptr sptr vptr pptr) where
    -- TODO: Str SymbolicValue is problematic here since it needs to refer 
    -- to something that actually implements the string domain, perhaps
    --  it is best to move toString into the string domain? Although
    --  this creates an unnecesary dependency from the string domain
    --  to the numeric domains.
-   type Rea (SymbolicValue sptr vptr pptr) = SymbolicValue sptr vptr pptr
+   type Rea (SymbolicValue ptr sptr vptr pptr) = SymbolicValue ptr sptr vptr pptr
    toReal (SymbolicValue n1) = return $ SymbolicValue $ Predicate "as-real/v" [n1]
    toString = undefined
    quotient (SymbolicValue n1) (SymbolicValue n2) =
@@ -75,11 +78,11 @@ instance IntDomain (SymbolicValue sptr vptr pptr) where
 -- RealDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicValue sptr vptr pptr) Double where  
+instance Domain (SymbolicValue ptr sptr vptr pptr) Double where  
    inject n = SymbolicValue $ Literal (Rea n)
 
-instance RealDomain (SymbolicValue sptr vptr pptr) where   
-   type IntR (SymbolicValue sptr vptr pptr) = SymbolicValue sptr vptr pptr
+instance RealDomain (SymbolicValue ptr sptr vptr pptr) where   
+   type IntR (SymbolicValue ptr sptr vptr pptr) = SymbolicValue ptr sptr vptr pptr
    toInt (SymbolicValue n1)   = return $ SymbolicValue $ Predicate "as-int/v"   [n1]
    ceiling (SymbolicValue n1) = return $ SymbolicValue $ Predicate "ceiling/v"  [n1]
    floor (SymbolicValue n1)   = return $ SymbolicValue $ Predicate "floor/v"    [n1]
@@ -97,10 +100,10 @@ instance RealDomain (SymbolicValue sptr vptr pptr) where
 -- BoolDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicValue sptr vptr pptr) Bool where
+instance Domain (SymbolicValue ptr sptr vptr pptr) Bool where
    inject n = SymbolicValue $ Literal (Boo n)
 
-instance BoolDomain (SymbolicValue sptr vptr pptr) where
+instance BoolDomain (SymbolicValue ptr sptr vptr pptr) where
    isTrue = const False -- we unknown status of whether it is fale or true, so neither is
    isFalse = const False
    not (SymbolicValue v) = SymbolicValue $ Predicate "not/v" [v]
@@ -111,19 +114,59 @@ instance BoolDomain (SymbolicValue sptr vptr pptr) where
 -- CharDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicValue sptr vptr pptr) Char where  
+instance Domain (SymbolicValue ptr sptr vptr pptr) Char where  
    inject c = SymbolicValue $ Literal (Cha c)
 
-instance CharDomain (SymbolicValue sptr vptr pptr) where
-   type IntC (SymbolicValue sptr vptr pptr) = SymbolicValue sptr vptr pptr
+instance CharDomain (SymbolicValue ptr sptr vptr pptr) where
+   type IntC (SymbolicValue ptr sptr vptr pptr) = SymbolicValue ptr sptr vptr pptr
    downcase  (SymbolicValue c) = return $ SymbolicValue $ Predicate "downcase/v" [c]
    upcase    (SymbolicValue c) = return $ SymbolicValue $ Predicate "upcase/v"   [c]
    charToInt (SymbolicValue c) = return $ SymbolicValue $ Predicate "as-int/v"   [c]
-   isLower   (SymbolicValue _) = return bottom -- TODO: this yields the most precise result when combined with another lattice
-                                               -- but is this really sound?
+   isLower   (SymbolicValue _) = return bottom 
    isUpper   (SymbolicValue _) = return bottom
-   charEq _ _ = return bottom
-   charLt _ _ = return bottom
+   charEq _ _   = return bottom
+   charLt _ _   = return bottom
    charEqCI _ _ = return bottom
    charLtCI _ _ = return bottom
+
+------------------------------------------------------------
+-- SchemeDomain instance
+------------------------------------------------------------
+
+instance (Address ptr,
+          Address sptr,
+          Address vptr,
+          Address pptr) => SchemeDomain (SymbolicValue ptr sptr vptr pptr) where
+  type Adr (SymbolicValue ptr sptr vptr pptr)  = ptr
+  type PAdr (SymbolicValue ptr sptr vptr pptr) = pptr
+  type SAdr (SymbolicValue ptr sptr vptr pptr) = sptr
+  type VAdr (SymbolicValue ptr sptr vptr pptr) = vptr
+
+  type Exp (SymbolicValue ptr sptr vptr pptr)  = Scheme.Exp
+  type Env (SymbolicValue ptr sptr vptr pptr)  = Map String ptr
+
+  pptr      = const bottom
+  vptr      = const bottom
+  sptr      = const bottom
+  pptrs     = return . const bottom
+  vptrs     = return . const bottom
+  sptrs     = return . const bottom
+  injectClo = const bottom
+  clos      = const bottom
+  nil       = SymbolicValue $ Literal Nil
+  unsp      = SymbolicValue $ Literal Unsp
+  prim      = SymbolicValue . Variable
+  prims     = const bottom
+  withProc  = const . const mzero
+  isInteger = const False
+  isReal    = const False
+  isChar    = const False
+  isVecPtr  = const False
+  isStrPtr  = const False
+  isPaiPtr  = const False
+  isClo     = const False
+  isBool    = const False
+  isNil     = const False
+  isUnsp    = const False
+  isPrim    = const False
 

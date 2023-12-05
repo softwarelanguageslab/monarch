@@ -34,6 +34,7 @@ library
       Analysis.Scheme.Monad
       Interpreter.Scheme
       Control.SVar.ModX
+      Control.Monad.Layer
   other-modules:
       Analysis.Actors.Mailbox
       Analysis.Actors.Monad
@@ -50,7 +51,6 @@ library
       Benchmark.Programs
       Control.Monad.Cond
       Control.Monad.Error
-      Control.Monad.Layer
       Control.SVar.GenId
       Data.LabeledProduct
       Data.ListExtra
