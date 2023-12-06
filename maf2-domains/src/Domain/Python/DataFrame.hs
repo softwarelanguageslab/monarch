@@ -5,7 +5,9 @@ module Domain.Python.DataFrame where
 import Data.Kind
 import Domain.Lattice 
 
---- DataFrame abstraction interface ---
+------------------------------------------------------------
+--- DataFrame abstraction interface 
+------------------------------------------------------------
 
 class JoinLattice d => DataFrameDomain d where
     type Nam d :: Type
@@ -15,7 +17,9 @@ class JoinLattice d => DataFrameDomain d where
     create :: Nam d -> Row d -> Col d -> d 
 
 
---- A single dataframe ---
+------------------------------------------------------------
+--- A single dataframe 
+------------------------------------------------------------
 
 data DataFrame s r c = DataFrame { name :: s, 
                                    rows :: r, 
@@ -40,7 +44,9 @@ instance (DFConstraint JoinLattice s r c, DFConstraint Eq s r c)
     subsumes df1 df2 = df1 `join` df2 == df1
 
 
--- A set of dataframes ---
+------------------------------------------------------------
+-- A set of dataframes 
+------------------------------------------------------------
 
 newtype DataFrameSet s r c = DataFrameSet [DataFrame s r c]
     deriving (Joinable)
