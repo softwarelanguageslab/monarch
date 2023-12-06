@@ -1,9 +1,10 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
-module Domain.Lattice (JoinLattice(..), Meetable(..), overlap, Domain(..), TopLattice(..), SplitLattice(..), BoolDomain(..), justOrBot, Joinable(..), WidenLattice(..)) where
+module Domain.Lattice (JoinLattice(..), Meetable(..), overlap, reduce, Domain(..), TopLattice(..), SplitLattice(..), BoolDomain(..), justOrBot, Joinable(..), WidenLattice(..)) where
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Map (Map)
+import Data.List (partition)
 
 class Joinable v where
    join :: v -> v -> v
@@ -13,6 +14,20 @@ class Meetable v where
 
 overlap :: (Meetable v, JoinLattice v, Eq v) => v -> v -> Bool
 overlap v1 v2 = v1 `meet` v2 /= bottom 
+
+reduce :: (Meetable v, JoinLattice v, Eq v) => [v] -> [v]
+reduce [] = []
+reduce (v:vs)
+    | updated == v   = v : reduce oth
+    | otherwise      = reduce (updated : oth)
+    where (olp, oth) = partition (overlap v) vs
+          updated    = joins (v:olp)
+
+instance (JoinLattice l, Meetable l, Eq l) => Joinable [l] where
+   join l1 l2 = reduce (l1 ++ l2)  
+instance (JoinLattice l, Meetable l, Eq l) => JoinLattice [l] where
+   bottom = []
+   subsumes l1 l2 = join l1 l2 == l1 
 
 --- | A regular join-semilattice with bottom
 --- but without top.

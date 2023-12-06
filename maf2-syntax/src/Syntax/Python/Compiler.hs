@@ -75,7 +75,7 @@ compileStmt (AST.Conditional grds els a)  = Conditional () <$> mapM (\(exp, st) 
 compileStmt (StmtExpr e a)                = pure (StmtExp () (compileExp e) a)
 compileStmt (Import items _)              = error "import not supported"
 compileStmt (FromImport items _ _)        = error "import not supported"
-compileStmt (For vrs gen bdy els _)       = undefined
+compileStmt (For vrs gen bdy els _)       = todo "for expressions"
 compileStmt (Class nam ags bdy a)         = do
    assignment <- tell [Ide nam] >> (assign (Ide nam) =<< compileClassInstance a (ident_string nam) ags)
    ltt <- Let () [] <$> compileClassBdy (Ide nam) bdy

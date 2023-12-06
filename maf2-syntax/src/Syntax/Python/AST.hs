@@ -179,7 +179,9 @@ deriving instance (Holds Eq   ξ a) => Eq (Arg a ξ)
 
 -- | The left-hand-side of an assignment
 data Lhs a ξ = Field (Exp a ξ) (Ide a) a -- ^ assignment to a field
-             | ListPat [Lhs a ξ] a | TuplePat [Lhs a ξ] a | IdePat (XIde ξ a)
+             | ListPat [Lhs a ξ] a 
+             | TuplePat [Lhs a ξ] a 
+             | IdePat (XIde ξ a)
 
 deriving instance (Holds Show ξ a) => Show (Lhs a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Lhs a ξ)
