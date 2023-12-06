@@ -169,4 +169,3 @@ instance (Address ptr,
   isNil     = const False
   isUnsp    = const False
   isPrim    = const False
-
