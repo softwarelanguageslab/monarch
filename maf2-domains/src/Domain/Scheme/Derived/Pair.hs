@@ -3,8 +3,25 @@
 -- in the Scheme domain based on a tuple of values
 -- that implement the given Scheme domain.
 --
--- As addresses, a combination of addresses is proposed
--- that should resolve to the same underlying string domain.
+-- NOTE: this domain is implemented under some assumptions.
+-- One assumption of note is about error reporting in the 
+-- subdomains. Some operations in the `SchemeDomain` are 
+-- executed in a monadic context, this is to be able to 
+-- transparantely report errors and to be able to support
+-- non-determnistic behavior. The downside of this approach 
+-- is that it becomes unclear what is supposed to happen
+-- when two domains are combined. For instance, their 
+-- errors could be combined in a way that if the left
+-- fails the right subdomain can still succeed.
+-- Another option is to fail the entire operation if 
+-- the left or right fails. In this implementation we chose
+-- for the latter option. Therefore the assumption is that 
+-- the two subdomains behave in a semantically equivalent
+-- way in terms of errors. That is, if one subdomain fails
+-- then the other should also fail, or return `⊥`. 
+-- Unfortunately, we cannot encode this property in the 
+-- type system and is left as an implicit assumption
+-- for the users of this domain.
 module Domain.Scheme.Derived.Pair(SchemePairedValue) where
 
 import Prelude hiding (div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not)
@@ -14,35 +31,6 @@ import Domain.Scheme.Class
 import Control.Monad.Join
 
 
--- TODO: there are some problems with this approach, 
--- that are not really technical but rather conceptual.
---
--- * Firstly, it is unclear what is supposed to happen
--- when the left or right lattice results in an error.
--- Are the errors joined, and, in case no valid value 
--- can be derived for the left or the right (or both)
--- then both values are set to bottom? This kind of undoes
--- the point of using the monad in the operations as the 
--- monad can no longer short-circuit.
--- * Secondly, it is unclear how this approach should be 
--- used in practice for overapproximating the semantics.
--- On a conceptual level the intuitive approach would be 
--- to join the semantics of both subdomains together. 
--- For example, when deriving whether a value `isTrue`
--- an `or` should be used to combine both the left and 
--- right subdomains. However, in practice, this is not 
--- always the desired result. One of the goals 
--- of this lattice is that another domain can be added
--- to give some extra information, but on its own
--- it cannot provide the needed precision.
--- An example is the "taint lattice" which only 
--- keeps track of whether a value is tainted or not,
--- it cannot say anything about the truth of a value,
--- yet it is placed on an equal footing with the left
--- lattice (or right, since it symmetric) that could 
--- provide this information. Hence, the intuitive
--- conceptualisation does not align with the practical
--- considerations.
 
 ------------------------------------------------------------
 -- Declaration

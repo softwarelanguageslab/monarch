@@ -25,6 +25,8 @@ source-repository head
 
 library
   exposed-modules:
+      Analysis.Symbolic.Monad
+      Analysis.Symbolic.Semantics
       Domain.Symbolic
       Lib
       Solver
@@ -44,13 +46,18 @@ library
       ScopedTypeVariables
       TemplateHaskell
       TypeFamilies
+      StandaloneDeriving
       MultiParamTypeClasses
+      FlexibleContexts
+      ConstraintKinds
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
     , containers
     , file-embed
+    , maf2-analysis
     , maf2-domains
+    , maf2-syntax
     , mtl
     , process
   default-language: Haskell2010
@@ -70,14 +77,19 @@ executable maf2-scv-exe
       ScopedTypeVariables
       TemplateHaskell
       TypeFamilies
+      StandaloneDeriving
       MultiParamTypeClasses
+      FlexibleContexts
+      ConstraintKinds
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , file-embed
+    , maf2-analysis
     , maf2-domains
     , maf2-scv
+    , maf2-syntax
     , mtl
     , process
   default-language: Haskell2010
@@ -98,14 +110,19 @@ test-suite maf2-scv-test
       ScopedTypeVariables
       TemplateHaskell
       TypeFamilies
+      StandaloneDeriving
       MultiParamTypeClasses
+      FlexibleContexts
+      ConstraintKinds
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , file-embed
+    , maf2-analysis
     , maf2-domains
     , maf2-scv
+    , maf2-syntax
     , mtl
     , process
   default-language: Haskell2010

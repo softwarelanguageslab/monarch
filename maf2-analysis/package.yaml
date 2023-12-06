@@ -87,6 +87,7 @@ library:
   - Analysis.Scheme.Monad
   - Interpreter.Scheme
   - Control.SVar.ModX
+  - Control.Monad.Layer
 
 executables:
   maf-exe:

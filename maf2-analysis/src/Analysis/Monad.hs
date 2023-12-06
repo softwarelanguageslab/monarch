@@ -108,9 +108,6 @@ class (Monad m) => CallM m env v where
 
 class (Monad m) => EvalM m v e  | m -> v where
    eval :: e -> m v
-   -- | Runs the evaluation action but return the result of the second argument instead.
-   evalReturn :: e -> m v -> m v
-   evalReturn e m = eval @_ @v e >> m
 
 ----------------------------------------------------------------------------------------------------
 -- Instances

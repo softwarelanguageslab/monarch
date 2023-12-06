@@ -84,6 +84,7 @@ class (RealDomain v,
   isUnsp :: v -> Bool
   isPrim :: v -> Bool
 
+
 -- | Some `v` that can be used in semantics
 -- as 'the' Scheme value. It relates pointer-referenced
 -- domains to ensure that they refer back to this `v`
