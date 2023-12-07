@@ -17,7 +17,7 @@ module Analysis.Monad(
  CallM(..),
  deref,
  -- Implementations
- runSto,
+ runStoreT,
  runEnv,
  runCtx,
  runErr,
@@ -25,6 +25,7 @@ module Analysis.Monad(
  runAlloc,
  runCallBottomT,
  runNonDetT,
+ runIdentityDebug,
  -- Types for implementations
  NonDetT
 ) where
@@ -37,7 +38,6 @@ import Syntax.Scheme.AST
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.TypeLevel.List
-import Data.DMap
 import Data.Kind
 import Domain
 import Analysis.Store hiding (lookupSto, extendSto, updateSto)
@@ -49,6 +49,8 @@ import Control.Monad.Error
 import List.Transformer
 import GHC.TypeError
 import Data.Functor.Identity
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -87,20 +89,20 @@ lookups look f = Set.fold (mjoin . deref') Control.Monad.Join.mzero
 
 -- 
 
-class (Monad m, Address adr) => StoreM m adr where
+class (Monad m) => StoreM m t adr v | m adr -> v t where
    -- | Write to a newly allocated address
-   writeAdr  :: adr -> Vlu adr -> m ()
+   writeAdr  :: adr -> v -> m ()
    -- | Update an existing address
-   updateAdr :: adr -> Vlu adr -> m ()
+   updateAdr :: adr -> v -> m ()
    -- | Lookup the value at the given address, returns bottom if the address does not exist
-   lookupAdr :: adr -> m (Vlu adr)
+   lookupAdr :: adr -> m v
 
-deref :: (StoreM m adr, MonadJoin m, JoinLattice a) => (adr -> Vlu adr -> m a) -> Set adr -> m a
-deref = lookups lookupAdr
+deref :: forall m adr v a t . (StoreM m t adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
+c
 
 --
 
-class (Monad m) => AllocM m from (t :: Type -> Type) adr  where
+class (Monad m) => AllocM m from t adr  where
    alloc :: from -> m adr
 
 class (Monad m) => CallM m env v where
@@ -112,6 +114,16 @@ class (Monad m) => EvalM m v e  | m -> v where
 ----------------------------------------------------------------------------------------------------
 -- Instances
 ----------------------------------------------------------------------------------------------------
+
+newtype IdentityDebug a b = IdentityDebug (Identity b) deriving (Applicative, Monad, Functor)
+instance MonadJoin (IdentityDebug a) where
+   mzero = IdentityDebug mzero
+   mjoin (IdentityDebug ma) (IdentityDebug mb) = IdentityDebug $ mjoin ma mb
+
+runIdentityDebug :: IdentityDebug a b -> b
+runIdentityDebug (IdentityDebug m) = runIdentity m
+
+--
 
 newtype EnvT env m a = EnvT { getEnvReader ::  ReaderT env m a } deriving (MonadReader env, Monad, Applicative, MonadLayer, Functor)
 
@@ -125,6 +137,7 @@ instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m)
    getEnv = ask
    withEnv = local
 
+instance {-# OVERLAPPING #-} (TypeError (Text "No EnvM found on stack"), Environment env adr) => EnvM (IdentityDebug (adr, env)) adr env
 instance forall env adr t . (Environment env adr, MonadLayer t, EnvM (Lower t) adr env) => EnvM t adr env where
    lookupEnv = upperM . lookupEnv
    withExtendedEnv bds =  lowerM (withExtendedEnv bds)
@@ -188,18 +201,25 @@ runErr' = fmap fst . runErr
 
 ---
 
--- | Keeps track of a store using a state monad
-instance {-# OVERLAPPING #-} (Monad m, Hashable adr, JoinLattice (Vlu adr), Address adr, Typeable adr, Typeable (Vlu adr), Has ks (adr :-> Vlu adr)) => StoreM (StateT (DMap ks) m) adr where
+newtype StoreT t adr v m a = StoreT { getStoreT :: StateT (Map adr v) m a }
+                              deriving (Applicative, Functor, Monad, MonadState (Map adr v), MonadLayer)
+
+instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT t adr v m) where 
+   mjoin (StoreT ma) (StoreT mb) = StoreT $ mjoin ma mb
+   mzero = StoreT mzero
+
+instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT t adr v m) t adr v where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    lookupAdr = gets  . Store.lookupSto
-instance (Monad t, Address adr, StoreM (Lower t) adr, MonadLayer t) => StoreM t adr where
+
+instance (Monad t, Address adr, StoreM (Lower t) w adr v, MonadLayer t) => StoreM t w adr v where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
-   lookupAdr  =  upperM .  lookupAdr
+   lookupAdr  =  upperM .  lookupAdr 
 
-runSto :: forall ks m a . DMap ks -> (StateT (DMap ks) m) a -> m (a, DMap ks)
-runSto =  flip runStateT
+runStoreT :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
+runStoreT initialSto = flip runStateT initialSto . getStoreT
 
 --
 -- Allocator

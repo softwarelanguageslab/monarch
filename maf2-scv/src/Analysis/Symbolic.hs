@@ -4,10 +4,10 @@ module Analysis.Symbolic where
 import Analysis.Monad 
 import Syntax.Scheme
 import Analysis.Symbolic.Monad
+import Domain.Scheme.Derived.Pair
 import qualified Analysis.Symbolic.Semantics as Symbolic
 import Control.Monad.Layer
  
-
 ------------------------------------------------------------
 -- Evaluation function
 ------------------------------------------------------------

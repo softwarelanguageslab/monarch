@@ -45,7 +45,7 @@ data ConcreteStatusIO = Open | Closed
 type StatusIO = Set ConcreteStatusIO
 
 -- | An IO model that does only keep track of the possible output, and returns "top" for any read
-newtype OutputIO v = OutputIO { output :: Set v } deriving Show
+newtype OutputIO v = OutputIO { output :: Set v } deriving (Eq, Show)
 instance (Ord v) => IOModel (OutputIO v) v v where
    write (OutputIO out) _ v = Set.singleton (OutputIO (Set.union (Set.singleton v) out))
    read m _ = Set.singleton (m, Top)

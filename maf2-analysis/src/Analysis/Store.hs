@@ -1,13 +1,11 @@
 {-# LANGUAGE  FlexibleInstances, AllowAmbiguousTypes,  FlexibleContexts, UndecidableInstances, TypeSynonymInstances #-}
-module Analysis.Store(Store(..), Typeable, Associate) where
+module Analysis.Store(Store(..), Typeable) where
 
 import Data.TypeLevel.List
-import qualified Data.DMap as DMap
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Domain
 import Data.Maybe
-import Data.DMap
 import Data.Kind
 import Data.Typeable
 
@@ -24,15 +22,3 @@ instance (JoinLattice v, Ord a) => Store (Map a v) a v where
    lookupSto = Map.findWithDefault bottom
    extendSto adr vlu = Map.alter (Just . Domain.join vlu . justOrBot) adr
    updateSto adr vlu = Map.alter (Just . Domain.join vlu . justOrBot) adr
-
--- | Simple DMap based store with weak updates
-instance (Has ks (adr :-> v), Typeable adr, Typeable v, Hashable adr, JoinLattice v) => Store (DMap ks) adr v where
-   emptySto = DMap.empty
-   lookupSto adr = fromMaybe bottom . DMap.lookup adr
-   extendSto adr vlu = DMap.alter (Just . Domain.join vlu . justOrBot) adr
-   updateSto adr vlu = DMap.alter (Just . Domain.join vlu . justOrBot) adr
-
--- | Associate a value for each of the given addresses
-type family Associate (adrs :: [Type]) where
-   Associate '[] = '[]
-   Associate (adr ': l) = ((adr :-> Vlu adr) ': Associate l)

@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue) where
+module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue, VarDom, VecDom, PaiDom, StrDom) where
 
 import Data.Set (Set)
 import Domain
@@ -85,6 +85,15 @@ class (RealDomain v,
   isPrim :: v -> Bool
 
 
+-- | Types of values assigned to variables
+type family VarDom v :: Type
+-- | Compute the string domain for a particular type
+type family StrDom v :: Type
+-- | Compute the pair domain for a particular type
+type family PaiDom v :: Type
+-- | Compute the vector domain for a particular type
+type family VecDom v :: Type
+
 -- | Some `v` that can be used in semantics
 -- as 'the' Scheme value. It relates pointer-referenced
 -- domains to ensure that they refer back to this `v`
@@ -104,21 +113,21 @@ type SchemeValue v  = (
     -- the values should form a ShemeDomain
     SchemeDomain v,
     -- make sure that the strings adhere to the string domain
-    StringDomain (Vlu (SAdr v)),
+    StringDomain (StrDom v),
     -- make sure the vectors adhere to the vector domain
-    VectorDomain (Vlu (VAdr v)),
+    VectorDomain (VecDom v),
     -- make sute that the pairs adhere to the pair domain 
-    PairDomain (Vlu (PAdr v)),
+    PairDomain (PaiDom v),
     -- make sure that the contents of the vectors and pairs point to Scheme values
-    Content  (Vlu (PAdr v)) ~ v,
-    VContent (Vlu (VAdr v)) ~ v,
+    Content  (PaiDom v) ~ v,
+    VContent (VecDom v) ~ v,
     -- make sure that `v` is used as an integer in the vector
-    VIndex (Vlu (VAdr v)) ~ v,
+    VIndex (VecDom v) ~ v,
     -- make sure that `v` is used as the index and character in their corresponding lattices
-    IntS (Vlu (SAdr v)) ~ v,
-    ChaS (Vlu (SAdr v)) ~ v,
+    IntS (StrDom v) ~ v,
+    ChaS (StrDom v) ~ v,
     -- variables should point to values
-    Vlu (Adr v) ~ v)
+    VarDom v ~ v)
 
 -----------------------------------------------------------------------------
 -- Constraints for when the type of variables and environments is known 

@@ -30,8 +30,6 @@ import Domain
 import Domain.Scheme.Class
 import Control.Monad.Join
 
-
-
 ------------------------------------------------------------
 -- Declaration
 ------------------------------------------------------------

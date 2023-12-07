@@ -52,6 +52,7 @@ library:
     - Domain.Scheme.Class
     - Domain.Scheme.Modular
     - Domain.Scheme.CPDomain
+    - Domain.Scheme.Derived.Pair
     - Domain.Actors
     - Domain.TopLifted
     - Domain.Python
@@ -59,7 +60,6 @@ library:
     - Domain.Python.CPDomain
     - Control.Monad.Join
     - Control.Monad.DomainError
-    - Data.DMap
 
 default-extensions:
   - TypeFamilies

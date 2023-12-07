@@ -4,7 +4,7 @@ module Domain.TopLifted(TopLifted(..)) where
 
 import Domain.Lattice
 
-data TopLifted a = Top | Value a
+data TopLifted a = Top | Value a deriving Eq
 
 instance (Joinable v) => Joinable (TopLifted v) where 
    join Top _   = Top 

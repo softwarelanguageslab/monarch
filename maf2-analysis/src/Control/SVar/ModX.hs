@@ -80,7 +80,9 @@ data ModXState c = ModXState {
    spawns     :: Set (Component c),
    triggers   :: Set (Dep c),
    registers  :: Set (Dep c)
-}
+} 
+
+deriving instance (Eq (Component c), Eq (Dep c)) => Eq (ModXState c)
 
 -- | Returns an empty ModxState 
 emptyModxState :: ModXState c

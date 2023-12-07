@@ -4,11 +4,7 @@ module Run.Analyzer(Options, options, main) where
 
 import Options.Applicative
 import Analysis.Scheme.Simple
-import Data.DMap
-import qualified Data.DMap as DMap
 import Text.Printf
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as Map
 import Data.List (intercalate)
 import Analysis.Monad
 import Analysis.Scheme
@@ -27,10 +23,13 @@ import Control.Monad.Join (mjoin, mzero)
 import qualified Domain (join)
 import Domain.Scheme hiding (Exp)
 import Debug.Trace
+import Analysis.Scheme.Store (values)
+import Data.Map (Map)
+import qualified Data.Map as Map
 
 newtype Options = Options String deriving Show
 
-printSto :: HashMap VariableAdr V -> String
+printSto :: Map VariableAdr V -> String
 printSto m =
    intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs
    where adrs   = Map.toList $ Map.filterWithKey (\case { Prm _ -> const False ; _ -> const True }) m
@@ -75,5 +74,5 @@ options =
 main :: Options -> IO ()
 main (Options filename) = do
      contents <- readFile filename
-     putStrLn $ printSto (region @VariableAdr @V (runAnalysis contents))
+     putStrLn $ printSto (values (runAnalysis contents))
 
