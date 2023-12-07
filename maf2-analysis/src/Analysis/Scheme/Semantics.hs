@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
-module Analysis.Scheme.Semantics(eval) where
+module Analysis.Scheme.Semantics(eval, applyFun, applyClo, applyPrim) where
 
 import Analysis.Semantics
 import Domain.Scheme hiding (Exp)

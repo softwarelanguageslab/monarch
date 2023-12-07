@@ -1,32 +1,18 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances #-}
-module Analysis.Symbolic.Monad(SymbolicM, SymbolicValue, runFormulaT) where
+module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), SymbolicValue, runFormulaT) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
 import Analysis.Scheme.Monad (SchemeM)
-import Domain.Scheme.Class (SchemeValue)
 import Control.Monad.Layer
 import Control.Monad.Join
 import Control.Monad.State (StateT, MonadState, modify, gets, (>=>), runStateT)
 import Domain
+import Domain.Symbolic
 import Data.Set (Set)
+
 import qualified Data.Set as Set
 
--- | SymbolicValue to capture
--- changes to the symbolic representation 
--- of a particular value.
-class (SchemeValue v) => SymbolicValue v where
-   -- | Construct a symbolic representation of 
-   -- a function application.
-   ap :: v -> [v] -> v
-   -- | Assert that the given value is true 
-   -- as a symbolic expression
-   assertTrue :: v -> v
-   -- | Assert that the given value is false
-   -- as a symbolic expression
-   assertFalse :: v -> v
-   -- | Extract a symbolic value from the value
-   symbolic    :: v -> Proposition
 
 -- | Monad that keeps track of a path condition
 class (Monad m, SymbolicValue v) => MonadPathCondition m v where

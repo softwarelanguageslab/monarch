@@ -25,9 +25,12 @@ source-repository head
 
 library
   exposed-modules:
+      Analysis.Symbolic
       Analysis.Symbolic.Monad
       Analysis.Symbolic.Semantics
       Domain.Symbolic
+      Domain.Symbolic.Class
+      Domain.Symbolic.Paired
       Lib
       Solver
       Solver.Z3
