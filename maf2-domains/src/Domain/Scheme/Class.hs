@@ -14,7 +14,6 @@ type SchemeDomainPre v =
     IntDomain v,
     CharDomain v,
     BoolDomain v,
-    Ord v,
     Boo v ~ v)
 
 -- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
@@ -22,7 +21,6 @@ class (RealDomain v,
        IntDomain v,
        CharDomain v,
        BoolDomain v,
-       Ord v,
        -- all address type families should satisfy the address typeclass
        Address (PAdr v),
        Address (VAdr v),

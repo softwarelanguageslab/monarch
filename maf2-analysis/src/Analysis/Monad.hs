@@ -98,7 +98,7 @@ class (Monad m) => StoreM m t adr v | m adr -> v t where
    lookupAdr :: adr -> m v
 
 deref :: forall m adr v a t . (StoreM m t adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
-c
+deref = lookups lookupAdr
 
 --
 

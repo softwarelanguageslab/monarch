@@ -13,7 +13,6 @@ import Prelude hiding (null)
 import Data.List hiding (null)
 import Control.Monad.Join
 import Data.Maybe (isJust)
-import Data.Hashable
 import GHC.Generics
 
 maybeSingle :: Maybe a -> Set a
@@ -42,19 +41,6 @@ data ModularSchemeValue r i c b pai vec str var exp env = ModularSchemeValue {
    unspecified :: Maybe (),
    primitives :: Maybe (Set String)
 } deriving (Ord, Eq, Generic)
-
-instance (
-   Hashable r,
-   Hashable i,
-   Hashable c,
-   Hashable b,
-   Hashable pai, 
-   Hashable vec,
-   Hashable str,
-   Hashable var,
-   Hashable exp,
-   Hashable env
-  ) => Hashable (ModularSchemeValue r i c b pai vec str var exp env)
 
 instance (SplitLattice (ModularSchemeValue r i c b pai vec str var exp env), Show r, Show i, Show c, Show b, Show exp) => Show (ModularSchemeValue r i c b pai vec str var exp env) where 
    show = intercalate "," . Set.toList . Set.map select . split

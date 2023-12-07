@@ -20,14 +20,6 @@ module Domain.Scheme.Store(
    StAdr,
 ) where
 
-import Domain
-import Domain.Scheme.Class
-
-import Data.Kind
-import Data.TypeLevel.List
-
-import GHC.Generics
-
 -- | The types below define wrappers for each of the types of addresses
 -- in our disjoint regions of memory
 -- 
