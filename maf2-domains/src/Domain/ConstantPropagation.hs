@@ -5,7 +5,6 @@
 module Domain.ConstantPropagation(CP(..)) where
 
 import Domain
-import Domain.Dictionary hiding (Bottom)
 import Control.Monad.Join
 import Control.Applicative (Applicative(liftA2))
 import Data.Char hiding (isLower, isUpper)
@@ -33,9 +32,15 @@ instance Ord a => Joinable (CP a) where
       | x1 == x2 = v
     join _ _ = Top
 
+instance Ord a => Meetable (CP a) where 
+   meet Top v = v
+   meet v Top = v
+   meet v@(Constant x1) (Constant x2)
+      | x1 == x2 = v
+   meet _ _ = Bottom
+
 instance (Show a, Ord a) => JoinLattice (CP a) where
     bottom = Bottom
-
 
     subsumes Top _ = True
     subsumes _ Bottom = True
@@ -167,40 +172,3 @@ instance RealDomain (CP Double) where
    sqrt a =
       domain (fmap (< 0) a) "sqrt: value must be positive" <||>
       return (fmap Prelude.sqrt a)
-
----
-
-instance (Ord a, JoinLattice v) => Joinable (Dictionary (CP a) v) where
-   join d1 d2 =
-      let vs = if isJust (Map.lookup Top (values d1)) || isJust (Map.lookup Top (values d2))
-                  then Map.fromList [(Top, join (dJoinValues d1) (dJoinValues d2))]
-                  else Map.fromList $ Map.toList (values d1) ++ Map.toList (values d2)
-      in Dictionary (Set.intersection (keys d1) (keys d2)) vs
-
---- | An instance of the dictionary where all fields are represented by the constant propagation domain
-instance (Show a, JoinLattice v, Eq v, Ord v, Ord a) => DictionaryDomain (Dictionary (CP a) v) where
-   type DKey (Dictionary (CP a) v) = CP a
-   type DVlu (Dictionary (CP a) v) = v
-
-   lookup _ d
-      | d == bottom = bottom
-   lookup Top d =
-      dJoinValues d
-   lookup k@(Constant _) d =
-      fromMaybe (fromMaybe bottom $ dLookup k d) (dLookup Top d)
-   lookup Bottom _ = bottom
-
-   update _ v d
-      | d == bottom || v == bottom = bottom
-   update Top v d =
-      dict [(Top, join (dJoinValues d) v)] (dKeys d)
-   update (Constant k) v d =
-      -- Look for the `Top` value, if it is there, we simply 
-      -- join its value with the new value. 
-      maybe (dUpdate (Constant k) (Constant k) d v)
-            (dUpdate Top (Constant k) d  . join v)
-            (dLookup Top d)
-   update Bottom _ _ = bottom
-
-   isEmpty  = dIsEmpty
-   contains = flip dcontains

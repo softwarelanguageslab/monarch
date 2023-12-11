@@ -22,6 +22,7 @@ module Domain(
    justOrBot,
    Address(..),
    Joinable(..),
+   Meetable(..),
    AbstractM,
    module Control.Monad.DomainError
 ) where
