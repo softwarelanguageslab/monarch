@@ -19,8 +19,8 @@ class Monad m => FormulaSolver m where
    -- script by outputting SMTLib compatible output.
    solve :: Formula -> m SolverResult
    -- | Returns true whenever the formula is feasible (sat or unknown)
-   ifFeasible :: Formula -> m Bool
-   ifFeasible formula = do 
+   isFeasible :: Formula -> m Bool
+   isFeasible formula = do 
       result <- solve formula
       return (isSat result || isUnknown result)
 

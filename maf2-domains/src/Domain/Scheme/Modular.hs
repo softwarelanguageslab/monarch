@@ -2,8 +2,6 @@
 module Domain.Scheme.Modular where
 
 import Domain.Scheme.Class
-import Data.Coerce hiding (coerce)
-import qualified Data.Coerce as Coerce
 import Control.Applicative (Applicative(liftA2))
 import Data.Set (Set)
 import Data.Default
@@ -15,13 +13,13 @@ import Prelude hiding (null)
 import Data.List hiding (null)
 import Control.Monad.Join
 import Data.Maybe (isJust)
-import Data.Hashable
 import GHC.Generics
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
 maybeSingle (Just v) = Set.singleton v
 
+(∪) :: Ord a => Set a -> Set a -> Set a
 a ∪ b = Set.union a b
 infixl 0 ∪
 
@@ -43,19 +41,6 @@ data ModularSchemeValue r i c b pai vec str var exp env = ModularSchemeValue {
    unspecified :: Maybe (),
    primitives :: Maybe (Set String)
 } deriving (Ord, Eq, Generic)
-
-instance (
-   Hashable r,
-   Hashable i,
-   Hashable c,
-   Hashable b,
-   Hashable pai, 
-   Hashable vec,
-   Hashable str,
-   Hashable var,
-   Hashable exp,
-   Hashable env
-  ) => Hashable (ModularSchemeValue r i c b pai vec str var exp env)
 
 instance (SplitLattice (ModularSchemeValue r i c b pai vec str var exp env), Show r, Show i, Show c, Show b, Show exp) => Show (ModularSchemeValue r i c b pai vec str var exp env) where 
    show = intercalate "," . Set.toList . Set.map select . split
@@ -275,13 +260,13 @@ instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDo
    atan    = coerc1R $ fmap insertReal . Domain.atan
    sqrt    = coerc1R $ fmap insertReal . Domain.sqrt
 
-instance (Ord exp, Ord i, Ord c, Ord r, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b, Coercible (Str i) (Vlu str)) =>
+instance (Ord exp, Ord i, Ord c, Ord r, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b) =>
    IntDomain (ModularSchemeValue r i c b pai vec str var exp env) where
 
-   type Str (ModularSchemeValue r i c b pai vec str var exp env) = Vlu str
+   -- TODO: type Str (ModularSchemeValue r i c b pai vec str var exp env) = Vlu str
    type Rea (ModularSchemeValue r i c b pai vec str var exp env) = (ModularSchemeValue r i c b pai vec str var exp env)
    toReal    = integers >=> toReal >=> (return . insertReal)
-   toString  = integers >=> toString >=> (return . Coerce.coerce)
+   -- TODO: toString  = integers >=> toString >=> (return . Coerce.coerce)
    quotient  a b = insertInt <$> M.join (liftA2 quotient (integers a) (integers b))
    modulo    a b = insertInt <$> M.join (liftA2 modulo (integers a) (integers b))
    remainder a b = insertInt <$> M.join (liftA2 remainder (integers a) (integers b))
@@ -327,11 +312,8 @@ instance
     Boo  i ~ b,
     Boo  r ~ b,
     IntR r ~ i,
-    Coercible (Str  i) (Vlu str),
-    IntS (Vlu str) ~ ModularSchemeValue r i c b pai vec str var exp env,
-    ChaS (Vlu str) ~ ModularSchemeValue r i c b pai vec str var exp env,
-    Address  vec,
-    Address  str,
+    Address vec,
+    Address str,
     Address pai,
     Address var,
     Show env, Ord env

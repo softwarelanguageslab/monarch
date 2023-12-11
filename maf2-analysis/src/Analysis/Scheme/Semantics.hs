@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}
-module Analysis.Scheme.Semantics(eval) where
+module Analysis.Scheme.Semantics(eval, applyFun, applyClo, applyPrim) where
 
 import Analysis.Semantics
 import Domain.Scheme hiding (Exp)
@@ -72,7 +72,7 @@ evalLetrecStar bds bdy = do
       Monad.eval bdy
    where evalBinding adr (_, exp) = do 
             vlu <- Monad.eval exp
-            writeAdr adr vlu
+            writeAdr @_ @_ @_ @v adr vlu
             return vlu
 
 evalApp :: (SchemeDomain v, SchemeM m v) => Exp -> Exp -> [Exp] -> m v

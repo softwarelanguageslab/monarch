@@ -37,9 +37,7 @@ import Control.Monad.DomainError
 type AbstractM m = (MonadDomainError m, MonadJoin m)
 
 -- | An address is an abstraction for a memory location on which a heap-allocated address resides
-class (Typeable a, Typeable (Vlu a), Show a, Eq a, Ord a) => Address a where
-  -- | The type of the value referenced by the addresses
-  type Vlu a :: Type
+class (Typeable a,  Show a, Eq a, Ord a) => Address a
 
 -- | Raises error using `raiseError` if the given value is not in the domain
 -- or returns () if it has not

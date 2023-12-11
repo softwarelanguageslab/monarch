@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Scheme.Monad(SchemeM, SchemeM', allocPai, allocVec, allocStr, allocVar, stoPai, stoStr) where 
+module Analysis.Scheme.Monad(SchemeM, SchemeM', allocPai, allocVec, allocStr, allocVar, stoPai, stoStr) where
 
 import Data.Functor
 import Syntax.Scheme.AST
@@ -9,26 +9,23 @@ import qualified Domain.Scheme as S
 import Analysis.Monad
 import Control.Monad.Join
 
-stoPai :: SchemeM m v => Exp -> Vlu (PAdr v) -> m v
+stoPai :: SchemeM m v => Exp -> PaiDom v -> m v
 stoPai ex v = allocPai ex >>= (\adr -> writeAdr adr v $> pptr adr)
-stoStr :: SchemeM m v => Exp -> Vlu (SAdr v) -> m v
+stoStr :: SchemeM m v => Exp -> StrDom v -> m v
 stoStr ex v = allocStr ex >>= (\adr -> writeAdr adr v $> sptr adr)
 
 type SchemeM' m v = (
    -- Domain
    SchemeValue v,
-   PairDomain (Vlu (PAdr v)),
-   VectorDomain (Vlu (VAdr v)),
-   StringDomain (Vlu (SAdr v)),
    MonadJoin m,
    MonadDomainError m,
    -- Environment
    EnvM m (Adr v) (Env v),
    -- Store interactions
-   StoreM m (PAdr v),
-   StoreM m (Adr v),
-   StoreM m (VAdr v),
-   StoreM m (SAdr v),
+   StoreM m PaAdr (PAdr v) (PaiDom v),
+   StoreM m VrAdr (Adr v)  (VarDom v),
+   StoreM m VeAdr (VAdr v) (VecDom v),
+   StoreM m StAdr (SAdr v) (StrDom v),
    -- Allocation
    AllocM m Ide VrAdr (Adr v),     -- variable allocation
    AllocM m Exp PaAdr (PAdr v),    -- pair allocation
@@ -37,11 +34,11 @@ type SchemeM' m v = (
    --
    CallM m (Env v) v,
    Boo v ~ v,
-   Vlu (Adr v) ~ v,
+   VarDom v ~ v,
    Exp ~ S.Exp v)
 
 type SchemeM m v = (
-   SchemeM' m v, 
+   SchemeM' m v,
    EvalM m v Exp)
 
 allocPai :: SchemeM m v => Exp -> m (PAdr v)

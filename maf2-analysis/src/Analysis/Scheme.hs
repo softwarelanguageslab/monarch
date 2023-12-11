@@ -13,40 +13,38 @@ import Control.Monad.Trans.Class
 import Control.Monad.Join
 import Control.Monad.Layer
 import Control.Monad.Error (MonadError)
-import Control.Monad.Cond (unlessM, whenM)
+import Control.Monad.Cond (whenM)
 
 import Syntax.Scheme
-import Domain (Vlu, subsumes, JoinLattice, bottom)
+import Domain (subsumes, JoinLattice)
 import Domain.Scheme hiding (Exp, Env)
 
-import Data.DMap (DMap, fromMap, Hashable)
 import Data.Map (Map)
-import Data.Function ((&))
-import Data.Dynamic
 import Data.Functor.Identity
 import Data.TypeLevel.Ghost
-import Data.Functor ((<&>))
+import Data.Function ((&))
 import Analysis.Monad (EnvM(..))
+import Analysis.Scheme.Store
+
 
 -----------------------------------------
 -- Shorthands
 -----------------------------------------
 
-
 type Program              = Exp
 type Env var v ctx dep    = Map String var          -- ^ the initial environment
 type Sto var ctx v dep    = Map var v               -- ^ non-heap allocated values
-type DSto ctx v           = DMap (Adrs v ctx)       -- ^ combined store with heap allocated values
+type DSto ctx v           = SchemeStore v
+                                       (Adr v)
+                                       (SAdr v)
+                                       (PAdr v)
+                                       (VAdr v)      -- ^ combined store with heap allocated values
 
 -----------------------------------------
 -- Store & Environment
 -----------------------------------------
 
--- | All address types in the combined store mapped to the value
--- stored at their location.
-type Adrs v ctx =  SchemeAdrs v
-
-class (Hashable var, Ord var) => VarAdr var v ctx dep | var -> v, var -> ctx, var -> dep where
+class (Ord var) => VarAdr var v ctx dep | var -> v, var -> ctx, var -> dep where
    retAdr :: Component (ModF var v ctx dep) -> var
    prmAdr :: String -> var
 
@@ -58,7 +56,7 @@ analysisEnvironment = initialEnv prmAdr
 -- | The initial store
 analysisStore :: forall v ctx dep var . (SchemeAnalysisConstraints var v ctx dep)
               => Env var v ctx dep -> DSto ctx v
-analysisStore = fromMap . initialSto @v
+analysisStore = fromValues . initialSto @v
 
 -----------------------------------------
 -- ModF
@@ -88,7 +86,11 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
               & runEvalT
               & runErr
               & runCallT @v @ctx
-              & runSto store
+              & runStoreT @VrAdr (values  store)
+              & runStoreT @StAdr (strings store)
+              & runStoreT @PaAdr (pairs   store)
+              & runStoreT @VeAdr (vecs    store)
+              & combineStores
               & runEnv env
               & runAlloc @PaAdr (allocPai @ctx)
               & runAlloc @VeAdr (allocVec @ctx)
@@ -96,7 +98,7 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
               & runAlloc @VrAdr (allocVar @ctx)
               & runCtx  ctx
               & runIdentity
-       in return (sto, spawns, registers, triggers)
+       in return (sto, spawns, registers, triggers) 
 
 -----------------------------------------
 -- Open recursion for evaluation
@@ -127,7 +129,7 @@ runEvalT (BaseSchemeEvalT m) = m
 -- Polymorphic ModF dependencies 
 -----------------------------------------
 
-class (Ord dep, Hashable dep) => Dependency adr dep | adr -> dep where
+class (Ord dep) => Dependency adr dep | adr -> dep where
    dep :: adr -> dep
 
 -----------------------------------------
@@ -140,7 +142,7 @@ instance (Ord (Component (ModF var v ctx dep)), Ord (Dep (ModF var v ctx dep)), 
    mzero = CallT mzero
    mjoin (CallT ma) (CallT mb) = CallT $ mjoin ma mb
 
-needsUpdate :: forall m adr v . (JoinLattice v, Show v, Vlu adr ~ v, StoreM m adr) => adr -> v -> m Bool
+needsUpdate :: forall m adr v t . (JoinLattice v, Show v, StoreM m t adr v) => adr -> v -> m Bool
 needsUpdate adr vlu' = do
    vlu <- lookupAdr adr
    if subsumes vlu vlu' then
@@ -152,11 +154,9 @@ needsUpdate adr vlu' = do
 -- when a store read occurs, registers that read as a read effect
 instance {-# OVERLAPPING #-} (
             Dependency adr dep,
-            StoreM m adr,
-            JoinLattice (Vlu adr),
-            Show (Vlu adr),
+            StoreM m t adr v,
             SchemeAnalysisConstraints var v ctx dep
-   ) => StoreM (CallT var v ctx dep m) adr where
+   ) => StoreM (CallT var v ctx dep m) t adr v where
 
    writeAdr adr vlu = CallT @var @v @ctx $ do
       -- TODO: it is rather strange that type inference
@@ -181,7 +181,7 @@ instance {-# OVERLAPPING #-} (
 -- and reads the return value from the store.
 instance {-# OVERLAPPING #-} (CtxM m ctx,
           Monad m,
-          StoreM (CallT var v ctx dep m) var,
+          StoreM (CallT var v ctx dep m) t var v, 
           EnvM m var (Env var v ctx dep),
           SchemeAnalysisConstraints var v ctx dep
          ) => CallM (CallT var v ctx dep m) (Env var v ctx dep) v where
@@ -212,18 +212,15 @@ runCallT (CallT m) = runModxT @c m
 -- as written, try to simplify
 type SchemeAnalysisConstraints var v ctx dep = (
          Show v,
-         Show (Vlu (PAdr v)),
-         Show (Vlu (SAdr v)),
-         Show (Vlu (VAdr v)),
          SchemeValue v,
+         Adr v ~ var,
          SchemeConstraints v Exp var (Env var v ctx dep),
-         StoreDefinedFor v,
          Dependency var dep,
          Dependency (PAdr v) dep,
          Dependency (SAdr v) dep,
          Dependency (VAdr v) dep,
          VarAdr var v ctx dep,
-         Ord ctx, Ord v, Hashable ctx, Hashable v, Typeable ctx, Typeable v, SchemeAlloc ctx var v dep)
+         Ord ctx, Ord v, SchemeAlloc ctx var v dep)
 
 -- | The result of the analysis
 newtype AnalysisResult var v ctx dep = AnalysisResult (State (ModF var v ctx dep))

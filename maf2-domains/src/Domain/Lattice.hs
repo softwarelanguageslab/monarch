@@ -31,9 +31,11 @@ instance (JoinLattice l, Meetable l, Eq l) => JoinLattice [l] where
 
 --- | A regular join-semilattice with bottom
 --- but without top.
-class (Joinable v) => JoinLattice v where 
+class (Joinable v, Eq v) => JoinLattice v where 
    bottom :: v
    subsumes :: v -> v -> Bool
+   subsumes a b =
+      join a b == a
    joins :: Foldable t => t v -> v
    joins = foldr join bottom
    -- | Like foldMap, folding all mapped values using a join

@@ -5,7 +5,7 @@ import Domain.Lattice
 
 -- | A bound of the interval domain, 
 -- is either a concrete value or infinity. 
-data Bound a = Bounded a | Infinity
+data Bound a = Bounded a | Infinity deriving Eq
 
 -- | Take the minimum bound of the lower bound of the interval
 min' :: Ord a => Bound a -> Bound a -> Bound a 
@@ -34,7 +34,7 @@ gt (Bounded a) (Bounded b) = a > b
 -- | The interval itself with its upper and lower bound .
 -- `Infinity` in the lower bound is always interpreted to mean negative infinity, 
 -- the converse is taken for the upper bound.
-data Interval a = Interval (Bound a) (Bound a) | BottomInterval
+data Interval a = Interval (Bound a) (Bound a) | BottomInterval deriving Eq
 
 -- Lattice implementations
 

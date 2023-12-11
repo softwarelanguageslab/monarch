@@ -38,6 +38,7 @@ data Formula = Conjunction Formula Formula
              | Disjunction Formula Formula
              | Negation    Formula
              | Atomic      Proposition
+             | Empty
              deriving (Eq, Ord)
 
 -- | Select all variables in the formula

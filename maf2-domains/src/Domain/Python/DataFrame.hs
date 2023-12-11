@@ -49,7 +49,7 @@ instance (DFConstraint JoinLattice s r c, DFConstraint Eq s r c)
 ------------------------------------------------------------
 
 newtype DataFrameSet s r c = DataFrameSet [DataFrame s r c]
-    deriving (Joinable)
+    deriving (Joinable, Eq)
 
 instance (DFConstraint JoinLattice s r c, DFConstraint Eq s r c, DFConstraint Meetable s r c) 
         => 

@@ -51,6 +51,7 @@ default-extensions:
   - MultiParamTypeClasses
   - FlexibleContexts
   - ConstraintKinds
+  - FlexibleInstances
 
 library:
   source-dirs: src
