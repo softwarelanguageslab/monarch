@@ -183,15 +183,6 @@ instance (Monad m) => MonadLayer (ErrorT m) where
    lowerM f = ErrorT . MaybeT . WriterT . f . runWriterT . runMaybeT . runErrorT
    upperM = ErrorT . lift . lift
 
-instance {-# OVERLAPPING #-} Monad m => MonadError (ErrorT m) where
-   raiseError = ErrorT . lift . tell . Set.singleton >=> (\_ -> ErrorT $ MaybeT $ return Nothing)
-instance {-# OVERLAPPING #-} (MonadJoin m) => MonadDomainError (ErrorT m) where
-   raiseError = Control.Monad.Error.raiseError
-instance (MonadJoin (t m), MonadTrans t, MonadError m, Monad m, Monad (t m)) => MonadError (t m) where
-   raiseError = lift . Control.Monad.Error.raiseError
-instance (MonadJoin (t m), MonadTrans t, MonadError (t m), Monad m, Monad (t m)) => MonadDomainError (t m) where
-   raiseError = Control.Monad.Error.raiseError
-
 runErr :: (ErrorT m) a -> m (Maybe a, Set DomainError)
 runErr = runWriterT . runMaybeT . runErrorT
 

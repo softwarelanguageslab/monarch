@@ -12,19 +12,20 @@ import Control.SVar.ModX
 import Control.Monad.Trans.Class
 import Control.Monad.Join
 import Control.Monad.Layer
-import Control.Monad.Error (MonadError)
 import Control.Monad.Cond (whenM)
 
 import Syntax.Scheme
 import Domain (subsumes, JoinLattice)
 import Domain.Scheme hiding (Exp, Env)
 
+import Data.Set (Set)
 import Data.Map (Map)
 import Data.Functor.Identity
 import Data.TypeLevel.Ghost
 import Data.Function ((&))
 import Analysis.Monad (EnvM(..))
 import Analysis.Scheme.Store
+import Control.Monad.DomainError (runMayEscape, DomainError)
 
 
 -----------------------------------------
@@ -82,9 +83,9 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
   -- on the body of that component
   type MM (ModF var v ctx dep)         = Identity
   analyze (exp, env, ctx, _) store = 
-       let (((_, _), (spawns, registers, triggers)), sto) = (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
+       let ((_, (spawns, registers, triggers)), sto) = (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
               & runEvalT
-              & runErr
+              & runMayEscape @_ @(Set DomainError)
               & runCallT @v @ctx
               & runStoreT @VrAdr (values  store)
               & runStoreT @StAdr (strings store)
@@ -118,7 +119,7 @@ instance (MonadJoin m) => MonadJoin (BaseSchemeEvalT v m) where
 instance MonadTrans (BaseSchemeEvalT v) where
    lift = BaseSchemeEvalT
 
-instance (MonadError m, SchemeM (BaseSchemeEvalT v m) v, SchemeAnalysisConstraints var v ctx dep) => (Analysis.Monad.EvalM (BaseSchemeEvalT v m) v Exp) where
+instance (SchemeM (BaseSchemeEvalT v m) v, SchemeAnalysisConstraints var v ctx dep) => (Analysis.Monad.EvalM (BaseSchemeEvalT v m) v Exp) where
    eval = Semantics.eval
 
 
