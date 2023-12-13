@@ -21,8 +21,8 @@ import Syntax.Scheme.AST
 
 data Prim v = Prim { primName :: String, run :: forall m . PrimM m v => Exp -> [v] -> m v }
 
-class (MonadDomainError m, MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
-instance (MonadDomainError m,  MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
+class (MonadEscape m DomainError, MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
+instance (MonadEscape m DomainError,  MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
 
 -- | No arguments
 fix0 :: String -> (forall m . PrimM m v => m v) -> Prim v

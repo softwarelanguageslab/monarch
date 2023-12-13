@@ -17,7 +17,7 @@ module Analysis.Monad(
  CallM(..),
  deref,
  -- Implementations
- runStoreT,
+ runSto,
  runEnv,
  runCtx,
  runErr,
@@ -25,7 +25,6 @@ module Analysis.Monad(
  runAlloc,
  runCallBottomT,
  runNonDetT,
- runIdentityDebug,
  -- Types for implementations
  NonDetT
 ) where
@@ -38,6 +37,7 @@ import Syntax.Scheme.AST
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.TypeLevel.List
+import Data.DMap
 import Data.Kind
 import Domain
 import Analysis.Store hiding (lookupSto, extendSto, updateSto)
@@ -49,8 +49,6 @@ import Control.Monad.Error
 import List.Transformer
 import GHC.TypeError
 import Data.Functor.Identity
-import Data.Map (Map)
-import qualified Data.Map as Map
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -89,20 +87,20 @@ lookups look f = Set.fold (mjoin . deref') Control.Monad.Join.mzero
 
 -- 
 
-class (Monad m) => StoreM m t adr v | m adr -> v t where
+class (Monad m, Address adr) => StoreM m adr where
    -- | Write to a newly allocated address
-   writeAdr  :: adr -> v -> m ()
+   writeAdr  :: adr -> Vlu adr -> m ()
    -- | Update an existing address
-   updateAdr :: adr -> v -> m ()
+   updateAdr :: adr -> Vlu adr -> m ()
    -- | Lookup the value at the given address, returns bottom if the address does not exist
-   lookupAdr :: adr -> m v
+   lookupAdr :: adr -> m (Vlu adr)
 
-deref :: forall m adr v a t . (StoreM m t adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
+deref :: (StoreM m adr, MonadJoin m, JoinLattice a) => (adr -> Vlu adr -> m a) -> Set adr -> m a
 deref = lookups lookupAdr
 
 --
 
-class (Monad m) => AllocM m from t adr  where
+class (Monad m) => AllocM m from (t :: Type -> Type) adr  where
    alloc :: from -> m adr
 
 class (Monad m) => CallM m env v where
@@ -110,20 +108,13 @@ class (Monad m) => CallM m env v where
 
 class (Monad m) => EvalM m v e  | m -> v where
    eval :: e -> m v
+   -- | Runs the evaluation action but return the result of the second argument instead.
+   evalReturn :: e -> m v -> m v
+   evalReturn e m = eval @_ @v e >> m
 
 ----------------------------------------------------------------------------------------------------
 -- Instances
 ----------------------------------------------------------------------------------------------------
-
-newtype IdentityDebug a b = IdentityDebug (Identity b) deriving (Applicative, Monad, Functor)
-instance MonadJoin (IdentityDebug a) where
-   mzero = IdentityDebug mzero
-   mjoin (IdentityDebug ma) (IdentityDebug mb) = IdentityDebug $ mjoin ma mb
-
-runIdentityDebug :: IdentityDebug a b -> b
-runIdentityDebug (IdentityDebug m) = runIdentity m
-
---
 
 newtype EnvT env m a = EnvT { getEnvReader ::  ReaderT env m a } deriving (MonadReader env, Monad, Applicative, MonadLayer, Functor)
 
@@ -137,7 +128,6 @@ instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m)
    getEnv = ask
    withEnv = local
 
-instance {-# OVERLAPPING #-} (TypeError (Text "No EnvM found on stack"), Environment env adr) => EnvM (IdentityDebug (adr, env)) adr env
 instance forall env adr t . (Environment env adr, MonadLayer t, EnvM (Lower t) adr env) => EnvM t adr env where
    lookupEnv = upperM . lookupEnv
    withExtendedEnv bds =  lowerM (withExtendedEnv bds)
@@ -183,6 +173,15 @@ instance (Monad m) => MonadLayer (ErrorT m) where
    lowerM f = ErrorT . MaybeT . WriterT . f . runWriterT . runMaybeT . runErrorT
    upperM = ErrorT . lift . lift
 
+instance {-# OVERLAPPING #-} Monad m => MonadError (ErrorT m) where
+   raiseError = ErrorT . lift . tell . Set.singleton >=> (\_ -> ErrorT $ MaybeT $ return Nothing)
+instance {-# OVERLAPPING #-} (MonadJoin m) => MonadDomainError (ErrorT m) where
+   raiseError = Control.Monad.Error.raiseError
+instance (MonadJoin (t m), MonadTrans t, MonadError m, Monad m, Monad (t m)) => MonadError (t m) where
+   raiseError = lift . Control.Monad.Error.raiseError
+instance (MonadJoin (t m), MonadTrans t, MonadError (t m), Monad m, Monad (t m)) => MonadDomainError (t m) where
+   raiseError = Control.Monad.Error.raiseError
+
 runErr :: (ErrorT m) a -> m (Maybe a, Set DomainError)
 runErr = runWriterT . runMaybeT . runErrorT
 
@@ -192,25 +191,18 @@ runErr' = fmap fst . runErr
 
 ---
 
-newtype StoreT t adr v m a = StoreT { getStoreT :: StateT (Map adr v) m a }
-                              deriving (Applicative, Functor, Monad, MonadState (Map adr v), MonadLayer)
-
-instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT t adr v m) where 
-   mjoin (StoreT ma) (StoreT mb) = StoreT $ mjoin ma mb
-   mzero = StoreT mzero
-
-instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT t adr v m) t adr v where
+-- | Keeps track of a store using a state monad
+instance {-# OVERLAPPING #-} (Monad m, Hashable adr, JoinLattice (Vlu adr), Address adr, Typeable adr, Typeable (Vlu adr), Has ks (adr :-> Vlu adr)) => StoreM (StateT (DMap ks) m) adr where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    lookupAdr = gets  . Store.lookupSto
-
-instance (Monad t, Address adr, StoreM (Lower t) w adr v, MonadLayer t) => StoreM t w adr v where
+instance (Monad t, Address adr, StoreM (Lower t) adr, MonadLayer t) => StoreM t adr where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
-   lookupAdr  =  upperM .  lookupAdr 
+   lookupAdr  =  upperM .  lookupAdr
 
-runStoreT :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
-runStoreT initialSto = flip runStateT initialSto . getStoreT
+runSto :: forall ks m a . DMap ks -> (StateT (DMap ks) m) a -> m (a, DMap ks)
+runSto =  flip runStateT
 
 --
 -- Allocator
@@ -232,7 +224,7 @@ instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx t 
       f   <- ask
       return $ f from ctx
 
-instance {-# OVERLAPPING #-} TypeError (Text "No AllocM found on stack for " :$$: (ShowType from) :$$: (ShowType to) :$$: (ShowType t)) => AllocM Identity from t to
+instance {-# OVERLAPPING #-} TypeError (Text "No AllocM found on stack") => AllocM Identity from t to
 
 instance (Monad m, AllocM (Lower m) from t to, MonadLayer m) => AllocM m from t to where
    alloc = upperM . alloc @(Lower m) @from @t @to

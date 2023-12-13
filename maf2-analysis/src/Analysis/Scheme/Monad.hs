@@ -18,7 +18,7 @@ type SchemeM' m v = (
    -- Domain
    SchemeValue v,
    MonadJoin m,
-   MonadDomainError m,
+   MonadEscape m DomainError,
    -- Environment
    EnvM m (Adr v) (Env v),
    -- Store interactions

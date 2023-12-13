@@ -1,3 +1,4 @@
+{-# LANGUAGE QuantifiedConstraints #-}
 module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..)) where
 
 import Domain.Lattice

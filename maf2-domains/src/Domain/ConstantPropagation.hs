@@ -5,14 +5,10 @@
 module Domain.ConstantPropagation(CP(..)) where
 
 import Domain
-import Domain.Dictionary hiding (Bottom)
 import Control.Monad.Join
 import Control.Applicative (Applicative(liftA2))
 import Data.Char hiding (isLower, isUpper)
 import qualified Data.Char as Char
-import Data.Maybe
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 import GHC.Generics
 
 replaceAt :: [a] -> Integer -> a -> [a]
@@ -30,9 +26,15 @@ instance Ord a => Joinable (CP a) where
       | x1 == x2 = v
     join _ _ = Top
 
+instance Ord a => Meetable (CP a) where 
+   meet Top v = v
+   meet v Top = v
+   meet v@(Constant x1) (Constant x2)
+      | x1 == x2 = v
+   meet _ _ = Bottom
+
 instance (Show a, Ord a) => JoinLattice (CP a) where
     bottom = Bottom
-
 
     subsumes Top _ = True
     subsumes _ Bottom = True
@@ -86,10 +88,10 @@ instance StringDomain (CP String) where
    length = return . fmap (fromIntegral . Prelude.length)
    append a b = return $ liftA2 (++) a b
    ref s i =
-      domain (liftA2 (>) (fmap fromIntegral i) (fmap Prelude.length s)) "string-ref: index out of range" <||>
+      domain (liftA2 (>) (fmap fromIntegral i) (fmap Prelude.length s)) IndexOutOfBounds <||>
       return (liftA2 (!!) s (fmap fromIntegral i))
    set s i c =
-      domain (liftA2 (>) (fmap fromIntegral i) (fmap Prelude.length s)) "string-set!: index of range" <||>
+      domain (liftA2 (>) (fmap fromIntegral i) (fmap Prelude.length s)) IndexOutOfBounds <||>
       return (replaceAt <$> s <*> i <*> c)
    stringLt s1 s2 = return $ liftA2 (<) s1 s2
    toNumber = return . fmap read
@@ -150,54 +152,17 @@ instance RealDomain (CP Double) where
    floor = return . fmap (fromIntegral . Prelude.floor)
    round = return . fmap (fromIntegral . Prelude.round)
    log a =
-      domain (fmap (<= 0) a) "log > 0" <||> return (fmap Prelude.log a)
+      domain (fmap (<= 0) a) InvalidArgument <||> return (fmap Prelude.log a)
    sin = return . fmap Prelude.sin
    asin a =
-      domain (fmap (between (-1) 1) a) "asin: value must be between -1 and 1" <||>
+      domain (fmap (between (-1) 1) a) InvalidArgument <||>
       return (fmap Prelude.asin a)
    cos  = return . fmap Prelude.cos
    acos a =
-      domain (fmap (between (-1) 1) a) "acos: value must be between -1 and 1" <||>
+      domain (fmap (between (-1) 1) a) InvalidArgument <||>
       return (fmap Prelude.acos a)
    tan = return . fmap Prelude.tan
    atan = return . fmap Prelude.atan
    sqrt a =
-      domain (fmap (< 0) a) "sqrt: value must be positive" <||>
+      domain (fmap (< 0) a) InvalidArgument <||>
       return (fmap Prelude.sqrt a)
-
----
-
-instance (Ord a, JoinLattice v) => Joinable (Dictionary (CP a) v) where
-   join d1 d2 =
-      let vs = if isJust (Map.lookup Top (values d1)) || isJust (Map.lookup Top (values d2))
-                  then Map.fromList [(Top, join (dJoinValues d1) (dJoinValues d2))]
-                  else Map.fromList $ Map.toList (values d1) ++ Map.toList (values d2)
-      in Dictionary (Set.intersection (keys d1) (keys d2)) vs
-
---- | An instance of the dictionary where all fields are represented by the constant propagation domain
-instance (Show a, JoinLattice v, Eq v, Ord v, Ord a) => DictionaryDomain (Dictionary (CP a) v) where
-   type DKey (Dictionary (CP a) v) = CP a
-   type DVlu (Dictionary (CP a) v) = v
-
-   lookup _ d
-      | d == bottom = bottom
-   lookup Top d =
-      dJoinValues d
-   lookup k@(Constant _) d =
-      fromMaybe (fromMaybe bottom $ dLookup k d) (dLookup Top d)
-   lookup Bottom _ = bottom
-
-   update _ v d
-      | d == bottom || v == bottom = bottom
-   update Top v d =
-      dict [(Top, join (dJoinValues d) v)] (dKeys d)
-   update (Constant k) v d =
-      -- Look for the `Top` value, if it is there, we simply 
-      -- join its value with the new value. 
-      maybe (dUpdate (Constant k) (Constant k) d v)
-            (dUpdate Top (Constant k) d  . join v)
-            (dLookup Top d)
-   update Bottom _ _ = bottom
-
-   isEmpty  = dIsEmpty
-   contains = flip dcontains

@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
-module Domain.Lattice (JoinLattice(..), Meetable(..), overlap, reduce, Domain(..), TopLattice(..), SplitLattice(..), BoolDomain(..), justOrBot, Joinable(..), WidenLattice(..)) where
+module Domain.Lattice (JoinLattice(..), Meetable(..), overlap, reduce, Domain(..), TopLattice(..), SplitLattice(..), BoolDomain(..), justOrBot, Joinable(..), WidenLattice(..), ReversePowerSet) where
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -12,10 +12,10 @@ class Joinable v where
 class Meetable v where
    meet :: v -> v -> v
 
-overlap :: (Meetable v, JoinLattice v, Eq v) => v -> v -> Bool
+overlap :: (Meetable v, JoinLattice v) => v -> v -> Bool
 overlap v1 v2 = v1 `meet` v2 /= bottom 
 
-reduce :: (Meetable v, JoinLattice v, Eq v) => [v] -> [v]
+reduce :: (Meetable v, JoinLattice v) => [v] -> [v]
 reduce [] = []
 reduce (v:vs)
     | updated == v   = v : reduce oth
@@ -23,9 +23,9 @@ reduce (v:vs)
     where (olp, oth) = partition (overlap v) vs
           updated    = joins (v:olp)
 
-instance (JoinLattice l, Meetable l, Eq l) => Joinable [l] where
+instance (JoinLattice l, Meetable l) => Joinable [l] where
    join l1 l2 = reduce (l1 ++ l2)  
-instance (JoinLattice l, Meetable l, Eq l) => JoinLattice [l] where
+instance (JoinLattice l, Meetable l) => JoinLattice [l] where
    bottom = []
    subsumes l1 l2 = join l1 l2 == l1 
 
@@ -38,6 +38,9 @@ class (Joinable v, Eq v) => JoinLattice v where
       join a b == a
    joins :: Foldable t => t v -> v
    joins = foldr join bottom
+   -- | Like foldMap, folding all mapped values using a join
+   joinMap :: Foldable t => (a -> v) -> t a -> v  
+   joinMap f = foldr (join . f) bottom 
 
 class (JoinLattice v) => WidenLattice v where 
    -- | A widening operator, can be implemented
@@ -48,7 +51,7 @@ class (JoinLattice v) => WidenLattice v where
          -> v   -- ^ widened value
 
 -- | A lattice with a top element
-class (JoinLattice v) => TopLattice v where 
+class (JoinLattice v) => TopLattice v where  --TODO: is JoinLattice necessary?
    -- | Returns the top value of the lattice,
    -- such that forall v, `subsumes top v` is true.
    top :: v
@@ -88,7 +91,7 @@ instance (JoinLattice v) => JoinLattice (Maybe v) where
 
 -- | Joinable for maps
 instance (Ord a, Joinable v) => Joinable (Map a v) where
-   join m1 m2 = Map.unionWith join m1 m2
+   join = Map.unionWith join
 
 instance (Ord a, Eq v, Joinable v) => JoinLattice (Map a v) where
    bottom = Map.empty
@@ -97,6 +100,9 @@ instance (Ord a, Eq v, Joinable v) => JoinLattice (Map a v) where
 
 class JoinLattice v => Domain v c where
    inject :: c -> v
+
+instance Ord a => Domain (Set.Set a) a where
+   inject = Set.singleton
 
 -- | Split operation for lattices
 class SplitLattice v where
@@ -112,11 +118,39 @@ instance (Ord a) => JoinLattice (Set.Set a) where
    bottom = Set.empty
    subsumes = flip Set.isSubsetOf
 
+-- | A reverse powerset
+data ReversePowerSet a = RPSet (Set.Set a) | Bottom 
+   deriving Eq
+
+instance (Ord a) => Joinable (ReversePowerSet a) where
+   join Bottom v = v
+   join v Bottom = v
+   join (RPSet s1) (RPSet s2) = RPSet (s1 `Set.intersection` s2)
+
+instance (Ord a) => JoinLattice (ReversePowerSet a) where
+   bottom = Bottom 
+   subsumes _ Bottom = True
+   subsumes Bottom _ = False
+   subsumes (RPSet s1) (RPSet s2) = s1 `Set.isSubsetOf` s2 
+
+instance (Ord a) => Meetable (ReversePowerSet a) where
+   meet Bottom _ = Bottom
+   meet _ Bottom = Bottom
+   meet (RPSet s1) (RPSet s2) = RPSet (s1 `Set.union` s2)
+
+instance (Ord a) => TopLattice (ReversePowerSet a) where
+   top = RPSet Set.empty
+
 class (Domain b Bool) => BoolDomain b where
    isTrue ::  b -> Bool
    isFalse :: b -> Bool
    not :: b -> b
-   boolTop :: b
+   true :: b
+   true = inject True
+   false :: b
+   false = inject False  
+   boolTop :: b 
+   boolTop = true `join` false  
 
 
 
