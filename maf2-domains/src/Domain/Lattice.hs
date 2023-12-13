@@ -12,10 +12,10 @@ class Joinable v where
 class Meetable v where
    meet :: v -> v -> v
 
-overlap :: (Meetable v, JoinLattice v, Eq v) => v -> v -> Bool
+overlap :: (Meetable v, JoinLattice v) => v -> v -> Bool
 overlap v1 v2 = v1 `meet` v2 /= bottom 
 
-reduce :: (Meetable v, JoinLattice v, Eq v) => [v] -> [v]
+reduce :: (Meetable v, JoinLattice v) => [v] -> [v]
 reduce [] = []
 reduce (v:vs)
     | updated == v   = v : reduce oth
@@ -23,9 +23,9 @@ reduce (v:vs)
     where (olp, oth) = partition (overlap v) vs
           updated    = joins (v:olp)
 
-instance (JoinLattice l, Meetable l, Eq l) => Joinable [l] where
+instance (JoinLattice l, Meetable l) => Joinable [l] where
    join l1 l2 = reduce (l1 ++ l2)  
-instance (JoinLattice l, Meetable l, Eq l) => JoinLattice [l] where
+instance (JoinLattice l, Meetable l) => JoinLattice [l] where
    bottom = []
    subsumes l1 l2 = join l1 l2 == l1 
 
@@ -117,6 +117,7 @@ instance (Ord a) => JoinLattice (Set.Set a) where
 
 -- | A reverse powerset
 data ReversePowerSet a = RPSet (Set.Set a) | Bottom 
+   deriving Eq
 
 instance (Ord a) => Joinable (ReversePowerSet a) where
    join Bottom v = v
