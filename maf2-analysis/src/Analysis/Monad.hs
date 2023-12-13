@@ -241,7 +241,7 @@ instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx t 
       f   <- ask
       return $ f from ctx
 
-instance {-# OVERLAPPING #-} TypeError (Text "No AllocM found on stack") => AllocM Identity from t to
+instance {-# OVERLAPPING #-} TypeError (Text "No AllocM found on stack for " :$$: (ShowType from) :$$: (ShowType to) :$$: (ShowType t)) => AllocM Identity from t to
 
 instance (Monad m, AllocM (Lower m) from t to, MonadLayer m) => AllocM m from t to where
    alloc = upperM . alloc @(Lower m) @from @t @to
