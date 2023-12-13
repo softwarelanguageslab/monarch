@@ -101,6 +101,9 @@ instance (Ord a, Eq v, Joinable v) => JoinLattice (Map a v) where
 class JoinLattice v => Domain v c where
    inject :: c -> v
 
+instance Ord a => Domain (Set.Set a) a where
+   inject = Set.singleton
+
 -- | Split operation for lattices
 class SplitLattice v where
    -- Splits the value into a set of values where each value contains only one subvalue

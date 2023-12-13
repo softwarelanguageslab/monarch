@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances, FlexibleContexts, ConstraintKinds #-}
-module Domain.Dictionary(DictionaryDomain(..), CPDictionary(..)) where
+module Domain.Dictionary(DictionaryDomain(..), CPDictionary(..), lookupM) where
 
 import Domain 
 import Domain.ConstantPropagation
@@ -37,15 +37,11 @@ class (JoinLattice d, JoinLattice (DVlu d)) => DictionaryDomain d where
 
    {-# MINIMAL empty, lookup, isEmpty, contains, (update | updateWeak) #-}
 
-
-containsCP :: DictionaryDomain d => DKey d -> d -> CP Bool
-containsCP = contains 
-
 -- | Lookup a key in a dictionary, potentially throwing an error if the key is not present
 lookupM :: (AbstractM m, DictionaryDomain d) => DKey d -> d -> m (DVlu d)
-lookupM k d = cond (pure $ containsCP k d) 
+lookupM k d = cond (pure $ contains @_ @(CP Bool) k d) 
                    (pure $ lookup k d)
-                   (raiseError $ DomainError "KeyNotFound") 
+                   (escape KeyNotFound) 
 
 ------------------------------------------------------------
 --- CPDictionary (a dictionary for CP keys)

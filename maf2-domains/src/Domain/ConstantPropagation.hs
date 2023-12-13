@@ -9,9 +9,6 @@ import Control.Monad.Join
 import Control.Applicative (Applicative(liftA2))
 import Data.Char hiding (isLower, isUpper)
 import qualified Data.Char as Char
-import Data.Maybe
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 import GHC.Generics
 
 replaceAt :: [a] -> Integer -> a -> [a]
@@ -91,10 +88,10 @@ instance StringDomain (CP String) where
    length = return . fmap (fromIntegral . Prelude.length)
    append a b = return $ liftA2 (++) a b
    ref s i =
-      domain (liftA2 (>) (fmap fromIntegral i) (fmap Prelude.length s)) "string-ref: index out of range" <||>
+      domain (liftA2 (>) (fmap fromIntegral i) (fmap Prelude.length s)) IndexOutOfBounds <||>
       return (liftA2 (!!) s (fmap fromIntegral i))
    set s i c =
-      domain (liftA2 (>) (fmap fromIntegral i) (fmap Prelude.length s)) "string-set!: index of range" <||>
+      domain (liftA2 (>) (fmap fromIntegral i) (fmap Prelude.length s)) IndexOutOfBounds <||>
       return (replaceAt <$> s <*> i <*> c)
    stringLt s1 s2 = return $ liftA2 (<) s1 s2
    toNumber = return . fmap read
@@ -155,17 +152,17 @@ instance RealDomain (CP Double) where
    floor = return . fmap (fromIntegral . Prelude.floor)
    round = return . fmap (fromIntegral . Prelude.round)
    log a =
-      domain (fmap (<= 0) a) "log > 0" <||> return (fmap Prelude.log a)
+      domain (fmap (<= 0) a) InvalidArgument <||> return (fmap Prelude.log a)
    sin = return . fmap Prelude.sin
    asin a =
-      domain (fmap (between (-1) 1) a) "asin: value must be between -1 and 1" <||>
+      domain (fmap (between (-1) 1) a) InvalidArgument <||>
       return (fmap Prelude.asin a)
    cos  = return . fmap Prelude.cos
    acos a =
-      domain (fmap (between (-1) 1) a) "acos: value must be between -1 and 1" <||>
+      domain (fmap (between (-1) 1) a) InvalidArgument <||>
       return (fmap Prelude.acos a)
    tan = return . fmap Prelude.tan
    atan = return . fmap Prelude.atan
    sqrt a =
-      domain (fmap (< 0) a) "sqrt: value must be positive" <||>
+      domain (fmap (< 0) a) InvalidArgument <||>
       return (fmap Prelude.sqrt a)

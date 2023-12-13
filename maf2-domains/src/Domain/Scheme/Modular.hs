@@ -150,8 +150,7 @@ instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDo
 chars :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) => ModularSchemeValue r i c b pai vec str var exp env -> m c
 chars = foldr (mjoin . select) mzero . split
    where select ModularSchemeValue { character = Just c } = return c
-         select ModularSchemeValue { } =
-            raiseError $ DomainError "expected char"
+         select ModularSchemeValue { } = escape WrongType
 
 
 instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, IntC c ~ i, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env) =>
@@ -188,20 +187,20 @@ number :: (Ord exp, Ord i, Ord r, Ord c, Ord b, RealDomain r, IntDomain i, CharD
 number = foldr (mjoin . select) mzero . split
    where select (IsInteger i) = return $ def { integer = Just i }
          select (IsReal r) = return $ def { real    = Just r }
-         select _ = raiseError $ DomainError "expected number"
+         select _ = escape WrongType
 
 
 integers :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) =>
   ModularSchemeValue r i c b pai vec str var exp env -> m i
 integers = foldr (mjoin . select) mzero . split
    where select (IsInteger i) = return i
-         select _ = raiseError $ DomainError "expected integer"
+         select _ = escape WrongType
 
 reals :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) =>
   ModularSchemeValue r i c b pai vec str var exp env -> m r
 reals = foldr (mjoin . select) mzero . split
    where select (IsReal r) =  return r
-         select _ = raiseError $ DomainError "expected integer"
+         select _ = escape WrongType
 
 -- coerce :: (i -> i -> m a) -> (r -> r -> m a) -> (v -> v -> m a)
 --coerce :: AbstractM m => (i -> i -> m a) -> (r -> r -> m a) -> (v -> v -> m a)
@@ -335,15 +334,15 @@ instance
   -- Pointer extraction 
   pptrs = Set.foldr (mjoin . select) mzero . split
    where select ModularSchemeValue { paiPtr = Just ptr } = return ptr
-         select _ = raiseError $ DomainError "not a pair"
+         select _ = escape WrongType
 
   sptrs = Set.foldr (mjoin . select) mzero . split
    where select ModularSchemeValue { strPtr = Just ptr } = return ptr
-         select _ = raiseError $ DomainError "not a string ptr"
+         select _ = escape WrongType
 
   vptrs = Set.foldr (mjoin . select) mzero . split
    where select ModularSchemeValue { vecPtr = Just ptr } = return ptr
-         select _ = raiseError $ DomainError "not a vector"
+         select _ = escape WrongType
 
   -- Closures
   injectClo c = def { clo = Just $ Set.singleton c }
@@ -367,7 +366,7 @@ instance
   withProc f = foldr (mjoin . select) mzero . split
    where select ModularSchemeValue { clo = Just closures } = foldr (mjoin . f . Right) mzero closures
          select ModularSchemeValue { primitives = Just prms } = foldr (mjoin . f . Left) mzero prms
-         select _ = raiseError $ DomainError "not a procedure"
+         select _ = escape WrongType
 
   -- | Differentiate between values
   isInteger = isJust . integer

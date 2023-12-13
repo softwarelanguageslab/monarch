@@ -34,16 +34,16 @@ import Data.Dynamic
 import Control.Monad.DomainError
 
 -- | Monad used for implementing abstract operations
-type AbstractM m = (MonadDomainError m, MonadJoin m)
+type AbstractM m = (MonadEscape m DomainError, MonadJoin m)
 
 -- | An address is an abstraction for a memory location on which a heap-allocated address resides
-class (Typeable a,  Show a, Eq a, Ord a) => Address a
+class (Typeable a, Show a, Eq a, Ord a) => Address a
 
 -- | Raises error using `raiseError` if the given value is not in the domain
 -- or returns () if it has not
-domain :: (AbstractM m, BoolDomain b, JoinLattice a) => b -> String -> m a
-domain b msg
-   | isTrue b = raiseError $ DomainError msg
+domain :: (AbstractM m, BoolDomain b, JoinLattice a) => b -> DomainError -> m a
+domain b err
+   | isTrue b = escape err
    | otherwise = mzero
 
 class NumberDomain n where
@@ -162,12 +162,12 @@ instance (IntDomain i, BoolDomain (Boo i), JoinLattice c) => VectorDomain (PIVec
 
    vectorRef vec@(PIVector _ c) idx =
       cond (lt (vectorLength vec) idx)
-           (raiseError $ DomainError "index out of bounds")
+           (escape IndexOutOfBounds)
            (return c)
 
    vectorSet vec@(PIVector i c) idx new =
       cond (lt (vectorLength vec) idx)
-           (raiseError $ DomainError "index out of bounds")
+           (escape IndexOutOfBounds)
            (return (PIVector i (join new c)))
 
    vectorLength (PIVector i _) = i
