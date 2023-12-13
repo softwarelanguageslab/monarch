@@ -6,7 +6,7 @@
 module Control.Monad.DomainError(DomainError(..), MonadEscape(..), MayEscapeT(..), MayEscape(Value)) where
 
 import Control.Monad.Join
-import Domain.Lattice (join, JoinLattice, Joinable, Domain(..))
+import Domain.Lattice (join, JoinLattice(..), Joinable, Domain(..))
 import Data.Kind (Type)
 import Control.Monad (ap)
 import Data.Set (Set) 
@@ -33,7 +33,7 @@ data MayEscape e v = Bottom
                    | Escape e 
                    | Value v
                    | MayBoth v e
-   deriving Functor 
+   deriving (Eq, Ord, Functor)
 
 addError :: Joinable e => e -> MayEscape e a -> MayEscape e a
 addError _ Bottom = Bottom
@@ -53,6 +53,9 @@ instance (Joinable e, Joinable a) => Joinable (MayEscape e a) where
    join (MayBoth v e1) (Escape e2)        = MayBoth v (e1 `join` e2)
    join (MayBoth v1 e) (Value v2)         = MayBoth (v1 `join` v2) e
    join (MayBoth v1 e1) (MayBoth v2 e2)   = MayBoth (v1 `join` v2) (e1 `join` e2)
+
+instance (Eq a, Eq e, Joinable a, Joinable e) => JoinLattice (MayEscape e a) where
+   bottom = Bottom
 
 ------------------------------------------------------------
 --- MayEscapeT
@@ -84,6 +87,6 @@ instance (Domain e esc, MonadJoin m) => MonadEscape (MayEscapeT m e) esc where
             handle suc@(Value _) = return suc
             handle (MayBoth v e) = handle (Value v) `mjoin` handle (Escape e)
 
--- TODO:
--- instance (MonadJoin m) => MonadJoin (MayEscapeT m e) where
---    mzero = MayEscapeT mzero
+instance (Eq e, Joinable e, MonadJoin m) => MonadJoin (MayEscapeT m e) where
+    mzero = MayEscapeT mzero
+    mjoin (MayEscapeT ma) (MayEscapeT mb) = MayEscapeT (mjoin ma mb)

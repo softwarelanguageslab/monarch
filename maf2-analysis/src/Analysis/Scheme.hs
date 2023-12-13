@@ -82,7 +82,7 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
   -- on the body of that component
   type MM (ModF var v ctx dep)         = Identity
   analyze (exp, env, ctx, _) store = 
-       let ((_, (spawns, registers, triggers)), sto) = (Semantics.eval @_ @v exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
+       let ((_, (spawns, registers, triggers)), sto) = (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
               & runEvalT
               & runMayEscape @_ @(Set DomainError)
               & runCallT @v @ctx
@@ -117,7 +117,7 @@ instance (Monad m) => MonadLayer (BaseSchemeEvalT v m) where
 instance (Monad m, MonadEscape m e, Esc m ~ Set DomainError) => MonadEscape (BaseSchemeEvalT v m) e where
    type Esc (BaseSchemeEvalT v m) = Set DomainError
    escape = upperM . escape
-   catch (BaseSchemeEvalT m) hdl = BaseSchemeEvalT $ m `catch` (getInnerEvalT . hdl)
+   catch (BaseSchemeEvalT m) hdl = BaseSchemeEvalT $ catch @_ @e m (getInnerEvalT . hdl)
 
 instance (MonadJoin m) => MonadJoin (BaseSchemeEvalT v m) where
    mzero = BaseSchemeEvalT mzero
