@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 -- | This module provides a class of monads that are used to throw errors 
 -- in the implementation of our abstract domains.
-module Control.Monad.DomainError(DomainError(..), MonadEscape(..), runMayEscape) where
+module Control.Monad.DomainError(DomainError(..), MonadEscape(..), MayEscapeT(..), MayEscape(Value)) where
 
 import Control.Monad.Join
 import Domain.Lattice (join, JoinLattice, Joinable, Domain(..))
@@ -83,3 +83,7 @@ instance (Domain e esc, MonadJoin m) => MonadEscape (MayEscapeT m e) esc where
             handle (Escape e)    = runMayEscape (hdl e)
             handle suc@(Value _) = return suc
             handle (MayBoth v e) = handle (Value v) `mjoin` handle (Escape e)
+
+-- TODO:
+-- instance (MonadJoin m) => MonadJoin (MayEscapeT m e) where
+--    mzero = MayEscapeT mzero

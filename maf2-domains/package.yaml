@@ -53,6 +53,7 @@ library:
     - Domain.Scheme.Modular
     - Domain.Scheme.CPDomain
     - Domain.Scheme.Derived.Pair
+    - Domain.Scheme.Store
     - Domain.Actors
     - Domain.TopLifted
     - Domain.Python

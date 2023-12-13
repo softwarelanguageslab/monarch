@@ -11,7 +11,6 @@ import Control.Monad.Trans.Identity
 import GHC.TypeError
 
 
-
 -- | A Monad "Layer" is similar to a Monad transformer, but is also provides a function to remove one level from the monad transformer stack. 
 class (Monad (Lower m)) => MonadLayer (m :: Type -> Type) where
    -- | The next monad in the stack

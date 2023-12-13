@@ -16,7 +16,6 @@ import Analysis.Scheme.Primitives
 import Control.Monad.Join
 import Control.Monad (zipWithM_)
 import Prelude hiding (exp, lex)
-import Debug.Trace
 
 -- | Base level evaluation function
 eval ::  forall m v . (SchemeDomain v, SchemeM m v) => Exp -> m v

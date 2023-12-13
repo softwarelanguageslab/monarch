@@ -30,6 +30,7 @@ library
       Analysis.Symbolic.Semantics
       Domain.Symbolic
       Domain.Symbolic.Class
+      Domain.Symbolic.CPDomain
       Domain.Symbolic.Paired
       Lib
       Solver

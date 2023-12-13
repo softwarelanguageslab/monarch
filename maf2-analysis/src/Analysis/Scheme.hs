@@ -25,8 +25,7 @@ import Data.TypeLevel.Ghost
 import Data.Function ((&))
 import Analysis.Monad (EnvM(..))
 import Analysis.Scheme.Store
-import Control.Monad.DomainError (runMayEscape, DomainError)
-
+import Control.Monad.DomainError (runMayEscape, DomainError, MonadEscape(..))
 
 -----------------------------------------
 -- Shorthands
@@ -83,7 +82,7 @@ instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) 
   -- on the body of that component
   type MM (ModF var v ctx dep)         = Identity
   analyze (exp, env, ctx, _) store = 
-       let ((_, (spawns, registers, triggers)), sto) = (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
+       let ((_, (spawns, registers, triggers)), sto) = (Semantics.eval @_ @v exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
               & runEvalT
               & runMayEscape @_ @(Set DomainError)
               & runCallT @v @ctx
@@ -111,6 +110,14 @@ instance (Monad m) => MonadLayer (BaseSchemeEvalT v m) where
    type Lower (BaseSchemeEvalT v m) = m
    upperM = BaseSchemeEvalT 
    lowerM f (BaseSchemeEvalT m) = BaseSchemeEvalT (f m)
+
+-- TODO: this is rather ugly right now but needed
+-- since we cannot derive MonadEscape yet if it 
+-- is not on top of the layers (see Control.Monad.Layer)
+instance (Monad m, MonadEscape m e, Esc m ~ Set DomainError) => MonadEscape (BaseSchemeEvalT v m) e where
+   type Esc (BaseSchemeEvalT v m) = Set DomainError
+   escape = upperM . escape
+   catch (BaseSchemeEvalT m) hdl = BaseSchemeEvalT $ m `catch` (getInnerEvalT . hdl)
 
 instance (MonadJoin m) => MonadJoin (BaseSchemeEvalT v m) where
    mzero = BaseSchemeEvalT mzero

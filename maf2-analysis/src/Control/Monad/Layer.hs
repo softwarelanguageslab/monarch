@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE UndecidableInstances, FlexibleContexts, FlexibleInstances, RankNTypes #-}
 module Control.Monad.Layer(MonadLayer(..)) where
 
 import Data.Kind
@@ -7,6 +7,7 @@ import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
+import Control.Monad.DomainError (MayEscapeT(..), MonadEscape(..), MayEscape(..))
 
 -- | A Monad "Layer" is similar to a Monad transformer, but is also provides a function to remove one level from the monad transformer stack. 
 class (Monad (Lower m)) => MonadLayer (m :: Type -> Type) where
@@ -50,3 +51,14 @@ instance (Monad m) => MonadLayer (IdentityT m) where
    type Lower (IdentityT m) = m
    upperM = IdentityT
    lowerM f m = IdentityT $ f (runIdentityT m)
+
+-- Instance for MayEscapeT 
+instance (Monad m) => MonadLayer (MayEscapeT m e) where
+   type Lower (MayEscapeT m e) = m
+   upperM   m = MayEscapeT (Value <$> m)
+   lowerM f m = MayEscapeT (f (runMayEscape m))
+
+-- instance {-# OVERLAPPABLE #-} (MonadLayer m, MonadEscape (Lower m) e) => MonadEscape m e where
+--    type Esc m = Esc (Lower m)
+--    escape = upperM escape
+--    catch ma hdl = lowerM (`catch` hdl) ma

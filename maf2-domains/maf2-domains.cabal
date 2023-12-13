@@ -32,6 +32,7 @@ library
       Domain.Scheme.Modular
       Domain.Scheme.CPDomain
       Domain.Scheme.Derived.Pair
+      Domain.Scheme.Store
       Domain.Actors
       Domain.TopLifted
       Domain.Python
@@ -45,7 +46,6 @@ library
       Data.TypeLevel.Struct
       Domain.Interval
       Domain.Python.DataFrame
-      Domain.Scheme.Store
       Paths_maf2_domains
   hs-source-dirs:
       src

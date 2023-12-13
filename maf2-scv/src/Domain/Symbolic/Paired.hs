@@ -7,6 +7,8 @@ import Domain
 import Domain.Scheme.Class
 import Control.Monad.Join
 import Data.Map (Map)
+import Domain.Scheme.Derived.Pair
+import Domain.Symbolic.Class
 
 --------------------------------------------------
 -- Declaration
@@ -104,7 +106,7 @@ instance Domain (SymbolicVal ptr sptr vptr pptr) Bool where
    inject n = SymbolicVal $ Literal (Boo n)
 
 instance BoolDomain (SymbolicVal ptr sptr vptr pptr) where
-   isTrue = const False -- we unknown status of whether it is fale or true, so neither is
+   isTrue  = const False -- we unknown status of whether it is fale or true, so neither is
    isFalse = const False
    not (SymbolicVal v) = SymbolicVal $ Predicate "not/v" [v]
    boolTop = SymbolicVal Fresh
@@ -124,10 +126,10 @@ instance CharDomain (SymbolicVal ptr sptr vptr pptr) where
    charToInt (SymbolicVal c) = return $ SymbolicVal $ Predicate "as-int/v"   [c]
    isLower   (SymbolicVal _) = return bottom 
    isUpper   (SymbolicVal _) = return bottom
-   charEq _ _   = return bottom
-   charLt _ _   = return bottom
-   charEqCI _ _ = return bottom
-   charLtCI _ _ = return bottom
+   charEq _ _                = return bottom
+   charLt _ _                = return bottom
+   charEqCI _ _              = return bottom
+   charLtCI _ _              = return bottom
 
 ------------------------------------------------------------
 -- SchemeDomain instance
@@ -137,35 +139,45 @@ instance (Address ptr,
           Address sptr,
           Address vptr,
           Address pptr) => SchemeDomain (SymbolicVal ptr sptr vptr pptr) where
-  type Adr (SymbolicVal ptr sptr vptr pptr)  = ptr
-  type PAdr (SymbolicVal ptr sptr vptr pptr) = pptr
-  type SAdr (SymbolicVal ptr sptr vptr pptr) = sptr
-  type VAdr (SymbolicVal ptr sptr vptr pptr) = vptr
+   type Adr (SymbolicVal ptr sptr vptr pptr)  = ptr
+   type PAdr (SymbolicVal ptr sptr vptr pptr) = pptr
+   type SAdr (SymbolicVal ptr sptr vptr pptr) = sptr
+   type VAdr (SymbolicVal ptr sptr vptr pptr) = vptr
 
-  type Exp (SymbolicVal ptr sptr vptr pptr)  = Scheme.Exp
-  type Env (SymbolicVal ptr sptr vptr pptr)  = Map String ptr
+   type Exp (SymbolicVal ptr sptr vptr pptr)  = Scheme.Exp
+   type Env (SymbolicVal ptr sptr vptr pptr)  = Map String ptr
 
-  pptr      = const bottom
-  vptr      = const bottom
-  sptr      = const bottom
-  pptrs     = return . const bottom
-  vptrs     = return . const bottom
-  sptrs     = return . const bottom
-  injectClo = const bottom
-  clos      = const bottom
-  nil       = SymbolicVal $ Literal Nil
-  unsp      = SymbolicVal $ Literal Unsp
-  prim      = SymbolicVal . Variable
-  prims     = const bottom
-  withProc  = const . const mzero
-  isInteger = const False
-  isReal    = const False
-  isChar    = const False
-  isVecPtr  = const False
-  isStrPtr  = const False
-  isPaiPtr  = const False
-  isClo     = const False
-  isBool    = const False
-  isNil     = const False
-  isUnsp    = const False
-  isPrim    = const False
+   pptr      = const bottom
+   vptr      = const bottom
+   sptr      = const bottom
+   pptrs     = return . const bottom
+   vptrs     = return . const bottom
+   sptrs     = return . const bottom
+   injectClo = const bottom
+   clos      = const bottom
+   nil       = SymbolicVal $ Literal Nil
+   unsp      = SymbolicVal $ Literal Unsp
+   prim      = SymbolicVal . Variable
+   prims     = const bottom
+   withProc  = const . const mzero
+   isInteger = const False
+   isReal    = const False
+   isChar    = const False
+   isVecPtr  = const False
+   isStrPtr  = const False
+   isPaiPtr  = const False
+   isClo     = const False
+   isBool    = const False
+   isNil     = const False
+   isUnsp    = const False
+   isPrim    = const False
+
+------------------------------------------------------------
+-- Symbolic value
+------------------------------------------------------------
+
+------------------------------------------------------------
+-- Pairing with other Scheme value
+------------------------------------------------------------
+
+type PairedSymbolic v ptr var = SchemePairedValue v (SymbolicVal var ptr ptr ptr)
