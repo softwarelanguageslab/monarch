@@ -26,7 +26,8 @@ module Domain.Scheme.Derived.Pair(SchemePairedValue) where
 
 import Prelude hiding (div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not)
 
-import Domain
+import Lattice 
+import Domain.Core
 import Domain.Scheme.Class
 import Control.Monad.Join
 

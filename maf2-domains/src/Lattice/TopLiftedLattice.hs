@@ -1,10 +1,12 @@
 -- | Lifts an infinite domain such that a widening 
 -- operator is implemented that widens to `Top.
-module Domain.TopLifted(TopLifted(..)) where
+module Lattice.TopLiftedLattice(TopLifted) where
 
-import Domain.Lattice
+import Lattice.Class
 
-data TopLifted a = Top | Value a deriving Eq
+data TopLifted a = Value a 
+                 | Top
+   deriving Eq
 
 instance (Joinable v) => Joinable (TopLifted v) where 
    join Top _   = Top 

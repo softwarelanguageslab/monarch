@@ -1,7 +1,8 @@
 -- | Actor-specific extensions of the Scheme-domain
-module Domain.Actors(ActorDomain(..), ActorRef(..)) where
+module Domain.Scheme.Actors(ActorDomain(..), ActorRef(..)) where
 
-import Domain.Scheme
+import Domain.Scheme.Class 
+
 import Data.Kind
 
 class ActorRef a where 

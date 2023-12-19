@@ -24,28 +24,60 @@ source-repository head
 library
   exposed-modules:
       Domain
-      Domain.Lattice
-      Domain.ConstantPropagation
-      Domain.Dictionary
-      Domain.Scheme
-      Domain.Scheme.Class
-      Domain.Scheme.Modular
-      Domain.Scheme.CPDomain
-      Domain.Scheme.Derived.Pair
-      Domain.Scheme.Store
-      Domain.Actors
-      Domain.TopLifted
-      Domain.Python
-      Domain.Python.ClassDomain
-      Domain.Python.CPDomain
+      Lattice
+      Control.Monad.Cond
       Control.Monad.Join
       Control.Monad.DomainError
+      Control.Monad.AbstractM
   other-modules:
-      Control.Monad.Cond
       Data.TypeLevel.HList
       Data.TypeLevel.Struct
-      Domain.Interval
-      Domain.Python.DataFrame
+      Domain.Core
+      Domain.Core.BoolDomain
+      Domain.Core.BoolDomain.Class
+      Domain.Core.BoolDomain.ConstantPropagation
+      Domain.Core.CharDomain
+      Domain.Core.CharDomain.Class
+      Domain.Core.CharDomain.ConstantPropagation
+      Domain.Core.DictionaryDomain
+      Domain.Core.DictionaryDomain.Class
+      Domain.Core.DictionaryDomain.CPDict
+      Domain.Core.DictionaryDomain.SetDict
+      Domain.Core.NumberDomain
+      Domain.Core.NumberDomain.Class
+      Domain.Core.NumberDomain.ConstantPropagation
+      Domain.Core.PairDomain
+      Domain.Core.PairDomain.Class
+      Domain.Core.PairDomain.SimplePair
+      Domain.Core.StringDomain
+      Domain.Core.StringDomain.Class
+      Domain.Core.StringDomain.ConstantPropagation
+      Domain.Core.VectorDomain
+      Domain.Core.VectorDomain.Class
+      Domain.Core.VectorDomain.PIVector
+      Domain.Python
+      Domain.Python.DataFrameDomain
+      Domain.Python.DataFrameDomain.Class
+      Domain.Python.DataFrameDomain.DataFrameSet
+      Domain.Scheme
+      Domain.Scheme.Actors
+      Domain.Scheme.Class
+      Domain.Scheme.CPDomain
+      Domain.Scheme.Derived
+      Domain.Scheme.Derived.Pair
+      Domain.Scheme.Modular
+      Domain.Scheme.Store
+      Lattice.Class
+      Lattice.ConstantPropagationLattice
+      Lattice.IntervalLattice
+      Lattice.ListLattice
+      Lattice.MapLattice
+      Lattice.MaybeLattice
+      Lattice.ProductLattice
+      Lattice.ReversePowerSetLattice
+      Lattice.SetLattice
+      Lattice.TopLiftedLattice
+      Lattice.UnitLattice
       Paths_maf2_domains
   hs-source-dirs:
       src
@@ -64,6 +96,9 @@ library
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
+      ConstraintKinds
+      FlexibleInstances
+      FlexibleContexts
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
@@ -102,6 +137,9 @@ test-suite maf2-domains-test
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
+      ConstraintKinds
+      FlexibleInstances
+      FlexibleContexts
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HUnit

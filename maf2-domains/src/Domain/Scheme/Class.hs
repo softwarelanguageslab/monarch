@@ -1,12 +1,16 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue, VarDom, VecDom, PaiDom, StrDom) where
+module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue, VarDom, VecDom, PaiDom, StrDom, Address) where
+
+import Lattice 
+import Domain.Core 
+import Control.Monad.AbstractM
 
 import Data.Set (Set)
-import Domain
 import Prelude hiding (null)
 import Data.Kind
 import Data.Hashable
 import Data.Typeable
+import Data.Dynamic 
 
 -- | Reusable pre-conditions for a valid Scheme domain
 type SchemeDomainPre v =
@@ -15,6 +19,9 @@ type SchemeDomainPre v =
     CharDomain v,
     BoolDomain v,
     Boo v ~ v)
+
+-- | An address is an abstraction for a memory location on which a heap-allocated address resides
+class (Typeable a, Show a, Eq a, Ord a) => Address a
 
 -- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
 class (RealDomain v,

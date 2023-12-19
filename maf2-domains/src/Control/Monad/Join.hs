@@ -1,10 +1,12 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..)) where
 
-import Domain.Lattice
-import Control.Monad.Reader hiding (mzero)
-import Control.Monad.Writer hiding (mzero)
-import Control.Monad.State hiding (mzero)
+import Lattice.Class 
+import Domain.Core.BoolDomain.Class
+
+import Control.Monad.Reader hiding (mzero, join)
+import Control.Monad.Writer hiding (mzero, join)
+import Control.Monad.State hiding (mzero, join)
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
 import Control.Applicative (liftA2)
@@ -51,7 +53,7 @@ instance (MonadJoin m) => MonadJoin (MaybeT m) where
    mzero = MaybeT mzero
 
 instance MonadJoin Identity where
-   mjoin = liftA2 Domain.Lattice.join
+   mjoin = liftA2 join
    mzero = pure bottom
 
 instance (MonadJoin m) => MonadJoin (IdentityT m) where

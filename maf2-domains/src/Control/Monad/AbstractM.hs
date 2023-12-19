@@ -1,0 +1,16 @@
+module Control.Monad.AbstractM (AbstractM, domain) where
+
+import Control.Monad.Join 
+import Control.Monad.DomainError
+import Domain.Core.BoolDomain.Class
+import Lattice.Class 
+
+-- | Monad used for implementing abstract operations
+type AbstractM m = (MonadEscape m DomainError, MonadJoin m)
+
+-- | Raises error using `raiseError` if the given value is not in the domain
+-- or returns () if it has not
+domain :: (AbstractM m, BoolDomain b, JoinLattice a) => b -> DomainError -> m a
+domain b err
+   | isTrue b = escape err
+   | otherwise = mzero

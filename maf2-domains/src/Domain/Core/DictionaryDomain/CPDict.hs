@@ -1,51 +1,13 @@
-{-# LANGUAGE UndecidableInstances, FlexibleContexts, ConstraintKinds #-}
-module Domain.Dictionary(DictionaryDomain(..), CPDictionary(..), lookupM) where
+module Domain.Core.DictionaryDomain.CPDict (CPDictionary(..)) where
 
-import Domain 
-import Domain.ConstantPropagation
-import Control.Monad.Join
+import Lattice
+import Domain.Core.DictionaryDomain.Class 
+import Domain.Core.BoolDomain
 
-import Prelude hiding (lookup)
-import Data.Kind
-import Data.Map (Map)
-import qualified Data.Map as Map
 import Data.Set (Set, intersection)
-import qualified Data.Set as Set
-
-------------------------------------------------------------
---- DictionaryDomain abstraction interface 
-------------------------------------------------------------
-
--- | An abstract representation of a dictionary
-class (JoinLattice d, JoinLattice (DVlu d)) => DictionaryDomain d where
-   type DKey d :: Type
-   type DVlu d :: Type
-   -- | Create an empty dictionary 
-   empty   :: d  
-   -- | Look up the given key in the dictionary
-   lookup  :: DKey d -> d -> DVlu d
-   -- | Lookup and (strongly) update the given key in the dictionary
-   update  :: DKey d -> DVlu d -> d -> d
-   update = updateWeak
-   -- | Lookup and weakly update the given key in the dictionary
-   updateWeak :: DKey d -> DVlu d -> d -> d
-   updateWeak k v d = d `join` update k v d  
-   -- | Checks whether the dictionary is empty
-   isEmpty :: BoolDomain b => d -> b
-   -- | Checks whether the dictionary contains the given key
-   contains :: BoolDomain b => DKey d -> d -> b
-
-   {-# MINIMAL empty, lookup, isEmpty, contains, (update | updateWeak) #-}
-
--- | Lookup a key in a dictionary, potentially throwing an error if the key is not present
-lookupM :: (AbstractM m, DictionaryDomain d) => DKey d -> d -> m (DVlu d)
-lookupM k d = cond (pure $ contains @_ @(CP Bool) k d) 
-                   (pure $ lookup k d)
-                   (escape KeyNotFound) 
-
-------------------------------------------------------------
---- CPDictionary (a dictionary for CP keys)
-------------------------------------------------------------
+import qualified Data.Set as Set 
+import Data.Map (Map)
+import qualified Data.Map as Map 
 
 -- | A dictionary that only works for keys from a CP domain 
 data CPDictionary k v = BotDict
@@ -66,13 +28,13 @@ instance CPDict k v => Joinable (CPDictionary k v) where
       TopDict (kys1 `intersection` kys2) (vlu1 `join` vlu2)
    join a b = join b a
 
-instance (CPDict k v, Eq v) => JoinLattice (CPDictionary k v) where
+instance CPDict k v => JoinLattice (CPDictionary k v) where
    bottom = BotDict
    subsumes _ BotDict   = True
    subsumes BotDict _   = False
    subsumes d1 d2       = join d1 d2 == d1
 
-instance (CPDict k v, Eq v) => DictionaryDomain (CPDictionary k v) where
+instance CPDict k v => DictionaryDomain (CPDictionary k v) where
    
    type DKey (CPDictionary k v) = CP k
    type DVlu (CPDictionary k v) = v 
@@ -137,56 +99,3 @@ instance (CPDict k v, Eq v) => DictionaryDomain (CPDictionary k v) where
       | otherwise = boolTop                  -- otherwise, we don't know
    contains Top (TopDict _ _) = boolTop      -- we don't know 
 
-
-------------------------------------------------------------
---- SetDictionary (a dictionary for Powerset keys)
-------------------------------------------------------------
-
--- | A simple dictionary for keys from a set domain
-data SetDictionary k v = Bot | Dct (Map k v)
-   deriving (Eq, Ord, Show)
-
-type SetDict k v = (Ord k, JoinLattice v)
-
-instance SetDict k v => Joinable (SetDictionary k v) where
-   join Bot d = d
-   join d Bot = d
-   join (Dct d1) (Dct d2) = Dct $ Map.unionWith join d1 d2
-
-instance (SetDict k v, Eq v) => JoinLattice (SetDictionary k v) where
-   bottom = Bot
-   subsumes _ Bot = True
-   subsumes Bot _ = False
-   subsumes d1 d2 = join d1 d2 == d1
-
-
-instance (SetDict k v, Eq v) => DictionaryDomain (SetDictionary k v) where
-   
-   type DKey (SetDictionary k v) = Set k
-   type DVlu (SetDictionary k v) = v
-   
-   empty :: SetDictionary k v
-   empty = Dct Map.empty
-
-   lookup :: Set k -> SetDictionary k v -> v
-   lookup _ Bot = bottom
-   lookup ks (Dct d) = joinMap (justOrBot . flip Map.lookup d) ks
-
-   updateWeak :: Set k -> v -> SetDictionary k v -> SetDictionary k v 
-   updateWeak _ v d
-      | v == bottom = d 
-   updateWeak _ _ Bot = Bot
-   updateWeak ks v (Dct dct) = Dct $ foldr (\k -> Map.insertWith join k v) dct ks 
-
-   isEmpty :: BoolDomain d => SetDictionary k v -> d
-   isEmpty Bot = bottom
-   isEmpty (Dct dct)
-      | Map.null dct = true
-      | otherwise = boolTop 
-   
-   contains :: BoolDomain d => Set k -> SetDictionary k v -> d
-   contains _ Bot = bottom
-   contains ks (Dct dct)
-      | Set.null matchedKys = false
-      | otherwise = boolTop 
-      where matchedKys = Map.keysSet dct `intersection` ks

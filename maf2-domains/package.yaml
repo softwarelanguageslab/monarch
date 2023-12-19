@@ -45,22 +45,11 @@ library:
   source-dirs: src
   exposed-modules: 
     - Domain
-    - Domain.Lattice
-    - Domain.ConstantPropagation
-    - Domain.Dictionary
-    - Domain.Scheme
-    - Domain.Scheme.Class
-    - Domain.Scheme.Modular
-    - Domain.Scheme.CPDomain
-    - Domain.Scheme.Derived.Pair
-    - Domain.Scheme.Store
-    - Domain.Actors
-    - Domain.TopLifted
-    - Domain.Python
-    - Domain.Python.ClassDomain
-    - Domain.Python.CPDomain
+    - Lattice 
+    - Control.Monad.Cond
     - Control.Monad.Join
     - Control.Monad.DomainError
+    - Control.Monad.AbstractM
 
 default-extensions:
   - TypeFamilies
@@ -77,6 +66,9 @@ default-extensions:
   - MultiParamTypeClasses
   - FunctionalDependencies
   - GeneralizedNewtypeDeriving
+  - ConstraintKinds
+  - FlexibleInstances
+  - FlexibleContexts
 
 
 tests:

@@ -1,9 +1,11 @@
 module Domain.Scheme.CPDomain(CPValue) where
 
+import Lattice 
+import Domain.Core 
+import Domain.Scheme.Class
+import Domain.Scheme.Modular 
+
 import Data.Map
-import Domain.Scheme
-import Domain
-import Domain.ConstantPropagation
 
 type CPValue ptr var exp = ModularSchemeValue
                                   (CP Double)

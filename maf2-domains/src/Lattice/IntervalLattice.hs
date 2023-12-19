@@ -1,11 +1,13 @@
 -- | A simple interval domain, with an upper and lower bound
-module Domain.Interval(Interval(..), Bound(..)) where
+module Lattice.IntervalLattice(Interval(..), Bound(..)) where
 
-import Domain.Lattice
+import Lattice.Class 
 
 -- | A bound of the interval domain, 
 -- is either a concrete value or infinity. 
-data Bound a = Bounded a | Infinity deriving Eq
+data Bound a = Bounded a 
+             | Infinity 
+  deriving (Eq, Ord)
 
 -- | Take the minimum bound of the lower bound of the interval
 min' :: Ord a => Bound a -> Bound a -> Bound a 

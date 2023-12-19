@@ -1,19 +1,24 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds #-}
+
 module Domain.Scheme.Modular where
 
+import Lattice
+import Domain.Core
 import Domain.Scheme.Class
+import Control.Monad.Join
+import Control.Monad.DomainError
+import Control.Monad.AbstractM
+
+import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
+import Data.List hiding (null, length)
+import Data.Maybe (isJust)
+import GHC.Generics
 import Control.Applicative (Applicative(liftA2))
 import Data.Set (Set)
 import Data.Default
 import qualified Data.Set as Set
 import Control.Monad ((>=>), (<=<))
 import qualified Control.Monad as M
-import Domain
-import Prelude hiding (null)
-import Data.List hiding (null)
-import Control.Monad.Join
-import Data.Maybe (isJust)
-import GHC.Generics
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -232,8 +237,8 @@ instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDo
                    (\v1 v2 -> insertReal <$> minus v1 v2)
    times  = coerce (\v1 v2 -> insertInt <$> times v1 v2)
                    (\v1 v2 -> insertReal <$> times v1 v2)
-   div    = coerce (\v1 v2 -> insertInt <$> Domain.div v1 v2)
-                   (\v1 v2 -> insertReal <$> Domain.div v1 v2)
+   div    = coerce (\v1 v2 -> insertInt <$> div v1 v2)
+                   (\v1 v2 -> insertReal <$> div v1 v2)
    expt   = coerce (\v1 v2 -> insertInt <$> expt v1 v2)
                    (\v1 v2 -> insertReal <$> expt v1 v2)
    lt     = coerce (\v1 v2 -> insertBool <$> lt v1 v2)
@@ -247,17 +252,17 @@ instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDo
    type IntR (ModularSchemeValue r i c b pai vec str var exp env) = (ModularSchemeValue r i c b pai vec str var exp env)
 
    toInt   = (reals >=> toInt) >=> (return . insertInt)
-   ceiling = coerc1R $ fmap insertReal . Domain.ceiling
-   floor   = coerc1R $ fmap insertReal . Domain.floor
-   round   = coerc1R $ fmap insertReal . Domain.round
-   log     = coerc1R $ fmap insertReal . Domain.log
-   sin     = coerc1R $ fmap insertReal . Domain.sin
-   asin    = coerc1R $ fmap insertReal . Domain.asin
-   cos     = coerc1R $ fmap insertReal . Domain.cos
-   acos    = coerc1R $ fmap insertReal . Domain.acos
-   tan     = coerc1R $ fmap insertReal . Domain.tan
-   atan    = coerc1R $ fmap insertReal . Domain.atan
-   sqrt    = coerc1R $ fmap insertReal . Domain.sqrt
+   ceiling = coerc1R $ fmap insertReal . ceiling
+   floor   = coerc1R $ fmap insertReal . floor
+   round   = coerc1R $ fmap insertReal . round
+   log     = coerc1R $ fmap insertReal . log
+   sin     = coerc1R $ fmap insertReal . sin
+   asin    = coerc1R $ fmap insertReal . asin
+   cos     = coerc1R $ fmap insertReal . cos
+   acos    = coerc1R $ fmap insertReal . acos
+   tan     = coerc1R $ fmap insertReal . tan
+   atan    = coerc1R $ fmap insertReal . atan
+   sqrt    = coerc1R $ fmap insertReal . sqrt
 
 instance (Ord exp, Ord i, Ord c, Ord r, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b) =>
    IntDomain (ModularSchemeValue r i c b pai vec str var exp env) where
@@ -291,7 +296,7 @@ instance (
    type IntS (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) = (ModularSchemeValue r i c b pai vec str var exp env)
    type ChaS (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) = (ModularSchemeValue r i c b pai vec str var exp env)
    type BooS (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) = (ModularSchemeValue r i c b pai vec str var exp  env)
-   length = (Domain.length . sconst) >=> (return . insertInt)
+   length = (length . sconst) >=> (return . insertInt)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = insertChar <$> (ref (sconst s) =<< integers i)
    stringLt s1 s2  = insertBool <$> stringLt (sconst s1) (sconst s2)

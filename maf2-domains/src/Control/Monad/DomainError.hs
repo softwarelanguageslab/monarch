@@ -5,11 +5,13 @@
 -- in the implementation of our abstract domains.
 module Control.Monad.DomainError(DomainError(..), MonadEscape(..), MayEscapeT(..), MayEscape(Value)) where
 
+import Lattice hiding (Bottom)
+
 import Control.Monad.Join
-import Domain.Lattice (join, JoinLattice(..), Joinable, Domain(..))
 import Data.Kind (Type)
 import Control.Monad (ap)
 import Data.Set (Set) 
+
 
 -- | Errors in the abstract domain are represented as arbitrary strings
 data DomainError = WrongType | IndexOutOfBounds | KeyNotFound | InvalidArgument 
@@ -18,7 +20,7 @@ data DomainError = WrongType | IndexOutOfBounds | KeyNotFound | InvalidArgument
 class Domain a DomainError => ErrorDomain a 
 
 instance ErrorDomain (Set DomainError) 
-
+ 
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m esc where
    type Esc m  :: Type     
