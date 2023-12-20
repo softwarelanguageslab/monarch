@@ -1,8 +1,7 @@
 module Lattice.Class (
    Joinable(..), 
    JoinLattice(..), 
-   TopLattice(..), 
-   Domain(..),
+   TopLattice(..),
    SplitLattice(..), 
    WidenLattice(..), 
    Meetable(..), 
@@ -42,15 +41,6 @@ class (JoinLattice v) => TopLattice v where  --TODO: is JoinLattice necessary?
 justOrBot :: JoinLattice a => Maybe a -> a
 justOrBot (Just v) = v
 justOrBot _ = bottom
-
-------------------------------------------------------------
---- Domain
-------------------------------------------------------------
-
-class JoinLattice v => Domain v c where
-   inject :: c -> v
-   injects :: Foldable t => t c -> v 
-   injects = joinMap inject 
 
 ------------------------------------------------------------
 --- SplitLattice

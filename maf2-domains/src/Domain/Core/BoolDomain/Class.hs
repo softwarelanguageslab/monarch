@@ -1,6 +1,7 @@
-module Domain.Core.BoolDomain.Class where 
+module Domain.Core.BoolDomain.Class (BoolDomain(..)) where 
 
 import Lattice 
+import Domain.Class 
 
 class (Domain b Bool) => BoolDomain b where
    not :: b -> b

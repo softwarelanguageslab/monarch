@@ -4,6 +4,7 @@
 module Lattice.SetLattice where
 
 import Lattice.Class
+import Domain.Class 
 
 import Data.Set (Set)
 import qualified Data.Set as Set 

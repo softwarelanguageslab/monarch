@@ -6,6 +6,7 @@
 module Control.Monad.DomainError(DomainError(..), MonadEscape(..), MayEscapeT(..), MayEscape(Value)) where
 
 import Lattice hiding (Bottom)
+import Domain.Class 
 
 import Control.Monad.Join
 import Data.Kind (Type)

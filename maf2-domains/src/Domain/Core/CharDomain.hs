@@ -4,4 +4,4 @@ module Domain.Core.CharDomain (
 ) where
 
 import Domain.Core.CharDomain.Class
-import Domain.Core.CharDomain.ConstantPropagation ()
+import Domain.Core.CharDomain.ConstantPropagation

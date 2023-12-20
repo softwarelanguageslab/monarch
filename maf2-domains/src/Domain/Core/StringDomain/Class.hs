@@ -1,6 +1,7 @@
 module Domain.Core.StringDomain.Class where
 
 import Lattice 
+import Domain.Class 
 import Control.Monad.AbstractM
 
 import Data.Kind 

@@ -7,6 +7,9 @@ import Lattice.Class
 
 import Data.List (partition)
 
+
+--TODO: introduce a newtype
+
 reduce :: (Meetable v, JoinLattice v) => [v] -> [v]
 reduce [] = []
 reduce (v:vs)

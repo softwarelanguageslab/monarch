@@ -8,7 +8,7 @@
 -- subdomains. Some operations in the `SchemeDomain` are 
 -- executed in a monadic context, this is to be able to 
 -- transparantely report errors and to be able to support
--- non-determnistic behavior. The downside of this approach 
+-- non-deterministic behavior. The downside of this approach 
 -- is that it becomes unclear what is supposed to happen
 -- when two domains are combined. For instance, their 
 -- errors could be combined in a way that if the left
@@ -28,6 +28,7 @@ import Prelude hiding (div, ceiling, floor, round, log, sin, asin, cos, acos, ta
 
 import Lattice 
 import Domain.Core
+import Domain.Class 
 import Domain.Scheme.Class
 import Control.Monad.Join
 

@@ -1,6 +1,6 @@
 module Domain.Core.CharDomain.Class (CharDomain(..)) where
 
-import Lattice 
+import Domain.Class 
 import Control.Monad.AbstractM
 import Domain.Core.BoolDomain
 

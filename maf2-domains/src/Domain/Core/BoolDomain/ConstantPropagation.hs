@@ -3,6 +3,7 @@
 module Domain.Core.BoolDomain.ConstantPropagation (bool) where 
 
 import Lattice 
+import Domain.Class 
 import Domain.Core.BoolDomain.Class 
 
 instance BoolDomain (CP Bool) where

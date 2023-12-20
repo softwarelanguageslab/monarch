@@ -10,7 +10,6 @@ import Prelude hiding (null)
 import Data.Kind
 import Data.Hashable
 import Data.Typeable
-import Data.Dynamic 
 
 -- | Reusable pre-conditions for a valid Scheme domain
 type SchemeDomainPre v =

@@ -4,6 +4,7 @@
 module Lattice.ConstantPropagationLattice(CP(..), fromCP) where
 
 import Lattice.Class 
+import Domain.Class 
 
 import GHC.Generics
 
