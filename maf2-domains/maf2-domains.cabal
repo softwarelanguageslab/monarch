@@ -24,7 +24,12 @@ source-repository head
 library
   exposed-modules:
       Domain
+      Domain.Class
+      Domain.Core
+      Domain.Scheme
+      Domain.Python
       Lattice
+      Lattice.Class
       Control.Monad.Cond
       Control.Monad.Join
       Control.Monad.DomainError
@@ -32,8 +37,6 @@ library
   other-modules:
       Data.TypeLevel.HList
       Data.TypeLevel.Struct
-      Domain.Class
-      Domain.Core
       Domain.Core.BoolDomain
       Domain.Core.BoolDomain.Class
       Domain.Core.BoolDomain.ConstantPropagation
@@ -56,11 +59,9 @@ library
       Domain.Core.VectorDomain
       Domain.Core.VectorDomain.Class
       Domain.Core.VectorDomain.PIVector
-      Domain.Python
       Domain.Python.DataFrameDomain
       Domain.Python.DataFrameDomain.Class
       Domain.Python.DataFrameDomain.DataFrameSet
-      Domain.Scheme
       Domain.Scheme.Actors
       Domain.Scheme.Class
       Domain.Scheme.CPDomain
@@ -68,7 +69,6 @@ library
       Domain.Scheme.Derived.Pair
       Domain.Scheme.Modular
       Domain.Scheme.Store
-      Lattice.Class
       Lattice.ConstantPropagationLattice
       Lattice.IntervalLattice
       Lattice.ListLattice

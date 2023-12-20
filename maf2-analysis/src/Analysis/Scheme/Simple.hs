@@ -7,7 +7,6 @@ import Syntax.Scheme
 import Analysis.Scheme
 import Domain (Address)
 import Domain.Scheme hiding (Exp)
-import Domain.Scheme.CPDomain
 import Control.SVar.ModX
 import GHC.Generics
 import Data.Hashable

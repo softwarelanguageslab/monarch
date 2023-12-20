@@ -10,9 +10,10 @@
 -- - a store for storing the strings allocated by the program
 module Analysis.Scheme.Store(fromValues, SchemeStore(..), combineStores) where
 
+import Domain.Scheme
+
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Domain.Scheme
 
 data SchemeStore v var str pai vec = SchemeStore {
      values  :: Map var (VarDom v),

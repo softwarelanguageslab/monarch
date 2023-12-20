@@ -45,7 +45,12 @@ library:
   source-dirs: src
   exposed-modules: 
     - Domain
-    - Lattice 
+    - Domain.Class
+    - Domain.Core 
+    - Domain.Scheme
+    - Domain.Python
+    - Lattice
+    - Lattice.Class 
     - Control.Monad.Cond
     - Control.Monad.Join
     - Control.Monad.DomainError

@@ -6,8 +6,7 @@ import Syntax.Scheme.AST
 import Analysis.Monad
 import Analysis.Scheme.Monad
 import Analysis.Actors.Mailbox
-
-import Domain.Actors
+import Domain.Scheme hiding (Exp)
 
 class (SchemeM m v, ActorDomain v, Message msg v) => ActorEvalM m v msg | m -> msg where
    -- | Spawn a new actor with the given behavior, returns an actor reference

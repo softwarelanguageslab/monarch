@@ -3,7 +3,7 @@
 -- | This module provides an implementation for generating unique identifiers
 module Control.SVar.GenId(IdTree, IdGenT, initialTree, runIdGenT, freshId) where 
 
-import Domain.Lattice hiding (top, split)
+import Lattice hiding (top, split, Bottom)
 import Control.Monad.Join
 import Control.Monad.Reader hiding (join)
 import Control.Monad.State hiding (join)

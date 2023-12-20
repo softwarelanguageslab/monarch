@@ -4,9 +4,10 @@
 -- support programming language.
 module Analysis.IO(IOModel(..), IOVal(..), OutputIO(..), IOHandle(..), StatusIO, DirectionIO, emptyOutputIO) where
 
+import Lattice hiding (Top)
+
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Domain.Lattice
 
 -- | Class of IO models, a model `m` is parametrized by its handle type `h` and the type 
 -- of values that can be written to that handle.

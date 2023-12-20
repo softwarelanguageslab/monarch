@@ -20,7 +20,7 @@ import Analysis.Monad
 import Data.Maybe
 import Control.Monad.State hiding (mzero)
 import Control.Monad.Join (mjoin, mzero)
-import qualified Domain (join)
+import Lattice (join)
 import Domain.Scheme hiding (Exp)
 import Debug.Trace
 import Analysis.Scheme.Store (values)

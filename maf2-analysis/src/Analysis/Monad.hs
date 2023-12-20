@@ -34,23 +34,19 @@ import Analysis.Environment
 import Control.Monad.Reader hiding (mzero)
 import Control.Monad.Join
 import Control.Monad.State hiding (mzero)
+import Control.Monad.DomainError 
 import Syntax.Scheme.AST
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.TypeLevel.List
-import Data.Kind
-import Domain
-import Analysis.Store hiding (lookupSto, extendSto, updateSto)
+import Domain hiding (Exp)
+import Lattice 
 import qualified Analysis.Store as Store
 import Control.Monad.Layer
 import Control.Monad.Trans.Maybe
 import Control.Monad.Writer hiding (mzero)
-import Control.Monad.Error
-import List.Transformer
 import GHC.TypeError
 import Data.Functor.Identity
 import Data.Map (Map)
-import qualified Data.Map as Map
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality

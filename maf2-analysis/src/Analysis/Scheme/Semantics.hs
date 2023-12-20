@@ -5,12 +5,11 @@
 module Analysis.Scheme.Semantics(eval, applyFun, applyClo, applyPrim) where
 
 import Analysis.Semantics
-import Domain.Scheme hiding (Exp)
 import Analysis.Monad hiding (eval)
 import Analysis.Scheme.Monad
 import qualified Analysis.Monad as Monad
 import Syntax.Scheme.AST
-import Domain
+import Domain hiding (Exp)
 import Control.Applicative (Applicative(liftA2))
 import Analysis.Scheme.Primitives
 import Control.Monad.Join

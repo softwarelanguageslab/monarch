@@ -15,7 +15,7 @@ import Control.Monad.Layer
 import Control.Monad.Cond (whenM)
 
 import Syntax.Scheme
-import Domain (subsumes, JoinLattice)
+import Lattice
 import Domain.Scheme hiding (Exp, Env)
 
 import Data.Set (Set)

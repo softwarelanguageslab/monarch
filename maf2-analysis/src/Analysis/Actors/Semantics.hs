@@ -13,7 +13,6 @@ import qualified Analysis.Scheme.Semantics as Base
 import Analysis.Actors.Monad
 import Analysis.Actors.Mailbox
 import qualified Analysis.Monad as Monad
-import Domain.Actors
 import Control.Monad.Join
 
 eval :: ActorEvalM m v msg => Exp -> m v

@@ -13,11 +13,11 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Analysis.Monad
 import Analysis.Scheme.Monad
-import Domain.Scheme hiding (Exp)
-import Domain
+import Domain hiding (Exp, empty)
 import Control.Monad.Join
 import Control.Monad ((>=>))
 import Syntax.Scheme.AST
+import Control.Monad.DomainError
 
 data Prim v = Prim { primName :: String, run :: forall m . PrimM m v => Exp -> [v] -> m v }
 
