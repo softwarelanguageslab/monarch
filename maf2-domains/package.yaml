@@ -29,6 +29,8 @@ dependencies:
 - maf2-syntax
 - maf2-typelevel
 - hashable
+- singletons
+- singletons-th
 
 ghc-options:
 - -Wall
@@ -74,6 +76,8 @@ default-extensions:
   - ConstraintKinds
   - FlexibleInstances
   - FlexibleContexts
+  - RankNTypes
+  - GADTs
 
 
 tests:

@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -36,6 +36,7 @@ library
       Control.Monad.AbstractM
   other-modules:
       Data.TypeLevel.HList
+      Data.TypeLevel.HMap
       Data.TypeLevel.Struct
       Domain.Core.BoolDomain
       Domain.Core.BoolDomain.Class
@@ -100,6 +101,8 @@ library
       ConstraintKinds
       FlexibleInstances
       FlexibleContexts
+      RankNTypes
+      GADTs
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
@@ -110,6 +113,8 @@ library
     , maf2-syntax
     , maf2-typelevel
     , mtl
+    , singletons
+    , singletons-th
     , transformers
     , unordered-containers
   default-language: Haskell2010
@@ -141,6 +146,8 @@ test-suite maf2-domains-test
       ConstraintKinds
       FlexibleInstances
       FlexibleContexts
+      RankNTypes
+      GADTs
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HUnit
@@ -156,6 +163,8 @@ test-suite maf2-domains-test
     , maf2-syntax
     , maf2-typelevel
     , mtl
+    , singletons
+    , singletons-th
     , transformers
     , unordered-containers
   default-language: Haskell2010
