@@ -34,9 +34,9 @@ library
       Control.Monad.Join
       Control.Monad.DomainError
       Control.Monad.AbstractM
+      Data.TypeLevel.HMap
   other-modules:
       Data.TypeLevel.HList
-      Data.TypeLevel.HMap
       Data.TypeLevel.Struct
       Domain.Core.BoolDomain
       Domain.Core.BoolDomain.Class

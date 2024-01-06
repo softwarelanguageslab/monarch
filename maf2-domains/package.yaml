@@ -57,6 +57,7 @@ library:
     - Control.Monad.Join
     - Control.Monad.DomainError
     - Control.Monad.AbstractM
+    - Data.TypeLevel.HMap
 
 default-extensions:
   - TypeFamilies
