@@ -1,6 +1,7 @@
 module Lattice (
   module Lattice.Class,
   module Lattice.ConstantPropagationLattice,
+  module Lattice.HMapLattice,
   module Lattice.IntervalLattice,
   module Lattice.ListLattice,
   module Lattice.MapLattice,
@@ -14,6 +15,7 @@ module Lattice (
 
 import Lattice.Class
 import Lattice.ConstantPropagationLattice 
+import Lattice.HMapLattice
 import Lattice.IntervalLattice
 import Lattice.ListLattice
 import Lattice.MapLattice
