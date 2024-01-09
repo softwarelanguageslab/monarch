@@ -71,6 +71,7 @@ library
       Domain.Scheme.Modular
       Domain.Scheme.Store
       Lattice.ConstantPropagationLattice
+      Lattice.HMapLattice
       Lattice.IntervalLattice
       Lattice.ListLattice
       Lattice.MapLattice

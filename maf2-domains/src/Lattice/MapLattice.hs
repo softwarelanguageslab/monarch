@@ -14,5 +14,3 @@ instance (Ord a, Joinable v) => Joinable (Map a v) where
 
 instance (Ord a, Eq v, Joinable v) => JoinLattice (Map a v) where
    bottom = Map.empty
-   subsumes m1 m2 =
-      join m1 m2 == m1

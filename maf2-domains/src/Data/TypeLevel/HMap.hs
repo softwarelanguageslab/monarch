@@ -6,12 +6,17 @@
 
 module Data.TypeLevel.HMap (
     HMap, 
+    (:->),
+    (::->),
+    Dict(..),
+    KeyType,
+    KeyKind,
+    HMapKey,
+    withDict,
     empty, 
     singleton,
     get,
-    getWithSing,
     set,
-    setWithSing,
     member,
     null,
     keys,
@@ -20,10 +25,14 @@ module Data.TypeLevel.HMap (
     filter,
     foldr,
     unionWith,
-    with,
+    withC,
+    withC_,
     ForAll(..),
+    ForAllOf,
     All,
-    Assoc
+    Assoc,
+    InstanceOf,
+    AtKey
 ) where
 
 import Prelude hiding (map, filter, foldr, null)
@@ -54,7 +63,7 @@ data Dict c where
   Dict :: c => Dict c
 
 withDict :: Dict c -> (c => v) -> v
-withDict Dict v = v
+withDict Dict = id 
 
 ---
 --- Some useful constraints (TODO: move this to other utility module?)
@@ -101,14 +110,8 @@ singleton = HMap . Map.singleton (demote @kt) . SomeVal
 get :: forall kt m . (HMapKey m, SingI kt) => HMap m -> Maybe (Assoc kt m)
 get (HMap m) = unsafeCoerceVal <$> Map.lookup (demote @kt) m
 
-getWithSing :: forall kt m . (HMapKey m) => Sing kt -> HMap m -> Maybe (Assoc kt m)
-getWithSing Sing = get @kt 
-
 set :: forall kt m . (HMapKey m, SingI kt) => Assoc kt m -> HMap m -> HMap m
 set v (HMap m) = HMap $ Map.insert (demote @kt) (SomeVal v) m
-
-setWithSing :: forall kt m . (HMapKey m) => Sing kt -> Assoc kt m -> HMap m -> HMap m
-setWithSing Sing = set @kt
 
 member :: forall m (kt :: KeyKind m) . (HMapKey m, SingI kt) => HMap m -> Bool
 member (HMap m) = Map.member (demote @kt) m 
@@ -137,6 +140,9 @@ unionWith f (HMap m1) (HMap m2) = HMap $ Map.unionWithKey (\k v1 v2 -> withSomeS
 keys :: HMap m -> Set (KeyType m)
 keys (HMap m) = Map.keysSet m
 
+withKey :: HMapKey m => (forall (kt :: KeyKind m) . Sing kt -> r) -> KeyType m -> r
+withKey f k = withSomeSing k f 
+
 size :: HMap m -> Int
 size (HMap m) = Map.size m
 
@@ -153,19 +159,22 @@ type family ForAllIn (t :: [k]) (c :: k ~> Constraint) :: Constraint where
 class ForAll k c where
   for :: forall (t :: k) . Sing t -> Dict (c @@ t)
 
--- convenience method combining withDict and for
-with :: forall k c t r . (ForAll k c) => Sing t -> (c @@ t => r) -> r  
-with s = withDict (for @k @c s)
+-- convenience functions combining withDict and for
+withC :: forall k c t r . (ForAll k c) => (c @@ t => Sing t -> r) -> Sing t -> r
+withC f s = withDict (for @k @c s) (f s)
+
+withC_ :: forall k c t r . (ForAll k c) => (c @@ t => r) -> Sing t -> r  
+withC_ f = withC @k @c (const f)
 
 type ValueIsEq m = AtKey (InstanceOf Eq) m
-instance (k ~ KeyKind m, HMapKey m, ForAll k (ValueIsEq m)) => Eq (HMap m) where
-  m1 == m2 = size m1 == size m2 && all (`withSomeSing` compareWithSing) (keys m1)
-    where compareWithSing :: forall (t :: k) . Sing t -> Bool 
-          compareWithSing s = with @_ @(ValueIsEq m) s $ getWithSing s m1 == getWithSing s m2
+instance (HMapKey m, ForAll (KeyKind m) (ValueIsEq m)) => Eq (HMap m) where
+  m1 == m2 = size m1 == size m2 && all (withKey $ withC @_ @(ValueIsEq m) compareAtSing) (keys m1)
+    where compareAtSing :: forall kt . ValueIsEq m @@ kt => Sing kt -> Bool
+          compareAtSing Sing = get @kt m1 == get @kt m2 
 
 type ValueIsSemigroup m = AtKey (InstanceOf Semigroup) m
-instance (k ~ KeyKind m, HMapKey m, ForAll k (ValueIsSemigroup m)) => Semigroup (HMap m) where
-  (<>) = unionWith (\s -> with @_ @(ValueIsSemigroup m) s (<>))
+instance (HMapKey m, ForAll (KeyKind m) (ValueIsSemigroup m)) => Semigroup (HMap m) where
+  (<>) = unionWith (withC_ @_ @(ValueIsSemigroup m) (<>))
   
 
 -- example 
