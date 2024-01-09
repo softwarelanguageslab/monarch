@@ -1,6 +1,7 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_GHC -Wno-missing-export-lists #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-orphans                #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists   #-}
+{-# LANGUAGE UndecidableInstances           #-}
+{-# LANGUAGE PolyKinds                      #-}
 
 module Lattice.HMapLattice where
 
@@ -12,7 +13,6 @@ instance (HMapKey m,
           => 
           Joinable (HMap m) where
   join = unionWith (withC_ @_ @(AtKey (InstanceOf Joinable) m) join)
-
 
 instance (HMapKey m, 
           ForAll (KeyKind m) (AtKey (InstanceOf Eq) m),
