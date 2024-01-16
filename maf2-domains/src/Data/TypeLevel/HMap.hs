@@ -13,6 +13,7 @@ module Data.TypeLevel.HMap (
     KeyKind,
     HMapKey,
     withDict,
+    withKey,
     empty, 
     singleton,
     get,
