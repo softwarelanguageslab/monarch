@@ -12,7 +12,7 @@ instance (HMapKey m,
           ForAll (KeyKind m) (AtKey (InstanceOf Joinable) m)) 
           => 
           Joinable (HMap m) where
-  join = unionWith (withC_ @_ @(AtKey (InstanceOf Joinable) m) join)
+  join = unionWith (withC_ @(AtKey (InstanceOf Joinable) m) join)
 
 instance (HMapKey m, 
           ForAll (KeyKind m) (AtKey (InstanceOf Eq) m),
