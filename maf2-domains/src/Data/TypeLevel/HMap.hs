@@ -160,21 +160,21 @@ class ForAll k c where
   for :: forall (t :: k) . Sing t -> Dict (c @@ t)
 
 -- convenience functions combining withDict and for
-withC :: forall k c t r . (ForAll k c) => (c @@ t => Sing t -> r) -> Sing t -> r
+withC :: forall {k} c t r . (ForAll k c) => (c @@ t => Sing t -> r) -> Sing t -> r
 withC f s = withDict (for @k @c s) (f s)
 
-withC_ :: forall k c t r . (ForAll k c) => (c @@ t => r) -> Sing t -> r  
-withC_ f = withC @k @c (const f)
+withC_ :: forall {k} c t r . (ForAll k c) => (c @@ t => r) -> Sing t -> r  
+withC_ f = withC @c (const f)
 
 type ValueIsEq m = AtKey (InstanceOf Eq) m
 instance (HMapKey m, ForAll (KeyKind m) (ValueIsEq m)) => Eq (HMap m) where
-  m1 == m2 = size m1 == size m2 && all (withKey $ withC @_ @(ValueIsEq m) compareAtSing) (keys m1)
+  m1 == m2 = size m1 == size m2 && all (withKey $ withC @(ValueIsEq m) compareAtSing) (keys m1)
     where compareAtSing :: forall kt . ValueIsEq m @@ kt => Sing kt -> Bool
           compareAtSing Sing = get @kt m1 == get @kt m2 
 
 type ValueIsSemigroup m = AtKey (InstanceOf Semigroup) m
 instance (HMapKey m, ForAll (KeyKind m) (ValueIsSemigroup m)) => Semigroup (HMap m) where
-  (<>) = unionWith (withC_ @_ @(ValueIsSemigroup m) (<>))
+  (<>) = unionWith (withC_ @(ValueIsSemigroup m) (<>))
   
 
 -- example 
