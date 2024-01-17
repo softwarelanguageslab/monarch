@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE PolyKinds                  #-}
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE AllowAmbiguousTypes        #-}
@@ -15,9 +14,13 @@ module Data.TypeLevel.HMap (
     withDict,
     empty, 
     singleton,
+    singletonWithSing,
     get,
+    getWithSing,
     set,
+    setWithSing,
     member,
+    memberWithSing,
     null,
     keys,
     size, 
@@ -59,7 +62,7 @@ unsafeCoerceVal (SomeVal v) = unsafeCoerce v
 -- Dict (TODO: move this to other utility module?)
 --
 
-data Dict c where
+data Dict (c :: Constraint) where
   Dict :: c => Dict c
 
 withDict :: Dict c -> (c => v) -> v
@@ -71,6 +74,12 @@ withDict Dict = id
 
 data AtKey (c :: Type ~> Constraint) (m :: [k :-> Type]) :: k ~> Constraint
 type instance Apply (AtKey c m) kt = c @@ Assoc kt m
+
+data Const (t :: k) :: a ~> k 
+type instance Apply (Const t) _ = t 
+
+data And (c1 :: t ~> Constraint) (c2 :: t ~> Constraint) :: t ~> Constraint
+type instance Apply (And c1 c2) kt = (c1 @@ kt, c2 @@ kt)
 
 data InstanceOf (c :: t -> Constraint) :: t ~> Constraint
 type instance Apply (InstanceOf c) t = c t
@@ -104,24 +113,36 @@ type HMapKey m = (SingKind (KeyKind m), Ord (KeyType m))
 empty :: HMap m
 empty = HMap Map.empty
 
-singleton :: forall m kt . (HMapKey m, SingI kt) => Assoc kt m -> HMap m
+singleton :: forall kt m . (HMapKey m, SingI kt) => Assoc kt m -> HMap m
 singleton = HMap . Map.singleton (demote @kt) . SomeVal
+
+singletonWithSing :: forall kt m . (HMapKey m) => Sing kt -> Assoc kt m -> HMap m
+singletonWithSing Sing = singleton @kt
 
 get :: forall kt m . (HMapKey m, SingI kt) => HMap m -> Maybe (Assoc kt m)
 get (HMap m) = unsafeCoerceVal <$> Map.lookup (demote @kt) m
 
+getWithSing :: forall kt m . (HMapKey m) => Sing kt -> HMap m -> Maybe (Assoc kt m)
+getWithSing Sing = get @kt
+
 set :: forall kt m . (HMapKey m, SingI kt) => Assoc kt m -> HMap m -> HMap m
 set v (HMap m) = HMap $ Map.insert (demote @kt) (SomeVal v) m
 
+setWithSing :: forall kt m . (HMapKey m) => Sing kt -> Assoc kt m -> HMap m -> HMap m
+setWithSing Sing = set @kt
+
 member :: forall m (kt :: KeyKind m) . (HMapKey m, SingI kt) => HMap m -> Bool
 member (HMap m) = Map.member (demote @kt) m 
+
+memberWithSing :: forall m (kt :: KeyKind m) . (HMapKey m) => Sing kt -> HMap m -> Bool
+memberWithSing Sing = member @m @kt
 
 map :: forall f m . (HMapKey m) => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> f @@ kt) -> HMap m -> HMap (MapWith f (Keys m))
 map f (HMap m) = HMap $ Map.mapWithKey (\k v -> withSomeSing k (g v)) m
   where g :: forall (kt :: KeyKind m) . SomeVal -> Sing kt -> SomeVal
         g v s = SomeVal $ f s (unsafeCoerceVal @(Assoc kt m) v)
 
-filter :: forall m b . (HMapKey m) => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> Bool) -> HMap m -> HMap m
+filter :: forall m . (HMapKey m) => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> Bool) -> HMap m -> HMap m
 filter p (HMap m) = HMap $ Map.filterWithKey (\k v -> withSomeSing k (g v)) m
   where g :: forall (kt :: KeyKind m) . SomeVal -> Sing kt -> Bool
         g v s = p s (unsafeCoerceVal @(Assoc kt m) v)
@@ -132,10 +153,10 @@ foldr f b (HMap m) = Map.foldrWithKey (\k v r -> withSomeSing k (g v r)) b m
         g v r s = f s (unsafeCoerceVal @(Assoc kt m) v) r
 
 -- TODO?: can be generalised for different mappings m1 and m2 (but might be confusing for a "union")
-unionWith :: forall m b . (HMapKey m) => (forall (kt :: KeyKind m) .  Sing kt -> Assoc kt m -> Assoc kt m -> Assoc kt m) -> HMap m -> HMap m -> HMap m
+unionWith :: forall m . (HMapKey m) => (forall (kt :: KeyKind m) .  Sing kt -> Assoc kt m -> Assoc kt m -> Assoc kt m) -> HMap m -> HMap m -> HMap m
 unionWith f (HMap m1) (HMap m2) = HMap $ Map.unionWithKey (\k v1 v2 -> withSomeSing k (g v1 v2)) m1 m2
   where g :: forall (kt :: KeyKind m) . SomeVal -> SomeVal -> Sing kt -> SomeVal
-        g v1 v2 sing = SomeVal $ f sing (unsafeCoerceVal @(Assoc kt m) v1) (unsafeCoerceVal @(Assoc kt m) v2)
+        g v1 v2 s = SomeVal $ f s (unsafeCoerceVal @(Assoc kt m) v1) (unsafeCoerceVal @(Assoc kt m) v2)
 
 keys :: HMap m -> Set (KeyType m)
 keys (HMap m) = Map.keysSet m
@@ -190,6 +211,9 @@ instance ForAllOf MyKey c => ForAll MyKey c where
   for SBoolKey    = Dict
   for SStringKey  = Dict 
 
+type M = [IntKey ::-> Int, BoolKey ::-> Bool]
+
 myHMap :: HMap [IntKey ::-> Int, BoolKey ::-> Bool]
 myHMap = set @BoolKey True $ set @IntKey 42 empty
 
+myHMap' = map @(Const String) (withC_ @_ @(AtKey (InstanceOf Show) M) show) myHMap 
