@@ -1,6 +1,6 @@
 module Domain.Core.DictionaryDomain.Class(DictionaryDomain(..),  lookupM) where
 
-import Lattice
+import Lattice hiding (contains, empty)
 import Domain.Core.BoolDomain
 import Control.Monad.AbstractM
 import Control.Monad.Join
@@ -15,6 +15,9 @@ class (JoinLattice d, JoinLattice (DVlu d)) => DictionaryDomain d where
    type DVlu d :: Type
    -- | Create an empty dictionary 
    empty   :: d  
+   -- | Create a dictionary from a list of bindings
+   from :: [(DKey d, DVlu d)] -> d
+   from = foldr (uncurry update) empty
    -- | Look up the given key in the dictionary
    lookup  :: DKey d -> d -> DVlu d
    -- | Lookup and (strongly) update the given key in the dictionary
