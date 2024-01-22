@@ -4,17 +4,18 @@
 {-# LANGUAGE StandaloneKindSignatures   #-}
 
 module Data.TypeLevel.HMap (
-    HMap, 
+    HMap,
     (:->),
     (::->),
     Dict(..),
     KeyType,
+    Keys,
     KeyKind,
     HMapKey,
     withDict,
     withFacts,
     withKey,
-    empty, 
+    empty,
     singleton,
     singletonWithSing,
     get,
@@ -25,7 +26,7 @@ module Data.TypeLevel.HMap (
     memberWithSing,
     null,
     keys,
-    size, 
+    size,
     map,
     filter,
     foldr,
@@ -38,7 +39,7 @@ module Data.TypeLevel.HMap (
     ForAllOf,
     All,
     Assoc,
-    LookupIn, 
+    LookupIn,
     InstanceOf,
     AtKey,
     AtKey1,
@@ -46,11 +47,12 @@ module Data.TypeLevel.HMap (
     KeyIs1,
     Const,
     BindingFrom,
-    genHKeys
+    genHKeys, 
+    MapWith,
 ) where
 
 import Prelude hiding (map, filter, foldr, null)
-import qualified Prelude 
+import qualified Prelude
 import Data.Kind
 import Data.Singletons
 import Data.Singletons.TH
@@ -81,7 +83,7 @@ data Dict (c :: Constraint) where
   Dict :: c => Dict c
 
 withDict :: Dict c -> (c => v) -> v
-withDict Dict = id 
+withDict Dict = id
 
 ---
 --- Some useful constraints (TODO: move this to other utility module?)
@@ -91,11 +93,11 @@ withDict Dict = id
 data AtKey (c :: Type ~> Constraint) (m :: [k :-> Type]) :: k ~> Constraint
 type instance Apply (AtKey c m) kt = c @@ Assoc kt m
 
-data LookupIn (m :: [k:->Type]) :: k ~> Type 
-type instance Apply (LookupIn m) k = Assoc k m  
+data LookupIn (m :: [k:->Type]) :: k ~> Type
+type instance Apply (LookupIn m) k = Assoc k m
 
-data Const (t :: k) :: a ~> k 
-type instance Apply (Const t) _ = t 
+data Const (t :: k) :: a ~> k
+type instance Apply (Const t) _ = t
 
 data And (c1 :: t ~> Constraint) (c2 :: t ~> Constraint) :: t ~> Constraint
 type instance Apply (And c1 c2) kt = (c1 @@ kt, c2 @@ kt)
@@ -163,7 +165,7 @@ setWithSing :: forall kt m . (HMapKey m) => Sing kt -> Assoc kt m -> HMap m -> H
 setWithSing Sing = set @kt
 
 member :: forall {k} (kt :: k)  (m :: [k :-> Type]) . (HMapKey m, SingI kt) => HMap m -> Bool
-member (HMap m) = Map.member (demote @kt) m 
+member (HMap m) = Map.member (demote @kt) m
 
 memberWithSing :: forall {k} (kt :: k) (m :: [k :-> Type]) . (HMapKey m) => Sing kt -> HMap m -> Bool
 memberWithSing Sing = member @kt
@@ -193,7 +195,7 @@ keys :: HMap m -> Set (KeyType m)
 keys (HMap m) = Map.keysSet m
 
 withKey :: HMapKey m => (forall (kt :: KeyKind m) . Sing kt -> r) -> KeyType m -> r
-withKey f k = withSomeSing k f 
+withKey f k = withSomeSing k f
 
 size :: HMap m -> Int
 size (HMap m) = Map.size m
@@ -205,10 +207,10 @@ fromList :: forall m . HMapKey m => [BindingFrom m] -> HMap m
 fromList = HMap . Map.fromList . Prelude.map sigmaToPair      -- equivalent to: Prelude.foldr (\(s :&: v) -> setWithSing s v) empty 
   where sigmaToPair :: BindingFrom m -> (KeyType m, SomeVal)
         sigmaToPair (s :&: v) = (fromSing s, SomeVal v)
-  
-toList :: forall m . HMapKey m => HMap m -> [BindingFrom m] 
-toList (HMap m) = Prelude.map (\(k, v) -> withKey (pairToSigma v) k) (Map.toList m) 
-  where pairToSigma :: forall (kt :: KeyKind m) . SomeVal -> Sing kt -> BindingFrom m 
+
+toList :: forall m . HMapKey m => HMap m -> [BindingFrom m]
+toList (HMap m) = Prelude.map (\(k, v) -> withKey (pairToSigma v) k) (Map.toList m)
+  where pairToSigma :: forall (kt :: KeyKind m) . SomeVal -> Sing kt -> BindingFrom m
         pairToSigma v s = s :&: unsafeCoerceVal @(Assoc kt m) v
 
 -- optionally, supporting these can be used for generic Eq/Semigroup/... instances
@@ -225,23 +227,23 @@ class ForAll k c where
 withC :: forall {k} c t r . (ForAll k c) => (c @@ t => Sing t -> r) -> Sing t -> r
 withC f s = withDict (for @k @c s) (f s)
 
-withC_ :: forall {k} c t r . (ForAll k c) => (c @@ t => r) -> Sing t -> r  
+withC_ :: forall {k} c t r . (ForAll k c) => (c @@ t => r) -> Sing t -> r
 withC_ f = withC @c (const f)
 
 instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Eq m)) => Eq (HMap m) where
   m1 == m2 = size m1 == size m2 && all (withKey $ withC @(AtKey1 Eq m) compareAtSing) (keys m1)
     where compareAtSing :: forall kt . AtKey1 Eq m @@ kt => Sing kt -> Bool
-          compareAtSing Sing = get @kt m1 == get @kt m2 
+          compareAtSing Sing = get @kt m1 == get @kt m2
 
 type ValueIsSemigroup m = AtKey1 Semigroup m
 instance (HMapKey m, ForAll (KeyKind m) (ValueIsSemigroup m)) => Semigroup (HMap m) where
   (<>) = unionWith (withC_ @(ValueIsSemigroup m) (<>))
-  
+
 
 -- | Introduces trivial facts about the operations on the HMap which Haskell cannot figure out on its own.
-type Facts f kt m = Assoc kt (MapWith f m) ~ f @@ kt 
+type Facts f kt m = Assoc kt (MapWith f (Keys m)) ~ f @@ kt
 withFacts :: forall f kt m r . (Facts f kt m => r) -> r
-withFacts r = withDict forced r
+withFacts = withDict forced
    where forced :: Dict (Facts f kt m)
          forced = unsafeCoerce (Dict @())
 
@@ -262,4 +264,4 @@ myHMap' = set @IntKey 42 empty
 
 test = myHMap == myHMap'
 
-myHMap'' = map @(Const String) (withC_ @(AtKey1 Show M) show) myHMap 
+myHMap'' = map @(Const String) (withC_ @(AtKey1 Show M) show) myHMap

@@ -25,7 +25,7 @@ import Data.Kind
 import Data.Singletons
 
 import Lattice.HMapLattice
-import Data.TypeLevel.HMap (HMap, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const)
+import Data.TypeLevel.HMap (HMap, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith)
 import qualified Data.TypeLevel.HMap as HMap
 
 maybeSingle :: Maybe a -> Set a
@@ -68,7 +68,7 @@ data SchemeConfKey = PaiPtrKey
 -- 
 -- The values ncluded in this map should satisfy the 
 -- constraints given in `IsSchemeValue`.
-newtype SchemeVal (m :: [SchemeKey :-> Type]) c = SchemeVal { getSchemeVal :: (HMap m) }
+newtype SchemeVal (m :: [SchemeKey :-> Type]) c = SchemeVal { getSchemeVal :: HMap m }
 
 -- | A valid choice for `m` and `c` should satisfy these constraints
 type IsSchemeValue m c =
@@ -117,19 +117,26 @@ instance (IsSchemeValue m c) => Domain (SchemeVal m c) Char where
    inject = SchemeVal . HMap.singleton @CharKey . inject
 
 
--- instance (IsSchemeValue m c) => BoolDomain (SchemeVal m c) where
---    isTrue = HMap.foldr (const (||)) False . HMap.map @(Const Bool) trueish . getSchemeVal
---       where trueish :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt m -> Bool
---             trueish SBoolKey boolean = isTrue boolean
---             trueish _ _  = True -- anything else is true
---    -- only `#f` is false
---    isFalse v = any falsish (split v)
---       where falsish ModularSchemeValue { boolean = Just boolean } = isFalse boolean
---             falsish ModularSchemeValue {} = False
---    boolTop = SchemeVal $ HMap.singleton @BoolKey boolTop
---    not v = join t f
---       where t = if isTrue  v then inject True else bottom
---             f = if isFalse v then inject False else bottom
+instance (IsSchemeValue m c) => BoolDomain (SchemeVal m c) where
+   isTrue = HMap.foldr ors False . HMap.map @(Const Bool) trueish . getSchemeVal
+      where trueish :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt m -> Bool
+            trueish SBoolKey boolean = isTrue boolean
+            trueish _ _  = True -- anything else is true
+            ors :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (MapWith (Const Bool) (Keys m)) -> Bool -> Bool
+            ors _ = HMap.withFacts @(Const Bool) @kt @m (||)
+
+   -- only `#f` is false
+   isFalse = HMap.foldr ors False . HMap.map @(Const Bool) falsish . getSchemeVal
+      where falsish :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt m -> Bool
+            falsish SBoolKey boolean = isFalse boolean
+            falsish _ _ = False
+            ors :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (MapWith (Const Bool) (Keys m)) -> Bool -> Bool
+            ors _ = HMap.withFacts @(Const Bool) @kt @m (||)
+
+   boolTop = SchemeVal $ HMap.singleton @BoolKey boolTop
+   not v = join t f
+      where t = if isTrue  v then inject True else bottom
+            f = if isFalse v then inject False else bottom
 
 -- A generic instance for the Scheme domain, parametrized by their sublattices
 data ModularSchemeValue r i c b pai vec str var exp env = ModularSchemeValue {
