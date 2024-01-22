@@ -12,6 +12,7 @@ module Data.TypeLevel.HMap (
     KeyKind,
     HMapKey,
     withDict,
+    withFacts,
     withKey,
     empty, 
     singleton,
@@ -41,6 +42,9 @@ module Data.TypeLevel.HMap (
     InstanceOf,
     AtKey,
     AtKey1,
+    KeyIs,
+    KeyIs1,
+    Const,
     BindingFrom,
     genHKeys
 ) where
@@ -103,6 +107,11 @@ type AtKey1 (c :: Type -> Constraint) (m :: [k :-> Type]) = AtKey (InstanceOf c)
 -- | Defunctionalized the given function `c`
 data InstanceOf (c :: a -> b) :: a ~> b
 type instance Apply (InstanceOf a) b = a b
+
+-- | Generates a constraint `c` on the value of key `k` of map `m`
+type KeyIs (c :: Type ~> Constraint) (m :: [k :-> Type]) (kt :: k) = AtKey c m @@ kt
+
+type KeyIs1 (c :: Type -> Constraint) (m :: [k :-> Type]) (kt :: k) = AtKey1 c m @@ kt
 
 ---
 --- El HMap
@@ -228,6 +237,13 @@ type ValueIsSemigroup m = AtKey1 Semigroup m
 instance (HMapKey m, ForAll (KeyKind m) (ValueIsSemigroup m)) => Semigroup (HMap m) where
   (<>) = unionWith (withC_ @(ValueIsSemigroup m) (<>))
   
+
+-- | Introduces trivial facts about the operations on the HMap which Haskell cannot figure out on its own.
+type Facts f kt m = Assoc kt (MapWith f m) ~ f @@ kt 
+withFacts :: forall f kt m r . (Facts f kt m => r) -> r
+withFacts r = withDict forced r
+   where forced :: Dict (Facts f kt m)
+         forced = unsafeCoerce (Dict @())
 
 -- example 
 
