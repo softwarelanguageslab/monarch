@@ -7,6 +7,8 @@ module Lattice.Class (
    Meetable(..), 
    justOrBot, 
    overlap,
+   joins,
+   joinMap 
 ) where
 
 import Data.Set (Set)
@@ -25,11 +27,12 @@ class (Joinable v, Eq v) => JoinLattice v where
    subsumes :: v -> v -> Bool
    subsumes a b =
       join a b == a
-   joins :: Foldable t => t v -> v
-   joins = foldr join bottom
-   -- | Like foldMap, folding all mapped values using a join
-   joinMap :: Foldable t => (a -> v) -> t a -> v  
-   joinMap f = foldr (join . f) bottom 
+
+joins :: (JoinLattice v, Foldable t) => t v -> v
+joins = foldr join bottom
+-- | Like foldMap, folding all mapped values using a join
+joinMap :: (JoinLattice v, Foldable t) => (a -> v) -> t a -> v  
+joinMap f = foldr (join . f) bottom 
 
 -- | A lattice with a top element
 class (JoinLattice v) => TopLattice v where  --TODO: is JoinLattice necessary?

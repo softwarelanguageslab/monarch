@@ -1,5 +1,5 @@
 {-# LANGUAGE QuantifiedConstraints #-}
-module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..)) where
+module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..), mJoinMap, mjoins) where
 
 import Lattice.Class 
 import Domain.Core.BoolDomain.Class
@@ -15,8 +15,6 @@ import Data.Functor.Identity
 -- | Non-deterministic computations that can be joined together into a single computation
 class (Monad m) => MonadJoin m where
    mjoin :: Joinable v => m v -> m v -> m v
-   mjoins :: (Foldable t, JoinLattice v) => t (m v) -> m v
-   mjoins = foldr mjoin mzero
    mzero :: JoinLattice a => m a
    (<||>) :: JoinLattice v => m v -> m v -> m v
    a <||> b = mjoin a b
@@ -25,6 +23,13 @@ class (Monad m) => MonadJoin m where
    cond cnd csq alt = mjoin t f
       where t = cnd >>= (\b -> if isTrue b then csq else mzero)
             f = cnd >>= (\b -> if isFalse b then alt else mzero)
+
+mJoinMap :: (MonadJoin m, Foldable t, JoinLattice b) => (a -> m b) -> t a -> m b 
+mJoinMap f = foldr (mjoin . f) mzero
+
+mjoins :: (MonadJoin m, Foldable t, JoinLattice v) => t (m v) -> m v
+mjoins = foldr mjoin mzero
+
 
 -- | Like `Alternative`, returns if a computation
 -- succeeds, otherwise tries the other one.
