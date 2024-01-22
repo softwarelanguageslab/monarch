@@ -12,10 +12,10 @@ import Data.TypeLevel.HMap
 import Data.Maybe
 
 instance (HMapKey m, 
-          ForAll (KeyKind m) (AtKey (InstanceOf Joinable) m)) 
+          ForAll (KeyKind m) (AtKey1 Joinable m)) 
           => 
           Joinable (HMap m) where
-  join = unionWith (withC_ @(AtKey (InstanceOf Joinable) m) join)
+  join = unionWith (withC_ @(AtKey1 Joinable m) join)
 
 instance (HMapKey m, 
           ForAll (KeyKind m) (AtKey1 Eq m),

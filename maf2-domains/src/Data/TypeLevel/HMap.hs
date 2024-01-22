@@ -2,10 +2,6 @@
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE AllowAmbiguousTypes        #-}
 {-# LANGUAGE StandaloneKindSignatures   #-}
-{-# LANGUAGE QuantifiedConstraints      #-}
-{-# LANGUAGE UndecidableSuperClasses    #-}
-
-
 
 module Data.TypeLevel.HMap (
     HMap, 
@@ -56,7 +52,6 @@ import Data.Set (Set)
 import Unsafe.Coerce (unsafeCoerce)
 
 import Data.TypeLevel.HMap.TH
-import Language.Haskell.TH.Syntax (Extension(TypeFamilies))
 
 --
 -- SomeVal (TODO: move this to other utility module?)
