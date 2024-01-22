@@ -2,6 +2,10 @@
 {-# LANGUAGE UndecidableInstances       #-}
 {-# LANGUAGE AllowAmbiguousTypes        #-}
 {-# LANGUAGE StandaloneKindSignatures   #-}
+{-# LANGUAGE QuantifiedConstraints      #-}
+{-# LANGUAGE UndecidableSuperClasses    #-}
+
+
 
 module Data.TypeLevel.HMap (
     HMap, 
@@ -37,7 +41,8 @@ module Data.TypeLevel.HMap (
     Assoc,
     InstanceOf,
     AtKey,
-    AtKey1
+    AtKey1,
+    genHKeys
 ) where
 
 import Prelude hiding (map, filter, foldr, null)
@@ -51,6 +56,7 @@ import Data.Set (Set)
 import Unsafe.Coerce (unsafeCoerce)
 
 import Data.TypeLevel.HMap.TH
+import Language.Haskell.TH.Syntax (Extension(TypeFamilies))
 
 --
 -- SomeVal (TODO: move this to other utility module?)

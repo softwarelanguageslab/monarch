@@ -50,6 +50,7 @@ library:
     - Domain
     - Domain.Class
     - Domain.Core 
+    - Domain.Core.HMapDomain 
     - Domain.Scheme
     - Domain.Python
     - Lattice
