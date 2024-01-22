@@ -1,4 +1,4 @@
-module Lattice.ReversePowerSetLattice (ReversePowerSet) where
+module Lattice.ReversePowerSetLattice (ReversePowerSet, empty, insert, contains) where
 
 import Lattice.Class
 
@@ -9,6 +9,17 @@ import qualified Data.Set as Set
 data ReversePowerSet a = Bottom
                        | RPSet (Set a) 
    deriving Eq
+
+empty :: ReversePowerSet a
+empty = RPSet Set.empty
+
+insert :: Ord a => a -> ReversePowerSet a -> ReversePowerSet a
+insert a Bottom    = Bottom
+insert a (RPSet s) = RPSet (Set.insert a s)
+
+contains :: Ord a => a -> ReversePowerSet a -> Bool
+contains a Bottom    = True
+contains a (RPSet s) = Set.member a s
 
 instance (Ord a) => Joinable (ReversePowerSet a) where
    join Bottom v = v
