@@ -236,7 +236,8 @@ type family ForAllIn (t :: [k]) (c :: k ~> Constraint) :: Constraint where
 --
 -- Useful for stating that some constraint should hold for all keys in a mapping of an HMap
 -- (which are always of the same key kind). Mostly used in polymorphic contexts when `m` 
--- isn't known. Otherwise the availble instances can be derived statically.
+-- isn't known. Otherwise the constraint does not need to be stated explicitly as the instance
+-- can be resolved from the concrete type.
 -- 
 -- Example: 
 --
@@ -296,9 +297,8 @@ withFacts = withDict forced
 
 
 data MyKey = IntKey | StringKey deriving (Ord, Eq)
+type M = '[ IntKey ::-> Int, StringKey ::-> String ]
 genHKeys ''MyKey
 
-showMap :: forall (m :: [MyKey :-> Type]) . ForAll MyKey (AtKey1 Show m) => HMap m -> HMap (MapWith (Const String) (Keys m)) 
-showMap = map  @(Const String) @m  showIt
-   where showIt :: forall (k :: MyKey) . Sing k -> Assoc k m -> String
-         showIt sing v = withDict (for @MyKey @(AtKey1 Show m) sing) (show v)
+showMap :: HMap M -> HMap (MapWith (Const String) (Keys M)) 
+showMap = map  @(Const String) (withC_ @(AtKey1 Show M) show)
