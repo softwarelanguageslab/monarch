@@ -28,6 +28,7 @@ module Data.TypeLevel.HMap (
     keys,
     size,
     map,
+    map',
     filter,
     foldr,
     fromList,
@@ -49,6 +50,7 @@ module Data.TypeLevel.HMap (
     BindingFrom,
     genHKeys, 
     MapWith,
+    MapWithAt,
 ) where
 
 import Prelude hiding (map, filter, foldr, null)
@@ -129,10 +131,17 @@ type family Assoc (kt :: k) (m :: [k :-> Type]) :: Type where
 type family Keys (m :: [k :-> Type]) :: [k] where
   Keys '[]              = '[]
   Keys (kt ::-> _ ': r) = (kt ': Keys r)
+
+-- | Maps function `f` over `ks` and returns a mapping where each key is mapped to 
+-- the result of applying `f` to that key
 type family MapWith (f :: k ~> Type) (ks :: [k]) :: [k :-> Type] where
   MapWith f '[]       = '[]
   MapWith f (kt ': r) = kt ::-> (f @@ kt) : MapWith f r
 
+
+type MapWithAt f kt m = Assoc kt (MapWith f (Keys m))
+
+-- | Returns the kind of the keys in the mapping
 type KeyKind (m :: [k :-> Type]) = k
 type KeyType m = Demote (KeyKind m)
 
@@ -174,6 +183,9 @@ map :: forall f m . (HMapKey m) => (forall (kt :: KeyKind m) . Sing kt -> Assoc 
 map f (HMap m) = HMap $ Map.mapWithKey (\k v -> withSomeSing k (g v)) m
   where g :: forall (kt :: KeyKind m) . SomeVal -> Sing kt -> SomeVal
         g v s = SomeVal $ f s (unsafeCoerceVal @(Assoc kt m) v)
+
+map' :: forall m a . (HMapKey m) => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> a) -> HMap m -> HMap (MapWith (Const a) (Keys m))
+map' = map @(Const a)
 
 filter :: forall m . (HMapKey m) => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> Bool) -> HMap m -> HMap m
 filter p (HMap m) = HMap $ Map.filterWithKey (\k v -> withSomeSing k (g v)) m
@@ -220,6 +232,23 @@ type family ForAllIn (t :: [k]) (c :: k ~> Constraint) :: Constraint where
   ForAllIn '[] c      = ()
   ForAllIn (k ': r) c = (c @@ k, ForAllIn r c)
 
+-- | Provides evidence that constraint `c` is satisfied for a type `t` of kind `k`.
+--
+-- Useful for stating that some constraint should hold for all keys in a mapping of an HMap
+-- (which are always of the same key kind). Mostly used in polymorphic contexts when `m` 
+-- isn't known. Otherwise the availble instances can be derived statically.
+-- 
+-- Example: 
+--
+-- @
+-- data MyKey = IntKey | StringKey deriving (Ord, Eq)
+-- genHKeys ''MyKey
+-- 
+-- showMap :: forall (m :: [MyKey :-> Type]) . ForAll MyKey (AtKey1 Show m) => HMap m -> HMap (MapWith (Const String) (Keys m)) 
+-- showMap = map  @(Const String) @m  showIt
+--    where showIt :: forall (k :: MyKey) . Sing k -> Assoc k m -> String
+--          showIt sing v = withDict (for @MyKey @(AtKey1 Show m) sing) (show v)
+-- @
 class ForAll k c where
   for :: forall (t :: k) . Sing t -> Dict (c @@ t)
 
@@ -239,7 +268,6 @@ type ValueIsSemigroup m = AtKey1 Semigroup m
 instance (HMapKey m, ForAll (KeyKind m) (ValueIsSemigroup m)) => Semigroup (HMap m) where
   (<>) = unionWith (withC_ @(ValueIsSemigroup m) (<>))
 
-
 -- | Introduces trivial facts about the operations on the HMap which Haskell cannot figure out on its own.
 type Facts f kt m = Assoc kt (MapWith f (Keys m)) ~ f @@ kt
 withFacts :: forall f kt m r . (Facts f kt m => r) -> r
@@ -249,19 +277,28 @@ withFacts = withDict forced
 
 -- example 
 
-data MyKey = IntKey | BoolKey | StringKey
-  deriving (Eq, Ord)
+-- data MyKey = IntKey | BoolKey | StringKey
+--   deriving (Eq, Ord)
+-- 
+-- genHKeys ''MyKey
+-- 
+-- type M = [IntKey ::-> Int, BoolKey ::-> Bool]
+-- 
+-- myHMap :: HMap [IntKey ::-> Int, BoolKey ::-> Bool]
+-- myHMap = set @BoolKey True $ set @IntKey 42 empty
+-- 
+-- myHMap' :: HMap [IntKey ::-> Int, BoolKey ::-> Bool]
+-- myHMap' = set @IntKey 42 empty
+-- 
+-- test = myHMap == myHMap'
+-- 
+-- myHMap'' = map @(Const String) (withC_ @(AtKey1 Show M) show) myHMap
 
+
+data MyKey = IntKey | StringKey deriving (Ord, Eq)
 genHKeys ''MyKey
 
-type M = [IntKey ::-> Int, BoolKey ::-> Bool]
-
-myHMap :: HMap [IntKey ::-> Int, BoolKey ::-> Bool]
-myHMap = set @BoolKey True $ set @IntKey 42 empty
-
-myHMap' :: HMap [IntKey ::-> Int, BoolKey ::-> Bool]
-myHMap' = set @IntKey 42 empty
-
-test = myHMap == myHMap'
-
-myHMap'' = map @(Const String) (withC_ @(AtKey1 Show M) show) myHMap
+showMap :: forall (m :: [MyKey :-> Type]) . ForAll MyKey (AtKey1 Show m) => HMap m -> HMap (MapWith (Const String) (Keys m)) 
+showMap = map  @(Const String) @m  showIt
+   where showIt :: forall (k :: MyKey) . Sing k -> Assoc k m -> String
+         showIt sing v = withDict (for @MyKey @(AtKey1 Show m) sing) (show v)

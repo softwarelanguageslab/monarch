@@ -25,7 +25,7 @@ import Data.Kind
 import Data.Singletons
 
 import Lattice.HMapLattice
-import Data.TypeLevel.HMap (HMap, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith)
+import Data.TypeLevel.HMap (HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith, MapWithAt)
 import qualified Data.TypeLevel.HMap as HMap
 
 maybeSingle :: Maybe a -> Set a
@@ -72,9 +72,9 @@ newtype SchemeVal (m :: [SchemeKey :-> Type]) c = SchemeVal { getSchemeVal :: HM
 
 -- | A valid choice for `m` and `c` should satisfy these constraints
 type IsSchemeValue m c =
-   (ForAll (KeyKind m) (AtKey1 JoinLattice m),
-    ForAll (KeyKind m) (AtKey1 Eq m),
-    ForAll (KeyKind m) (AtKey1 Joinable m),
+   (ForAll SchemeKey (AtKey1 JoinLattice m),
+    ForAll SchemeKey (AtKey1 Eq m),
+    ForAll SchemeKey (AtKey1 Joinable m),
     KeyIs1 RealDomain m RealKey,
     KeyIs1 BoolDomain m BoolKey,
     KeyIs1 IntDomain  m  IntKey,
@@ -98,9 +98,10 @@ deriving instance (HMapKey m,
                    ForAll (KeyKind m) (AtKey1 JoinLattice m)) => JoinLattice (SchemeVal m c)
 
 -- Show instance
---instance (ForAll (KeyKind m) (AtKey1 Show m)) => Show (SchemeVal m c) where
---   show (SchemeVal hm) = HMap.foldr (const (++)) "" (HMap.map showItem hm)
---      where showItem _ = const ""
+instance (ForAll (KeyKind m) (AtKey1 Show m)) => Show (SchemeVal m c) where
+   show (SchemeVal hm) = HMap.foldr append' "" (HMap.map' (withC_ @(AtKey1 Show m) show) hm)
+      where append' :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const String) kt m  -> String -> String
+            append' = const (HMap.withFacts @(Const String) @kt @m (++))
 
 ------------------------------------------------------------
 -- Domains
@@ -118,19 +119,19 @@ instance (IsSchemeValue m c) => Domain (SchemeVal m c) Char where
 
 
 instance (IsSchemeValue m c) => BoolDomain (SchemeVal m c) where
-   isTrue = HMap.foldr ors False . HMap.map @(Const Bool) trueish . getSchemeVal
+   isTrue = HMap.foldr ors False . HMap.map' trueish . getSchemeVal
       where trueish :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt m -> Bool
             trueish SBoolKey boolean = isTrue boolean
             trueish _ _  = True -- anything else is true
-            ors :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (MapWith (Const Bool) (Keys m)) -> Bool -> Bool
+            ors :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const Bool) kt m -> Bool -> Bool
             ors _ = HMap.withFacts @(Const Bool) @kt @m (||)
 
    -- only `#f` is false
-   isFalse = HMap.foldr ors False . HMap.map @(Const Bool) falsish . getSchemeVal
+   isFalse = HMap.foldr ors False . HMap.map' falsish . getSchemeVal
       where falsish :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt m -> Bool
             falsish SBoolKey boolean = isFalse boolean
             falsish _ _ = False
-            ors :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (MapWith (Const Bool) (Keys m)) -> Bool -> Bool
+            ors :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const Bool) kt m -> Bool -> Bool
             ors _ = HMap.withFacts @(Const Bool) @kt @m (||)
 
    boolTop = SchemeVal $ HMap.singleton @BoolKey boolTop
