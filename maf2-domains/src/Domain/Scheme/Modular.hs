@@ -25,7 +25,7 @@ import Data.Kind
 import Data.Singletons
 
 import Lattice.HMapLattice
-import Data.TypeLevel.HMap (HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith, MapWithAt)
+import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith, MapWithAt)
 import qualified Data.TypeLevel.HMap as HMap
 
 maybeSingle :: Maybe a -> Set a
@@ -36,11 +36,29 @@ maybeSingle (Just v) = Set.singleton v
 a ∪ b = Set.union a b
 infixl 0 ∪
 
+
+----------------------------------------------
+-- Lattice configuration
+----------------------------------------------
+
+
+-- | Keys for a mapping [SchemeConfKey :-> Type] for 
+-- configuring the subdomains in the modular lattice
+data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
+                   | IntConf    -- ^ abstraction for integer numbers
+                   | CharConf   -- ^ abstraction for characters
+                   | BoolConf   -- ^ abstraction for booleans
+                   | EnvConf    -- ^ abstraction for environments
+                   | ExpConf    -- ^ concrete type of expressions
+                   | StrConf    -- ^ type of string pointers
+                   | PaiConf    -- ^ type of pair pointers
+                   | VecConf    -- ^ type of vector pointers
+
 ----------------------------------------------
 -- Modular Scheme lattice
 ----------------------------------------------
 
--- Keys 
+-- | Internal keys for the internal HMap representation of the lattice
 data SchemeKey = RealKey
                | IntKey
                | CharKey
@@ -55,12 +73,22 @@ data SchemeKey = RealKey
 
 genHKeys ''SchemeKey
 
--- Associated data
-data SchemeConfKey = PaiPtrKey
-                   | StrPtrKey
-                   | VecPtrKey
-                   | ExpKey
-                   | EnvKey
+
+-- | Mapping associating keys with the abstract values they store
+--
+-- Type parameter 'm' denotes a SchemeConf mapping to configure the abstract domain.
+type Values m = '[
+   RealKey ::-> Assoc RealConf m,
+   IntKey  ::-> Assoc IntConf m, 
+   CharKey ::-> Assoc CharConf m,
+   BoolKey ::-> Assoc BoolConf m,
+   PaiKey  ::-> Set (Assoc PaiConf m),
+   VecKey  ::-> Set (Assoc VecConf m),
+   StrKey  ::-> Set (Assoc StrConf m),
+   UnspKey ::-> (),
+   CloKey  ::-> Set (Assoc EnvConf m, Assoc ExpConf m),
+   PrimKey ::-> Set String
+   ]
 
 
 -- | A Scheme value is an HMap that consists of a mapping
@@ -68,76 +96,81 @@ data SchemeConfKey = PaiPtrKey
 -- 
 -- The values ncluded in this map should satisfy the 
 -- constraints given in `IsSchemeValue`.
-newtype SchemeVal (m :: [SchemeKey :-> Type]) c = SchemeVal { getSchemeVal :: HMap m }
+newtype SchemeVal (m :: [SchemeConfKey :-> Type]) = SchemeVal { getSchemeVal :: HMap (Values m) }
 
 -- | A valid choice for `m` and `c` should satisfy these constraints
-type IsSchemeValue m c =
-   (ForAll SchemeKey (AtKey1 JoinLattice m),
-    ForAll SchemeKey (AtKey1 Eq m),
-    ForAll SchemeKey (AtKey1 Joinable m),
-    KeyIs1 RealDomain m RealKey,
-    KeyIs1 BoolDomain m BoolKey,
-    KeyIs1 IntDomain  m  IntKey,
-    KeyIs1 CharDomain m CharKey,
-    Assoc CloKey m ~ Set (Assoc ExpKey c, Assoc EnvKey c),
-    Assoc PaiKey m ~ Set (Assoc PaiPtrKey c),
-    Assoc VecKey m ~ Set (Assoc VecPtrKey c),
-    Assoc StrKey m ~ Set (Assoc StrPtrKey c))
+type IsSchemeValue m =
+   (ForAll SchemeKey (AtKey1 JoinLattice (Values m)),
+    ForAll SchemeKey (AtKey1 Eq (Values m)),
+    ForAll SchemeKey (AtKey1 Joinable (Values m)),
+    KeyIs1 RealDomain (Values m) RealKey,
+    KeyIs1 BoolDomain (Values m) BoolKey,
+    KeyIs1 IntDomain  (Values m)  IntKey,
+    KeyIs1 CharDomain (Values m) CharKey)
 
 -- Eq instance
-deriving instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Eq m)) => Eq (SchemeVal m c)
+deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m))) => Eq (SchemeVal m)
 
 ------------------------------------------------------------
 -- Lattice instances
 ------------------------------------------------------------
 
-deriving instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Joinable m)) => Joinable (SchemeVal m c)
-deriving instance (HMapKey m,
-                   ForAll (KeyKind m) (AtKey1 Eq m),
-                   ForAll (KeyKind m) (AtKey1 Joinable m),
-                   ForAll (KeyKind m) (AtKey1 JoinLattice m)) => JoinLattice (SchemeVal m c)
+deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Joinable (Values m))) => Joinable (SchemeVal m)
+deriving instance (HMapKey (Values m),
+                   ForAll SchemeKey (AtKey1 Eq (Values m)),
+                   ForAll SchemeKey (AtKey1 Joinable (Values m)),
+                   ForAll SchemeKey (AtKey1 JoinLattice (Values m))) => JoinLattice (SchemeVal m)
 
 -- Show instance
-instance (ForAll (KeyKind m) (AtKey1 Show m)) => Show (SchemeVal m c) where
-   show (SchemeVal hm) = HMap.foldr append' "" (HMap.map' (withC_ @(AtKey1 Show m) show) hm)
-      where append' :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const String) kt m  -> String -> String
-            append' = const (HMap.withFacts @(Const String) @kt @m (++))
+instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
+   show (SchemeVal hm) = HMap.foldr append' "" (HMap.map' (withC_ @(AtKey1 Show (Values m)) show) hm)
+      where append' :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const String) kt (Values m)  -> String -> String
+            append' = const (HMap.withFacts @(Const String) @kt @(Values m) (++))
 
 ------------------------------------------------------------
 -- Domains
 ------------------------------------------------------------
 
 -- TODO: IsSchemeValue is probably too strict here and could be relaxed to fewer constraints
-instance (IsSchemeValue m c) => Domain (SchemeVal m c) Bool where
+instance (IsSchemeValue m) => Domain (SchemeVal m) Bool where
   inject = SchemeVal . HMap.singleton @BoolKey . inject
-instance (IsSchemeValue m c) => Domain (SchemeVal m c) Integer where
+instance (IsSchemeValue m) => Domain (SchemeVal m) Integer where
   inject = SchemeVal . HMap.singleton @IntKey . inject
-instance (IsSchemeValue m c) => Domain (SchemeVal m c) Double where 
+instance (IsSchemeValue m) => Domain (SchemeVal m) Double where 
    inject = SchemeVal . HMap.singleton @RealKey . inject
-instance (IsSchemeValue m c) => Domain (SchemeVal m c) Char where 
+instance (IsSchemeValue m) => Domain (SchemeVal m) Char where 
    inject = SchemeVal . HMap.singleton @CharKey . inject
 
 
-instance (IsSchemeValue m c) => BoolDomain (SchemeVal m c) where
+instance (IsSchemeValue m) => BoolDomain (SchemeVal m) where
    isTrue = HMap.foldr ors False . HMap.map' trueish . getSchemeVal
-      where trueish :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt m -> Bool
+      where trueish :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> Bool
             trueish SBoolKey boolean = isTrue boolean
             trueish _ _  = True -- anything else is true
-            ors :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const Bool) kt m -> Bool -> Bool
-            ors _ = HMap.withFacts @(Const Bool) @kt @m (||)
+            ors :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const Bool) kt (Values m) -> Bool -> Bool
+            ors _ = HMap.withFacts @(Const Bool) @kt @(Values m) (||)
 
    -- only `#f` is false
    isFalse = HMap.foldr ors False . HMap.map' falsish . getSchemeVal
-      where falsish :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt m -> Bool
+      where falsish :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> Bool
             falsish SBoolKey boolean = isFalse boolean
             falsish _ _ = False
-            ors :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const Bool) kt m -> Bool -> Bool
-            ors _ = HMap.withFacts @(Const Bool) @kt @m (||)
+            ors :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const Bool) kt (Values m) -> Bool -> Bool
+            ors _ = HMap.withFacts @(Const Bool) @kt @(Values m) (||)
 
    boolTop = SchemeVal $ HMap.singleton @BoolKey boolTop
    not v = join t f
       where t = if isTrue  v then inject True else bottom
             f = if isFalse v then inject False else bottom
+
+------------------------------------------------------------
+-- CharDomain
+------------------------------------------------------------
+
+------------------------------------------------------------
+-- SchemeDomain
+------------------------------------------------------------
+
 
 -- A generic instance for the Scheme domain, parametrized by their sublattices
 data ModularSchemeValue r i c b pai vec str var exp env = ModularSchemeValue {
