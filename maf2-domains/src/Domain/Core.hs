@@ -5,6 +5,7 @@ module Domain.Core (
     module Domain.Core.HMapDomain, 
     module Domain.Core.NumberDomain,
     module Domain.Core.PairDomain,
+    module Domain.Core.SeqDomain, 
     module Domain.Core.StringDomain,
     module Domain.Core.VectorDomain 
 ) where 
@@ -15,6 +16,7 @@ import Domain.Core.DictionaryDomain
 import qualified Domain.Core.HMapDomain
 import Domain.Core.NumberDomain
 import Domain.Core.PairDomain
+import qualified Domain.Core.SeqDomain 
 import Domain.Core.StringDomain
 import Domain.Core.VectorDomain 
 

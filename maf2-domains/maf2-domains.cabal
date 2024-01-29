@@ -27,6 +27,7 @@ library
       Domain.Class
       Domain.Core
       Domain.Core.HMapDomain
+      Domain.Core.SeqDomain
       Domain.Scheme
       Domain.Python
       Lattice
@@ -58,6 +59,8 @@ library
       Domain.Core.PairDomain
       Domain.Core.PairDomain.Class
       Domain.Core.PairDomain.SimplePair
+      Domain.Core.SeqDomain.Class
+      Domain.Core.SeqDomain.CPList
       Domain.Core.StringDomain
       Domain.Core.StringDomain.Class
       Domain.Core.StringDomain.ConstantPropagation
