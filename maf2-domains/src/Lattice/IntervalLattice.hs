@@ -3,6 +3,7 @@ module Lattice.IntervalLattice(Interval(..), Bound(..)) where
 
 import Prelude hiding (min, max)
 import Lattice.Class 
+import Domain.Class 
 
 -- | A bound of the interval domain, 
 -- is either a concrete value or infinity. 
@@ -58,3 +59,6 @@ instance (Ord a) => JoinLattice (Interval a) where
 
 instance (Ord a) => TopLattice (Interval a) where 
   top = Interval Infinity Infinity
+
+instance (Ord a) => Domain (Interval a) a where
+   inject a = Interval (Bounded a) (Bounded a)
