@@ -5,7 +5,7 @@ import Domain.Core.SeqDomain.Class
 import Control.Monad.AbstractM
 import Control.Monad.DomainError
 import Control.Monad.Join
-import Domain.Core.NumberDomain.ConstantPropagation
+import Domain.Core.NumberDomain.ConstantPropagation ()
 
 -- | A simple abstraction (preserving precision for lists with a known length)
 data CPList v = BotList                -- representing no lists
@@ -134,3 +134,71 @@ instance JoinLattice v => SeqDomain (CPList v) where
     | 0 <= to = return l `mjoin` escape IndexOutOfBounds
     | otherwise = escape IndexOutOfBounds
   slice _ _ l@(TopList _) = return l `mjoin` escape IndexOutOfBounds
+
+
+
+--
+-- Alternative, more precise implementation where CPList does not need to have a known/constant length
+--
+
+-- data CPList v = BotList
+--               | CPList [v] v (Interval Integer)
+--               | TopList v (Interval Integer)
+--   deriving (Eq) 
+
+-- len :: CPList v -> Interval Integer 
+-- len BotList         = bottom 
+-- len (CPList _ _ l)  = l 
+-- len (TopList _ l)   = l 
+
+
+
+-- inRange :: (BoolDomain b) => Integer -> Interval Integer -> b
+-- inRange idx len
+--   | idx < 0 = Domain.false
+--   | Interval (Bounded l) _ <- len, idx < l = Domain.true
+--   | Interval _ (Bounded u) <- len, idx >= u = Domain.false 
+--   | otherwise = Domain.boolTop
+
+-- instance (Joinable v) => Joinable (CPList v) where
+--   join BotList v = v
+--   join (CPList seq1 vlu1 len1) (CPList seq2 vlu2 len2) = CPList (seq1 `joinLst` seq2) (vlu1 `join` vlu2) (len1 `join` len2) 
+--     where joinLst [] s = s
+--           joinLst s [] = s
+--           joinLst (e1:r1) (e2:r2) = e1 `join` e2 : joinLst r1 r2 
+--   join (CPList _ vlu1 len1) (TopList vlu2 len2) = TopList (vlu1 `join` vlu2) (len1 `join` len2)
+--   join (TopList vlu1  len1) (TopList vlu2 len2) = TopList (vlu1 `join` vlu2) (len1 `join` len2)
+--   join a b = join b a 
+
+-- instance (JoinLattice v) => JoinLattice (CPList v) where
+--   bottom = BotList 
+
+-- instance (JoinLattice v) => SeqDomain (CPList v) where
+  
+--   type Vlu (CPList v) = v
+--   type Idx (CPList v) = CP Integer 
+  
+--   fromList :: [v] -> CPList v
+--   fromList lst = CPList lst (joins lst) (Domain.inject . toInteger $ Prelude.length lst)
+
+--   ref :: AbstractM m => CP Integer -> CPList v -> m v 
+--   ref Bottom          _                   = return bottom  
+--   ref _               BotList             = return bottom 
+--   ref (Constant idx)  (CPList lst _ len)  = guardIdx idx len $ return $ justOrBot (lst !? fromInteger idx)
+--   ref (Constant idx)  (TopList vlu len)   = guardIdx idx len (return vlu) 
+--   ref Top             (CPList _ vlu _)    = return vlu `mjoin` escape IndexOutOfBounds 
+--   ref Top             (TopList vlu _)     = return vlu `mjoin` escape IndexOutOfBounds  
+
+--   set :: AbstractM m => CP Integer -> v -> CPList v -> m (CPList v)
+--   set idx vlu seq
+--     | Bottom <- idx  = return BotList
+--     | vlu == bottom  = return BotList
+--     | BotList <- seq = return BotList   
+--   set (Constant idx) v (CPList lst _ len) = guardIdx idx len (from <$> updateAt idx lst)
+--     where updateAt _ []     = escape IndexOutOfBounds
+--           updateAt 0 (_:xs) = return (v:xs)
+--           updateAt n (x:xs) = (x:) <$> updateAt (n - 1) xs 
+--           from lst = CPList lst (joins lst) len 
+--   set Top v seq             = return (TopList (vlu seq `join` v) (len seq)) 
+--                               `mjoin` 
+--                               escape IndexOutOfBounds 
