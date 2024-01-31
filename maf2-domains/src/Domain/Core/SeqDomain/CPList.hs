@@ -1,4 +1,4 @@
-module Domain.Core.SeqDomain.CPList (CPList) where 
+module Domain.Core.SeqDomain.CPList (CPList(..)) where 
 
 import Lattice 
 import Domain.Core.SeqDomain.Class 
