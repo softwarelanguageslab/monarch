@@ -29,6 +29,7 @@ dependencies:
 - maf2-syntax
 - maf2-typelevel
 - hashable
+- vector 
 - singletons
 - singletons-th
 - template-haskell
