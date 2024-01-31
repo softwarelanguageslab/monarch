@@ -2,77 +2,39 @@
 
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Analysis.Python.Semantics where
 
 import Analysis.Python.Syntax
-import qualified Analysis.Python.Syntax as Syntax
+import Analysis.Python.Objects
 
 import Prelude hiding (break, lookup)
 import Control.Monad (zipWithM)
 import qualified Control.Monad
-import Analysis.Monad (lookupEnv, withExtendedEnv, withEnv, getEnv, EnvM)
-import Domain hiding (Dictionary)
+import Domain hiding (Dictionary, lookup, update, injectClo)
+import Lattice
 import Control.Monad.Join
 import Control.Monad.Error
-import qualified Domain.Python.ClassDomain as O
+import qualified Domain.Python as O
 import Data.Functor ((<&>))
 import Data.Kind (Type)
 import Data.Void
-import Data.Map (Map)
+import Data.Map (Map, (!))
 import Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.Map as Map 
 
-type PyEnv = Map String VarAdr
-
-type PyClo = ([PyPar], PyStm, PyEnv)
-type PyPrm = forall m v . AnalysisM m v => [PyRef] -> PyLoc -> m PyRef
-
-newtype VarAdr = VarAddr String
-newtype ObjAdr = ObjAddr PyLoc
+---
+--- INTERPRETER SUPPORT
+---
 
 allocVar :: PyIde -> VarAdr
 allocVar = VarAddr . ideName . lexIde
 
 allocPtr :: PyLoc -> ObjAdr
 allocPtr = ObjAddr
-
-newtype PyRef = PyRef (Set ObjAdr)
-
-data Cmp = MainCmp
-         | CallCmp PyStm PyEnv
-         | LoopCmp PyExp PyStm PyEnv
-
-class (JoinLattice v,
-       BoolDomain v)
-       =>
-       PyDomain v where
-   none :: v
-   injectBln :: Bool -> v
-   injectBln = inject -- from Booldomain
-   injectInt :: Integer -> v
-   injectClo :: PyClo -> v
-   call :: AnalysisM m v => v 
-                         -> (PyClo -> m PyRef) 
-                         -> (PyPrm -> m PyRef) -- -> [PyRef] -> PyLoc
-                         -> m PyRef
-
-class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
-   extend :: a -> v -> m ()
-   update :: a -> v -> m ()
-   lookup :: a -> m v
-
-class (Monad m,
-       MonadJoin m,
-       EnvM m VarAdr PyEnv,
-       StoreM m VarAdr PyRef,
-       StoreM m ObjAdr v,
-       PyDomain v)
-       =>
-       AnalysisM m v | m -> v where
-   returnWith :: PyRef -> m a
-   continue :: m a
-   break :: m a
-   callCmp :: Cmp -> m PyRef 
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -82,10 +44,10 @@ todo = error . ("[TODO] NYI: " ++)
 ideNam :: PyIde -> String
 ideNam = ideName . lexIde
 
-deref :: AnalysisM m v => PyRef -> m v
-deref (PyRef ads) = mjoins $ map lookup (Set.toList ads)
+deref :: AnalysisM m v => PyVal -> m v
+deref (PyVal ads) = mjoins $ map lookup (Set.toList ads)
 
-allocVal :: AnalysisM m v => PyLoc -> v -> m PyRef
+allocVal :: AnalysisM m v => PyLoc -> v -> m PyVal
 allocVal loc val = extend adr val >> return (PyRef $ Set.singleton adr)
    where adr = allocPtr loc
 
@@ -139,22 +101,22 @@ execCnt = continue
 execWhi :: AnalysisM m v => PyExp -> PyStm -> m ()
 execWhi cnd bdy = getEnv >>= callCmp . LoopCmp cnd bdy >> return ()
 
-eval :: AnalysisM m v => PyExp -> m PyRef
+eval :: AnalysisM m v => PyExp -> m PyVal
 eval (Lam prs bdy loc _)   = evalLam prs bdy loc
 eval (Var ide)             = evalVar ide
 eval (Literal lit)         = evalLit lit
 eval (Call fun arg loc)    = evalCll fun arg loc
 eval (Read _ _ _)          = todo "read"
 
-evalLam :: AnalysisM m v => [PyPar] -> PyStm -> PyLoc -> m PyRef
+evalLam :: AnalysisM m v => [PyPar] -> PyStm -> PyLoc -> m PyVal
 evalLam prs bdy loc = do env <- getEnv
                          let clo = (prs, bdy, env)
                          allocVal loc $ injectClo clo
 
-evalVar :: AnalysisM m v => PyIde -> m PyRef
+evalVar :: AnalysisM m v => PyIde -> m PyVal
 evalVar ide = lookupEnv (ideNam ide) >>= lookup
 
-evalLit :: AnalysisM m v => PyLit -> m PyRef
+evalLit :: AnalysisM m v => PyLit -> m PyVal
 evalLit (Bool bln loc)     = allocVal loc $ injectBln bln
 evalLit (Integer int loc)  = allocVal loc $ injectInt int
 evalLit (Real _ _)         = todo "real literal"
@@ -164,17 +126,17 @@ evalLit (Dict _)           = todo "dictionary literal"
 
 -- | Applies a procedure
 
-evalCll :: AnalysisM m v => PyExp -> [PyArg] -> PyLoc -> m PyRef
+evalCll :: AnalysisM m v => PyExp -> [PyArg] -> PyLoc -> m PyVal
 evalCll opr opd loc = do fun <- eval opr >>= deref 
                          ags <- mapM evalArg opd
                          call fun (`applyClo` ags) (\prm -> applyPrm prm ags loc)
    where evalArg (PosArg arg _) = eval arg
          evalArg (KeyArg _ _ _) = todo "keyword arguments"
 
-applyPrm :: AnalysisM m v => PyPrm -> [PyRef] -> PyLoc -> m PyRef
+applyPrm :: AnalysisM m v => PyPrm -> [PyVal] -> PyLoc -> m PyVal
 applyPrm prm = prm  
 
-applyClo :: AnalysisM m v => PyClo -> [PyRef] -> m PyRef 
+applyClo :: AnalysisM m v => PyClo -> [PyVal] -> m PyVal 
 applyClo (prs, bdy, env) ags = 
    withEnv (const env) $ do 
       bindings <- zipWithM bindPar prs ags
@@ -183,7 +145,7 @@ applyClo (prs, bdy, env) ags =
          let cmp = CallCmp bdy ext
          callCmp cmp 
 
-bindPar :: AnalysisM m v => PyPar -> PyRef -> m (String, VarAdr)
+bindPar :: AnalysisM m v => PyPar -> PyVal -> m (String, VarAdr)
 bindPar (Prm ide _) v = extend adr v >> return (ideNam ide, adr)
    where adr = allocVar ide 
 bindPar (VarArg _ _) v = todo "vararg parameter"

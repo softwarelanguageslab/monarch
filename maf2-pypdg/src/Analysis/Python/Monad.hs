@@ -1,6 +1,100 @@
 -- {-# LANGUAGE QuantifiedConstraints, FlexibleContexts, FlexibleInstances, AllowAmbiguousTypes, UndecidableInstances #-}
 -- {-# OPTIONS_GHC -Wno-redundant-constraints #-}
--- module Analysis.Python.Monad(PyM(..), PyIO(..), PyConfig(..), AnalysisConfig(..), module Analysis.Monad, runIO) where
+{-# LANGUAGE RankNTypes #-}
+
+module Analysis.Python.Monad where --(PyM(..), PyIO(..), PyConfig(..), AnalysisConfig(..), module Analysis.Monad, runIO) where
+
+import Lattice
+import Domain.Core 
+import Domain.Python
+import Control.Monad.Join
+
+import Analysis.Python.Syntax
+import Analysis.Python.Objects
+
+import Data.Map (Map)
+import qualified Data.Map as Map 
+
+type PyEnv = Map String VarAdr
+
+type PyClo = ([PyPar], PyStm, PyEnv)
+type PyPrm = forall m v . AnalysisM m v => [PyVal] -> PyLoc -> m PyVal
+
+data Cmp = MainCmp
+         | CallCmp PyStm PyEnv
+         | LoopCmp PyExp PyStm PyEnv
+
+
+class (JoinLattice v,
+       BoolDomain v)
+       =>
+       PyDomain v where
+   none :: v
+   injectBln :: Bool -> v
+   injectBln = inject -- from Booldomain
+   injectInt :: Integer -> v
+   injectClo :: PyClo -> v
+   call :: AnalysisM m v => v 
+                         -> (PyClo -> m PyVal) 
+                         -> (PyPrm -> m PyVal) -- -> [PyRef] -> PyLoc
+                         -> m PyVal
+
+class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
+   extend :: a -> v -> m ()
+   update :: a -> v -> m ()
+   lookup :: a -> m v
+
+class (Monad m,
+       MonadJoin m,
+       EnvM m VarAdr PyEnv,
+       StoreM m VarAdr PyVal,
+       StoreM m ObjAdr v,
+       PyDomain v)
+       =>
+       AnalysisM m v | m -> v where
+   returnWith :: PyVal -> m a
+   continue :: m a
+   break :: m a
+   callCmp :: Cmp -> m PyVal 
+
+
+-- | Reading from an environment 
+class EnvM m adr env | m -> env, m -> adr where
+   -- | Lookup the address of the given identifier,
+   -- may throw an exception if the identifier is not found 
+   -- since it means that the program is not well-formed.
+   lookupEnv :: String -> m adr
+   -- | Extend the environment with the given list of bindings and run the computation
+   -- given as an argument in it
+   withExtendedEnv :: [(String, adr)] -> m a -> m a
+   -- | Retrieves the current environment 
+   getEnv :: m env
+   -- | Runs function `f` on the environment and to compute the environment to execute `m` in
+   withEnv :: {- f -} (env -> env) -> m a -> m a
+
+class (EnvM m adr env) 
+        => 
+        PyM m env adr where 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 -- import Data.Kind ( Type )
 -- import Domain.Python ( PyDomain(Env) )

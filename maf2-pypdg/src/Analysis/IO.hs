@@ -4,9 +4,10 @@
 -- support programming language.
 module Analysis.IO(IOModel(..), IOVal(..), OutputIO(..), IOHandle(..), StatusIO, DirectionIO, emptyOutputIO) where
 
+import Lattice hiding (Top)
+
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Domain.Lattice
 
 -- | Class of IO models, a model `m` is parametrized by its handle type `h` and the type 
 -- of values that can be written to that handle.
@@ -45,7 +46,9 @@ data ConcreteStatusIO = Open | Closed
 type StatusIO = Set ConcreteStatusIO
 
 -- | An IO model that does only keep track of the possible output, and returns "top" for any read
-newtype OutputIO v = OutputIO { output :: Set v } deriving Show
+newtype OutputIO v = OutputIO { output :: Set v } 
+   deriving (Eq, Ord, Show)
+   
 instance (Ord v) => IOModel (OutputIO v) v v where
    write (OutputIO out) _ v = Set.singleton (OutputIO (Set.union (Set.singleton v) out))
    read m _ = Set.singleton (m, Top)

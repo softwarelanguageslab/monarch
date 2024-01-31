@@ -42,6 +42,8 @@ dependencies:
 - maf2-typelevel
 - hashmap
 - list-transformer
+- singletons
+- singletons-th
 
 default-extensions:
   - FlexibleContexts

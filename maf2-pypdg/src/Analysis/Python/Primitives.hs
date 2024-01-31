@@ -1,6 +1,6 @@
 -- {-# LANGUAGE RankNTypes #-}
 -- {-# OPTIONS_GHC -Wno-name-shadowing #-}
--- module Analysis.Python.Primitives where
+module Analysis.Python.Primitives where
 
 -- import Domain.Python
 -- import Analysis.Python.Monad

@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -32,6 +32,7 @@ library
       Analysis.IO
       Analysis.Python
       Analysis.Python.Monad
+      Analysis.Python.Objects
       Analysis.Python.OO
       Analysis.Python.Primitives
       Analysis.Python.Semantics
@@ -84,6 +85,8 @@ library
     , maf2-typelevel
     , mtl
     , optparse-applicative
+    , singletons
+    , singletons-th
     , transformers
     , unordered-containers
     , vector
@@ -134,6 +137,8 @@ executable maf-exe
     , maf2-typelevel
     , mtl
     , optparse-applicative
+    , singletons
+    , singletons-th
     , transformers
     , unordered-containers
     , vector
@@ -184,6 +189,8 @@ test-suite maf2-pypdg-test
     , maf2-typelevel
     , mtl
     , optparse-applicative
+    , singletons
+    , singletons-th
     , transformers
     , unordered-containers
     , vector
