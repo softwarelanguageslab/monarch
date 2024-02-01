@@ -1,5 +1,5 @@
 {-# LANGUAGE QuantifiedConstraints #-}
-module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..), mJoinMap, mjoins) where
+module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..), mJoinMap, mjoins, msplit) where
 
 import Lattice.Class 
 import Domain.Core.BoolDomain.Class
@@ -29,6 +29,9 @@ mJoinMap f = foldr (mjoin . f) mzero
 
 mjoins :: (MonadJoin m, Foldable t, JoinLattice v) => t (m v) -> m v
 mjoins = foldr mjoin mzero
+
+msplit :: (MonadJoin m, JoinLattice v, SplitLattice a) => (a -> m v) -> a -> m v
+msplit f = mJoinMap f . split
 
 
 -- | Like `Alternative`, returns if a computation
