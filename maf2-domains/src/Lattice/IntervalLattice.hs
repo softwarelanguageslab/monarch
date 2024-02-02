@@ -5,6 +5,8 @@ import Prelude hiding (min, max)
 import Lattice.Class 
 import Domain.Class 
 
+import qualified Data.Set as Set 
+
 -- | A bound of the interval domain, 
 -- is either a concrete value or infinity. 
 data Bound a = Bounded a 
@@ -40,7 +42,7 @@ max a b
 -- the converse is taken for the upper bound.
 data Interval a = BottomInterval
                 | Interval (Bound a) (Bound a) 
-  deriving (Eq)
+  deriving (Eq, Ord)
 
 -- Lattice implementations
 
@@ -62,3 +64,9 @@ instance (Ord a) => TopLattice (Interval a) where
 
 instance (Ord a) => Domain (Interval a) a where
    inject a = Interval (Bounded a) (Bounded a)
+
+instance (Enum a, Ord a) => SplitLattice (Interval a) where
+  split (Interval (Bounded a) (Bounded b)) = Set.fromList $ zipWith make interval (tail interval)
+    where interval = [a..b]
+          make l u = Interval (Bounded l) (Bounded u)
+  split int = Set.singleton int 

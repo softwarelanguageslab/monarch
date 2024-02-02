@@ -5,6 +5,8 @@ module Lattice.MaybeLattice where
 
 import Lattice.Class
 
+import qualified Data.Set as Set 
+
 -- | Joinable for Maybe
 instance (Joinable v) => Joinable (Maybe v) where
    join (Just a) (Just b) = Just (join a b)
@@ -19,3 +21,7 @@ instance (JoinLattice v) => JoinLattice (Maybe v) where
    subsumes (Just _) Nothing = True
    subsumes Nothing Nothing = True
    subsumes _ _ = False
+
+instance (Ord v, SplitLattice v) => SplitLattice (Maybe v) where
+   split Nothing  = Set.singleton Nothing
+   split (Just v) = Set.map Just (split v)
