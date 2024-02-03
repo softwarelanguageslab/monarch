@@ -1,8 +1,8 @@
 {-# LANGUAGE QuantifiedConstraints #-}
-module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..), mJoinMap, mjoins, msplit) where
+module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..), mJoinMap, mjoins, msplit, condCP) where
 
-import Lattice.Class 
-import Domain.Core.BoolDomain.Class
+import Lattice
+import Domain.Core.BoolDomain
 
 import Control.Monad.Reader hiding (mzero, join)
 import Control.Monad.Writer hiding (mzero, join)
@@ -19,10 +19,13 @@ class (Monad m) => MonadJoin m where
    (<||>) :: JoinLattice v => m v -> m v -> m v
    a <||> b = mjoin a b
    infix 0 <||>
-   cond :: (JoinLattice v, BoolDomain b) => m b -> m v -> m v -> m v
+   cond :: (BoolDomain b, JoinLattice v) => m b -> m v -> m v -> m v
    cond cnd csq alt = mjoin t f
       where t = cnd >>= (\b -> if isTrue b then csq else mzero)
             f = cnd >>= (\b -> if isFalse b then alt else mzero)
+
+condCP :: (MonadJoin m, JoinLattice v) => m (CP Bool) -> m v -> m v -> m v
+condCP = cond 
 
 mJoinMap :: (MonadJoin m, Foldable t, JoinLattice b) => (a -> m b) -> t a -> m b 
 mJoinMap f = foldr (mjoin . f) mzero
