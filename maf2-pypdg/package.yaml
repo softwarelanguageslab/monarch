@@ -61,6 +61,8 @@ default-extensions:
   - MultiParamTypeClasses
   - FunctionalDependencies
   - GeneralizedNewtypeDeriving
+  - LambdaCase
+  - EmptyCase
 
 ghc-options:
 - -Wall
