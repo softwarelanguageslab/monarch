@@ -114,10 +114,10 @@ instance (Monad m) => MonadLayer (BaseSchemeEvalT v m) where
 -- TODO: this is rather ugly right now but needed
 -- since we cannot derive MonadEscape yet if it 
 -- is not on top of the layers (see Control.Monad.Layer)
-instance (Monad m, MonadEscape m e, Esc m ~ Set DomainError) => MonadEscape (BaseSchemeEvalT v m) e where
+instance (Monad m, MonadEscape m, Esc m ~ Set DomainError) => MonadEscape (BaseSchemeEvalT v m) where
    type Esc (BaseSchemeEvalT v m) = Set DomainError
    escape = upperM . escape
-   catch (BaseSchemeEvalT m) hdl = BaseSchemeEvalT $ catch @_ @e m (getInnerEvalT . hdl)
+   catch (BaseSchemeEvalT m) hdl = BaseSchemeEvalT $ catch @_ m (getInnerEvalT . hdl)
 
 instance (MonadJoin m) => MonadJoin (BaseSchemeEvalT v m) where
    mzero = BaseSchemeEvalT mzero
