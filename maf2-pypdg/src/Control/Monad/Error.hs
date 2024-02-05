@@ -9,7 +9,7 @@ import Control.Monad.Writer hiding (join)
 import Control.Monad.Trans.Maybe
 import Control.Monad.Join
 import Control.Monad.DomainError
-import Domain.Lattice
+import Lattice
 
 newtype Error = StringError String deriving (Eq, Ord, Show)
 

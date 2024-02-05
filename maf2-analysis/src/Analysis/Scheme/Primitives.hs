@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, RankNTypes #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances, RankNTypes, ConstraintKinds #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
@@ -21,8 +21,7 @@ import Control.Monad.DomainError
 
 data Prim v = Prim { primName :: String, run :: forall m . PrimM m v => Exp -> [v] -> m v }
 
-class (MonadEscape m DomainError, MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
-instance (MonadEscape m DomainError,  MonadJoin m, SchemeDomain v, SchemeM m v) => PrimM m v
+type PrimM m v = (MonadEscape m, Domain (Esc m) DomainError, MonadJoin m, SchemeDomain v, SchemeM m v)
 
 -- | No arguments
 fix0 :: String -> (forall m . PrimM m v => m v) -> Prim v

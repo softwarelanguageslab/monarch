@@ -29,6 +29,7 @@ dependencies:
 - maf2-syntax
 - maf2-typelevel
 - hashable
+- vector 
 - singletons
 - singletons-th
 - template-haskell
@@ -51,6 +52,7 @@ library:
     - Domain.Class
     - Domain.Core 
     - Domain.Core.HMapDomain 
+    - Domain.Core.SeqDomain 
     - Domain.Scheme
     - Domain.Python
     - Lattice
@@ -81,6 +83,8 @@ default-extensions:
   - FlexibleContexts
   - RankNTypes
   - GADTs
+  - LambdaCase
+  - EmptyCase 
 
 
 tests:

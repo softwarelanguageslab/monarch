@@ -7,6 +7,8 @@ import Lattice.Class
 
 import Data.Map (Map)
 import qualified Data.Map as Map 
+import Data.Set (Set)
+import qualified Data.Set as Set 
 
 -- | Joinable for maps
 instance (Ord a, Joinable v) => Joinable (Map a v) where
@@ -14,3 +16,6 @@ instance (Ord a, Joinable v) => Joinable (Map a v) where
 
 instance (Ord a, Eq v, Joinable v) => JoinLattice (Map a v) where
    bottom = Map.empty
+
+instance (Ord a, Ord v) => SplitLattice (Map a v) where
+   split = Map.foldrWithKey (\k -> Set.insert . Map.singleton k) Set.empty  

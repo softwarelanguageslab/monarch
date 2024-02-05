@@ -12,7 +12,6 @@ module Data.TypeLevel.HMap.TH(genHKeys) where
 import Language.Haskell.TH
 import Data.Singletons.TH
 
-
 -- | Retrieve data constructor names from the reified type information
 dataConstructors :: Info -> [Name]
 dataConstructors (TyConI (DataD _ _ _ _ constructors _)) = map name constructors
@@ -47,7 +46,8 @@ genHKeys nam = do
    let allKeys = fromList (map ConT ctors)
    let _All    = TySynInstD (TySynEqn Nothing (AppT (ConT $ mkName "All") (ConT nam')) allKeys)
    let _ForAll = genForAll nam' ctors
-   _singletons  <- genSingletons [nam]
-   return $ [_ForAll, _All] ++ _singletons
+   _singletons <- genSingletons [nam]
+   _decideInst <- singDecideInstance nam  
+   return $ [_ForAll, _All] ++ _singletons ++ _decideInst
 
 

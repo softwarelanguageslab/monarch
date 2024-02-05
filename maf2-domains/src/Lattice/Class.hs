@@ -12,6 +12,7 @@ module Lattice.Class (
 ) where
 
 import Data.Set (Set)
+import qualified Data.Set as Set 
 
 ------------------------------------------------------------
 --- Joinable / JoinLattice
@@ -53,6 +54,10 @@ justOrBot _ = bottom
 class SplitLattice v where
    -- Splits the value into a set of values where each value contains only one subvalue
    split :: v -> Set v
+
+-- | The default, not-so-interesting instance 
+instance {-# OVERLAPPABLE #-} SplitLattice a where 
+   split = Set.singleton 
 
 ------------------------------------------------------------
 --- WidenLattice

@@ -44,6 +44,7 @@ module Data.TypeLevel.HMap (
     InstanceOf,
     AtKey,
     AtKey1,
+    AllAtKey1,
     KeyIs,
     KeyIs1,
     Const,
@@ -66,6 +67,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import Data.TypeLevel.HMap.TH
 import Data.Singletons.Sigma
+import Data.Singletons.Decide
 
 --
 -- SomeVal (TODO: move this to other utility module?)
@@ -106,7 +108,8 @@ type instance Apply (And c1 c2) kt = (c1 @@ kt, c2 @@ kt)
 
 -- | Same as `AtKey` but does not require a defunctionalised `c`. Instead
 -- a regular function can be passed.
-type AtKey1 (c :: Type -> Constraint) (m :: [k :-> Type]) = AtKey (InstanceOf c) m
+type AtKey1 (c :: Type -> Constraint) (m :: [k :-> Type]) = AtKey (InstanceOf c) m :: k ~> Constraint 
+type AllAtKey1 c m = ForAll (KeyKind m) (AtKey1 c m) :: Constraint 
 
 -- | Defunctionalized the given function `c`
 data InstanceOf (c :: a -> b) :: a ~> b
@@ -148,7 +151,7 @@ type KeyType m = Demote (KeyKind m)
 newtype HMap (m :: [k :-> Type]) = HMap (Map (KeyType m) SomeVal)
 
 -- shorthand for mappings with a "valid"/"usable" key
-type HMapKey m = (SingKind (KeyKind m), Ord (KeyType m))
+type HMapKey m = (SingKind (KeyKind m), SDecide (KeyKind m), Ord (KeyType m))
 -- shorthand for dependent key/value pairs
 type BindingFrom m = (Sigma (KeyKind m) (LookupIn m))
 
@@ -260,10 +263,24 @@ withC f s = withDict (for @k @c s) (f s)
 withC_ :: forall {k} c t r . (ForAll k c) => (c @@ t => r) -> Sing t -> r
 withC_ f = withC @c (const f)
 
-instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Eq m)) => Eq (HMap m) where
-  m1 == m2 = size m1 == size m2 && all (withKey $ withC @(AtKey1 Eq m) compareAtSing) (keys m1)
-    where compareAtSing :: forall kt . AtKey1 Eq m @@ kt => Sing kt -> Bool
-          compareAtSing Sing = get @kt m1 == get @kt m2
+-- Eq instance
+instance (HMapKey m, AllAtKey1 Eq m) => Eq (BindingFrom m) where 
+  (k1 :&: v1) == (k2 :&: v2) = 
+    case decideEquality k1 k2 of
+      Just Refl -> withC_ @(AtKey1 Eq m) (v1 == v2) k1
+      Nothing   -> False 
+instance (HMapKey m, AllAtKey1 Eq m) => Eq (HMap m) where
+  m1 == m2 = size m1 == size m2 && toList m1 == toList m2 
+
+-- Ord instance
+instance (HMapKey m, AllAtKey1 Eq m, AllAtKey1 Ord m) => Ord (BindingFrom m) where 
+  (k1 :&: v1) `compare` (k2 :&: v2) = 
+    case decideEquality k1 k2 of
+      Just Refl -> withC_ @(AtKey1 Ord m) (compare v1 v2) k1
+      Nothing   -> compare (fromSing k1) (fromSing k2)
+instance (HMapKey m, AllAtKey1 Eq m, AllAtKey1 Ord m) => Ord (HMap m) where
+  compare m1 m2 = compare (toList m1) (toList m2)
+
 
 type ValueIsSemigroup m = AtKey1 Semigroup m
 instance (HMapKey m, ForAll (KeyKind m) (ValueIsSemigroup m)) => Semigroup (HMap m) where
@@ -301,4 +318,4 @@ type M = '[ IntKey ::-> Int, StringKey ::-> String ]
 genHKeys ''MyKey
 
 showMap :: HMap M -> HMap (MapWith (Const String) (Keys M)) 
-showMap = map  @(Const String) (withC_ @(AtKey1 Show M) show)
+showMap = map @(Const String) (withC_ @(AtKey1 Show M) show)

@@ -4,9 +4,11 @@ module Lattice.TopLiftedLattice(TopLifted) where
 
 import Lattice.Class
 
+import qualified Data.Set as Set
+
 data TopLifted a = Value a 
                  | Top
-   deriving Eq
+   deriving (Eq, Ord) 
 
 instance (Joinable v) => Joinable (TopLifted v) where 
    join Top _   = Top 
@@ -21,3 +23,7 @@ instance (JoinLattice v) => JoinLattice (TopLifted v) where
 
 instance (JoinLattice v) => TopLattice (TopLifted v) where 
    top = Top
+
+instance (SplitLattice v, Ord v) => SplitLattice (TopLifted v) where
+   split (Value v) = Set.map Value (split v) 
+   split Top = Set.singleton Top 

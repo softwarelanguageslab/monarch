@@ -5,6 +5,8 @@ module Lattice.UnitLattice where
 
 import Lattice.Class
 
+import qualified Data.Set as Set 
+
 -- | Joinable for Unit
 instance Joinable () where
    join _ _ = ()
@@ -13,3 +15,6 @@ instance Joinable () where
 instance JoinLattice () where
    bottom       = ()
    subsumes _ _ = True
+
+instance SplitLattice () where
+   split = Set.singleton 

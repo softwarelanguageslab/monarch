@@ -27,6 +27,7 @@ library
       Domain.Class
       Domain.Core
       Domain.Core.HMapDomain
+      Domain.Core.SeqDomain
       Domain.Scheme
       Domain.Python
       Lattice
@@ -58,6 +59,9 @@ library
       Domain.Core.PairDomain
       Domain.Core.PairDomain.Class
       Domain.Core.PairDomain.SimplePair
+      Domain.Core.SeqDomain.Class
+      Domain.Core.SeqDomain.CPList
+      Domain.Core.SeqDomain.CPVector
       Domain.Core.StringDomain
       Domain.Core.StringDomain.Class
       Domain.Core.StringDomain.ConstantPropagation
@@ -108,6 +112,8 @@ library
       FlexibleContexts
       RankNTypes
       GADTs
+      LambdaCase
+      EmptyCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
@@ -123,6 +129,7 @@ library
     , template-haskell
     , transformers
     , unordered-containers
+    , vector
   default-language: Haskell2010
 
 test-suite maf2-domains-test
@@ -154,6 +161,8 @@ test-suite maf2-domains-test
       FlexibleContexts
       RankNTypes
       GADTs
+      LambdaCase
+      EmptyCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HUnit
@@ -174,4 +183,5 @@ test-suite maf2-domains-test
     , template-haskell
     , transformers
     , unordered-containers
+    , vector
   default-language: Haskell2010

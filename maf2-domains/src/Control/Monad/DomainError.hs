@@ -1,9 +1,8 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies, AllowAmbiguousTypes, DeriveFunctor #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE LambdaCase #-}
 -- | This module provides a class of monads that are used to throw errors 
 -- in the implementation of our abstract domains.
-module Control.Monad.DomainError(DomainError(..), MonadEscape(..), MayEscapeT(..), MayEscape(Value)) where
+module Control.Monad.DomainError(DomainError(..), MonadEscape(..), MayEscapeT(..), MayEscape(Value), orElse, try) where
 
 import Lattice hiding (Bottom)
 import Domain.Class 
@@ -12,6 +11,7 @@ import Control.Monad.Join
 import Data.Kind (Type)
 import Control.Monad (ap)
 import Data.Set (Set) 
+import Data.Functor ((<&>))
 
 
 -- | Errors in the abstract domain are represented as arbitrary strings
@@ -23,10 +23,16 @@ class Domain a DomainError => ErrorDomain a
 instance ErrorDomain (Set DomainError) 
  
 -- | Monad to handle errors in the abstract domain
-class MonadEscape m esc where
-   type Esc m  :: Type     
-   escape      :: JoinLattice a => esc -> m a
-   catch       :: JoinLattice a => m a -> (Esc m -> m a) -> m a
+class MonadEscape m where
+   type Esc m
+   escape :: (JoinLattice a, Domain (Esc m) e) => e -> m a 
+   catch :: JoinLattice a => m a -> (Esc m -> m a) -> m a
+
+orElse :: (MonadEscape m, JoinLattice a) => m a -> m a -> m a
+orElse a = catch a . const  
+
+try :: (MonadEscape m, JoinLattice a) => [m a] -> m a -> m a
+try = flip $ foldr orElse 
 
 ------------------------------------------------------------
 --- MayEscape
@@ -78,10 +84,10 @@ instance (Monad m, Joinable e) => Monad (MayEscapeT m e) where
    MayEscapeT m >>= f = MayEscapeT $ m >>= \case 
                                              Bottom      -> return Bottom
                                              Escape e    -> return $ Escape e
-                                             Value v     -> runMayEscape $ f v 
-                                             MayBoth v e -> addError e <$> runMayEscape (f v)
+                                             Value v     -> runMayEscape (f v) 
+                                             MayBoth v e -> runMayEscape (f v) <&> addError e
 
-instance (Domain e esc, MonadJoin m) => MonadEscape (MayEscapeT m e) esc where
+instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT m e) where
    type Esc (MayEscapeT m e) = e 
    escape = MayEscapeT . return . Escape . inject
    catch (MayEscapeT m) hdl = MayEscapeT $ m >>= handle

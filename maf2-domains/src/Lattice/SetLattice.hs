@@ -18,6 +18,9 @@ instance (Ord a) => JoinLattice (Set a) where
    bottom = Set.empty
    subsumes = flip Set.isSubsetOf
 
+instance (Ord a) => SplitLattice (Set a) where
+   split = Set.map Set.singleton  
+
 -- | Domain instance for sets
 instance Ord a => Domain (Set a) a where
    inject = Set.singleton
