@@ -26,6 +26,7 @@ library
       Syntax.Scheme
       Syntax.Scheme.AST
       Syntax.Scheme.Undefiner
+      Syntax.Erlang.Parser
   other-modules:
       Control.Monad.Cond
       Lib

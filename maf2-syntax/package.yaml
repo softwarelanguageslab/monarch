@@ -43,6 +43,7 @@ library:
     - Syntax.Scheme
     - Syntax.Scheme.AST
     - Syntax.Scheme.Undefiner
+    - Syntax.Erlang.Parser
 
 default-extensions:
   - StandaloneDeriving
