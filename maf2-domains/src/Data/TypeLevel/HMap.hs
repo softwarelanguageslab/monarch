@@ -29,6 +29,7 @@ module Data.TypeLevel.HMap (
     size,
     map,
     map',
+    mapList,
     filter,
     foldr,
     fromList,
@@ -68,6 +69,8 @@ import Unsafe.Coerce (unsafeCoerce)
 import Data.TypeLevel.HMap.TH
 import Data.Singletons.Sigma
 import Data.Singletons.Decide
+
+import qualified Data.List as List
 
 --
 -- SomeVal (TODO: move this to other utility module?)
@@ -182,6 +185,10 @@ member (HMap m) = Map.member (demote @kt) m
 memberWithSing :: forall {k} (kt :: k) (m :: [k :-> Type]) . (HMapKey m) => Sing kt -> HMap m -> Bool
 memberWithSing Sing = member @kt
 
+
+-- | Map the given function over each key/Value in the hmap.
+--
+-- The result is a new Hmap.
 map :: forall f m . (HMapKey m) => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> f @@ kt) -> HMap m -> HMap (MapWith f (Keys m))
 map f (HMap m) = HMap $ Map.mapWithKey (\k v -> withSomeSing k (g v)) m
   where g :: forall (kt :: KeyKind m) . SomeVal -> Sing kt -> SomeVal
@@ -189,6 +196,17 @@ map f (HMap m) = HMap $ Map.mapWithKey (\k v -> withSomeSing k (g v)) m
 
 map' :: forall m a . (HMapKey m) => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> a) -> HMap m -> HMap (MapWith (Const a) (Keys m))
 map' = map @(Const a)
+
+-- | Map over the key/value pairs in the HMap and return a list of their results.
+-- This function assumes that each key in the HMap maps to the same value (which is true for all 'Const' functions) such that 
+-- the results can be collected into a single Haskell list.
+mapList :: forall a m . HMapKey m => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> a) -> HMap m -> [a]
+mapList f m1 = 
+   let (HMap m) = map @(Const a) f m1
+   in -- safety: from applying `f` on all key-value pairs in m we know that 
+      -- each key is mapped to `a`, therefore `SomeVal`s are actually a's 
+      -- and can be safely coerced.
+      List.map (unsafeCoerceVal . snd) $ Map.toList m
 
 filter :: forall m . (HMapKey m) => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> Bool) -> HMap m -> HMap m
 filter p (HMap m) = HMap $ Map.filterWithKey (\k v -> withSomeSing k (g v)) m
