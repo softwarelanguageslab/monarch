@@ -14,6 +14,7 @@ module Analysis.Python.Objects where
 import Lattice hiding (insert)
 import Analysis.Python.Syntax hiding (Dict)
 import Data.TypeLevel.HMap (HMap, Assoc, HMapKey, AtKey, AtKey1, InstanceOf, All, ForAllOf, ForAll(..), KeyKind, (::->), (:->), Dict(..), BindingFrom, genHKeys)
+import qualified Data.TypeLevel.HMap as HMap 
 import qualified Domain.Core.HMapDomain as HMapDomain
 import Domain.Core.HMapDomain (HMapAbs)
 import qualified Domain.Core.SeqDomain as SeqDomain
@@ -21,7 +22,7 @@ import Domain.Core.SeqDomain (SeqDomain, CPList(..))
 import Control.Monad.Join
 import Control.Monad.DomainError
 import Control.Monad.AbstractM
-import Domain (Domain, BoolDomain, NumberDomain, IntDomain, StringDomain, CPDictionary)
+import Domain (Domain, BoolDomain, NumberDomain, IntDomain, RealDomain, StringDomain, CPDictionary)
 import qualified Domain
 
 import Prelude hiding (lookup, exp, True, False, seq, length)
@@ -33,8 +34,11 @@ import qualified Data.Map as Map
 import Data.Singletons.TH
 import Data.Singletons.Sigma
 import Data.Kind
-import Control.Monad ((>=>), (<=<))
+import Control.Monad ((>=>), (<=<), liftM2)
+import qualified Control.Monad as Monad 
 import Data.Bifunctor
+import Data.Maybe (fromJust)
+import Data.Function ((&))
 
 newtype VarAdr = VarAdr String
   deriving (Eq, Ord, Show)
@@ -68,10 +72,26 @@ allocVal e v = do adr <- alloc e
 -- Python specific 
 
 -- these are primitive operators in Python 
-data PyPrim     = Add
-                | Mul
-                | Sub
-                | Div
+data PyPrim     = IntAdd
+                | IntMul
+                | IntSub
+                | IntTrueDiv
+                | IntEq
+                | IntNe
+                | IntLt
+                | IntGt
+                | IntLe
+                | IntGe
+                | FloatAdd
+                | FloatSub
+                | FloatMul
+                | FloatTrueDiv
+                | FloatEq
+                | FloatNe
+                | FloatLt
+                | FloatGt
+                | FloatLe
+                | FloatGe
   deriving (Eq, Ord)
 -- these are constant and pre-allocated objects in memory
 data PyConstant = Type      -- 'type'
@@ -85,6 +105,7 @@ data PyConstant = Type      -- 'type'
                 | PrimType
                 | BoundType
                 | CloType
+                | FloatType 
                 -- type names
                 | BoundName
                 | TupleName
@@ -94,6 +115,7 @@ data PyConstant = Type      -- 'type'
                 | CloName
                 | BoolName
                 | NoneName
+                | FloatName 
                 -- MROs
                 | IntMRO
                 | StringMRO
@@ -103,21 +125,21 @@ data PyConstant = Type      -- 'type'
                 | TupleMRO
                 | BoundMRO
                 | CloMRO
+                | FloatMRO 
                 -- primitive objects
-                | PrimAdd
-                | PrimMul
-                | PrimDiv
-                | PrimSub
+                | PrimIntAdd
+                | PrimIntSub
+                | PrimIntMul
+                | PrimIntTrueDiv
+                | PrimFloatAdd
+                | PrimFloatSub
+                | PrimFloatMul
+                | PrimFloatTrueDiv 
                 -- some constants
                 | None
                 | True
                 | False
   deriving (Eq, Ord, Enum, Bounded, Show)
--- these values are freshly allocated each time
-data PyValue = Num Int
-             | Bln Bool
-             | Str String
-  deriving (Eq, Ord)
 
 class (Monad m,
        MonadJoin m,
@@ -127,9 +149,7 @@ class (Monad m,
        AllocM m PyExp ObjAdr,
        StoreM m ObjAdr obj)
        =>
-       PyM m obj | m -> obj where
-  constant :: PyConstant -> m PyVal
-  allocate :: PyExp -> PyValue -> m PyVal
+       PyM m obj | m -> obj
 
 --
 -- Python values (= set of addrs)
@@ -144,7 +164,6 @@ instance JoinLattice PyVal where
 injectAdr :: ObjAdr -> PyVal
 injectAdr = PyVal . Set.singleton
 
-
 deref :: JoinLattice a => PyM m v => (ObjAdr -> v -> m a) -> PyVal -> m a
 deref f (PyVal ads) = mJoinMap (\a -> lookup a >>= \v -> f a v) ads
 
@@ -155,13 +174,15 @@ deref' (PyVal ads) = mjoins $ map lookup (Set.toList ads)
 --- Python objects
 ---
 
-data PyAbsKey = NumKey
+data PyAbsKey = IntKey
+              | ReaKey  
               | BlnKey
               | StrKey
 
 type PyPrm (m :: [PyAbsKey :-> Type]) =
   '[
-    NumPrm ::-> Assoc NumKey m,
+    IntPrm ::-> Assoc IntKey m,
+    ReaPrm ::-> Assoc ReaKey m,
     BlnPrm ::-> Assoc BlnKey m,
     StrPrm ::-> Assoc StrKey m,
     PrmPrm ::-> Set PyPrim,
@@ -171,7 +192,8 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
     LstPrm ::-> CPList PyVal
   ]
 
-data PyPrmKey = NumPrm
+data PyPrmKey = IntPrm
+              | ReaPrm 
               | BlnPrm
               | StrPrm
               | PrmPrm
@@ -183,15 +205,20 @@ data PyPrmKey = NumPrm
 
 genHKeys ''PyPrmKey
 
-data PyObj (m :: [PyAbsKey :-> Type]) = PyObj { dict :: CPDictionary String PyVal,
-                                                prim :: HMapAbs (PyPrm m) }
+data PyObj (m :: [PyAbsKey :-> Type]) = PyObj { dct :: CPDictionary String PyVal,
+                                                prm :: HMapAbs (PyPrm m) }
 
 type AllJoin m = (ForAll PyPrmKey (AtKey1 JoinLattice (PyPrm m)),
                   ForAll PyPrmKey (AtKey1 Joinable (PyPrm m)),
                   ForAll PyPrmKey (AtKey1 Eq (PyPrm m)))
 type AllAbs m = (AllJoin m,
                  BoolDomain   (Assoc BlnKey m),
-                 NumberDomain (Assoc NumKey m),
+                 IntDomain    (Assoc IntKey m),
+                 Domain.Rea   (Assoc IntKey m) ~ Assoc ReaKey m,
+                 Domain.Str   (Assoc IntKey m) ~ Assoc StrKey m,
+                 Domain.Boo   (Assoc IntKey m) ~ Assoc BlnKey m,
+                 Domain.Boo   (Assoc ReaKey m) ~ Assoc BlnKey m,
+                 RealDomain   (Assoc ReaKey m),
                  StringDomain (Assoc StrKey m))
 
 deriving instance (ForAll PyPrmKey (AtKey1 Eq       (PyPrm m))) => Eq (PyObj m)
@@ -207,50 +234,66 @@ allocObj e = fmap injectAdr . allocVal e
 -- Python constants 
 --
 
+constant :: PyConstant -> PyVal
+constant = injectAdr . PrmAdr 
+
 -- helper function 
 injectObj :: (AllJoin m) => PyVal -> [(PyAttr, PyVal)] -> [BindingFrom (PyPrm m)] -> PyObj m
 injectObj cls bds prm = PyObj (Domain.from dict) (HMapDomain.from prm)
   where attrs = (ClassAttr, cls) : bds
         dict  = map (first $ Constant . attrStr) attrs
 
-injectObj' :: (PyM pyM (PyObj m), AllJoin m) => PyConstant -> [(PyAttr, PyConstant)] -> [BindingFrom (PyPrm m)] -> pyM (PyObj m)
-injectObj' cls bds prm = injectObj <$> constant cls <*> mapM (\(k,v) -> (k,) <$> constant v) bds <*> pure prm
+injectObj' :: (AllJoin m) => PyConstant -> [(PyAttr, PyConstant)] -> [BindingFrom (PyPrm m)] -> PyObj m
+injectObj' cls bds = injectObj (constant cls) (map (second constant) bds)
 
-injectPrm :: (PyM pyM (PyObj m), AllJoin m) => PyPrim -> pyM (PyObj m)
+injectPrm :: (AllJoin m) => PyPrim -> PyObj m
 injectPrm prm = injectObj' PrimType [] [SPrmPrm :&: Domain.inject prm]
 
-injectStr :: (PyM pyM (PyObj m), AllJoin m, StringDomain (Assoc StrKey m)) => String -> pyM (PyObj m)
+injectStr :: (AllJoin m, StringDomain (Assoc StrKey m)) => String -> PyObj m
 injectStr str = injectObj' StringType [] [SStrPrm :&: Domain.inject str]
 
-injectBln :: (PyM pyM (PyObj m), AllJoin m, BoolDomain (Assoc BlnKey m)) => Bool -> pyM (PyObj m)
+injectBln :: (AllJoin m, BoolDomain (Assoc BlnKey m)) => Bool -> PyObj m
 injectBln bln = injectObj' BoolType [] [SBlnPrm :&: Domain.inject bln]
 
-injectNon :: (PyM pyM (PyObj m), AllJoin m) => pyM (PyObj m)
+injectNon :: AllJoin m => PyObj m
 injectNon = injectObj' NoneType [] []
 
-injectTyp' :: (PyM pyM (PyObj m), AllJoin m) => PyConstant -> PyConstant -> [(PyAttr, PyConstant)] -> pyM (PyObj m)
+injectTyp' :: AllJoin m => PyConstant -> PyConstant -> [(PyAttr, PyConstant)] -> PyObj m
 injectTyp' nam mro mts = injectObj' Type ((NameAttr, nam):(MROAttr, mro):mts) []
 
-injectTup :: (PyM pyM (PyObj m), AllJoin m) => [PyVal] -> pyM (PyObj m)
+injectTup :: AllJoin m => [PyVal] -> PyObj m
 injectTup vls = injectObj' TupleType [] [STupPrm :&: SeqDomain.fromList vls]
 
-injectTup' :: (PyM pyM (PyObj m), AllJoin m) => [PyConstant] -> pyM (PyObj m)
-injectTup' = injectTup <=< mapM constant
+injectTup' :: AllJoin m => [PyConstant] -> PyObj m
+injectTup' = injectTup . map constant
 
-injectMRO :: (PyM pyM (PyObj m), AllJoin m) => PyConstant -> pyM (PyObj m)
+injectMRO :: AllJoin m => PyConstant -> PyObj m
 injectMRO cls = injectTup' [cls, Object]
 
-injectBnd :: (PyM pyM (PyObj m), AllJoin m) => ObjAdr -> PyVal -> pyM (PyObj m)
+injectBnd :: AllJoin m => ObjAdr -> PyVal -> PyObj m
 injectBnd self fun = injectObj' BoundType [] [SBndPrm :&: Map.singleton self fun]
 
+class PyDomain m k where
+  from :: Assoc k (PyPrm m) -> PyObj m 
+instance AllJoin m => PyDomain m IntPrm where
+  from num = injectObj' IntType [] [SIntPrm :&: num]
+instance AllJoin m => PyDomain m ReaPrm where
+  from num = injectObj' FloatType [] [SReaPrm :&: num]
+instance AllJoin m => PyDomain m BlnPrm where
+  from bln = injectObj' BoolType [] [SBlnPrm :&: bln]
 
-
-injectPyConstant :: (PyM pyM (PyObj m), AllAbs m) => PyConstant -> pyM (PyObj m)
+injectPyConstant :: AllAbs m => PyConstant -> PyObj m
 injectPyConstant Type       = injectObj' Type [] []
 injectPyConstant Object     = injectObj' Type [] []
 -- types
-injectPyConstant IntType    = injectTyp' IntName IntMRO [(AddAttr, PrimAdd),
-                                                        (MulAttr, PrimMul)]
+injectPyConstant IntType    = injectTyp' IntName IntMRO [(AddAttr, PrimIntAdd),
+                                                         (SubAttr, PrimIntSub),
+                                                         (MulAttr, PrimIntMul),
+                                                         (TrueDivAttr, PrimIntTrueDiv)]
+injectPyConstant FloatType  = injectTyp' FloatName FloatMRO [(AddAttr, PrimFloatAdd),
+                                                             (SubAttr, PrimFloatSub),
+                                                             (MulAttr, PrimFloatMul),
+                                                             (TrueDivAttr, PrimFloatTrueDiv)]
 injectPyConstant NoneType   = injectTyp' NoneName NoneMRO []
 injectPyConstant PrimType   = injectTyp' PrimName PrimMRO []
 injectPyConstant BoolType   = injectTyp' BoolName BoolMRO []
@@ -261,6 +304,7 @@ injectPyConstant CloType    = injectTyp' CloName CloMRO []
 -- type names
 injectPyConstant NoneName   = injectStr "NoneType"
 injectPyConstant IntName    = injectStr "int"
+injectPyConstant FloatName  = injectStr "float"
 injectPyConstant BoolName   = injectStr "bool"
 injectPyConstant StringName = injectStr "str"
 injectPyConstant TupleName  = injectStr "tuple"
@@ -270,6 +314,7 @@ injectPyConstant BoundName  = injectStr "bound function"
 -- MROs
 injectPyConstant NoneMRO    = injectMRO NoneType
 injectPyConstant IntMRO     = injectMRO IntType
+injectPyConstant FloatMRO   = injectMRO FloatType 
 injectPyConstant BoolMRO    = injectMRO BoolType
 injectPyConstant StringMRO  = injectMRO StringType
 injectPyConstant TupleMRO   = injectMRO TupleType
@@ -277,14 +322,18 @@ injectPyConstant PrimMRO    = injectMRO PrimType
 injectPyConstant CloMRO     = injectMRO CloType
 injectPyConstant BoundMRO   = injectMRO BoundType
 -- primitives 
-injectPyConstant PrimAdd    = injectPrm Add
-injectPyConstant PrimSub    = injectPrm Sub
-injectPyConstant PrimMul    = injectPrm Mul
-injectPyConstant PrimDiv    = injectPrm Div
+injectPyConstant PrimIntAdd       = injectPrm IntAdd
+injectPyConstant PrimIntSub       = injectPrm IntSub
+injectPyConstant PrimIntMul       = injectPrm IntMul
+injectPyConstant PrimIntTrueDiv   = injectPrm IntTrueDiv
+injectPyConstant PrimFloatAdd     = injectPrm FloatAdd
+injectPyConstant PrimFloatSub     = injectPrm FloatSub
+injectPyConstant PrimFloatMul     = injectPrm FloatMul
+injectPyConstant PrimFloatTrueDiv = injectPrm FloatTrueDiv
 -- pre-allocated constant values
-injectPyConstant True       = injectBln Prelude.True
-injectPyConstant False      = injectBln Prelude.False
-injectPyConstant None       = injectNon
+injectPyConstant True         = injectBln Prelude.True
+injectPyConstant False        = injectBln Prelude.False
+injectPyConstant None         = injectNon
 
 
 --injectNum :: (PyM pyM (PyObj m), IntDomain (Assoc NumKey m)) => Integer -> pyM (PyObj m) 
@@ -310,7 +359,7 @@ lookupAttr exp attr =
 lookupAttrInClass :: forall pyM m . (PyM pyM (PyObj m), AllJoin m) => PyExp -> String -> ObjAdr -> PyVal -> pyM PyVal
 lookupAttrInClass exp attr self cls = do vlu <- lookupAttrMRO attr cls
                                          condCP (isBindable vlu)
-                                                (allocObj exp =<< injectBnd self vlu)
+                                                (allocObj exp $ injectBnd self vlu)
                                                 (return vlu)
 
 lookupAttrMRO :: forall pyM m . (PyM pyM (PyObj m), AllJoin m) => String -> PyVal -> pyM PyVal
@@ -318,11 +367,11 @@ lookupAttrMRO attr =
   deref $ \_ (PyObj dct _) ->
             do mroObj <- Domain.lookupM (Constant $ attrStr MROAttr) dct
                mroTup <- deref' mroObj
-               case justOrBot (HMapDomain.lookup STupPrm (prim mroTup)) of
+               case justOrBot (HMapDomain.lookup STupPrm (prm mroTup)) of
                   BotList       -> escape InvalidMRO
                   CPList l _ _  -> lookupMRO l
                   TopList v     -> lookupLocal v `orElse` escape AttributeNotFound
-    where lookupLocal = Domain.lookupM (Constant attr) . dict <=< deref'
+    where lookupLocal = Domain.lookupM (Constant attr) . dct <=< deref'
           lookupMRO   = foldr (orElse . lookupLocal) (escape AttributeNotFound)
 
 --
@@ -341,25 +390,31 @@ isCallableObj (PyObj _ prm) =  HMapDomain.member SBndPrm prm
                                `Domain.or`
                                HMapDomain.member SPrmPrm prm
 
-call :: (PyM pyM (PyObj m), AllJoin m) => PyExp -> [PyVal] -> PyVal -> pyM PyVal 
+isFloatObj :: (AllJoin m, BoolDomain b) => PyObj m -> b
+isFloatObj = HMapDomain.member SReaPrm . prm  
+
+isIntObj :: (AllJoin m, BoolDomain b) => PyObj m -> b
+isIntObj = HMapDomain.member SIntPrm . prm 
+
+call :: (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> PyVal -> pyM PyVal 
 call pos ags = callObj pos ags <=< deref' 
 
-callObj :: (PyM pyM (PyObj m), AllJoin m) => PyExp -> [PyVal] -> PyObj m -> pyM PyVal 
+callObj :: (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> PyObj m -> pyM PyVal 
 callObj pos ags obj = condCP (return $ isCallableObj obj)
                              (callFun pos ags obj)
                              (escape NotCallable) 
 
-callFun :: (PyM pyM (PyObj m), AllJoin m) => PyExp -> [PyVal] -> PyObj m -> pyM PyVal 
+callFun :: (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> PyObj m -> pyM PyVal 
 callFun pos ags (PyObj _ prm) = resBnd `mjoin` resClo `mjoin` resPrm
   where resBnd = maybe mzero (callBnd pos ags) $ HMapDomain.lookup SBndPrm prm 
         resClo = maybe mzero (callClo pos ags) $ HMapDomain.lookup SCloPrm prm 
         resPrm = maybe mzero (callPrm pos ags) $ HMapDomain.lookup SPrmPrm prm 
 
-callBnd :: (PyM pyM (PyObj m), AllJoin m) => PyExp -> [PyVal] -> Map ObjAdr PyVal -> pyM PyVal 
+callBnd :: (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> Map ObjAdr PyVal -> pyM PyVal 
 callBnd pos ags = mJoinMap apply . Map.toList
   where apply (rcv, vlu) = callFun pos (injectAdr rcv : ags) =<< deref' vlu 
 
-callPrm :: (PyM pyM (PyObj m), AllJoin m) => PyExp -> [PyVal] -> Set PyPrim -> pyM PyVal 
+callPrm :: (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> Set PyPrim -> pyM PyVal 
 callPrm pos ags = mJoinMap apply
   where apply prm = applyPrim prm pos ags 
 
@@ -367,8 +422,108 @@ callClo :: (PyM pyM (PyObj m), AllJoin m) => PyExp -> [PyVal] -> Set PyClo -> py
 callClo pos ags = mJoinMap apply
   where apply (prs, bdy, env) = undefined --TODO
 
-applyPrim :: (PyM pyM (PyObj m), AllJoin m) => PyPrim -> PyExp -> [PyVal] -> pyM PyVal
-applyPrim _ = undefined --TODO
+intBinop :: forall r1 r2 i r pyM m . 
+            (PyM pyM (PyObj m), 
+             AllAbs m, 
+             PyDomain m r1, 
+             PyDomain m r2,
+             i ~ Assoc IntKey m,
+             r ~ Assoc ReaKey m)
+          => (i -> i -> pyM (Assoc r1 (PyPrm m)))
+          -> (r -> r -> pyM (Assoc r2 (PyPrm m)))
+          -> PyObj m -> PyObj m -> pyM (PyObj m)
+intBinop fi fr o1 o2 = condCP (return $ isFloatObj o2)
+                              (do n1 <- getPrm @IntPrm o1   -- coerce to float if the second arg is a float
+                                  r1 <- Domain.toReal n1
+                                  r2 <- getPrm @ReaPrm o2
+                                  from @_ @r2 <$> fr r1 r2)
+                              (do n1 <- getPrm @IntPrm o1
+                                  n2 <- getPrm @IntPrm o2
+                                  from @_ @r1 <$> fi n1 n2)
+
+intBinop' :: forall pyM m . (PyM pyM (PyObj m), AllAbs m) 
+          => (forall d . NumberDomain d => d -> d -> pyM d) -- a common case: the same function (e.g., from NumberDomain)
+          -> (PyObj m -> PyObj m -> pyM (PyObj m))
+intBinop' f = intBinop @IntPrm @ReaPrm f f 
+
+intBinop'' :: forall r pyM m . (PyM pyM (PyObj m), AllAbs m, PyDomain m r) 
+          => (forall d . (NumberDomain d, Domain.Boo d ~ Assoc BlnKey m) => d -> d -> pyM (Assoc r (PyPrm m))) -- another common case
+          -> (PyObj m -> PyObj m -> pyM (PyObj m))
+intBinop'' f = intBinop @r @r f f 
+
+floatBinop :: forall r pyM m . (PyM pyM (PyObj m), AllAbs m, PyDomain m r)
+          => (Assoc ReaKey m -> Assoc ReaKey m -> pyM (Assoc r (PyPrm m)))
+          -> PyObj m -> PyObj m -> pyM (PyObj m)
+floatBinop f o1 o2 = condCP (return $ isIntObj o2)
+                            (do r1 <- getPrm @ReaPrm o1
+                                n2 <- getPrm @IntPrm o2
+                                r2 <- Domain.toReal n2
+                                from @_ @r <$> f r1 r2)
+                            (do r1 <- getPrm @ReaPrm o1
+                                r2 <- getPrm @ReaPrm o2
+                                from @_ @r <$> f r1 r2)
+
+applyPrim :: forall pyM m . (PyM pyM (PyObj m), AllAbs m) => PyPrim -> PyExp -> [PyVal] -> pyM PyVal
+-- int primitives
+applyPrim IntAdd        = prim2 $ intBinop' Domain.plus 
+applyPrim IntSub        = prim2 $ intBinop' Domain.minus
+applyPrim IntMul        = prim2 $ intBinop' Domain.times  
+applyPrim IntTrueDiv    = prim2 $ intBinop @ReaPrm @ReaPrm intDiv Domain.div 
+  where intDiv a b = Monad.join $ liftM2 Domain.div (Domain.toReal a) (Domain.toReal b)
+applyPrim IntEq         = prim2 $ intBinop'' @BlnPrm Domain.eq
+applyPrim IntNe         = prim2 $ intBinop'' @BlnPrm Domain.ne 
+applyPrim IntLt         = prim2 $ intBinop'' @BlnPrm Domain.lt
+applyPrim IntGt         = prim2 $ intBinop'' @BlnPrm Domain.gt
+applyPrim IntLe         = prim2 $ intBinop'' @BlnPrm Domain.le
+applyPrim IntGe         = prim2 $ intBinop'' @BlnPrm Domain.ge 
+-- float primitives
+applyPrim FloatAdd      = prim2 $ floatBinop @ReaPrm Domain.plus
+applyPrim FloatSub      = prim2 $ floatBinop @ReaPrm Domain.minus
+applyPrim FloatMul      = prim2 $ floatBinop @ReaPrm Domain.times
+applyPrim FloatTrueDiv  = prim2 $ floatBinop @ReaPrm Domain.div    
+applyPrim FloatEq       = prim2 $ floatBinop @BlnPrm Domain.eq 
+applyPrim FloatNe       = prim2 $ floatBinop @BlnPrm Domain.ne
+applyPrim FloatLt       = prim2 $ floatBinop @BlnPrm Domain.lt 
+applyPrim FloatGt       = prim2 $ floatBinop @BlnPrm Domain.gt 
+applyPrim FloatLe       = prim2 $ floatBinop @BlnPrm Domain.le
+applyPrim FloatGe       = prim2 $ floatBinop @BlnPrm Domain.ge 
+
+getPrm :: forall k m pyM . (PyM pyM (PyObj m), AllJoin m, SingI k) => PyObj m -> pyM (Assoc k (PyPrm m))
+getPrm (PyObj _ prm) = HMap.withC_ @(AtKey1 JoinLattice (PyPrm m)) getField s
+  where s = sing @k 
+        getField :: JoinLattice (Assoc k (PyPrm m)) => pyM (Assoc k (PyPrm m))
+        getField = condCP (return $ HMapDomain.member s prm)
+                          (return $ fromJust $ HMapDomain.lookup s prm)
+                          (escape WrongType)
+
+prim0 :: forall r pyM m . (PyM pyM (PyObj m), PyDomain m r) => 
+        pyM (Assoc r (PyPrm m))             -- ^ the primitive function
+        -> (PyExp -> [PyVal] -> pyM PyVal)  -- ^ the resulting function   
+prim0 f pos [] = allocObj pos . from @_ @r =<< f 
+prim0 _ _   _  = escape ArityError 
+
+prim1 :: forall a r pyM m . (PyM pyM (PyObj m), AllJoin m, PyDomain m r, SingI a) => 
+        (Assoc a (PyPrm m) -> pyM (Assoc r (PyPrm m)))  -- ^ the primitive function
+        -> (PyExp -> [PyVal] -> pyM PyVal)              -- ^ the resulting function 
+prim1 f pos [a1] = allocObj pos . from @_ @r =<< f =<< getPrm @a =<< deref' a1
+prim1 _ _   _    = escape ArityError  
+
+prim2 :: forall pyM m . (PyM pyM (PyObj m)) => 
+        (PyObj m -> PyObj m -> pyM (PyObj m))   -- ^ the primitive function
+        -> (PyExp -> [PyVal] -> pyM PyVal)      -- ^ the resulting function 
+prim2 f pos [a1, a2] = do o1 <- deref' a1
+                          o2 <- deref' a2
+                          r  <- f o1 o2
+                          allocObj pos r 
+prim2 _ _   _        = escape ArityError  
+
+prim2' :: forall a1 a2 r pyM m . (PyM pyM (PyObj m), AllJoin m, PyDomain m r, SingI a1, SingI a2) => 
+        (Assoc a1 (PyPrm m) -> Assoc a2 (PyPrm m) -> pyM (Assoc r (PyPrm m)))  -- ^ the primitive function
+        -> (PyExp -> [PyVal] -> pyM PyVal)                                     -- ^ the resulting function 
+prim2' f = prim2 $ \a b -> do va <- getPrm @a1 a
+                              vb <- getPrm @a2 b
+                              from @_ @r <$> f va vb
+
 
 --lookupAttrInMRO :: forall pyM m . PyM pyM (PyObj m) => String -> [PyVal] -> pyM PyVal
 --lookupAttrInMRO _ [] = escape AttributeNotFound
