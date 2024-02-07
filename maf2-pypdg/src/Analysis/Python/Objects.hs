@@ -25,7 +25,7 @@ import Control.Monad.AbstractM
 import Domain (Domain, BoolDomain, NumberDomain, IntDomain, RealDomain, StringDomain, CPDictionary)
 import qualified Domain
 
-import Prelude hiding (lookup, exp, True, False, seq, length)
+import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import qualified Prelude
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -92,54 +92,43 @@ data PyPrim     = IntAdd
                 | FloatGt
                 | FloatLe
                 | FloatGe
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Enum, Bounded, Show)
+
+data PyType = NoneType
+            | BoolType
+            | IntType
+            | StringType
+            | TupleType
+            | PrimType
+            | BoundType
+            | CloType
+            | FloatType
+  deriving (Eq, Ord, Enum, Bounded, Show) 
+
 -- these are constant and pre-allocated objects in memory
 data PyConstant = Type      -- 'type'
                 | Object    -- 'object'
-                -- type objects
-                | NoneType
-                | BoolType
-                | IntType
-                | StringType
-                | TupleType
-                | PrimType
-                | BoundType
-                | CloType
-                | FloatType 
-                -- type names
-                | BoundName
-                | TupleName
-                | StringName
-                | IntName
-                | PrimName
-                | CloName
-                | BoolName
-                | NoneName
-                | FloatName 
-                -- MROs
-                | IntMRO
-                | StringMRO
-                | BoolMRO
-                | NoneMRO
-                | PrimMRO
-                | TupleMRO
-                | BoundMRO
-                | CloMRO
-                | FloatMRO 
-                -- primitive objects
-                | PrimIntAdd
-                | PrimIntSub
-                | PrimIntMul
-                | PrimIntTrueDiv
-                | PrimFloatAdd
-                | PrimFloatSub
-                | PrimFloatMul
-                | PrimFloatTrueDiv 
-                -- some constants
                 | None
                 | True
                 | False
-  deriving (Eq, Ord, Enum, Bounded, Show)
+                | TypeObject PyType 
+                | TypeName   PyType 
+                | TypeMRO    PyType 
+                | PrimObject PyPrim 
+  deriving (Eq, Ord, Show)
+
+class Finite a where
+  all :: [a]
+
+instance (Enum a, Bounded a) => Finite a where 
+  all = [minBound..maxBound]
+
+instance Finite PyConstant where
+  all = [Type, Object, None, True, False] 
+        ++ map TypeObject all 
+        ++ map TypeName all 
+        ++ map TypeMRO all
+        ++ map PrimObject all
 
 class (Monad m,
        MonadJoin m,
@@ -247,98 +236,82 @@ injectObj' :: (AllJoin m) => PyConstant -> [(PyAttr, PyConstant)] -> [BindingFro
 injectObj' cls bds = injectObj (constant cls) (map (second constant) bds)
 
 injectPrm :: (AllJoin m) => PyPrim -> PyObj m
-injectPrm prm = injectObj' PrimType [] [SPrmPrm :&: Domain.inject prm]
+injectPrm prm = injectObj' (TypeObject PrimType) [] [SPrmPrm :&: Domain.inject prm]
 
 injectStr :: (AllJoin m, StringDomain (Assoc StrKey m)) => String -> PyObj m
-injectStr str = injectObj' StringType [] [SStrPrm :&: Domain.inject str]
+injectStr str = injectObj' (TypeObject StringType) [] [SStrPrm :&: Domain.inject str]
 
 injectBln :: (AllJoin m, BoolDomain (Assoc BlnKey m)) => Bool -> PyObj m
-injectBln bln = injectObj' BoolType [] [SBlnPrm :&: Domain.inject bln]
+injectBln bln = injectObj' (TypeObject BoolType) [] [SBlnPrm :&: Domain.inject bln]
 
 injectNon :: AllJoin m => PyObj m
-injectNon = injectObj' NoneType [] []
-
-injectTyp' :: AllJoin m => PyConstant -> PyConstant -> [(PyAttr, PyConstant)] -> PyObj m
-injectTyp' nam mro mts = injectObj' Type ((NameAttr, nam):(MROAttr, mro):mts) []
+injectNon = injectObj' (TypeObject NoneType) [] []
 
 injectTup :: AllJoin m => [PyVal] -> PyObj m
-injectTup vls = injectObj' TupleType [] [STupPrm :&: SeqDomain.fromList vls]
+injectTup vls = injectObj' (TypeObject TupleType) [] [STupPrm :&: SeqDomain.fromList vls]
 
 injectTup' :: AllJoin m => [PyConstant] -> PyObj m
 injectTup' = injectTup . map constant
 
-injectMRO :: AllJoin m => PyConstant -> PyObj m
-injectMRO cls = injectTup' [cls, Object]
-
 injectBnd :: AllJoin m => ObjAdr -> PyVal -> PyObj m
-injectBnd self fun = injectObj' BoundType [] [SBndPrm :&: Map.singleton self fun]
+injectBnd self fun = injectObj' (TypeObject BoundType) [] [SBndPrm :&: Map.singleton self fun]
 
 class PyDomain m k where
   from :: Assoc k (PyPrm m) -> PyObj m 
 instance AllJoin m => PyDomain m IntPrm where
-  from num = injectObj' IntType [] [SIntPrm :&: num]
+  from num = injectObj' (TypeObject IntType) [] [SIntPrm :&: num]
 instance AllJoin m => PyDomain m ReaPrm where
-  from num = injectObj' FloatType [] [SReaPrm :&: num]
+  from num = injectObj' (TypeObject FloatType)  [] [SReaPrm :&: num]
 instance AllJoin m => PyDomain m BlnPrm where
-  from bln = injectObj' BoolType [] [SBlnPrm :&: bln]
+  from bln = injectObj' (TypeObject BoolType) [] [SBlnPrm :&: bln]
+
+methods :: PyType -> [(PyAttr, PyPrim)]
+methods IntType = [(AddAttr,      IntAdd),
+                   (SubAttr,      IntSub),
+                   (MulAttr,      IntMul),
+                   (TrueDivAttr,  IntTrueDiv),
+                   (EqAttr,       IntEq),
+                   (NeAttr,       IntNe),
+                   (LtAttr,       IntLt),
+                   (GtAttr,       IntGt),
+                   (LeAttr,       IntLe),
+                   (GeAttr,       IntGe)]
+methods FloatType = [(AddAttr,      FloatAdd),
+                     (SubAttr,      FloatSub),
+                     (MulAttr,      FloatMul),
+                     (TrueDivAttr,  FloatTrueDiv),
+                     (EqAttr,       FloatEq),
+                     (NeAttr,       FloatNe),
+                     (LtAttr,       FloatLt),
+                     (GtAttr,       FloatGt),
+                     (LeAttr,       FloatLe),
+                     (GeAttr,       FloatGe)] 
+methods _ = [] 
+
+name :: PyType -> String
+name NoneType   = "NoneType"
+name IntType    = "int"
+name FloatType  = "float"
+name BoolType   = "bool"
+name StringType = "str"
+name TupleType  = "tuple"
+name PrimType   = "primitive"
+name CloType    = "function"
+name BoundType  = "bound function" 
 
 injectPyConstant :: AllAbs m => PyConstant -> PyObj m
-injectPyConstant Type       = injectObj' Type [] []
-injectPyConstant Object     = injectObj' Type [] []
--- types
-injectPyConstant IntType    = injectTyp' IntName IntMRO [(AddAttr, PrimIntAdd),
-                                                         (SubAttr, PrimIntSub),
-                                                         (MulAttr, PrimIntMul),
-                                                         (TrueDivAttr, PrimIntTrueDiv)]
-injectPyConstant FloatType  = injectTyp' FloatName FloatMRO [(AddAttr, PrimFloatAdd),
-                                                             (SubAttr, PrimFloatSub),
-                                                             (MulAttr, PrimFloatMul),
-                                                             (TrueDivAttr, PrimFloatTrueDiv)]
-injectPyConstant NoneType   = injectTyp' NoneName NoneMRO []
-injectPyConstant PrimType   = injectTyp' PrimName PrimMRO []
-injectPyConstant BoolType   = injectTyp' BoolName BoolMRO []
-injectPyConstant TupleType  = injectTyp' TupleName TupleMRO []
-injectPyConstant BoundType  = injectTyp' BoundName BoundMRO []
-injectPyConstant StringType = injectTyp' StringName StringMRO []
-injectPyConstant CloType    = injectTyp' CloName CloMRO []
--- type names
-injectPyConstant NoneName   = injectStr "NoneType"
-injectPyConstant IntName    = injectStr "int"
-injectPyConstant FloatName  = injectStr "float"
-injectPyConstant BoolName   = injectStr "bool"
-injectPyConstant StringName = injectStr "str"
-injectPyConstant TupleName  = injectStr "tuple"
-injectPyConstant PrimName   = injectStr "primitive"
-injectPyConstant CloName    = injectStr "function"
-injectPyConstant BoundName  = injectStr "bound function"
--- MROs
-injectPyConstant NoneMRO    = injectMRO NoneType
-injectPyConstant IntMRO     = injectMRO IntType
-injectPyConstant FloatMRO   = injectMRO FloatType 
-injectPyConstant BoolMRO    = injectMRO BoolType
-injectPyConstant StringMRO  = injectMRO StringType
-injectPyConstant TupleMRO   = injectMRO TupleType
-injectPyConstant PrimMRO    = injectMRO PrimType
-injectPyConstant CloMRO     = injectMRO CloType
-injectPyConstant BoundMRO   = injectMRO BoundType
--- primitives 
-injectPyConstant PrimIntAdd       = injectPrm IntAdd
-injectPyConstant PrimIntSub       = injectPrm IntSub
-injectPyConstant PrimIntMul       = injectPrm IntMul
-injectPyConstant PrimIntTrueDiv   = injectPrm IntTrueDiv
-injectPyConstant PrimFloatAdd     = injectPrm FloatAdd
-injectPyConstant PrimFloatSub     = injectPrm FloatSub
-injectPyConstant PrimFloatMul     = injectPrm FloatMul
-injectPyConstant PrimFloatTrueDiv = injectPrm FloatTrueDiv
--- pre-allocated constant values
-injectPyConstant True         = injectBln Prelude.True
-injectPyConstant False        = injectBln Prelude.False
-injectPyConstant None         = injectNon
-
-
---injectNum :: (PyM pyM (PyObj m), IntDomain (Assoc NumKey m)) => Integer -> pyM (PyObj m) 
---injectNum n = makeObj [SNumPrm :&: Domain.inject n]
---                      [(ClassAttr, IntType)] 
+injectPyConstant Type     = injectObj' Type [] []
+injectPyConstant Object   = injectObj' Type [] []
+injectPyConstant True     = injectBln Prelude.True
+injectPyConstant False    = injectBln Prelude.False
+injectPyConstant None     = injectNon
+injectPyConstant (TypeObject typ) = injectObj' Type allAttrs []
+  where methodAttrs = map (second PrimObject) (methods typ)
+        allAttrs    = [(NameAttr, TypeName typ),(MROAttr, TypeName typ)] ++ methodAttrs
+--injectTyp' (TypeName typ) (TypeMRO typ) (methods typ) 
+injectPyConstant (TypeName typ)   = injectStr $ name typ
+injectPyConstant (TypeMRO typ)    = injectTup' [TypeObject typ, Object]
+injectPyConstant (PrimObject prm) = injectPrm prm 
 
 isBindable :: (PyM pyM (PyObj m), AllJoin m, BoolDomain b) => PyVal -> pyM b
 isBindable = fmap isBindableObj . deref'
