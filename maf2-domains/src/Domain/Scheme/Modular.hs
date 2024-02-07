@@ -447,8 +447,8 @@ instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDo
                    (\v1 v2 -> insertReal <$> expt v1 v2)
    lt     = coerce (\v1 v2 -> insertBool <$> lt v1 v2)
                    (\v1 v2 -> insertBool <$> lt v1 v2)
-   equals = coerce (\v1 v2 -> insertBool <$> equals v1 v2)
-                   (\v1 v2 -> insertBool <$> equals v1 v2)
+   eq     = coerce (\v1 v2 -> insertBool <$> eq v1 v2)
+                   (\v1 v2 -> insertBool <$> eq v1 v2)
 
 instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b, IntR r  ~ i) =>
    RealDomain (ModularSchemeValue r i c b pai vec str var exp env) where

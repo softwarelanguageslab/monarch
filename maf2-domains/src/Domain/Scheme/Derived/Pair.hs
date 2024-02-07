@@ -78,8 +78,8 @@ instance (NumberDomain l, NumberDomain r) => NumberDomain (SchemePairedValue l r
       pairedValue <$> expt l1 l2 <*> expt r1 r2
    lt  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       pairedValue <$> lt l1 l2 <*> lt r1 r2
-   equals  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      pairedValue <$> equals l1 l2 <*> equals r1 r2
+   eq  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
+      pairedValue <$> eq l1 l2 <*> eq r1 r2
 
 ------------------------------------------------------------
 -- IntegerDomain instance

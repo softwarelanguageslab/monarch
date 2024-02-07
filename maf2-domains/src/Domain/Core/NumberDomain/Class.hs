@@ -3,10 +3,11 @@ module Domain.Core.NumberDomain.Class (NumberDomain(..), IntDomain(..), RealDoma
 import Lattice
 import Domain.Class 
 import Control.Monad.AbstractM
+import qualified Domain.Core.BoolDomain as Bool
 
 import Data.Kind 
 
-class NumberDomain n where
+class (JoinLattice n, Bool.BoolDomain (Boo n)) => NumberDomain n where
    type Boo n :: Type
    isZero :: AbstractM m => n -> m (Boo n)
    random :: AbstractM m => n -> m n
@@ -15,8 +16,16 @@ class NumberDomain n where
    times :: AbstractM m => n -> n -> m n
    div :: AbstractM m => n -> n -> m n
    expt :: AbstractM m => n -> n -> m n
+   eq :: AbstractM m => n -> n -> m (Boo n)
+   ne :: AbstractM m => n -> n -> m (Boo n)
+   ne a b = Bool.not <$> eq a b 
    lt :: AbstractM m => n -> n -> m (Boo n)
-   equals :: AbstractM m => n -> n -> m (Boo n)
+   gt :: AbstractM m => n -> n -> m (Boo n)
+   gt = flip lt 
+   ge :: AbstractM m => n -> n -> m (Boo n)
+   ge a b = Bool.not <$> lt a b 
+   le :: AbstractM m => n -> n -> m (Boo n)
+   le a b = Bool.not <$> gt a b 
 
 class (Domain i Integer, NumberDomain i) => IntDomain i where
    type Str i :: Type
