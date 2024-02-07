@@ -118,7 +118,7 @@ allPrimitives = [
    fix3 "vector-set!" (\adr i v -> vptrs adr >>= deref (\adr vec -> updateAdr adr =<< vectorSet vec i v) >> return unsp),
    fix1 "vector?" $ return . inject . isVecPtr,
    fix2 "<" lt,
-   fix2 "=" equals,
+   fix2 "=" eq,
    fix1 "random" Domain.random,
    fix0 "bool-top" $ return Domain.boolTop
    -- fix1 "error" todo
