@@ -1,91 +1,69 @@
--- {-# LANGUAGE QuantifiedConstraints, FlexibleContexts, FlexibleInstances, AllowAmbiguousTypes, UndecidableInstances #-}
--- {-# OPTIONS_GHC -Wno-redundant-constraints #-}
-{-# LANGUAGE RankNTypes #-}
-
-module Analysis.Python.Monad where --(PyM(..), PyIO(..), PyConfig(..), AnalysisConfig(..), module Analysis.Monad, runIO) where
+module Analysis.Python.Monad (
+  PyM,
+  StoreM(..),
+  AllocM(..),
+  ObjectError(..), -- TODO: move this 
+  deref, 
+  deref', 
+  allocObj
+) where
 
 import Lattice
-import Domain.Core 
-import Domain.Python
+import Domain.Class 
 import Control.Monad.Join
-
+import Control.Monad.DomainError
 import Analysis.Python.Syntax
-import Analysis.Python.Objects
+import Analysis.Python.Common 
 
-import Data.Map (Map)
-import qualified Data.Map as Map 
+import Prelude hiding (lookup)
+import qualified Data.Set as Set 
 
-type PyEnv = Map String VarAdr
-
-type PyClo = ([PyPar], PyStm, PyEnv)
-type PyPrm = forall m v . AnalysisM m v => [PyVal] -> PyLoc -> m PyVal
-
-data Cmp = MainCmp
-         | CallCmp PyStm PyEnv
-         | LoopCmp PyExp PyStm PyEnv
-
-
-class (JoinLattice v,
-       BoolDomain v)
-       =>
-       PyDomain v where
-   none :: v
-   injectBln :: Bool -> v
-   injectBln = inject -- from Booldomain
-   injectInt :: Integer -> v
-   injectClo :: PyClo -> v
-   call :: AnalysisM m v => v 
-                         -> (PyClo -> m PyVal) 
-                         -> (PyPrm -> m PyVal) -- -> [PyRef] -> PyLoc
-                         -> m PyVal
+--
+-- TODO: reuse existing for these?
+--
 
 class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
-   extend :: a -> v -> m ()
-   update :: a -> v -> m ()
-   lookup :: a -> m v
+  extend :: a -> v -> m ()
+  update :: a -> v -> m ()
+  lookup :: a -> m v
+
+class (Monad m) => AllocM m e a | m e -> a where
+  alloc :: e -> m a
+
+allocVal :: (StoreM m a v, AllocM m e a) => e -> v -> m a
+allocVal e v = do adr <- alloc e
+                  extend adr v
+                  return adr
+
+--
+-- The Python monad 
+--
+
+data ObjectError = AttributeNotFound
+                 | NotMutable
+                 | NotCallable
+                 | ArityError
+                 | TypeMismatch
+                 | InvalidMRO
 
 class (Monad m,
        MonadJoin m,
-       EnvM m VarAdr PyEnv,
-       StoreM m VarAdr PyVal,
-       StoreM m ObjAdr v,
-       PyDomain v)
+       MonadEscape m,
+       Domain (Esc m) ObjectError,
+       Domain (Esc m) DomainError,
+       AllocM m PyExp ObjAdr,
+       StoreM m ObjAdr obj)
        =>
-       AnalysisM m v | m -> v where
-   returnWith :: PyVal -> m a
-   continue :: m a
-   break :: m a
-   callCmp :: Cmp -> m PyVal 
+       PyM m obj | m -> obj
 
+deref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
+deref f = mJoinMap (\a -> lookup a >>= f a) . addrs 
 
--- | Reading from an environment 
-class EnvM m adr env | m -> env, m -> adr where
-   -- | Lookup the address of the given identifier,
-   -- may throw an exception if the identifier is not found 
-   -- since it means that the program is not well-formed.
-   lookupEnv :: String -> m adr
-   -- | Extend the environment with the given list of bindings and run the computation
-   -- given as an argument in it
-   withExtendedEnv :: [(String, adr)] -> m a -> m a
-   -- | Retrieves the current environment 
-   getEnv :: m env
-   -- | Runs function `f` on the environment and to compute the environment to execute `m` in
-   withEnv :: {- f -} (env -> env) -> m a -> m a
+deref' :: PyM m obj => PyVal -> m obj
+deref' = mjoins . map lookup . Set.toList . addrs 
 
-class (EnvM m adr env) 
-        => 
-        PyM m env adr where 
-
-
-
-
-
-
-
-
-
-
-
+allocObj :: PyM m obj => PyExp -> obj -> m PyVal
+allocObj e = fmap injectAdr . allocVal e
 
 
 

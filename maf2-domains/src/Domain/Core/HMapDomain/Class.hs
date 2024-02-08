@@ -1,5 +1,5 @@
 {-# LANGUAGE PolyKinds              #-}
-{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE AllowAmbiguousTypes    #-}
 {-# LANGUAGE UndecidableInstances   #-}
 
 module Domain.Core.HMapDomain.Class (HMapDomain(..)) where
