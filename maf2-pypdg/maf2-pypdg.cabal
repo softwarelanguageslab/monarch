@@ -31,6 +31,8 @@ library
       Analysis.Environment
       Analysis.IO
       Analysis.Python
+      Analysis.Python.Common
+      Analysis.Python.Infrastructure
       Analysis.Python.Monad
       Analysis.Python.Objects
       Analysis.Python.OO

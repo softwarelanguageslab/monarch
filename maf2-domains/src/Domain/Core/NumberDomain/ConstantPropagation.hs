@@ -26,7 +26,7 @@ instance NumberDomain (CP Integer) where
    div a b = return $ liftA2 Prelude.div a b
    expt a b = return $ liftA2 (^) a b
    lt a b = return $ liftA2 (<) a b
-   equals a b = return $ liftA2 (==) a b
+   eq a b = return $ liftA2 (==) a b
 
 instance IntDomain (CP Integer) where
    type Str (CP Integer) = CP String
@@ -55,7 +55,7 @@ instance NumberDomain (CP Double) where
    div a b = return $ liftA2 (/) a b
    expt a b = return $ liftA2 (**) a b
    lt a b = return $ liftA2 (<) a b
-   equals a b = return $ liftA2 (==) a b
+   eq a b = return $ liftA2 (==) a b
 
 instance RealDomain (CP Double) where
    type IntR (CP Double) = CP Integer

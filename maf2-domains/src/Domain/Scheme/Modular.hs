@@ -37,6 +37,20 @@ a ∪ b = Set.union a b
 infixl 0 ∪
 
 
+-- NOTE: below is an unused refactoring of the modular domain by using the representation 
+-- in Data.TypeLevel.HMap 
+--
+-- This representation provides a sparse labeled product lattice which is both time and space
+-- efficient. However, this refactoring is not yet completed, hence why it is unused.
+--
+-- The new representation is meant to be a drop⁻in replacement for the existing one.
+-- A type alias 'ModularSchemeValue' with the same type parameters as before will be provided.
+-- This type alias when then instantiate a map with the correct 'SchemeConfKey's for the given
+-- parameters.
+--
+-- The currently used implementation can be found below and is marked as "Original implementation".
+
+
 ----------------------------------------------
 -- Lattice configuration
 ----------------------------------------------
@@ -49,7 +63,7 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | CharConf   -- ^ abstraction for characters
                    | BoolConf   -- ^ abstraction for booleans
                    | EnvConf    -- ^ abstraction for environments
-                   | ExpConf    -- ^ concrete type of expressions
+                   | ExpConf    -- ^ concrete type of expressions
                    | StrConf    -- ^ type of string pointers
                    | PaiConf    -- ^ type of pair pointers
                    | VecConf    -- ^ type of vector pointers
@@ -79,7 +93,7 @@ genHKeys ''SchemeKey
 -- Type parameter 'm' denotes a SchemeConf mapping to configure the abstract domain.
 type Values m = '[
    RealKey ::-> Assoc RealConf m,
-   IntKey  ::-> Assoc IntConf m, 
+   IntKey  ::-> Assoc IntConf m,
    CharKey ::-> Assoc CharConf m,
    BoolKey ::-> Assoc BoolConf m,
    PaiKey  ::-> Set (Assoc PaiConf m),
@@ -128,6 +142,26 @@ instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
             append' = const (HMap.withFacts @(Const String) @kt @(Values m) (++))
 
 ------------------------------------------------------------
+-- Utilities
+------------------------------------------------------------
+
+-- | Returns the value at CharKey from the SchemeValue
+-- or escapes with `WrongType` for any other key.
+chars' :: forall m mp . (IsSchemeValue mp, AbstractM m) => SchemeVal mp -> m (Assoc CharKey (Values mp))
+chars' v = mjoins $ HMap.mapList select (getSchemeVal v)
+   where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values mp) -> m (Assoc CharKey (Values mp))
+         select SCharKey c = return c
+         select _ _ = escape WrongType
+
+
+injectChar :: Assoc CharKey (Values m) -> SchemeVal m
+injectChar = SchemeVal . HMap.singleton @CharKey
+
+injectInt :: Assoc IntKey (Values m) -> SchemeVal m
+injectInt = SchemeVal . HMap.singleton @IntKey
+
+
+------------------------------------------------------------
 -- Domains
 ------------------------------------------------------------
 
@@ -136,9 +170,9 @@ instance (IsSchemeValue m) => Domain (SchemeVal m) Bool where
   inject = SchemeVal . HMap.singleton @BoolKey . inject
 instance (IsSchemeValue m) => Domain (SchemeVal m) Integer where
   inject = SchemeVal . HMap.singleton @IntKey . inject
-instance (IsSchemeValue m) => Domain (SchemeVal m) Double where 
+instance (IsSchemeValue m) => Domain (SchemeVal m) Double where
    inject = SchemeVal . HMap.singleton @RealKey . inject
-instance (IsSchemeValue m) => Domain (SchemeVal m) Char where 
+instance (IsSchemeValue m) => Domain (SchemeVal m) Char where
    inject = SchemeVal . HMap.singleton @CharKey . inject
 
 
@@ -167,10 +201,40 @@ instance (IsSchemeValue m) => BoolDomain (SchemeVal m) where
 -- CharDomain
 ------------------------------------------------------------
 
+-- | An instance for the character domain assuming that our underlying representation
+-- for integers is shared with the underlying character domain that we are using.
+instance (IsSchemeValue m, IntC (Assoc CharKey (Values m)) ~ Assoc IntKey (Values m)) => CharDomain (SchemeVal m) where
+   type IntC (SchemeVal m) = (SchemeVal m)
+
+   downcase  = chars' >=> downcase >=> (return . injectChar)
+   upcase    = chars' >=> upcase   >=> (return . injectChar)
+   charToInt = chars' >=> charToInt >=> (return . injectInt)
+   isLower   = chars' >=> isLower
+   isUpper   = chars' >=> isUpper
+   charEq a b = M.join $ liftA2 charEq (chars' a) (chars' b)
+   charLt a b = M.join $ liftA2 charLt (chars' a) (chars' b)
+   charEqCI a b = M.join $ liftA2 charEqCI (chars' a) (chars' b)
+   charLtCI a b = M.join $ liftA2 charLtCI (chars' a) (chars' b)
+
+------------------------------------------------------------
+-- Number domain
+------------------------------------------------------------
+
+------------------------------------------------------------
+-- Integer domain
+------------------------------------------------------------
+
+------------------------------------------------------------
+-- Real domain
+------------------------------------------------------------
+
 ------------------------------------------------------------
 -- SchemeDomain
 ------------------------------------------------------------
 
+------------------------------------------------------------
+-- Original implementation
+------------------------------------------------------------
 
 -- A generic instance for the Scheme domain, parametrized by their sublattices
 data ModularSchemeValue r i c b pai vec str var exp env = ModularSchemeValue {
@@ -383,8 +447,8 @@ instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDo
                    (\v1 v2 -> insertReal <$> expt v1 v2)
    lt     = coerce (\v1 v2 -> insertBool <$> lt v1 v2)
                    (\v1 v2 -> insertBool <$> lt v1 v2)
-   equals = coerce (\v1 v2 -> insertBool <$> equals v1 v2)
-                   (\v1 v2 -> insertBool <$> equals v1 v2)
+   eq     = coerce (\v1 v2 -> insertBool <$> eq v1 v2)
+                   (\v1 v2 -> insertBool <$> eq v1 v2)
 
 instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b, IntR r  ~ i) =>
    RealDomain (ModularSchemeValue r i c b pai vec str var exp env) where
