@@ -111,6 +111,7 @@ executable maf-exe
   other-modules:
       Entrypoints
       Run.Analyzer
+      Run.Erlang
       Run.Interpreter
       Run.Python
       Paths_maf2_analysis

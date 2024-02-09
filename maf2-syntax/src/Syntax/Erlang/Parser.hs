@@ -2,7 +2,6 @@ module Syntax.Erlang.Parser(parseErlangTerm) where
 
 import Text.Parsec
 
-
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
@@ -10,41 +9,56 @@ import qualified Text.ParserCombinators.Parsec.Token as Token
 data Term = Tuple [Term]   -- ^ { t1, t2, ..., tn }
           | Atom String    -- ^ atom
           | List [Term]    -- ^ [ t1, t2, ..., tn }
-          | TrueLiteral    -- ^ true
+          | TrueLiteral    -- ^ true
           | FalseLiteral   -- ^ false
+          | Text String
           | Number Integer
-          | Floating Double 
+          | Floating Double
          deriving (Eq, Show, Ord)
 
 languageDef :: LanguageDef st
-languageDef = emptyDef { Token.identStart = lower, 
+languageDef = emptyDef { Token.identStart = lower,
                          Token.identLetter = alphaNum }
 
 lexer   = Token.makeTokenParser languageDef
 
 symbol :: String -> Parser String
-symbol  = Token.symbol lexer 
+symbol  = Token.symbol lexer
 
 ident :: Parser String
 ident   = Token.identifier lexer
 
-term :: Parser Term 
-term =  tuple 
+term :: Parser Term
+term =  tuple
     <|> list
     <|> atom
     <|> number
+    <|> strings
 
+-- | Parses a tuple into a term.
+--
+-- Examples of tuples are: {a, b, c}
 tuple :: Parser Term
 tuple = Tuple <$> between (symbol "{") (symbol "}") (sepBy term (symbol ","))
 
+-- | Parses a list into a term
+--
+-- Examples of lists are: [a, b, c]
 list :: Parser Term
 list  = List <$> between (symbol "[") (symbol "]") (sepBy term (symbol ","))
 
+-- | An atom is an identifier starting with a lowercase letter.
+-- Other things may also be atoms, but then they have to be surrounded by single quotes.
 atom :: Parser Term
-atom = Atom <$> ident
+atom = Atom <$> (between (char '\'') (char '\'') ident <|> ident)
+   -- note: we do not really care about lower/uppercase letters here, since uppercase letters are variables 
+   -- and variables cannot occur in this datastructure.
 
 number :: Parser Term
 number = Number <$> Token.integer lexer
+
+strings :: Parser Term
+strings = Text <$> Token.stringLiteral lexer
 
 parseErlangTerm :: String -- ^ the name of the program
                 -> String -- ^ the program itself 
