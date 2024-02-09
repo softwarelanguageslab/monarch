@@ -65,9 +65,9 @@ class (
   => 
   PyObj obj where
     type Abs obj (k :: PyPrmKey) :: Type
-    has :: forall (k :: PyPrmKey) b . (BoolDomain b, SingI k) => obj -> b  
-    get' :: forall (k :: PyPrmKey) . (SingI k) => obj -> Abs obj k
-    from :: forall (k :: PyPrmKey) . (SingI k) => Abs obj k -> obj 
+    has :: forall k b . (BoolDomain b, SingI k) => obj -> b  
+    get :: forall k . (SingI k) => obj -> Abs obj k
+    from :: forall k . (SingI k) => Abs obj k -> obj 
   -- TODO[?]: could abstract getAttr and setAttr here as well ...
 
 at :: forall (k :: PyPrmKey) obj pyM . (PyM pyM obj, PyObj obj, SingI k) => obj -> pyM (Abs obj k)
@@ -75,7 +75,7 @@ at obj = withC_ @(AbsJoinLattice obj) getField s
   where s = sing @k        
         getField :: JoinLattice (Abs obj k) => pyM (Abs obj k)
         getField = condCP (return $ has @_ @k obj)
-                          (return $ get' @_ @k obj)
+                          (return $ get @_ @k obj)
                           (escape WrongType) 
 
 applyPrim :: forall pyM obj . (PyM pyM obj, PyObj obj) => PyPrim -> PyExp -> [PyVal] -> pyM PyVal
@@ -141,7 +141,7 @@ intBinop :: forall r1 r2 pyM obj . (PyM pyM obj, PyObj obj, SingI r1, SingI r2)
 intBinop fi fr o1 o2 = condCP (return $ has @_ @ReaPrm o2)  -- if the second arg is a float ...
                               (do n1 <- at @IntPrm o1       -- ... coerce the first arg to a float as well 
                                   r1 <- Domain.toReal n1
-                                  let r2 = get' @_ @ReaPrm o2
+                                  let r2 = get @_ @ReaPrm o2
                                   from @_ @r2 <$> fr r1 r2)
                               (do n1 <- at @IntPrm o1
                                   n2 <- at @IntPrm o2
@@ -162,7 +162,7 @@ floatBinop :: forall r pyM obj . (PyM pyM obj, PyObj obj, SingI r)
           -> obj -> obj -> pyM obj
 floatBinop f o1 o2 = condCP (return $ has @_ @IntPrm o2)   -- if the second arg is an int ...
                             (do r1 <- at @ReaPrm o1        -- ... coerce it to a float 
-                                let n2 = get' @_ @IntPrm o2
+                                let n2 = get @_ @IntPrm o2
                                 r2 <- Domain.toReal n2
                                 from @_ @r <$> f r1 r2)
                             (do r1 <- at @ReaPrm o1
