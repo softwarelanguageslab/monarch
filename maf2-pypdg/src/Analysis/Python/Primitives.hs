@@ -6,15 +6,20 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE PolyKinds #-}
 
-module Analysis.Python.Primitives (applyPrim) where
+module Analysis.Python.Primitives (
+  applyPrim, 
+  PyPrmKey(..),
+  SPyPrmKey(..),
+) where
 
 import Lattice hiding (insert)
 import Domain (Domain, BoolDomain, NumberDomain, IntDomain, RealDomain, StringDomain, CPDictionary)
 import qualified Domain
 import Analysis.Python.Syntax hiding (Dict)
 import Analysis.Python.Monad 
-import Analysis.Python.Infrastructure
+import Analysis.Python.Infrastructure hiding (PyConstant(..))
 import Analysis.Python.Common 
 import Data.TypeLevel.HMap (Assoc, All, ForAllOf, ForAll(..), Dict(..), AllAtKey1, genHKeys, AtKey1, withC_)
 import Domain.Core.HMapDomain (HMapDomain)
@@ -29,6 +34,7 @@ import Data.Singletons.TH
 import Control.Monad (liftM2)
 import qualified Control.Monad as Monad 
 import Data.Maybe (fromJust)
+import Data.Kind (Type, Constraint)
 
 data PyPrmKey = IntPrm
               | ReaPrm 
@@ -43,17 +49,36 @@ data PyPrmKey = IntPrm
 
 genHKeys ''PyPrmKey
 
-type PyPrm obj m = (HMapDomain obj m,
-                    AllAtKey1  JoinLattice m, 
-                    IntDomain     (Assoc IntPrm m),
-                    Domain.Boo    (Assoc IntPrm m) ~ Assoc BlnPrm m, 
-                    Domain.Rea    (Assoc IntPrm m) ~ Assoc ReaPrm m,
-                    Domain.Str    (Assoc IntPrm m) ~ Assoc StrPrm m,
-                    RealDomain    (Assoc ReaPrm m),
-                    Domain.Boo    (Assoc ReaPrm m) ~ Assoc BlnPrm m,
-                    StringDomain  (Assoc ReaPrm m))
+data AbsJoinLattice obj :: k ~> Constraint
+type instance Apply (AbsJoinLattice obj) k = JoinLattice (Abs obj k)
 
-applyPrim :: (PyM pyM obj, PyPrm obj m) => PyPrim -> PyExp -> [PyVal] -> pyM PyVal
+class (
+    ForAll PyPrmKey (AbsJoinLattice obj),
+    IntDomain     (Abs obj IntPrm),
+    Domain.Boo    (Abs obj IntPrm) ~ Abs obj BlnPrm, 
+    Domain.Rea    (Abs obj IntPrm) ~ Abs obj ReaPrm,
+    Domain.Str    (Abs obj IntPrm) ~ Abs obj StrPrm, 
+    RealDomain    (Abs obj ReaPrm),
+    Domain.Boo    (Abs obj ReaPrm) ~ Abs obj BlnPrm,
+    StringDomain  (Abs obj StrPrm)
+  ) 
+  => 
+  PyObj obj where
+    type Abs obj (k :: PyPrmKey) :: Type
+    has :: forall (k :: PyPrmKey) b . (BoolDomain b, SingI k) => obj -> b  
+    get' :: forall (k :: PyPrmKey) . (SingI k) => obj -> Abs obj k
+    from :: forall (k :: PyPrmKey) . (SingI k) => Abs obj k -> obj 
+  -- TODO[?]: could abstract getAttr and setAttr here as well ...
+
+at :: forall (k :: PyPrmKey) obj pyM . (PyM pyM obj, PyObj obj, SingI k) => obj -> pyM (Abs obj k)
+at obj = withC_ @(AbsJoinLattice obj) getField s 
+  where s = sing @k        
+        getField :: JoinLattice (Abs obj k) => pyM (Abs obj k)
+        getField = condCP (return $ has @_ @k obj)
+                          (return $ get' @_ @k obj)
+                          (escape WrongType) 
+
+applyPrim :: forall pyM obj . (PyM pyM obj, PyObj obj) => PyPrim -> PyExp -> [PyVal] -> pyM PyVal
 -- int primitives
 applyPrim IntAdd        = prim2 $ intBinop' Domain.plus 
 applyPrim IntSub        = prim2 $ intBinop' Domain.minus
@@ -81,30 +106,16 @@ applyPrim FloatGe       = prim2 $ floatBinop @BlnPrm Domain.ge
 
 -- HELPERS FOR THE PRIMITIVES -- 
 
-from :: forall (k :: PyPrmKey) obj m . (PyPrm obj m, SingI k) => Assoc k m -> obj
-from = HMapDomain.singleton @_ @_ @_ @k sing  
-
-get :: forall (k :: PyPrmKey) m obj pyM . (PyM pyM obj, PyPrm obj m, SingI k) => obj -> pyM (Assoc k m)
-get obj = withC_ @(AtKey1 JoinLattice m) getField s 
-  where s = sing @k
-        getField :: JoinLattice (Assoc k m) => pyM (Assoc k m)
-        getField = condCP (return $ HMapDomain.member s obj)
-                          (return $ fromJust $ HMapDomain.lookup s obj)
-                          (escape WrongType)
-
-has :: forall (k :: PyPrmKey) b obj m . (PyPrm obj m, BoolDomain b, SingI k) => obj -> b
-has = HMapDomain.member (sing @k)
-
-prim0 :: forall r pyM obj m . (PyM pyM obj, PyPrm obj m, SingI r)  
-        => pyM (Assoc r m)                  -- ^ the primitive function
+prim0 :: forall r pyM obj . (PyM pyM obj, PyObj obj, SingI r)  
+        => pyM (Abs obj r)                  -- ^ the primitive function
         -> (PyExp -> [PyVal] -> pyM PyVal)  -- ^ the resulting function   
-prim0 f pos [] = allocObj pos . from @r =<< f 
+prim0 f pos [] = allocObj pos . from @_ @r =<< f 
 prim0 _ _   _  = escape ArityError 
 
-prim1 :: forall a r pyM obj m . (PyM pyM obj, PyPrm obj m, SingI a, SingI r)
-        => (Assoc a m -> pyM (Assoc r m))   -- ^ the primitive function
+prim1 :: forall a r pyM obj. (PyM pyM obj, PyObj obj, SingI a, SingI r)
+        => (Abs obj a -> pyM (Abs obj r))   -- ^ the primitive function
         -> (PyExp -> [PyVal] -> pyM PyVal)  -- ^ the resulting function 
-prim1 f pos [a1] = allocObj pos . from @r =<< f =<< get @a =<< deref' a1
+prim1 f pos [a1] = allocObj pos . from @_ @r =<< f =<< at @a =<< deref' a1
 prim1 _ _   _    = escape ArityError  
 
 prim2 :: PyM pyM obj
@@ -116,44 +127,44 @@ prim2 f pos [a1, a2] = do o1 <- deref' a1
                           allocObj pos r 
 prim2 _ _   _        = escape ArityError  
 
-prim2' :: forall a1 a2 r pyM obj m . (PyM pyM obj, PyPrm obj m, SingI a1, SingI a2, SingI r)
-        => (Assoc a1 m -> Assoc a2 m -> pyM (Assoc r m))  -- ^ the primitive function
+prim2' :: forall a1 a2 r pyM obj . (PyM pyM obj, PyObj obj, SingI a1, SingI a2, SingI r)
+        => (Abs obj a1 -> Abs obj a2 -> pyM (Abs obj r))  -- ^ the primitive function
         -> (PyExp -> [PyVal] -> pyM PyVal)                -- ^ the resulting function 
-prim2' f = prim2 $ \a b -> do va <- get @a1 a
-                              vb <- get @a2 b
-                              from @r <$> f va vb
+prim2' f = prim2 $ \a b -> do va <- at @a1 a
+                              vb <- at @a2 b
+                              from @_ @r <$> f va vb
 
-intBinop :: forall r1 r2 pyM obj m .  (PyM pyM obj, PyPrm obj m, SingI r1, SingI r2)
-          => (Assoc IntPrm m -> Assoc IntPrm m -> pyM (Assoc r1 m))   -- the function for integers
-          -> (Assoc ReaPrm m -> Assoc ReaPrm m -> pyM (Assoc r2 m))   -- the function for floats
+intBinop :: forall r1 r2 pyM obj . (PyM pyM obj, PyObj obj, SingI r1, SingI r2)
+          => (Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj r1))   -- the function for integers
+          -> (Abs obj ReaPrm -> Abs obj ReaPrm -> pyM (Abs obj r2))   -- the function for floats
           -> obj -> obj -> pyM obj 
-intBinop fi fr o1 o2 = condCP (return $ has @ReaPrm o2)  -- if the second arg is a float ...
-                              (do n1 <- get @IntPrm o1   -- ... coerce the first arg to a float as well 
+intBinop fi fr o1 o2 = condCP (return $ has @_ @ReaPrm o2)  -- if the second arg is a float ...
+                              (do n1 <- at @IntPrm o1       -- ... coerce the first arg to a float as well 
                                   r1 <- Domain.toReal n1
-                                  r2 <- get @ReaPrm o2
-                                  from @r2 <$> fr r1 r2)
-                              (do n1 <- get @IntPrm o1
-                                  n2 <- get @IntPrm o2
-                                  from @r1 <$> fi n1 n2)
+                                  let r2 = get' @_ @ReaPrm o2
+                                  from @_ @r2 <$> fr r1 r2)
+                              (do n1 <- at @IntPrm o1
+                                  n2 <- at @IntPrm o2
+                                  from @_ @r1 <$> fi n1 n2)
 
-intBinop' :: forall pyM obj m . (PyM pyM obj, PyPrm obj m) 
+intBinop' :: forall pyM obj . (PyM pyM obj, PyObj obj) 
           => (forall d . NumberDomain d => d -> d -> pyM d) -- a common case: the same function (e.g., from NumberDomain)
-          -> (obj -> obj -> pyM obj)
+          -> obj -> obj -> pyM obj
 intBinop' f = intBinop @IntPrm @ReaPrm f f 
 
-intBinop'' :: forall r pyM obj m . (PyM pyM obj, PyPrm obj m, SingI r)
-          => (forall d . (NumberDomain d, Domain.Boo d ~ Assoc BlnPrm m) => d -> d -> pyM (Assoc r m)) -- another common case
-          -> (obj -> obj -> pyM obj)
+intBinop'' :: forall r pyM obj . (PyM pyM obj, PyObj obj, SingI r)
+          => (forall d . (NumberDomain d, Domain.Boo d ~ Abs obj BlnPrm) => d -> d -> pyM (Abs obj r)) -- another common case
+          -> obj -> obj -> pyM obj
 intBinop'' f = intBinop @r @r f f 
 
-floatBinop :: forall r pyM obj m . (PyM pyM obj, PyPrm obj m, SingI r)
-          => (Assoc ReaPrm m -> Assoc ReaPrm m -> pyM (Assoc r m))
+floatBinop :: forall r pyM obj . (PyM pyM obj, PyObj obj, SingI r)
+          => (Abs obj ReaPrm -> Abs obj ReaPrm -> pyM (Abs obj r))
           -> obj -> obj -> pyM obj
-floatBinop f o1 o2 = condCP (return $ has @IntPrm o2)   -- if the second arg is an int ...
-                            (do r1 <- get @ReaPrm o1    -- ... coerce it to a float 
-                                n2 <- get @IntPrm o2
+floatBinop f o1 o2 = condCP (return $ has @_ @IntPrm o2)   -- if the second arg is an int ...
+                            (do r1 <- at @ReaPrm o1        -- ... coerce it to a float 
+                                let n2 = get' @_ @IntPrm o2
                                 r2 <- Domain.toReal n2
-                                from @r <$> f r1 r2)
-                            (do r1 <- get @ReaPrm o1
-                                r2 <- get @ReaPrm o2
-                                from @r <$> f r1 r2)
+                                from @_ @r <$> f r1 r2)
+                            (do r1 <- at @ReaPrm o1
+                                r2 <- at @ReaPrm o2
+                                from @_ @r <$> f r1 r2)

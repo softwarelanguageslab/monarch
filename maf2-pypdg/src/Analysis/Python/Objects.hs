@@ -13,6 +13,10 @@ module Analysis.Python.Objects where
 
 import Lattice hiding (insert)
 import Analysis.Python.Syntax hiding (Dict)
+import Analysis.Python.Common 
+import Analysis.Python.Primitives
+import Analysis.Python.Infrastructure
+import Analysis.Python.Monad 
 import Data.TypeLevel.HMap (HMap, Assoc, HMapKey, AtKey, AtKey1, InstanceOf, All, ForAllOf, ForAll(..), KeyKind, (::->), (:->), Dict(..), BindingFrom, genHKeys)
 import qualified Data.TypeLevel.HMap as HMap 
 import qualified Domain.Core.HMapDomain as HMapDomain
@@ -24,6 +28,7 @@ import Control.Monad.DomainError
 import Control.Monad.AbstractM
 import Domain (Domain, BoolDomain, NumberDomain, IntDomain, RealDomain, StringDomain, CPDictionary)
 import qualified Domain
+
 
 import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import qualified Prelude
@@ -57,23 +62,11 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
     StrPrm ::-> Assoc StrKey m,
     PrmPrm ::-> Set PyPrim,
     CloPrm ::-> Set PyClo,
-    BndPrm ::-> Map ObjAdr PyVal, -- alternative, but less precise: (PyVal, PyVal)
-    TupPrm ::-> CPList PyVal, -- TODO: could use a more optimised representation (e.g., CPVector)
+    BndPrm ::-> Map ObjAdr PyVal,   -- alternative, but less precise: (PyVal, PyVal)
+    TupPrm ::-> CPList PyVal,       -- TODO: could use a more optimised representation (e.g., CPVector)
     LstPrm ::-> CPList PyVal
   ]
 
-data PyPrmKey = IntPrm
-              | ReaPrm 
-              | BlnPrm
-              | StrPrm
-              | PrmPrm
-              | CloPrm
-              | BndPrm
-              | TupPrm
-              | LstPrm
-  deriving (Eq, Ord)
-
-genHKeys ''PyPrmKey
 
 data PyObj (m :: [PyAbsKey :-> Type]) = PyObj { dct :: CPDictionary String PyVal,
                                                 prm :: HMapAbs (PyPrm m) }
@@ -87,8 +80,8 @@ type AllAbs m = (AllJoin m,
                  Domain.Rea   (Assoc IntKey m) ~ Assoc ReaKey m,
                  Domain.Str   (Assoc IntKey m) ~ Assoc StrKey m,
                  Domain.Boo   (Assoc IntKey m) ~ Assoc BlnKey m,
-                 Domain.Boo   (Assoc ReaKey m) ~ Assoc BlnKey m,
                  RealDomain   (Assoc ReaKey m),
+                 Domain.Boo   (Assoc ReaKey m) ~ Assoc BlnKey m,
                  StringDomain (Assoc StrKey m))
 
 deriving instance (ForAll PyPrmKey (AtKey1 Eq       (PyPrm m))) => Eq (PyObj m)
@@ -131,6 +124,7 @@ injectTup' = injectTup . map constant
 injectBnd :: AllJoin m => ObjAdr -> PyVal -> PyObj m
 injectBnd self fun = injectObj' (TypeObject BoundType) [] [SBndPrm :&: Map.singleton self fun]
 
+  
 class PyDomain m k where
   from :: Assoc k (PyPrm m) -> PyObj m 
 instance AllJoin m => PyDomain m IntPrm where
@@ -228,14 +222,10 @@ callBnd :: (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> Map ObjAdr PyVal
 callBnd pos ags = mJoinMap apply . Map.toList
   where apply (rcv, vlu) = callFun pos (injectAdr rcv : ags) =<< deref' vlu 
 
-callPrm :: (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> Set PyPrim -> pyM PyVal 
+callPrm :: forall pyM m . (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> Set PyPrim -> pyM PyVal 
 callPrm pos ags = mJoinMap apply
-  where apply prm = applyPrim prm pos ags 
+  where apply prm = undefined --applyPrim @(PyPrm m) prm pos ags 
 
 callClo :: (PyM pyM (PyObj m), AllJoin m) => PyExp -> [PyVal] -> Set PyClo -> pyM PyVal 
 callClo pos ags = mJoinMap apply
   where apply (prs, bdy, env) = undefined --TODO
-
-
-
-

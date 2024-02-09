@@ -7,7 +7,7 @@ module Analysis.Python.Infrastructure (
   PyType(..), 
   name, 
   methods, 
-  PyAttr,
+  PyAttr(..),
   attrStr
 ) where
 
