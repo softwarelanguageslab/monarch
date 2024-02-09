@@ -1,7 +1,5 @@
 module Syntax.Erlang.Parser(parseErlangTerm) where
 
-import Text.Parsec
-
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
@@ -17,8 +15,7 @@ data Term = Tuple [Term]   -- ^ { t1, t2, ..., tn }
          deriving (Eq, Show, Ord)
 
 languageDef :: LanguageDef st
-languageDef = emptyDef { Token.identStart = lower,
-                         Token.identLetter = alphaNum }
+languageDef = emptyDef { Token.identStart = letter }
 
 lexer   = Token.makeTokenParser languageDef
 
@@ -50,9 +47,16 @@ list  = List <$> between (symbol "[") (symbol "]") (sepBy term (symbol ","))
 -- | An atom is an identifier starting with a lowercase letter.
 -- Other things may also be atoms, but then they have to be surrounded by single quotes.
 atom :: Parser Term
-atom = Atom <$> (between (char '\'') (char '\'') ident <|> ident)
+atom = Atom <$> (between (char '\'') (char '\'') quotedAtom <|> ident)
    -- note: we do not really care about lower/uppercase letters here, since uppercase letters are variables 
    -- and variables cannot occur in this datastructure.
+
+allowedAtom :: Parser Char 
+allowedAtom = 
+   alphaNum <|> oneOf ['_', '+', '-', '*', '.', '@']
+
+quotedAtom :: Parser String 
+quotedAtom = many allowedAtom
 
 number :: Parser Term
 number = Number <$> Token.integer lexer

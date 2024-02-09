@@ -30,7 +30,7 @@ if [ $? -ne 0 ] ; then
    exit 1
 fi
 
-erl -noinput -eval "{ok,{_,[{abstract_code,{_,AC}}]}} = beam_lib:chunks(\"$MODULENAME\",[abstract_code]),io:format(\"~w~n\", [AC])." -s init stop > $MODULENAME.ec
+erl -noinput -eval "{ok,{_,[{abstract_code,{_,AC}}]}} = beam_lib:chunks(\"$MODULENAME\",[abstract_code]),io:format(\"~p~n\", [AC])." -s init stop > $MODULENAME.ec
 if [ $? -ne 0 ] ; then 
    rm $MODULENAME.ec
    echo "Failed to load the erlang abstract format"

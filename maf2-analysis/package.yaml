@@ -100,6 +100,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - maf2-analysis
+    - pretty-simple
 
 tests:
   maf2-analysis-test:
