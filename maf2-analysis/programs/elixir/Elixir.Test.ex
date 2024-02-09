@@ -8,4 +8,8 @@ defmodule Elixir.Test do
     [h | _] = list
     h + @num + :rand.uniform()
   end
+
+  def doSomething(pid) do 
+    send(pid, {:message})
+  end
 end
