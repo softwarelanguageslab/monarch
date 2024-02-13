@@ -5,8 +5,8 @@
 module LatticeSpec(spec) where
 
 import Domain hiding (Bottom)
-import Domain.ConstantPropagation
-import Domain.Lattice
+import Lattice.ConstantPropagationLattice
+import Lattice.Class
 import Test.QuickCheck
 import Test.Hspec
 import Control.Applicative (Applicative(liftA2))

@@ -57,6 +57,7 @@ library:
     - Domain.Python
     - Lattice
     - Lattice.Class 
+    - Lattice.ConstantPropagationLattice
     - Control.Monad.Cond
     - Control.Monad.Join
     - Control.Monad.DomainError

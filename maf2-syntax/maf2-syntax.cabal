@@ -30,6 +30,7 @@ library
   other-modules:
       Control.Monad.Cond
       Lib
+      Syntax.Erlang.AST
       Syntax.Erlang.Compiler
       Syntax.Python.Compiler
       Syntax.Python.Parser

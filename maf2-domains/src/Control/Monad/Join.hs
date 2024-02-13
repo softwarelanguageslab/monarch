@@ -63,6 +63,13 @@ instance (MonadJoin m) => MonadJoin (MaybeT m) where
    mjoin ma mb = MaybeT $ mjoin (runMaybeT ma) (runMaybeT mb)
    mzero = MaybeT mzero
 
+instance MonadJoin Maybe where
+   mjoin (Just a) (Just b) = Just (join a b)
+   mjoin (Just a) Nothing  = Just a
+   mjoin Nothing  (Just b) = Just b
+   mjoin _ _ = Nothing 
+   mzero = Nothing
+
 instance MonadJoin Identity where
    mjoin = liftA2 join
    mzero = pure bottom

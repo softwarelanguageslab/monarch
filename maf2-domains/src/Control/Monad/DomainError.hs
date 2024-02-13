@@ -99,3 +99,22 @@ instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT m e) where
 instance (Eq e, Joinable e, MonadJoin m) => MonadJoin (MayEscapeT m e) where
     mzero = MayEscapeT mzero
     mjoin (MayEscapeT ma) (MayEscapeT mb) = MayEscapeT (mjoin ma mb)
+
+
+------------------------------------------------------------
+-- Maybe instance for MonadEscape
+------------------------------------------------------------
+
+instance MonadEscape Maybe where 
+   type Esc Maybe = ()
+   escape = const Nothing
+   -- NOTE: this is an overapproximation,
+   -- we assume that an error can always occur in the `ma` 
+   -- value because `mjoin Nothing (Just a)` = Just a
+   -- and the error information is lost. Therefore
+   -- we always have to pretend that a `Just a` 
+   -- value could also have been an error
+   catch ma f = mjoin ma (f ())
+
+instance Domain () DomainError where
+   inject = const ()

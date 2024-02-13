@@ -32,6 +32,7 @@ library
       Domain.Python
       Lattice
       Lattice.Class
+      Lattice.ConstantPropagationLattice
       Control.Monad.Cond
       Control.Monad.Join
       Control.Monad.DomainError
@@ -78,7 +79,6 @@ library
       Domain.Scheme.Derived.Pair
       Domain.Scheme.Modular
       Domain.Scheme.Store
-      Lattice.ConstantPropagationLattice
       Lattice.HMapLattice
       Lattice.IntervalLattice
       Lattice.ListLattice
@@ -136,7 +136,6 @@ test-suite maf2-domains-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      DictionaryDomainSpec
       LatticeSpec
       Paths_maf2_domains
   hs-source-dirs:
