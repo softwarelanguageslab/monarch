@@ -28,7 +28,8 @@ data Term = Tuple [Term] Loc   -- ^ { t1, t2, ..., tn }
           | FalseLiteral Loc   -- ^ false
           | Text String Loc 
           | Number Integer Loc
-          | Floating Double Loc
+          | Floating Float Loc
+          | Character Char Loc
          deriving (Eq, Show, Ord)
 
 locOf :: Term -> Loc 
@@ -40,6 +41,7 @@ locOf (FalseLiteral loc) = loc
 locOf (Text _     loc) = loc
 locOf (Number _   loc) = loc
 locOf (Floating _ loc) = loc
+locOf (Character _ loc) = loc
 
 languageDef :: LanguageDef st
 languageDef = emptyDef { Token.identStart = letter }

@@ -30,7 +30,7 @@ data Identifier = Identifier String Loc
 
 -- | A function identifier is like an identifier
 -- but also keeps track of the arity of the function
-data FunctionIdentifier = FunctionIdentifier String Int Loc
+data FunctionIdentifier = FunctionIdentifier String Integer Loc
 
 -- | A declaration combines Erlang's attributes (e.g., -import directive)
 -- and declarations (e.g., functions)
@@ -38,7 +38,7 @@ data Declaration = Import ModuleName [FunctionIdentifier] Loc  -- ^ -import(...)
                  | Export [FunctionIdentifier] Loc             -- ^ -export(...)
                  | Function FunctionIdentifier [Clause] Loc    -- ^ function definition
                  | ModuleDecl Identifier Loc     -- ^ -module(...)
-                 | File String Int Loc           -- ^ -file(FILE, LINE)
+                 | File String Integer Loc       -- ^ -file(FILE, LINE)
                  | Record Identifier Field Loc   -- ^ -record(Identifier, {Field ...})
                  | Wild Loc                      -- ^ a 'wild' attribute, not parsed further
 
@@ -56,6 +56,7 @@ data Literal = AtomLit  String  Loc
 
 -- | Patterns, used in function heads and bindings
 data Pattern = AtomicPat Literal
+             | VariablePat Identifier
 
 -- | An expression, currently not all Erlang expressions
 --  are supported, they are just omitted from the AST.
@@ -75,4 +76,4 @@ data Expr = Atomic Literal
           | Var Identifier
           | ModVar ModuleName Identifier
 
-data Clause
+data Clause = SimpleClause Pattern Body
