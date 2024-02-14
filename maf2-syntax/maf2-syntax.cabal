@@ -27,11 +27,11 @@ library
       Syntax.Scheme.AST
       Syntax.Scheme.Undefiner
       Syntax.Erlang.Parser
+      Syntax.Erlang.Compiler
   other-modules:
       Control.Monad.Cond
       Lib
       Syntax.Erlang.AST
-      Syntax.Erlang.Compiler
       Syntax.Python.Compiler
       Syntax.Python.Parser
       Syntax.Scheme.Parser
