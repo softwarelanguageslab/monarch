@@ -26,6 +26,7 @@ library
       Syntax.Scheme
       Syntax.Scheme.AST
       Syntax.Scheme.Undefiner
+      Syntax.Erlang
       Syntax.Erlang.Parser
       Syntax.Erlang.Compiler
   other-modules:

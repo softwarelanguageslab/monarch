@@ -23,14 +23,17 @@ type Body = [Expr]
 ------------------------------------------------------------
 
 -- | A module is a series of declarations and attributes
-newtype Module = Module [Declaration] deriving Show
+newtype Module = Module [Declaration] 
+               deriving (Eq, Ord, Show)
 
 -- | An identifier (e.g., variable, module name, ...)
-data Identifier = Identifier String Loc deriving Show
+data Identifier = Identifier String Loc 
+               deriving (Eq, Ord, Show)
 
 -- | A function identifier is like an identifier
 -- but also keeps track of the arity of the function
-data FunctionIdentifier = FunctionIdentifier String Integer Loc deriving Show
+data FunctionIdentifier = FunctionIdentifier String Integer Loc 
+                        deriving (Eq, Ord, Show)
 
 -- | A declaration combines Erlang's attributes (e.g., -import directive)
 -- and declarations (e.g., functions)
@@ -41,12 +44,13 @@ data Declaration = Import ModuleName [FunctionIdentifier] Loc  -- ^ -import(...)
                  | File String Integer Loc       -- ^ -file(FILE, LINE)
                  | Record Identifier Field Loc   -- ^ -record(Identifier, {Field ...})
                  | Wild  String Loc              -- ^ a 'wild' attribute, not parsed further
-                 deriving Show
+                 deriving (Eq, Ord, Show)
 
 -- |  A field from a record type.
 -- A field must contain a name (which is an atom), and an optional default value,
 -- the optional types are ignored.
-data Field = Field Identifier (Maybe Expr) Loc deriving Show
+data Field = Field Identifier (Maybe Expr) Loc
+           deriving (Eq, Ord, Show)
 
 -- | Atomic literals
 data Literal = AtomLit  String  Loc   
@@ -55,14 +59,14 @@ data Literal = AtomLit  String  Loc
              | IntLit   Integer Loc 
              | StrLit   String  Loc
              | NilLit   Loc
-             deriving Show
+             deriving (Eq, Ord, Show)
 
 -- | Patterns, used in function heads and bindings
 data Pattern = AtomicPat Literal
              | VariablePat Identifier
              | CompoundPat Pattern Pattern
              | ConsPat Pattern Pattern
-             deriving Show
+             deriving (Eq, Ord, Show)
 
 -- | An expression, currently not all Erlang expressions
 --  are supported, they are just omitted from the AST.
@@ -81,6 +85,7 @@ data Expr = Atomic Literal
           | Cons Expr Expr Loc
           | Var Identifier
           | ModVar ModuleName Identifier
-          deriving Show
+          deriving (Eq, Ord, Show)
 
-data Clause = SimpleClause Pattern [Body] Body deriving Show
+data Clause = SimpleClause Pattern [Body] Body 
+            deriving (Eq, Ord, Show)
