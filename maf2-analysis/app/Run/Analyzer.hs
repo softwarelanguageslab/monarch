@@ -6,25 +6,8 @@ import Options.Applicative
 import Analysis.Scheme.Simple
 import Text.Printf
 import Data.List (intercalate)
-import Analysis.Monad
-import Analysis.Scheme
-import qualified Analysis.Scheme.Semantics as Semantics
-import Syntax.Scheme
 import Data.Map (Map)
-import qualified Data.Map as Map2
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.Functor.Identity
-import Data.Function ((&))
-import Analysis.Monad
-import Data.Maybe
-import Control.Monad.State hiding (mzero)
-import Control.Monad.Join (mjoin, mzero)
-import Lattice (join)
-import Domain.Scheme hiding (Exp)
-import Debug.Trace
 import Analysis.Scheme.Store (values)
-import Data.Map (Map)
 import qualified Data.Map as Map
 
 newtype Options = Options String deriving Show

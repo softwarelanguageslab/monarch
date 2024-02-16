@@ -1,4 +1,4 @@
-module Syntax.Erlang.Parser(Term(..), Loc, parseErlangTerm, locOf) where
+module Syntax.Erlang.Parser(Term(..), Loc, ParseError, parseErlangTerm, locOf) where
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Language

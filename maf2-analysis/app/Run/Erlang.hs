@@ -3,6 +3,7 @@ module Run.Erlang(Options, options, main) where
 import Options.Applicative
 import Text.Pretty.Simple
 import Syntax.Erlang.Parser
+import Syntax.Erlang.Compiler
 
 newtype Options = Options { filename :: String } deriving Show
 
@@ -12,6 +13,6 @@ options = Options <$>
 main :: Options -> IO ()
 main (Options filename) = do
    contents <- readFile filename
-   let parsed = parseErlangTerm filename contents
+   let parsed = compileString filename contents
    pPrint parsed
 
