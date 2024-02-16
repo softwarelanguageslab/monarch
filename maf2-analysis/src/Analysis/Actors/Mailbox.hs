@@ -3,12 +3,14 @@
 -- See: Stiévenart, Quentin, et al. "Mailbox abstractions for static analysis of actor programs." 31st European Conference on Object-Oriented Programming (ECOOP 2017). 2017.
 module Analysis.Actors.Mailbox(Mailbox(..), Message(..)) where
 
+import Lattice
+
 import Data.Set (Set)
 import qualified Data.Set as Set
 
 -- | This typeclass specifies which operations the mailbox should understand
 -- A mailbox contains a particular type of messages, given by the `msg` type parameter.
-class Mailbox m msg | m -> msg where
+class (JoinLattice m) => Mailbox m msg | m -> msg where
    -- | Enqueue a message into the mailbox 
    enqueue :: msg -> m -> m
 
@@ -31,6 +33,7 @@ class Message m v | m -> v where
    payload :: m -> [v]
    -- | Create a new message 
    message :: v -> [v] -> m
+
 
 -- | A message representation that consists of a message tag, a payload and an optional context
 -- data Message t v ctx = Message { messageTag :: t, messagePayload :: v, messageCtx :: Maybe ctx }
