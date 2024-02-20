@@ -69,6 +69,8 @@ library
       Domain.Core.VectorDomain
       Domain.Core.VectorDomain.Class
       Domain.Core.VectorDomain.PIVector
+      Domain.Erlang.Class
+      Domain.Erlang.Modular
       Domain.Python.DataFrameDomain
       Domain.Python.DataFrameDomain.Class
       Domain.Python.DataFrameDomain.DataFrameSet
