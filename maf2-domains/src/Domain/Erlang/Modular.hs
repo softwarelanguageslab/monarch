@@ -14,8 +14,8 @@ import Control.Monad.Join
 import Control.Monad.DomainError
 import Control.Monad.AbstractM
 
+import Data.Void
 import Data.Singletons.Sigma
-import Data.Singletons
 import Data.Kind
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -33,6 +33,8 @@ type family IntCfg (c :: k) :: Type
 type family PidCfg (c :: k) :: Type
 -- | Type of abstract booleans
 type family BooCfg (c :: k) :: Type
+-- | Type of abstract symbols
+type family SymCfg (c :: k) :: Type
 
 ------------------------------------------------------------
 -- Shorthands
@@ -61,6 +63,7 @@ data ValueKey = CloKey
               | IntKey
               | PidKey
               | BooKey
+              | SymKey
               deriving (Eq, Ord)
 
 $(genHKeys ''ValueKey)
@@ -69,7 +72,8 @@ type ErlMapping c = '[
       CloKey ::-> Set (Clo c),
       IntKey ::-> IntCfg c,
       PidKey ::-> Set (PidCfg c),
-      BooKey ::-> BooCfg c
+      BooKey ::-> BooCfg c,
+      SymKey ::-> Set String
    ]
 
 
@@ -138,16 +142,39 @@ instance (IsErlValue c) => NumberDomain (ErlValue c) where
             apply (SIntKey :&: x) (SIntKey :&: y) = singleton @BooKey <$> Domain.Core.lt x y
             apply _ _ = escape WrongType
 
+instance (IsErlValue c) => IntDomain (ErlValue c) where
+   type Str (ErlValue c) = Void
+   type Rea (ErlValue c) = Void
+   toReal = error "no reals available"
+   toString = error "no strings available"
+   quotient a b = ErlValue <$> binop apply (getValue a) (getValue b)
+      where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.quotient x y
+            apply _ _ = escape WrongType
+   modulo a b = ErlValue <$> binop apply (getValue a) (getValue b)
+      where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.modulo x y
+            apply _ _ = escape WrongType
+   remainder a b = ErlValue <$> binop apply (getValue a) (getValue b)
+      where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.remainder x y
+            apply _ _ = escape WrongType
+
 ------------------------------------------------------------
 -- Erlang Domain
 ------------------------------------------------------------
 
-instance ErlangDomain (ErlValue c) where
+instance (IsErlValue c) => ErlangDomain (ErlValue c) where
    type Pid (ErlValue c) = PidCfg c
    type Env (ErlValue c) = EnvCfg c
 
-   pid = ErlValue . singleton @PidKey . Set.singleton
-   clo = ErlValue . singleton @CloKey . Set.singleton
+   pid    = ErlValue . singleton @PidKey . Set.singleton
+   clo    = ErlValue . singleton @CloKey . Set.singleton
+   symbol = ErlValue . singleton @SymKey . Set.singleton
+
    pids f = mjoins . Prelude.map f . maybe [] Set.toList . get @PidKey . getValue
 
    clos f = mjoins . Prelude.map f . maybe [] Set.toList . get @CloKey . getValue
+
+   symbols f = mjoins . Prelude.map f . maybe [] Set.toList . get @SymKey . getValue
+   

@@ -3,12 +3,13 @@ module Domain.Erlang.Class(ErlangDomain(..)) where
 import Syntax.Erlang
 import Data.Kind
 
+import Domain.Core
 import Lattice (JoinLattice)
 import Control.Monad.AbstractM
 
 type Clo v = (Env v, Expr)
 
-class ErlangDomain v where
+class (NumberDomain v, IntDomain v) => ErlangDomain v where
    type Pid v :: Type
    type Env v :: Type
 
@@ -18,6 +19,9 @@ class ErlangDomain v where
    -- | Inject a clojure in the abstract domain
    clo :: Clo v -> v
 
+   -- | Inject a symbol in the abstract domain
+   symbol :: String -> v
+
    -- | Run the given function with all pids
    pids :: (JoinLattice a, AbstractM m) => (Pid v -> m a) -> v -> m a
 
@@ -25,4 +29,5 @@ class ErlangDomain v where
    -- closures inside the given abstract value
    clos :: (JoinLattice a, AbstractM m) => (Clo v -> m a) -> v  -> m a
 
-
+   -- | Extract all symbols from the abstract domain
+   symbols :: (JoinLattice a, AbstractM m) => (String -> m a) -> v -> m a 

@@ -33,21 +33,6 @@ cradle:
     - path: "maf2-domains/test"
       component: "maf2-domains:test:maf2-domains-test"
 
-    - path: "maf2-pypdg/src"
-      component: "lib:maf2-pypdg"
-
-    - path: "maf2-pypdg/app/Main.hs"
-      component: "maf2-pypdg:exe:maf-exe"
-
-    - path: "maf2-pypdg/app/Run/Analysis.hs"
-      component: "maf2-pypdg:exe:maf-exe"
-
-    - path: "maf2-pypdg/app/Paths_maf2_pypdg.hs"
-      component: "maf2-pypdg:exe:maf-exe"
-
-    - path: "maf2-pypdg/test"
-      component: "maf2-pypdg:test:maf2-pypdg-test"
-
     - path: "maf2-syntax/src"
       component: "lib:maf2-syntax"
 
