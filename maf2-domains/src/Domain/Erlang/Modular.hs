@@ -19,6 +19,7 @@ import Data.Singletons.Sigma
 import Data.Kind
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Maybe (isJust)
 
 ------------------------------------------------------------
 -- Configuration
@@ -64,6 +65,7 @@ data ValueKey = CloKey
               | PidKey
               | BooKey
               | SymKey
+              | NilKey
               deriving (Eq, Ord)
 
 $(genHKeys ''ValueKey)
@@ -73,7 +75,8 @@ type ErlMapping c = '[
       IntKey ::-> IntCfg c,
       PidKey ::-> Set (PidCfg c),
       BooKey ::-> BooCfg c,
-      SymKey ::-> Set String
+      SymKey ::-> Set String,
+      NilKey ::-> ()
    ]
 
 
@@ -171,6 +174,9 @@ instance (IsErlValue c) => ErlangDomain (ErlValue c) where
    pid    = ErlValue . singleton @PidKey . Set.singleton
    clo    = ErlValue . singleton @CloKey . Set.singleton
    symbol = ErlValue . singleton @SymKey . Set.singleton
+   nil    = ErlValue $ singleton @NilKey $ ()
+
+   isNil = isJust . get @NilKey . getValue
 
    pids f = mjoins . Prelude.map f . maybe [] Set.toList . get @PidKey . getValue
 

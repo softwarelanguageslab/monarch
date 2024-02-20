@@ -30,6 +30,7 @@ library
       Domain.Core.SeqDomain
       Domain.Scheme
       Domain.Python
+      Domain.Erlang.Class
       Lattice
       Lattice.Class
       Lattice.ConstantPropagationLattice
@@ -69,7 +70,6 @@ library
       Domain.Core.VectorDomain
       Domain.Core.VectorDomain.Class
       Domain.Core.VectorDomain.PIVector
-      Domain.Erlang.Class
       Domain.Erlang.Modular
       Domain.Python.DataFrameDomain
       Domain.Python.DataFrameDomain.Class

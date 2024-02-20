@@ -22,6 +22,12 @@ class (NumberDomain v, IntDomain v) => ErlangDomain v where
    -- | Inject a symbol in the abstract domain
    symbol :: String -> v
 
+   -- | Inject "nil" into the domain
+   nil :: v
+
+   -- | Returns true if the value is possibly "nil"
+   isNil :: v -> Bool
+
    -- | Run the given function with all pids
    pids :: (JoinLattice a, AbstractM m) => (Pid v -> m a) -> v -> m a
 

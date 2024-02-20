@@ -55,6 +55,7 @@ library:
     - Domain.Core.SeqDomain 
     - Domain.Scheme
     - Domain.Python
+    - Domain.Erlang.Class
     - Lattice
     - Lattice.Class 
     - Lattice.ConstantPropagationLattice

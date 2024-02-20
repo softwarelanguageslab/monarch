@@ -1,9 +1,11 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE PolyKinds #-}
-module Analysis.Erlang.Monad(ErlangM) where
+module Analysis.Erlang.Monad(ErlangM, BasicEnv, Adr, Msg) where
 
 import Analysis.Actors.Monad
 import Analysis.Monad
+import Syntax.Erlang
+import Domain.Erlang.Class
 
 import Data.Kind
 import Data.Map (Map)
@@ -17,5 +19,6 @@ type ErlangM m v = (
    ActorM m v (Msg m),
    EnvM m (Adr m) (BasicEnv (Adr m)),
    StoreM m () (Adr m) v,
-   AllocM m () (Adr m) v
+   AllocM m Loc () (Adr m),
+   ErlangDomain v
   )
