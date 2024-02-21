@@ -38,6 +38,7 @@ library
       Control.Monad.Join
       Control.Monad.DomainError
       Control.Monad.AbstractM
+      Control.Monad.Escape
       Data.TypeLevel.HMap
   other-modules:
       Data.TypeLevel.HList
