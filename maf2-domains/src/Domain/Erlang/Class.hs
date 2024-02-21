@@ -7,7 +7,7 @@ import Domain.Core
 import Lattice (JoinLattice)
 import Control.Monad.AbstractM
 
-type Clo v = (Env v, Expr)
+type Clo v = (Env v, [Clause])
 
 class (NumberDomain v, IntDomain v) => ErlangDomain v where
    type Pid v :: Type

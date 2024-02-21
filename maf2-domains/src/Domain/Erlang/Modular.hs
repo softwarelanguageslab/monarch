@@ -41,7 +41,7 @@ type family SymCfg (c :: k) :: Type
 -- Shorthands
 ------------------------------------------------------------
 
-type Clo c = (EnvCfg c, Expr)
+type Clo c = (EnvCfg c, [Clause])
 
 ------------------------------------------------------------
 -- Utilities
