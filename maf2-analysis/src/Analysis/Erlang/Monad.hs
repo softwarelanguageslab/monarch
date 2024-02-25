@@ -1,6 +1,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE PolyKinds #-}
-module Analysis.Erlang.Monad(ErlangError(..),ErlangCallM(..), ErlangM, BasicEnv, Adr, Msg) where
+module Analysis.Erlang.Monad(ErlangError(..), ErlangErrorDomain(..), ErlangCallM(..), ErlangM, BasicEnv, Adr, Msg) where
 
 import Analysis.Actors.Monad
 import Analysis.Monad
@@ -51,5 +51,6 @@ type ErlangM m v = (
    ErlangCallM m v,
    -- Errors
    Domain (Esc m) ErlangError,
-   ErlangErrorDomain (Esc m)
+   ErlangErrorDomain (Esc m),
+   Domain (Esc m) (Esc m)
   )
