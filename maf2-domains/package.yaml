@@ -54,6 +54,10 @@ library:
     - Domain.Core.HMapDomain 
     - Domain.Core.SeqDomain 
     - Domain.Scheme
+    - Domain.Scheme.Class
+    - Domain.Scheme.Derived
+    - Domain.Scheme.Derived.Pair
+    - Domain.Scheme.Store
     - Domain.Python
     - Domain.Erlang.Class
     - Lattice

@@ -44,7 +44,7 @@ type DSto ctx v           = SchemeStore v
 -- Store & Environment
 -----------------------------------------
 
-class (Ord var) => VarAdr var v ctx dep | var -> v, var -> ctx, var -> dep where
+class (Ord var) => VarAdr var v ctx dep | var -> v ctx dep where
    retAdr :: Component (ModF var v ctx dep) -> var
    prmAdr :: String -> var
 
@@ -64,10 +64,10 @@ analysisStore = fromValues . initialSto @v
 
 data ModF var v ctx dep
 
-class SchemeAlloc ctx var v dep | ctx -> var, ctx -> v, ctx -> dep where
-  allocPai :: Exp -> ctx -> PAdr v
-  allocVec :: Exp -> ctx -> VAdr v
-  allocStr :: Exp -> ctx -> SAdr v
+class SchemeAlloc ctx var padr vadr sadr dep | ctx -> var padr vadr  sadr dep where
+  allocPai :: Exp -> ctx -> padr 
+  allocVec :: Exp -> ctx -> vadr
+  allocStr :: Exp -> ctx -> sadr
   allocVar :: Ide -> ctx -> var
   allocCtx :: Exp -> ctx -> ctx
 
@@ -228,7 +228,7 @@ type SchemeAnalysisConstraints var v ctx dep = (
          Dependency (SAdr v) dep,
          Dependency (VAdr v) dep,
          VarAdr var v ctx dep,
-         Ord ctx, Ord v, SchemeAlloc ctx var v dep)
+         Ord ctx, Ord v, SchemeAlloc ctx var (PAdr v) (VAdr v) (SAdr v) dep)
 
 -- | The result of the analysis
 newtype AnalysisResult var v ctx dep = AnalysisResult (State (ModF var v ctx dep))

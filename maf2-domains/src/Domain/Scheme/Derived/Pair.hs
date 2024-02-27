@@ -22,7 +22,7 @@
 -- Unfortunately, we cannot encode this property in the 
 -- type system and is left as an implicit assumption
 -- for the users of this domain.
-module Domain.Scheme.Derived.Pair(SchemePairedValue) where
+module Domain.Scheme.Derived.Pair(SchemePairedValue, leftValue, rightValue, mkLeft, mkRight) where
 
 import Prelude hiding (div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not)
 
@@ -36,7 +36,17 @@ import Control.Monad.Join
 -- Declaration
 ------------------------------------------------------------
 
-newtype SchemePairedValue l r = SchemePairedValue (l, r) deriving (Eq, Ord)
+newtype SchemePairedValue l r = SchemePairedValue (l, r) deriving (Eq, Ord, Show)
+
+leftValue :: SchemePairedValue l r -> l 
+leftValue (SchemePairedValue (l, _)) = l
+rightValue :: SchemePairedValue l r -> r
+rightValue (SchemePairedValue (_, r)) = r
+
+mkLeft :: (JoinLattice r) => l -> SchemePairedValue l r 
+mkLeft = SchemePairedValue . (,bottom)
+mkRight :: (JoinLattice l) => r -> SchemePairedValue l r 
+mkRight = SchemePairedValue . (bottom,)
 
 -- | Curried constructor of SchemePairedValue
 pairedValue :: l -> r -> SchemePairedValue l r

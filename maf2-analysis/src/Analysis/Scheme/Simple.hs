@@ -9,7 +9,6 @@ import Domain (Address)
 import Domain.Scheme hiding (Exp)
 import Control.SVar.ModX
 import GHC.Generics
-import Data.Hashable
 import Data.Maybe
 import Text.Printf
 import Prelude hiding (exp)
@@ -20,7 +19,6 @@ type M = ModF VariableAdr V K AdrDep
 -- | Type of pointer address
 data PointerAdr  = PointerAdr Exp [Exp]
                  deriving (Eq, Ord, Generic, Show)
-instance Hashable PointerAdr
 data VariableAdr = Adr Ide [Exp]
                  | Prm String
                  | Ret (Component M)
@@ -30,8 +28,6 @@ instance Show VariableAdr where
    show (Adr ide ctx) = printf "Adr(%s, %s)" (show ide) (show ctx)
    show (Prm nam)     = printf "Prm(%s)" nam
    show (Ret (exp, _, ctx, _)) = printf "Ret(%s, %s)" (show exp) (show ctx)
-
-instance Hashable VariableAdr
 
 instance VarAdr VariableAdr V K AdrDep where
    retAdr = Ret
@@ -47,7 +43,6 @@ type V = (CPValue PointerAdr VariableAdr Exp)
 data AdrDep = VarAdrDep VariableAdr
             | PtrDep PointerAdr
             deriving (Eq, Ord, Generic)
-instance Hashable AdrDep
 
 -- | AdrDep is indeed a `Dependency` (i.e. it satisfies
 -- the `Dependency` typeclass)
@@ -60,7 +55,7 @@ instance Address VariableAdr
 instance Address PointerAdr
 
 -- | The allocator
-instance SchemeAlloc K VariableAdr V AdrDep where
+instance SchemeAlloc K VariableAdr PointerAdr PointerAdr PointerAdr AdrDep where
    allocVar = Adr
    allocCtx = const id
    allocPai = PointerAdr

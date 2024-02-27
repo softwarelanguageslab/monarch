@@ -11,7 +11,7 @@ data Literal   = Num  Integer
                | Cha  Char
                | Nil
                | Unsp
-               deriving (Eq, Ord)
+               deriving (Eq, Ord, Show)
 
 -- | A proposition consists of an
 -- application of a primitive predicate, 
@@ -30,7 +30,7 @@ data Proposition = Variable  String
                  -- | Representation of the bottom value, nothing can be derived from this and a
                  -- all assertions fail
                  | Bottom
-                 deriving (Eq, Ord)
+                 deriving (Eq, Ord, Show)
 
 -- | Inductively defined formulae, these include
 -- conjunction, disjunction negation and atomic formulas.
@@ -39,7 +39,7 @@ data Formula = Conjunction Formula Formula
              | Negation    Formula
              | Atomic      Proposition
              | Empty
-             deriving (Eq, Ord)
+             deriving (Eq, Ord, Show)
 
 -- | Select all variables in the formula
 class SelectVariable v where

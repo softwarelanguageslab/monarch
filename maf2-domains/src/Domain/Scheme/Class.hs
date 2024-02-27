@@ -120,7 +120,7 @@ type SchemeValue v  = (
     StringDomain (StrDom v),
     -- make sure the vectors adhere to the vector domain
     VectorDomain (VecDom v),
-    -- make sute that the pairs adhere to the pair domain 
+    -- make sure that the pairs adhere to the pair domain 
     PairDomain (PaiDom v),
     -- make sure that the contents of the vectors and pairs point to Scheme values
     Content  (PaiDom v) ~ v,
@@ -145,10 +145,6 @@ type SchemeConstraints v exp var env =
     Typeable (PAdr v),
     Typeable (SAdr v),
     Typeable (VAdr v),
-    Typeable (Adr v),
-    Hashable (PAdr v),
-    Hashable (SAdr v),
-    Hashable (VAdr v),
-    Hashable (Adr v)) :: Constraint
+    Typeable (Adr v)) :: Constraint
 
 

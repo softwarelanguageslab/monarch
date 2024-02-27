@@ -1,20 +1,21 @@
 -- | Symbolic version of the Scheme domain
 module Domain.Symbolic.Paired where
 
-import Symbolic.AST
+import Lattice (Joinable(..), JoinLattice(..))
 import qualified Syntax.Scheme as Scheme (Exp)
 import Domain
 import Domain.Scheme.Class
 import Control.Monad.Join
 import Data.Map (Map)
 import Domain.Scheme.Derived.Pair
+import Symbolic.AST
 import Domain.Symbolic.Class
 
 --------------------------------------------------
 -- Declaration
 --------------------------------------------------
 
-newtype SymbolicVal ptr sptr vptr pptr = SymbolicVal Proposition deriving (Eq, Ord)
+newtype SymbolicVal ptr sptr vptr pptr = SymbolicVal Proposition deriving (Eq, Ord, Show)
 
 --------------------------------------------------
 -- Lattice instances
@@ -49,7 +50,7 @@ instance NumberDomain (SymbolicVal ptr sptr vptr pptr) where
    expt = error "unsupported"
    lt (SymbolicVal n1) (SymbolicVal n2) = 
       return $ SymbolicVal $ Predicate "</v" [n1, n2]
-   equals (SymbolicVal n1) (SymbolicVal n2) = 
+   eq (SymbolicVal n1) (SymbolicVal n2) = 
       return $ SymbolicVal $ Predicate "=/v" [n1, n2]
 
 ------------------------------------------------------------
@@ -60,6 +61,7 @@ instance Domain (SymbolicVal ptr sptr vptr pptr) Integer where
    inject = SymbolicVal . Literal . Num
 
 instance IntDomain (SymbolicVal ptr sptr vptr pptr) where
+   type Str (SymbolicVal ptr sptr vptr pptr) = ()
    -- TODO: Str SymbolicVal is problematic here since it needs to refer 
    -- to something that actually implements the string domain, perhaps
    --  it is best to move toString into the string domain? Although

@@ -471,7 +471,7 @@ instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDo
 instance (Ord exp, Ord i, Ord c, Ord r, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b) =>
    IntDomain (ModularSchemeValue r i c b pai vec str var exp env) where
 
-   -- TODO: type Str (ModularSchemeValue r i c b pai vec str var exp env) = Vlu str
+   type Str (ModularSchemeValue r i c b pai vec str var exp env) = ()
    type Rea (ModularSchemeValue r i c b pai vec str var exp env) = (ModularSchemeValue r i c b pai vec str var exp env)
    toReal    = integers >=> toReal >=> (return . insertReal)
    -- TODO: toString  = integers >=> toString >=> (return . Coerce.coerce)
@@ -486,10 +486,10 @@ newtype SchemeString s v = SchemeString { sconst :: s } deriving (Show, Eq, Ord)
 instance (Joinable s) => Joinable (SchemeString s v) where
    join a b = SchemeString (join (sconst a) (sconst b))
 
-instance (SchemeDomain v, StringDomain s) => JoinLattice (SchemeString s v) where
+instance (StringDomain s) => JoinLattice (SchemeString s v) where
    subsumes a b = subsumes (sconst a) (sconst b)
    bottom = SchemeString bottom
-instance (SchemeDomain v, StringDomain s) => Domain (SchemeString s v) String where
+instance (StringDomain s) => Domain (SchemeString s v) String where
    inject = SchemeString . inject
 instance (
    Ord exp, Ord i, Ord c, Ord b, Ord r,
