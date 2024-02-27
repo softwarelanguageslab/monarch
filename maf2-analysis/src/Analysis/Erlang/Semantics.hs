@@ -42,7 +42,12 @@ eval (Module decls) = do
 
 -- | Try to evaluate a list of clauses
 evalClauses :: ErlangM m v => [Clause] -> m v
+evalClauses (c:cs) = evalClause c `catch` handle
+   where handle e 
+          | isMatchError e = evalClauses cs
+          | otherwise = escape e
 evalClauses [] = escape MatchError
+
 
 -- | (Try to) evaluate a single clause
 evalClause :: ErlangM m v => Clause -> m v
