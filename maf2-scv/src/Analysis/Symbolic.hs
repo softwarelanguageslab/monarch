@@ -22,6 +22,8 @@ import Domain (Address)
 import Domain.Scheme hiding (Exp)
 import Control.SVar.ModX
 import Solver.Z3
+import Solver (setup)
+import Symbolic.SMT (prelude)
 
 import Data.Function ((&))
 import Data.Functor.Identity
@@ -123,7 +125,7 @@ instance SchemeAlloc K VariableAdr PointerAdr PointerAdr PointerAdr AdrDep where
 -- | Simple intra-analysis
 simpleAnalysis :: Exp -> IO [(MayEscape (Set DomainError) Vlu, Sto)]
 simpleAnalysis e = do
-                 fmap result $ Symbolic.eval e
+                 fmap result $ (setup prelude >> Symbolic.eval e)
                                          & runSymbolicEvalT 
                                          & runMayEscape @_ @(Set DomainError)
                                          & runFormulaT 

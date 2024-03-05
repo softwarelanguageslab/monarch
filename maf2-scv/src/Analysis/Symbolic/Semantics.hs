@@ -4,7 +4,7 @@ import Syntax.Scheme
 import Domain.Symbolic
 import qualified Analysis.Monad as Monad
 import qualified Analysis.Scheme.Semantics as Scheme
-import Analysis.Symbolic.Monad (SymbolicM, MonadPathCondition(fresh))
+import Analysis.Symbolic.Monad (SymbolicM, MonadPathCondition(fresh), choice)
 import Control.Applicative (liftA2)
 
 eval :: SymbolicM m v => Exp -> m v
@@ -13,6 +13,8 @@ eval (App (Var (Ide "fresh" _)) [e] _) =
 eval (App (Var (Ide "fresh" _)) _ _) =
    error "invalid call to fresh"
 eval e@(App op opr  _)    = evalApp e op opr
+eval (Iff cnd csq alt _)  = 
+   choice (eval cnd) (eval csq) (eval alt)
 eval e = Scheme.eval e
 
 evalApp :: SymbolicM m v => Exp -> Exp -> [Exp] -> m v

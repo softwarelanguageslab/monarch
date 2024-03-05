@@ -52,6 +52,7 @@ instance SelectVariable Formula where
    variables (Disjunction f1 f2) = variables f1 ++ variables f2
    variables (Negation f)        = variables f
    variables (Atomic prop)       = variables prop
+   variables Empty               = []
 
 -- | And they can be selected from propositions
 instance SelectVariable Proposition where
@@ -63,6 +64,8 @@ instance SelectVariable Proposition where
    variables (Literal _) = []
    variables Fresh       = []
    variables Bottom      = []
+   variables (Application p1 p2) = variables p1 ++ mconcat (map variables p2)
+
 
 -- | The result of solving an SMT formula.
 data SolverResult = Sat

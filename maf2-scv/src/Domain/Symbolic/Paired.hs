@@ -158,7 +158,7 @@ instance (Address ptr,
    clos      = const bottom
    nil       = SymbolicVal $ Literal Nil
    unsp      = SymbolicVal $ Literal Unsp
-   prim      = SymbolicVal . Variable
+   prim      = SymbolicVal . Variable . (++"/v")
    prims     = const bottom
    withProc  = const . const mzero
    isInteger = const False
