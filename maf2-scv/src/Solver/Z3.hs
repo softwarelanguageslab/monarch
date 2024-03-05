@@ -11,6 +11,7 @@ import Solver
 import Symbolic.AST
 import Symbolic.SMT
 import Control.Monad.Join
+import Debug.Trace
 
 data Z3SolverState = Z3SolverState {
    -- | Cached setup-code
@@ -92,7 +93,7 @@ eval :: String -> Z3Solver String
 eval query = do
    -- write the query to stdin of the attached process
    hin <- gets (inputHandle . fromJust)
-   Z3Solver $ lift $ hPutStrLn hin query 
+   Z3Solver $ lift $ hPutStrLn hin query
    putSentinel
    Z3Solver $ lift $ hFlush hin
    readUntilSentinel
@@ -103,7 +104,7 @@ checkpoint = void $ eval "(push 1)"
 
 -- | Restures the solver the last checkpoint
 restoreCheckpoint :: Z3Solver ()
-restoreCheckpoint = 
+restoreCheckpoint =
    void $ eval "(pop 1)" >> checkpoint
 
 -- | Run the Z3Solver

@@ -33,6 +33,15 @@ cradle:
     - path: "maf2-domains/test"
       component: "maf2-domains:test:maf2-domains-test"
 
+    - path: "maf2-scv/src"
+      component: "lib:maf2-scv"
+
+    - path: "maf2-scv/app/Main.hs"
+      component: "maf2-scv:exe:maf2-scv-exe"
+
+    - path: "maf2-scv/test"
+      component: "maf2-scv:test:maf2-scv-test"
+
     - path: "maf2-syntax/src"
       component: "lib:maf2-syntax"
 

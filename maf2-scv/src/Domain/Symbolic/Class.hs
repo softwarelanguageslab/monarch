@@ -18,3 +18,6 @@ class (SchemeValue v) => SymbolicValue v where
    assertFalse :: v -> v
    -- | Extract a symbolic value from the value
    symbolic    :: v -> Proposition
+   -- | Attaches a fresh identifier 
+   -- to the given value
+   var :: Int -> v -> v

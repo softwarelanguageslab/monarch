@@ -23,7 +23,8 @@ data Proposition = Variable  String
                  | Literal   Literal
                  | IsTrue    Proposition -- ^ assertion that the proposition's truth value is "true"
                  | IsFalse   Proposition -- ^ assertion that the proposition's trught value is "false
-                 | Predicate String [Proposition]
+                 | Predicate   String [Proposition] -- ^ an atomic predicate
+                 | Application Proposition [Proposition]
                  -- | non-deterministic choice, both propositions could be valid, one of them or neither
                  | Choice    Proposition Proposition
                  | Fresh -- ^ Generate an unquantified fresh variable
