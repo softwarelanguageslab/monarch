@@ -8,6 +8,7 @@ import Control.Monad.Writer
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
 import Control.Monad.DomainError (MayEscapeT(..), MonadEscape(..), MayEscape(..))
+import ListT
 
 -- | A Monad "Layer" is similar to a Monad transformer, but is also provides a function to remove one level from the monad transformer stack. 
 class (Monad (Lower m)) => MonadLayer (m :: Type -> Type) where
@@ -57,6 +58,12 @@ instance (Monad m) => MonadLayer (MayEscapeT m e) where
    type Lower (MayEscapeT m e) = m
    upperM   m = MayEscapeT (Value <$> m)
    lowerM f m = MayEscapeT (f (runMayEscape m))
+
+instance (Monad m) => MonadLayer (ListT m) where   
+   type Lower (ListT m) = m
+   upperM = lift
+   lowerM f m = ListT $ f $ uncons m
+-- Instance for ListT
 
 -- instance {-# OVERLAPPABLE #-} (MonadLayer m, MonadEscape (Lower m) e) => MonadEscape m e where
 --    type Esc m = Esc (Lower m)

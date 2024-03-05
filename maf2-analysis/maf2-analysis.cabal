@@ -97,7 +97,7 @@ library
     , hspec-contrib
     , language-python
     , lens
-    , list-transformer
+    , list-t
     , maf2-domains
     , maf2-syntax
     , maf2-typelevel
@@ -150,7 +150,7 @@ executable maf-exe
     , hspec-contrib
     , language-python
     , lens
-    , list-transformer
+    , list-t
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
@@ -201,7 +201,7 @@ test-suite maf2-analysis-test
     , hspec-contrib
     , language-python
     , lens
-    , list-transformer
+    , list-t
     , maf2-analysis
     , maf2-domains
     , maf2-syntax

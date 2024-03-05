@@ -4,12 +4,13 @@ module Solver.Z3(Z3Handle, terminateZ3Solver, runZ3Solver)  where
 import System.Process
 import System.IO
 import Text.Printf
-import Control.Monad.State
+import Control.Monad.State hiding (mzero)
 import Data.Maybe
 
 import Solver
 import Symbolic.AST
 import Symbolic.SMT
+import Control.Monad.Join
 
 data Z3SolverState = Z3SolverState {
    -- | Cached setup-code
@@ -109,7 +110,7 @@ restoreCheckpoint =
 runZ3Solver :: Z3Solver a -> IO a
 runZ3Solver (Z3Solver m) = evalStateT m Nothing
 
-instance FormulaSolver Z3Solver where
+instance {-# OVERLAPPING #-} FormulaSolver Z3Solver where
    setup setupCode = do
       spawned <- gets isJust
       -- if there is already an active instance of Z3 

@@ -47,6 +47,7 @@ import Control.Monad.Writer hiding (mzero)
 import GHC.TypeError
 import Data.Functor.Identity
 import Data.Map (Map)
+import ListT
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -273,11 +274,13 @@ runCallBottomT (CallBottomT ma) = ma
 
 -- | Useful for running the computation non-deterministically 
 -- and defering join to the end.
-newtype NonDetT a = NonDetT [a] deriving (Functor, Applicative, Monad)
+newtype NonDetT m a = NonDetT (ListT m a) deriving (Functor, Applicative, Monoid, MonadLayer, Semigroup, Monad)
 
-instance MonadJoin NonDetT where
-   mzero = NonDetT []
-   mjoin (NonDetT ma) (NonDetT mb) = NonDetT $ ma ++ mb
+instance (Monad m) => MonadJoin (NonDetT m) where
+   mzero = mempty
+   mjoin (NonDetT ma) (NonDetT mb) = NonDetT $ ma `mplus` mb
 
-runNonDetT :: NonDetT a -> [a]
-runNonDetT (NonDetT a) = a
+runNonDetT :: Monad m => NonDetT m a -> m [a]
+runNonDetT (NonDetT ma) = uncons ma >>= fix' 
+   where fix' Nothing         = return []
+         fix' (Just (x, mxs)) = fmap (x:) (uncons mxs >>= fix')

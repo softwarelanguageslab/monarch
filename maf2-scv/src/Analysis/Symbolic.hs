@@ -21,6 +21,7 @@ import Analysis.Scheme hiding (Sto)
 import Domain (Address)
 import Domain.Scheme hiding (Exp)
 import Control.SVar.ModX
+import Solver.Z3
 
 import Data.Function ((&))
 import Data.Functor.Identity
@@ -120,9 +121,9 @@ instance SchemeAlloc K VariableAdr PointerAdr PointerAdr PointerAdr AdrDep where
 ------------------------------------------------------------
 
 -- | Simple intra-analysis
-simpleAnalysis :: Exp -> (MayEscape (Set DomainError) Vlu, Sto)
-simpleAnalysis e = 
-                  let ((v, _), store') = Symbolic.eval e
+simpleAnalysis :: Exp -> IO [(MayEscape (Set DomainError) Vlu, Sto)]
+simpleAnalysis e = do
+                 fmap result $ Symbolic.eval e
                                          & runSymbolicEvalT 
                                          & runMayEscape @_ @(Set DomainError)
                                          & runFormulaT 
@@ -138,8 +139,9 @@ simpleAnalysis e =
                                          & runAlloc @VrAdr Adr
                                          & runCtx []
                                          & runEnv env 
-                                         & runIdentity
-                  in (v, store')
+                                         & runNonDetT
+                                         & runZ3Solver
     where env    = analysisEnvironment
           store  = analysisStore @Vlu env
+          result = fmap (\((r, _pc), sto) -> (r, sto))
 

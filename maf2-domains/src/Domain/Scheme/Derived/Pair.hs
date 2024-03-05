@@ -22,7 +22,7 @@
 -- Unfortunately, we cannot encode this property in the 
 -- type system and is left as an implicit assumption
 -- for the users of this domain.
-module Domain.Scheme.Derived.Pair(SchemePairedValue, leftValue, rightValue, mkLeft, mkRight) where
+module Domain.Scheme.Derived.Pair(SchemePairedValue(..), leftValue, rightValue, mkLeft, mkRight) where
 
 import Prelude hiding (div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not)
 

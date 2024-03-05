@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Solver(runCachedSolver, CachedSolver, FormulaSolver(..)) where
 
 import Symbolic.AST
@@ -5,6 +6,7 @@ import Symbolic.AST
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Monad.State
+import Control.Monad.Layer
 
 class Monad m => FormulaSolver m where 
    -- | Initialize the solver and sets a checkpoint
@@ -60,7 +62,7 @@ runCachedSolver = flip evalStateT initialState . getSolver
 -- Cached Solving
 --------------------------------------------------
 
-instance (FormulaSolver m) => FormulaSolver (CachedSolver m) where 
+instance {-# OVERLAPPING #-} (FormulaSolver m) => FormulaSolver (CachedSolver m) where 
    -- setup is simply forwarded to the underlying solver
    setup = CachedSolver . lift . setup
    -- to solve a formula it is first searched for in the 
@@ -69,3 +71,12 @@ instance (FormulaSolver m) => FormulaSolver (CachedSolver m) where
    solve formula = do
       cacheHit <- lookupCache formula
       maybe (lift (solve formula) >>= putCache formula) return cacheHit
+
+------------------------------------------------------------
+-- Layering
+------------------------------------------------------------
+
+instance (Monad m, MonadLayer m, FormulaSolver (Lower m)) => FormulaSolver m where  
+   setup = upperM . setup
+   solve = upperM . solve
+

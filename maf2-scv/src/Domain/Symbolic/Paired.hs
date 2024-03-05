@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 -- | Symbolic version of the Scheme domain
 module Domain.Symbolic.Paired where
 
@@ -177,6 +178,14 @@ instance (Address ptr,
 ------------------------------------------------------------
 -- Symbolic value
 ------------------------------------------------------------
+
+instance (SchemeValue (PairedSymbolic v ptr var)) => SymbolicValue (PairedSymbolic v ptr var) where  
+   ap = undefined
+   assertTrue (SchemePairedValue (l, (SymbolicVal r))) = 
+      SchemePairedValue (l, SymbolicVal $ IsTrue r)
+   assertFalse (SchemePairedValue (l, (SymbolicVal r))) = 
+      SchemePairedValue (l, SymbolicVal $ IsFalse r)
+   symbolic (SchemePairedValue (l, SymbolicVal r)) = r
 
 ------------------------------------------------------------
 -- Pairing with other Scheme value
