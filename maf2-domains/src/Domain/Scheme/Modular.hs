@@ -194,8 +194,8 @@ instance (IsSchemeValue m) => BoolDomain (SchemeVal m) where
 
    boolTop = SchemeVal $ HMap.singleton @BoolKey boolTop
    not v = join t f
-      where t = if isTrue  v then inject True else bottom
-            f = if isFalse v then inject False else bottom
+      where t = if isTrue  v then inject False else bottom
+            f = if isFalse v then inject True else bottom
 
 ------------------------------------------------------------
 -- CharDomain
@@ -351,8 +351,8 @@ instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDo
             falsish ModularSchemeValue {} = False
    boolTop = def { boolean = Just boolTop }
    not v = join t f
-      where t = if isTrue  v then inject True else bottom
-            f = if isFalse v then inject False else bottom
+      where t = if isTrue  v then inject False else bottom
+            f = if isFalse v then inject True else bottom
 
 -- 
 

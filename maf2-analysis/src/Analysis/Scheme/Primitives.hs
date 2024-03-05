@@ -120,7 +120,8 @@ allPrimitives = [
    fix2 "<" lt,
    fix2 "=" eq,
    fix1 "random" Domain.random,
-   fix0 "bool-top" $ return Domain.boolTop
+   fix0 "bool-top" $ return Domain.boolTop,
+   fix1 "not" $ return . Domain.not
    -- fix1 "error" todo
    ]
 
