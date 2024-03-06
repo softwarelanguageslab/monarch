@@ -12,6 +12,7 @@ import Domain.Symbolic.CPDomain
 import Domain.Scheme.Store
 import Control.Monad.Escape
 import Control.Monad.DomainError
+import Control.Monad.State.IntPool
 import qualified Data.Map as Map
 
 import Control.Monad.Join
@@ -139,7 +140,7 @@ simpleAnalysis e = do
                                          & runCtx []
                                          & runEnv env
                                          & runNonDetT
-                                         & runIdentifierPoolT
+                                         & runIntegerPoolT
                                          & runZ3Solver
     where env    = analysisEnvironment
           store  = analysisStore @Vlu env

@@ -1,0 +1,155 @@
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+
+module Control.Monad.State.SVar
+  ( MonadStateVar (..),
+    VarState,
+    TrackingStateVarT,
+    runStateVarT,
+    StateVarT,
+    runTrackingStateVarT,
+    wdep, rdep,
+    Dep,
+    RDep,
+    WDep,
+    resetTracking,
+    getDeps,
+    ifM -- TODO: move this to somewhere else
+  )
+where
+
+import Control.Monad.Layer
+import Control.Monad.State (MonadState, MonadTrans (lift), StateT)
+import qualified Control.Monad.State as ST
+import Control.Monad.State.IntPool
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Maybe
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Unsafe.Coerce
+import Prelude hiding (read)
+
+-- Holds dynamic data
+data SomeVal where
+  SomeVal :: forall a. a -> SomeVal
+
+newtype SVar a = SVar Int
+
+class (Monad m) => MonadStateVar m where
+  -- | Create a new state variable
+  -- with initial value a
+  new :: a -> m (SVar a)
+
+  -- |  Modify the given state variable,
+  --  it requires a function that modifies
+  --  the optionally modifies the SVar,
+  --  returns true if the value was modified,
+  --  false otherwise.
+  modify :: (a -> Maybe a) -> SVar a -> m Bool
+
+  -- |  Read the current value from the SVar
+  read :: SVar a -> m a
+
+instance (Monad m, MonadLayer m, MonadStateVar (Lower m)) => MonadStateVar m where
+   new = upperM . new
+   modify f = upperM . modify f
+   read = upperM . read
+
+------------------------------------------------------------
+-- StateVarT
+------------------------------------------------------------
+
+-- | The state of the StateVarT monad.
+-- It keeps track of the values of the SVar using a map
+-- , mapping integers to dynamically typed values.
+newtype VarState = VarState {state :: Map Int SomeVal}
+
+-- |  Create an empty VarState
+emptyVarState :: VarState
+emptyVarState = VarState {state = Map.empty}
+
+newtype StateVarT m a = StateVarT {runStateVarT' :: StateT VarState m a}
+  deriving (Monad, Applicative, Functor, MonadState VarState, MonadLayer, MonadTrans)
+
+runStateVarT :: StateVarT m a -> m (a, VarState)
+runStateVarT (StateVarT ma) = ST.runStateT ma (VarState Map.empty)
+
+instance {-# OVERLAPPING #-} (MonadIntegerPool m) => MonadStateVar (StateVarT m) where
+  new vlu = do
+    i <- lift fresh
+    ST.modify (VarState . Map.insert i (SomeVal vlu) . state)
+    return (SVar i)
+  modify f (SVar i) = do
+    -- SAFETY: unsafeCoerseVal is safe since each integer
+    -- is only mapped once to an SVar of a specific type.
+    -- Hence, the integer represents a type tag of sorts
+    -- which uniquely associates the SVar with its type
+    v <- ST.gets (fromJust . Map.lookup i . state)
+    maybe (return False) (\v' -> ST.modify (VarState . Map.insert i (SomeVal v') . state) >> return True) (f (unsafeCoerce v))
+  read (SVar i) =
+    -- SAFETY: see above
+    -- we can just apply fromJust since the SVar would not exists
+    -- if it is not in the map
+    ST.gets (unsafeCoerce . fromJust . Map.lookup i . state)
+
+------------------------------------------------------------
+-- Utilities
+------------------------------------------------------------
+
+ifM :: (Monad m) => m Bool -> m a -> m a -> m a
+ifM mb mcsq malt = mb >>= (\v -> if v then mcsq else malt)
+
+------------------------------------------------------------
+-- Tracking SVar's
+------------------------------------------------------------
+
+-- |  A dependency on an SVar
+newtype Dep = Dep Int deriving (Ord, Eq, Show)
+
+-- for convience
+
+-- |  A read dependency
+type RDep = Dep
+
+-- | A write dependency
+type WDep = Dep
+
+-- | State for tracking of dependencies
+data TrackingState = TrackingState {wdep :: Set WDep, rdep :: Set RDep}
+
+emptyTrackingState :: TrackingState
+emptyTrackingState = TrackingState Set.empty Set.empty
+
+trigger :: WDep -> TrackingState -> TrackingState
+trigger dep st = st {wdep = Set.insert dep (wdep st)}
+
+register :: WDep -> TrackingState -> TrackingState
+register dep st = st {rdep = Set.insert dep (rdep st)}
+
+-- | Monad that intercepts changes
+-- to SVar and tracks their reads and writes
+newtype TrackingStateVarT m a = TrackingStateVarT {runTrackingStateVarT' :: StateT TrackingState m a}
+  deriving (Applicative, Monad, Functor, MonadState TrackingState, MonadLayer, MonadTrans)
+
+-- | Reset the tracking state
+resetTracking :: (Monad m) => TrackingStateVarT m ()
+resetTracking = ST.put emptyTrackingState
+
+-- | Get current tracking informatie
+getDeps :: (Monad m) => TrackingStateVarT m TrackingState
+getDeps = ST.get
+
+runTrackingStateVarT :: (Monad m) => TrackingStateVarT m a -> m a
+runTrackingStateVarT (TrackingStateVarT ma) = ST.evalStateT ma emptyTrackingState
+
+instance {-# OVERLAPPING #-} (MonadStateVar m) => MonadStateVar (TrackingStateVarT m) where
+  new = lift . new
+  modify f var@(SVar i) =
+    ifM
+      (lift (modify f var))
+      {- then -} (ST.modify (trigger (Dep i)) >> return True)
+      {- else -} (return False)
+  read var@(SVar i) =
+    ST.modify (register (Dep i)) >> lift (read var)

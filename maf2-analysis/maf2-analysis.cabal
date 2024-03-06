@@ -36,6 +36,10 @@ library
       Interpreter.Scheme
       Control.SVar.ModX
       Control.Monad.Layer
+      Control.Monad.State.SVar
+      Control.Monad.State.IntPool
+      Control.Fixpoint.WorkList
+      Control.Fixpoint.EffectDriven
   other-modules:
       Analysis.Actors.Mailbox
       Analysis.Actors.Monad

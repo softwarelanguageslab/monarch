@@ -1,15 +1,16 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
-module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIdentifierPool(..), runIdentifierPoolT, SymbolicValue, runFormulaT, choice) where
+module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), SymbolicValue, runFormulaT, choice) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
 import Analysis.Scheme.Monad (SchemeM)
 import Control.Monad.Layer
 import Control.Monad.Join
+import Control.Monad.State.IntPool
 import Control.Monad.State (StateT, MonadState, modify, gets, get, put, (>=>), runStateT, evalStateT)
 import Domain
 import Domain.Symbolic
-import Lattice (JoinLattice(..), Joinable(..))
+import Lattice (JoinLattice(..))
 
 import qualified Data.Set as Set
 import Data.Set (Set)
@@ -20,12 +21,6 @@ class (Monad m) => MonadPathCondition m v | m -> v where
    extendPc :: v -> m ()
    -- | Get the current path condition
    getPc :: m PC
-
--- | Monad to generate fresh identifiers
-class (Monad m) => MonadIdentifierPool m where   
-   -- | Generate a fresh identifier number
-   fresh :: m Int
-   
 
 -- | Choose between the two branches non-deterministically
 choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b) => m v -> m b -> m b -> m b
@@ -45,44 +40,13 @@ type SymbolicM m v = (SchemeM m v,
                       SymbolicValue v,
                       -- Symbolic execution
                       MonadPathCondition m v,
-                      MonadIdentifierPool m,
+                      MonadIntegerPool m,
                       -- Solving
                       FormulaSolver m)
 
 --------------------------------------------------------------------------
 -- Instances
 --------------------------------------------------------------------------
-
--- MonadIdentifierPool
-
--- | A simple pool that keeps track of the next available 
--- identifier using a counter.
-newtype IdentifierPoolT m a = IdentifierPoolT { runIdentifierPoolT' :: StateT PoolState m a }
-                            deriving (Monad, Applicative, Functor, MonadState PoolState, MonadJoin, MonadLayer)
-
--- | The state of the identifier pool
-newtype PoolState = PoolState { next :: Int } deriving (Ord, Eq, Show)
-
-initialPoolState :: PoolState
-initialPoolState = PoolState 1
-
-instance Joinable PoolState where   
-   join p1 p2 = PoolState $ max (next p1) (next p2)
-
-instance JoinLattice PoolState where 
-   bottom = PoolState 0
-
-instance {-# OVERLAPPING #-} (Monad m) => MonadIdentifierPool (IdentifierPoolT m) where 
-   fresh = do 
-      i <- gets next
-      put $ PoolState (i+1)
-      return i
-
-instance (Monad m, MonadIdentifierPool (Lower m), MonadLayer m) => MonadIdentifierPool m where
-   fresh = upperM fresh
-
-runIdentifierPoolT :: Monad m => IdentifierPoolT m a -> m a
-runIdentifierPoolT = flip evalStateT initialPoolState . runIdentifierPoolT'
 
 -- MonadPathCondition
 
