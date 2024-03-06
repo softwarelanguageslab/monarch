@@ -4,7 +4,7 @@ import Syntax.Scheme
 import Domain.Symbolic
 import qualified Analysis.Monad as Monad
 import qualified Analysis.Scheme.Semantics as Scheme
-import Analysis.Symbolic.Monad (SymbolicM, MonadPathCondition(fresh), choice)
+import Analysis.Symbolic.Monad (SymbolicM, MonadIdentifierPool(fresh), choice)
 import Control.Applicative (liftA2)
 
 eval :: SymbolicM m v => Exp -> m v

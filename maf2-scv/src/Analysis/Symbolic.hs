@@ -142,6 +142,7 @@ simpleAnalysis e = do
                                          & runCtx []
                                          & runEnv env 
                                          & runNonDetT
+                                         & runIdentifierPoolT
                                          & runZ3Solver
     where env    = analysisEnvironment
           store  = analysisStore @Vlu env
