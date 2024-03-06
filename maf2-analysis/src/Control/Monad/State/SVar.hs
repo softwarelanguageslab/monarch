@@ -15,6 +15,7 @@ module Control.Monad.State.SVar
     WDep,
     resetTracking,
     getDeps,
+    SVar,
     ifM -- TODO: move this to somewhere else
   )
 where
@@ -30,12 +31,16 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Unsafe.Coerce
 import Prelude hiding (read)
+import Data.Bifunctor (second)
 
 -- Holds dynamic data
 data SomeVal where
   SomeVal :: forall a. a -> SomeVal
 
-newtype SVar a = SVar Int
+unsafeCoerceVal :: SomeVal -> a
+unsafeCoerceVal (SomeVal a) = unsafeCoerce a
+
+newtype SVar a = SVar { getSVar :: Int } deriving (Eq, Ord)
 
 class (Monad m) => MonadStateVar m where
   -- | Create a new state variable
@@ -87,19 +92,27 @@ instance {-# OVERLAPPING #-} (MonadIntegerPool m) => MonadStateVar (StateVarT m)
     -- Hence, the integer represents a type tag of sorts
     -- which uniquely associates the SVar with its type
     v <- ST.gets (fromJust . Map.lookup i . state)
-    maybe (return False) (\v' -> ST.modify (VarState . Map.insert i (SomeVal v') . state) >> return True) (f (unsafeCoerce v))
+    maybe (return False) (\v' -> ST.modify (VarState . Map.insert i (SomeVal v') . state) >> return True) (f (unsafeCoerceVal v))
   read (SVar i) =
     -- SAFETY: see above
     -- we can just apply fromJust since the SVar would not exists
     -- if it is not in the map
-    ST.gets (unsafeCoerce . fromJust . Map.lookup i . state)
+    ST.gets (unsafeCoerceVal . fromJust . Map.lookup i . state)
 
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
 
+-- TODO: move this to another module, it does not really belong here
 ifM :: (Monad m) => m Bool -> m a -> m a -> m a
 ifM mb mcsq malt = mb >>= (\v -> if v then mcsq else malt)
+
+-- | Unify a map of SVars to a map of the values stored at these SVars 
+-- for a given VarState
+unify :: (Ord a) => Map a (SVar b) -> VarState -> Map a b
+unify m st = 
+   Map.fromList $ map
+      (second $ unsafeCoerceVal . fromJust . flip Map.lookup (state st) . getSVar) (Map.toList m)
 
 ------------------------------------------------------------
 -- Tracking SVar's

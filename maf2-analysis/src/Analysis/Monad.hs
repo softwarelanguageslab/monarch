@@ -34,6 +34,8 @@ import Analysis.Environment
 import Control.Monad.Reader hiding (mzero)
 import Control.Monad.Join
 import Control.Monad.State hiding (mzero)
+import Control.Monad.State.SVar (SVar)
+import qualified Control.Monad.State.SVar as SVar
 import Control.Monad.DomainError 
 import Syntax.Scheme.AST
 import Data.Set (Set)
@@ -208,6 +210,23 @@ instance (Monad t, Address adr, StoreM (Lower t) w adr v, MonadLayer t) => Store
 
 runStoreT :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
+
+---
+
+-- newtype StoreT' t adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
+--                               deriving (Applicative, Functor, Monad, MonadState (Map adr (SVar v)), MonadLayer)
+-- 
+-- instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT' t adr v m) where 
+--    mjoin (StoreT' ma) (StoreT' mb) = StoreT' $ mjoin ma mb
+--    mzero = StoreT' mzero
+-- 
+-- instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT' t adr v m) t adr v where
+--    writeAdr adr vlu = modify (Store.extendSto adr vlu)
+--    updateAdr adr vlu = modify (Store.updateSto adr vlu)
+--    lookupAdr = gets  . Store.lookupSto
+-- 
+-- runStoreT' :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
+-- runStoreT' initialSto = flip runStateT initialSto . getStoreT
 
 --
 -- Allocator
