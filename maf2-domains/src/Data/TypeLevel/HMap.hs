@@ -202,7 +202,7 @@ map' = map @(Const a)
 -- the results can be collected into a single Haskell list.
 mapList :: forall a m . HMapKey m => (forall (kt :: KeyKind m) . Sing kt -> Assoc kt m -> a) -> HMap m -> [a]
 mapList f m1 = 
-   let (HMap m) = map @(Const a) f m1
+   let (HMap m) = map' f m1
    in -- safety: from applying `f` on all key-value pairs in m we know that 
       -- each key is mapped to `a`, therefore `SomeVal`s are actually a's 
       -- and can be safely coerced.

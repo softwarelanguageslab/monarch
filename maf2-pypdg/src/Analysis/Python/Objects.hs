@@ -17,33 +17,29 @@ import Analysis.Python.Common
 import Analysis.Python.Primitives
 import Analysis.Python.Infrastructure
 import Analysis.Python.Monad 
-import Data.TypeLevel.HMap (HMap, Assoc, HMapKey, AtKey, AtKey1, InstanceOf, All, ForAllOf, ForAll(..), KeyKind, (::->), (:->), Dict(..), BindingFrom, genHKeys)
-import qualified Data.TypeLevel.HMap as HMap 
+import Data.TypeLevel.HMap (Assoc, AtKey1, ForAll(..),  (::->), (:->), BindingFrom)
 import qualified Domain.Core.HMapDomain as HMapDomain
 import Domain.Core.HMapDomain (HMapAbs)
 import qualified Domain.Core.SeqDomain as SeqDomain
-import Domain.Core.SeqDomain (SeqDomain, CPList(..))
+import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
-import Control.Monad.DomainError
-import Control.Monad.AbstractM
-import Domain (Domain, BoolDomain, NumberDomain, IntDomain, RealDomain, StringDomain, CPDictionary)
+import Control.Monad.DomainError ( orElse, MonadEscape(escape) )
+import Domain (BoolDomain, IntDomain, RealDomain, StringDomain, CPDictionary)
 import qualified Domain
-
 
 import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import qualified Prelude
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Map (Map, (!))
+import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Singletons.TH
-import Data.Singletons.Sigma
+import Data.Singletons (SingI(..), Sing)
+import Data.Singletons.Sigma (Sigma((:&:)))
 import Data.Kind
-import Control.Monad ((>=>), (<=<), liftM2)
-import qualified Control.Monad as Monad 
+import Control.Monad ((<=<))
 import Data.Bifunctor
 import Data.Maybe (fromJust)
-import Data.Function ((&))
+
 
 ---
 --- Python objects
@@ -64,7 +60,8 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
     CloPrm ::-> Set PyClo,
     BndPrm ::-> Map ObjAdr PyVal,   -- alternative, but less precise: (PyVal, PyVal)
     TupPrm ::-> CPList PyVal,       -- TODO: could use a more optimised representation (e.g., CPVector)
-    LstPrm ::-> CPList PyVal
+    LstPrm ::-> CPList PyVal,
+    NonPrm ::-> ()
   ]
 
 
@@ -90,11 +87,17 @@ instance          (ForAll PyPrmKey (AtKey1 Joinable (PyPrm m))) => Joinable (PyO
 instance (AllJoin m) => JoinLattice (PyObj m) where
   bottom = PyObj bottom bottom
 
+instance AllAbs m => PyPrmObj (PyObj m) where
+  type Abs (PyObj m) k = Assoc k (PyPrm m)
+  member s = HMapDomain.member s . prm 
+  extract s = fromJust . HMapDomain.lookup s . prm 
+  inject k v = injectObj' (TypeObject $ classFor k) [] [k :&: v]  
+
 --
 -- Python constants 
 --
 
--- helper function 
+-- helper functions
 injectObj :: (AllJoin m) => PyVal -> [(PyAttr, PyVal)] -> [BindingFrom (PyPrm m)] -> PyObj m
 injectObj cls bds prm = PyObj (Domain.from dict) (HMapDomain.from prm)
   where attrs = (ClassAttr, cls) : bds
@@ -103,50 +106,18 @@ injectObj cls bds prm = PyObj (Domain.from dict) (HMapDomain.from prm)
 injectObj' :: (AllJoin m) => PyConstant -> [(PyAttr, PyConstant)] -> [BindingFrom (PyPrm m)] -> PyObj m
 injectObj' cls bds = injectObj (constant cls) (map (second constant) bds)
 
-injectPrm :: (AllJoin m) => PyPrim -> PyObj m
-injectPrm prm = injectObj' (TypeObject PrimType) [] [SPrmPrm :&: Domain.inject prm]
-
-injectStr :: (AllJoin m, StringDomain (Assoc StrKey m)) => String -> PyObj m
-injectStr str = injectObj' (TypeObject StringType) [] [SStrPrm :&: Domain.inject str]
-
-injectBln :: (AllJoin m, BoolDomain (Assoc BlnKey m)) => Bool -> PyObj m
-injectBln bln = injectObj' (TypeObject BoolType) [] [SBlnPrm :&: Domain.inject bln]
-
-injectNon :: AllJoin m => PyObj m
-injectNon = injectObj' (TypeObject NoneType) [] []
-
-injectTup :: AllJoin m => [PyVal] -> PyObj m
-injectTup vls = injectObj' (TypeObject TupleType) [] [STupPrm :&: SeqDomain.fromList vls]
-
-injectTup' :: AllJoin m => [PyConstant] -> PyObj m
-injectTup' = injectTup . map constant
-
-injectBnd :: AllJoin m => ObjAdr -> PyVal -> PyObj m
-injectBnd self fun = injectObj' (TypeObject BoundType) [] [SBndPrm :&: Map.singleton self fun]
-
-  
-class PyDomain m k where
-  from :: Assoc k (PyPrm m) -> PyObj m 
-instance AllJoin m => PyDomain m IntPrm where
-  from num = injectObj' (TypeObject IntType) [] [SIntPrm :&: num]
-instance AllJoin m => PyDomain m ReaPrm where
-  from num = injectObj' (TypeObject FloatType)  [] [SReaPrm :&: num]
-instance AllJoin m => PyDomain m BlnPrm where
-  from bln = injectObj' (TypeObject BoolType) [] [SBlnPrm :&: bln]
-
 injectPyConstant :: AllAbs m => PyConstant -> PyObj m
 injectPyConstant Type     = injectObj' Type [] []
 injectPyConstant Object   = injectObj' Type [] []
-injectPyConstant True     = injectBln Prelude.True
-injectPyConstant False    = injectBln Prelude.False
-injectPyConstant None     = injectNon
+injectPyConstant True     = inject' @BlnPrm Prelude.True
+injectPyConstant False    = inject' @BlnPrm Prelude.False
+injectPyConstant None     = inject SNonPrm ()
 injectPyConstant (TypeObject typ) = injectObj' Type allAttrs []
   where methodAttrs = map (second PrimObject) (methods typ)
         allAttrs    = [(NameAttr, TypeName typ),(MROAttr, TypeName typ)] ++ methodAttrs
---injectTyp' (TypeName typ) (TypeMRO typ) (methods typ) 
-injectPyConstant (TypeName typ)   = injectStr $ name typ
-injectPyConstant (TypeMRO typ)    = injectTup' [TypeObject typ, Object]
-injectPyConstant (PrimObject prm) = injectPrm prm 
+injectPyConstant (TypeName typ)   = inject SStrPrm (Domain.inject $ name typ)
+injectPyConstant (TypeMRO typ)    = inject STupPrm (SeqDomain.fromList $ map constant [TypeObject typ, Object])
+injectPyConstant (PrimObject prm) = inject SPrmPrm (Set.singleton prm) 
 
 isBindable :: (PyM pyM (PyObj m), AllJoin m, BoolDomain b) => PyVal -> pyM b
 isBindable = fmap isBindableObj . deref'
@@ -155,7 +126,7 @@ isBindableObj :: (AllJoin m, BoolDomain b) => PyObj m -> b
 isBindableObj (PyObj _ prm) = Domain.or (HMapDomain.member SPrmPrm prm)
                                         (HMapDomain.member SCloPrm prm)
 
-lookupAttr :: forall pyM m . (PyM pyM (PyObj m), AllJoin m) => PyExp -> String -> PyVal -> pyM PyVal
+lookupAttr :: forall pyM m . (PyM pyM (PyObj m), AllAbs m) => PyExp -> String -> PyVal -> pyM PyVal
 lookupAttr exp attr =
   deref $ \adr (PyObj dct _) ->
             condCP (return $ Domain.contains (Constant attr) dct)
@@ -164,11 +135,12 @@ lookupAttr exp attr =
                    (do cls <- Domain.lookupM (Constant $ attrStr ClassAttr) dct
                        lookupAttrInClass exp attr adr cls)
 
-lookupAttrInClass :: forall pyM m . (PyM pyM (PyObj m), AllJoin m) => PyExp -> String -> ObjAdr -> PyVal -> pyM PyVal
+lookupAttrInClass :: forall pyM m . (PyM pyM (PyObj m), AllAbs m) => PyExp -> String -> ObjAdr -> PyVal -> pyM PyVal
 lookupAttrInClass exp attr self cls = do vlu <- lookupAttrMRO attr cls
                                          condCP (isBindable vlu)
-                                                (allocObj exp $ injectBnd self vlu)
+                                                (bind vlu)
                                                 (return vlu)
+    where bind value = allocObj exp $ inject SBndPrm (Map.singleton self value) 
 
 lookupAttrMRO :: forall pyM m . (PyM pyM (PyObj m), AllJoin m) => String -> PyVal -> pyM PyVal
 lookupAttrMRO attr =

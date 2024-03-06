@@ -1,5 +1,7 @@
 {-# LANGUAGE QuantifiedConstraints #-}
-module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..), mJoinMap, mjoins, msplit, condCP) where
+{-# LANGUAGE UndecidableInstances #-}
+
+module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..), mjoinMap, mjoins, msplit, condCP) where
 
 import Lattice
 import Domain.Core.BoolDomain
@@ -19,22 +21,23 @@ class (Monad m) => MonadJoin m where
    (<||>) :: JoinLattice v => m v -> m v -> m v
    a <||> b = mjoin a b
    infix 0 <||>
-   cond :: (BoolDomain b, JoinLattice v) => m b -> m v -> m v -> m v
-   cond cnd csq alt = mjoin t f
-      where t = cnd >>= (\b -> if isTrue b then csq else mzero)
-            f = cnd >>= (\b -> if isFalse b then alt else mzero)
+
+cond :: (MonadJoin m, BoolDomain b, JoinLattice v) => m b -> m v -> m v -> m v
+cond cnd csq alt = mjoin t f
+   where t = cnd >>= (\b -> if isTrue b then csq else mzero)
+         f = cnd >>= (\b -> if isFalse b then alt else mzero)
 
 condCP :: (MonadJoin m, JoinLattice v) => m (CP Bool) -> m v -> m v -> m v
 condCP = cond 
 
-mJoinMap :: (MonadJoin m, Foldable t, JoinLattice b) => (a -> m b) -> t a -> m b 
-mJoinMap f = foldr (mjoin . f) mzero
+mjoinMap :: (MonadJoin m, Foldable t, JoinLattice b) => (a -> m b) -> t a -> m b 
+mjoinMap f = foldr (mjoin . f) mzero
 
 mjoins :: (MonadJoin m, Foldable t, JoinLattice v) => t (m v) -> m v
 mjoins = foldr mjoin mzero
 
 msplit :: (MonadJoin m, JoinLattice v, SplitLattice a) => (a -> m v) -> a -> m v
-msplit f = mJoinMap f . split
+msplit f = mjoinMap f . split
 
 
 -- | Like `Alternative`, returns if a computation

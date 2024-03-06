@@ -1,7 +1,9 @@
 module Analysis.Python.Monad (
-  PyM,
+  PyM(..),
+  EnvM(..),
   StoreM(..),
   AllocM(..),
+  allocVal,
   ObjectError(..), -- TODO: move this 
   deref, 
   deref', 
@@ -21,6 +23,11 @@ import qualified Data.Set as Set
 --
 -- TODO: reuse existing for these?
 --
+
+class (Monad m) => EnvM m e a | m -> e a where
+  getEnv :: m e
+  lookupEnv :: String -> m a 
+  extendEnv :: String -> a -> m b -> m b
 
 class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
   extend :: a -> v -> m ()
@@ -52,6 +59,7 @@ class (Monad m,
        Domain (Esc m) ObjectError,
        Domain (Esc m) DomainError,
        AllocM m PyExp ObjAdr,
+       EnvM m PyEnv VarAdr, 
        StoreM m ObjAdr obj)
        =>
        PyM m obj | m -> obj
