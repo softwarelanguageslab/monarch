@@ -1,4 +1,4 @@
-module Domain.Symbolic.Class where
+module Domain.Symbolic.Class(SymbolicValue(..)) where
 
 import Symbolic.AST
 import Domain.Scheme

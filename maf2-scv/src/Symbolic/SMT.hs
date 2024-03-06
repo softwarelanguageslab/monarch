@@ -1,10 +1,12 @@
 -- | Translation for Symbolic.AST formulas to and from SMTLib
-module Symbolic.SMT(prelude, translate, parseResult, SolverResult(..)) where
+module Symbolic.SMT(prelude, translate, parseResult, SolverResult(..), setupSMT) where
 
 import Text.Printf
 import Symbolic.AST
 import Data.FileEmbed
 import Data.List
+import Solver
+
 --------------------------------------------------
 -- Translation
 --------------------------------------------------
@@ -48,3 +50,11 @@ parseResult :: String -> SolverResult
 parseResult "sat" = Sat
 parseResult "unsat" = Unsat
 parseResult _ = Unknown
+
+------------------------------------------------------------
+-- Utility functions
+------------------------------------------------------------
+
+-- | Setup the prelude in a solver monad
+setupSMT :: FormulaSolver m => m ()
+setupSMT = setup prelude
