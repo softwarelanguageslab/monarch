@@ -16,7 +16,6 @@ module Control.Monad.State.SVar
     resetTracking,
     getDeps,
     SVar,
-    ifM -- TODO: move this to somewhere else
   )
 where
 
@@ -32,6 +31,7 @@ import qualified Data.Set as Set
 import Unsafe.Coerce
 import Prelude hiding (read)
 import Data.Bifunctor (second)
+import Control.Monad.Cond
 
 -- Holds dynamic data
 data SomeVal where
@@ -102,10 +102,6 @@ instance {-# OVERLAPPING #-} (MonadIntegerPool m) => MonadStateVar (StateVarT m)
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
-
--- TODO: move this to another module, it does not really belong here
-ifM :: (Monad m) => m Bool -> m a -> m a -> m a
-ifM mb mcsq malt = mb >>= (\v -> if v then mcsq else malt)
 
 -- | Unify a map of SVars to a map of the values stored at these SVars 
 -- for a given VarState

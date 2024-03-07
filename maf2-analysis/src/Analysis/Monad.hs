@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, UndecidableInstances, AllowAmbiguousTypes, PolyKinds #-}
 {-# LANGUAGE FunctionalDependencies, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+{-# LANGUAGE LambdaCase #-}
 -- | This module provides monadic operations shared between many analyses.
 --
 -- To make instantiations for combinations of these typeclasses easier, this module also provides an abstraction based on Monad **layers**.
@@ -26,8 +27,10 @@ module Analysis.Monad(
  runCallBottomT,
  runNonDetT,
  runIdentityDebug,
+ runJoinT,
  -- Types for implementations
- NonDetT
+ NonDetT,
+ JoinT,
 ) where
 
 import Analysis.Environment
@@ -36,12 +39,12 @@ import Control.Monad.Join
 import Control.Monad.State hiding (mzero)
 import Control.Monad.State.SVar (SVar)
 import qualified Control.Monad.State.SVar as SVar
-import Control.Monad.DomainError 
+import Control.Monad.DomainError
 import Syntax.Scheme.AST
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain hiding (Exp)
-import Lattice 
+import Lattice
 import qualified Analysis.Store as Store
 import Control.Monad.Layer
 import Control.Monad.Trans.Maybe
@@ -49,7 +52,10 @@ import Control.Monad.Writer hiding (mzero)
 import GHC.TypeError
 import Data.Functor.Identity
 import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Maybe
 import ListT
+import Control.Applicative (liftA2)
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -194,7 +200,7 @@ runErr' = fmap fst . runErr
 newtype StoreT t adr v m a = StoreT { getStoreT :: StateT (Map adr v) m a }
                               deriving (Applicative, Functor, Monad, MonadState (Map adr v), MonadLayer)
 
-instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT t adr v m) where 
+instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT t adr v m) where
    mjoin (StoreT ma) (StoreT mb) = StoreT $ mjoin ma mb
    mzero = StoreT mzero
 
@@ -206,27 +212,28 @@ instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT
 instance (Monad t, Address adr, StoreM (Lower t) w adr v, MonadLayer t) => StoreM t w adr v where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
-   lookupAdr  =  upperM .  lookupAdr 
+   lookupAdr  =  upperM .  lookupAdr
 
 runStoreT :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
 
 ---
 
--- newtype StoreT' t adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
---                               deriving (Applicative, Functor, Monad, MonadState (Map adr (SVar v)), MonadLayer)
--- 
--- instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT' t adr v m) where 
---    mjoin (StoreT' ma) (StoreT' mb) = StoreT' $ mjoin ma mb
---    mzero = StoreT' mzero
--- 
--- instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT' t adr v m) t adr v where
---    writeAdr adr vlu = modify (Store.extendSto adr vlu)
---    updateAdr adr vlu = modify (Store.updateSto adr vlu)
---    lookupAdr = gets  . Store.lookupSto
--- 
--- runStoreT' :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
--- runStoreT' initialSto = flip runStateT initialSto . getStoreT
+newtype StoreT' t adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
+                              deriving (Applicative, Functor, Monad, MonadState (Map adr (SVar v)), MonadLayer)
+
+instance {-# OVERLAPPING #-} (Monad m, SVar.MonadStateVar m, JoinLattice v, Ord adr) => StoreM (StoreT' t adr v m) t adr v where
+   writeAdr adr vlu =
+      gets (Map.lookup adr) >>=
+         maybe (SVar.new vlu >>= modify . Map.insert adr)
+               (void . SVar.modify joinOld)
+       where joinOld vlu' = if subsumes vlu' vlu then Nothing else Just (Lattice.join vlu vlu')
+   updateAdr = writeAdr
+   lookupAdr adr =
+      gets (Map.lookup adr) >>= maybe (pure bottom) SVar.read
+
+runStoreT' :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
+runStoreT' initialSto = flip runStateT initialSto . getStoreT
 
 --
 -- Allocator
@@ -273,7 +280,7 @@ newtype CallBottomT m a = CallBottomT { getCallBottomT :: m a }
                         deriving (Applicative, Functor, Monad)
 
 instance {-# OVERLAPPING #-} (Monad m, JoinLattice v) => CallM (CallBottomT m) env v where
-   call _ = CallBottomT $ return bottom 
+   call _ = CallBottomT $ return bottom
 
 instance (MonadJoin m) => MonadJoin (CallBottomT m) where
    mzero = CallBottomT mzero
@@ -286,6 +293,28 @@ instance (Monad m) => MonadLayer (CallBottomT m) where
 
 runCallBottomT :: CallBottomT m a -> m a
 runCallBottomT (CallBottomT ma) = ma
+
+--
+-- JoinT
+--
+
+-- | Join multiple paths together by joining their 
+-- state together using a JoinLattice, anything 
+-- below this will not be joined together and 
+-- is assumed to be global across all paths
+newtype JoinT m a = JoinT (m a) deriving (Applicative, Monad, Functor)
+
+instance (Monad m) => MonadLayer (JoinT m) where
+   type Lower (JoinT m) = m
+   upperM = JoinT
+   lowerM f (JoinT ma) = JoinT $ f ma
+
+instance (Monad m) => MonadJoin (JoinT m) where
+   mzero = return bottom
+   mjoin = liftA2 Lattice.join
+
+runJoinT :: JoinT m a -> m a
+runJoinT (JoinT ma) = ma
 
 -- 
 -- NonDetT
@@ -300,6 +329,6 @@ instance (Monad m) => MonadJoin (NonDetT m) where
    mjoin (NonDetT ma) (NonDetT mb) = NonDetT $ ma `mplus` mb
 
 runNonDetT :: Monad m => NonDetT m a -> m [a]
-runNonDetT (NonDetT ma) = uncons ma >>= fix' 
+runNonDetT (NonDetT ma) = uncons ma >>= fix'
    where fix' Nothing         = return []
          fix' (Just (x, mxs)) = fmap (x:) (uncons mxs >>= fix')

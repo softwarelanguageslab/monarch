@@ -9,6 +9,7 @@ module Control.Fixpoint.EffectDriven where
 import Control.Monad.State.SVar
 import Control.Monad.State.IntPool
 import Control.Fixpoint.WorkList
+import Control.Monad.Cond
 
 
 import Data.Set (Set)

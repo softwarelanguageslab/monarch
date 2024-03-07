@@ -20,3 +20,4 @@ whenM mb m = mb >>= (`when` m)
 
 otherwiseM :: Monad m => m Bool 
 otherwiseM = return True
+
