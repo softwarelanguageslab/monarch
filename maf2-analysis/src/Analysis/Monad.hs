@@ -19,6 +19,7 @@ module Analysis.Monad(
  deref,
  -- Implementations
  runStoreT,
+ runStoreT',
  runEnv,
  runCtx,
  runErr,
@@ -53,7 +54,6 @@ import GHC.TypeError
 import Data.Functor.Identity
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Maybe
 import ListT
 import Control.Applicative (liftA2)
 
@@ -232,6 +232,10 @@ instance {-# OVERLAPPING #-} (Monad m, SVar.MonadStateVar m, JoinLattice v, Ord 
    lookupAdr adr =
       gets (Map.lookup adr) >>= maybe (pure bottom) SVar.read
 
+instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT' t adr v m) where
+   mjoin (StoreT' ma) (StoreT' mb) = StoreT' $ mjoin ma mb
+   mzero = StoreT' mzero
+
 runStoreT' :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
 runStoreT' initialSto = flip runStateT initialSto . getStoreT
 
@@ -300,7 +304,7 @@ runCallBottomT (CallBottomT ma) = ma
 
 -- | Join multiple paths together by joining their 
 -- state together using a JoinLattice, anything 
--- below this will not be joined together and 
+-- below this on the stack will not be joined together and 
 -- is assumed to be global across all paths
 newtype JoinT m a = JoinT (m a) deriving (Applicative, Monad, Functor)
 

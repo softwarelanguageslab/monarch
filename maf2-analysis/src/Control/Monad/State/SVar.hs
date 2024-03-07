@@ -32,6 +32,7 @@ import Unsafe.Coerce
 import Prelude hiding (read)
 import Data.Bifunctor (second)
 import Control.Monad.Cond
+import Lattice (Joinable(..), JoinLattice(..))
 
 -- Holds dynamic data
 data SomeVal where
@@ -41,6 +42,15 @@ unsafeCoerceVal :: SomeVal -> a
 unsafeCoerceVal (SomeVal a) = unsafeCoerce a
 
 newtype SVar a = SVar { getSVar :: Int } deriving (Eq, Ord)
+
+-- NOTE: SVars are actually NOT joinable, 
+-- but they must be able to be used in MonadJoin.
+-- TODO: Check whether we can encode at the type level 
+-- if the JoinT monad is used at the bottom or not.
+instance Joinable (SVar a) where
+   join = error "cannot join svars"
+instance JoinLattice (SVar a) where
+   bottom = error "svar does not have bottom"
 
 class (Monad m) => MonadStateVar m where
   -- | Create a new state variable

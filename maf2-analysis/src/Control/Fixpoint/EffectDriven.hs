@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- | An effect-driven fixpoint algorithm. 
 --
 -- It uses an SVar based state to drive its algorithm by
@@ -10,6 +12,7 @@ import Control.Monad.State.SVar
 import Control.Monad.State.IntPool
 import Control.Fixpoint.WorkList
 import Control.Monad.Cond
+import Control.Monad.Layer
 
 
 import Data.Set (Set)
@@ -20,6 +23,16 @@ import Control.Monad.State
 import qualified Control.Monad.State as ST
 import Control.Monad.Writer
 import Data.Maybe
+
+------------------------------------------------------------
+-- EffectM
+------------------------------------------------------------
+
+class Monad m => EffectM m c | m -> c where   
+   spawn :: c -> m ()
+
+instance (MonadLayer m, Monad m, EffectM (Lower m) c) => EffectM m c where
+   spawn = upperM . spawn
 
 ------------------------------------------------------------
 -- EffectT
@@ -38,6 +51,9 @@ emptyEffectState = EffectState Set.empty Map.empty
 newtype EffectT c wl m a =
    EffectT (StateT (EffectState c wl) (WriterT (Set c) (TrackingStateVarT (StateVarT (IntegerPoolT m)))) a)
    deriving (Applicative, Functor, Monad, MonadState (EffectState c wl), MonadWriter (Set c))
+
+instance {-# OVERLAPPING #-} (Ord c, Monad m) => EffectM (EffectT c wl m) c where
+   spawn = tell . Set.singleton
 
 integrate :: (Ord c, WorkList wl)
           => c
@@ -74,6 +90,7 @@ loop analyze =
          )
       ST.modify (integrate e r w spawns)
       loop analyze)
+
 
 iterate :: (Monad m, Ord c, WorkList wl)
         => c                            -- ^ the initial component
