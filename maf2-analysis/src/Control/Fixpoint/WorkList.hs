@@ -4,6 +4,8 @@ import Data.Kind
 
 -- | WorkList typeclass
 class WorkList wl where
+   peek :: wl e -> Maybe e
+   peek wl = if isEmpty wl then Nothing else Just (fst (remove wl))
    add :: e -> wl e -> wl e
    remove :: wl e -> (e, wl e)
    isEmpty :: wl e -> Bool
