@@ -209,7 +209,7 @@ instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    lookupAdr = gets  . Store.lookupSto
 
-instance (Monad t, Address adr, StoreM (Lower t) w adr v, MonadLayer t) => StoreM t w adr v where
+instance (Monad t, StoreM (Lower t) w adr v, MonadLayer t) => StoreM t w adr v where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
    lookupAdr  =  upperM .  lookupAdr
@@ -225,12 +225,13 @@ newtype StoreT' t adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) 
 instance {-# OVERLAPPING #-} (Monad m, SVar.MonadStateVar m, JoinLattice v, Ord adr) => StoreM (StoreT' t adr v m) t adr v where
    writeAdr adr vlu =
       gets (Map.lookup adr) >>=
-         maybe (SVar.new vlu >>= modify . Map.insert adr)
+         maybe (SVar.new vlu >>= (\var -> modify (Map.insert adr var) >> void (SVar.modify (const (Just vlu)) var)))
                (void . SVar.modify joinOld)
        where joinOld vlu' = if subsumes vlu' vlu then Nothing else Just (Lattice.join vlu vlu')
    updateAdr = writeAdr
    lookupAdr adr =
-      gets (Map.lookup adr) >>= maybe (pure bottom) SVar.read
+         gets (Map.lookup adr) >>= maybe (SVar.depend bottom >>= insert) SVar.read
+      where insert var = modify (Map.insert adr var) >> return bottom
 
 instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT' t adr v m) where
    mjoin (StoreT' ma) (StoreT' mb) = StoreT' $ mjoin ma mb

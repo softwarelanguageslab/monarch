@@ -34,6 +34,8 @@ import Prelude hiding (read)
 import Data.Bifunctor (second)
 import Control.Monad.Cond
 import Lattice (Joinable(..), JoinLattice(..))
+import Debug.Trace
+import Control.Arrow ((&&&), (>>>), Kleisli(..))
 
 -- Holds dynamic data
 data SomeVal where
@@ -42,7 +44,7 @@ data SomeVal where
 unsafeCoerceVal :: SomeVal -> a
 unsafeCoerceVal (SomeVal a) = unsafeCoerce a
 
-newtype SVar a = SVar { getSVar :: Int } deriving (Eq, Ord)
+newtype SVar a = SVar { getSVar :: Int } deriving (Eq, Ord, Show)
 
 -- NOTE: SVars are actually NOT joinable, 
 -- but they must be able to be used in MonadJoin.
@@ -67,6 +69,14 @@ class (Monad m) => MonadStateVar m where
 
   -- |  Read the current value from the SVar
   read :: SVar a -> m a
+
+  -- | Same as 'new' but also signals 
+  -- a dependency on the SVar
+  depend :: a -> m (SVar a)
+  depend vlu = do
+    var <- new vlu
+    vlu <- read var
+    return var
 
 instance (Monad m, MonadLayer m, MonadStateVar (Lower m)) => MonadStateVar m where
    new = upperM . new
@@ -117,7 +127,7 @@ instance {-# OVERLAPPING #-} (MonadIntegerPool m) => MonadStateVar (StateVarT m)
 -- | Unify a map of SVars to a map of the values stored at these SVars 
 -- for a given VarState
 unify :: (Ord a) => Map a (SVar b) -> VarState -> Map a b
-unify m st = 
+unify m st =
    Map.fromList $ map
       (second $ unsafeCoerceVal . fromJust . flip Map.lookup (state st) . getSVar) (Map.toList m)
 
@@ -137,16 +147,18 @@ type RDep = Dep
 type WDep = Dep
 
 -- | State for tracking of dependencies
-data TrackingState = TrackingState {wdep :: Set WDep, rdep :: Set RDep}
+data TrackingState = TrackingState {wdep :: Set WDep, rdep :: Set RDep} deriving (Show)
 
 emptyTrackingState :: TrackingState
 emptyTrackingState = TrackingState Set.empty Set.empty
 
 trigger :: WDep -> TrackingState -> TrackingState
-trigger dep st = st {wdep = Set.insert dep (wdep st)}
+trigger dep st =
+   trace ("trigger " ++ show dep) $ st {wdep = Set.insert dep (wdep st)}
 
 register :: WDep -> TrackingState -> TrackingState
-register dep st = st {rdep = Set.insert dep (rdep st)}
+register dep st =
+   trace ("register " ++ show dep) $ st {rdep = Set.insert dep (rdep st)}
 
 -- | Monad that intercepts changes
 -- to SVar and tracks their reads and writes
@@ -165,8 +177,10 @@ runTrackingStateVarT :: (Monad m) => TrackingStateVarT m a -> m a
 runTrackingStateVarT (TrackingStateVarT ma) = ST.evalStateT ma emptyTrackingState
 
 instance {-# OVERLAPPING #-} (MonadStateVar m) => MonadStateVar (TrackingStateVarT m) where
-  new = lift . new
+  new = lift . new 
+
   modify f var@(SVar i) =
+    trace (show var) $
     ifM
       (lift (modify f var))
       {- then -} (ST.modify (trigger (Dep i)) >> return True)

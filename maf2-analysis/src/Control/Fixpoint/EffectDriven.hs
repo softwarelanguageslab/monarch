@@ -22,6 +22,7 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import qualified Control.Monad.State as ST
 import Control.Monad.Writer
+import Debug.Trace
 import Data.Maybe
 
 ------------------------------------------------------------
@@ -71,7 +72,7 @@ modifyWl f st = (a, st { wl = wl' })
 
 newtype EffectT c wl m a =
    EffectT (StateT (EffectState c wl) (WriterT (Set c) (TrackingStateVarT (StateVarT (IntegerPoolT m)))) a)
-   deriving (Applicative, Functor, Monad, MonadState (EffectState c wl), MonadWriter (Set c))
+   deriving (Applicative, Functor, Monad, MonadState (EffectState c wl), MonadWriter (Set c), MonadLayer)
 
 instance {-# OVERLAPPING #-} (Ord c, WorkList wl, Monad m) => EffectM (EffectT c (wl c) m) c where
    spawn = tell . Set.singleton
@@ -80,7 +81,7 @@ instance {-# OVERLAPPING #-} (Ord c, WorkList wl, Monad m) => EffectM (EffectT c
             (v, spawns) <- listen ma
             trackState  <- EffectT $ lift $ lift getDeps
             EffectT $ lift $ lift resetTracking
-            return (v, rdep trackState, wdep trackState, spawns)
+            trace (show trackState) $ return (v, rdep trackState, wdep trackState, spawns)
          )
        ST.modify (integrate c r w spawns)
        return v
