@@ -236,8 +236,8 @@ instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT' t adr v 
    mjoin (StoreT' ma) (StoreT' mb) = StoreT' $ mjoin ma mb
    mzero = StoreT' mzero
 
-runStoreT' :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
-runStoreT' initialSto = flip runStateT initialSto . getStoreT
+runStoreT' :: forall t adr v m a . StoreT' t adr v m a -> m (a, Map adr (SVar v))
+runStoreT' = flip runStateT Map.empty . getStoreT'
 
 --
 -- Allocator
