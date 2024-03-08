@@ -154,11 +154,11 @@ emptyTrackingState = TrackingState Set.empty Set.empty
 
 trigger :: WDep -> TrackingState -> TrackingState
 trigger dep st =
-   trace ("trigger " ++ show dep) $ st {wdep = Set.insert dep (wdep st)}
+   st {wdep = Set.insert dep (wdep st)}
 
 register :: WDep -> TrackingState -> TrackingState
 register dep st =
-   trace ("register " ++ show dep) $ st {rdep = Set.insert dep (rdep st)}
+   st {rdep = Set.insert dep (rdep st)}
 
 -- | Monad that intercepts changes
 -- to SVar and tracks their reads and writes
@@ -180,7 +180,6 @@ instance {-# OVERLAPPING #-} (MonadStateVar m) => MonadStateVar (TrackingStateVa
   new = lift . new 
 
   modify f var@(SVar i) =
-    trace (show var) $
     ifM
       (lift (modify f var))
       {- then -} (ST.modify (trigger (Dep i)) >> return True)
