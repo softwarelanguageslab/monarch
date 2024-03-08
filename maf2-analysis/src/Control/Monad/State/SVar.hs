@@ -16,6 +16,7 @@ module Control.Monad.State.SVar
     resetTracking,
     getDeps,
     SVar,
+    unify
   )
 where
 
