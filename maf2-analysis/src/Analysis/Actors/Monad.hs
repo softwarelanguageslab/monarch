@@ -3,7 +3,6 @@ module Analysis.Actors.Monad(ActorEvalM(..), ActorLocalM(..), ActorGlobalM(..), 
 
 import Syntax.Scheme.AST
 -- use the monads from the base-semantics
-import Analysis.Monad
 import Analysis.Scheme.Monad
 import Analysis.Actors.Mailbox
 import Domain.Scheme hiding (Exp)
@@ -83,3 +82,7 @@ instance (MonadLayer m, ActorLocalM (Lower m) ref msg) => ActorLocalM m ref msg 
 -- in the monadic context
 runActorT :: Functor m => mb -> ref -> ActorT mb ref msg m a -> m (a, mb)
 runActorT initialMailbox selfRef (ActorT ma) = runReaderT (fmap (second mailbox) (runStateT ma (ActorState initialMailbox))) selfRef
+
+------------------------------------------------------------
+-- ActorSystemT
+------------------------------------------------------------

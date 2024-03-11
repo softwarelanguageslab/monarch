@@ -13,6 +13,7 @@ import Control.Monad.State.IntPool
 import Control.Fixpoint.WorkList
 import Control.Monad.Cond
 import Control.Monad.Layer
+import Control.Monad.State.Scoped
 
 import Prelude hiding (iterate)
 import Data.Set (Set)
@@ -109,13 +110,13 @@ integrate c r w s st = st {
          newCmps   = Set.union toAnalyze spawns'
 
 
-loop :: forall c m . (Ord c, EffectM m c) => (c -> m ()) -> m ()
+loop :: forall c m . (Ord c, MonadScopedState m, EffectM m c) => (c -> m ()) -> m ()
 loop analyze =
       ifM done
       {- then -} (return ())
-      {- then -} (next >>= (\c -> intra c (analyze c)) >> loop analyze)
+      {- then -} (next >>= (\c -> scoped (intra c (analyze c)) >> loop analyze))
 
-iterate :: (Ord c, EffectM m c)
+iterate :: (Ord c, MonadScopedState m, EffectM m c)
         =>(c -> m ()) -- ^ analysis function
         -> m ()
 iterate = loop
