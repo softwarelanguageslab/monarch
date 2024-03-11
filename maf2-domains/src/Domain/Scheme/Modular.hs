@@ -38,21 +38,6 @@ maybeSingle (Just v) = Set.singleton v
 a ∪ b = Set.union a b
 infixl 0 ∪
 
-
--- NOTE: below is an unused refactoring of the modular domain by using the representation 
--- in Data.TypeLevel.HMap 
---
--- This representation provides a sparse labeled product lattice which is both time and space
--- efficient. However, this refactoring is not yet completed, hence why it is unused.
---
--- The new representation is meant to be a drop⁻in replacement for the existing one.
--- A type alias 'ModularSchemeValue' with the same type parameters as before will be provided.
--- This type alias when then instantiate a map with the correct 'SchemeConfKey's for the given
--- parameters.
---
--- The currently used implementation can be found below and is marked as "Original implementation".
-
-
 ----------------------------------------------
 -- Lattice configuration
 ----------------------------------------------
