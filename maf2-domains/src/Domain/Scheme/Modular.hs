@@ -12,21 +12,17 @@ import Control.Monad.DomainError
 import Control.Monad.AbstractM
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
-import Data.List hiding (null, length)
-import Data.Maybe (isJust, fromMaybe)
-import GHC.Generics
+import Data.Maybe (fromMaybe)
 import Control.Applicative (Applicative(liftA2))
 import Data.Set (Set)
-import Data.Default
 import qualified Data.Set as Set
-import Control.Monad ((>=>), (<=<))
+import Control.Monad ((>=>))
 import qualified Control.Monad as M
 
 import Data.Kind
 import Data.Singletons
 import Data.Singletons.Sigma
 
-import Lattice.HMapLattice
 import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith, MapWithAt, BindingFrom)
 import qualified Data.TypeLevel.HMap as HMap
 
@@ -55,6 +51,7 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | PaiConf    -- ^ type of pair pointers
                    | VecConf    -- ^ type of vector pointers
                    | VarConf    -- ^ type of regular pointers
+                   | PidConf    -- ^ type of actor references
 
 ----------------------------------------------
 -- Modular Scheme lattice
@@ -72,6 +69,9 @@ data SchemeKey = RealKey
                | UnspKey
                | NilKey
                | PrimKey
+               -- λα
+               | PidKey
+               | BehKey 
                deriving (Ord, Eq)
 
 genHKeys ''SchemeKey
@@ -91,7 +91,10 @@ type Values m = '[
    UnspKey ::-> (),
    NilKey  ::-> (),
    CloKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
-   PrimKey  ::-> Set String
+   PrimKey ::-> Set String,
+   -- λα language
+   PidKey  ::-> Set (Assoc PidConf m),
+   BehKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m)
    ]
 
 
@@ -162,6 +165,13 @@ injectChar = SchemeVal . HMap.singleton @CharKey
 
 injectInt :: Assoc IntKey (Values m) -> SchemeVal m
 injectInt = SchemeVal . HMap.singleton @IntKey
+
+------------------------------------------------------------
+-- Shorthands 
+------------------------------------------------------------
+
+type Clo m = (Assoc ExpConf m, Assoc EnvConf m)
+type Beh m = (Assoc ExpConf m, Assoc EnvConf m)
 
 ------------------------------------------------------------
 -- Domains
