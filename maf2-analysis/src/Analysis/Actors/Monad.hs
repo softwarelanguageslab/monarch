@@ -5,16 +5,24 @@ import Syntax.Scheme.AST
 -- use the monads from the base-semantics
 import Analysis.Scheme.Monad
 import Analysis.Actors.Mailbox
+import qualified Analysis.Actors.Mailbox as MB
 import Domain.Scheme hiding (Exp)
 import Lattice
 
 import Control.Monad.Layer
 import Control.Monad.Join
+import Control.Monad.State.SVar (SVar)
+import qualified Control.Monad.State.SVar as SVar
 
 import qualified Data.Set as Set
-import Control.Monad.State (MonadState, StateT, gets, put, runStateT)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Control.Monad.State (MonadState, StateT, gets, put, runStateT, modify)
 import Control.Monad.Reader (MonadReader, ReaderT, ask, runReaderT)
 import Data.Bifunctor (second)
+import Data.Maybe
+import Control.Monad (void)
+
 
 class (SchemeM m v, ActorDomain v, ActorM m (ARef v) msg, Message msg v) => ActorEvalM m v msg | m -> msg where
    -- | Spawn a new actor with the given behavior, returns an actor reference
@@ -85,4 +93,31 @@ runActorT initialMailbox selfRef (ActorT ma) = runReaderT (fmap (second mailbox)
 
 ------------------------------------------------------------
 -- ActorSystemT
+------------------------------------------------------------
+
+type ActorSystemState ref mb = Map ref (SVar mb)
+
+-- | An actor system keeps track of the mailboxes
+-- of each actor in the system. For this is keeps
+-- a mapping from actor references to mailboxes
+-- 
+-- This mapping is implemented using SVars such 
+-- that dependencies between components of the 
+-- analysis can be automatically tracked and 
+-- an effect-driven worklist algorithm can be used.
+newtype ActorSystemT ref msg mb m a = ActorSystemT (StateT (ActorSystemState ref mb) m a)
+                         deriving (Functor, Applicative, Monad, MonadLayer, MonadState (ActorSystemState ref mb))
+
+instance (Ord ref, Mailbox mb msg, SVar.MonadStateVar m) => ActorGlobalM (ActorSystemT ref msg mb m) ref msg where
+   send ref msg = do
+      mb <- gets (Map.lookup ref) >>= maybe (upperM $ SVar.new MB.empty) pure
+      modify (Map.insert ref mb)
+      -- TODO: we should actually check whether the 
+      -- message should be added to the mailbox, it should 
+      -- not be added for example, if the approximation does 
+      -- not change.
+      void $ upperM $ SVar.modify (Just . enqueue msg) mb
+
+------------------------------------------------------------
+-- ActorEvalM instance
 ------------------------------------------------------------
