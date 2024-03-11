@@ -41,7 +41,7 @@ instance {-# OVERLAPPING #-} (MonadState s m, MonadScopedState m) => MonadScoped
       ScopedT (put st)
       return v
 
-instance MonadScopedState Identity where 
+instance {-# OVERLAPPING #-} MonadScopedState Identity where 
    scoped = id
 
 -- | Runs the given `runState` as a scoped version. 
