@@ -43,7 +43,7 @@ data Exp = Num Integer Span          -- ^ number literals
          | App Exp [Exp] Span        -- ^ application
          | Spw Exp [Exp] Span        -- ^ actor spawn 
          | Bec Exp [Exp] Span        -- ^ actor become 
-         | Sen Exp Exp [Exp] Span    -- ^ actor send 
+         | Sen Exp String [Exp] Span -- ^ actor send 
          | Beh [Ide] Exp Span        -- ^ actor behavior
          | Mir [Ide] Exp Span        -- ^ actor mirror
          | Rcv [Hdl] Span            -- ^ a receive block

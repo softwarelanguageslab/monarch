@@ -36,7 +36,7 @@ class Message m v | m -> v where
    -- | Extracts the message payload from the message 
    payload :: m -> [v]
    -- | Create a new message 
-   message :: v -> [v] -> m
+   message :: String -> [v] -> m
 
 
 -- | A message representation that consists of a message tag, a payload and an optional context

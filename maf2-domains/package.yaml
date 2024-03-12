@@ -58,7 +58,9 @@ library:
     - Domain.Scheme.Derived
     - Domain.Scheme.Derived.Pair
     - Domain.Scheme.Store
+    - Domain.Scheme.Modular
     - Domain.Python
+    - Domain.Scheme.Actors.Class
     - Domain.Erlang.Class
     - Lattice
     - Lattice.Class 

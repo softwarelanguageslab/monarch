@@ -20,7 +20,7 @@ eval :: ActorEvalM m v msg => Exp -> m v
 eval (Spw beh args _) = initBehavior beh args spawn
 eval (Bec beh args _) = initBehavior beh args become $> unsp
 eval (Sen rcpt tag args _) = do
-   message  <- message <$> Monad.eval tag <*> mapM Monad.eval args
+   message  <- message tag <$> mapM Monad.eval args
    Monad.eval rcpt >>= arefs (! message)
    return unsp
 eval (Rcv hdls _) = do

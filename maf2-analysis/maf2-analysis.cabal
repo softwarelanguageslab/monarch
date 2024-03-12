@@ -41,6 +41,7 @@ library
       Control.Fixpoint.WorkList
       Control.Fixpoint.EffectDriven
   other-modules:
+      Analysis.Actors
       Analysis.Actors.Mailbox
       Analysis.Actors.Monad
       Analysis.Actors.Semantics

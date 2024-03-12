@@ -110,19 +110,20 @@ integrate c r w s st = st {
          newCmps   = Set.union toAnalyze spawns'
 
 
-loop :: forall c m . (Ord c, MonadScopedState m, EffectM m c) => (c -> m ()) -> m ()
-loop analyze =
+loop :: forall c m state . (Ord c, MonadScopedState m, EffectM m c) => (c -> state -> m state) -> state -> m state
+loop analyze st  =
       ifM done
-      {- then -} (return ())
-      {- then -} (next >>= (\c -> scoped (intra c (analyze c)) >> loop analyze))
+      {- then -} (return st)
+      {- then -} (next >>= (\c -> scoped (intra c (analyze c st)) >>= loop analyze))
 
 iterate :: (Ord c, MonadScopedState m, EffectM m c)
-        =>(c -> m ()) -- ^ analysis function
-        -> m ()
+        => (c -> state -> m state) -- ^ analysis function
+        -> state                   -- ^ the initial state
+        -> m state
 iterate = loop
 
-runEffectT :: (Monad m, Ord c) => EffectT c (wl c) m a -> wl c -> m (a, VarState)
-runEffectT (EffectT ma) wl =
+runEffectT :: forall c m a wl .(Monad m, Ord c) => wl c -> EffectT c (wl c) m a -> m (a, VarState)
+runEffectT wl (EffectT ma) =
        runIntegerPoolT
     $  runStateVarT
     $  runTrackingStateVarT
