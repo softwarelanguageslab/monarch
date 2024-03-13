@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT) where
+module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT, receive) where
 
 import Syntax.Scheme.AST
 -- use the monads from the base-semantics
@@ -22,7 +22,7 @@ import Control.Monad.Reader (MonadReader (local), ReaderT(..), ask, runReaderT)
 import Control.Monad (void)
 import Data.Bifunctor (second)
 
-type ActorEvalM m v msg = (SchemeM m v, ActorDomain v, ActorM m (ARef v) msg, ActorBehaviorM m v, Message msg v)
+type ActorEvalM m v msg mb = (SchemeM m v, ActorDomain v, ActorM m (ARef v) msg mb, ActorBehaviorM m v, Message msg v)
 
 class ActorBehaviorM m v | m -> v where
    -- | Spawn a new actor with the given behavior, returns an actor reference
@@ -35,15 +35,22 @@ instance (MonadLayer m, ActorBehaviorM (Lower m) v) => ActorBehaviorM m v where
    spawn  = upperM . spawn
    become = upperM . become
 
-type ActorM m ref msg = (ActorLocalM m ref msg, ActorGlobalM m ref msg)
+type ActorM m ref msg mb = (ActorLocalM m ref msg mb, ActorGlobalM m ref msg)
 
 -- | Monadic context for actors, includes a mailbox 
 -- and a reference to the current process identifier
-class ActorLocalM m ref msg | m -> ref msg where
+class ActorLocalM m ref msg mb | m -> ref msg mb where
    -- | Retrieve a reference to the current actor pid
    self    :: m ref
    -- | Receive a message from the mailbox
-   receive :: m msg
+   receiveAll :: m [(msg, mb)]
+   -- | Put new mailbox
+   putMailbox :: mb -> m ()
+
+receive :: (MonadJoin m, ActorLocalM m ref msg mb, JoinLattice a) =>(msg -> m a) -> m a
+receive f = do 
+   msgs <- receiveAll
+   mjoins (map (\(msg, mb') -> putMailbox mb' >> f msg) msgs)
 
 class ActorGlobalM m ref msg | m -> ref msg where
    -- | Send a message to the given actor
@@ -69,7 +76,7 @@ newtype ActorState mb = ActorState { mailbox :: mb }
 -- | Basic implementation of the ActorM monad
 -- It keeps track of the mailbox and a self-reference using the state monad
 newtype ActorT mb ref msg m a =
-      ActorT { runActorT' :: StateT (ActorState mb) (ReaderT ref m) a }
+      ActorT { _runActorT' :: StateT (ActorState mb) (ReaderT ref m) a }
    deriving (Functor, Applicative, Monad, MonadReader ref, MonadState (ActorState mb))
 
 instance (Monad m) => MonadLayer (ActorT mb ref msg m) where
@@ -81,17 +88,15 @@ instance (JoinLattice mb, MonadJoin m) => MonadJoin (ActorT mb ref msg m) where
    mzero = ActorT mzero
    mjoin (ActorT ma) (ActorT mb) = ActorT $ mjoin ma mb
 
-instance {-# OVERLAPPING #-} (MonadJoin m, JoinLattice msg, Mailbox mb msg) => ActorLocalM (ActorT mb ref msg m) ref msg where
+instance {-# OVERLAPPING #-} (MonadJoin m, Mailbox mb msg) => ActorLocalM (ActorT mb ref msg m) ref msg mb where
    self    = ask
-   receive = do
-      rss <- gets (dequeue . mailbox)
-      (msg, mb') <- mjoins (map pure (Set.toList rss))
-      put (ActorState mb')
-      return msg
+   receiveAll = gets (Set.toList . dequeue . mailbox)
+   putMailbox = put . ActorState
 
-instance (MonadLayer m, ActorLocalM (Lower m) ref msg) => ActorLocalM m ref msg where
+instance (MonadLayer m, ActorLocalM (Lower m) ref msg mb) => ActorLocalM m ref msg mb where
    self = upperM self
-   receive = upperM receive
+   receiveAll = upperM receiveAll
+   putMailbox = upperM . putMailbox
 
 class ActorLocalMScoped m mb ref | m -> mb ref where
    withMailbox :: mb -> m a -> m a
@@ -140,5 +145,5 @@ instance {-# OVERLAPPING #-} (Ord ref, Mailbox mb msg, SVar.MonadStateVar m) => 
       -- not change.
       void $ upperM $ SVar.modify (Just . enqueue msg) mb
 
-runActorSystemT :: (Monad m) => ActorSystemState ref mb -> ActorSystemT ref msg mb m a -> m a
-runActorSystemT initial (ActorSystemT m) = evalStateT m initial
+runActorSystemT :: (Monad m) => ActorSystemState ref mb -> ActorSystemT ref msg mb m a -> m (a, Map ref (SVar mb))
+runActorSystemT initial (ActorSystemT m) = runStateT m initial

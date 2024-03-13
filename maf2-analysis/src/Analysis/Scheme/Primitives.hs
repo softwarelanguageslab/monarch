@@ -144,3 +144,4 @@ initialEnv alloc =
 initialSto :: forall v e adr . (SchemeDomain v, Environment e adr, Ord adr) => e -> Map adr v
 initialSto e =
    foldr (\nam -> Map.insert (Analysis.Environment.lookup nam e) (prim nam)) Map.empty primitiveNames
+

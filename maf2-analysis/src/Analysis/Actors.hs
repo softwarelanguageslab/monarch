@@ -1,9 +1,11 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use <&>" #-}
 module Analysis.Actors where
 
+
+import Analysis.Scheme.Primitives
 import Analysis.Actors.Mailbox
 import qualified Analysis.Actors.Mailbox as MB
 import Analysis.Actors.Monad
@@ -12,12 +14,11 @@ import qualified Analysis.Actors.Semantics as Actors
 import Analysis.Monad
 import Analysis.Scheme.Store
 import qualified Control.Fixpoint.EffectDriven as EF
-import Control.Monad (void)
+import Control.Monad (void, foldM)
 import Control.Monad.DomainError
 import Control.Monad.Join
 import Control.Monad.Layer
 import qualified Control.Monad.State.SVar as SVar
-import Control.Monad.State.Scoped
 import Data.Function ((&))
 import Data.Functor.Identity
 import Data.Map (Map)
@@ -33,16 +34,17 @@ import Domain.Scheme.Store
 import Lattice (CP)
 import Syntax.Scheme.AST
 import Data.Maybe
-import Data.Set (Set)
+import Data.Functor ((<&>))
 
 ------------------------------------------------------------
 -- Addresses
 ------------------------------------------------------------
 
 data Adr
-  = VarAdr Ide
+  = VarAdr  Ide
   | HeapAdr Exp
-  | RetAdr Component
+  | RetAdr  Component
+  | PrmAdr  String
   deriving (Ord, Eq, Show)
 
 data Pid
@@ -114,7 +116,7 @@ instance (Monad m) => MonadLayer (EvalT m) where
   upperM = EvalT
   layerM f' f = EvalT $ f' (runEvalT . f)
 
-instance (ActorEvalM (EvalT m) V Msg) => EvalM (EvalT m) V Exp where
+instance (ActorEvalM (EvalT m) V Msg MB) => EvalM (EvalT m) V Exp where
   eval = Actors.eval
 
 instance (Monad m, MonadEscape m, Esc m ~ Set DomainError) => MonadEscape (EvalT m) where
@@ -147,10 +149,10 @@ instance (Monad m) => MonadLayer (CallT m) where
   upperM = CallT
   lowerM f (CallT m) = CallT $ f m
 
-instance
+instance {-# OVERLAPPING #-}
   ( EF.EffectM m Component,
     CtxM m Ctx,
-    ActorLocalM m Pid Msg,
+    ActorLocalM m Pid Msg MB,
     StoreM m VrAdr Adr V,
     EnvM m Adr Env
   ) => CallM (CallT m) Env V where
@@ -168,58 +170,56 @@ runCallT' (CallT m) = m
 
 -- Actor spawns
 
-newtype SpawnT m a = SpawnT (m a) deriving (Applicative, Monad, Functor, MonadJoin)
-
-instance (Monad m) => MonadLayer (SpawnT m) where
-  type Lower (SpawnT m) = m
-  upperM = SpawnT
-  lowerM f (SpawnT m) = SpawnT $ f m
-
-instance (EvalM m V Exp, EnvM m Adr Env, EF.EffectM m Component) => ActorBehaviorM (SpawnT m) V where
+instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m Adr Env, EF.EffectM m Component) => ActorBehaviorM (EvalT m) V where
   spawn e = do
     env' <- getEnv
     upperM (EF.spawn (Actor (Pid e) e env'))
     return (aref (Pid e))
-  become = void . upperM . Analysis.Monad.eval
-
-runSpawnT :: SpawnT m a -> m a
-runSpawnT (SpawnT m) = m
+  become = void . Analysis.Monad.eval
 
 ------------------------------------------------------------
 -- Analysis
 ------------------------------------------------------------
 
--- analyze :: Exp -> SchemeStore V Adr Adr Adr Adr
--- analyze e = let _ = EF.iterate intra initialState
---                     & EF.runEffectT [Main e]
---                     & runIdentity
---             in undefined
---   where runIntra :: (SVar.MonadStateVar m) => Pid -> Exp -> Env -> State -> m State
---         runIntra pid exp' env (varSto, strSto, paiSto, vecSto, mailboxes) = do
---              (m, mailboxes') <- mailbox pid mailboxes
---              r <-   Analysis.Monad.eval exp'
---                     & runEvalT
---                     & runMayEscape @_ @(Set DomainError)
---                     & runCallT'
---                     & runSpawnT
---                     & runCtx ()
---                     & runEnv env
---                     & runAlloc @PaAdr (const . HeapAdr)
---                     & runAlloc @VeAdr (const . HeapAdr)
---                     & runAlloc @StAdr (const . HeapAdr)
---                     & runAlloc @VrAdr (const . VarAdr)
---                     & runActorT m pid
---                     & runJoinT
---                     & runStoreT' @Adr @_ @VrAdr varSto
---                     & runStoreT' @Adr @_ @StAdr strSto
---                     & runStoreT' @Adr @_ @PaAdr paiSto
---                     & runStoreT' @Adr @_ @VeAdr vecSto
---                     & runActorSystemT mailboxes'
---              return undefined
---         mailbox pid mailboxes = do
---             var <- maybe (SVar.depend Set.empty) pure (Map.lookup pid mailboxes)
---             mb  <- SVar.read var
---             return (mb, Map.insert pid var mailboxes)
---         intra (Main exp) = runIntra EntryPid exp undefined
---         intra (Actor pid exp env) = runIntra pid exp env
---         initialState = undefined
+analyze :: Exp -> SchemeStore V Adr Adr Adr Adr
+analyze e = let ((varSto, strSto, paiSto, vecSto, _), state) = (EF.setup initialState >>= EF.iterate intra)
+                    & EF.runEffectT [Main e]
+                    & runIdentity
+            in SchemeStore {
+                  values  = SVar.unify varSto state,
+                  strings = SVar.unify strSto state,
+                  pairs   = SVar.unify paiSto state,
+                  vecs    = SVar.unify vecSto state
+            }
+  where runIntra :: (EF.EffectM m Component, SVar.MonadStateVar m) => Pid -> Exp -> Env -> State -> m State
+        runIntra pid exp' env (varSto, strSto, paiSto, vecSto, mailboxes) = do
+             (m, mailboxes') <- mailbox pid mailboxes
+             r <-   Analysis.Monad.eval exp'
+                    & runEvalT
+                    & runMayEscape @_ @(Set DomainError)
+                    & runCallT'
+                    & runEnv env
+                    & runAlloc @PaAdr (const . HeapAdr)
+                    & runAlloc @VeAdr (const . HeapAdr)
+                    & runAlloc @StAdr (const . HeapAdr)
+                    & runAlloc @VrAdr (const . VarAdr)
+                    & runActorT m pid
+                    & runCtx ()
+                    & runJoinT
+                    & runStoreT' @Adr @_ @VrAdr varSto
+                    & runStoreT' @Adr @_ @StAdr strSto
+                    & runStoreT' @Adr @_ @PaAdr paiSto
+                    & runStoreT' @Adr @_ @VeAdr vecSto
+                    & runActorSystemT mailboxes'
+             let (((((_, varSto'), strSto'), paiSto'), vecSto'), mailboxes'') = r
+             return (varSto', strSto', paiSto', vecSto', mailboxes'')
+        mailbox pid mailboxes = do
+            var <- maybe (SVar.depend Set.empty) pure (Map.lookup pid mailboxes)
+            mb  <- SVar.read var
+            return (mb, Map.insert pid var mailboxes)
+        intra (Main expr) = runIntra EntryPid expr analysisEnv
+        intra (Actor pid expr env) = runIntra pid expr env
+        initialState = do
+            values <- foldM (\m (adr, v) -> SVar.new v <&> flip (Map.insert adr) m) Map.empty (Map.toList (initialSto analysisEnv))
+            return (values, Map.empty, Map.empty, Map.empty, Map.empty)
+        analysisEnv  = initialEnv PrmAdr
