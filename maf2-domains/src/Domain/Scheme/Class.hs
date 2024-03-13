@@ -58,9 +58,15 @@ class (RealDomain v,
   vptrs :: AbstractM m => v -> m (Set (VAdr v))
   sptrs :: AbstractM m => v -> m (Set (SAdr v))
 
+  -- | Inject a symbol in the abstract domain
+  symbol :: String -> v
+
   -- Closures
   injectClo :: (Exp v, Env v) -> v
   clos :: v -> Set (Exp v, Env v)
+
+  -- | Get the symbols contained within the abstract value 
+  symbols :: v -> Set String
 
   -- | Insert a `nil` / `null` value into the abstract domain
   nil :: v

@@ -21,6 +21,7 @@ eval ::  forall m v . (SchemeDomain v, SchemeM m v) => Exp -> m v
 eval (Num n _)            = return (inject n)
 eval (Bln b _)            = return (inject b)
 eval (Nll _)              = return nil
+eval (Sym s _)            = return (symbol s)
 eval e@(Str s _)          = stoStr e (inject s)
 eval (Var (Ide nam _))    = lookupEnv nam >>= lookupAdr
 eval (Iff prd csq alt _)  = 

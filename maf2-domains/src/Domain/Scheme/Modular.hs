@@ -69,6 +69,7 @@ data SchemeKey = RealKey
                | UnspKey
                | NilKey
                | PrimKey
+               | SymKey
                -- λα
                | PidKey
                | BehKey 
@@ -92,6 +93,7 @@ type Values m = '[
    NilKey  ::-> (),
    CloKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
    PrimKey ::-> Set String,
+   SymKey  ::-> Set String,
    -- λα language
    PidKey  ::-> Set (Assoc PidConf m),
    BehKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m)
@@ -381,6 +383,10 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
    -- Null
    nil = SchemeVal $ HMap.singleton @NilKey ()
 
+   -- Symbols
+   symbol  = SchemeVal . HMap.singleton @SymKey . Set.singleton
+   symbols = fromMaybe Set.empty . HMap.get @SymKey . getSchemeVal
+
    -- Unspecified
    unsp = SchemeVal $ HMap.singleton @UnspKey ()
 
@@ -392,8 +398,9 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
    withProc :: forall schemeM a . (AbstractM schemeM, JoinLattice a) => (Either String (Exp (SchemeVal m), Env (SchemeVal m)) -> schemeM a) -> SchemeVal m ->  schemeM a
    withProc f = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM a
-            select SCloKey clos = Set.foldr (mjoin . f . Right) mzero clos
+            select SCloKey clos' = Set.foldr (mjoin . f . Right) mzero clos'
             select SPrimKey prs = Set.foldr (mjoin . f . Left) mzero prs
+            select _ _ = escape WrongType
 
    -- Predicates
    isInteger = HMap.member @IntKey  . getSchemeVal
