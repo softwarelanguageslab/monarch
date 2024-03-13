@@ -191,10 +191,10 @@ analyze e = let ((varSto, strSto, paiSto, vecSto, _), state) = (EF.setup initial
                   pairs   = SVar.unify paiSto state,
                   vecs    = SVar.unify vecSto state
             }
-  where runIntra :: (EF.EffectM m Component, SVar.MonadStateVar m) => Pid -> Exp -> Env -> State -> m State
-        runIntra pid exp' env (varSto, strSto, paiSto, vecSto, mailboxes) = do
+  where runIntra :: (EF.EffectM m Component, SVar.MonadStateVar m) => Component -> Pid -> Exp -> Env -> State -> m State
+        runIntra cmp pid exp' env (varSto, strSto, paiSto, vecSto, mailboxes) = do
              (m, mailboxes') <- mailbox pid mailboxes
-             r <-   Analysis.Monad.eval exp'
+             r <-   (Analysis.Monad.eval exp' >>= writeAdr (RetAdr cmp))
                     & runEvalT
                     & runMayEscape @_ @(Set DomainError)
                     & runCallT'
@@ -217,8 +217,8 @@ analyze e = let ((varSto, strSto, paiSto, vecSto, _), state) = (EF.setup initial
             var <- maybe (SVar.depend Set.empty) pure (Map.lookup pid mailboxes)
             mb  <- SVar.read var
             return (mb, Map.insert pid var mailboxes)
-        intra (Main expr) = runIntra EntryPid expr analysisEnv
-        intra (Actor pid expr env) = runIntra pid expr env
+        intra cmp@(Main expr) = runIntra cmp EntryPid expr analysisEnv
+        intra cmp@(Actor pid expr env) = runIntra cmp pid expr env
         initialState = do
             values <- foldM (\m (adr, v) -> SVar.new v <&> flip (Map.insert adr) m) Map.empty (Map.toList (initialSto analysisEnv))
             return (values, Map.empty, Map.empty, Map.empty, Map.empty)

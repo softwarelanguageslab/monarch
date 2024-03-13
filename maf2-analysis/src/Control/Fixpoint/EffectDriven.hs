@@ -87,7 +87,7 @@ instance {-# OVERLAPPING #-} (Ord c, WorkList wl, Monad m) => EffectM (EffectT c
             (v, spawns) <- listen ma
             trackState  <- EffectT $ lift $ lift $ lift getDeps
             EffectT $ lift $ lift $ lift resetTracking
-            trace (show trackState) $ return (v, rdep trackState, wdep trackState, spawns)
+            return (v, rdep trackState, wdep trackState, spawns)
          )
        ST.modify (integrate c r w spawns)
        return v

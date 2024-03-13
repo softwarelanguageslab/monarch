@@ -231,6 +231,15 @@ compile e@(SExp.Atom "let" _ ::: _ ::: _) = lettish Let e
 compile e@(SExp.Atom "let*" _ ::: _ ::: _) = lettish Ltt e
 compile e@(SExp.Atom "letrec" _ ::: _ ::: _) = lettish Ltr e
 compile e@(SExp.Atom "letrec*" _ ::: _ ::: _) = lettish Lrr e
+-- λact
+compile e@(SExp.Atom "behavior" _ ::: prs ::: handlers) =
+   Beh <$> (fst <$> compileParams prs) <*> compileHandlers handlers <*> pure (SExp.spanOf e)
+compile e@(SExp.Atom "send" _ ::: rcpt ::: (SExp.Atom tag _) ::: payloads) =   
+   Sen <$> compile rcpt <*> pure tag <*> compileSequence payloads <*> pure (SExp.spanOf e)
+compile e@(SExp.Atom "become" _ ::: beh ::: ags) =
+   Bec <$> compile beh <*> compileSequence ags <*> pure (SExp.spanOf e)
+compile e@(SExp.Atom "spawn" _ ::: beh ::: ags)  =
+   Spw <$> compile beh <*> compileSequence ags <*> pure (SExp.spanOf e)
 -- quotes
 compile (SExp.Quo exp _) = local (const False) (compileQuoted exp)
 compile (SExp.Qua exp _) = local (const True)  (compileQuoted exp)
@@ -280,6 +289,11 @@ compileQuoted (SExp.Quo e s) = do
    compiledE <- compileQuoted e
    return $ App (Var (Ide "cons" s)) [Sym "quote" s, compiledE] s
 
+
+compileHandlers :: (MonadReader Bool m, MonadError String m) => SExp.SExp -> m Exp
+compileHandlers hdls = Rcv <$> sequence (SExp.smap compileHandler hdls) <*> pure (SExp.spanOf hdls)
+   where compileHandler (SExp.Atom tag spn ::: ags ::: bdy) = 
+            Hdl (Ide tag spn) <$> (fst <$> compileParams ags) <*> (begin <$> compileSequence bdy)
 
 --
 
