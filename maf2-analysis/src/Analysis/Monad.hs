@@ -294,7 +294,7 @@ instance (MonadJoin m) => MonadJoin (CallBottomT m) where
 instance (Monad m) => MonadLayer (CallBottomT m) where
    type Lower (CallBottomT m) = m
    upperM = CallBottomT
-   lowerM f (CallBottomT m) = CallBottomT $ f m
+   layerM f' f = CallBottomT $ f' (getCallBottomT . f)
 
 runCallBottomT :: CallBottomT m a -> m a
 runCallBottomT (CallBottomT ma) = ma
@@ -307,12 +307,12 @@ runCallBottomT (CallBottomT ma) = ma
 -- state together using a JoinLattice, anything 
 -- below this on the stack will not be joined together and 
 -- is assumed to be global across all paths
-newtype JoinT m a = JoinT (m a) deriving (Applicative, Monad, Functor)
+newtype JoinT m a = JoinT { getJoinT :: m a } deriving (Applicative, Monad, Functor) 
 
 instance (Monad m) => MonadLayer (JoinT m) where
    type Lower (JoinT m) = m
    upperM = JoinT
-   lowerM f (JoinT ma) = JoinT $ f ma
+   layerM f' f = JoinT $ f' (getJoinT . f)
 
 instance (Monad m) => MonadJoin (JoinT m) where
    mzero = return bottom

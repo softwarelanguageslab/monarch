@@ -27,11 +27,12 @@ class MonadScopedState m where
 instance (MonadLayer m, MonadScopedState (Lower m)) => MonadScopedState m where
    scoped = lowerM scoped
 
-newtype ScopedT m a = ScopedT (m a) deriving (Functor, Applicative, Monad, MonadJoin)
+newtype ScopedT m a = ScopedT { getScoped :: m a } deriving (Functor, Applicative, Monad, MonadJoin)
 
 instance (Monad m) => MonadLayer (ScopedT m) where
    type Lower (ScopedT m) = m
    lowerM f (ScopedT m) = ScopedT $ f m
+   layerM f' f = ScopedT $ f' (getScoped . f)
    upperM = ScopedT
 
 instance {-# OVERLAPPING #-} (MonadState s m, MonadScopedState m) => MonadScopedState (ScopedT m) where

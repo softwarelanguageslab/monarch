@@ -17,9 +17,10 @@ import qualified Control.Monad.State.SVar as SVar
 import qualified Data.Set as Set
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Control.Monad.State (MonadState, StateT, gets, put, runStateT, modify, evalStateT)
-import Control.Monad.Reader (MonadReader (local), ReaderT, ask, runReaderT)
+import Control.Monad.State (MonadState, StateT(..), gets, put, runStateT, modify, evalStateT)
+import Control.Monad.Reader (MonadReader (local), ReaderT(..), ask, runReaderT)
 import Control.Monad (void)
+import Data.Bifunctor (second)
 
 type ActorEvalM m v msg = (SchemeM m v, ActorDomain v, ActorM m (ARef v) msg, ActorBehaviorM m v, Message msg v)
 
@@ -73,7 +74,7 @@ newtype ActorT mb ref msg m a =
 
 instance (Monad m) => MonadLayer (ActorT mb ref msg m) where
    type Lower (ActorT mb ref msg m) = m
-   lowerM f = ActorT . lowerM (lowerM f) . runActorT'
+   layerM f' f = ActorT $ StateT $ \st -> ReaderT $ \r -> f' (runActorT (mailbox st) r . f)
    upperM = ActorT . upperM  . upperM
 
 instance (JoinLattice mb, MonadJoin m) => MonadJoin (ActorT mb ref msg m) where
@@ -98,8 +99,8 @@ class ActorLocalMScoped m mb ref | m -> mb ref where
 instance (MonadLayer m, ActorLocalMScoped (Lower m) mb ref ) => ActorLocalMScoped m mb ref where
    withMailbox mailbox = lowerM (withMailbox mailbox)
    withSelf ref = lowerM (withSelf ref)
-instance (Monad m) => ActorLocalMScoped (ActorT mb ref msg m) mb ref where   
-   withMailbox mb' m = do 
+instance (Monad m) => ActorLocalMScoped (ActorT mb ref msg m) mb ref where
+   withMailbox mb' m = do
       mb <- gets mailbox
       put (ActorState mb')
       v <- m
@@ -109,8 +110,8 @@ instance (Monad m) => ActorLocalMScoped (ActorT mb ref msg m) mb ref where
 
 -- | Add he ActorT monad to the stack to provide a mailbox and a reference to "self"
 -- in the monadic context
-runActorT :: forall mb m ref msg a . Functor m => mb -> ref -> ActorT mb ref msg m a -> m a
-runActorT initialMailbox selfRef (ActorT ma) = runReaderT (fmap fst (runStateT ma (ActorState initialMailbox))) selfRef
+runActorT :: forall mb m ref msg a . Functor m => mb -> ref -> ActorT mb ref msg m a -> m (a, ActorState mb)
+runActorT initialMailbox selfRef (ActorT ma) = runReaderT (runStateT ma (ActorState initialMailbox)) selfRef
 
 ------------------------------------------------------------
 -- ActorSystemT

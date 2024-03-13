@@ -41,6 +41,8 @@ instance (Monad m) => MonadLayer (SymbolicEvalT m v) where
    type Lower (SymbolicEvalT m v) = m
    upperM = SymbolicEvalT
    lowerM f (SymbolicEvalT m) = SymbolicEvalT (f m)
+   layerM f' f = SymbolicEvalT $ f' (unwrap . f)
+      where unwrap (SymbolicEvalT m) = m
 
 instance SymbolicM (SymbolicEvalT m v) v => EvalM (SymbolicEvalT m v) v Exp where
    eval = Symbolic.eval

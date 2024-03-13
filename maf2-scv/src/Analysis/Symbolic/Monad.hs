@@ -7,7 +7,7 @@ import Analysis.Scheme.Monad (SchemeM)
 import Control.Monad.Layer
 import Control.Monad.Join
 import Control.Monad.State.IntPool
-import Control.Monad.State (StateT, MonadState, modify, gets, get, put, (>=>), runStateT, evalStateT)
+import Control.Monad.State (StateT(..), MonadState, modify, gets, get, put, (>=>), runStateT, evalStateT)
 import Domain
 import Domain.Symbolic
 import Lattice (JoinLattice(..))
@@ -56,12 +56,7 @@ type PC = Set Formula
 -- | The FormulaT monad keeps track of the path condition 
 -- and implements the `MonadPathCondition` monad.
 newtype FormulaT m v a = FormulaT { runFormulaT' :: StateT PC m a }
-                           deriving (Monad, Applicative, Functor, MonadState PC)
-
-instance (Monad m) => MonadLayer (FormulaT m v) where
-   type Lower (FormulaT m v) = m
-   lowerM f (FormulaT m) = FormulaT $ lowerM f m
-   upperM = FormulaT . upperM
+                           deriving (Monad, Applicative, Functor, MonadState PC, MonadLayer)
 
 instance (MonadJoin m) => MonadJoin (FormulaT m v) where
    mzero = FormulaT mzero

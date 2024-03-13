@@ -25,6 +25,7 @@ import qualified Control.Monad.State as ST
 import Control.Monad.Writer
 import Debug.Trace
 import Data.Maybe
+import Control.Monad.Identity
 
 ------------------------------------------------------------
 -- EffectM
@@ -72,22 +73,26 @@ modifyWl f st = (a, st { wl = wl' })
 
 
 newtype EffectT c wl m a =
-   EffectT (StateT (EffectState c wl) (WriterT (Set c) (TrackingStateVarT (StateVarT (IntegerPoolT m)))) a)
+   EffectT { getEffectT :: IdentityT (StateT (EffectState c wl) (WriterT (Set c) (TrackingStateVarT (StateVarT (IntegerPoolT m))))) a }
    deriving (Applicative, Functor, Monad, MonadState (EffectState c wl), MonadWriter (Set c), MonadLayer)
+-- ^ The EffectT monad transformer, it introduces an EffectM implementation and MonadStateVar
+-- implementation in the stack. Note that these are explicitly visible on the monad stack due to MonadLayer
+-- being applied on IdentityT which exposes `Lower` as the `StateT` monad which transitively exposes
+-- the remaining layers of this stack.
 
 instance {-# OVERLAPPING #-} (Ord c, WorkList wl, Monad m) => EffectM (EffectT c (wl c) m) c where
    spawn = tell . Set.singleton
    intra c ma = do
        (v, r, w, spawns) <- censor (const Set.empty) (do
             (v, spawns) <- listen ma
-            trackState  <- EffectT $ lift $ lift getDeps
-            EffectT $ lift $ lift resetTracking
+            trackState  <- EffectT $ lift $ lift $ lift getDeps
+            EffectT $ lift $ lift $ lift resetTracking
             trace (show trackState) $ return (v, rdep trackState, wdep trackState, spawns)
          )
        ST.modify (integrate c r w spawns)
        return v
    done  = gets (isEmpty . wl)
-   setup ma = ma >>= (\v ->  EffectT $ lift $ lift resetTracking >> return v)
+   setup ma = ma >>= (\v ->  EffectT $ lift $ lift $ lift resetTracking >> return v)
    next = state (modifyWl remove)
 
 integrate :: (Ord c, WorkList wl)
@@ -128,5 +133,5 @@ runEffectT wl (EffectT ma) =
     $  runStateVarT
     $  runTrackingStateVarT
     $  fst
-   <$> runWriterT (evalStateT ma (emptyEffectState wl))
+   <$> runWriterT (evalStateT (runIdentityT ma) (emptyEffectState wl))
 

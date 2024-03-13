@@ -109,7 +109,7 @@ newtype BaseSchemeEvalT v m a = BaseSchemeEvalT { getInnerEvalT :: m a } derivin
 instance (Monad m) => MonadLayer (BaseSchemeEvalT v m) where
    type Lower (BaseSchemeEvalT v m) = m
    upperM = BaseSchemeEvalT 
-   lowerM f (BaseSchemeEvalT m) = BaseSchemeEvalT (f m)
+   layerM f' f = BaseSchemeEvalT $ f' (runEvalT . f)
 
 -- TODO: this is rather ugly right now but needed
 -- since we cannot derive MonadEscape yet if it 

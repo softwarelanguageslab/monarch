@@ -25,11 +25,11 @@ instance (Address ptr, Address var) => StringDomain (SchemeString (CP String) (C
    type IntS (SchemeString (CP String) (CPSymbolicValue ptr var Scheme.Exp)) = CPSymbolicValue ptr var Scheme.Exp
    type ChaS (SchemeString (CP String) (CPSymbolicValue ptr var Scheme.Exp)) = CPSymbolicValue ptr var Scheme.Exp
    type BooS (SchemeString (CP String) (CPSymbolicValue ptr var Scheme.Exp)) = CPSymbolicValue ptr var Scheme.Exp
-   length = (length . sconst) >=> (return . mkLeft . insertInt)
+   length = undefined -- TODO (length . sconst) >=> (return . mkLeft . insertInt)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
-   ref s i = mkLeft . insertChar <$> (ref (sconst s) =<< integers (leftValue i))
-   stringLt s1 s2  = mkLeft . insertBool <$> stringLt (sconst s1) (sconst s2)
-   toNumber = (toNumber . sconst) >=> (return . mkLeft . insertInt)
+   ref s i = undefined -- TODO mkLeft . insertChar <$> (ref (sconst s) =<< integers (leftValue i))
+   stringLt s1 s2  = undefined -- TODO mkLeft . insertBool <$> stringLt (sconst s1) (sconst s2)
+   toNumber = undefined -- TODO (toNumber . sconst) >=> (return . mkLeft . insertInt)
    set = undefined
    makeString = undefined
 
