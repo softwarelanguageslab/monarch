@@ -175,7 +175,7 @@ instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m Adr Env, EF.
     env' <- getEnv
     upperM (EF.spawn (Actor (Pid e) e env'))
     return (aref (Pid e))
-  become = void . Analysis.Monad.eval
+  become = void . spawn
 
 ------------------------------------------------------------
 -- Analysis
