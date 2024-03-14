@@ -42,6 +42,7 @@ dependencies:
 - maf2-typelevel
 - hashmap
 - list-t
+- singletons
 
 default-extensions:
   - FlexibleContexts

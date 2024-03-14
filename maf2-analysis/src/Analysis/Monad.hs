@@ -32,6 +32,7 @@ module Analysis.Monad(
  -- Types for implementations
  NonDetT,
  JoinT,
+ StoreT'
 ) where
 
 import Analysis.Environment

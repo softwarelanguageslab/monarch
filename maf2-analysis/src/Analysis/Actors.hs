@@ -7,9 +7,7 @@ module Analysis.Actors where
 
 import Analysis.Scheme.Primitives
 import Analysis.Actors.Mailbox
-import qualified Analysis.Actors.Mailbox as MB
 import Analysis.Actors.Monad
-import Analysis.Actors.Semantics
 import qualified Analysis.Actors.Semantics as Actors
 import Analysis.Monad
 import Analysis.Scheme.Store
@@ -33,7 +31,6 @@ import Domain.Scheme.Modular
 import Domain.Scheme.Store
 import Lattice (CP)
 import Syntax.Scheme.AST
-import Data.Maybe
 import Data.Functor ((<&>))
 
 ------------------------------------------------------------
@@ -103,7 +100,10 @@ type Env = Map String Adr
 
 type Ctx = ()
 
+-- | Value store
 type Sto v = Map Adr (SVar.SVar v)
+-- | Unified Scheme store
+type SSto = SchemeStore' SVar V Adr Adr Adr Adr
 
 ------------------------------------------------------------
 -- Semantics
@@ -133,7 +133,7 @@ runEvalT (EvalT m) = m
 -- ModX
 ------------------------------------------------------------
 
-type State = (Sto V, Sto (StrDom V), Sto (PaiDom V), Sto (VecDom V), Map Pid (SVar.SVar (Set Msg)))
+type State = (SSto, Map Pid (SVar.SVar (Set Msg)))
 
 -- Function calls
 
@@ -182,37 +182,26 @@ instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m Adr Env, EF.
 ------------------------------------------------------------
 
 analyze :: Exp -> SchemeStore V Adr Adr Adr Adr
-analyze e = let ((varSto, strSto, paiSto, vecSto, _), state) = (EF.setup initialState >>= EF.iterate intra)
+analyze e = let ((sto, _), state) = (EF.setup initialState >>= EF.iterate intra)
                     & EF.runEffectT [Main e]
                     & runIdentity
-            in SchemeStore {
-                  values  = SVar.unify varSto state,
-                  strings = SVar.unify strSto state,
-                  pairs   = SVar.unify paiSto state,
-                  vecs    = SVar.unify vecSto state
-            }
+            in unifyStore sto state
   where runIntra :: (EF.EffectM m Component, SVar.MonadStateVar m) => Component -> Pid -> Exp -> Env -> State -> m State
-        runIntra cmp pid exp' env (varSto, strSto, paiSto, vecSto, mailboxes) = do
+        runIntra cmp pid exp' env (sto, mailboxes) = do
              (m, mailboxes') <- mailbox pid mailboxes
              r <-   (Analysis.Monad.eval exp' >>= writeAdr (RetAdr cmp))
                     & runEvalT
                     & runMayEscape @_ @(Set DomainError)
                     & runCallT'
                     & runEnv env
-                    & runAlloc @PaAdr (const . HeapAdr)
-                    & runAlloc @VeAdr (const . HeapAdr)
-                    & runAlloc @StAdr (const . HeapAdr)
-                    & runAlloc @VrAdr (const . VarAdr)
+                    & runSchemeAllocT (const . VarAdr) (const . HeapAdr)
                     & runActorT m pid
                     & runCtx ()
                     & runJoinT
-                    & runStoreT' @Adr @_ @VrAdr varSto
-                    & runStoreT' @Adr @_ @StAdr strSto
-                    & runStoreT' @Adr @_ @PaAdr paiSto
-                    & runStoreT' @Adr @_ @VeAdr vecSto
+                    & runSchemeStoreT sto
                     & runActorSystemT mailboxes'
-             let (((((_, varSto'), strSto'), paiSto'), vecSto'), mailboxes'') = r
-             return (varSto', strSto', paiSto', vecSto', mailboxes'')
+             let ((_, sto'), mailboxes'') = r
+             return (sto', mailboxes'')
         mailbox pid mailboxes = do
             var <- maybe (SVar.depend Set.empty) pure (Map.lookup pid mailboxes)
             mb  <- SVar.read var
@@ -220,6 +209,6 @@ analyze e = let ((varSto, strSto, paiSto, vecSto, _), state) = (EF.setup initial
         intra cmp@(Main expr) = runIntra cmp EntryPid expr analysisEnv
         intra cmp@(Actor pid expr env) = runIntra cmp pid expr env
         initialState = do
-            values <- foldM (\m (adr, v) -> SVar.new v <&> flip (Map.insert adr) m) Map.empty (Map.toList (initialSto analysisEnv))
-            return (values, Map.empty, Map.empty, Map.empty, Map.empty)
+            values <- foldM (\m (adr, v) -> SVar.new v <&> flip (Map.insert adr) m) Map.empty (Map.toList (initialSto @V analysisEnv))
+            return (fromValues @SVar @V values, Map.empty)
         analysisEnv  = initialEnv PrmAdr
