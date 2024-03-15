@@ -37,7 +37,3 @@ class Message m v | m -> v where
    payload :: m -> [v]
    -- | Create a new message 
    message :: String -> [v] -> m
-
-
--- | A message representation that consists of a message tag, a payload and an optional context
--- data Message t v ctx = Message { messageTag :: t, messagePayload :: v, messageCtx :: Maybe ctx }

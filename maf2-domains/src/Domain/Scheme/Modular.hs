@@ -482,10 +482,6 @@ instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s (
    length = (length . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = SchemeVal . HMap.singleton @CharKey <$> (ref (sconst s) =<< integers i)
-      where integers = mjoins . HMap.mapList select . getSchemeVal
-            select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt ->  Assoc kt (Values m) -> schemeM (IntOf m)
-            select SIntKey v = return  v
-            select _ _ = escape WrongType
    stringLt s1 s2  = SchemeVal . HMap.singleton @BoolKey <$> stringLt (sconst s1) (sconst s2)
    toNumber = (toNumber . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
 
