@@ -5,7 +5,7 @@ import Solver
 import Solver.Z3
 import Symbolic.AST
 import Symbolic.SMT
-import Analysis.Scheme.Store (SchemeStore(..))
+import Analysis.Scheme.Store (SchemeStore(..), values)
 import Analysis.Symbolic
 import Syntax.Scheme
 

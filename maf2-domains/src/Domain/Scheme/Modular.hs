@@ -1,7 +1,27 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds, PolyKinds, StandaloneKindSignatures, DataKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Domain.Scheme.Modular where
+module Domain.Scheme.Modular(
+   -- * Constraints
+   IsSchemeValue,
+   -- * SchemeValues
+   ModularSchemeValue,
+   SchemeConfKey(..),
+   SchemeKey(..),
+   SSchemeKey(..),
+   SchemeVal(..),
+   Values,
+   SchemeString(..),
+   -- * Insertion
+   insertInt,
+   insertChar,
+   insertBool,
+   -- * Extraction
+   integers,
+   -- * Shorthands
+   Beh,
+   Clo
+) where
 
 import Lattice
 import Domain.Class
@@ -468,3 +488,26 @@ instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s (
             select _ _ = escape WrongType
    stringLt s1 s2  = SchemeVal . HMap.singleton @BoolKey <$> stringLt (sconst s1) (sconst s2)
    toNumber = (toNumber . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
+
+------------------------------------------------------------
+-- Subdomain extraction
+------------------------------------------------------------
+
+integers :: forall m schemeM . (IsSchemeValue m, AbstractM schemeM) => SchemeVal m -> schemeM (Assoc IntKey (Values m))
+integers = mjoins . HMap.mapList select . getSchemeVal
+      where select :: forall (kt :: SchemeKey) . Sing kt ->  Assoc kt (Values m) -> schemeM (IntOf m)
+            select SIntKey v = return  v
+            select _ _ = escape WrongType
+
+------------------------------------------------------------
+-- Insertion functions
+------------------------------------------------------------
+
+insertInt :: (Assoc IntKey (Values m) ~ i) => i -> SchemeVal m
+insertInt = SchemeVal . HMap.singleton @IntKey
+
+insertChar :: (Assoc CharKey (Values m) ~ c) =>  c -> SchemeVal m 
+insertChar = SchemeVal . HMap.singleton @CharKey
+
+insertBool :: (Assoc BoolKey (Values m) ~ b) => b -> SchemeVal m 
+insertBool = SchemeVal . HMap.singleton @BoolKey
