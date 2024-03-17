@@ -4,6 +4,7 @@
 module Lattice.UnitLattice where
 
 import Lattice.Class
+import Domain.Class 
 
 import qualified Data.Set as Set 
 
@@ -18,3 +19,7 @@ instance JoinLattice () where
 
 instance SplitLattice () where
    split = Set.singleton 
+
+-- | Domain instance for Unit
+instance Domain () () where 
+   inject = id 
