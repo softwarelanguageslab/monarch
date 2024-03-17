@@ -16,6 +16,7 @@ import Control.Monad.Join
 import Control.Monad.DomainError
 import Analysis.Python.Syntax
 import Analysis.Python.Common 
+import Analysis.Python.Objects.Class
 
 import Prelude hiding (lookup)
 import qualified Data.Set as Set 
@@ -56,6 +57,7 @@ data ObjectError = AttributeNotFound
 class (Monad m,
        MonadJoin m,
        MonadEscape m,
+       PyObj obj,
        Domain (Esc m) ObjectError,
        Domain (Esc m) DomainError,
        AllocM m PyExp ObjAdr,
@@ -65,7 +67,7 @@ class (Monad m,
        PyM m obj | m -> obj
 
 deref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
-deref f = mJoinMap (\a -> lookup a >>= f a) . addrs 
+deref f = mjoinMap (\a -> lookup a >>= f a) . addrs 
 
 deref' :: PyM m obj => PyVal -> m obj
 deref' = mjoins . map lookup . Set.toList . addrs 

@@ -89,8 +89,8 @@ instance (AllJoin m) => JoinLattice (PyObj m) where
 
 instance AllAbs m => PyPrmObj (PyObj m) where
   type Abs (PyObj m) k = Assoc k (PyPrm m)
-  member s = HMapDomain.member s . prm 
-  extract s = fromJust . HMapDomain.lookup s . prm 
+  member k = HMapDomain.member k . prm 
+  extract k = fromJust . HMapDomain.lookup k . prm 
   inject k v = injectObj' (TypeObject $ classFor k) [] [k :&: v]  
 
 --
@@ -170,12 +170,6 @@ isCallableObj (PyObj _ prm) =  HMapDomain.member SBndPrm prm
                                `Domain.or`
                                HMapDomain.member SPrmPrm prm
 
-isFloatObj :: (AllJoin m, BoolDomain b) => PyObj m -> b
-isFloatObj = HMapDomain.member SReaPrm . prm  
-
-isIntObj :: (AllJoin m, BoolDomain b) => PyObj m -> b
-isIntObj = HMapDomain.member SIntPrm . prm 
-
 call :: (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> PyVal -> pyM PyVal 
 call pos ags = callObj pos ags <=< deref' 
 
@@ -191,13 +185,13 @@ callFun pos ags (PyObj _ prm) = resBnd `mjoin` resClo `mjoin` resPrm
         resPrm = maybe mzero (callPrm pos ags) $ HMapDomain.lookup SPrmPrm prm 
 
 callBnd :: (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> Map ObjAdr PyVal -> pyM PyVal 
-callBnd pos ags = mJoinMap apply . Map.toList
+callBnd pos ags = mjoinMap apply . Map.toList
   where apply (rcv, vlu) = callFun pos (injectAdr rcv : ags) =<< deref' vlu 
 
 callPrm :: forall pyM m . (PyM pyM (PyObj m), AllAbs m) => PyExp -> [PyVal] -> Set PyPrim -> pyM PyVal 
-callPrm pos ags = mJoinMap apply
+callPrm pos ags = mjoinMap apply
   where apply prm = undefined --applyPrim @(PyPrm m) prm pos ags 
 
 callClo :: (PyM pyM (PyObj m), AllJoin m) => PyExp -> [PyVal] -> Set PyClo -> pyM PyVal 
-callClo pos ags = mJoinMap apply
+callClo pos ags = mjoinMap apply
   where apply (prs, bdy, env) = undefined --TODO

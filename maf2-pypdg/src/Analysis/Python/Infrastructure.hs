@@ -2,6 +2,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Analysis.Python.Infrastructure (
   PyConstant(..), 

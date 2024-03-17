@@ -1,7 +1,7 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Monad.Join (MonadJoin(..), MonadJoinAlternative(..), mjoinMap, mjoins, msplit, condCP) where
+module Control.Monad.Join (MonadJoin(..), cond, MonadJoinAlternative(..), mjoinMap, mjoins, msplit, condCP) where
 
 import Lattice
 import Domain.Core.BoolDomain
