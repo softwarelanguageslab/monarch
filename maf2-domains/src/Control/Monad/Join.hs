@@ -1,7 +1,7 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Monad.Join (MonadJoin(..), cond, MonadJoinAlternative(..), mjoinMap, mjoins, msplit, condCP) where
+module Control.Monad.Join (MonadJoin(..), cond, conds, MonadJoinAlternative(..), mjoinMap, mjoins, msplit, condCP) where
 
 import Lattice
 import Domain.Core.BoolDomain
@@ -22,10 +22,13 @@ class (Monad m) => MonadJoin m where
    a <||> b = mjoin a b
    infix 0 <||>
 
-cond :: (MonadJoin m, BoolDomain b, JoinLattice v) => m b -> m v -> m v -> m v
+cond :: (BoolDomain b, MonadJoin m, JoinLattice v) => m b -> m v -> m v -> m v
 cond cnd csq alt = mjoin t f
    where t = cnd >>= (\b -> if isTrue b then csq else mzero)
          f = cnd >>= (\b -> if isFalse b then alt else mzero)
+
+conds :: (BoolDomain b, MonadJoin m, JoinLattice v) => [(m b, m v)] -> m v -> m v
+conds clauses els = foldr (uncurry cond) els clauses 
 
 condCP :: (MonadJoin m, JoinLattice v) => m (CP Bool) -> m v -> m v -> m v
 condCP = cond 
