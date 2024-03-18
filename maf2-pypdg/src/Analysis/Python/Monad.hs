@@ -1,13 +1,14 @@
 module Analysis.Python.Monad (
-  PyM(..),
   EnvM(..),
   StoreM(..),
   AllocM(..),
   allocVal,
-  ObjectError(..), -- TODO: move this 
   deref, 
   deref', 
-  allocObj
+  PyM(..),
+  pyAlloc,
+  pyDeref,
+  pyDeref'
 ) where
 
 import Lattice
@@ -17,9 +18,12 @@ import Control.Monad.DomainError
 import Analysis.Python.Syntax
 import Analysis.Python.Common 
 import Analysis.Python.Objects.Class
+import Analysis.Python.Infrastructure
 
 import Prelude hiding (lookup)
+import Data.Set (Set)
 import qualified Data.Set as Set 
+import qualified Data.Map as Map 
 
 --
 -- TODO: reuse existing for these?
@@ -27,8 +31,8 @@ import qualified Data.Set as Set
 
 class (Monad m) => EnvM m e a | m -> e a where
   getEnv :: m e
+  withEnv :: (e -> e) -> m b -> m b
   lookupEnv :: String -> m a 
-  extendEnv :: String -> a -> m b -> m b
 
 class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
   extend :: a -> v -> m ()
@@ -43,22 +47,21 @@ allocVal e v = do adr <- alloc e
                   extend adr v
                   return adr
 
+deref :: (StoreM m a v, JoinLattice r, MonadJoin m) => (a -> v -> m r) -> Set a -> m r 
+deref f = mjoinMap (\a -> lookup a >>= f a)
+
+deref' :: (StoreM m a v, MonadJoin m) => Set a -> m v 
+deref' = mjoins . map lookup . Set.toList
+
 --
 -- The Python monad 
 --
-
-data ObjectError = AttributeNotFound
-                 | NotMutable
-                 | NotCallable
-                 | ArityError
-                 | TypeMismatch
-                 | InvalidMRO
 
 class (Monad m,
        MonadJoin m,
        MonadEscape m,
        PyObj obj,
-       Domain (Esc m) ObjectError,
+       Domain (Esc m) PyError,
        Domain (Esc m) DomainError,
        AllocM m PyExp ObjAdr,
        EnvM m PyEnv VarAdr, 
@@ -66,18 +69,14 @@ class (Monad m,
        =>
        PyM m obj | m -> obj
 
-deref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
-deref f = mjoinMap (\a -> lookup a >>= f a) . addrs 
+pyDeref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
+pyDeref f = deref f . addrs 
 
-deref' :: PyM m obj => PyVal -> m obj
-deref' = mjoins . map lookup . Set.toList . addrs 
+pyDeref' :: PyM m obj => PyVal -> m obj
+pyDeref' = deref' . addrs 
 
-allocObj :: PyM m obj => PyExp -> obj -> m PyVal
-allocObj e = fmap injectAdr . allocVal e
-
-
-
-
+pyAlloc :: PyM m obj => PyExp -> obj -> m PyVal
+pyAlloc e = fmap injectAdr . allocVal e
 
 
 

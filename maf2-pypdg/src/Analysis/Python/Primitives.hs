@@ -9,17 +9,15 @@
 
 module Analysis.Python.Primitives (applyPrim) where
 
-import Analysis.Python.Objects.Class (PyObj(Abs), AbsJoinLattice)
-import qualified Analysis.Python.Objects.Class as PyObj
+import Analysis.Python.Objects.Class
 
 import Lattice hiding (insert)
-import Domain (BoolDomain, NumberDomain)
+import Domain (NumberDomain)
 import qualified Domain
 import Analysis.Python.Syntax hiding (Dict)
 import Analysis.Python.Monad 
 import Analysis.Python.Infrastructure
 import Analysis.Python.Common 
-import Data.TypeLevel.HMap (withC_)
 import Control.Monad.Join
 import Control.Monad.DomainError
 
@@ -57,50 +55,29 @@ applyPrim FloatGt       = prim2 $ floatBinop @BlnPrm Domain.gt
 applyPrim FloatLe       = prim2 $ floatBinop @BlnPrm Domain.le
 applyPrim FloatGe       = prim2 $ floatBinop @BlnPrm Domain.ge 
 
-
-
 --
 -- Primitive helpers 
 --
 
-has :: forall (k :: PyPrmKey) b obj . (PyObj obj, BoolDomain b, SingI k) => obj -> b
-has = PyObj.has (sing @k)
-
-get :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => obj -> Abs obj k
-get = PyObj.get (sing @k)
-
-at :: forall (k :: PyPrmKey) obj pyM . (PyM pyM obj, SingI k) => obj -> pyM (Abs obj k)
-at obj = withC_ @(AbsJoinLattice obj) getField s 
-  where s = sing @k 
-        getField :: JoinLattice (Abs obj k) => pyM (Abs obj k)
-        getField = condCP (return $ PyObj.has s obj)
-                          (return $ PyObj.get s obj)
-                          (escape WrongType) 
-
-from :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => Abs obj k -> obj 
-from v = PyObj.set k v (PyObj.new c)
-  where k = sing @k 
-        c = constant $ TypeObject (classFor k) 
-
 prim0 :: forall r pyM obj . (PyM pyM obj, SingI r)  
         => pyM (Abs obj r)                  -- ^ the primitive function
         -> (PyExp -> [PyVal] -> pyM PyVal)  -- ^ the resulting function   
-prim0 f pos [] = allocObj pos . from @r =<< f 
+prim0 f pos [] = pyAlloc pos . from @r =<< f 
 prim0 _ _   _  = escape ArityError 
 
 prim1 :: forall a r pyM obj. (PyM pyM obj, SingI a, SingI r)
         => (Abs obj a -> pyM (Abs obj r))   -- ^ the primitive function
         -> (PyExp -> [PyVal] -> pyM PyVal)  -- ^ the resulting function 
-prim1 f pos [a1] = allocObj pos . from @r =<< f =<< at @a =<< deref' a1
+prim1 f pos [a1] = pyAlloc pos . from @r =<< f =<< at @a =<< pyDeref' a1
 prim1 _ _   _    = escape ArityError  
 
 prim2 :: PyM pyM obj
         => (obj -> obj -> pyM obj)          -- ^ the primitive function
         -> (PyExp -> [PyVal] -> pyM PyVal)  -- ^ the resulting function 
-prim2 f pos [a1, a2] = do o1 <- deref' a1
-                          o2 <- deref' a2
+prim2 f pos [a1, a2] = do o1 <- pyDeref' a1
+                          o2 <- pyDeref' a2
                           r  <- f o1 o2
-                          allocObj pos r 
+                          pyAlloc pos r 
 prim2 _ _   _        = escape ArityError  
 
 prim2' :: forall a1 a2 r pyM obj . (PyM pyM obj, SingI a1, SingI a2, SingI r)

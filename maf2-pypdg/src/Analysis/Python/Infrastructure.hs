@@ -5,6 +5,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Analysis.Python.Infrastructure (
+  Finite(..),
   PyConstant(..), 
   PyPrim(..), 
   PyType(..), 
@@ -12,6 +13,7 @@ module Analysis.Python.Infrastructure (
   methods, 
   PyAttr(..),
   attrStr,
+  PyError(..),
   PyPrmKey(..),
   SPyPrmKey(..),
   classFor
@@ -29,8 +31,10 @@ import Data.Singletons (Sing)
 -- | A typeclass to enumerate all values of a certain type
 class Finite a where
   all :: [a]
+  size :: Int
+  size = length (all :: [a]) 
 
-instance (Enum a, Bounded a) => Finite a where 
+instance {-# OVERLAPPABLE #-} (Enum a, Bounded a) => Finite a where 
   all = [minBound..maxBound]
 
 --
@@ -216,3 +220,11 @@ classFor SBndPrm = BoundType
 classFor STupPrm = TupleType
 classFor SLstPrm = ListType 
 classFor SNonPrm = NoneType 
+
+-- | Built-in Python errors
+data PyError = AttributeNotFound
+             | NotMutable
+             | NotCallable
+             | ArityError
+             | TypeMismatch
+             | InvalidMRO

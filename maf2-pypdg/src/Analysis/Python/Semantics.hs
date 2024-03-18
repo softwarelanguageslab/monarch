@@ -34,7 +34,7 @@ todo :: String -> a
 todo = error . ("[TODO] NYI: " ++)
 
 -- | Execute a single statement
-exec :: PyM pyM (PyObj m) => PyStm -> pyM ()
+exec :: PyM pyM obj => PyStm -> pyM ()
 exec (Assg _ lhs rhs)            = execAss lhs rhs
 exec (Let _ vrs bdy)             = execLet vrs bdy
 exec (Return _ exp loc)          = execRet exp loc
@@ -47,10 +47,10 @@ exec (Continue _ _)              = execCnt
 exec (NonLocal x _ _)            = absurd x          -- these can't occur in microPython
 exec (Global x _ _)              = absurd x          -- these can't occur in microPython
 
-execExp :: PyM pyM (PyObj m) => PyExp -> pyM ()
+execExp :: PyM pyM obj => PyExp -> pyM ()
 execExp = Control.Monad.void . eval
 
-execAss :: PyM pyM (PyObj m) => PyLhs -> PyExp -> pyM ()
+execAss :: PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
    where assignTo (IdePat ide) val     = do adr <- lookupEnv (ideNam ide)
                                             update adr val
@@ -58,32 +58,34 @@ execAss lhs rhs = eval rhs >>= assignTo lhs
          assignTo (ListPat _ _) val    = todo "list assignment"
          assignTo (TuplePat _ _) val   = todo "tuple assignment"
 
-execIff :: PyM pyM (PyObj m) => [(PyExp, PyStm)] -> PyStm -> pyM ()
-execIff ((cnd,tru):grds) els = cond (eval cnd >>= deref) (exec tru) (execIff grds els)
+execIff :: PyM pyM obj => [(PyExp, PyStm)] -> PyStm -> pyM ()
+execIff ((cnd,tru):grds) els = cond (eval cnd >>= deref) 
+                                    (exec tru) 
+                                    (execIff grds els)
 execIff [] els = exec els
 
-execSeq :: PyM pyM (PyObj m) => [PyStm] -> pyM ()
+execSeq :: PyM pyM obj => [PyStm] -> pyM ()
 execSeq = mapM_ exec
 
-execLet :: PyM pyM (PyObj m) => [PyIde] -> PyStm -> pyM ()
+execLet :: PyM pyM obj => [PyIde] -> PyStm -> pyM ()
 execLet vrs stm = withExtendedEnv (zip nms ads) (exec stm)
    where ads = map allocVar vrs
          nms = map (ideName . lexIde) vrs
 
-execRet :: PyM pyM (PyObj m) => Maybe PyExp -> PyLoc -> pyM ()
+execRet :: PyM pyM obj => Maybe PyExp -> PyLoc -> pyM ()
 execRet (Just exp) _    = eval exp >>= returnWith
 execRet Nothing loc     = allocVal loc none >>= returnWith  --TODO: single address for None
 
-execBrk :: PyM pyM (PyObj m) => pyM ()
+execBrk :: PyM pyM obj => pyM ()
 execBrk = break
 
-execCnt :: PyM pyM (PyObj m) => pyM ()
+execCnt :: PyM pyM obj => pyM ()
 execCnt = continue
 
-execWhi :: PyM pyM (PyObj m) => PyExp -> PyStm -> pyM ()
+execWhi :: PyM pyM obj => PyExp -> PyStm -> pyM ()
 execWhi cnd bdy = getEnv >>= callCmp . LoopCmp cnd bdy >> return ()
 
-eval :: PyM pyM (PyObj m) => PyExp -> pyM PyVal
+eval :: PyM pyM obj => PyExp -> pyM PyVal
 eval (Lam prs bdy loc _)   = evalLam prs bdy loc
 eval (Var ide)             = evalVar ide
 eval (Literal lit)         = evalLit lit
@@ -95,10 +97,10 @@ evalLam prs bdy loc = do env <- getEnv
                          let clo = (prs, bdy, env)
                          allocVal loc $ injectClo clo
 
-evalVar :: PyM pyM (PyObj m) => PyIde -> pyM PyVal
+evalVar :: PyM pyM obj => PyIde -> pyM PyVal
 evalVar ide = lookupEnv (ideNam ide) >>= lookup
 
-evalLit :: PyM pyM (PyObj m) => PyLit -> pyM PyVal
+evalLit :: PyM pyM obj => PyLit -> pyM PyVal
 evalLit (Bool bln loc)     = allocVal loc $ inject' @BlnPrm bln
 evalLit (Integer int loc)  = allocVal loc $ injectInt int
 evalLit (Real _ _)         = todo "real literal"
@@ -108,7 +110,7 @@ evalLit (Dict _)           = todo "dictionary literal"
 
 -- | Applies a procedure
 
-evalCll :: PyM pyM (PyObj m) => PyExp -> [PyArg] -> PyLoc -> pyM PyVal
+evalCll :: PyM pyM obj => PyExp -> [PyArg] -> PyLoc -> pyM PyVal
 evalCll opr opd loc = do fun <- eval opr >>= deref' 
                          ags <- mapM evalArg opd
                          todo "apply" --call fun (`applyClo` ags) (\prm -> applyPrm prm ags loc)
@@ -125,7 +127,7 @@ evalCll opr opd loc = do fun <- eval opr >>= deref'
 --         let cmp = CallCmp bdy ext
 --         callCmp cmp 
 
-bindPar :: PyM pyM (PyObj m) => PyPar -> PyVal -> pyM (String, VarAdr)
+bindPar :: PyM pyM obj => PyPar -> PyVal -> pyM (String, VarAdr)
 bindPar (Prm ide _) v = extend adr v >> return (ideNam ide, adr)
    where adr = allocVar ide 
 bindPar (VarArg _ _) v = todo "vararg parameter"

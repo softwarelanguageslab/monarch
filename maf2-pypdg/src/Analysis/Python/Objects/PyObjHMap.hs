@@ -84,9 +84,9 @@ instance AllAbs m => PyObj (PyObjHMap m) where
               prm = HMapDomain.empty 
     -- primitives
     type Abs (PyObjHMap m) k = Assoc k (PyPrm m)
-    has k = HMapDomain.member k . prm 
-    get k = fromJust . HMapDomain.lookup k . prm 
-    set k v (PyObjHMap dct prm) = PyObjHMap dct $ HMapDomain.insert k v prm 
+    hasPrm k = HMapDomain.member k . prm 
+    getPrm k = fromJust . HMapDomain.lookup k . prm 
+    setPrm k v (PyObjHMap dct prm) = PyObjHMap dct $ HMapDomain.insert k v prm 
     -- attributes
     hasAttr k = Domain.contains (Constant k) . dct
     getAttr k = Domain.lookup (Constant k) . dct 
