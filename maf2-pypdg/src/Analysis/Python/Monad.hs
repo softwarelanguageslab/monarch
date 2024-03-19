@@ -6,9 +6,10 @@ module Analysis.Python.Monad (
   deref, 
   deref', 
   PyM(..),
+  PyCmp(..),
   pyAlloc,
   pyDeref,
-  pyDeref'
+  pyDeref',
 ) where
 
 import Lattice
@@ -54,6 +55,9 @@ deref' = mjoins . map lookup . Set.toList
 -- The Python monad 
 --
 
+data PyCmp = LoopCmp PyExp PyStm PyEnv 
+           | CallCmp PyStm PyEnv 
+
 class (Monad m,
        MonadJoin m,
        MonadEscape m,
@@ -69,6 +73,7 @@ class (Monad m,
   returnWith :: PyVal -> m ()
   break :: m ()
   continue :: m () 
+  callCmp :: PyCmp -> m PyVal 
 
 pyDeref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
 pyDeref f = deref f . addrs 

@@ -12,6 +12,7 @@ import Analysis.Python.Objects
 import Analysis.Python.Objects.Class 
 import Analysis.Python.Common
 import Analysis.Python.Monad 
+import Analysis.Python.Primitives
 
 import Control.Monad (zipWithM, (>=>), (<=<), (=<<), void)
 import qualified Control.Monad
@@ -19,6 +20,7 @@ import Domain hiding (lookup, update, from)
 import qualified Domain.Core.SeqDomain as SeqDomain
 import Lattice
 import Control.Monad.Join
+import Control.Monad.Escape
 import Control.Monad.Error
 
 import Data.Functor ((<&>))
@@ -82,7 +84,7 @@ execCnt :: PyM pyM obj => pyM ()
 execCnt = continue
 
 execWhi :: PyM pyM obj => PyExp -> PyStm -> pyM ()
-execWhi cnd bdy = void $ getEnv >>= callCmp . LoopCmp cnd bdy
+execWhi cnd bdy = void $ getEnv >>= callCmp . LoopCmp cnd bdy 
 
 eval :: PyM pyM obj => PyExp -> pyM PyVal
 eval (Lam prs bdy loc _)   = evalLam prs bdy loc
@@ -113,22 +115,37 @@ evalLit (Dict _)           = todo "dictionary literal"
 -- | Applies a procedure
 
 evalCll :: PyM pyM obj => PyExp -> [PyArg] -> PyLoc -> pyM PyVal
-evalCll opr opd loc = do fun <- eval opr >>= pyDeref' 
+evalCll opr opd loc = do fun <- eval opr
                          ags <- mapM evalArg opd
-                         todo "apply" --call fun (`applyClo` ags) (\prm -> applyPrm prm ags loc)
+                         call loc ags fun
    where evalArg (PosArg arg _) = eval arg
          evalArg (KeyArg _ _ _) = todo "keyword arguments"
 
+call :: PyM pyM obj => PyLoc -> [PyVal] -> PyVal -> pyM PyVal 
+call loc ags = callObj loc ags <=< pyDeref' 
 
---applyClo :: PyM m obj => PyClo -> [PyVal] -> m PyVal 
---applyClo (prs, bdy, env) ags = 
---   withEnv (const env) $ do 
---      bindings <- zipWithM bindPar prs ags
---      withExtendedEnv bindings $ do
---         ext <- getEnv
---         let cmp = CallCmp bdy ext
---         callCmp cmp 
+callObj :: PyM pyM obj => PyLoc -> [PyVal] -> obj -> pyM PyVal 
+callObj pos ags obj = conds @(CP Bool) [(return (has @BndPrm obj), callBnd pos ags (get @BndPrm obj)),
+                                        (return (has @CloPrm obj), callClo pos ags (get @CloPrm obj)),
+                                        (return (has @PrmPrm obj), callPrm pos ags (get @PrmPrm obj))]
+                                       (escape NotCallable)
 
+callBnd :: PyM pyM obj => PyLoc -> [PyVal] -> Map ObjAdr PyVal -> pyM PyVal 
+callBnd pos ags = mjoinMap apply . Map.toList
+  where apply (rcv, fns) = call pos (injectAdr rcv : ags) fns 
+
+callPrm :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyPrim -> pyM PyVal 
+callPrm pos ags = mjoinMap apply
+ where apply prm = applyPrim prm pos ags
+
+callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal 
+callClo pos ags = mjoinMap apply
+ where apply (prs, bdy, env) = 
+         withEnv (const env) $ do bindings <- zipWithM bindPar prs ags
+                                  withExtendedEnv bindings $ do ext <- getEnv
+                                                                let cmp = CallCmp bdy ext
+                                                                callCmp cmp 
+                                                                
 bindPar :: PyM pyM obj => PyPar -> PyVal -> pyM (String, VarAdr)
 bindPar (Prm ide _) v = extend adr v >> return (lexNam ide, adr)
    where adr = allocVar ide 

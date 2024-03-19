@@ -117,33 +117,3 @@ lookupAttrMRO attr =
 assignAttr :: PyM pyM obj => String -> PyVal -> PyVal -> pyM ()
 assignAttr attr vlu = 
   pyDeref $ \adr -> update adr . setAttr attr vlu   -- TODO: support strong update
-
--- --
-
-isCallableObj :: (BoolDomain b, PyObj obj) => obj -> b
-isCallableObj obj = has @BndPrm obj 
-                    `Domain.or` 
-                    has @CloPrm obj
-                    `Domain.or`
-                    has @PrmPrm obj
-
-call :: PyM pyM obj => PyLoc -> [PyVal] -> PyVal -> pyM PyVal 
-call pos ags = callObj pos ags <=< pyDeref' 
-
-callObj :: PyM pyM obj => PyLoc -> [PyVal] -> obj -> pyM PyVal 
-callObj pos ags obj = conds @(CP Bool) [(return (has @BndPrm obj), callBnd pos ags (get @BndPrm obj)),
-                                        (return (has @CloPrm obj), callClo pos ags (get @CloPrm obj)),
-                                        (return (has @PrmPrm obj), callPrm pos ags (get @PrmPrm obj))]
-                                       (escape NotCallable)
-
-callBnd :: PyM pyM obj => PyLoc -> [PyVal] -> Map ObjAdr PyVal -> pyM PyVal 
-callBnd pos ags = mjoinMap apply . Map.toList
-  where apply (rcv, fns) = call pos (injectAdr rcv : ags) fns 
-
-callPrm :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyPrim -> pyM PyVal 
-callPrm pos ags = mjoinMap apply
- where apply prm = applyPrim prm pos ags
-
-callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal 
-callClo pos ags = mjoinMap apply
- where apply (prs, bdy, env) = undefined --TODO
