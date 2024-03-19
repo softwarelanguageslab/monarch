@@ -35,6 +35,8 @@ library
       Analysis.Scheme.Monad
       Analysis.Scheme.Store
       Analysis.Actors.Monad
+      Analysis.Actors.Semantics
+      Analysis.Actors.Mailbox
       Interpreter.Scheme
       Control.SVar.ModX
       Control.Monad.Layer
@@ -43,8 +45,6 @@ library
       Control.Fixpoint.WorkList
       Control.Fixpoint.EffectDriven
   other-modules:
-      Analysis.Actors.Mailbox
-      Analysis.Actors.Semantics
       Analysis.Environment
       Analysis.Erlang.Monad
       Analysis.Erlang.Semantics

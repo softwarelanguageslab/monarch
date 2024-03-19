@@ -89,6 +89,8 @@ library:
   - Analysis.Scheme.Monad
   - Analysis.Scheme.Store
   - Analysis.Actors.Monad
+  - Analysis.Actors.Semantics
+  - Analysis.Actors.Mailbox
   - Interpreter.Scheme
   - Control.SVar.ModX
   - Control.Monad.Layer

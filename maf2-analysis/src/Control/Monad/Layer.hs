@@ -1,6 +1,7 @@
 {-# LANGUAGE UndecidableInstances, FlexibleContexts, FlexibleInstances, RankNTypes #-}
 module Control.Monad.Layer(MonadLayer(..)) where
 
+import Data.Void
 import Data.Kind
 import Control.Monad.State
 import Control.Monad.Reader
@@ -9,6 +10,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
 import Control.Monad.DomainError (MayEscapeT(..), MonadEscape(..), MayEscape(..))
 import ListT
+import GHC.TypeError
 
 -- | A Monad "Layer" is similar to a Monad transformer, but is also provides a function to remove one level from the monad transformer stack. 
 class (Monad (Lower m)) => MonadLayer (m :: Type -> Type) where

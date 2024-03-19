@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT, receive) where
+module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT, receive, runNoSpawnT, NoSpawnT, runNoSendT) where
 
 import Syntax.Scheme.AST
 -- use the monads from the base-semantics
@@ -17,21 +17,21 @@ import qualified Control.Monad.State.SVar as SVar
 import qualified Data.Set as Set
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Control.Monad.State (MonadState, StateT(..), gets, put, runStateT, modify, evalStateT)
+import Control.Monad.State (MonadState, StateT(..), gets, put, runStateT, modify)
 import Control.Monad.Reader (MonadReader (local), ReaderT(..), ask, runReaderT)
 import Control.Monad (void)
-import Data.Bifunctor (second)
+import Control.Monad.Identity (IdentityT, runIdentityT)
 
 type ActorEvalM m v msg mb = (SchemeM m v, ActorDomain v, ActorM m (ARef v) msg mb, ActorBehaviorM m v, Message msg v)
 
 class ActorBehaviorM m v | m -> v where
    -- | Spawn a new actor with the given behavior, returns an actor reference
    -- corresponding to the newly spawned actor
-   spawn :: Exp -> m v
+   spawn  :: JoinLattice v => Exp -> m v
    -- | Change the behavior of the actor to the given new behavior
    become :: Exp -> m ()
 
-instance (MonadLayer m, ActorBehaviorM (Lower m) v) => ActorBehaviorM m v where
+instance {-# OVERLAPPABLE #-} (MonadLayer m, ActorBehaviorM (Lower m) v) => ActorBehaviorM m v where
    spawn  = upperM . spawn
    become = upperM . become
 
@@ -48,7 +48,7 @@ class ActorLocalM m ref msg mb | m -> ref msg mb where
    putMailbox :: mb -> m ()
 
 receive :: (MonadJoin m, ActorLocalM m ref msg mb, JoinLattice a) =>(msg -> m a) -> m a
-receive f = do 
+receive f = do
    msgs <- receiveAll
    mjoins (map (\(msg, mb') -> putMailbox mb' >> f msg) msgs)
 
@@ -61,7 +61,7 @@ class ActorGlobalM m ref msg | m -> ref msg where
 
 infixl 0 !
 
-instance (MonadLayer m, ActorGlobalM (Lower m) ref msg) => ActorGlobalM m ref msg where
+instance {-# OVERLAPPABLE #-} (MonadLayer m, ActorGlobalM (Lower m) ref msg) => ActorGlobalM m ref msg where
    send ref = upperM . send ref
 
 ------------------------------------------------------------
@@ -145,5 +145,33 @@ instance {-# OVERLAPPING #-} (Ord ref, Mailbox mb msg, SVar.MonadStateVar m) => 
       -- not change.
       void $ upperM $ SVar.modify (Just . enqueue msg) mb
 
-runActorSystemT :: (Monad m) => ActorSystemState ref mb -> ActorSystemT ref msg mb m a -> m (a, Map ref (SVar mb))
+runActorSystemT :: ActorSystemState ref mb -> ActorSystemT ref msg mb m a -> m (a, Map ref (SVar mb))
 runActorSystemT initial (ActorSystemT m) = runStateT m initial
+
+------------------------------------------------------------
+-- No-op implementations of the monads
+------------------------------------------------------------
+
+-- | Instance of ActorBehaviorM that ignores becomes and actor spawns
+newtype NoSpawnT v m a = NoSpawnT (IdentityT m a)
+                       deriving (Monad, Applicative, Functor, MonadLayer, MonadJoin)
+
+instance (Monad m) => ActorBehaviorM (NoSpawnT v m) v where
+   spawn  = return . const bottom
+   become = const $ return ()
+
+-- | Add the `NoSpawnT` to the monadic stack, introduces an instances of `ActorBehaviorM`
+runNoSpawnT :: NoSpawnT v m a -> m a
+runNoSpawnT (NoSpawnT m) = runIdentityT m
+
+----------------------------------------
+
+-- | Instance of ActorGlobalM that ignores "send"
+newtype NoSendT ref msg m a = NoSendT (IdentityT m a) 
+                           deriving (Monad, Applicative, Functor, MonadLayer, MonadJoin)
+
+instance (Monad m) => ActorGlobalM (NoSendT ref msg m) ref msg where 
+   send = const . const (return ())
+
+runNoSendT :: NoSendT ref msg m a -> m a 
+runNoSendT (NoSendT m) = runIdentityT m

@@ -23,15 +23,12 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.TypeLevel.HMap ((::->))
-import Domain (PIVector, SimplePair)
-import Domain.Scheme (Address, PaiDom, StrDom, VarDom, VecDom)
 import Domain.Scheme.Actors.Class
-import Domain.Scheme.Modular
 import Domain.Scheme.Store
-import Lattice (CP)
 import Syntax.Scheme.AST
 import Data.Functor ((<&>))
+import qualified Domain.Scheme.Actors.CP as CP
+import Domain (Address)
 
 ------------------------------------------------------------
 -- Addresses
@@ -44,57 +41,26 @@ data Adr
   | PrmAdr  String
   deriving (Ord, Eq, Show)
 
-data Pid
-  = Pid Exp
-  | EntryPid
-  deriving (Ord, Eq, Show)
 
 instance Address Adr
-
-instance Address Pid
 
 ------------------------------------------------------------
 -- Domain
 ------------------------------------------------------------
 
--- | Type of values in the analysis
-type V =
-  SchemeVal
-    '[ RealConf ::-> CP Double,
-       IntConf ::-> CP Integer,
-       CharConf ::-> CP Char,
-       BoolConf ::-> CP Bool,
-       EnvConf ::-> Env,
-       ExpConf ::-> Exp,
-       StrConf ::-> Adr,
-       PaiConf ::-> Adr,
-       VecConf ::-> Adr,
-       VarConf ::-> Adr,
-       PidConf ::-> Pid
-     ]
-
-type instance VarDom V = V
-
-type instance PaiDom V = SimplePair V
-
-type instance VecDom V = PIVector V V
-
-type instance StrDom V = SchemeString (CP String) V
 
 -- | Mailbox type
 type MB = Set Msg
 
 -- | Type of messages
-data Msg = Message String [V] deriving (Eq, Ord)
-
-instance Message Msg V where
-  matchesTag (Message tag _) = (tag ==)
-  payload (Message _ p) = p
-  message = Message
+type Msg = SimpleMessage V
 
 ------------------------------------------------------------
 -- Shorthands
 ------------------------------------------------------------
+
+type V = CP.CPActorValue Adr Adr Ctx
+type Pid = CP.Pid Ctx
 
 type Env = Map String Adr
 
@@ -173,8 +139,8 @@ runCallT' (CallT m) = m
 instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m Adr Env, EF.EffectM m Component) => ActorBehaviorM (EvalT m) V where
   spawn e = do
     env' <- getEnv
-    upperM (EF.spawn (Actor (Pid e) e env'))
-    return (aref (Pid e))
+    upperM (EF.spawn (Actor (CP.Pid e ()) e env'))
+    return (aref (CP.Pid e ()))
   become = void . spawn
 
 ------------------------------------------------------------
@@ -206,7 +172,7 @@ analyze e = let ((sto, _), state) = (EF.setup initialState >>= EF.iterate intra)
             var <- maybe (SVar.depend Set.empty) pure (Map.lookup pid mailboxes)
             mb  <- SVar.read var
             return (mb, Map.insert pid var mailboxes)
-        intra cmp@(Main expr) = runIntra cmp EntryPid expr analysisEnv
+        intra cmp@(Main expr) = runIntra cmp CP.EntryPid expr analysisEnv
         intra cmp@(Actor pid expr env) = runIntra cmp pid expr env
         initialState = do
             values <- foldM (\m (adr, v) -> SVar.new v <&> flip (Map.insert adr) m) Map.empty (Map.toList (initialSto @V analysisEnv))
