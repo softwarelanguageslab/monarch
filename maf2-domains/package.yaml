@@ -65,6 +65,7 @@ library:
     - Lattice
     - Lattice.Class 
     - Lattice.ConstantPropagationLattice
+    - Lattice.ReversePowerSetLattice
     - Control.Monad.Cond
     - Control.Monad.Join
     - Control.Monad.DomainError

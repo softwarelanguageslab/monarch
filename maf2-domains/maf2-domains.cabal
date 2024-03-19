@@ -40,6 +40,7 @@ library
       Lattice
       Lattice.Class
       Lattice.ConstantPropagationLattice
+      Lattice.ReversePowerSetLattice
       Control.Monad.Cond
       Control.Monad.Join
       Control.Monad.DomainError
@@ -90,7 +91,6 @@ library
       Lattice.MapLattice
       Lattice.MaybeLattice
       Lattice.ProductLattice
-      Lattice.ReversePowerSetLattice
       Lattice.SetLattice
       Lattice.TopLiftedLattice
       Lattice.UnitLattice
