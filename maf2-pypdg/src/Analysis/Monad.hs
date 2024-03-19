@@ -54,20 +54,21 @@ module Analysis.Monad where
 -- -- Typeclasses for monadic analysis functionality
 -- ----------------------------------------------------------------------------------------------------
 
--- -- | Reading from an environment 
--- class (Environment env adr) => EnvM m adr env | m -> env, m -> adr where
---    -- | Lookup the address of the given identifier,
---    -- may throw an exception if the identifier is not found 
---    -- since it means that the program is not well-formed.
---    lookupEnv :: String -> m adr
---    -- | Extend the environment with the given list of bindings and run the computation
---    -- given as an argument in it
---    withExtendedEnv :: [(String, adr)] -> m a -> m a
---    -- | Retrieves the current environment 
---    getEnv :: m env
---    -- | Runs function `f` on the environment and to compute the environment to execute `m` in
---    withEnv :: {- f -} (env -> env) -> m a -> m a
---    -- | Runs `m` in the context of the value produced by `(ctx -> ctx)`.
+import Analysis.Environment
+
+class (Environment env adr) => EnvM m adr env | m -> env adr where
+    -- | Lookup the address of the given identifier,
+    -- may throw an exception if the identifier is not found 
+    -- since it means that the program is not well-formed.
+    lookupEnv :: String -> m adr
+    -- | Retrieves the current environment 
+    getEnv :: m env
+    -- | Runs function `f` on the environment and to compute the environment to execute `m` in
+    withEnv :: {- f -} (env -> env) -> m a -> m a
+    -- | Extend the environment with the given list of bindings and run the computation
+    -- given as an argument in it
+    withExtendedEnv :: [(String, adr)] -> m a -> m a
+    withExtendedEnv = withEnv . extends
 
 -- -- | Manipulating the context of the current abstract state
 -- class CtxM m ctx | m -> ctx where

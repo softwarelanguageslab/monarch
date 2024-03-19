@@ -83,21 +83,21 @@ isBindable = fmap isBindableObj . pyDeref'
 isBindableObj :: (BoolDomain b, PyObj obj) => obj -> b
 isBindableObj = liftA2 Domain.or (has @PrmPrm) (has @CloPrm)
 
-lookupAttr :: PyM pyM obj => PyExp -> String -> PyVal -> pyM PyVal
-lookupAttr exp attr =
+lookupAttr :: PyM pyM obj => PyLoc -> String -> PyVal -> pyM PyVal
+lookupAttr loc attr =
   pyDeref $ \adr obj ->
               condCP  (return $ hasAttr attr obj)
                       (return $ getAttr attr obj)
                       -- if not found locally => look in the class
                       (do cls <- atAttr (attrStr ClassAttr) obj
-                          lookupAttrInClass exp attr adr cls)
+                          lookupAttrInClass loc attr adr cls)
 
-lookupAttrInClass :: PyM pyM obj => PyExp -> String -> ObjAdr -> PyVal -> pyM PyVal
-lookupAttrInClass exp attr self cls = do vlu <- lookupAttrMRO attr cls
+lookupAttrInClass :: PyM pyM obj => PyLoc -> String -> ObjAdr -> PyVal -> pyM PyVal
+lookupAttrInClass loc attr self cls = do vlu <- lookupAttrMRO attr cls
                                          condCP (isBindable vlu)
                                                 (bind vlu)
                                                 (return vlu)
-  where bind value = pyAlloc exp $ from @BndPrm (Map.singleton self value) 
+  where bind value = pyAlloc loc $ from @BndPrm (Map.singleton self value) 
 
 lookupAttrMRO :: PyM pyM obj => String -> PyVal -> pyM PyVal
 lookupAttrMRO attr =
@@ -116,7 +116,7 @@ lookupAttrMRO attr =
 
 assignAttr :: PyM pyM obj => String -> PyVal -> PyVal -> pyM ()
 assignAttr attr vlu = 
-  pyDeref $ \adr obj -> update adr (setAttr attr vlu obj)   -- TODO: support strong update
+  pyDeref $ \adr -> update adr . setAttr attr vlu   -- TODO: support strong update
 
 -- --
 
@@ -127,23 +127,23 @@ isCallableObj obj = has @BndPrm obj
                     `Domain.or`
                     has @PrmPrm obj
 
-call :: PyM pyM obj => PyExp -> [PyVal] -> PyVal -> pyM PyVal 
+call :: PyM pyM obj => PyLoc -> [PyVal] -> PyVal -> pyM PyVal 
 call pos ags = callObj pos ags <=< pyDeref' 
 
-callObj :: PyM pyM obj => PyExp -> [PyVal] -> obj -> pyM PyVal 
-callObj pos ags obj = conds @(CP Bool) [(has @BndPrm obj, callBnd pos ags (get @BndPrm obj)),
-                                        (has @CloPrm obj, callClo pos ags (get @CloPrm obj)),
-                                        (has @PrmPrm obj, callPrm pos ags (get @PrmPrm obj))]
+callObj :: PyM pyM obj => PyLoc -> [PyVal] -> obj -> pyM PyVal 
+callObj pos ags obj = conds @(CP Bool) [(return (has @BndPrm obj), callBnd pos ags (get @BndPrm obj)),
+                                        (return (has @CloPrm obj), callClo pos ags (get @CloPrm obj)),
+                                        (return (has @PrmPrm obj), callPrm pos ags (get @PrmPrm obj))]
                                        (escape NotCallable)
 
-callBnd :: PyM pyM obj => PyExp -> [PyVal] -> Map ObjAdr PyVal -> pyM PyVal 
+callBnd :: PyM pyM obj => PyLoc -> [PyVal] -> Map ObjAdr PyVal -> pyM PyVal 
 callBnd pos ags = mjoinMap apply . Map.toList
   where apply (rcv, fns) = call pos (injectAdr rcv : ags) fns 
 
-callPrm :: PyM pyM obj => PyExp -> [PyVal] -> Set PyPrim -> pyM PyVal 
+callPrm :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyPrim -> pyM PyVal 
 callPrm pos ags = mjoinMap apply
  where apply prm = applyPrim prm pos ags
 
-callClo :: PyM pyM obj => PyExp -> [PyVal] -> Set PyClo -> pyM PyVal 
+callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal 
 callClo pos ags = mjoinMap apply
  where apply (prs, bdy, env) = undefined --TODO

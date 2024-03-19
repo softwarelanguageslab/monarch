@@ -20,6 +20,8 @@ import Analysis.Python.Common
 import Analysis.Python.Objects.Class
 import Analysis.Python.Infrastructure
 
+import Analysis.Monad
+
 import Prelude hiding (lookup)
 import Data.Set (Set)
 import qualified Data.Set as Set 
@@ -28,11 +30,6 @@ import qualified Data.Map as Map
 --
 -- TODO: reuse existing for these?
 --
-
-class (Monad m) => EnvM m e a | m -> e a where
-  getEnv :: m e
-  withEnv :: (e -> e) -> m b -> m b
-  lookupEnv :: String -> m a 
 
 class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
   extend :: a -> v -> m ()
@@ -63,11 +60,15 @@ class (Monad m,
        PyObj obj,
        Domain (Esc m) PyError,
        Domain (Esc m) DomainError,
-       AllocM m PyExp ObjAdr,
-       EnvM m PyEnv VarAdr, 
-       StoreM m ObjAdr obj)
+       AllocM m PyLoc ObjAdr,
+       EnvM m VarAdr PyEnv, 
+       StoreM m ObjAdr obj,
+       StoreM m VarAdr PyVal)
        =>
-       PyM m obj | m -> obj
+       PyM m obj | m -> obj where
+  returnWith :: PyVal -> m ()
+  break :: m ()
+  continue :: m () 
 
 pyDeref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
 pyDeref f = deref f . addrs 
@@ -75,12 +76,8 @@ pyDeref f = deref f . addrs
 pyDeref' :: PyM m obj => PyVal -> m obj
 pyDeref' = deref' . addrs 
 
-pyAlloc :: PyM m obj => PyExp -> obj -> m PyVal
-pyAlloc e = fmap injectAdr . allocVal e
-
-
-
-
+pyAlloc :: PyM m obj => PyLoc -> obj -> m PyVal
+pyAlloc loc = fmap injectAdr . allocVal loc
 
 
 -- import Data.Kind ( Type )

@@ -3,7 +3,8 @@ module Analysis.Python.Syntax(    -- TODO [?]: should this be integrated into An
     PyExp, 
     PyLhs, 
     PyIde, 
-    ideNam,
+    ideName,
+    lexNam,
     PyPar, 
     PyArg, 
     PyLit, 
@@ -24,5 +25,7 @@ type PyPar = Par PyLoc PyLan
 type PyLit = Lit PyLoc PyLan
 type PyIde = IdeLex PyLoc 
 
-ideNam :: PyIde -> String
-ideNam = ideName . lexIde
+lexNam :: PyIde -> String
+lexNam = ideName . lexIde
+
+

@@ -30,7 +30,7 @@ import Data.Singletons.TH
 --- Primitives implementation
 ---
       
-applyPrim :: PyM pyM obj => PyPrim -> PyExp -> [PyVal] -> pyM PyVal
+applyPrim :: PyM pyM obj => PyPrim -> PyLoc -> [PyVal] -> pyM PyVal
 -- int primitives
 applyPrim IntAdd        = prim2 $ intBinop' Domain.plus 
 applyPrim IntSub        = prim2 $ intBinop' Domain.minus
@@ -61,28 +61,28 @@ applyPrim FloatGe       = prim2 $ floatBinop @BlnPrm Domain.ge
 
 prim0 :: forall r pyM obj . (PyM pyM obj, SingI r)  
         => pyM (Abs obj r)                  -- ^ the primitive function
-        -> (PyExp -> [PyVal] -> pyM PyVal)  -- ^ the resulting function   
-prim0 f pos [] = pyAlloc pos . from @r =<< f 
+        -> (PyLoc -> [PyVal] -> pyM PyVal)  -- ^ the resulting function   
+prim0 f loc [] = pyAlloc loc . from @r =<< f 
 prim0 _ _   _  = escape ArityError 
 
 prim1 :: forall a r pyM obj. (PyM pyM obj, SingI a, SingI r)
         => (Abs obj a -> pyM (Abs obj r))   -- ^ the primitive function
-        -> (PyExp -> [PyVal] -> pyM PyVal)  -- ^ the resulting function 
-prim1 f pos [a1] = pyAlloc pos . from @r =<< f =<< at @a =<< pyDeref' a1
+        -> (PyLoc -> [PyVal] -> pyM PyVal)  -- ^ the resulting function 
+prim1 f loc [a1] = pyAlloc loc . from @r =<< f =<< at @a =<< pyDeref' a1
 prim1 _ _   _    = escape ArityError  
 
 prim2 :: PyM pyM obj
         => (obj -> obj -> pyM obj)          -- ^ the primitive function
-        -> (PyExp -> [PyVal] -> pyM PyVal)  -- ^ the resulting function 
-prim2 f pos [a1, a2] = do o1 <- pyDeref' a1
+        -> (PyLoc -> [PyVal] -> pyM PyVal)  -- ^ the resulting function 
+prim2 f loc [a1, a2] = do o1 <- pyDeref' a1
                           o2 <- pyDeref' a2
                           r  <- f o1 o2
-                          pyAlloc pos r 
+                          pyAlloc loc r 
 prim2 _ _   _        = escape ArityError  
 
 prim2' :: forall a1 a2 r pyM obj . (PyM pyM obj, SingI a1, SingI a2, SingI r)
         => (Abs obj a1 -> Abs obj a2 -> pyM (Abs obj r))  -- ^ the primitive function
-        -> (PyExp -> [PyVal] -> pyM PyVal)                -- ^ the resulting function 
+        -> (PyLoc -> [PyVal] -> pyM PyVal)                -- ^ the resulting function 
 prim2' f = prim2 $ \a b -> do va <- at @a1 a
                               vb <- at @a2 b
                               from @r <$> f va vb
