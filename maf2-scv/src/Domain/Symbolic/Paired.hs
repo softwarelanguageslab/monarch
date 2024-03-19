@@ -9,6 +9,7 @@ import Control.Monad.Join
 import Data.Map (Map)
 import Symbolic.AST
 import Domain.Symbolic.Class
+import Domain.Scheme.Actors.Class
 
 --------------------------------------------------
 -- Declaration
@@ -172,6 +173,18 @@ instance (Address ptr,
    isNil     = const False
    isUnsp    = const False
    isPrim    = const False
+
+instance (ActorDomain v, SchemeValue (PairedSymbolic v ptr var)) => ActorDomain (PairedSymbolic v ptr var) where
+   type ARef (PairedSymbolic v ptr var) = (ARef v)
+   -- TODO: figure out what symbolic representation to give to actor references
+   aref ref' = SchemePairedValue (aref ref', bottom)
+   arefs f   = arefs f . leftValue 
+
+   -- TODO: figure out what symbolic representation to give to an actor behavior
+   beh beh'  = SchemePairedValue (beh beh', bottom)
+   withBehs f = withBehs f . leftValue
+
+
 
 ------------------------------------------------------------
 -- Symbolic value

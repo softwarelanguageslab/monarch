@@ -1,7 +1,7 @@
 {-# LANGUAGE FunctionalDependencies, FlexibleInstances #-}
 -- | Mailbox abstractions for the analysis of actors programs
 -- See: Stiévenart, Quentin, et al. "Mailbox abstractions for static analysis of actor programs." 31st European Conference on Object-Oriented Programming (ECOOP 2017). 2017.
-module Analysis.Actors.Mailbox(Mailbox(..), Message(..)) where
+module Analysis.Actors.Mailbox(Mailbox(..), Message(..), SimpleMessage(..)) where
 
 import Lattice
 
@@ -37,3 +37,11 @@ class Message m v | m -> v where
    payload :: m -> [v]
    -- | Create a new message 
    message :: String -> [v] -> m
+
+-- | Simple message 
+data SimpleMessage v = SimpleMessage String [v] deriving (Eq, Show, Ord)
+
+instance Message (SimpleMessage v) v where 
+   matchesTag (SimpleMessage tag _) t = tag == t
+   payload (SimpleMessage _ v) = v
+   message = SimpleMessage

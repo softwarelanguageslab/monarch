@@ -38,6 +38,7 @@ ifFeasible ma = do
 type SymbolicM m v = (SchemeM m v,
                       -- Domain
                       SymbolicValue v,
+                      ActorDomain v, 
                       -- Symbolic execution
                       MonadPathCondition m v,
                       MonadIntegerPool m,

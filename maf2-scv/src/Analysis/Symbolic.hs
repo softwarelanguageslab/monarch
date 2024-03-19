@@ -4,6 +4,7 @@ module Analysis.Symbolic where
 import Analysis.Monad
 import Syntax.Scheme
 import Analysis.Symbolic.Monad
+import Analysis.Actors.Monad
 import qualified Analysis.Symbolic.Semantics as Symbolic
 import Analysis.Scheme hiding (Sto)
 import Analysis.Scheme.Store
@@ -23,6 +24,8 @@ import Control.SVar.ModX
 import Solver.Z3
 import Solver (setup)
 import Symbolic.SMT (setupSMT)
+
+import Analysis.Actors.Mailbox
 
 import Data.Function ((&))
 import Data.Functor.Identity
@@ -44,7 +47,7 @@ instance (Monad m) => MonadLayer (SymbolicEvalT m v) where
    layerM f' f = SymbolicEvalT $ f' (unwrap . f)
       where unwrap (SymbolicEvalT m) = m
 
-instance SymbolicM (SymbolicEvalT m v) v => EvalM (SymbolicEvalT m v) v Exp where
+instance (ActorEvalM (SymbolicEvalT m v) v msg mb, SymbolicM (SymbolicEvalT m v) v) => EvalM (SymbolicEvalT m v) v Exp where
    eval = Symbolic.eval
 
 -- TODO: this is rather ugly right now but needed
@@ -62,7 +65,7 @@ runSymbolicEvalT (SymbolicEvalT m) = m
 -- Domain instantation
 ------------------------------------------------------------
 
-type Vlu = CPSymbolicValue PointerAdr VariableAdr Exp
+type Vlu = CPSymbolicValue PointerAdr VariableAdr
 type Sto = DSto K Vlu
 
 ------------------------------------------------------------
@@ -94,6 +97,12 @@ type K = [Exp]
 
 -- | Alias for values
 type V = Vlu
+
+-- | Alias for messages
+type Msg = SimpleMessage V
+
+-- | Alias for the mailbox
+type MB = Set Msg
 
 -- | Type of dependency 
 data AdrDep = VarAdrDep VariableAdr
@@ -141,10 +150,13 @@ simpleAnalysis e = do
                                          & runAlloc @VrAdr Adr
                                          & runCtx []
                                          & runEnv env
+                                         & runActorT @MB undefined undefined
                                          & runNonDetT
+                                         & runNoSpawnT
+                                         & runNoSendT
                                          & runIntegerPoolT
                                          & runZ3Solver
     where env    = analysisEnvironment
           store  = analysisStore @Vlu env
-          result = fmap (\((r, _pc), sto) -> (r, sto))
+          result = fmap (\(((r, _pc), sto), _) -> (r, sto))
 

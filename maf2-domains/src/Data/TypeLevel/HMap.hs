@@ -72,6 +72,7 @@ import Data.Singletons.Sigma
 import Data.Singletons.Decide
 
 import qualified Data.List as List
+import GHC.TypeError
 
 --
 -- SomeVal (TODO: move this to other utility module?)
@@ -135,7 +136,7 @@ type a ::-> b = a ':-> b -- nicer than the ':-> syntax ':-)
 type family Assoc (kt :: k) (m :: [k :-> Type]) :: Type where
   Assoc kt (kt ::-> t : r)  = t
   Assoc kt (_ : r)          = Assoc kt r
-  Assoc kt '[]              = Void
+  Assoc kt '[]              = Void -- Should be this? TypeError (Text "The type " :<>: ShowType kt :<>: Text " was not found in the mapping")
 type family Keys (m :: [k :-> Type]) :: [k] where
   Keys '[]              = '[]
   Keys (kt ::-> _ ': r) = (kt ': Keys r)
