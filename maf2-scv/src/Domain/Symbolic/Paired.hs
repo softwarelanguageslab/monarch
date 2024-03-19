@@ -1,13 +1,12 @@
+{-# LANGUAGE UndecidableInstances #-}
 -- | Symbolic version of the Scheme domain
 module Domain.Symbolic.Paired where
 
 import Lattice (Joinable(..), JoinLattice(..))
 import qualified Syntax.Scheme as Scheme (Exp)
 import Domain
-import Domain.Scheme.Class
 import Control.Monad.Join
 import Data.Map (Map)
-import Domain.Scheme.Derived.Pair
 import Symbolic.AST
 import Domain.Symbolic.Class
 
@@ -15,7 +14,7 @@ import Domain.Symbolic.Class
 -- Declaration
 --------------------------------------------------
 
-newtype SymbolicVal ptr sptr vptr pptr = SymbolicVal Proposition deriving (Eq, Ord, Show)
+newtype SymbolicVal ptr sptr vptr pptr = SymbolicVal { proposition :: Proposition } deriving (Eq, Ord, Show)
 
 --------------------------------------------------
 -- Lattice instances
@@ -41,16 +40,16 @@ instance NumberDomain (SymbolicVal ptr sptr vptr pptr) where
    random _ = return $ SymbolicVal Fresh
    plus (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "+/v" [n1, n2]
-   minus (SymbolicVal n1) (SymbolicVal n2) = 
+   minus (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "-/v" [n1, n2]
-   times (SymbolicVal n1) (SymbolicVal n2) = 
+   times (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "*/v" [n1, n2]
-   div (SymbolicVal n1) (SymbolicVal n2) = 
+   div (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "//v" [n1, n2]
    expt = error "unsupported"
-   lt (SymbolicVal n1) (SymbolicVal n2) = 
+   lt (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "</v" [n1, n2]
-   eq (SymbolicVal n1) (SymbolicVal n2) = 
+   eq (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "=/v" [n1, n2]
 
 ------------------------------------------------------------
@@ -72,9 +71,9 @@ instance IntDomain (SymbolicVal ptr sptr vptr pptr) where
    toString = undefined
    quotient (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "quotient/v" [n1, n2]
-   modulo (SymbolicVal n1) (SymbolicVal n2) = 
+   modulo (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "modulo/v" [n1, n2]
-   remainder (SymbolicVal n1) (SymbolicVal n2) = 
+   remainder (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "remainder/v" [n1, n2]
 
 
@@ -82,10 +81,10 @@ instance IntDomain (SymbolicVal ptr sptr vptr pptr) where
 -- RealDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicVal ptr sptr vptr pptr) Double where  
+instance Domain (SymbolicVal ptr sptr vptr pptr) Double where
    inject n = SymbolicVal $ Literal (Rea n)
 
-instance RealDomain (SymbolicVal ptr sptr vptr pptr) where   
+instance RealDomain (SymbolicVal ptr sptr vptr pptr) where
    type IntR (SymbolicVal ptr sptr vptr pptr) = SymbolicVal ptr sptr vptr pptr
    toInt (SymbolicVal n1)   = return $ SymbolicVal $ Predicate "as-int/v"   [n1]
    ceiling (SymbolicVal n1) = return $ SymbolicVal $ Predicate "ceiling/v"  [n1]
@@ -118,7 +117,7 @@ instance BoolDomain (SymbolicVal ptr sptr vptr pptr) where
 -- CharDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicVal ptr sptr vptr pptr) Char where  
+instance Domain (SymbolicVal ptr sptr vptr pptr) Char where
    inject c = SymbolicVal $ Literal (Cha c)
 
 instance CharDomain (SymbolicVal ptr sptr vptr pptr) where
@@ -126,7 +125,7 @@ instance CharDomain (SymbolicVal ptr sptr vptr pptr) where
    downcase  (SymbolicVal c) = return $ SymbolicVal $ Predicate "downcase/v" [c]
    upcase    (SymbolicVal c) = return $ SymbolicVal $ Predicate "upcase/v"   [c]
    charToInt (SymbolicVal c) = return $ SymbolicVal $ Predicate "as-int/v"   [c]
-   isLower   (SymbolicVal _) = return bottom 
+   isLower   (SymbolicVal _) = return bottom
    isUpper   (SymbolicVal _) = return bottom
    charEq _ _                = return bottom
    charLt _ _                = return bottom
@@ -159,7 +158,7 @@ instance (Address ptr,
    clos      = const bottom
    nil       = SymbolicVal $ Literal Nil
    unsp      = SymbolicVal $ Literal Unsp
-   prim      = SymbolicVal . Variable
+   prim      = SymbolicVal . Variable . (++"/v")
    prims     = const bottom
    withProc  = const . const mzero
    isInteger = const False
@@ -177,6 +176,17 @@ instance (Address ptr,
 ------------------------------------------------------------
 -- Symbolic value
 ------------------------------------------------------------
+
+instance (SchemeValue (PairedSymbolic v ptr var)) => SymbolicValue (PairedSymbolic v ptr var) where
+   ap f ags res =
+      SchemePairedValue (leftValue res, SymbolicVal $ Application (proposition $ rightValue f) (map (proposition . rightValue) ags))
+   assertTrue (SchemePairedValue (l, SymbolicVal r)) =
+      SchemePairedValue (l, SymbolicVal $ IsTrue r)
+   assertFalse (SchemePairedValue (l, SymbolicVal r)) =
+      SchemePairedValue (l, SymbolicVal $ IsFalse r)
+   symbolic (SchemePairedValue (_, SymbolicVal r)) = r
+   var idx vlu =
+      SchemePairedValue (leftValue vlu, SymbolicVal $ Variable ("x" ++ show idx))
 
 ------------------------------------------------------------
 -- Pairing with other Scheme value

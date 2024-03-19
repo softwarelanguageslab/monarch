@@ -18,6 +18,9 @@ class (JoinLattice m) => Mailbox m msg | m -> msg where
    -- Returns a set of possible messages and updated mailboxes
    dequeue :: m -> Set (msg, m)
 
+   -- | Create an empty mailbox
+   empty :: m
+
 -- | A simple mailbox backed by a powerset.
 --
 -- This representation is finite if the number of messages that could be queued in the mailbox is also finite. 
@@ -25,6 +28,7 @@ class (JoinLattice m) => Mailbox m msg | m -> msg where
 instance (Ord msg) => Mailbox (Set msg) msg where
    enqueue = Set.insert
    dequeue m = Set.map (, m) m
+   empty = Set.empty
 
 class Message m v | m -> v where
    -- | Determines whether the message has a tag that could be considered equal to the given tag 
@@ -32,8 +36,4 @@ class Message m v | m -> v where
    -- | Extracts the message payload from the message 
    payload :: m -> [v]
    -- | Create a new message 
-   message :: v -> [v] -> m
-
-
--- | A message representation that consists of a message tag, a payload and an optional context
--- data Message t v ctx = Message { messageTag :: t, messagePayload :: v, messageCtx :: Maybe ctx }
+   message :: String -> [v] -> m

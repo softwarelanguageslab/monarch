@@ -1,0 +1,137 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+-- | An effect-driven fixpoint algorithm. 
+--
+-- It uses an SVar based state to drive its algorithm by
+-- keeping track of changes on shared state between elements
+-- of the analysis (control flow graph nodes, components in a modular analysis, ...)
+--
+module Control.Fixpoint.EffectDriven(EffectM(spawn, setup), EffectT, runEffectT, iterate) where
+
+import Control.Monad.State.SVar
+import Control.Monad.State.IntPool
+import Control.Fixpoint.WorkList
+import Control.Monad.Cond
+import Control.Monad.Layer
+import Control.Monad.State.Scoped
+
+import Prelude hiding (iterate)
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Control.Monad.State
+import qualified Control.Monad.State as ST
+import Control.Monad.Writer
+import Debug.Trace
+import Data.Maybe
+import Control.Monad.Identity
+
+------------------------------------------------------------
+-- EffectM
+------------------------------------------------------------
+
+class Monad m => EffectM m c | m -> c where
+   -- | Spawn a component c 
+   spawn :: c -> m ()
+   -- | Perform an "intra" analysis on monadic action 'm a'
+   -- this will keep bookkeeping about dependencies and effects
+   intra :: c -> m a -> m a
+   -- | Checks whether the analysis is finished according
+   -- to the internal bookkeeping structures
+   done  :: m Bool
+   -- | Requests the next element and updates
+   -- the internal bookkeeping structures
+   next  :: m c
+   -- | Runs the given computation as a "setup" phase
+   -- meaning that all its effects are discarded
+   setup :: m a -> m a
+
+instance (MonadLayer m, Monad m, EffectM (Lower m) c) => EffectM m c where
+   spawn   = upperM . spawn
+   intra c = lowerM (intra c)
+   done    = upperM done
+   setup   = lowerM setup
+   next    = upperM next
+
+------------------------------------------------------------
+-- EffectT
+------------------------------------------------------------
+
+data EffectState c wl = EffectState {
+      seen :: Set c,
+      deps :: Map Dep (Set c),
+      wl   :: wl
+   }
+
+emptyEffectState :: wl c -> EffectState c (wl c)
+emptyEffectState = EffectState Set.empty Map.empty
+
+modifyWl :: (wl -> (a, wl)) -> EffectState c wl -> (a, EffectState c wl)
+modifyWl f st = (a, st { wl = wl' })
+   where (a, wl') = f (wl st)
+
+
+newtype EffectT c wl m a =
+   EffectT { getEffectT :: IdentityT (StateT (EffectState c wl) (WriterT (Set c) (TrackingStateVarT (StateVarT (IntegerPoolT m))))) a }
+   deriving (Applicative, Functor, Monad, MonadState (EffectState c wl), MonadWriter (Set c), MonadLayer)
+-- ^ The EffectT monad transformer, it introduces an EffectM implementation and MonadStateVar
+-- implementation in the stack. Note that these are explicitly visible on the monad stack due to MonadLayer
+-- being applied on IdentityT which exposes `Lower` as the `StateT` monad which transitively exposes
+-- the remaining layers of this stack.
+
+instance {-# OVERLAPPING #-} (Ord c, WorkList wl, Monad m) => EffectM (EffectT c (wl c) m) c where
+   spawn = tell . Set.singleton
+   intra c ma = do
+       (v, r, w, spawns) <- censor (const Set.empty) (do
+            (v, spawns) <- listen ma
+            trackState  <- EffectT $ lift $ lift $ lift getDeps
+            EffectT $ lift $ lift $ lift resetTracking
+            return (v, rdep trackState, wdep trackState, spawns)
+         )
+       ST.modify (integrate c r w spawns)
+       return v
+   done  = gets (isEmpty . wl)
+   setup ma = ma >>= (\v ->  EffectT $ lift $ lift $ lift resetTracking >> return v)
+   next = state (modifyWl remove)
+
+integrate :: (Ord c, WorkList wl)
+          => c
+          -> Set RDep  -- ^ registered read dependencies
+          -> Set WDep  -- ^ write effects 
+          -> Set c     -- ^ set of spawns
+          -> EffectState c (wl c)
+          -> EffectState c (wl c)
+integrate c r w s st = st {
+      seen = Set.union (seen st) spawns',
+      deps = deps',
+      wl   = addAll (Set.toList newCmps) (wl st)
+   }
+   where deps' = Map.unionWith Set.union
+                               (Map.fromList (map (, Set.singleton c) (Set.toList r)))
+                               (deps st)
+         toAnalyze = Set.unions (Set.map (fromMaybe Set.empty . flip Map.lookup deps') w)
+         spawns'   = Set.difference s (seen st)
+         newCmps   = Set.union toAnalyze spawns'
+
+
+loop :: forall c m state . (Ord c, MonadScopedState m, EffectM m c) => (c -> state -> m state) -> state -> m state
+loop analyze st  =
+      ifM done
+      {- then -} (return st)
+      {- then -} (next >>= (\c -> scoped (intra c (analyze c st)) >>= loop analyze))
+
+iterate :: (Ord c, MonadScopedState m, EffectM m c)
+        => (c -> state -> m state) -- ^ analysis function
+        -> state                   -- ^ the initial state
+        -> m state
+iterate = loop
+
+runEffectT :: forall c m a wl .(Monad m, Ord c) => wl c -> EffectT c (wl c) m a -> m (a, VarState)
+runEffectT wl (EffectT ma) =
+       runIntegerPoolT
+    $  runStateVarT
+    $  runTrackingStateVarT
+    $  fst
+   <$> runWriterT (evalStateT (runIdentityT ma) (emptyEffectState wl))
+

@@ -58,11 +58,14 @@ library:
     - Domain.Scheme.Derived
     - Domain.Scheme.Derived.Pair
     - Domain.Scheme.Store
+    - Domain.Scheme.Modular
     - Domain.Python
+    - Domain.Scheme.Actors.Class
     - Domain.Erlang.Class
     - Lattice
     - Lattice.Class 
     - Lattice.ConstantPropagationLattice
+    - Lattice.ReversePowerSetLattice
     - Control.Monad.Cond
     - Control.Monad.Join
     - Control.Monad.DomainError

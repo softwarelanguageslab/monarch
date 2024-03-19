@@ -1,10 +1,9 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Analysis.Symbolic where
 
-import Analysis.Monad 
+import Analysis.Monad
 import Syntax.Scheme
 import Analysis.Symbolic.Monad
-import Analysis.Monad
 import qualified Analysis.Symbolic.Semantics as Symbolic
 import Analysis.Scheme hiding (Sto)
 import Analysis.Scheme.Store
@@ -13,35 +12,39 @@ import Domain.Symbolic.CPDomain
 import Domain.Scheme.Store
 import Control.Monad.Escape
 import Control.Monad.DomainError
+import Control.Monad.State.IntPool
 import qualified Data.Map as Map
 
 import Control.Monad.Join
-import Syntax.Scheme
 import Analysis.Scheme hiding (Sto)
 import Domain (Address)
 import Domain.Scheme hiding (Exp)
 import Control.SVar.ModX
+import Solver.Z3
+import Solver (setup)
+import Symbolic.SMT (setupSMT)
 
 import Data.Function ((&))
 import Data.Functor.Identity
-import Data.Maybe (fromJust)
 import Data.Maybe
 import Text.Printf
 import Prelude hiding (exp)
 import Data.Set (Set)
- 
+
 ------------------------------------------------------------
 -- Evaluation function
 ------------------------------------------------------------
 
-newtype SymbolicEvalT m v a = SymbolicEvalT { getSymbolicEvalT :: (m a) } deriving (Applicative, Functor, Monad, MonadJoin)
+newtype SymbolicEvalT m v a = SymbolicEvalT { getSymbolicEvalT :: m a } deriving (Applicative, Functor, Monad, MonadJoin)
 
-instance (Monad m) => MonadLayer (SymbolicEvalT m v) where   
+instance (Monad m) => MonadLayer (SymbolicEvalT m v) where
    type Lower (SymbolicEvalT m v) = m
-   upperM = SymbolicEvalT 
+   upperM = SymbolicEvalT
    lowerM f (SymbolicEvalT m) = SymbolicEvalT (f m)
+   layerM f' f = SymbolicEvalT $ f' (unwrap . f)
+      where unwrap (SymbolicEvalT m) = m
 
-instance SymbolicM (SymbolicEvalT m v) v => EvalM (SymbolicEvalT m v) v Exp where  
+instance SymbolicM (SymbolicEvalT m v) v => EvalM (SymbolicEvalT m v) v Exp where
    eval = Symbolic.eval
 
 -- TODO: this is rather ugly right now but needed
@@ -120,12 +123,12 @@ instance SchemeAlloc K VariableAdr PointerAdr PointerAdr PointerAdr AdrDep where
 ------------------------------------------------------------
 
 -- | Simple intra-analysis
-simpleAnalysis :: Exp -> (MayEscape (Set DomainError) Vlu, Sto)
-simpleAnalysis e = 
-                  let ((v, _), store') = Symbolic.eval e
-                                         & runSymbolicEvalT 
+simpleAnalysis :: Exp -> IO [(MayEscape (Set DomainError) Vlu, Sto)]
+simpleAnalysis e = do
+                 fmap result $ (setupSMT >> Symbolic.eval e)
+                                         & runSymbolicEvalT
                                          & runMayEscape @_ @(Set DomainError)
-                                         & runFormulaT 
+                                         & runFormulaT
                                          & runCallBottomT
                                          & runStoreT @VrAdr (values  store)
                                          & runStoreT @StAdr (strings store)
@@ -137,9 +140,11 @@ simpleAnalysis e =
                                          & runAlloc @StAdr PointerAdr
                                          & runAlloc @VrAdr Adr
                                          & runCtx []
-                                         & runEnv env 
-                                         & runIdentity
-                  in (v, store')
+                                         & runEnv env
+                                         & runNonDetT
+                                         & runIntegerPoolT
+                                         & runZ3Solver
     where env    = analysisEnvironment
           store  = analysisStore @Vlu env
+          result = fmap (\((r, _pc), sto) -> (r, sto))
 

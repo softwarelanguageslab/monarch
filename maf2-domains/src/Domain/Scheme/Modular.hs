@@ -1,6 +1,27 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds, PolyKinds, StandaloneKindSignatures, DataKinds #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Domain.Scheme.Modular where
+module Domain.Scheme.Modular(
+   -- * Constraints
+   IsSchemeValue,
+   -- * SchemeValues
+   ModularSchemeValue,
+   SchemeConfKey(..),
+   SchemeKey(..),
+   SSchemeKey(..),
+   SchemeVal(..),
+   Values,
+   SchemeString(..),
+   -- * Insertion
+   insertInt,
+   insertChar,
+   insertBool,
+   -- * Extraction
+   integers,
+   -- * Shorthands
+   Beh,
+   Clo
+) where
 
 import Lattice
 import Domain.Class
@@ -11,21 +32,18 @@ import Control.Monad.DomainError
 import Control.Monad.AbstractM
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
-import Data.List hiding (null, length)
-import Data.Maybe (isJust)
-import GHC.Generics
+import Data.Maybe (fromMaybe)
 import Control.Applicative (Applicative(liftA2))
 import Data.Set (Set)
-import Data.Default
 import qualified Data.Set as Set
-import Control.Monad ((>=>), (<=<))
+import Control.Monad ((>=>))
 import qualified Control.Monad as M
 
 import Data.Kind
 import Data.Singletons
+import Data.Singletons.Sigma
 
-import Lattice.HMapLattice
-import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith, MapWithAt)
+import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith, MapWithAt, BindingFrom)
 import qualified Data.TypeLevel.HMap as HMap
 
 maybeSingle :: Maybe a -> Set a
@@ -35,21 +53,6 @@ maybeSingle (Just v) = Set.singleton v
 (∪) :: Ord a => Set a -> Set a -> Set a
 a ∪ b = Set.union a b
 infixl 0 ∪
-
-
--- NOTE: below is an unused refactoring of the modular domain by using the representation 
--- in Data.TypeLevel.HMap 
---
--- This representation provides a sparse labeled product lattice which is both time and space
--- efficient. However, this refactoring is not yet completed, hence why it is unused.
---
--- The new representation is meant to be a drop⁻in replacement for the existing one.
--- A type alias 'ModularSchemeValue' with the same type parameters as before will be provided.
--- This type alias when then instantiate a map with the correct 'SchemeConfKey's for the given
--- parameters.
---
--- The currently used implementation can be found below and is marked as "Original implementation".
-
 
 ----------------------------------------------
 -- Lattice configuration
@@ -67,6 +70,8 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | StrConf    -- ^ type of string pointers
                    | PaiConf    -- ^ type of pair pointers
                    | VecConf    -- ^ type of vector pointers
+                   | VarConf    -- ^ type of regular pointers
+                   | PidConf    -- ^ type of actor references
 
 ----------------------------------------------
 -- Modular Scheme lattice
@@ -82,7 +87,12 @@ data SchemeKey = RealKey
                | StrKey
                | CloKey
                | UnspKey
+               | NilKey
                | PrimKey
+               | SymKey
+               -- λα
+               | PidKey
+               | BehKey 
                deriving (Ord, Eq)
 
 genHKeys ''SchemeKey
@@ -100,8 +110,13 @@ type Values m = '[
    VecKey  ::-> Set (Assoc VecConf m),
    StrKey  ::-> Set (Assoc StrConf m),
    UnspKey ::-> (),
-   CloKey  ::-> Set (Assoc EnvConf m, Assoc ExpConf m),
-   PrimKey ::-> Set String
+   NilKey  ::-> (),
+   CloKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
+   PrimKey ::-> Set String,
+   SymKey  ::-> Set String,
+   -- λα language
+   PidKey  ::-> Set (Assoc PidConf m),
+   BehKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m)
    ]
 
 
@@ -117,13 +132,26 @@ type IsSchemeValue m =
    (ForAll SchemeKey (AtKey1 JoinLattice (Values m)),
     ForAll SchemeKey (AtKey1 Eq (Values m)),
     ForAll SchemeKey (AtKey1 Joinable (Values m)),
+    -- expected subdomains
     KeyIs1 RealDomain (Values m) RealKey,
     KeyIs1 BoolDomain (Values m) BoolKey,
     KeyIs1 IntDomain  (Values m)  IntKey,
-    KeyIs1 CharDomain (Values m) CharKey)
+    KeyIs1 CharDomain (Values m) CharKey,
+    -- relations between subdomains
+    IntC (Assoc CharKey (Values m)) ~ Assoc IntKey (Values m),
+    Boo (Assoc IntKey (Values m)) ~ Boo (Assoc RealKey (Values m)),
+    Boo (Assoc RealKey (Values m)) ~ Assoc BoolConf m,
+    Rea (Assoc IntKey (Values m)) ~ Assoc RealKey (Values m),
+    IntR (Assoc RealKey (Values m)) ~ Assoc IntKey (Values m),
+    -- addresses
+    Address (Assoc VarConf m),
+    Address (Assoc PaiConf m),
+    Address (Assoc VecConf m),
+    Address (Assoc StrConf m))
 
 -- Eq instance
 deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m))) => Eq (SchemeVal m)
+deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m)), ForAll SchemeKey (AtKey1 Ord (Values m))) => Ord (SchemeVal m)
 
 ------------------------------------------------------------
 -- Lattice instances
@@ -160,6 +188,12 @@ injectChar = SchemeVal . HMap.singleton @CharKey
 injectInt :: Assoc IntKey (Values m) -> SchemeVal m
 injectInt = SchemeVal . HMap.singleton @IntKey
 
+------------------------------------------------------------
+-- Shorthands 
+------------------------------------------------------------
+
+type Clo m = (Assoc ExpConf m, Assoc EnvConf m)
+type Beh m = (Assoc ExpConf m, Assoc EnvConf m)
 
 ------------------------------------------------------------
 -- Domains
@@ -194,8 +228,8 @@ instance (IsSchemeValue m) => BoolDomain (SchemeVal m) where
 
    boolTop = SchemeVal $ HMap.singleton @BoolKey boolTop
    not v = join t f
-      where t = if isTrue  v then inject True else bottom
-            f = if isFalse v then inject False else bottom
+      where t = if isTrue  v then inject False else bottom
+            f = if isFalse v then inject True else bottom
 
 ------------------------------------------------------------
 -- CharDomain
@@ -220,402 +254,256 @@ instance (IsSchemeValue m, IntC (Assoc CharKey (Values m)) ~ Assoc IntKey (Value
 -- Number domain
 ------------------------------------------------------------
 
+type IntOf m = Assoc IntKey (Values m)
+type ReaOf m = Assoc RealKey (Values m)
+type BooOf m = Assoc BoolKey (Values m)
+type ValOf m k = Assoc k (Values m)
+
+coerce' :: forall (kt1 :: SchemeKey) (kt2 :: SchemeKey) schemeM m .
+           (AbstractM schemeM, IsSchemeValue m, SingI kt1, SingI kt2)
+        => (IntOf m -> IntOf m -> schemeM (ValOf m kt1)) -- ^ the integer operation 
+        -> (ReaOf m -> ReaOf m -> schemeM (ValOf m kt2)) -- ^ the real operation
+        -> SchemeVal m -> SchemeVal m -> schemeM (SchemeVal m)
+coerce' intOp realOp = prim2 select
+   where select (SIntKey :&: v1) (SIntKey :&: v2)  =
+            SchemeVal <$> HMap.singleton @kt1 <$> intOp v1 v2
+         select (SRealKey :&: v1) (SIntKey :&: v2) =
+            toReal v2 >>= (fmap (SchemeVal . HMap.singleton @kt2) . realOp v1)
+         select (SIntKey :&: v1) (SRealKey :&: v2) =
+            toReal v1 >>= (fmap (SchemeVal . HMap.singleton @kt2) . flip realOp v2)
+         select (SRealKey :&: v1) (SRealKey :&: v2) =
+            SchemeVal . HMap.singleton @kt2 <$> realOp v1 v2
+         select _ _ = escape WrongType
+
+coerceNum :: (AbstractM schemeM, IsSchemeValue m)
+        => (IntOf m -> IntOf m -> schemeM (IntOf m)) -- ^ the integer operation 
+        -> (ReaOf m -> ReaOf m -> schemeM (ReaOf m)) -- ^ the real operation
+        -> SchemeVal m -> SchemeVal m -> schemeM (SchemeVal m)
+coerceNum = coerce' @IntKey @RealKey
+coerceBoo :: (AbstractM schemeM, IsSchemeValue m)
+        => (IntOf m -> IntOf m -> schemeM (BooOf m)) -- ^ the integer operation 
+        -> (ReaOf m -> ReaOf m -> schemeM (BooOf m)) -- ^ the real operation
+        -> SchemeVal m -> SchemeVal m -> schemeM (SchemeVal m)
+coerceBoo = coerce' @BoolKey @BoolKey
+
+
+prim2 :: (IsSchemeValue m, AbstractM schemeM)
+      => (BindingFrom (Values m) -> BindingFrom (Values m) -> schemeM (SchemeVal m))
+      -> SchemeVal m -> SchemeVal m -> schemeM (SchemeVal m)
+prim2 f (SchemeVal hm1) (SchemeVal hm2) = mjoins $ map (uncurry f) $ liftA2 (,) (HMap.toList hm1) (HMap.toList hm2)
+
+instance (IsSchemeValue m) => NumberDomain (SchemeVal m) where
+   type Boo (SchemeVal m) = SchemeVal m
+   isZero = mjoins . HMap.mapList select  . getSchemeVal
+      where select :: forall (kt :: SchemeKey) schemeM .  (AbstractM schemeM) => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
+            select SIntKey v  = SchemeVal <$> HMap.singleton @BoolKey <$> isZero v
+            select SRealKey v = SchemeVal <$> HMap.singleton @BoolKey <$> isZero v
+            select _ _ = escape WrongType
+   random = mjoins . HMap.mapList select . getSchemeVal
+      where select :: forall (kt :: SchemeKey) schemeM . (AbstractM schemeM) => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
+            select SIntKey v = SchemeVal <$> HMap.singleton @IntKey <$> random v
+            select SRealKey v = SchemeVal <$> HMap.singleton @RealKey <$> random v
+   plus  = coerceNum plus plus
+   minus = coerceNum minus minus
+   times = coerceNum times times
+   div   = coerceNum div div
+   expt  = coerceNum expt expt
+   eq    = coerceBoo eq eq
+   lt    = coerceBoo lt lt
+
 ------------------------------------------------------------
 -- Integer domain
 ------------------------------------------------------------
+
+typeErrorOp :: JoinLattice a => AbstractM m => b -> c -> m a
+typeErrorOp _ = const $ escape WrongType
+
+
+instance (IsSchemeValue m) => IntDomain (SchemeVal m) where
+   type Str (SchemeVal m) = ()
+   type Rea (SchemeVal m) = SchemeVal m
+   toReal = mjoins . HMap.mapList select . getSchemeVal
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
+            select SIntKey v  = SchemeVal . HMap.singleton @RealKey <$> toReal v
+            select SRealKey v = return $ SchemeVal $ HMap.singleton @RealKey v
+            select _ _ = escape WrongType
+   quotient  = coerceNum quotient  typeErrorOp
+   modulo    = coerceNum modulo    typeErrorOp
+   remainder = coerceNum remainder typeErrorOp
 
 ------------------------------------------------------------
 -- Real domain
 ------------------------------------------------------------
 
+coerce1R' :: forall schemeM m .
+           (AbstractM schemeM, IsSchemeValue m)
+        => (ReaOf m -> schemeM (ReaOf m))
+        -> SchemeVal m -> schemeM (SchemeVal m)
+coerce1R' f = mjoins . HMap.mapList select . getSchemeVal
+   where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
+         select SIntKey v = SchemeVal . HMap.singleton @RealKey <$> (toReal v >>= f)
+         select SRealKey v = SchemeVal . HMap.singleton @RealKey <$> f v
+
+instance (IsSchemeValue m) => RealDomain (SchemeVal m) where
+   type IntR (SchemeVal m) = SchemeVal m
+   toInt = mjoins . HMap.mapList select . getSchemeVal
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
+            select SIntKey  v = return $ SchemeVal $ HMap.singleton @IntKey v
+            select SRealKey v = SchemeVal . HMap.singleton @IntKey <$> toInt v
+            select _ _        = escape WrongType
+   ceiling = coerce1R' ceiling
+   floor   = coerce1R' floor
+   round   = coerce1R' round
+   log     = coerce1R' log
+   sin     = coerce1R' sin
+   asin    = coerce1R' asin
+   cos     = coerce1R' cos
+   acos    = coerce1R' acos
+   tan     = coerce1R' tan
+   atan    = coerce1R' atan
+   sqrt    = coerce1R' sqrt
+
+
 ------------------------------------------------------------
 -- SchemeDomain
 ------------------------------------------------------------
+
+instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
+   type Adr  (SchemeVal m) = Assoc VarConf m
+   type PAdr (SchemeVal m) = Assoc PaiConf m
+   type VAdr (SchemeVal m) = Assoc VecConf m
+   type SAdr (SchemeVal m) = Assoc StrConf m
+   type Env  (SchemeVal m) = Assoc EnvConf m
+   type Exp  (SchemeVal m) = Assoc ExpConf m
+
+   -- Pointer injection
+   pptr = SchemeVal . HMap.singleton @PaiKey . Set.singleton
+   vptr = SchemeVal . HMap.singleton @VecKey . Set.singleton
+   sptr = SchemeVal . HMap.singleton @StrKey . Set.singleton
+
+   -- Pointer extraction
+   pptrs = mjoins . HMap.mapList select . getSchemeVal
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc PaiConf m))
+            select SPaiKey p = return p
+            select _ _ = escape WrongType
+   vptrs = mjoins . HMap.mapList select . getSchemeVal
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc VecConf m))
+            select SVecKey p = return p
+            select _ _ = escape WrongType
+   sptrs = mjoins . HMap.mapList select . getSchemeVal
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc StrConf m))
+            select SStrKey p = return p
+            select _ _ = escape WrongType
+
+
+   -- Closures
+   injectClo = SchemeVal . HMap.singleton @CloKey . Set.singleton
+   clos = fromMaybe Set.empty . HMap.get @CloKey . getSchemeVal
+
+   -- Null
+   nil = SchemeVal $ HMap.singleton @NilKey ()
+
+   -- Symbols
+   symbol  = SchemeVal . HMap.singleton @SymKey . Set.singleton
+   symbols = fromMaybe Set.empty . HMap.get @SymKey . getSchemeVal
+
+   -- Unspecified
+   unsp = SchemeVal $ HMap.singleton @UnspKey ()
+
+   -- Primitives
+   prim = SchemeVal . HMap.singleton @PrimKey . Set.singleton
+   prims = fromMaybe Set.empty . HMap.get @PrimKey . getSchemeVal
+
+   -- | Extracting procedures
+   withProc :: forall schemeM a . (AbstractM schemeM, JoinLattice a) => (Either String (Exp (SchemeVal m), Env (SchemeVal m)) -> schemeM a) -> SchemeVal m ->  schemeM a
+   withProc f = mjoins . HMap.mapList select . getSchemeVal
+      where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM a
+            select SCloKey clos' = Set.foldr (mjoin . f . Right) mzero clos'
+            select SPrimKey prs = Set.foldr (mjoin . f . Left) mzero prs
+            select _ _ = escape WrongType
+
+   -- Predicates
+   isInteger = HMap.member @IntKey  . getSchemeVal
+   isReal    = HMap.member @RealKey . getSchemeVal
+   isChar    = HMap.member @CharKey . getSchemeVal
+   isPaiPtr  = HMap.member @PaiKey  . getSchemeVal
+   isVecPtr  = HMap.member @VecKey  . getSchemeVal
+   isStrPtr  = HMap.member @StrKey  . getSchemeVal
+   isClo     = HMap.member @CloKey  . getSchemeVal
+   isBool    = HMap.member @BoolKey . getSchemeVal
+   isUnsp    = HMap.member @UnspKey . getSchemeVal
+   isNil     = HMap.member @NilKey  . getSchemeVal
+   isPrim    = HMap.member @PrimKey . getSchemeVal
 
 ------------------------------------------------------------
 -- Original implementation
 ------------------------------------------------------------
 
+
 -- A generic instance for the Scheme domain, parametrized by their sublattices
-data ModularSchemeValue r i c b pai vec str var exp env = ModularSchemeValue {
-   real    :: Maybe r,
-   integer :: Maybe i,
-   character :: Maybe c ,
-   boolean :: Maybe b,
-   paiPtr :: Maybe (Set pai) ,
-   vecPtr :: Maybe (Set vec) ,
-   strPtr :: Maybe (Set str),
-   clo :: Maybe (Set (exp, env)),
-   null :: Maybe (),
-   unspecified :: Maybe (),
-   primitives :: Maybe (Set String)
-} deriving (Ord, Eq, Generic)
+type ModularSchemeValue r i c b pai vec str var exp env = SchemeVal '[
+      RealConf ::-> r,
+      IntConf  ::-> i,
+      CharConf ::-> c,
+      BoolConf ::-> b,
+      EnvConf  ::-> env,
+      ExpConf  ::-> exp,
+      StrConf  ::-> str,
+      PaiConf  ::-> pai,
+      VecConf  ::-> vec,
+      VarConf  ::-> var
+   ]
 
-instance (SplitLattice (ModularSchemeValue r i c b pai vec str var exp env), Show r, Show i, Show c, Show b, Show exp) => Show (ModularSchemeValue r i c b pai vec str var exp env) where
-   show = intercalate "," . Set.toList . Set.map select . split
-      where select ModularSchemeValue { real = Just r } = "real ↦ "++ show r
-            select ModularSchemeValue  { integer = Just i } = "integer ↦ " ++ show i
-            select ModularSchemeValue { character = Just c } = "character ↦ " ++ show c
-            select ModularSchemeValue { boolean = Just b } = "boolean ↦ " ++ show b
-            select ModularSchemeValue { paiPtr = Just _ } = "<pair>"
-            select ModularSchemeValue { vecPtr = Just _ } = "<vector>"
-            select ModularSchemeValue { strPtr = Just _ } = "<string>"
-            select ModularSchemeValue { clo = Just clos } =
-               "{" ++ intercalate "," (Set.toList (Set.map (\(e, _) -> "<clo: " ++ show e ++ ">") clos)) ++ "}"
-            select ModularSchemeValue { null = Just _ } = "'()"
-            select ModularSchemeValue { unspecified = Just _ } = "<unspecified>"
-            select ModularSchemeValue { primitives = Just prms } =
-               "primitive ↦ {" ++ intercalate "," (Set.toList (Set.map show prms)) ++ "}"
-            select _ = "⊥"
+------------------------------------------------------------
+-- String domain specific to ModularSchemeValue
+------------------------------------------------------------
 
-instance Default (ModularSchemeValue r i c b pai vec str var exp env) where
-   def = ModularSchemeValue Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
-
--- Injection of simple literal values
-instance (Domain i Integer, JoinLattice (ModularSchemeValue r i c b pai vec str var exp env)) => Domain (ModularSchemeValue r i c b pai vec str var exp env) Integer where
-   inject i = def { integer = Just $ inject i }
-instance (Domain c Char, JoinLattice (ModularSchemeValue r i c b pai vec str var exp env)) => Domain (ModularSchemeValue r i c b pai vec str var exp env) Char where
-   inject c = def { character = Just $ inject c }
-instance (Domain b Bool, JoinLattice (ModularSchemeValue r i c b pai vec str var exp env)) => Domain (ModularSchemeValue r i c b pai vec str var exp env) Bool where
-   inject b = def { boolean = Just $ inject b }
-instance (Domain r Double, JoinLattice (ModularSchemeValue r i c b pai vec str var exp env)) => Domain (ModularSchemeValue r i c b pai vec str var exp env) Double where
-   inject r = def { real = Just $ inject r }
-
--- Instance for lattice operations
-
-instance (RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, Ord exp) => Joinable (ModularSchemeValue r i c b pai vec str var exp env) where
-   -- pairwise join
-   join a b = ModularSchemeValue {
-      real = join (real a) (real b),
-      integer = join (integer a) (integer b),
-      character = join (character a) (character b),
-      boolean = join (boolean a) (boolean b),
-      paiPtr = join (paiPtr a) (paiPtr b),
-      vecPtr = join (vecPtr a) (vecPtr b),
-      strPtr = join (strPtr a) (strPtr b),
-      clo = join (clo a) (clo b),
-      null = join (null a) (null b),
-      unspecified = join (unspecified a) (unspecified b),
-      primitives = join (primitives a) (primitives b)
-   }
-
-instance (RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Ord exp) =>
-   JoinLattice (ModularSchemeValue r i c b pai vec str var exp env) where
-   -- bottom is when all fields of the modular value are nothing
-   bottom = def
-
-
-   -- pairwise subsumption
-   subsumes a b =
-      subsumes (real a) (real b) &&
-      subsumes (integer a) (integer b) &&
-      subsumes (character a) (character b) &&
-      subsumes (boolean a) (boolean b) &&
-      subsumes (paiPtr a) (paiPtr b) &&
-      subsumes (vecPtr a) (vecPtr b) &&
-      subsumes (strPtr a) (strPtr b) &&
-      subsumes (clo a) (clo b) &&
-      subsumes (null a) (null b) &&
-      subsumes (unspecified a) (unspecified b) &&
-      subsumes (primitives a) (primitives b)
-
---
-
-instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env) =>
-   SplitLattice (ModularSchemeValue r i c b pai vec str var exp env) where
-
-   split v =
-       Set.map (\a -> def { real = Just a }) (maybeSingle (real v)) ∪
-       Set.map (\a -> def { integer = Just a }) (maybeSingle (integer v)) ∪
-       Set.map (\a -> def { character = Just a }) (maybeSingle (character v)) ∪
-       Set.map (\a -> def { boolean = Just a }) (maybeSingle (boolean v)) ∪
-       Set.map (\a -> def { paiPtr = Just a }) (maybeSingle (paiPtr v)) ∪
-       Set.map (\a -> def { vecPtr = Just a }) (maybeSingle (vecPtr v)) ∪
-       Set.map (\a -> def { strPtr = Just a }) (maybeSingle (strPtr v)) ∪
-       Set.map (\a -> def { clo = Just a }) (maybeSingle (clo v)) ∪
-       Set.map (\a -> def { null = Just a }) (maybeSingle (null v)) ∪
-       Set.map (\a -> def { unspecified = Just a }) (maybeSingle (unspecified v)) ∪
-       Set.map (\a -> def { primitives = Just a }) (maybeSingle (primitives v))
-
----
-
-instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env) =>
-   BoolDomain (ModularSchemeValue r i c b pai vec str var exp env) where
-
-   isTrue v = any trueish (split v)
-      where trueish ModularSchemeValue { boolean = Just boolean } = isTrue boolean
-            trueish ModularSchemeValue {} = True -- anything else is true
-   -- only `#f` is false
-   isFalse v = any falsish (split v)
-      where falsish ModularSchemeValue { boolean = Just boolean } = isFalse boolean
-            falsish ModularSchemeValue {} = False
-   boolTop = def { boolean = Just boolTop }
-   not v = join t f
-      where t = if isTrue  v then inject True else bottom
-            f = if isFalse v then inject False else bottom
-
--- 
-
-chars :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) => ModularSchemeValue r i c b pai vec str var exp env -> m c
-chars = foldr (mjoin . select) mzero . split
-   where select ModularSchemeValue { character = Just c } = return c
-         select ModularSchemeValue { } = escape WrongType
-
-
-instance (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, IntC c ~ i, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env) =>
-   CharDomain (ModularSchemeValue r i c b pai vec str var exp env) where
-
-   type IntC (ModularSchemeValue r i c b pai vec str var exp env) = (ModularSchemeValue r i c b pai vec str var exp env)
-
-   downcase = chars >=> downcase >=> (\c -> return $ def {character = Just c})
-   upcase = chars >=> upcase >=>  (\c -> return $ def { character = Just c })
-   charToInt = chars >=> charToInt >=> (\i -> return $ def { integer = Just i })
-   isLower = chars >=> isLower
-   isUpper = chars >=> isUpper
-   charEq a b = M.join $ liftA2 charEq (chars a) (chars b)
-   charLt a b = M.join $ liftA2 charLt (chars a) (chars b)
-   charEqCI a b = M.join $ liftA2 charEqCI (chars a) (chars b)
-   charLtCI a b = M.join $ liftA2 charLtCI (chars a) (chars b)
-
---
-
-insertInt  v = def { integer = Just v }
-insertReal v = def { real    = Just v }
-insertBool b = def { boolean = Just b }
-insertChar c = def { character = Just c }
-
--- | Matches if the value is at least an integer
-pattern IsInteger i = ModularSchemeValue { integer = Just i }
--- | Matches if the value is at least a real number 
-pattern IsReal    r = ModularSchemeValue { real    = Just r }
-
--- TODO: `mjoin` might not keep the structure introduced by `split`, hence, `mjoin` should not be used here!
--- | Exhaustivily extract all number-like values from the abstract Scheme value
-number :: (Ord exp, Ord i, Ord r, Ord c, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, Show env, AbstractM m) =>
-   ModularSchemeValue r i c b pai vec str var exp env -> m (ModularSchemeValue r i c b pai vec str var exp env)
-number = foldr (mjoin . select) mzero . split
-   where select (IsInteger i) = return $ def { integer = Just i }
-         select (IsReal r) = return $ def { real    = Just r }
-         select _ = escape WrongType
-
-
-integers :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) =>
-  ModularSchemeValue r i c b pai vec str var exp env -> m i
-integers = foldr (mjoin . select) mzero . split
-   where select (IsInteger i) = return i
-         select _ = escape WrongType
-
-reals :: (Ord exp, Ord i, Ord b, Ord c, Ord r, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Ord env, AbstractM m) =>
-  ModularSchemeValue r i c b pai vec str var exp env -> m r
-reals = foldr (mjoin . select) mzero . split
-   where select (IsReal r) =  return r
-         select _ = escape WrongType
-
--- coerce :: (i -> i -> m a) -> (r -> r -> m a) -> (v -> v -> m a)
---coerce :: AbstractM m => (i -> i -> m a) -> (r -> r -> m a) -> (v -> v -> m a)
-coerce intOp realOp v1 v2 = M.join $ liftA2 apply (number v1) (number v2)
-   where apply (IsInteger i1) (IsInteger i2) = intOp i1 i2
-         apply (IsReal    r1) (IsReal    r2) = realOp r1 r2
-         apply (IsReal    r1) (IsInteger i2) = realOp r1 =<< toReal i2
-         apply (IsInteger i1) (IsReal    r2) = flip realOp r2 =<< toReal i1
-
-coerc1R realOp = apply <=< number
-   where apply (IsInteger l1) = realOp =<< toReal l1
-         apply (IsReal    r1) = realOp r1
-
-coerc1 intOp realOp = apply <=< number
-   where apply (IsInteger i) = intOp  i
-         apply (IsReal    r) = realOp r
-
-instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b) =>
-   NumberDomain (ModularSchemeValue r i c b pai vec str var exp env) where
-
-   type Boo (ModularSchemeValue r i c b pai vec str var exp env) = ModularSchemeValue r i c b pai vec str var exp env
-
-   isZero = coerc1 (fmap insertBool . isZero)
-                   (fmap insertBool . isZero)
-   random = coerc1 (fmap insertInt . random) (fmap insertReal . random)
-   plus   = coerce (\v1 v2 -> insertInt <$> plus v1 v2)
-                   (\v1 v2 -> insertReal <$> plus v1 v2)
-   minus  = coerce (\v1 v2 -> insertInt <$> minus v1 v2)
-                   (\v1 v2 -> insertReal <$> minus v1 v2)
-   times  = coerce (\v1 v2 -> insertInt <$> times v1 v2)
-                   (\v1 v2 -> insertReal <$> times v1 v2)
-   div    = coerce (\v1 v2 -> insertInt <$> div v1 v2)
-                   (\v1 v2 -> insertReal <$> div v1 v2)
-   expt   = coerce (\v1 v2 -> insertInt <$> expt v1 v2)
-                   (\v1 v2 -> insertReal <$> expt v1 v2)
-   lt     = coerce (\v1 v2 -> insertBool <$> lt v1 v2)
-                   (\v1 v2 -> insertBool <$> lt v1 v2)
-   eq     = coerce (\v1 v2 -> insertBool <$> eq v1 v2)
-                   (\v1 v2 -> insertBool <$> eq v1 v2)
-
-instance (Ord exp, Ord i, Ord r, Ord b, Ord c, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b, IntR r  ~ i) =>
-   RealDomain (ModularSchemeValue r i c b pai vec str var exp env) where
-
-   type IntR (ModularSchemeValue r i c b pai vec str var exp env) = (ModularSchemeValue r i c b pai vec str var exp env)
-
-   toInt   = (reals >=> toInt) >=> (return . insertInt)
-   ceiling = coerc1R $ fmap insertReal . ceiling
-   floor   = coerc1R $ fmap insertReal . floor
-   round   = coerc1R $ fmap insertReal . round
-   log     = coerc1R $ fmap insertReal . log
-   sin     = coerc1R $ fmap insertReal . sin
-   asin    = coerc1R $ fmap insertReal . asin
-   cos     = coerc1R $ fmap insertReal . cos
-   acos    = coerc1R $ fmap insertReal . acos
-   tan     = coerc1R $ fmap insertReal . tan
-   atan    = coerc1R $ fmap insertReal . atan
-   sqrt    = coerc1R $ fmap insertReal . sqrt
-
-instance (Ord exp, Ord i, Ord c, Ord r, Ord b, RealDomain r, IntDomain i, CharDomain c, BoolDomain b, Address pai, Address vec, Address str, Show env, Ord env, Rea i ~ r, Boo r ~ b, Boo i ~ b) =>
-   IntDomain (ModularSchemeValue r i c b pai vec str var exp env) where
-
-   type Str (ModularSchemeValue r i c b pai vec str var exp env) = ()
-   type Rea (ModularSchemeValue r i c b pai vec str var exp env) = (ModularSchemeValue r i c b pai vec str var exp env)
-   toReal    = integers >=> toReal >=> (return . insertReal)
-   -- TODO: toString  = integers >=> toString >=> (return . Coerce.coerce)
-   quotient  a b = insertInt <$> M.join (liftA2 quotient (integers a) (integers b))
-   modulo    a b = insertInt <$> M.join (liftA2 modulo (integers a) (integers b))
-   remainder a b = insertInt <$> M.join (liftA2 remainder (integers a) (integers b))
-
--- 
+type IsSchemeString s m = (
+   StringDomain s,
+   Assoc CharKey (Values m) ~ ChaS s,
+   Assoc IntKey (Values m)  ~ IntS s,
+   Assoc BoolKey (Values m) ~ BooS s)
 
 newtype SchemeString s v = SchemeString { sconst :: s } deriving (Show, Eq, Ord)
 
 instance (Joinable s) => Joinable (SchemeString s v) where
    join a b = SchemeString (join (sconst a) (sconst b))
 
-instance (StringDomain s) => JoinLattice (SchemeString s v) where
+instance (JoinLattice s) => JoinLattice (SchemeString s v) where
    subsumes a b = subsumes (sconst a) (sconst b)
    bottom = SchemeString bottom
 instance (StringDomain s) => Domain (SchemeString s v) String where
    inject = SchemeString . inject
-instance (
-   Ord exp, Ord i, Ord c, Ord b, Ord r,
-   StringDomain s, IntS s ~ i, ChaS s ~ c, BooS s ~ b,
-   IntDomain i, CharDomain c, BoolDomain b, Ord env, Address pai, Address vec, Address str,
-   RealDomain r, SchemeDomain (ModularSchemeValue r i c b pai vec str var exp env)
- ) => StringDomain (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) where
-   type IntS (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) = (ModularSchemeValue r i c b pai vec str var exp env)
-   type ChaS (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) = (ModularSchemeValue r i c b pai vec str var exp env)
-   type BooS (SchemeString s (ModularSchemeValue r i c b pai vec str var exp env)) = (ModularSchemeValue r i c b pai vec str var exp  env)
-   length = (length . sconst) >=> (return . insertInt)
+instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s (SchemeVal m)) where
+   type IntS (SchemeString s (SchemeVal m)) = SchemeVal m
+   type ChaS (SchemeString s (SchemeVal m)) = SchemeVal m
+   type BooS (SchemeString s (SchemeVal m)) = SchemeVal m
+
+   length = (length . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
-   ref s i = insertChar <$> (ref (sconst s) =<< integers i)
-   stringLt s1 s2  = insertBool <$> stringLt (sconst s1) (sconst s2)
-   toNumber = (toNumber . sconst) >=> (return . insertInt)
+   ref s i = SchemeVal . HMap.singleton @CharKey <$> (ref (sconst s) =<< integers i)
+   stringLt s1 s2  = SchemeVal . HMap.singleton @BoolKey <$> stringLt (sconst s1) (sconst s2)
+   toNumber = (toNumber . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
 
---
+------------------------------------------------------------
+-- Subdomain extraction
+------------------------------------------------------------
 
-instance
-  ( Ord exp,
-    Ord r, Ord i, Ord b, Ord c,
-    RealDomain r,
-    IntDomain  i,
-    CharDomain c,
-    BoolDomain b,
-    IntC c ~ i,
-    Rea  i ~ r,
-    Boo  i ~ b,
-    Boo  r ~ b,
-    IntR r ~ i,
-    Address vec,
-    Address str,
-    Address pai,
-    Address var,
-    Show env, Ord env
-  ) => SchemeDomain (ModularSchemeValue r i c b pai vec str var exp env)
-  where
+integers :: forall m schemeM . (IsSchemeValue m, AbstractM schemeM) => SchemeVal m -> schemeM (Assoc IntKey (Values m))
+integers = mjoins . HMap.mapList select . getSchemeVal
+      where select :: forall (kt :: SchemeKey) . Sing kt ->  Assoc kt (Values m) -> schemeM (IntOf m)
+            select SIntKey v = return  v
+            select _ _ = escape WrongType
 
-  type Adr  (ModularSchemeValue r i c b pai vec str var exp env)  = var
-  type PAdr (ModularSchemeValue r i c b pai vec str var exp env)  = pai
-  type VAdr (ModularSchemeValue r i c b pai vec str var exp env)  = vec
-  type SAdr (ModularSchemeValue r i c b pai vec str var exp env)  = str
-  type Env  (ModularSchemeValue r i c b pai vec str var exp env)  = env
-  type Exp  (ModularSchemeValue r i c b pai vec str var exp env)  = exp
+------------------------------------------------------------
+-- Insertion functions
+------------------------------------------------------------
 
-  -- Pointer injection
-  pptr p = def { paiPtr = Just $ Set.singleton p }
-  vptr p = def { vecPtr = Just $ Set.singleton p }
-  sptr p = def { strPtr = Just $ Set.singleton p }
+insertInt :: (Assoc IntKey (Values m) ~ i) => i -> SchemeVal m
+insertInt = SchemeVal . HMap.singleton @IntKey
 
-  -- Pointer extraction 
-  pptrs = Set.foldr (mjoin . select) mzero . split
-   where select ModularSchemeValue { paiPtr = Just ptr } = return ptr
-         select _ = escape WrongType
+insertChar :: (Assoc CharKey (Values m) ~ c) =>  c -> SchemeVal m 
+insertChar = SchemeVal . HMap.singleton @CharKey
 
-  sptrs = Set.foldr (mjoin . select) mzero . split
-   where select ModularSchemeValue { strPtr = Just ptr } = return ptr
-         select _ = escape WrongType
-
-  vptrs = Set.foldr (mjoin . select) mzero . split
-   where select ModularSchemeValue { vecPtr = Just ptr } = return ptr
-         select _ = escape WrongType
-
-  -- Closures
-  injectClo c = def { clo = Just $ Set.singleton c }
-  clos = foldl Set.union Set.empty . Set.map select . split
-   where select ModularSchemeValue { clo = Just clo } = clo
-         select _ = Set.empty
-
-  -- | Null
-  nil = def { null = Just () }
-
-  -- | Unspecified
-  unsp = def { unspecified = Just () }
-
-  -- | Primitives
-  prim  s = def { primitives = Just (Set.singleton s) }
-  prims =   Set.unions . Set.map select . split
-   where select ModularSchemeValue { primitives = Just primitives } = primitives
-         select _ = Set.empty
-
-  -- | Extracting procedures
-  withProc f = foldr (mjoin . select) mzero . split
-   where select ModularSchemeValue { clo = Just closures } = foldr (mjoin . f . Right) mzero closures
-         select ModularSchemeValue { primitives = Just prms } = foldr (mjoin . f . Left) mzero prms
-         select _ = escape WrongType
-
-  -- | Differentiate between values
-  isInteger = isJust . integer
-  isReal    = isJust . real
-  isChar    = isJust . character
-  isPaiPtr  = isJust . paiPtr
-  isVecPtr  = isJust . vecPtr
-  isStrPtr  = isJust . strPtr
-  isClo     = isJust . clo
-  isBool    = isJust . boolean
-  isUnsp    = isJust . unspecified
-  isNil     = isJust . null
-  isPrim    = isJust . primitives
-
-
--- | Generate a top value, since the set of closures
--- string pointers, pair pointers and vector pointers
--- cannot be known by the domain itself, it has to be 
--- passed to explicitly.
-schemeTop :: (TopLattice r,
-              TopLattice i,
-              TopLattice c,
-              TopLattice b)
-          => Set pai
-          -> Set vec
-          -> Set str
-          -> Set (exp, env)
-          -> Set String
-          -> ModularSchemeValue r i c b pai vec str var exp env
-schemeTop pai vec str closures primitives =
-   ModularSchemeValue {
-      real      = Just top,
-      integer   = Just top,
-      character = Just top,
-      boolean   = Just top,
-      paiPtr    = Just pai,
-      vecPtr    = Just vec,
-      strPtr    = Just str,
-      clo       = Just closures,
-      null      = Just (),
-      unspecified = Just (),
-      primitives  = Just primitives
-   }
+insertBool :: (Assoc BoolKey (Values m) ~ b) => b -> SchemeVal m 
+insertBool = SchemeVal . HMap.singleton @BoolKey

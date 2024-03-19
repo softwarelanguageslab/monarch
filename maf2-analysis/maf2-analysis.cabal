@@ -29,16 +29,21 @@ library
       Analysis.Scheme.Simple
       Analysis.Scheme.Semantics
       Analysis.Scheme.Primitives
+      Analysis.Actors
       Analysis.Monad
       Analysis.Scheme
       Analysis.Scheme.Monad
       Analysis.Scheme.Store
+      Analysis.Actors.Monad
       Interpreter.Scheme
       Control.SVar.ModX
       Control.Monad.Layer
+      Control.Monad.State.SVar
+      Control.Monad.State.IntPool
+      Control.Fixpoint.WorkList
+      Control.Fixpoint.EffectDriven
   other-modules:
       Analysis.Actors.Mailbox
-      Analysis.Actors.Monad
       Analysis.Actors.Semantics
       Analysis.Environment
       Analysis.Erlang.Monad
@@ -54,6 +59,7 @@ library
       Benchmark.Programs
       Control.Monad.Cond
       Control.Monad.Error
+      Control.Monad.State.Scoped
       Control.SVar.GenId
       Data.ListExtra
       Data.SetExtra
@@ -97,12 +103,13 @@ library
     , hspec-contrib
     , language-python
     , lens
-    , list-transformer
+    , list-t
     , maf2-domains
     , maf2-syntax
     , maf2-typelevel
     , mtl
     , optparse-applicative
+    , singletons
     , transformers
     , unordered-containers
     , vector
@@ -112,6 +119,7 @@ executable maf-exe
   main-is: Main.hs
   other-modules:
       Entrypoints
+      Run.Actor
       Run.Analyzer
       Run.Erlang
       Run.Interpreter
@@ -150,7 +158,7 @@ executable maf-exe
     , hspec-contrib
     , language-python
     , lens
-    , list-transformer
+    , list-t
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
@@ -158,6 +166,7 @@ executable maf-exe
     , mtl
     , optparse-applicative
     , pretty-simple
+    , singletons
     , transformers
     , unordered-containers
     , vector
@@ -201,13 +210,14 @@ test-suite maf2-analysis-test
     , hspec-contrib
     , language-python
     , lens
-    , list-transformer
+    , list-t
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
     , maf2-typelevel
     , mtl
     , optparse-applicative
+    , singletons
     , transformers
     , unordered-containers
     , vector

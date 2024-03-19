@@ -41,7 +41,8 @@ dependencies:
 - maf2-syntax
 - maf2-typelevel
 - hashmap
-- list-transformer
+- list-t
+- singletons
 
 default-extensions:
   - FlexibleContexts
@@ -82,13 +83,19 @@ library:
   - Analysis.Scheme.Simple
   - Analysis.Scheme.Semantics
   - Analysis.Scheme.Primitives
+  - Analysis.Actors
   - Analysis.Monad
   - Analysis.Scheme
   - Analysis.Scheme.Monad
   - Analysis.Scheme.Store
+  - Analysis.Actors.Monad
   - Interpreter.Scheme
   - Control.SVar.ModX
   - Control.Monad.Layer
+  - Control.Monad.State.SVar
+  - Control.Monad.State.IntPool
+  - Control.Fixpoint.WorkList
+  - Control.Fixpoint.EffectDriven
 
 executables:
   maf-exe:

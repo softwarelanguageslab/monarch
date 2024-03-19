@@ -14,17 +14,17 @@ import Analysis.Actors.Monad
 import Analysis.Actors.Mailbox
 import qualified Analysis.Monad as Monad
 import Control.Monad.Join
+import Lattice.Class (JoinLattice)
 
-eval :: ActorEvalM m v msg => Exp -> m v
+eval :: ActorEvalM m v msg mb => Exp -> m v
 eval (Spw beh args _) = initBehavior beh args spawn
 eval (Bec beh args _) = initBehavior beh args become $> unsp
 eval (Sen rcpt tag args _) = do
-   receiver <- Monad.eval rcpt >>= arefs
-   message  <- message <$> Monad.eval tag <*> mapM Monad.eval args
-   send receiver message $> unsp
-eval (Rcv hdls _) = do 
-   msg <- receive 
-   selectHandler msg hdls
+   message  <- message tag <$> mapM Monad.eval args
+   Monad.eval rcpt >>= arefs (! message)
+   return unsp
+eval (Rcv hdls _) = do
+   receive (`selectHandler` hdls)
 
 eval e@(Beh {}) = getEnv <&> curry beh e
 eval e@(Mir {}) = getEnv <&> curry beh e
@@ -32,7 +32,7 @@ eval e = Base.eval e
 
 -- | Initialize the behavior in the first argument with the arguments in the second 
 -- then run the function in the third argument on the expression of the behavior
-initBehavior :: ActorEvalM m v msg => Exp -> [Exp] -> (Exp -> m a) -> m a
+initBehavior :: (JoinLattice a, ActorEvalM m v msg mb) => Exp -> [Exp] -> (Exp -> m a) -> m a
 initBehavior beh args run =
    Monad.eval beh >>= withBehs (\(Beh prs bdy _, env) -> do
       vlus <- mapM Monad.eval args
@@ -42,10 +42,10 @@ initBehavior beh args run =
 
 
 -- | Select a handler from the given list of handlers that matches the given message
-selectHandler :: ActorEvalM m v msg => msg -> [Hdl] -> m v
+selectHandler :: ActorEvalM m v msg mb => msg -> [Hdl] -> m v
 selectHandler msg = mjoins . map runHandler . filter (matchesTag msg . nameOf)
    where nameOf (Hdl (Ide nam _) _ _) = nam
-         runHandler (Hdl _ prs bdy) = do 
-            adrs <- mapM allocVar prs 
+         runHandler (Hdl _ prs bdy) = do
+            adrs <- mapM allocVar prs
             mapM_ (uncurry writeAdr) (zip adrs (payload msg))
             withExtendedEnv (zip (map name prs) adrs) $ Monad.eval bdy

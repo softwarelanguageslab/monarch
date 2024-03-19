@@ -106,7 +106,7 @@ undefineM s@(Str _ _) = return s
 undefineM b@(Bln _ _) = return b
 undefineM s@(Sym _ _) = return s
 undefineM c@(Cha _ _) = return c
-undefineM l@(Nll _)   = return l 
+undefineM l@(Nll _)   = return l
 -- vars don't contain subexpressions
 undefineM v@(Var _)  = return v
 -- The branches and condition of an if cannot have define's
@@ -151,7 +151,7 @@ undefineM Empty = return Empty
 undefineM (Spw beh args span) =
    Spw <$> notAllowed (undefineM beh) <*> mapM (notAllowed . undefineM) args <*> pure span
 undefineM (Sen rcpt tag args span) =
-   Sen <$> notAllowed (undefineM rcpt) <*> notAllowed (undefineM tag) <*> mapM (notAllowed . undefineM) args <*> pure span
+   Sen <$> notAllowed (undefineM rcpt) <*> pure tag <*> mapM (notAllowed . undefineM) args <*> pure span
 undefineM (Bec beh args span) =
    Bec <$> notAllowed (undefineM beh) <*> mapM (notAllowed . undefineM) args <*> pure span
 -- Behavior and mirror expressions allow define's in their handler bodies

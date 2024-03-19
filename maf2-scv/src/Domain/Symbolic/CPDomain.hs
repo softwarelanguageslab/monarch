@@ -1,8 +1,8 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- | Symbolic domain combined with a constant
 -- propagation domain
 module Domain.Symbolic.CPDomain(CPSymbolicValue) where
 
-import Domain.Scheme.Derived.Pair (leftValue, rightValue)
 import Domain.Symbolic.Paired
 import Domain.Scheme
 import Domain
@@ -30,3 +30,6 @@ instance (Address ptr, Address var) => StringDomain (SchemeString (CP String) (C
    ref s i = mkLeft . insertChar <$> (ref (sconst s) =<< integers (leftValue i))
    stringLt s1 s2  = mkLeft . insertBool <$> stringLt (sconst s1) (sconst s2)
    toNumber = (toNumber . sconst) >=> (return . mkLeft . insertInt)
+   set = undefined
+   makeString = undefined
+

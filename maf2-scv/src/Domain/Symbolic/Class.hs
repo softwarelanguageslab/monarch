@@ -1,4 +1,4 @@
-module Domain.Symbolic.Class where
+module Domain.Symbolic.Class(SymbolicValue(..)) where
 
 import Symbolic.AST
 import Domain.Scheme
@@ -9,7 +9,7 @@ import Domain.Scheme
 class (SchemeValue v) => SymbolicValue v where
    -- | Construct a symbolic representation of 
    -- a function application.
-   ap :: v -> [v] -> v ->  v
+   ap :: v -> [v] -> v -> v
    -- | Assert that the given value is true 
    -- as a symbolic expression
    assertTrue :: v -> v
@@ -18,3 +18,6 @@ class (SchemeValue v) => SymbolicValue v where
    assertFalse :: v -> v
    -- | Extract a symbolic value from the value
    symbolic    :: v -> Proposition
+   -- | Attaches a fresh identifier 
+   -- to the given value
+   var :: Int -> v -> v

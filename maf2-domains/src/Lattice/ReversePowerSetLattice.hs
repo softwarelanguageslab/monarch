@@ -18,7 +18,7 @@ insert a Bottom    = Bottom
 insert a (RPSet s) = RPSet (Set.insert a s)
 
 contains :: Ord a => a -> ReversePowerSet a -> Bool
-contains a Bottom    = True
+contains _ Bottom    = True
 contains a (RPSet s) = Set.member a s
 
 instance (Ord a) => Joinable (ReversePowerSet a) where

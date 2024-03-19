@@ -33,11 +33,14 @@ library
       Domain.Scheme.Derived
       Domain.Scheme.Derived.Pair
       Domain.Scheme.Store
+      Domain.Scheme.Modular
       Domain.Python
+      Domain.Scheme.Actors.Class
       Domain.Erlang.Class
       Lattice
       Lattice.Class
       Lattice.ConstantPropagationLattice
+      Lattice.ReversePowerSetLattice
       Control.Monad.Cond
       Control.Monad.Join
       Control.Monad.DomainError
@@ -80,15 +83,14 @@ library
       Domain.Python.DataFrameDomain.Class
       Domain.Python.DataFrameDomain.DataFrameSet
       Domain.Scheme.Actors
+      Domain.Scheme.Actors.Modular
       Domain.Scheme.CPDomain
-      Domain.Scheme.Modular
       Lattice.HMapLattice
       Lattice.IntervalLattice
       Lattice.ListLattice
       Lattice.MapLattice
       Lattice.MaybeLattice
       Lattice.ProductLattice
-      Lattice.ReversePowerSetLattice
       Lattice.SetLattice
       Lattice.TopLiftedLattice
       Lattice.UnitLattice

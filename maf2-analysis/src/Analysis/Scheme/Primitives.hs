@@ -120,7 +120,8 @@ allPrimitives = [
    fix2 "<" lt,
    fix2 "=" eq,
    fix1 "random" Domain.random,
-   fix0 "bool-top" $ return Domain.boolTop
+   fix0 "bool-top" $ return Domain.boolTop,
+   fix1 "not" $ return . Domain.not
    -- fix1 "error" todo
    ]
 
@@ -143,3 +144,4 @@ initialEnv alloc =
 initialSto :: forall v e adr . (SchemeDomain v, Environment e adr, Ord adr) => e -> Map adr v
 initialSto e =
    foldr (\nam -> Map.insert (Analysis.Environment.lookup nam e) (prim nam)) Map.empty primitiveNames
+

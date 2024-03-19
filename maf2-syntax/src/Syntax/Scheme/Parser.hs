@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 -- | Parser to S-expressions
-module Syntax.Scheme.Parser(SExp(..), Span, parseSexp, spanOf, pattern (:::)) where
+module Syntax.Scheme.Parser(SExp(..), Span, parseSexp, spanOf, pattern (:::), smap) where
 
 import GHC.Generics (Generic)
 import Data.Hashable
@@ -11,11 +11,11 @@ import qualified Text.ParserCombinators.Parsec.Token as Token
 import Text.Printf
 
 -- | Location information
-data Span = Span { filename :: String, line :: Int, column :: Int } deriving (Show, Ord, Eq, Generic) 
+data Span = Span { filename :: String, line :: Int, column :: Int } deriving (Show, Ord, Eq, Generic)
 instance Hashable Span
-fromSourcePos :: SourcePos -> Span 
+fromSourcePos :: SourcePos -> Span
 fromSourcePos pos = Span {
-   filename = sourceName pos, 
+   filename = sourceName pos,
    line = sourceLine pos,
    column = sourceColumn pos
 }
@@ -42,6 +42,10 @@ data SExp =
  | Unq SExp Span       -- ^ unquoted expression
  | Uqs SExp Span       -- ^ unquoted spliced expression
 
+smap :: (SExp -> a) -> SExp -> [a]
+smap _ (SNil _) = []
+smap f (Pai a as _) = f a : smap f as
+smap _ _ = error "invalid list"
 
 --
 -- Span computation
@@ -114,7 +118,7 @@ symbol     = Token.symbol     lexer
 lexeme     = Token.lexeme     lexer
 stringLit  = Token.stringLiteral lexer
 integer    = sign <*> natural
-sign       = 
+sign       =
       (char '-' >> return negate)
   <|> (char '+' >> return id)
   <|> return id
@@ -142,11 +146,11 @@ pair :: Parser (Span -> SExp)
 pair = parens list
 
 list :: Parser (Span -> SExp)
-list = option SNil parseList 
+list = option SNil parseList
 
-parseList = do 
+parseList = do
    head <- expression
-   rest <- (try $ lexeme (char '.') >> expression) <|> withSpan list 
+   rest <- (try $ lexeme (char '.') >> expression) <|> withSpan list
    return $ Pai head rest
 
 quote :: Parser (Span -> SExp)

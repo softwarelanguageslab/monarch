@@ -46,6 +46,7 @@ module Data.TypeLevel.HMap (
     AtKey,
     AtKey1,
     AllAtKey1,
+    AllAtKey,
     KeyIs,
     KeyIs1,
     Const,
@@ -113,6 +114,7 @@ type instance Apply (And c1 c2) kt = (c1 @@ kt, c2 @@ kt)
 -- a regular function can be passed.
 type AtKey1 (c :: Type -> Constraint) (m :: [k :-> Type]) = AtKey (InstanceOf c) m :: k ~> Constraint 
 type AllAtKey1 c m = ForAll (KeyKind m) (AtKey1 c m) :: Constraint 
+type AllAtKey c m = ForAll (KeyKind m) (AtKey c m) :: Constraint
 
 -- | Defunctionalized the given function `c`
 data InstanceOf (c :: a -> b) :: a ~> b
