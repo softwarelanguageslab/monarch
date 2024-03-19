@@ -35,6 +35,8 @@ library
       Analysis.Python.Infrastructure
       Analysis.Python.Monad
       Analysis.Python.Objects
+      Analysis.Python.Objects.Class
+      Analysis.Python.Objects.PyObjHMap
       Analysis.Python.OO
       Analysis.Python.Primitives
       Analysis.Python.Semantics

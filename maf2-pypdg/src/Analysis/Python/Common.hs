@@ -4,6 +4,9 @@
 module Analysis.Python.Common (
   VarAdr, 
   ObjAdr, 
+  allocVar,
+  allocPtr,
+  allocCst,
   PyVal, 
   addrs, 
   injectAdr,
@@ -32,6 +35,15 @@ data ObjAdr = PtrAdr PyLoc
             | PrmAdr PyConstant
   deriving (Eq, Ord, Show)
 
+allocVar :: PyIde -> VarAdr
+allocVar = VarAdr . ideName . lexIde
+
+allocPtr :: PyLoc -> ObjAdr
+allocPtr = PtrAdr
+
+allocCst :: PyConstant -> ObjAdr
+allocCst = PrmAdr 
+
 --
 -- Values 
 --
@@ -43,7 +55,7 @@ injectAdr :: ObjAdr -> PyVal
 injectAdr = PyVal . Set.singleton
 
 constant :: PyConstant -> PyVal
-constant = injectAdr . PrmAdr 
+constant = injectAdr . allocCst  
 
 type PyEnv = Map String VarAdr
 type PyClo = ([PyPar], PyStm, PyEnv)

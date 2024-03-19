@@ -1,17 +1,28 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Analysis.Python.Infrastructure (
+  Finite(..),
   PyConstant(..), 
   PyPrim(..), 
   PyType(..), 
   name, 
   methods, 
   PyAttr(..),
-  attrStr
+  attrStr,
+  PyError(..),
+  PyPrmKey(..),
+  SPyPrmKey(..),
+  classFor
 ) where
 
+import Data.TypeLevel.HMap (All, ForAllOf, ForAll(..), Dict(..), genHKeys)
+
 import Prelude hiding (True, False, all)
+import Data.Singletons (Sing)
 
 --
 -- Finite typeclass
@@ -20,8 +31,10 @@ import Prelude hiding (True, False, all)
 -- | A typeclass to enumerate all values of a certain type
 class Finite a where
   all :: [a]
+  size :: Int
+  size = length (all :: [a]) 
 
-instance (Enum a, Bounded a) => Finite a where 
+instance {-# OVERLAPPABLE #-} (Enum a, Bounded a) => Finite a where 
   all = [minBound..maxBound]
 
 --
@@ -38,6 +51,7 @@ data PyType = NoneType
             | BoundType
             | CloType
             | FloatType
+            | ListType 
   deriving (Eq, Ord, Enum, Bounded, Show) 
 
 -- | The name of a built-in Python type 
@@ -51,6 +65,7 @@ name TupleType  = "tuple"
 name PrimType   = "primitive"
 name CloType    = "function"
 name BoundType  = "bound function" 
+name ListType   = "list"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -74,9 +89,14 @@ methods FloatType = [(AddAttr,      FloatAdd),
                      (GtAttr,       FloatGt),
                      (LeAttr,       FloatLe),
                      (GeAttr,       FloatGe)] 
-methods _ = [] 
-
-
+methods NoneType    = []
+methods BoolType    = []
+methods StringType  = []
+methods TupleType   = [] 
+methods PrimType    = []
+methods BoundType   = []
+methods CloType     = []
+methods ListType    = []
 
 -- | Built-in primitives in Python
 data PyPrim     = 
@@ -173,3 +193,38 @@ instance Finite PyConstant where
         ++ map TypeName   all 
         ++ map TypeMRO    all
         ++ map PrimObject all
+
+-- | Built-in primitive fields in Python
+data PyPrmKey = IntPrm
+              | ReaPrm 
+              | BlnPrm
+              | StrPrm
+              | PrmPrm
+              | CloPrm
+              | BndPrm
+              | TupPrm
+              | LstPrm
+              | NonPrm 
+  deriving (Eq, Ord)
+
+genHKeys ''PyPrmKey
+
+classFor :: SPyPrmKey k -> PyType
+classFor SIntPrm = IntType 
+classFor SReaPrm = FloatType
+classFor SBlnPrm = BoolType
+classFor SStrPrm = StringType
+classFor SPrmPrm = PrimType
+classFor SCloPrm = CloType
+classFor SBndPrm = BoundType
+classFor STupPrm = TupleType
+classFor SLstPrm = ListType 
+classFor SNonPrm = NoneType 
+
+-- | Built-in Python errors
+data PyError = AttributeNotFound
+             | NotMutable
+             | NotCallable
+             | ArityError
+             | TypeMismatch
+             | InvalidMRO
