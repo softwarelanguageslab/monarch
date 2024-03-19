@@ -13,7 +13,7 @@ import Analysis.Python.Objects.Class
 import Analysis.Python.Common
 import Analysis.Python.Monad 
 
-import Control.Monad (zipWithM, (>=>), (<=<), (=<<))
+import Control.Monad (zipWithM, (>=>), (<=<), (=<<), void)
 import qualified Control.Monad
 import Domain hiding (lookup, update, from)
 import qualified Domain.Core.SeqDomain as SeqDomain
@@ -50,7 +50,7 @@ exec (NonLocal x _ _)            = absurd x          -- these can't occur in mic
 exec (Global x _ _)              = absurd x          -- these can't occur in microPython
 
 execExp :: PyM pyM obj => PyExp -> pyM ()
-execExp = Control.Monad.void . eval
+execExp = void . eval
 
 execAss :: PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
@@ -82,14 +82,17 @@ execCnt :: PyM pyM obj => pyM ()
 execCnt = continue
 
 execWhi :: PyM pyM obj => PyExp -> PyStm -> pyM ()
-execWhi cnd bdy = Control.Monad.void $ getEnv >>= undefined --callCmp . LoopCmp cnd bdy
+execWhi cnd bdy = void $ getEnv >>= callCmp . LoopCmp cnd bdy
 
 eval :: PyM pyM obj => PyExp -> pyM PyVal
 eval (Lam prs bdy loc _)   = evalLam prs bdy loc
 eval (Var ide)             = evalVar ide
 eval (Literal lit)         = evalLit lit
 eval (Call fun arg loc)    = evalCll fun arg loc
-eval (Read _ _ _)          = todo "read"
+eval (Read obj nam loc)    = evalRea obj (ideName nam) loc
+
+evalRea :: PyM pyM obj => PyExp -> String -> PyLoc -> pyM PyVal
+evalRea obj nam loc = lookupAttr loc nam =<< eval obj
 
 evalLam :: forall pyM obj . PyM pyM obj => [PyPar] -> PyStm -> PyLoc -> pyM PyVal
 evalLam prs bdy loc = do env <- getEnv
@@ -97,9 +100,9 @@ evalLam prs bdy loc = do env <- getEnv
                          pyAlloc loc (from' @CloPrm clo)
 
 evalVar :: PyM pyM obj => PyIde -> pyM PyVal
-evalVar ide = lookupEnv (lexNam ide) >>= lookup
+evalVar = lookupEnv . lexNam >=> lookup
 
-evalLit ::PyM pyM obj => PyLit -> pyM PyVal
+evalLit :: PyM pyM obj => PyLit -> pyM PyVal
 evalLit (Bool bln loc)     = pyAlloc loc (from' @BlnPrm bln)
 evalLit (Integer int loc)  = pyAlloc loc (from' @IntPrm int)
 evalLit (Real rea loc)     = pyAlloc loc (from' @ReaPrm rea)
