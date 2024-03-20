@@ -17,7 +17,6 @@ import Control.Monad.Reader
 -- AST definition --
 
 data Ide = Ide { name :: String, span :: Span } deriving (Ord, Eq, Generic)
-instance Hashable Ide
 
 instance Show Ide where
    show (Ide { name }) = name
@@ -41,20 +40,23 @@ data Exp = Num Integer Span          -- ^ number literals
          | Ltr [(Ide,Exp)] Exp Span  -- ^ letrec
          | Lrr [(Ide,Exp)] Exp Span  -- ^ letrec*
          | App Exp [Exp] Span        -- ^ application
+         | Empty                     -- ^ synthetic empty expression
+         -- λα
          | Spw Exp [Exp] Span        -- ^ actor spawn 
          | Bec Exp [Exp] Span        -- ^ actor become 
          | Sen Exp String [Exp] Span -- ^ actor send 
          | Beh [Ide] Exp Span        -- ^ actor behavior
          | Mir [Ide] Exp Span        -- ^ actor mirror
          | Rcv [Hdl] Span            -- ^ a receive block
-         | Empty                     -- ^ synthetic empty expression
+         -- λα/c
+         | MsgC Exp Exp Exp Exp Span    -- ^ message/c  contract
+         | BehC [Exp] Span              -- ^ behavior/c contract
+         | EnsC [Exp] Span              -- ^ ensures/c  contract
+         | OnlC [Exp] Span              -- ^ only/c     contract
          deriving (Eq,Ord, Generic)
-
-instance Hashable Exp
 
 data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler
    deriving (Eq, Ord, Generic)
-instance Hashable Hdl
 
 -- AST predicates -- 
 
@@ -91,6 +93,11 @@ spanOf (Nll s)       = s
 spanOf (Rea _ s)     = s
 spanOf (Cha _ s)     = s
 spanOf Empty = error "no span for empty expressions"
+-- λα
+spanOf (MsgC _ _ _ _ s) = s
+spanOf (BehC _ s)       = s
+spanOf (EnsC _ s)       = s
+spanOf (OnlC _ s)       = s
 
 -- Show --
 
@@ -231,7 +238,7 @@ compile e@(SExp.Atom "let" _ ::: _ ::: _) = lettish Let e
 compile e@(SExp.Atom "let*" _ ::: _ ::: _) = lettish Ltt e
 compile e@(SExp.Atom "letrec" _ ::: _ ::: _) = lettish Ltr e
 compile e@(SExp.Atom "letrec*" _ ::: _ ::: _) = lettish Lrr e
--- λact
+-- λα
 compile e@(SExp.Atom "behavior" _ ::: prs ::: handlers) =
    Beh <$> (fst <$> compileParams prs) <*> compileHandlers handlers <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "send" _ ::: rcpt ::: (SExp.Atom tag _) ::: payloads) =   
@@ -240,6 +247,15 @@ compile e@(SExp.Atom "become" _ ::: beh ::: ags) =
    Bec <$> compile beh <*> compileSequence ags <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "spawn" _ ::: beh ::: ags)  =
    Spw <$> compile beh <*> compileSequence ags <*> pure (SExp.spanOf e)
+-- λα/c
+compile e@(SExp.Atom "ensures/c" _ ::: contracts) = 
+   EnsC <$> compileSequence contracts <*> pure (SExp.spanOf e)
+compile e@(SExp.Atom "only/c" _ ::: contracts) = 
+   OnlC <$> compileSequence contracts <*> pure (SExp.spanOf e)
+compile e@(SExp.Atom "behavior/c" _ ::: contracts) = 
+   BehC <$> compileSequence contracts <*> pure (SExp.spanOf e)
+compile e@(SExp.Atom "message/c" _ ::: tag ::: payload ::: rcpt ::: comm ::: SExp.SNil _) =
+   MsgC <$> compile tag <*> compile payload <*> compile rcpt <*> compile comm <*> pure (SExp.spanOf e)
 -- quotes
 compile (SExp.Quo exp _) = local (const False) (compileQuoted exp)
 compile (SExp.Qua exp _) = local (const True)  (compileQuoted exp)

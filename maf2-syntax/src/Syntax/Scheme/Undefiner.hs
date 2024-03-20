@@ -42,11 +42,11 @@ class (MonadState Int m, MonadWriter [(Ide, Exp)] m, MonadError Error m, MonadRe
       if defineAllowed isAllowed then m else throwError (DefineNotAllowed e))
 
    isTopLevel :: m Bool
-   isTopLevel = ask <&> topLevel
+   isTopLevel = asks topLevel
 
    genSym :: Span -> m Ide
    genSym span =
-      modify (+1) >> Ide <$> (get <&> (("_" ++) . show)) <*> pure span
+      modify (+1) >> gets (Ide . ("_" ++) . show) <*> pure span
 
 
 
@@ -147,6 +147,7 @@ undefineM (App exp opr span) =
    App <$> notAllowed (undefineM exp) <*> mapM (notAllowed . undefineM) opr <*> pure span
 -- Empty's translate to themselves 
 undefineM Empty = return Empty
+-- λα
 -- Spawn, become and send expressions do not allow define's in their arguments 
 undefineM (Spw beh args span) =
    Spw <$> notAllowed (undefineM beh) <*> mapM (notAllowed . undefineM) args <*> pure span
@@ -161,6 +162,20 @@ undefineM (Mir pars hdls span) =
    Mir pars <$> undefineM hdls <*> pure span
 undefineM (Rcv hdls span) =
    Rcv <$> mapM undefineHandler hdls <*> pure span
+-- λα/c
+undefineM (MsgC tag payload rcpt comm span) =   
+         MsgC 
+     <$> notAllowed (undefineM tag)
+     <*> notAllowed (undefineM payload)
+     <*> notAllowed (undefineM rcpt)
+     <*> notAllowed (undefineM comm)
+     <*> pure span
+undefineM (BehC contracts span) =
+   BehC <$> notAllowed (mapM undefineM contracts) <*> pure span
+undefineM (EnsC contracts span) =
+   EnsC <$> notAllowed (mapM undefineM contracts) <*> pure span
+undefineM (OnlC contracts span) = 
+   OnlC <$> notAllowed (mapM undefineM contracts) <*> pure span
 undefineM e = error $ "unrecognized expression" ++ show e
 
 undefineHandler :: UndefineM m => Hdl -> m Hdl
