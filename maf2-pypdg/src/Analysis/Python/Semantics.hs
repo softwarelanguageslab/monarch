@@ -56,7 +56,7 @@ execExp = void . eval
 
 execAss :: PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
-   where assignTo (IdePat ide) val     = lookupEnv (lexNam ide) >>= flip update val 
+   where assignTo (IdePat ide) val     = lookupEnv (lexNam ide) >>= flip update' val 
          assignTo (Field e nam _) val  = eval e >>= assignAttr (ideName nam) val 
          assignTo (ListPat _ _) val    = todo "list assignment"
          assignTo (TuplePat _ _) val   = todo "tuple assignment"
@@ -145,7 +145,7 @@ callClo pos ags = mjoinMap apply
                                   withExtendedEnv bindings $ do ext <- getEnv
                                                                 let cmp = CallCmp bdy ext
                                                                 callCmp cmp 
-                                                                
+
 bindPar :: PyM pyM obj => PyPar -> PyVal -> pyM (String, VarAdr)
 bindPar (Prm ide _) v = extend adr v >> return (lexNam ide, adr)
    where adr = allocVar ide 

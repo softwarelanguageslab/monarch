@@ -33,9 +33,11 @@ import qualified Data.Map as Map
 --
 
 class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
-  extend :: a -> v -> m ()
-  update :: a -> v -> m ()
   lookup :: a -> m v
+  extend :: a -> v -> m ()
+  update :: a -> {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> m ()
+  update' :: a -> v -> m ()
+  update' a v = update a (const v) (`join` v)
 
 class (Monad m) => AllocM m e a | m e -> a where
   alloc :: e -> m a
