@@ -30,5 +30,6 @@ main :: Options -> IO ()
 main (Options filename) = do
      contents <- readFile filename
      let program = fromJust $ parseString contents
-     putStrLn $ printSto (values (analyze program))
+     putStrLn program
+     -- putStrLn $ printSto (values (analyze program))
 

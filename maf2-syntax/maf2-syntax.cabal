@@ -7,9 +7,9 @@ cabal-version: 2.2
 name:           maf2-syntax
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/maf2-syntax#readme>
-homepage:       https://github.com/githubuser/maf2-syntax#readme
-bug-reports:    https://github.com/githubuser/maf2-syntax/issues
-author:         Author name here
+homepage:       https://github.com/softwarelanguageslab/maf2-syntax#readme
+bug-reports:    https://github.com/softwarelanguageslab/maf2-syntax/issues
+author:         Software Languages Lab - VUB
 maintainer:     example@example.com
 copyright:      2023 Author name here
 license:        BSD-3-Clause
@@ -17,7 +17,7 @@ build-type:     Simple
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/maf2-syntax
+  location: https://github.com/softwarelanguageslab/maf2-syntax
 
 library
   exposed-modules:
@@ -26,6 +26,7 @@ library
       Syntax.Scheme
       Syntax.Scheme.AST
       Syntax.Scheme.Undefiner
+      Syntax.Scheme.Actor
       Syntax.Erlang
       Syntax.Erlang.Parser
       Syntax.Erlang.Compiler
@@ -54,6 +55,7 @@ library
       base >=4.7 && <5
     , containers
     , data-default
+    , file-embed
     , hashable
     , language-python
     , mtl
@@ -82,6 +84,7 @@ test-suite maf2-syntax-test
       base >=4.7 && <5
     , containers
     , data-default
+    , file-embed
     , hashable
     , language-python
     , maf2-syntax

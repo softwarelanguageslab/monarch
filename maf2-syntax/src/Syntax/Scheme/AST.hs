@@ -4,7 +4,6 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Syntax.Scheme.AST (Exp(..), Ide(..), parseSchemeExp, parseSchemeExp', testParser, isDefine, spanOf, Span, Hdl(..)) where
 
-import Data.Hashable
 import GHC.Generics (Generic)
 import qualified Data.Set as Set
 import Control.Monad.Except
