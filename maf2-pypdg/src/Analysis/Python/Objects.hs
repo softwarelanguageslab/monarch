@@ -68,15 +68,6 @@ injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new (constant Type)
         allAttrs    = map (bimap attrStr constant) (typeAttrs ++ methodAttrs)
                       
 
--- -- helper functions
--- injectObj :: PyObj obj => PyVal -> [(PyAttr, PyVal)] -> [BindingFrom (PyPrm m)] -> PyObj m
--- injectObj cls bds prm = PyObj (Domain.from dict) (HMapDomain.from prm)
---   where attrs = (ClassAttr, cls) : bds
---         dict  = map (first $ Constant . attrStr) attrs
-
--- injectObj' :: (AllJoin m) => PyConstant -> [(PyAttr, PyConstant)] -> [BindingFrom (PyPrm m)] -> PyObj m
--- injectObj' cls bds = injectObj (constant cls) (map (second constant) bds)
-
 isBindable :: (BoolDomain b, PyM pyM obj) => PyVal -> pyM b
 isBindable = fmap isBindableObj . pyDeref'
 
@@ -115,5 +106,5 @@ lookupAttrMRO attr =
 -- --
 
 assignAttr :: PyM pyM obj => String -> PyVal -> PyVal -> pyM ()
-assignAttr attr vlu = 
-  pyDeref $ \adr -> update adr . setAttr attr vlu   -- TODO: support strong update
+assignAttr attr vlu = mjoinMap updateAdr . addrs   -- TODO: support strong update
+    where updateAdr adr = update adr (setAttr attr vlu) (setAttrWeak attr vlu) 

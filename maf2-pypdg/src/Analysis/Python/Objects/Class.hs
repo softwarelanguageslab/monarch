@@ -36,6 +36,7 @@ data AbsJoinLattice obj :: k ~> Constraint
 type instance Apply (AbsJoinLattice obj) k = JoinLattice (Abs obj k)
 
 class (
+    JoinLattice obj,
     ForAll PyPrmKey (AbsJoinLattice obj),
     Abs obj NonPrm ~ (),
     Abs obj PrmPrm ~ Set PyPrim, 
@@ -64,7 +65,9 @@ class (
     -- ... and user-defined keyts/attributes
     hasAttr :: BoolDomain b => String -> obj -> b
     getAttr :: String -> obj -> PyVal 
-    setAttr :: String -> PyVal -> obj -> obj 
+    setAttr :: String -> PyVal -> obj -> obj
+    setAttrWeak :: String -> PyVal -> obj -> obj 
+    setAttrWeak k v o = o `join` setAttr k v o 
 
 -- | Convenience function to check and retrieve a certain attribute
 atAttr :: (AbstractM m, PyObj obj) => String -> obj -> m PyVal 

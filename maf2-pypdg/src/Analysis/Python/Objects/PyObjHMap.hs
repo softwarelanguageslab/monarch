@@ -91,3 +91,4 @@ instance AllAbs m => PyObj (PyObjHMap m) where
     hasAttr k = Domain.contains (Constant k) . dct
     getAttr k = Domain.lookup (Constant k) . dct 
     setAttr k v (PyObjHMap dct prm) = PyObjHMap (Domain.update (Constant k) v dct) prm 
+    setAttrWeak k v (PyObjHMap dct prm) = PyObjHMap (Domain.updateWeak (Constant k) v dct) prm 
