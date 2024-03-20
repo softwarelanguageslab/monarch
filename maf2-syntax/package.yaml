@@ -1,8 +1,8 @@
 name:                maf2-syntax
 version:             0.1.0.0
-github:              "githubuser/maf2-syntax"
+github:              "softwarelanguageslab/maf2-syntax"
 license:             BSD-3-Clause
-author:              "Author name here"
+author:              "Software Languages Lab - VUB"
 maintainer:          "example@example.com"
 copyright:           "2023 Author name here"
 
@@ -23,6 +23,7 @@ dependencies:
 - hashable
 - parsec >= 3.1
 - data-default
+- file-embed
 
 ghc-options:
 - -Wall
@@ -43,6 +44,7 @@ library:
     - Syntax.Scheme
     - Syntax.Scheme.AST
     - Syntax.Scheme.Undefiner
+    - Syntax.Scheme.Actor
     - Syntax.Erlang
     - Syntax.Erlang.Parser
     - Syntax.Erlang.Compiler

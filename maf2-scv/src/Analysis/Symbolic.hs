@@ -33,6 +33,7 @@ import Data.Maybe
 import Text.Printf
 import Prelude hiding (exp)
 import Data.Set (Set)
+import qualified Data.Set as Set
 
 ------------------------------------------------------------
 -- Evaluation function
@@ -150,7 +151,7 @@ simpleAnalysis e = do
                                          & runAlloc @VrAdr Adr
                                          & runCtx []
                                          & runEnv env
-                                         & runActorT @MB undefined undefined
+                                         & runActorT @MB Set.empty EntryPid
                                          & runNonDetT
                                          & runNoSpawnT
                                          & runNoSendT
