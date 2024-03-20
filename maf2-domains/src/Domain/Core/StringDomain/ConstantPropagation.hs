@@ -34,3 +34,4 @@ instance StringDomain (CP String) where
    stringLt s1 s2 = return $ liftA2 (<) s1 s2
    toNumber = return . fmap read
    makeString i c = return $ take <$> fmap fromIntegral i <*> fmap repeat c
+   topString      = Top

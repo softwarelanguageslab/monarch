@@ -36,6 +36,9 @@ efix2 nam f = Prim nam (\ex [x1, x2] -> f ex x1 x2)
 -- | Ternary primitives
 efix3 ::  String -> (forall m . PrimM m v => Exp -> v -> v -> v -> m v) -> Prim v
 efix3 nam f = Prim nam (\ex [x1, x2, x3] -> f ex x1 x2 x3)
+-- | Vararg primitives
+evar  :: String -> (forall m . PrimM m v => Exp -> [v] -> m v) -> Prim v 
+evar = Prim
 
 -- | Heap unrelated operations 
 fix1 :: String -> (forall m . PrimM m v => v -> m v) -> Prim v
@@ -119,9 +122,17 @@ allPrimitives = [
    fix1 "vector?" $ return . inject . isVecPtr,
    fix2 "<" lt,
    fix2 "=" eq,
+   fix2 ">" gt,
+   fix2 ">=" ge,
+   fix2 "<=" le,
    fix1 "random" Domain.random,
    fix0 "bool-top" $ return Domain.boolTop,
-   fix1 "not" $ return . Domain.not
+   fix1 "not" $ return . Domain.not,
+   -- TODO: there is no IO model, so displays are simply ignored
+   fix1 "display" $ const (return Domain.nil),
+   fix1 "displayln" $ const (return Domain.nil),
+   -- TODO: format does not executed the formatting and returns a top from the string lattice
+   evar "format" (\e -> const (do { adr <- alloc @_ @_ @StAdr e ; writeAdr adr topString ; return (sptr adr) }))
    -- fix1 "error" todo
    ]
 

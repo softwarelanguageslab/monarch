@@ -17,3 +17,4 @@ class (Domain s String) => StringDomain s where
    stringLt :: AbstractM m => s -> s -> m (BooS s)
    toNumber :: AbstractM m => s -> m (IntS s)
    makeString :: AbstractM m => IntS s -> ChaS s -> m s
+   topString  :: s
