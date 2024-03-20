@@ -49,10 +49,10 @@ data Exp = Num Integer Span          -- ^ number literals
          | Rcv [Hdl] Span            -- ^ a receive block
          | Ter Span                  -- ^ terminate actor
          -- λα/c
-         | MsgC Exp Exp Exp Exp Span    -- ^ message/c  contract
-         | BehC [Exp] Span              -- ^ behavior/c contract
-         | EnsC [Exp] Span              -- ^ ensures/c  contract
-         | OnlC [Exp] Span              -- ^ only/c     contract
+         | MsgC Exp Exp Exp Exp Span -- ^ message/c  contract
+         | BehC [Exp] Span           -- ^ behavior/c contract
+         | EnsC [Exp] Span           -- ^ ensures/c  contract
+         | OnlC [Exp] Span           -- ^ only/c     contract
          deriving (Eq,Ord, Generic)
 
 data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler

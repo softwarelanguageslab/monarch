@@ -45,6 +45,7 @@ library:
     - Syntax.Scheme.AST
     - Syntax.Scheme.Undefiner
     - Syntax.Scheme.Actor
+    - Syntax.Scheme.Parser
     - Syntax.Erlang
     - Syntax.Erlang.Parser
     - Syntax.Erlang.Compiler

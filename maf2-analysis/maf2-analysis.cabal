@@ -64,6 +64,7 @@ library
       Data.ListExtra
       Data.Print
       Data.SetExtra
+      Interpreter.Actors
       Interpreter.Scheme.Eval
       Interpreter.Scheme.Monad
       Interpreter.Scheme.Primitives
