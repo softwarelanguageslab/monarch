@@ -1,0 +1,1 @@
+("8.10" tarm64osx ("2f455cfd45cddd3babae974025b96420dfaa5741" . "e844544542d79e268c092488577b5e5c9383ad8b") #"/Users/bram/Seafile/code/communication-contracts/validation/patterns/../../main.rkt" (collects #"drracket" #"private" #"drracket-errortrace-key.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))
