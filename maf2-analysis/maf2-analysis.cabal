@@ -62,6 +62,7 @@ library
       Control.Monad.State.Scoped
       Control.SVar.GenId
       Data.ListExtra
+      Data.Print
       Data.SetExtra
       Interpreter.Scheme.Eval
       Interpreter.Scheme.Monad

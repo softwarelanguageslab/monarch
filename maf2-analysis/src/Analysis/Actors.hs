@@ -5,6 +5,7 @@
 module Analysis.Actors where
 
 
+import Debug.Trace
 import Analysis.Scheme.Primitives
 import Analysis.Actors.Mailbox
 import Analysis.Actors.Monad

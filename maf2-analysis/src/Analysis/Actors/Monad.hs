@@ -139,11 +139,11 @@ instance {-# OVERLAPPING #-} (Ord ref, Mailbox mb msg, SVar.MonadStateVar m) => 
    send ref msg = do
       mb <- gets (Map.lookup ref) >>= maybe (upperM $ SVar.new MB.empty) pure
       modify (Map.insert ref mb)
-      -- TODO: we should actually check whether the 
-      -- message should be added to the mailbox, it should 
-      -- not be added for example, if the approximation does 
-      -- not change.
-      void $ upperM $ SVar.modify (Just . enqueue msg) mb
+      -- TODO: we check whether the mailbox abstraction has changed in order
+      -- to signal a change to the SVar layer or not. This is not very 
+      -- efficient. Depending on the abstraction used a more efficient version
+      -- of this could be provided.
+      void $ upperM $ SVar.modify (\mb -> let mb' = enqueue msg mb in if mb == mb' then Nothing else Just mb') mb
 
 runActorSystemT :: ActorSystemState ref mb -> ActorSystemT ref msg mb m a -> m (a, Map ref (SVar mb))
 runActorSystemT initial (ActorSystemT m) = runStateT m initial

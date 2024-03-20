@@ -14,7 +14,7 @@ import Analysis.Actors.Monad
 import Analysis.Actors.Mailbox
 import qualified Analysis.Monad as Monad
 import Control.Monad.Join
-import Lattice.Class (JoinLattice)
+import Lattice.Class (JoinLattice, bottom)
 
 eval :: ActorEvalM m v msg mb => Exp -> m v
 eval (Spw beh args _) = initBehavior beh args spawn
@@ -28,6 +28,7 @@ eval (Rcv hdls _) = do
 
 eval e@(Beh {}) = getEnv <&> curry beh e
 eval e@(Mir {}) = getEnv <&> curry beh e
+eval (Ter _)    = return bottom -- no behavior in the abstract
 eval e = Base.eval e
 
 -- | Initialize the behavior in the first argument with the arguments in the second 

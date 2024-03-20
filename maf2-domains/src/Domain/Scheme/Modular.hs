@@ -483,7 +483,8 @@ instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s (
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = SchemeVal . HMap.singleton @CharKey <$> (ref (sconst s) =<< integers i)
    stringLt s1 s2  = SchemeVal . HMap.singleton @BoolKey <$> stringLt (sconst s1) (sconst s2)
-   toNumber = (toNumber . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
+   toNumber  = (toNumber . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
+   topString = SchemeString topString
 
 ------------------------------------------------------------
 -- Subdomain extraction

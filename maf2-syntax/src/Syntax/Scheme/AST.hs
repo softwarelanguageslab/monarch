@@ -47,6 +47,7 @@ data Exp = Num Integer Span          -- ^ number literals
          | Beh [Ide] Exp Span        -- ^ actor behavior
          | Mir [Ide] Exp Span        -- ^ actor mirror
          | Rcv [Hdl] Span            -- ^ a receive block
+         | Ter Span                  -- ^ terminate actor
          -- λα/c
          | MsgC Exp Exp Exp Exp Span    -- ^ message/c  contract
          | BehC [Exp] Span              -- ^ behavior/c contract
@@ -82,17 +83,20 @@ spanOf (Ltt _ _ s)   = s
 spanOf (Ltr _ _ s)   = s
 spanOf (Lrr _ _ s)   = s
 spanOf (App _ _ s)   = s
+spanOf (Nll s)       = s
+spanOf (Rea _ s)     = s
+spanOf (Cha _ s)     = s
+-- λα
 spanOf (Spw _ _ s)   = s
 spanOf (Bec _ _ s)   = s
 spanOf (Sen _ _ _ s) = s
 spanOf (Beh _ _ s)   = s
 spanOf (Mir _ _ s)   = s
 spanOf (Rcv _ s)     = s
-spanOf (Nll s)       = s
-spanOf (Rea _ s)     = s
-spanOf (Cha _ s)     = s
+spanOf (Ter s)       = s
+--
 spanOf Empty = error "no span for empty expressions"
--- λα
+-- λα/c
 spanOf (MsgC _ _ _ _ s) = s
 spanOf (BehC _ s)       = s
 spanOf (EnsC _ s)       = s
@@ -147,6 +151,8 @@ instance Show Exp where
       printf "(behavior (%s) %s)" (unwords $ map show args) (show hdls)
    show (Mir args hdls _) =
       printf "(mirror (%s) %s)" (unwords $ map show args) (show hdls)
+   show (Ter _) = 
+      "(terminate)"
 
 
 instance Show Hdl where
@@ -246,6 +252,8 @@ compile e@(SExp.Atom "become" _ ::: beh ::: ags) =
    Bec <$> compile beh <*> compileSequence ags <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "spawn" _ ::: beh ::: ags)  =
    Spw <$> compile beh <*> compileSequence ags <*> pure (SExp.spanOf e)
+compile e@(SExp.Atom "terminate" _ ::: SExp.SNil _) = 
+   return $ Ter (SExp.spanOf e)
 -- λα/c
 compile e@(SExp.Atom "ensures/c" _ ::: contracts) = 
    EnsC <$> compileSequence contracts <*> pure (SExp.spanOf e)

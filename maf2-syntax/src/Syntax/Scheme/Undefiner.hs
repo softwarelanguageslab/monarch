@@ -162,6 +162,8 @@ undefineM (Mir pars hdls span) =
    Mir pars <$> undefineM hdls <*> pure span
 undefineM (Rcv hdls span) =
    Rcv <$> mapM undefineHandler hdls <*> pure span
+undefineM (Ter span) =
+   return (Ter span)
 -- λα/c
 undefineM (MsgC tag payload rcpt comm span) =   
          MsgC 
