@@ -131,11 +131,7 @@ runIdentityDebug (IdentityDebug m) = runIdentity m
 
 --
 
-newtype EnvT env m a = EnvT { getEnvReader ::  ReaderT env m a } deriving (MonadReader env, Monad, Applicative, MonadLayer, Functor)
-
-instance (Monad m, MonadJoin m) => MonadJoin (EnvT env m) where
-   mjoin (EnvT ma) = EnvT . mjoin ma . getEnvReader
-   mzero = EnvT mzero
+newtype EnvT env m a = EnvT { getEnvReader ::  ReaderT env m a } deriving (MonadReader env, MonadJoin, Monad, Applicative, MonadLayer, Functor)
 
 instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m) adr env where
    lookupEnv nam = asks (Analysis.Environment.lookup nam)

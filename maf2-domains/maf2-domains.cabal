@@ -84,6 +84,7 @@ library
       Domain.Python.DataFrameDomain
       Domain.Python.DataFrameDomain.Class
       Domain.Python.DataFrameDomain.DataFrameSet
+      Domain.Scheme.Actors.Contract
       Domain.Scheme.Actors.Modular
       Domain.Scheme.CPDomain
       Lattice.HMapLattice

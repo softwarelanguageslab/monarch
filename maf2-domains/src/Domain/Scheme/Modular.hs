@@ -72,6 +72,7 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | VecConf    -- ^ type of vector pointers
                    | VarConf    -- ^ type of regular pointers
                    | PidConf    -- ^ type of actor references
+                   | MoαConf    -- ^ abstraction for monitors on actor references
 
 ----------------------------------------------
 -- Modular Scheme lattice
@@ -93,6 +94,8 @@ data SchemeKey = RealKey
                -- λα
                | PidKey
                | BehKey 
+               -- λα/c
+               | MoαKey
                deriving (Ord, Eq)
 
 genHKeys ''SchemeKey
@@ -116,7 +119,9 @@ type Values m = '[
    SymKey  ::-> Set String,
    -- λα language
    PidKey  ::-> Set (Assoc PidConf m),
-   BehKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m)
+   BehKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
+   -- λα/c language
+   MoαKey  ::-> Assoc MoαConf m
    ]
 
 

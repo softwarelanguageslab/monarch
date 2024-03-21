@@ -13,6 +13,7 @@ module Lattice.Class (
 
 import Data.Set (Set)
 import qualified Data.Set as Set 
+import Data.Void
 
 ------------------------------------------------------------
 --- Joinable / JoinLattice
@@ -80,3 +81,13 @@ class Meetable v where
 
 overlap :: (Meetable v, JoinLattice v) => v -> v -> Bool
 overlap v1 v2 = v1 `meet` v2 /= bottom 
+
+------------------------------------------------------------
+-- Misc instances
+------------------------------------------------------------
+
+instance Joinable Void where 
+   join x _ = absurd x
+instance JoinLattice Void where  
+   bottom = error "no bottom for Void"
+

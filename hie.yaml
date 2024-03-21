@@ -1,12 +1,15 @@
 cradle:
-  cabal:
+  stack:
     - path: "maf2-analysis/src"
-      component: "lib:maf2-analysis"
+      component: "maf2-analysis:lib"
 
     - path: "maf2-analysis/app/Main.hs"
       component: "maf2-analysis:exe:maf-exe"
 
     - path: "maf2-analysis/app/Entrypoints.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "maf2-analysis/app/Run/Actor.hs"
       component: "maf2-analysis:exe:maf-exe"
 
     - path: "maf2-analysis/app/Run/Analyzer.hs"
@@ -28,13 +31,13 @@ cradle:
       component: "maf2-analysis:test:maf2-analysis-test"
 
     - path: "maf2-domains/src"
-      component: "lib:maf2-domains"
+      component: "maf2-domains:lib"
 
     - path: "maf2-domains/test"
       component: "maf2-domains:test:maf2-domains-test"
 
     - path: "maf2-scv/src"
-      component: "lib:maf2-scv"
+      component: "maf2-scv:lib"
 
     - path: "maf2-scv/app/Main.hs"
       component: "maf2-scv:exe:maf2-scv-exe"
@@ -43,13 +46,13 @@ cradle:
       component: "maf2-scv:test:maf2-scv-test"
 
     - path: "maf2-syntax/src"
-      component: "lib:maf2-syntax"
+      component: "maf2-syntax:lib"
 
     - path: "maf2-syntax/test"
       component: "maf2-syntax:test:maf2-syntax-test"
 
     - path: "maf2-typelevel/src"
-      component: "lib:maf2-typelevel"
+      component: "maf2-typelevel:lib"
 
     - path: "maf2-typelevel/test"
       component: "maf2-typelevel:test:maf2-typelevel-test"

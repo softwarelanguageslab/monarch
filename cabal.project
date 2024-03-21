@@ -1,6 +1,0 @@
-packages:
-    maf2-analysis/*.cabal
-    maf2-syntax/*.cabal
-    maf2-domains/*.cabal
-    maf2-typelevel/*.cabal
-    maf2-scv/*.cabal

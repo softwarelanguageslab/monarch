@@ -2,11 +2,10 @@
 -- | This module runs the Racket interpreter for our actor language. 
 -- Then it parses the log of its output and checks it against the abstract
 -- output of the interpreter.
-module Interpreter.Actors where
+module Interpreter.Actors(loadLog) where
 
 import Syntax.Scheme.Parser (SExp, pattern (:::))
 import qualified Syntax.Scheme.Parser as SExp
-import Data.Functor
 import Data.Either
 
 ------------------------------------------------------------
@@ -19,17 +18,16 @@ data LogLoc   = LogLoc { filename :: String, line :: Integer, column :: Integer 
 -- | Encoding of values
 data Value -- TODO
 deriving instance Show Value
-   
+
 -- | Types of log entries
 data LogEntry = Spawn  LogLoc LogLoc 
-              | Become LogLoc LogLoc
-              | Send   LogLoc String [Value] LogLoc
-              deriving Show
+           | Become LogLoc LogLoc
+           | Send   LogLoc String [Value] LogLoc
+           deriving Show
 
 -- | Parse a log location 
 parseLoc :: SExp -> LogLoc
-parseLoc (SExp.Atom "log:loc*" _ ::: SExp.Str filename _ ::: SExp.Num line _ ::: SExp.Num loc _ ::: SExp.SNil _) = 
-   LogLoc filename line loc
+parseLoc (SExp.Atom "log:loc*" _ ::: SExp.Str filename _ ::: SExp.Num line _ ::: SExp.Num loc _ ::: SExp.SNil _) = LogLoc filename line loc
 parseLoc _ = error "incorrect format for log:loc"
 
 parsePayload :: SExp -> [Value]
