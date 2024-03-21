@@ -23,7 +23,7 @@ deriving instance Show Value
 -- | Types of log entries
 data LogEntry = Spawn  LogLoc LogLoc 
               | Become LogLoc LogLoc
-              | Send   String [Value] LogLoc
+              | Send   LogLoc String [Value] LogLoc
               deriving Show
 
 -- | Parse a log location 
@@ -41,8 +41,8 @@ parse (SExp.Atom "log:spawn" _ ::: behloc ::: spawnloc ::: SExp.SNil _) =
    Spawn (parseLoc behloc) (parseLoc spawnloc)
 parse (SExp.Atom "log:become" _ ::: behloc ::: becomeloc ::: SExp.SNil _) = 
    Become (parseLoc behloc) (parseLoc becomeloc)
-parse (SExp.Atom "log:send*" _ ::: SExp.Quo (SExp.Atom tag _) _ ::: SExp.Quo payload _ ::: loc ::: SExp.SNil _) =
-   Send tag (parsePayload payload) (parseLoc loc)
+parse (SExp.Atom "log:send*" _ ::: actorloc ::: SExp.Quo (SExp.Atom tag _) _ ::: SExp.Quo payload _ ::: loc ::: SExp.SNil _) =
+   Send (parseLoc actorloc) tag (parsePayload payload) (parseLoc loc)
 parse e = error $ "unrecognized log entry" ++ (show e)
 
 ------------------------------------------------------------
