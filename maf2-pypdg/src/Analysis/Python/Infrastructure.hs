@@ -205,7 +205,7 @@ data PyPrmKey = IntPrm
               | TupPrm
               | LstPrm
               | NonPrm 
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 genHKeys ''PyPrmKey
 
@@ -228,3 +228,4 @@ data PyError = AttributeNotFound
              | ArityError
              | TypeMismatch
              | InvalidMRO
+  deriving (Eq, Ord)

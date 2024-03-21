@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Analysis.Python.Monad (
   EnvM(..),
   StoreM(..),
@@ -27,6 +29,7 @@ import Prelude hiding (lookup)
 import Data.Set (Set)
 import qualified Data.Set as Set 
 import qualified Data.Map as Map 
+import Control.Monad.Layer (MonadLayer(..))
 
 --
 -- TODO: reuse existing for these?
@@ -38,6 +41,11 @@ class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
   update :: a -> {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> m ()
   update' :: a -> v -> m ()
   update' a v = update a (const v) (`join` v)
+
+instance (Monad t, JoinLattice v, StoreM (Lower t) a v, MonadLayer t) => StoreM t a v where
+   extend adr = upperM . extend adr
+   update adr fs fw = upperM $ update adr fs fw 
+   lookup = upperM . lookup
 
 class (Monad m) => AllocM m e a | m e -> a where
   alloc :: e -> m a
@@ -57,8 +65,10 @@ deref' = mjoins . map lookup . Set.toList
 -- The Python monad 
 --
 
-data PyCmp = LoopCmp PyExp PyStm PyEnv 
+data PyCmp = MainCmp PyPrg  
+           | LoopCmp PyExp PyStm PyEnv 
            | CallCmp PyStm PyEnv 
+  deriving (Eq, Ord, Show)
 
 class (Monad m,
        MonadJoin m,
@@ -85,6 +95,7 @@ pyDeref' = deref' . addrs
 
 pyAlloc :: PyM m obj => PyLoc -> obj -> m PyVal
 pyAlloc loc = fmap injectAdr . allocVal loc
+
 
 
 -- import Data.Kind ( Type )

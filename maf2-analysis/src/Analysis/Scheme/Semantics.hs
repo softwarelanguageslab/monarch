@@ -24,8 +24,7 @@ eval (Nll _)              = return nil
 eval (Sym s _)            = return (symbol s)
 eval e@(Str s _)          = stoStr e (inject s)
 eval (Var (Ide nam _))    = lookupEnv nam >>= lookupAdr
-eval (Iff prd csq alt _)  = 
-   cond (Monad.eval @_ @v prd) (Monad.eval csq) (Monad.eval alt)
+eval (Iff prd csq alt _)  = cond (Monad.eval prd) (Monad.eval csq) (Monad.eval alt)
 eval (Bgn sqq _)          = evalSequence sqq 
 eval e@(Lam {})           = curry injectClo e <$> getEnv -- TODO: restrict env based on fv
 eval (Let bds bdy _)      = evalLet bds bdy

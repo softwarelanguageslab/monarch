@@ -11,7 +11,7 @@ import Domain.Core.NumberDomain.ConstantPropagation ()
 data CPList v = BotList                -- representing no lists
               | CPList [v] Integer v   -- representing a list of a certain known length
               | TopList v              -- representing any list (summarized by the join of all its elements)
-  deriving (Eq)
+  deriving (Eq, Ord, Show)
 
 -- some helpers
 

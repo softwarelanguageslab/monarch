@@ -2,7 +2,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Analysis.Python.Common (
-  VarAdr, 
+  VarAdr(..), 
   ObjAdr, 
   allocVar,
   allocPtr,
@@ -49,7 +49,7 @@ allocCst = PrmAdr
 --
 
 newtype PyVal = PyVal { addrs :: Set ObjAdr }
-  deriving (Eq, Joinable, JoinLattice)
+  deriving (Eq, Ord, Show, Joinable, JoinLattice)
 
 injectAdr :: ObjAdr -> PyVal
 injectAdr = PyVal . Set.singleton

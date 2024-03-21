@@ -15,7 +15,9 @@ import Domain.Core.SeqDomain
 import Domain.Core.HMapDomain
 
 import qualified Domain.Core.HMapDomain as HMapDomain 
+import Domain.Core.HMapDomain (HMapAbs(..))
 import Data.TypeLevel.HMap 
+import qualified Data.TypeLevel.HMap as HMap  
 
 import Data.Set (Set)
 import qualified Data.Set as Set 
@@ -23,6 +25,10 @@ import Data.Map (Map)
 import qualified Data.Map as Map 
 import Data.Kind 
 import Data.Maybe
+import Data.Singletons (Sing)
+import Data.Singletons.TH (demote)
+import Data.Singletons (fromSing)
+import Data.Singletons.Sigma (Sigma((:&:)))
 
 --
 -- Configuring the abstractions 
@@ -32,6 +38,11 @@ data PyAbsKey = IntKey
               | ReaKey  
               | BlnKey
               | StrKey
+
+type PyObjCP = PyObjHMap '[IntKey ::-> CP Integer,
+                           ReaKey ::-> CP Double,  
+                           BlnKey ::-> CP Bool,
+                           StrKey ::-> CP String]
 
 type PyPrm (m :: [PyAbsKey :-> Type]) =
   '[
@@ -72,6 +83,13 @@ instance          (ForAll PyPrmKey (AtKey1 Joinable (PyPrm m))) => Joinable (PyO
   join (PyObjHMap d1 p1) (PyObjHMap d2 p2) = PyObjHMap (join d1 d2) (join p1 p2)
 instance (AllJoin m) => JoinLattice (PyObjHMap m) where
   bottom = PyObjHMap bottom bottom
+
+instance (ForAll PyPrmKey (AtKey1 Show (PyPrm m))) => Show (PyObjHMap m) where
+  show (PyObjHMap dct (HMapAbs (prm, _))) = show primitives ++ "(" ++ attributes ++ ")" 
+    where attributes = show dct
+          primitives = Prelude.map showPrm (HMap.toList prm)
+          showPrm :: BindingFrom (PyPrm m) -> (String, String) 
+          showPrm (key :&: vlu) = withC_ @(AtKey1 Show (PyPrm m)) (show $ fromSing key, show vlu) key
 
 --
 -- Making an instance of PyObj 

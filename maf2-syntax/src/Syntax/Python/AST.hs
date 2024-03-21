@@ -99,6 +99,8 @@ type Micro = AfterLexicalAddressing
 newtype Program a ξ = Program { programStmt :: Stmt a ξ }
 
 deriving instance (Holds Show ξ a) => Show (Program a ξ)
+deriving instance (Holds Eq ξ a) => Eq (Program a ξ)
+deriving instance (Holds Ord ξ a) => Ord (Program a ξ)
 
 -- | An identifier is backed by the Language.Python identifier
 data Ide a = Ide {getIdeIdent :: Ident a} | NamespacedIde { getIdent :: Ide a, namespace :: Ide a } deriving (Eq, Ord, Show, Generic)
