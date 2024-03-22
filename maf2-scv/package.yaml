@@ -28,6 +28,7 @@ dependencies:
 - maf2-domains
 - maf2-syntax
 - maf2-analysis
+- transformers
 
 ghc-options:
 - -Wall

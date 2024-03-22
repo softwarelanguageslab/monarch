@@ -16,6 +16,8 @@ import Control.Monad.Cond (whenM)
 import Syntax.Scheme
 import Lattice
 import Domain.Scheme hiding (Exp, Env)
+import Data.Print
+import Text.Printf
 
 import Data.Set (Set)
 import Data.Map (Map)
@@ -77,38 +79,14 @@ class SchemeAlloc ctx var padr vadr sadr | ctx -> var padr vadr sadr where
   allocVar :: Ide -> ctx -> var
   allocCtx :: Exp -> ctx -> ctx
 
--- instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) where
---   -- A component is a closure + a context
---   type Component (ModF var v ctx dep)  = (Exp, Env var v ctx dep, ctx, GT (var, v, dep))
---   -- | Global store
---   type State (ModF var v ctx dep)      = DSto ctx v
---   -- | Dependencies are tracked using SVar
---   type Dep (ModF var v ctx dep)        = dep
---   -- | The analysis of a single component runs the Scheme semantics
---   -- on the body of that component
---   type MM (ModF var v ctx dep)         = Identity
---   analyze (exp, env, ctx, _) store = 
---        let ((_, (spawns, registers, triggers)), sto) = (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
---               & runEvalT
---               & runMayEscape @_ @(Set DomainError)
---               & runCallT @v @ctx
---               & runStoreT @VrAdr (values  store)
---               & runStoreT @StAdr (strings store)
---               & runStoreT @PaAdr (pairs   store)
---               & runStoreT @VeAdr (vecs    store)
---               & combineStores
---               & runEnv env
---               & runAlloc @PaAdr (allocPai @ctx)
---               & runAlloc @VeAdr (allocVec @ctx)
---               & runAlloc @StAdr (allocStr @ctx)
---               & runAlloc @VrAdr (allocVar @ctx)
---               & runCtx  ctx
---               & runIdentity
---        in return (sto, spawns, registers, triggers) 
-
 data Component var v ctx = Call Exp (Env var) ctx
                          | Main Exp
                          deriving (Eq, Ord)
+
+instance (Show ctx) => PrintShort (Component var v ctx) where 
+   printShort (Main exp) = "Main"
+   printShort (Call exp _ ctx) = printf "Call(%s, %s)" (show exp) (show ctx)
+   
 
 type State ctx v = DSto ctx v
 
@@ -119,10 +97,9 @@ type State ctx v = DSto ctx v
 
 newtype BaseSchemeEvalT v m a = BaseSchemeEvalT { getInnerEvalT :: m a } deriving (Monad, Functor, MonadJoin, Applicative)
 
-instance (Monad m) => MonadLayer (BaseSchemeEvalT v m) where
-   type Lower (BaseSchemeEvalT v m) = m
+instance MonadLayer (BaseSchemeEvalT v) where
    upperM = BaseSchemeEvalT
-   layerM f' f = BaseSchemeEvalT $ f' (runEvalT . f)
+   lowerM f m = BaseSchemeEvalT $ f (runEvalT m)
 
 -- TODO: this is rather ugly right now but needed
 -- since we cannot derive MonadEscape yet if it 
@@ -153,7 +130,7 @@ class (Ord dep) => Dependency adr dep | adr -> dep where
 -- CallM & StoreM implementation
 -----------------------------------------
 
-newtype CallT var v ctx m a = CallT (IdentityT m a) deriving (Monad, Functor, Applicative, MonadLayer, MonadJoin)
+newtype CallT var v ctx m a = CallT (IdentityT m a) deriving (Monad, Functor, Applicative, MonadLayer, MonadTrans, MonadJoin)
 
 -- | This instances spawns the called function as a component, 
 -- and reads the return value from the store.
@@ -165,16 +142,16 @@ instance {-# OVERLAPPING #-} (
           VarAdr var v ctx
          ) => CallM (CallT var v ctx m) (Env var) v where
    call (Lam _ bdy _, _) = do
-      -- get the extended environment 
-      env' <- CallT $ lift getEnv
-      -- get the current context
-      ctx <- CallT $ lift getCtx
-      -- create a new component from this context
-      let comp = Call bdy env' ctx
-      --  spawn  the new component
-      _ <- CallT $ spawn comp
-      -- lookup the return value of the component
-      lookupAdr (retAdr comp)
+       -- get the extended environment 
+       env' <- CallT $ lift getEnv
+       -- get the current context
+       ctx <- CallT $ lift getCtx
+       -- create a new component from this context
+       let comp = Call bdy env' ctx
+       --  spawn  the new component
+       _ <- CallT $ spawn comp
+       -- lookup the return value of the component
+       lookupAdr (retAdr comp)
    call _ = error "call can only be a lambda expression"
 
 -- | Run the CallT monad and peel it off the stack whilst returning 
@@ -211,7 +188,7 @@ evalRet cmp = eval >=> writeAdr (retAdr cmp)
 -- | Analyses the given program into an analysis
 -- result. It uses the default initial environment
 -- as specified in `Analysis.Scheme.Primitives`
-analyzeProgram :: forall var v ctx wl . 
+analyzeProgram :: forall v var ctx wl . 
                   (SchemeAnalysisConstraints var v ctx, WorkList wl)
                 => Exp -> wl (Component var v ctx) -> ctx -> DSto ctx v
 analyzeProgram program initialWl initialCtx = store'
@@ -221,9 +198,8 @@ analyzeProgram program initialWl initialCtx = store'
          run m env ctx sto = 
             fmap snd $ m
                    & runEvalT
-                   & runMayEscape @_ @(Set DomainError)
-                   & runCallT @var @v @ctx
-                   & runSchemeStoreT sto
+                   & runMayEscape @(Set DomainError)
+                   & runCallT @v @var @ctx
                    & runEnv env
                    & runAlloc @PaAdr (allocPai @ctx)
                    & runAlloc @VeAdr (allocVec @ctx)
@@ -231,6 +207,7 @@ analyzeProgram program initialWl initialCtx = store'
                    & runAlloc @VrAdr (allocVar @ctx)
                    & runCtx  ctx
                    & runJoinT
+                   & runSchemeStoreT sto
          intra cmp@(Main exp) = run (evalRet cmp exp) (analysisEnv @var) initialCtx
          intra cmp@(Call exp env ctx) = run (evalRet cmp exp) env ctx
 

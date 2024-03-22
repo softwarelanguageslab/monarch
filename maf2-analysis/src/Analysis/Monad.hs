@@ -22,8 +22,6 @@ module Analysis.Monad(
  runStoreT',
  runEnv,
  runCtx,
- runErr,
- runErr',
  runAlloc,
  runCallBottomT,
  runNonDetT,
@@ -132,7 +130,7 @@ runIdentityDebug (IdentityDebug m) = runIdentity m
 
 --
 
-newtype EnvT env m a = EnvT { getEnvReader ::  ReaderT env m a } deriving (MonadReader env, MonadJoin, Monad, Applicative, MonadLayer, Functor)
+newtype EnvT env m a = EnvT { getEnvReader ::  ReaderT env m a } deriving (MonadReader env, MonadJoin, Monad, Applicative, MonadLayer, MonadTrans, Functor)
 
 instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m) adr env where
    lookupEnv nam = asks (Analysis.Environment.lookup nam)
@@ -140,8 +138,7 @@ instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m)
    getEnv = ask
    withEnv = local
 
-instance {-# OVERLAPPING #-} (TypeError (Text "No EnvM found on stack"), Environment env adr) => EnvM (IdentityDebug (adr, env)) adr env
-instance forall env adr t . (Environment env adr, MonadLayer t, EnvM (Lower t) adr env) => EnvM t adr env where
+instance forall env adr t m . (Environment env adr, Monad m, MonadLayer t, EnvM m adr env) => EnvM (t m) adr env where
    lookupEnv = upperM . lookupEnv
    withExtendedEnv bds =  lowerM (withExtendedEnv bds)
    getEnv = upperM getEnv
@@ -152,11 +149,11 @@ runEnv initialEnv (EnvT m) = runReaderT m initialEnv
 
 ---
 
-newtype CtxT ctx m a = CtxT { getContextReader :: ReaderT ctx m a } deriving (MonadReader ctx, Monad, Applicative, MonadLayer, Functor)
+newtype CtxT ctx m a = CtxT { getContextReader :: ReaderT ctx m a } deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor)
 instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask
    withCtx = local
-instance (MonadLayer t, CtxM (Lower t) ctx) => CtxM t ctx where
+instance (MonadLayer t, Monad m, CtxM m ctx) => CtxM (t m) ctx where
    getCtx =  upperM getCtx
    withCtx f = lowerM (withCtx f)
 
@@ -171,32 +168,9 @@ runCtx initialCtx (CtxT m) = runReaderT m initialCtx
 
 ---
 
--- | Provides an error capability to the monadic stack. 
---
--- Errors are recorded by using a writer monad which keeps track of a set of errors,
--- whenever an error occurs the analysis halts by returning `Nothing`.
---
-newtype ErrorT m a = ErrorT { runErrorT :: MaybeT (WriterT (Set DomainError) m) a } deriving (Functor, Applicative, Monad)
-
-instance (MonadJoin m) => MonadJoin (ErrorT m) where
-   mjoin (ErrorT ma) (ErrorT mb) = ErrorT (mjoin ma mb)
-   mzero = ErrorT mzero
-instance (Monad m) => MonadLayer (ErrorT m) where
-   type Lower (ErrorT m) = m
-   lowerM f = ErrorT . MaybeT . WriterT . f . runWriterT . runMaybeT . runErrorT
-   upperM = ErrorT . lift . lift
-
-runErr :: (ErrorT m) a -> m (Maybe a, Set DomainError)
-runErr = runWriterT . runMaybeT . runErrorT
-
--- Same as `runErr` but ignores the errors
-runErr' :: Functor m => (ErrorT m) a -> m (Maybe a)
-runErr' = fmap fst . runErr
-
----
 
 newtype StoreT t adr v m a = StoreT { getStoreT :: StateT (Map adr v) m a }
-                              deriving (Applicative, Functor, Monad, MonadState (Map adr v), MonadLayer)
+                              deriving (Applicative, Functor, Monad, MonadState (Map adr v), MonadLayer, MonadTrans)
 
 instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT t adr v m) where
    mjoin (StoreT ma) (StoreT mb) = StoreT $ mjoin ma mb
@@ -207,7 +181,7 @@ instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    lookupAdr = gets  . Store.lookupSto
 
-instance (Monad t, StoreM (Lower t) w adr v, MonadLayer t) => StoreM t w adr v where
+instance (Monad (t m), StoreM m w adr v, MonadLayer t) => StoreM (t m) w adr v where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
    lookupAdr  =  upperM .  lookupAdr
@@ -218,7 +192,7 @@ runStoreT initialSto = flip runStateT initialSto . getStoreT
 ---
 
 newtype StoreT' t adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
-                              deriving (Applicative, Functor, Monad, MonadState (Map adr (SVar v)), MonadLayer)
+                              deriving (Applicative, Functor, Monad, MonadState (Map adr (SVar v)), MonadLayer, MonadTrans)
 
 instance {-# OVERLAPPING #-} (Monad m, SVar.MonadStateVar m, JoinLattice v, Ord adr) => StoreM (StoreT' t adr v m) t adr v where
    writeAdr adr vlu =
@@ -246,7 +220,7 @@ runStoreT' initial = flip runStateT initial . getStoreT'
 type Allocator from ctx to = (from -> ctx -> to)
 
 -- Allocator that turns a function into an allocator of the suiteable type
-newtype AllocT from ctx t to m a = AllocT { getAllocReader :: ReaderT (Allocator from ctx to) m a } deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadLayer)
+newtype AllocT from ctx t to m a = AllocT { getAllocReader :: ReaderT (Allocator from ctx to) m a } deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadLayer, MonadTrans)
 
 instance (MonadJoin m) => MonadJoin (AllocT from ctx t to m) where
    mjoin (AllocT ma) = AllocT . mjoin ma . getAllocReader
@@ -260,8 +234,8 @@ instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx t 
 
 instance {-# OVERLAPPING #-} TypeError (Text "No AllocM found on stack for " :$$: (ShowType from) :$$: (ShowType to) :$$: (ShowType t)) => AllocM Identity from t to
 
-instance (Monad m, AllocM (Lower m) from t to, MonadLayer m) => AllocM m from t to where
-   alloc = upperM . alloc @(Lower m) @from @t @to
+instance (Monad (l m), AllocM m from t to, MonadLayer l) => AllocM (l m) from t to where
+   alloc = upperM . alloc @m @from @t @to
 
 
 runAlloc :: forall t from ctx to m a . Allocator from ctx to -> AllocT from ctx t to m a ->  m a
@@ -272,13 +246,13 @@ runAlloc allocator (AllocT m) = runReaderT m allocator
 -- CallM 
 -- 
 
-instance (Monad m, CallM (Lower m) env v, MonadLayer m) => CallM m env v where
+instance (Monad (t m), CallM m env v, MonadLayer t) => CallM (t m) env v where
    call = upperM . call
 
 -- | Mock instance that ignores the call and always
 -- returns bottom.
 newtype CallBottomT v m a = CallBottomT { getCallBottomT :: IdentityT m a }
-                        deriving (Applicative, Functor, Monad, MonadJoin, MonadLayer)
+                        deriving (Applicative, Functor, Monad, MonadJoin, MonadLayer, MonadTrans)
 
 instance {-# OVERLAPPING #-} (Monad m, JoinLattice v) => CallM (CallBottomT v m) env v where
    call _ = CallBottomT $ return bottom
@@ -294,19 +268,14 @@ runCallBottomT (CallBottomT ma) = runIdentityT ma
 -- state together using a JoinLattice, anything 
 -- below this on the stack will not be joined together and 
 -- is assumed to be global across all paths
-newtype JoinT m a = JoinT { getJoinT :: m a } deriving (Applicative, Monad, Functor) 
-
-instance (Monad m) => MonadLayer (JoinT m) where
-   type Lower (JoinT m) = m
-   upperM = JoinT
-   layerM f' f = JoinT $ f' (getJoinT . f)
+newtype JoinT m a = JoinT { getJoinT :: IdentityT m a } deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor) 
 
 instance (Monad m) => MonadJoin (JoinT m) where
    mzero = return bottom
    mjoin = liftA2 Lattice.join
 
 runJoinT :: JoinT m a -> m a
-runJoinT (JoinT ma) = ma
+runJoinT (JoinT ma) = runIdentityT ma
 
 -- 
 -- NonDetT
@@ -314,7 +283,7 @@ runJoinT (JoinT ma) = ma
 
 -- | Useful for running the computation non-deterministically 
 -- and defering join to the end.
-newtype NonDetT m a = NonDetT (ListT m a) deriving (Functor, Applicative, Monoid, MonadLayer, Semigroup, Monad)
+newtype NonDetT m a = NonDetT (ListT m a) deriving (Functor, Applicative, Monoid, MonadLayer, MonadTrans, Semigroup, Monad)
 
 instance (Monad m) => MonadJoin (NonDetT m) where
    mzero = mempty

@@ -4,6 +4,7 @@
 
 module Control.Monad.State.SVar
   ( MonadStateVar (..),
+    MonadStateVarTracking,
     VarState,
     TrackingStateVarT,
     runStateVarT,
@@ -13,7 +14,7 @@ module Control.Monad.State.SVar
     Dep,
     RDep,
     WDep,
-    resetTracking,
+    reset,
     getDeps,
     SVar,
     unify
@@ -78,7 +79,7 @@ class (Monad m) => MonadStateVar m where
     vlu <- read var
     return var
 
-instance (Monad m, MonadLayer m, MonadStateVar (Lower m)) => MonadStateVar m where
+instance (Monad (t m), MonadLayer t, MonadStateVar m) => MonadStateVar (t m) where
    new = upperM . new
    modify f = upperM . modify f
    read = upperM . read
@@ -135,6 +136,16 @@ unify m st =
 -- Tracking SVar's
 ------------------------------------------------------------
 
+class Monad m => MonadStateVarTracking m where    
+   -- | Reset tracking
+   reset   :: m ()
+   -- | Get dependencies 
+   getDeps :: m TrackingState
+
+instance {-# OVERLAPPABLE #-} (MonadStateVarTracking m, MonadLayer t) => MonadStateVarTracking (t m) where  
+   reset    = upperM reset
+   getDeps  = upperM getDeps
+
 -- |  A dependency on an SVar
 newtype Dep = Dep Int deriving (Ord, Eq, Show)
 
@@ -165,13 +176,9 @@ register dep st =
 newtype TrackingStateVarT m a = TrackingStateVarT {runTrackingStateVarT' :: StateT TrackingState m a}
   deriving (Applicative, Monad, Functor, MonadState TrackingState, MonadLayer, MonadTrans)
 
--- | Reset the tracking state
-resetTracking :: (Monad m) => TrackingStateVarT m ()
-resetTracking = ST.put emptyTrackingState
-
--- | Get current tracking informatie
-getDeps :: (Monad m) => TrackingStateVarT m TrackingState
-getDeps = ST.get
+instance (Monad m) => MonadStateVarTracking (TrackingStateVarT m) where   
+   reset   = ST.put emptyTrackingState
+   getDeps = ST.get
 
 runTrackingStateVarT :: (Monad m) => TrackingStateVarT m a -> m a
 runTrackingStateVarT (TrackingStateVarT ma) = ST.evalStateT ma emptyTrackingState

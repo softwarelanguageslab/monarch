@@ -9,16 +9,18 @@ import qualified Data.Set as Set
 import Control.Monad.Except
 import Text.Printf
 import qualified Syntax.Scheme.Parser as SExp
-import Syntax.Scheme.Parser (Span, SExp, pattern (:::))
+import Syntax.Scheme.Parser (Span(..), SExp, pattern (:::))
 import Control.Applicative
 import Control.Monad.Reader
+
+import Prelude hiding (span)
 
 -- AST definition --
 
 data Ide = Ide { name :: String, span :: Span } deriving (Ord, Eq, Generic)
 
 instance Show Ide where
-   show (Ide { name }) = name
+   show (Ide { name, span }) = name++":"++show (line span)++":"++show (column span)
 
 data Exp = Num Integer Span          -- ^ number literals
          | Rea Double  Span          -- ^ real number literals
@@ -49,10 +51,10 @@ data Exp = Num Integer Span          -- ^ number literals
          | Rcv [Hdl] Span            -- ^ a receive block
          | Ter Span                  -- ^ terminate actor
          -- λα/c
-         | MsgC Exp Exp Exp Exp Span -- ^ message/c  contract
+         | MsgC Exp Exp Exp Exp Span -- ^ message/c  contract
          | BehC [Exp] Span           -- ^ behavior/c contract
-         | EnsC [Exp] Span           -- ^ ensures/c  contract
-         | OnlC [Exp] Span           -- ^ only/c     contract
+         | EnsC [Exp] Span           -- ^ ensures/c  contract
+         | OnlC [Exp] Span           -- ^ only/c     contract
          deriving (Eq,Ord, Generic)
 
 data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler
@@ -151,7 +153,7 @@ instance Show Exp where
       printf "(behavior (%s) %s)" (unwords $ map show args) (show hdls)
    show (Mir args hdls _) =
       printf "(mirror (%s) %s)" (unwords $ map show args) (show hdls)
-   show (Ter _) = 
+   show (Ter _) =
       "(terminate)"
 
 
@@ -246,20 +248,20 @@ compile e@(SExp.Atom "letrec*" _ ::: _ ::: _) = lettish Lrr e
 -- λα
 compile e@(SExp.Atom "behavior" _ ::: prs ::: handlers) =
    Beh <$> (fst <$> compileParams prs) <*> compileHandlers handlers <*> pure (SExp.spanOf e)
-compile e@(SExp.Atom "send" _ ::: rcpt ::: (SExp.Atom tag _) ::: payloads) =   
+compile e@(SExp.Atom "send" _ ::: rcpt ::: (SExp.Atom tag _) ::: payloads) =
    Sen <$> compile rcpt <*> pure tag <*> compileSequence payloads <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "become" _ ::: beh ::: ags) =
    Bec <$> compile beh <*> compileSequence ags <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "spawn" _ ::: beh ::: ags)  =
    Spw <$> compile beh <*> compileSequence ags <*> pure (SExp.spanOf e)
-compile e@(SExp.Atom "terminate" _ ::: SExp.SNil _) = 
+compile e@(SExp.Atom "terminate" _ ::: SExp.SNil _) =
    return $ Ter (SExp.spanOf e)
 -- λα/c
-compile e@(SExp.Atom "ensures/c" _ ::: contracts) = 
+compile e@(SExp.Atom "ensures/c" _ ::: contracts) =
    EnsC <$> compileSequence contracts <*> pure (SExp.spanOf e)
-compile e@(SExp.Atom "only/c" _ ::: contracts) = 
+compile e@(SExp.Atom "only/c" _ ::: contracts) =
    OnlC <$> compileSequence contracts <*> pure (SExp.spanOf e)
-compile e@(SExp.Atom "behavior/c" _ ::: contracts) = 
+compile e@(SExp.Atom "behavior/c" _ ::: contracts) =
    BehC <$> compileSequence contracts <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "message/c" _ ::: tag ::: payload ::: rcpt ::: comm ::: SExp.SNil _) =
    MsgC <$> compile tag <*> compile payload <*> compile rcpt <*> compile comm <*> pure (SExp.spanOf e)
@@ -315,7 +317,7 @@ compileQuoted (SExp.Quo e s) = do
 
 compileHandlers :: (MonadReader Bool m, MonadError String m) => SExp.SExp -> m Exp
 compileHandlers hdls = Rcv <$> sequence (SExp.smap compileHandler hdls) <*> pure (SExp.spanOf hdls)
-   where compileHandler (SExp.Atom tag spn ::: ags ::: bdy) = 
+   where compileHandler (SExp.Atom tag spn ::: ags ::: bdy) =
             Hdl (Ide tag spn) <$> (fst <$> compileParams ags) <*> (begin <$> compileSequence bdy)
 
 --

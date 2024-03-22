@@ -45,6 +45,8 @@ import Data.Singletons.Sigma
 
 import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith, MapWithAt, BindingFrom)
 import qualified Data.TypeLevel.HMap as HMap
+import Data.List (intercalate)
+import Text.Printf (printf)
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -96,7 +98,7 @@ data SchemeKey = RealKey
                | BehKey 
                -- λα/c
                | MoαKey
-               deriving (Ord, Eq)
+               deriving (Ord, Eq, Show)
 
 genHKeys ''SchemeKey
 
@@ -170,9 +172,13 @@ deriving instance (HMapKey (Values m),
 
 -- Show instance
 instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
-   show (SchemeVal hm) = HMap.foldr append' "" (HMap.map' (withC_ @(AtKey1 Show (Values m)) show) hm)
-      where append' :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const String) kt (Values m)  -> String -> String
-            append' = const (HMap.withFacts @(Const String) @kt @(Values m) (++))
+   show (SchemeVal hm) = intercalate "," $ map showElement $ HMap.toList hm
+      where showElement :: BindingFrom (Values m) -> String
+            showElement (key :&: value) = 
+               printf "%s ↦ %s" (show $ fromSing key) (withC_ @(AtKey1 Show (Values m)) (show value) key)
+      -- HMap.foldr append' "" (HMap.map' (withC_ @(AtKey1 Show (Values m)) show) hm)
+      -- where append' :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const String) kt (Values m)  -> String -> String
+      --       append' = const (HMap.withFacts @(Const String) @kt @(Values m) (++))
 
 ------------------------------------------------------------
 -- Utilities

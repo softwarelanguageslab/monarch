@@ -59,7 +59,6 @@ library
       Benchmark.Programs
       Control.Monad.Cond
       Control.Monad.Error
-      Control.Monad.State.Scoped
       Control.SVar.GenId
       Data.ListExtra
       Data.Print

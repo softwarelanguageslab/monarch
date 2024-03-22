@@ -11,6 +11,7 @@ import Control.Monad.State (StateT(..), MonadState, modify, gets, get, put, (>=>
 import Domain
 import Domain.Symbolic
 import Lattice (JoinLattice(..))
+import Control.Monad.Trans.Class
 
 import qualified Data.Set as Set
 import Data.Set (Set)
@@ -56,20 +57,20 @@ type PC = Set Formula
 
 -- | The FormulaT monad keeps track of the path condition 
 -- and implements the `MonadPathCondition` monad.
-newtype FormulaT m v a = FormulaT { runFormulaT' :: StateT PC m a }
-                           deriving (Monad, Applicative, Functor, MonadState PC, MonadLayer)
+newtype FormulaT v m a = FormulaT { runFormulaT' :: StateT PC m a }
+                           deriving (Monad, Applicative, Functor, MonadState PC, MonadLayer, MonadTrans)
 
-instance (MonadJoin m) => MonadJoin (FormulaT m v) where
+instance (MonadJoin m) => MonadJoin (FormulaT v m) where
    mzero = FormulaT mzero
    mjoin (FormulaT ma) (FormulaT mb) = FormulaT $ mjoin ma mb
 
-instance {-# OVERLAPPING #-} (MonadJoin m, SymbolicValue v) => MonadPathCondition (FormulaT m v) v where
+instance {-# OVERLAPPING #-} (MonadJoin m, SymbolicValue v) => MonadPathCondition (FormulaT v m) v where
    extendPc pc'     = modify $ Set.map (Conjunction (Atomic $ symbolic pc'))
    getPc = get
 
-instance (Monad m, MonadPathCondition (Lower m) v, MonadLayer m) => MonadPathCondition m v where 
+instance (Monad m, MonadPathCondition m v, MonadLayer t) => MonadPathCondition (t m) v where 
    extendPc = upperM . extendPc
    getPc    = upperM getPc
 
-runFormulaT :: FormulaT m v a -> m (a, PC)
+runFormulaT :: FormulaT v m a -> m (a, PC)
 runFormulaT = flip runStateT (Set.singleton Empty) . runFormulaT'

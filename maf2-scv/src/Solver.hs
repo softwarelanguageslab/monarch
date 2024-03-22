@@ -76,7 +76,7 @@ instance {-# OVERLAPPING #-} (FormulaSolver m) => FormulaSolver (CachedSolver m)
 -- Layering
 ------------------------------------------------------------
 
-instance (Monad m, MonadLayer m, FormulaSolver (Lower m)) => FormulaSolver m where  
+instance (Monad m, MonadLayer t, FormulaSolver m) => FormulaSolver (t m) where  
    setup = upperM . setup
    solve = upperM . solve
 
