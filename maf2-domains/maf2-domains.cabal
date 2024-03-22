@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -35,6 +35,8 @@ library
       Domain.Scheme.Store
       Domain.Scheme.Modular
       Domain.Python
+      Domain.Python.World
+      Domain.Python.Objects
       Domain.Scheme.Actors.Class
       Domain.Scheme.Actors
       Domain.Scheme.Actors.CP
@@ -49,6 +51,7 @@ library
       Control.Monad.AbstractM
       Control.Monad.Escape
       Data.TypeLevel.HMap
+      Data.Finite
   other-modules:
       Data.TypeLevel.HList
       Data.TypeLevel.HMap.TH
@@ -84,6 +87,8 @@ library
       Domain.Python.DataFrameDomain
       Domain.Python.DataFrameDomain.Class
       Domain.Python.DataFrameDomain.DataFrameSet
+      Domain.Python.Objects.Class
+      Domain.Python.Objects.PyObjHMap
       Domain.Scheme.Actors.Contract
       Domain.Scheme.Actors.Modular
       Domain.Scheme.CPDomain
@@ -114,6 +119,7 @@ library
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
+      StandaloneKindSignatures
       ConstraintKinds
       FlexibleInstances
       FlexibleContexts
@@ -162,6 +168,7 @@ test-suite maf2-domains-test
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
+      StandaloneKindSignatures
       ConstraintKinds
       FlexibleInstances
       FlexibleContexts
