@@ -57,6 +57,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import ListT
 import Control.Applicative (liftA2)
+import Control.Monad.Identity (IdentityT (runIdentityT))
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -274,27 +275,16 @@ runAlloc allocator (AllocT m) = runReaderT m allocator
 instance (Monad m, CallM (Lower m) env v, MonadLayer m) => CallM m env v where
    call = upperM . call
 
-instance {-# OVERLAPPING #-} TypeError (Text "CallM not found on stack") => CallM Identity env v
-
 -- | Mock instance that ignores the call and always
 -- returns bottom.
-newtype CallBottomT m a = CallBottomT { getCallBottomT :: m a }
-                        deriving (Applicative, Functor, Monad)
+newtype CallBottomT v m a = CallBottomT { getCallBottomT :: IdentityT m a }
+                        deriving (Applicative, Functor, Monad, MonadJoin, MonadLayer)
 
-instance {-# OVERLAPPING #-} (Monad m, JoinLattice v) => CallM (CallBottomT m) env v where
+instance {-# OVERLAPPING #-} (Monad m, JoinLattice v) => CallM (CallBottomT v m) env v where
    call _ = CallBottomT $ return bottom
 
-instance (MonadJoin m) => MonadJoin (CallBottomT m) where
-   mzero = CallBottomT mzero
-   mjoin (CallBottomT ma) = CallBottomT . mjoin ma . getCallBottomT
-
-instance (Monad m) => MonadLayer (CallBottomT m) where
-   type Lower (CallBottomT m) = m
-   upperM = CallBottomT
-   layerM f' f = CallBottomT $ f' (getCallBottomT . f)
-
-runCallBottomT :: CallBottomT m a -> m a
-runCallBottomT (CallBottomT ma) = ma
+runCallBottomT :: CallBottomT v m a -> m a
+runCallBottomT (CallBottomT ma) = runIdentityT ma
 
 --
 -- JoinT
