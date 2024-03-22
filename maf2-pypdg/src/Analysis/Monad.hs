@@ -7,6 +7,9 @@
 -- -- These layers corresponds to monads in a monad transformer stack. However, since `MonadTrans` lacks a method for peeling away a single layer
 -- -- from the monad transformer stack, the `MonadLayer` typeclass is used instead. 
 -- --
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Analysis.Monad where 
 -- module Analysis.Monad(
 --  -- Typeclass interfaces
@@ -55,6 +58,9 @@ module Analysis.Monad where
 -- ----------------------------------------------------------------------------------------------------
 
 import Analysis.Environment
+import Control.Monad.Layer (MonadLayer (Lower, upperM, lowerM))
+import GHC.TypeError
+import Control.Monad.Identity (Identity)
 
 class (Environment env adr) => EnvM m adr env | m -> env adr where
     -- | Lookup the address of the given identifier,
@@ -129,11 +135,11 @@ class (Environment env adr) => EnvM m adr env | m -> env adr where
 --    getEnv = ask
 --    withEnv = local
 
--- instance forall env adr t . (Environment env adr, MonadLayer t, EnvM (Lower t) adr env) => EnvM t adr env where
---    lookupEnv = upperM . lookupEnv
---    withExtendedEnv bds =  lowerM (withExtendedEnv bds)
---    getEnv = upperM getEnv
---    withEnv f = lowerM (withEnv f)
+instance forall env adr t . (Environment env adr, MonadLayer t, EnvM (Lower t) adr env) => EnvM t adr env where
+   lookupEnv = upperM . lookupEnv
+   withExtendedEnv bds =  lowerM (withExtendedEnv bds)
+   getEnv = upperM getEnv
+   withEnv f = lowerM (withEnv f)
 
 -- runEnv :: forall env m a .  env -> (EnvT env m) a -> m a
 -- runEnv initialEnv (EnvT m) = runReaderT m initialEnv

@@ -1,7 +1,5 @@
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
-{-# LANGUAGE ImpredicativeTypes #-}
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Analysis.Python.Semantics where
@@ -16,7 +14,7 @@ import Analysis.Python.Primitives
 
 import Control.Monad (zipWithM, (>=>), (<=<), (=<<), void)
 import qualified Control.Monad
-import Domain hiding (lookup, update, from)
+import Domain hiding (lookup, update, from, isTrue)
 import qualified Domain.Core.SeqDomain as SeqDomain
 import Lattice
 import Control.Monad.Join
@@ -54,16 +52,19 @@ exec (Global x _ _)              = absurd x          -- these can't occur in mic
 execExp :: PyM pyM obj => PyExp -> pyM ()
 execExp = void . eval
 
-execAss :: PyM pyM obj => PyLhs -> PyExp -> pyM ()
+execAss :: forall pyM obj . PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
-   where assignTo (IdePat ide) val     = lookupEnv (lexNam ide) >>= flip update' val 
+   where assignTo (IdePat ide) val     = lookupEnv @pyM (lexNam ide) >>= flip update' val 
          assignTo (Field e nam _) val  = eval e >>= assignAttr (ideName nam) val 
          assignTo (ListPat _ _) val    = todo "list assignment"
          assignTo (TuplePat _ _) val   = todo "tuple assignment"
 
-execIff :: PyM pyM obj => [(PyExp, PyStm)] -> PyStm -> pyM ()
+execIff :: forall pyM obj . PyM pyM obj => [(PyExp, PyStm)] -> PyStm -> pyM ()
 execIff clauses els = conds (map (bimap check exec) clauses) (exec els)
-   where check = eval >=> pyDeref' >=> at @BlnPrm 
+   where check = eval @pyM >=> isTrue  
+
+isTrue :: PyM pyM obj => PyVal -> pyM (Abs obj BlnPrm)
+isTrue = pyDeref' >=> at @BlnPrm   
 
 execSeq :: PyM pyM obj => [PyStm] -> pyM ()
 execSeq = mapM_ exec
@@ -114,11 +115,11 @@ evalLit (Dict _)           = todo "dictionary literal"
 
 -- | Applies a procedure
 
-evalCll :: PyM pyM obj => PyExp -> [PyArg] -> PyLoc -> pyM PyVal
+evalCll :: forall pyM obj . PyM pyM obj => PyExp -> [PyArg] -> PyLoc -> pyM PyVal
 evalCll opr opd loc = do fun <- eval opr
                          ags <- mapM evalArg opd
                          call loc ags fun
-   where evalArg (PosArg arg _) = eval arg
+   where evalArg (PosArg arg _) = eval @pyM arg
          evalArg (KeyArg _ _ _) = todo "keyword arguments"
 
 call :: PyM pyM obj => PyLoc -> [PyVal] -> PyVal -> pyM PyVal 

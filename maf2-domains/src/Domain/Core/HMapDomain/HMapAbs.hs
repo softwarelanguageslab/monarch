@@ -2,7 +2,7 @@
 {-# LANGUAGE AllowAmbiguousTypes    #-}
 {-# LANGUAGE UndecidableInstances   #-}
 
-module Domain.Core.HMapDomain.HMapAbs (HMapAbs) where
+module Domain.Core.HMapDomain.HMapAbs (HMapAbs(..)) where
 
 import Lattice 
 import Domain.Core.BoolDomain

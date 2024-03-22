@@ -27,6 +27,8 @@ source-repository head
 library
   exposed-modules:
       Analysis.Monad
+      Analysis.Python.Fixpoint
+      Analysis.Python.Objects.PyObjHMap
   other-modules:
       Analysis.Environment
       Analysis.IO
@@ -36,7 +38,6 @@ library
       Analysis.Python.Monad
       Analysis.Python.Objects
       Analysis.Python.Objects.Class
-      Analysis.Python.Objects.PyObjHMap
       Analysis.Python.OO
       Analysis.Python.Primitives
       Analysis.Python.Semantics
