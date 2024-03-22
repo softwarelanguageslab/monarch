@@ -11,10 +11,8 @@ import Analysis.Monad hiding (getEnv)
 import Control.Monad.Trans.Class
 import Control.Monad.Join
 import Control.Monad.Layer
-import Control.Monad.Cond (whenM)
 
 import Syntax.Scheme
-import Lattice
 import Domain.Scheme hiding (Exp, Env)
 import Data.Print
 import Text.Printf
@@ -22,7 +20,6 @@ import Text.Printf
 import Data.Set (Set)
 import Data.Map (Map)
 import Data.Functor.Identity
-import Data.TypeLevel.Ghost
 import Data.Function ((&))
 import Analysis.Monad (EnvM(..))
 import Analysis.Scheme.Store

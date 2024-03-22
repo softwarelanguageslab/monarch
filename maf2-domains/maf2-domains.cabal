@@ -50,9 +50,7 @@ library
       Control.Monad.Escape
       Data.TypeLevel.HMap
   other-modules:
-      Data.TypeLevel.HList
       Data.TypeLevel.HMap.TH
-      Data.TypeLevel.Struct
       Domain.Core.BoolDomain
       Domain.Core.BoolDomain.Class
       Domain.Core.BoolDomain.ConstantPropagation
@@ -129,7 +127,6 @@ library
     , extra
     , hashable
     , maf2-syntax
-    , maf2-typelevel
     , mtl
     , singletons
     , singletons-th
@@ -182,7 +179,6 @@ test-suite maf2-domains-test
     , hspec-contrib
     , maf2-domains
     , maf2-syntax
-    , maf2-typelevel
     , mtl
     , singletons
     , singletons-th

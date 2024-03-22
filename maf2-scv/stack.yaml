@@ -43,7 +43,6 @@ packages:
 extra-deps: 
   - ../maf2-domains/
   - ../maf2-syntax/
-  - ../maf2-typelevel/
   - ../maf2-analysis/
 
 # Override default flag values for local packages and extra-deps

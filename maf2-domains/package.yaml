@@ -27,7 +27,6 @@ dependencies:
 - data-default
 - extra
 - maf2-syntax
-- maf2-typelevel
 - hashable
 - vector 
 - singletons
