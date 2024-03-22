@@ -93,7 +93,8 @@ class (RealDomain v,
   isNil  :: v -> Bool
   isUnsp :: v -> Bool
   isPrim :: v -> Bool
-
+  isProc :: v -> Bool
+  isProc v = isPrim v || isClo v
 
 -- | Types of values assigned to variables
 type family VarDom v :: Type
