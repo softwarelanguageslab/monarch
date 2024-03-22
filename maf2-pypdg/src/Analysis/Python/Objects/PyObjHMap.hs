@@ -15,18 +15,13 @@ import Domain.Core.SeqDomain
 import Domain.Core.HMapDomain
 
 import qualified Domain.Core.HMapDomain as HMapDomain 
-import Domain.Core.HMapDomain (HMapAbs(..))
 import Data.TypeLevel.HMap 
 import qualified Data.TypeLevel.HMap as HMap  
 
 import Data.Set (Set)
-import qualified Data.Set as Set 
 import Data.Map (Map)
-import qualified Data.Map as Map 
 import Data.Kind 
 import Data.Maybe
-import Data.Singletons (Sing)
-import Data.Singletons.TH (demote)
 import Data.Singletons (fromSing)
 import Data.Singletons.Sigma (Sigma((:&:)))
 
