@@ -62,6 +62,7 @@ library:
     - Domain.Scheme.Actors.Class
     - Domain.Scheme.Actors
     - Domain.Scheme.Actors.CP
+    - Domain.Scheme.Actors.Contract
     - Domain.Erlang.Class
     - Lattice
     - Lattice.Class 

@@ -4,6 +4,7 @@
 module Lattice.ConstantPropagationLattice(CP(..), fromCP) where
 
 import Lattice.Class 
+import Lattice.Equal
 import Domain.Class 
 import Domain.Core.BoolDomain.Class
 

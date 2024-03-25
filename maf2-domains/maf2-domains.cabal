@@ -38,6 +38,7 @@ library
       Domain.Scheme.Actors.Class
       Domain.Scheme.Actors
       Domain.Scheme.Actors.CP
+      Domain.Scheme.Actors.Contract
       Domain.Erlang.Class
       Lattice
       Lattice.Class
@@ -82,9 +83,9 @@ library
       Domain.Python.DataFrameDomain
       Domain.Python.DataFrameDomain.Class
       Domain.Python.DataFrameDomain.DataFrameSet
-      Domain.Scheme.Actors.Contract
       Domain.Scheme.Actors.Modular
       Domain.Scheme.CPDomain
+      Lattice.Equal
       Lattice.HMapLattice
       Lattice.IntervalLattice
       Lattice.ListLattice

@@ -1,7 +1,8 @@
 -- This module provides abstractions for contracts and their monitors
-module Domain.Scheme.Actors.Contract where
+module Domain.Scheme.Actors.Contract(MessageContract(..)) where
 
 import Data.Set (Set)
+import qualified Data.Set as Set
 import Lattice (Joinable(..), JoinLattice(..))
 
 -- | Abstraction of a message contract, its join is performed
@@ -11,8 +12,7 @@ data MessageContract v ptr = MessageContract {
       rcpt     :: v,       -- ^ expected recipient (λ)
       payload  :: Set ptr, -- ^ payload contracts, allocated as a list in the store
       comm     :: v        -- ^ communication contract (λ)
-   } | Bottom deriving (Show, Eq)
-
+   } | Bottom deriving (Show, Eq, Ord)
 
 instance (Joinable v, Ord ptr) => Joinable (MessageContract v ptr) where
    join Bottom v = v
@@ -28,5 +28,5 @@ instance (Joinable v, Ord ptr) => Joinable (MessageContract v ptr) where
 instance (JoinLattice v, Ord ptr) => JoinLattice (MessageContract v ptr) where   
    bottom = Bottom
 
--- | An abstraction for a behavior contract
 
+   

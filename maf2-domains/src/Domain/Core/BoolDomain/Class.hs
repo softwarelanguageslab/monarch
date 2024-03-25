@@ -1,4 +1,4 @@
-module Domain.Core.BoolDomain.Class (BoolDomain(..), EqualLattice(..)) where 
+module Domain.Core.BoolDomain.Class (BoolDomain(..)) where 
 
 import Lattice.Class
 import Domain.Class 
@@ -31,11 +31,4 @@ class (Domain b Bool) => BoolDomain b where
    or :: b -> b -> b
    or a = iff a true  
 
-
-------------------------------------------------------------
---- EqualLattice
-------------------------------------------------------------
-
-class EqualLattice v where 
-   eql :: BoolDomain b => v -> v -> b
 
