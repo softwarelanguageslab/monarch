@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds, PolyKinds, StandaloneKindSignatures, DataKinds #-}
+{-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds, PolyKinds, StandaloneKindSignatures, DataKinds, ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Domain.Scheme.Modular(
@@ -78,7 +78,6 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    -- λα/c
                    | MoαConf    -- ^ abstraction for monitors on actor references
                    | BeCConf    -- ^ abstraction for behavior contracts
-                   | MeCConf    -- ^ abstraction for message contracts
                    | PMeConf    -- ^ pointer to message contracts
 
 ----------------------------------------------
@@ -132,7 +131,7 @@ type Values m = '[
    -- λα/c language
    MoαKey  ::-> Assoc MoαConf m,
    BeCKey  ::-> Assoc BeCConf m,
-   MeCKey  ::-> Assoc MeCConf m
+   MeCKey  ::-> Set (Assoc PMeConf m)
    ]
 
 
@@ -185,9 +184,16 @@ instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
       where showElement :: BindingFrom (Values m) -> String
             showElement (key :&: value) = 
                printf "%s ↦ %s" (show $ fromSing key) (withC_ @(AtKey1 Show (Values m)) (show value) key)
-      -- HMap.foldr append' "" (HMap.map' (withC_ @(AtKey1 Show (Values m)) show) hm)
-      -- where append' :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const String) kt (Values m)  -> String -> String
-      --       append' = const (HMap.withFacts @(Const String) @kt @(Values m) (++))
+
+-- EqualLattice
+instance (IsSchemeValue m, ForAll SchemeKey (AtKey1 EqualLattice (Values m))) => EqualLattice (SchemeVal m) where
+   eql a b 
+      | a == bottom || b == bottom = bottom
+      | HMap.isSingleton (getSchemeVal a) && HMap.isSingleton (getSchemeVal b) =
+         joins $ HMap.mapList (HMap.withC @(AtKey1 EqualLattice (Values m)) check) (getSchemeVal a)
+      | otherwise = boolTop
+     where check ::  forall (kt :: SchemeKey) b . (BoolDomain b, EqualLattice (Assoc kt (Values m))) => Sing kt -> Assoc kt (Values m) -> b
+           check Sing v = maybe (inject False) (eql v) (HMap.get @kt (getSchemeVal b))
 
 ------------------------------------------------------------
 -- Utilities

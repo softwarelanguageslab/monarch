@@ -1,4 +1,4 @@
-module Domain.Scheme.Actors.CP(CPActorValue, Pid(..)) where
+module Domain.Scheme.Actors.CP(CPActorValue, CPActorMapping, Pid(..)) where
 
 import Syntax.Scheme
 import Domain.Scheme.Modular
@@ -8,9 +8,7 @@ import Lattice
 import Domain.Scheme.Class hiding (Exp)
 import Domain.Core
 
--- | Type of values in the analysis
-type CPActorValue adr ptr ctx =
-  SchemeVal
+type CPActorMapping adr ptr ctx = 
     '[ RealConf ::-> CP Double,
        IntConf ::-> CP Integer,
        CharConf ::-> CP Char,
@@ -23,6 +21,10 @@ type CPActorValue adr ptr ctx =
        VarConf ::-> adr,
        PidConf ::-> Pid ctx
      ]
+
+-- | Type of values in the analysis
+type CPActorValue adr ptr ctx =
+  SchemeVal (CPActorMapping adr ptr ctx)
 
 
 data Pid ctx
