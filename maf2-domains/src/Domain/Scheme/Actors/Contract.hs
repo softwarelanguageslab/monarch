@@ -7,14 +7,14 @@ import Lattice (Joinable(..), JoinLattice(..))
 
 -- | Abstraction of a message contract, its join is performed
 -- pairwise. 
-data MessageContract v ptr = MessageContract {
+data MessageContract v = MessageContract {
       tag      :: v,       -- ^ expected message tag
       rcpt     :: v,       -- ^ expected recipient (λ)
-      payload  :: Set ptr, -- ^ payload contracts, allocated as a list in the store
+      payload  :: v,       -- ^ payload contracts, allocated as a list in the store
       comm     :: v        -- ^ communication contract (λ)
    } | Bottom deriving (Show, Eq, Ord)
 
-instance (Joinable v, Ord ptr) => Joinable (MessageContract v ptr) where
+instance (Joinable v) => Joinable (MessageContract v) where
    join Bottom v = v
    join v Bottom = v
    join (MessageContract tag1 rcpt1 payload1 comm1) (MessageContract tag2 rcpt2 payload2 comm2) =
@@ -25,7 +25,7 @@ instance (Joinable v, Ord ptr) => Joinable (MessageContract v ptr) where
          comm    = join comm1 comm2
       }
 
-instance (JoinLattice v, Ord ptr) => JoinLattice (MessageContract v ptr) where   
+instance (JoinLattice v) => JoinLattice (MessageContract v) where   
    bottom = Bottom
 
 

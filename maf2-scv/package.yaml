@@ -53,6 +53,7 @@ default-extensions:
   - FlexibleContexts
   - ConstraintKinds
   - FlexibleInstances
+  - FunctionalDependencies
 
 library:
   source-dirs: src
