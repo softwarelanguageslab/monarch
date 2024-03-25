@@ -15,6 +15,7 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.List
 import Text.Printf
+import qualified Analysis.Contracts as Contracts
 
 exampleFormula :: Formula
 exampleFormula = Conjunction
@@ -32,15 +33,15 @@ runMain = do
 
 
 
-printSto :: Map VariableAdr V -> String
+printSto :: Map Contracts.Addr Contracts.V -> String
 printSto m =
    intercalate "\n" (map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs) ++ "\n----\n"
-   where adrs   = Map.toList $ Map.filterWithKey (\case { Prm _ -> const False ; _ -> const True }) m
+   where adrs   = Map.toList m
          indent = maximum (map (length . show . fst) adrs) + 5
 
 main :: IO ()
 main = do
    text   <- readFile "/tmp/test.scm"
    let program = fromJust (parseString text)
-   result <- simpleAnalysis program
-   mapM_ (putStrLn . printSto  . values . snd) result
+   let result = Contracts.runAnalysis program
+   putStrLn $ printSto $ result

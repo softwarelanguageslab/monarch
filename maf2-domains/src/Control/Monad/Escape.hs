@@ -58,16 +58,16 @@ instance (Eq a, Eq e, Joinable a, Joinable e) => JoinLattice (MayEscape e a) whe
 --- MayEscapeT
 ------------------------------------------------------------
 
-newtype MayEscapeT m e a = MayEscapeT { runMayEscape :: m (MayEscape e a) }
+newtype MayEscapeT e (m :: Type -> Type) a = MayEscapeT { runMayEscape :: m (MayEscape e a) }
 
-instance (Monad m) => Functor (MayEscapeT m e) where
+instance (Monad m) => Functor (MayEscapeT e m) where
    fmap f (MayEscapeT ma) = MayEscapeT $ fmap (fmap f) ma  
 
-instance (Monad m, Joinable e) => Applicative (MayEscapeT m e) where
+instance (Monad m, Joinable e) => Applicative (MayEscapeT e m) where
    pure = MayEscapeT . return . Value
    (<*>) = ap
 
-instance (Monad m, Joinable e) => Monad (MayEscapeT m e) where
+instance (Monad m, Joinable e) => Monad (MayEscapeT e m) where
    return = pure
    MayEscapeT m >>= f = MayEscapeT $ m >>= \case 
                                              Bottom      -> return Bottom
@@ -75,8 +75,8 @@ instance (Monad m, Joinable e) => Monad (MayEscapeT m e) where
                                              Value v     -> runMayEscape (f v) 
                                              MayBoth v e -> runMayEscape (f v) <&> addError e
 
-instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT m e) where
-   type Esc (MayEscapeT m e) = e 
+instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT e m) where
+   type Esc (MayEscapeT e m) = e 
    escape = MayEscapeT . return . Escape . inject
    catch (MayEscapeT m) hdl = MayEscapeT $ m >>= handle
       where handle Bottom        = return Bottom
@@ -84,7 +84,7 @@ instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT m e) where
             handle suc@(Value _) = return suc
             handle (MayBoth v e) = handle (Value v) `mjoin` handle (Escape e)
 
-instance (Eq e, Joinable e, MonadJoin m) => MonadJoin (MayEscapeT m e) where
+instance (Eq e, Joinable e, MonadJoin m) => MonadJoin (MayEscapeT e m) where
     mzero = MayEscapeT mzero
     mjoin (MayEscapeT ma) (MayEscapeT mb) = MayEscapeT (mjoin ma mb)
 

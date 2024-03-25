@@ -10,7 +10,8 @@ module Lattice (
   module Lattice.ReversePowerSetLattice,
   module Lattice.SetLattice,
   module Lattice.TopLiftedLattice,
-  module Lattice.UnitLattice
+  module Lattice.UnitLattice,
+  module Lattice.Equal
 ) where
 
 import Lattice.Class
@@ -25,3 +26,4 @@ import Lattice.ReversePowerSetLattice
 import Lattice.SetLattice
 import Lattice.TopLiftedLattice
 import Lattice.UnitLattice
+import Lattice.Equal

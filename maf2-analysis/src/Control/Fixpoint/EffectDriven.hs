@@ -13,7 +13,6 @@ import Control.Monad.State.IntPool
 import Control.Fixpoint.WorkList
 import Control.Monad.Cond
 import Control.Monad.Layer
-import Control.Monad.State.Scoped
 
 import Prelude hiding (iterate)
 import Data.Set (Set)
@@ -47,7 +46,7 @@ class Monad m => EffectM m c | m -> c where
    -- meaning that all its effects are discarded
    setup :: m a -> m a
 
-instance (MonadLayer m, Monad m, EffectM (Lower m) c) => EffectM m c where
+instance (MonadLayer t, Monad (t m), EffectM m c) => EffectM (t m) c where
    spawn   = upperM . spawn
    intra c = lowerM (intra c)
    done    = upperM done
@@ -73,26 +72,29 @@ modifyWl f st = (a, st { wl = wl' })
 
 
 newtype EffectT c wl m a =
-   EffectT { getEffectT :: IdentityT (StateT (EffectState c wl) (WriterT (Set c) (TrackingStateVarT (StateVarT (IntegerPoolT m))))) a }
-   deriving (Applicative, Functor, Monad, MonadState (EffectState c wl), MonadWriter (Set c), MonadLayer)
+   EffectT { getEffectT :: (StateT (EffectState c wl) (WriterT (Set c) m)) a }
+   deriving (Applicative, Functor, Monad, MonadState (EffectState c wl), MonadWriter (Set c))
 -- ^ The EffectT monad transformer, it introduces an EffectM implementation and MonadStateVar
--- implementation in the stack. Note that these are explicitly visible on the monad stack due to MonadLayer
--- being applied on IdentityT which exposes `Lower` as the `StateT` monad which transitively exposes
--- the remaining layers of this stack.
+-- implementation in the stack. 
 
-instance {-# OVERLAPPING #-} (Ord c, WorkList wl, Monad m) => EffectM (EffectT c (wl c) m) c where
+instance (Ord c) => MonadTrans (EffectT c wl) where   
+   lift = EffectT . lift . lift
+instance (Ord c) => MonadLayer (EffectT c wl) where  
+   lowerM f (EffectT m) = EffectT $ lowerM (lowerM f) m
+
+instance {-# OVERLAPPING #-} (Ord c, WorkList wl, MonadStateVar m, MonadStateVarTracking m, Monad m) => EffectM (EffectT c (wl c) m) c where
    spawn = tell . Set.singleton
    intra c ma = do
        (v, r, w, spawns) <- censor (const Set.empty) (do
             (v, spawns) <- listen ma
-            trackState  <- EffectT $ lift $ lift $ lift getDeps
-            EffectT $ lift $ lift $ lift resetTracking
+            trackState  <- getDeps
+            reset
             return (v, rdep trackState, wdep trackState, spawns)
          )
        ST.modify (integrate c r w spawns)
        return v
    done  = gets (isEmpty . wl)
-   setup ma = ma >>= (\v ->  EffectT $ lift $ lift $ lift resetTracking >> return v)
+   setup ma = ma >>= (\v -> reset >> return v)
    next = state (modifyWl remove)
 
 integrate :: (Ord c, WorkList wl)
@@ -115,23 +117,23 @@ integrate c r w s st = st {
          newCmps   = Set.union toAnalyze spawns'
 
 
-loop :: forall c m state . (Ord c, MonadScopedState m, EffectM m c) => (c -> state -> m state) -> state -> m state
+loop :: forall c m state . (Ord c, EffectM m c, MonadStateVar m) => (c -> state -> m state) -> state -> m state
 loop analyze st  =
       ifM done
       {- then -} (return st)
-      {- then -} (next >>= (\c -> scoped (intra c (analyze c st)) >>= loop analyze))
+      {- then -} (next >>= (\c -> (intra c (analyze c st)) >>= loop analyze))
 
-iterate :: (Ord c, MonadScopedState m, EffectM m c)
+iterate :: (Ord c, MonadStateVar m, EffectM m c)
         => (c -> state -> m state) -- ^ analysis function
         -> state                   -- ^ the initial state
         -> m state
 iterate = loop
 
-runEffectT :: forall c m a wl .(Monad m, Ord c) => wl c -> EffectT c (wl c) m a -> m (a, VarState)
+runEffectT :: forall c m a wl .(Monad m, Ord c) => wl c -> EffectT c (wl c) (TrackingStateVarT (StateVarT (IntegerPoolT m))) a -> m (a, VarState)
 runEffectT wl (EffectT ma) =
        runIntegerPoolT
     $  runStateVarT
     $  runTrackingStateVarT
     $  fst
-   <$> runWriterT (evalStateT (runIdentityT ma) (emptyEffectState wl))
+   <$> runWriterT (evalStateT ma (emptyEffectState wl))
 

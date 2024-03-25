@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds, PolyKinds, StandaloneKindSignatures, DataKinds #-}
+{-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds, PolyKinds, StandaloneKindSignatures, DataKinds, ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Domain.Scheme.Modular(
@@ -45,6 +45,8 @@ import Data.Singletons.Sigma
 
 import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith, MapWithAt, BindingFrom)
 import qualified Data.TypeLevel.HMap as HMap
+import Data.List (intercalate)
+import Text.Printf (printf)
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -71,8 +73,12 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | PaiConf    -- ^ type of pair pointers
                    | VecConf    -- ^ type of vector pointers
                    | VarConf    -- ^ type of regular pointers
+                   -- λα
                    | PidConf    -- ^ type of actor references
+                   -- λα/c
                    | MoαConf    -- ^ abstraction for monitors on actor references
+                   | BeCConf    -- ^ abstraction for behavior contracts
+                   | PMeConf    -- ^ pointer to message contracts
 
 ----------------------------------------------
 -- Modular Scheme lattice
@@ -96,7 +102,9 @@ data SchemeKey = RealKey
                | BehKey 
                -- λα/c
                | MoαKey
-               deriving (Ord, Eq)
+               | BeCKey
+               | MeCKey
+               deriving (Ord, Eq, Show)
 
 genHKeys ''SchemeKey
 
@@ -121,7 +129,9 @@ type Values m = '[
    PidKey  ::-> Set (Assoc PidConf m),
    BehKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
    -- λα/c language
-   MoαKey  ::-> Assoc MoαConf m
+   MoαKey  ::-> Assoc MoαConf m,
+   BeCKey  ::-> Assoc BeCConf m,
+   MeCKey  ::-> Set (Assoc PMeConf m)
    ]
 
 
@@ -170,9 +180,20 @@ deriving instance (HMapKey (Values m),
 
 -- Show instance
 instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
-   show (SchemeVal hm) = HMap.foldr append' "" (HMap.map' (withC_ @(AtKey1 Show (Values m)) show) hm)
-      where append' :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const String) kt (Values m)  -> String -> String
-            append' = const (HMap.withFacts @(Const String) @kt @(Values m) (++))
+   show (SchemeVal hm) = intercalate "," $ map showElement $ HMap.toList hm
+      where showElement :: BindingFrom (Values m) -> String
+            showElement (key :&: value) = 
+               printf "%s ↦ %s" (show $ fromSing key) (withC_ @(AtKey1 Show (Values m)) (show value) key)
+
+-- EqualLattice
+instance (IsSchemeValue m, ForAll SchemeKey (AtKey1 EqualLattice (Values m))) => EqualLattice (SchemeVal m) where
+   eql a b 
+      | a == bottom || b == bottom = bottom
+      | HMap.isSingleton (getSchemeVal a) && HMap.isSingleton (getSchemeVal b) =
+         joins $ HMap.mapList (HMap.withC @(AtKey1 EqualLattice (Values m)) check) (getSchemeVal a)
+      | otherwise = boolTop
+     where check ::  forall (kt :: SchemeKey) b . (BoolDomain b, EqualLattice (Assoc kt (Values m))) => Sing kt -> Assoc kt (Values m) -> b
+           check Sing v = maybe (inject False) (eql v) (HMap.get @kt (getSchemeVal b))
 
 ------------------------------------------------------------
 -- Utilities

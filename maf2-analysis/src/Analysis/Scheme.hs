@@ -1,115 +1,102 @@
 {-# LANGUAGE UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
 module Analysis.Scheme where
 
-import Prelude hiding (exp, lookup)
+import Prelude hiding (iterate, exp, lookup)
 
 import Analysis.Scheme.Primitives
 import qualified Analysis.Scheme.Semantics as Semantics
 import Analysis.Scheme.Monad (SchemeM)
 import Analysis.Monad hiding (getEnv)
 
-import Control.SVar.ModX
 import Control.Monad.Trans.Class
 import Control.Monad.Join
 import Control.Monad.Layer
-import Control.Monad.Cond (whenM)
 
 import Syntax.Scheme
-import Lattice
 import Domain.Scheme hiding (Exp, Env)
+import Data.Print
+import Text.Printf
 
 import Data.Set (Set)
 import Data.Map (Map)
 import Data.Functor.Identity
-import Data.TypeLevel.Ghost
 import Data.Function ((&))
 import Analysis.Monad (EnvM(..))
 import Analysis.Scheme.Store
 import Control.Monad.DomainError (runMayEscape, DomainError, MonadEscape(..))
+import Control.Monad.Identity (IdentityT(..))
+import Control.Fixpoint.EffectDriven
+import Control.Fixpoint.WorkList
+import qualified Control.Fixpoint.WorkList as WL
+import qualified Control.Monad.State.SVar as SVar
+import qualified Data.Map as Map
+import Control.Monad ((>=>))
 
 -----------------------------------------
 -- Shorthands
 -----------------------------------------
 
 type Program              = Exp
-type Env var v ctx dep    = Map String var          -- ^ the initial environment
-type Sto var ctx v dep    = Map var v               -- ^ non-heap allocated values
-type DSto ctx v           = SchemeStore v
+type Env var              = Map String var          -- ^ the initial environment
+type Sto var ctx v        = Map var v               -- ^ non-heap allocated values
+type DSto' f ctx v           = SchemeStore' f v
                                        (Adr v)
                                        (SAdr v)
                                        (PAdr v)
-                                       (VAdr v)      -- ^ combined store with heap allocated values
+                                       (VAdr v)     -- ^ combined store with heap allocated values
+type DSto ctx v = DSto' Id ctx v
+type SSto ctx v = DSto' SVar ctx v
 
 -----------------------------------------
 -- Store & Environment
 -----------------------------------------
 
-class (Ord var) => VarAdr var v ctx dep | var -> v ctx dep where
-   retAdr :: Component (ModF var v ctx dep) -> var
+class (Ord var) => VarAdr var v ctx | var -> v ctx where
+   retAdr :: Component var v ctx -> var
    prmAdr :: String -> var
 
 -- | The initial environment used by 
 -- the analysis
-analysisEnvironment :: VarAdr var v ctx dep => Env var v ctx dep
-analysisEnvironment = initialEnv prmAdr
+analysisEnv :: forall var v ctx . VarAdr var v ctx => Env var
+analysisEnv = initialEnv prmAdr
 
 -- | The initial store
-analysisStore :: forall v ctx dep var . (SchemeAnalysisConstraints var v ctx dep)
-              => Env var v ctx dep -> DSto ctx v
+analysisStore :: forall v ctx var . (SchemeAnalysisConstraints var v ctx)
+              => Env var -> DSto ctx v
 analysisStore = fromValues . initialSto @v
 
 -----------------------------------------
 -- ModF
 -----------------------------------------
 
-data ModF var v ctx dep
-
-class SchemeAlloc ctx var padr vadr sadr dep | ctx -> var padr vadr  sadr dep where
-  allocPai :: Exp -> ctx -> padr 
+class SchemeAlloc ctx var padr vadr sadr | ctx -> var padr vadr sadr where
+  allocPai :: Exp -> ctx -> padr
   allocVec :: Exp -> ctx -> vadr
   allocStr :: Exp -> ctx -> sadr
   allocVar :: Ide -> ctx -> var
   allocCtx :: Exp -> ctx -> ctx
 
-instance (SchemeAnalysisConstraints var v ctx dep) => ModX (ModF var v ctx dep) where
-  -- A component is a closure + a context
-  type Component (ModF var v ctx dep)  = (Exp, Env var v ctx dep, ctx, GT (var, v, dep))
-  -- | Global store
-  type State (ModF var v ctx dep)      = DSto ctx v
-  -- | Dependencies are tracked using SVar
-  type Dep (ModF var v ctx dep)        = dep
-  -- | The analysis of a single component runs the Scheme semantics
-  -- on the body of that component
-  type MM (ModF var v ctx dep)         = Identity
-  analyze (exp, env, ctx, _) store = 
-       let ((_, (spawns, registers, triggers)), sto) = (Semantics.eval exp >>= writeAdr (retAdr (exp, env, ctx, Ghost)))
-              & runEvalT
-              & runMayEscape @_ @(Set DomainError)
-              & runCallT @v @ctx
-              & runStoreT @VrAdr (values  store)
-              & runStoreT @StAdr (strings store)
-              & runStoreT @PaAdr (pairs   store)
-              & runStoreT @VeAdr (vecs    store)
-              & combineStores
-              & runEnv env
-              & runAlloc @PaAdr (allocPai @ctx)
-              & runAlloc @VeAdr (allocVec @ctx)
-              & runAlloc @StAdr (allocStr @ctx)
-              & runAlloc @VrAdr (allocVar @ctx)
-              & runCtx  ctx
-              & runIdentity
-       in return (sto, spawns, registers, triggers) 
+data Component var v ctx = Call Exp (Env var) ctx
+                         | Main Exp
+                         deriving (Eq, Ord)
+
+instance (Show ctx) => PrintShort (Component var v ctx) where 
+   printShort (Main exp) = "Main"
+   printShort (Call exp _ ctx) = printf "Call(%s, %s)" (show exp) (show ctx)
+   
+
+type State ctx v = DSto ctx v
+
 
 -----------------------------------------
 -- Open recursion for evaluation
 -----------------------------------------
 
-newtype BaseSchemeEvalT v m a = BaseSchemeEvalT { getInnerEvalT :: m a } deriving (Monad, Functor, Applicative)
+newtype BaseSchemeEvalT v m a = BaseSchemeEvalT { getInnerEvalT :: m a } deriving (Monad, Functor, MonadJoin, Applicative)
 
-instance (Monad m) => MonadLayer (BaseSchemeEvalT v m) where
-   type Lower (BaseSchemeEvalT v m) = m
-   upperM = BaseSchemeEvalT 
-   layerM f' f = BaseSchemeEvalT $ f' (runEvalT . f)
+instance MonadLayer (BaseSchemeEvalT v) where
+   upperM = BaseSchemeEvalT
+   lowerM f m = BaseSchemeEvalT $ f (runEvalT m)
 
 -- TODO: this is rather ugly right now but needed
 -- since we cannot derive MonadEscape yet if it 
@@ -119,14 +106,10 @@ instance (Monad m, MonadEscape m, Esc m ~ Set DomainError) => MonadEscape (BaseS
    escape = upperM . escape
    catch (BaseSchemeEvalT m) hdl = BaseSchemeEvalT $ catch @_ m (getInnerEvalT . hdl)
 
-instance (MonadJoin m) => MonadJoin (BaseSchemeEvalT v m) where
-   mzero = BaseSchemeEvalT mzero
-   mjoin (BaseSchemeEvalT ma) (BaseSchemeEvalT mb) = BaseSchemeEvalT $ mjoin ma mb
-
 instance MonadTrans (BaseSchemeEvalT v) where
    lift = BaseSchemeEvalT
 
-instance (SchemeM (BaseSchemeEvalT v m) v, SchemeAnalysisConstraints var v ctx dep) => (Analysis.Monad.EvalM (BaseSchemeEvalT v m) v Exp) where
+instance (SchemeM (BaseSchemeEvalT v m) v, SchemeAnalysisConstraints var v ctx) => (Analysis.Monad.EvalM (BaseSchemeEvalT v m) v Exp) where
    eval = Semantics.eval
 
 
@@ -144,73 +127,34 @@ class (Ord dep) => Dependency adr dep | adr -> dep where
 -- CallM & StoreM implementation
 -----------------------------------------
 
-newtype CallT var v ctx dep m a = CallT (ModxT (ModF var v ctx dep) m a) deriving (Monad, Functor, Applicative, MonadLayer)
-
-instance (Ord (Component (ModF var v ctx dep)), Ord (Dep (ModF var v ctx dep)), MonadJoin m) => MonadJoin (CallT var v ctx dep m) where
-   mzero = CallT mzero
-   mjoin (CallT ma) (CallT mb) = CallT $ mjoin ma mb
-
-needsUpdate :: forall m adr v t . (JoinLattice v, Show v, StoreM m t adr v) => adr -> v -> m Bool
-needsUpdate adr vlu' = do
-   vlu <- lookupAdr adr
-   if subsumes vlu vlu' then
-      return False
-   else
-      return True
-
--- | When a store update occurs, registers that update as a write effect,
--- when a store read occurs, registers that read as a read effect
-instance {-# OVERLAPPING #-} (
-            Dependency adr dep,
-            StoreM m t adr v,
-            SchemeAnalysisConstraints var v ctx dep
-   ) => StoreM (CallT var v ctx dep m) t adr v where
-
-   writeAdr adr vlu = CallT @var @v @ctx $ do
-      -- TODO: it is rather strange that type inference
-      -- cannot figure out that `c` must equal `ModF v ctx`
-      -- hence the explicit type annotations
-      whenM (lift $ needsUpdate adr vlu) $ do
-         trigger @_ @(ModF var v ctx dep) (dep adr)
-
-      lift $ writeAdr adr vlu
-
-   updateAdr adr vlu = CallT $ do
-      whenM (lift $ needsUpdate adr vlu) $ do
-         trigger @_ @(ModF var v ctx dep) (dep adr)
-      lift $ updateAdr adr vlu
-
-   lookupAdr adr = CallT $ do
-      _ <- register @_ @(ModF var v ctx dep) (dep adr)
-      lift $ lookupAdr adr
-
+newtype CallT var v ctx m a = CallT (IdentityT m a) deriving (Monad, Functor, Applicative, MonadLayer, MonadTrans, MonadJoin)
 
 -- | This instances spawns the called function as a component, 
 -- and reads the return value from the store.
-instance {-# OVERLAPPING #-} (CtxM m ctx,
-          Monad m,
-          StoreM (CallT var v ctx dep m) t var v, 
-          EnvM m var (Env var v ctx dep),
-          SchemeAnalysisConstraints var v ctx dep
-         ) => CallM (CallT var v ctx dep m) (Env var v ctx dep) v where
+instance {-# OVERLAPPING #-} (
+          CtxM m ctx,
+          StoreM m VrAdr var v,
+          EnvM m var (Env var),
+          EffectM m (Component var v ctx),
+          VarAdr var v ctx
+         ) => CallM (CallT var v ctx m) (Env var) v where
    call (Lam _ bdy _, _) = do
-      -- get the extended environment 
-      env' <- CallT $ lift getEnv
-      -- get the current context
-      ctx <- CallT $ lift getCtx
-      -- create a new component from this context
-      let comp = (bdy, env', ctx, Ghost)
-      --  spawn  the new component
-      _ <- CallT $ spawn comp
-      -- lookup the return value of the component
-      lookupAdr (retAdr comp)
+       -- get the extended environment 
+       env' <- CallT $ lift getEnv
+       -- get the current context
+       ctx <- CallT $ lift getCtx
+       -- create a new component from this context
+       let comp = Call bdy env' ctx
+       --  spawn  the new component
+       _ <- CallT $ spawn comp
+       -- lookup the return value of the component
+       lookupAdr (retAdr comp)
+   call _ = error "call can only be a lambda expression"
 
 -- | Run the CallT monad and peel it off the stack whilst returning 
 -- its encapsulated ModX state.
-runCallT :: forall v ctx m a c dep var . (Monad m, c ~ ModF var v ctx dep)
-         => CallT var v ctx dep m a
-         -> m (a, ([Component c], [Dep c], [Dep c]))
-runCallT (CallT m) = runModxT @c m
+runCallT :: forall v var ctx m a . CallT var v ctx m a -> m a
+runCallT (CallT m) = runIdentityT m
 
 -----------------------------------------
 -- Analysis
@@ -218,29 +162,50 @@ runCallT (CallT m) = runModxT @c m
 
 -- TODO: too many constraints, makes it more difficult to parse the program
 -- as written, try to simplify
-type SchemeAnalysisConstraints var v ctx dep = (
+type SchemeAnalysisConstraints var v ctx = (
          Show v,
          SchemeValue v,
          Adr v ~ var,
-         SchemeConstraints v Exp var (Env var v ctx dep),
-         Dependency var dep,
-         Dependency (PAdr v) dep,
-         Dependency (SAdr v) dep,
-         Dependency (VAdr v) dep,
-         VarAdr var v ctx dep,
-         Ord ctx, Ord v, SchemeAlloc ctx var (PAdr v) (VAdr v) (SAdr v) dep)
+         SchemeConstraints v Exp var (Env var),
+         VarAdr var v ctx,
+         Ord ctx, Ord v, SchemeAlloc ctx var (PAdr v) (VAdr v) (SAdr v))
 
--- | The result of the analysis
-newtype AnalysisResult var v ctx dep = AnalysisResult (State (ModF var v ctx dep))
+
+initialState :: forall m v var ctx . (SchemeAnalysisConstraints var v ctx, SVar.MonadStateVar m) => m (SSto ctx v)
+initialState = do
+   let sto = Map.toList (initialSto @v @_ @var analysisEnv)
+   vars <- mapM (\(k,v) -> (k,) <$> SVar.new v) sto
+   return $ fromValues (Map.fromList vars)
+
+-- | Evaluates the given expression in the appropriate monad and writes its result to the store
+-- on the return address
+evalRet :: forall var v ctx m t . (VarAdr var v ctx, EvalM m v Exp, StoreM m t var v) => Component var v ctx -> Exp -> m ()
+evalRet cmp = eval >=> writeAdr (retAdr cmp)
 
 -- | Analyses the given program into an analysis
 -- result. It uses the default initial environment
 -- as specified in `Analysis.Scheme.Primitives`
-analyzeProgram :: forall v ctx wl dep var .
-                  (WorkList wl (Component (ModF var v ctx dep)), SchemeAnalysisConstraints var v ctx dep)
-               => Program  -- ^ the program analyse
-               -> wl       -- ^ the initial contents of the worklist, can be empty. This function will add the initial component to it. 
-               -> ctx -- ^ context allocation function for a given expression (usually associated with a function call)
-               -> State (ModF var v ctx dep)
-analyzeProgram exp initialWl initialCtx = runIdentity $ runModX initialWl' (analysisStore @v analysisEnvironment)
-  where initialWl' = add (exp, analysisEnvironment, initialCtx, Ghost) initialWl
+analyzeProgram :: forall v var ctx wl . 
+                  (SchemeAnalysisConstraints var v ctx, WorkList wl)
+                => Exp -> wl (Component var v ctx) -> ctx -> DSto ctx v
+analyzeProgram program initialWl initialCtx = store'
+   where result = runIdentity $ runEffectT initialWl' (setup initialState >>= iterate intra)
+         store' = uncurry unifyStore result
+         initialWl' = WL.add (Main program) initialWl
+         run m env ctx sto = 
+            fmap snd $ m
+                   & runEvalT
+                   & runMayEscape @(Set DomainError)
+                   & runCallT @v @var @ctx
+                   & runEnv env
+                   & runAlloc @PaAdr (allocPai @ctx)
+                   & runAlloc @VeAdr (allocVec @ctx)
+                   & runAlloc @StAdr (allocStr @ctx)
+                   & runAlloc @VrAdr (allocVar @ctx)
+                   & runCtx  ctx
+                   & runJoinT
+                   & runSchemeStoreT sto
+         intra cmp@(Main exp) = run (evalRet cmp exp) (analysisEnv @var) initialCtx
+         intra cmp@(Call exp env ctx) = run (evalRet cmp exp) env ctx
+
+

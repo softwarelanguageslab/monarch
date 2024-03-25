@@ -18,6 +18,7 @@ module Data.TypeLevel.HMap (
     empty,
     singleton,
     singletonWithSing,
+    isSingleton,
     get,
     getWithSing,
     set,
@@ -37,10 +38,13 @@ module Data.TypeLevel.HMap (
     unionWith,
     withC,
     withC_,
+    withC_',
     ForAll(..),
     ForAllOf,
     All,
     Assoc,
+    Append,
+    Assign,
     LookupIn,
     InstanceOf,
     AtKey,
@@ -54,6 +58,7 @@ module Data.TypeLevel.HMap (
     genHKeys, 
     MapWith,
     MapWithAt,
+    Sigma(..)
 ) where
 
 import Prelude hiding (map, filter, foldr, null)
@@ -164,6 +169,9 @@ type BindingFrom m = (Sigma (KeyKind m) (LookupIn m))
 empty :: HMap m
 empty = HMap Map.empty
 
+isSingleton :: HMap m -> Bool
+isSingleton = (==1) . size 
+
 singleton :: forall kt m . (HMapKey m, SingI kt) => Assoc kt m -> HMap m
 singleton = HMap . Map.singleton (demote @kt) . SomeVal
 
@@ -256,6 +264,20 @@ type family ForAllIn (t :: [k]) (c :: k ~> Constraint) :: Constraint where
   ForAllIn '[] c      = ()
   ForAllIn (k ': r) c = (c @@ k, ForAllIn r c)
 
+
+type family Append (l1 :: [a]) (l2 :: [a]) :: [a] where   
+   Append (x ': xs) l2 = x ': Append xs l2
+   Append '[] l2        = l2
+
+-- | Given a mapping, extends that mapping with the key-values of the other mapping. 
+-- If a key already exists in the original mapping, the key is overwritten by the 
+-- key in the other mapping.
+type family Assign (o :: [k :-> v]) (n :: [k :-> v]) where  
+   -- NOTE: this is a little "hack" that (ab)uses the the way 'Assoc'
+   -- and related operations work: they lookup the key and the first found
+   -- is returned, hence we do not really care about duplicates here.
+   Assign o n = Append n o
+
 -- | Provides evidence that constraint `c` is satisfied for a type `t` of kind `k`.
 --
 -- Useful for stating that some constraint should hold for all keys in a mapping of an HMap
@@ -283,6 +305,9 @@ withC f s = withDict (for @k @c s) (f s)
 
 withC_ :: forall {k} c t r . (ForAll k c) => (c @@ t => r) -> Sing t -> r
 withC_ f = withC @c (const f)
+
+withC_' :: forall {k} t c r . (ForAll k c, SingI t) => (c @@ t => r) -> r
+withC_' f = withC @c (const f) (sing @t)
 
 -- Eq instance
 instance (HMapKey m, AllAtKey1 Eq m) => Eq (BindingFrom m) where 

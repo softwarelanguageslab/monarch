@@ -153,7 +153,7 @@ instance (PyObj (m PyVal ObjAdr PyClo),
           Ref (m PyVal ObjAdr PyClo) ~ PyVal, 
           Clo (m PyVal ObjAdr PyClo) ~ PyClo,
           Adr (m PyVal ObjAdr PyClo) ~ ObjAdr, 
-          Abs (m PyVal ObjAdr PyClo) TupPrm ~ CPList PyVal) => PyM (MayEscapeT (AnalysisM m) (Set PyEsc)) (m PyVal ObjAdr PyClo) where
+          Abs (m PyVal ObjAdr PyClo) TupPrm ~ CPList PyVal) => PyM (MayEscapeT (Set PyEsc) (AnalysisM m)) (m PyVal ObjAdr PyClo) where
     callCmp cmp = MayEscapeT $ AnalysisM $ \_ res sto -> (justOrBot $ Map.lookup cmp res, sto, spawnEffect cmp)
     returnWith = escape . Return 
     break = escape Break  
@@ -187,7 +187,7 @@ analyze prg = let (_, sto, _) = runM init initialEnv initialRes initialSto
                               wrk' = addAll rst (new `Set.union` tri)
                             in inter wrk' res' sto' dep' vis'
           -- intra-component analysis
-          runM :: MayEscapeT (AnalysisM m) (Set PyEsc) a -> PyEnv -> PyRes -> PySto m -> (MayEscape (Set PyEsc) a, PySto m, Effects)
+          runM :: MayEscapeT (Set PyEsc) (AnalysisM m) a -> PyEnv -> PyRes -> PySto m -> (MayEscape (Set PyEsc) a, PySto m, Effects)
           runM = run . runMayEscape
           intra :: PyCmp -> PyRes -> PySto m -> (MayEscape (Set PyEsc) PyVal, PySto m, Effects)
           intra (MainCmp prg) = 

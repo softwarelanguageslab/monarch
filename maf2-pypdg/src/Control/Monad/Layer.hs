@@ -60,8 +60,8 @@ instance (Monad m) => MonadLayer (IdentityT m) where
    layerM f' f = IdentityT $ f' (runIdentityT . f)
 
 -- Instance for MayEscapeT 
-instance (Monad m) => MonadLayer (MayEscapeT m e) where
-   type Lower (MayEscapeT m e) = m
+instance (Monad m) => MonadLayer (MayEscapeT e m) where
+   type Lower (MayEscapeT e m) = m
    upperM   m = MayEscapeT (Value <$> m)
    layerM f' f = MayEscapeT $ f' (runMayEscape . f)
 

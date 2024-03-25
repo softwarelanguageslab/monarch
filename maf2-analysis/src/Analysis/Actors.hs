@@ -29,6 +29,7 @@ import Domain.Scheme.Store
 import Syntax.Scheme.AST
 import Data.Functor ((<&>))
 import qualified Domain.Scheme.Actors.CP as CP
+import Control.Monad.Trans.Class
 import Domain (Address)
 
 ------------------------------------------------------------
@@ -78,10 +79,12 @@ type SSto = SchemeStore' SVar V Adr Adr Adr Adr
 
 newtype EvalT m a = EvalT (m a) deriving (Applicative, Monad, Functor, MonadJoin)
 
-instance (Monad m) => MonadLayer (EvalT m) where
-  type Lower (EvalT m) = m
+instance MonadTrans EvalT where   
+   lift = EvalT
+
+instance MonadLayer EvalT where
   upperM = EvalT
-  layerM f' f = EvalT $ f' (runEvalT . f)
+  lowerM f (EvalT m) = EvalT $ f m
 
 instance (ActorEvalM (EvalT m) V Msg MB) => EvalM (EvalT m) V Exp where
   eval = Actors.eval
@@ -110,9 +113,9 @@ data Component
   deriving (Eq, Ord, Show)
 
 newtype CallT m a = CallT (m a) deriving (Applicative, Monad, Functor, MonadJoin)
-
-instance (Monad m) => MonadLayer (CallT m) where
-  type Lower (CallT m) = m
+instance MonadTrans CallT where  
+  lift = CallT
+instance MonadLayer CallT where
   upperM = CallT
   lowerM f (CallT m) = CallT $ f m
 
@@ -158,7 +161,7 @@ analyze e = let ((sto, _), state) = (EF.setup initialState >>= EF.iterate intra)
              (m, mailboxes') <- mailbox pid mailboxes
              r <-   (Analysis.Monad.eval exp' >>= writeAdr (RetAdr cmp))
                     & runEvalT
-                    & runMayEscape @_ @(Set DomainError)
+                    & runMayEscape @(Set DomainError)
                     & runCallT'
                     & runEnv env
                     & runSchemeAllocT (const . VarAdr) (const . HeapAdr)

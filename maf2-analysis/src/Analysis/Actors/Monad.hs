@@ -21,6 +21,7 @@ import Control.Monad.State (MonadState, StateT(..), gets, put, runStateT, modify
 import Control.Monad.Reader (MonadReader (local), ReaderT(..), ask, runReaderT)
 import Control.Monad (void)
 import Control.Monad.Identity (IdentityT, runIdentityT)
+import Control.Monad.Trans
 
 type ActorEvalM m v msg mb = (SchemeM m v, ActorDomain v, ActorM m (ARef v) msg mb, ActorBehaviorM m v, Message msg v)
 
@@ -31,7 +32,7 @@ class ActorBehaviorM m v | m -> v where
    -- | Change the behavior of the actor to the given new behavior
    become :: Exp -> m ()
 
-instance {-# OVERLAPPABLE #-} (MonadLayer m, ActorBehaviorM (Lower m) v) => ActorBehaviorM m v where
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, ActorBehaviorM m v) => ActorBehaviorM (t m) v where
    spawn  = upperM . spawn
    become = upperM . become
 
@@ -61,7 +62,7 @@ class ActorGlobalM m ref msg | m -> ref msg where
 
 infixl 0 !
 
-instance {-# OVERLAPPABLE #-} (MonadLayer m, ActorGlobalM (Lower m) ref msg) => ActorGlobalM m ref msg where
+instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, ActorGlobalM m ref msg) => ActorGlobalM (t m) ref msg where
    send ref = upperM . send ref
 
 ------------------------------------------------------------
@@ -79,10 +80,13 @@ newtype ActorT mb ref msg m a =
       ActorT { _runActorT' :: StateT (ActorState mb) (ReaderT ref m) a }
    deriving (Functor, Applicative, Monad, MonadReader ref, MonadState (ActorState mb))
 
-instance (Monad m) => MonadLayer (ActorT mb ref msg m) where
-   type Lower (ActorT mb ref msg m) = m
-   layerM f' f = ActorT $ StateT $ \st -> ReaderT $ \r -> f' (runActorT (mailbox st) r . f)
-   upperM = ActorT . upperM  . upperM
+
+instance MonadTrans (ActorT mb ref msg) where   
+   lift = ActorT . lift . lift
+
+instance MonadLayer (ActorT mb ref msg) where
+   lowerM f (ActorT m) = ActorT $ lowerM (lowerM f) m 
+
 
 instance (JoinLattice mb, MonadJoin m) => MonadJoin (ActorT mb ref msg m) where
    mzero = ActorT mzero
@@ -93,7 +97,7 @@ instance {-# OVERLAPPING #-} (MonadJoin m, Mailbox mb msg) => ActorLocalM (Actor
    receiveAll = gets (Set.toList . dequeue . mailbox)
    putMailbox = put . ActorState
 
-instance (MonadLayer m, ActorLocalM (Lower m) ref msg mb) => ActorLocalM m ref msg mb where
+instance (MonadLayer t, ActorLocalM m ref msg mb, Monad m) => ActorLocalM (t m) ref msg mb where
    self = upperM self
    receiveAll = upperM receiveAll
    putMailbox = upperM . putMailbox
@@ -101,7 +105,7 @@ instance (MonadLayer m, ActorLocalM (Lower m) ref msg mb) => ActorLocalM m ref m
 class ActorLocalMScoped m mb ref | m -> mb ref where
    withMailbox :: mb -> m a -> m a
    withSelf :: ref -> m a -> m a
-instance (MonadLayer m, ActorLocalMScoped (Lower m) mb ref ) => ActorLocalMScoped m mb ref where
+instance (MonadLayer t, ActorLocalMScoped m mb ref ) => ActorLocalMScoped (t m) mb ref where
    withMailbox mailbox = lowerM (withMailbox mailbox)
    withSelf ref = lowerM (withSelf ref)
 instance (Monad m) => ActorLocalMScoped (ActorT mb ref msg m) mb ref where
@@ -133,7 +137,7 @@ type ActorSystemState ref mb = Map ref (SVar mb)
 -- analysis can be automatically tracked and 
 -- an effect-driven worklist algorithm can be used.
 newtype ActorSystemT ref msg mb m a = ActorSystemT (StateT (ActorSystemState ref mb) m a)
-                         deriving (Functor, Applicative, Monad, MonadLayer, MonadState (ActorSystemState ref mb))
+                         deriving (Functor, Applicative, Monad, MonadLayer, MonadTrans, MonadState (ActorSystemState ref mb))
 
 instance {-# OVERLAPPING #-} (Ord ref, Mailbox mb msg, SVar.MonadStateVar m) => ActorGlobalM (ActorSystemT ref msg mb m) ref msg where
    send ref msg = do
@@ -154,7 +158,7 @@ runActorSystemT initial (ActorSystemT m) = runStateT m initial
 
 -- | Instance of ActorBehaviorM that ignores becomes and actor spawns
 newtype NoSpawnT v m a = NoSpawnT (IdentityT m a)
-                       deriving (Monad, Applicative, Functor, MonadLayer, MonadJoin)
+                       deriving (Monad, Applicative, Functor, MonadLayer, MonadTrans, MonadJoin)
 
 instance (Monad m) => ActorBehaviorM (NoSpawnT v m) v where
    spawn  = return . const bottom
@@ -168,7 +172,7 @@ runNoSpawnT (NoSpawnT m) = runIdentityT m
 
 -- | Instance of ActorGlobalM that ignores "send"
 newtype NoSendT ref msg m a = NoSendT (IdentityT m a) 
-                           deriving (Monad, Applicative, Functor, MonadLayer, MonadJoin)
+                           deriving (Monad, Applicative, Functor, MonadLayer, MonadTrans, MonadJoin)
 
 instance (Monad m) => ActorGlobalM (NoSendT ref msg m) ref msg where 
    send = const . const (return ())

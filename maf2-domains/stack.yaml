@@ -22,7 +22,6 @@ resolver:
 
 extra-deps:
   - ../maf2-syntax/
-  - ../maf2-typelevel/
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.

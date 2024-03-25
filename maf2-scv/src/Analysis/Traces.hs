@@ -15,6 +15,7 @@ module Analysis.Traces where
 import Analysis.Actors.Monad
 import Control.Monad.Layer
 import Control.Monad.State (MonadState, StateT, modify, runStateT)
+import Control.Monad.Trans.Class
 import Lattice
 import qualified Lattice.ReversePowerSetLattice as RSet
 
@@ -40,7 +41,7 @@ newtype Trace m = Trace { getTrace :: ReversePowerSet m }
 -- We implement this alternative instance for a type 'TraceT',
 -- which implements the `MonadLayer` interface.
 newtype TraceT msg ref m a = TraceT (StateT (Trace msg) m a)
-  deriving (Applicative, Monad, Functor, MonadState (Trace msg), MonadLayer)
+  deriving (Applicative, Monad, Functor, MonadState (Trace msg), MonadLayer, MonadTrans)
 
 -- | Record the given message in the trace
 record :: Ord msg => msg -> Trace msg -> Trace msg

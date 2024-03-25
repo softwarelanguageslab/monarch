@@ -12,6 +12,9 @@ import qualified Data.Set as Set
 instance Joinable () where
    join _ _ = ()
 
+instance Meetable () where 
+   meet _ _ = ()
+
 -- | JoinLattice for Unit 
 instance JoinLattice () where
    bottom       = ()
@@ -23,3 +26,4 @@ instance SplitLattice () where
 -- | Domain instance for Unit
 instance Domain () () where 
    inject = id 
+

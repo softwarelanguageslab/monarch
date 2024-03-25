@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.2.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -40,6 +40,7 @@ library
       Domain.Scheme.Actors.Class
       Domain.Scheme.Actors
       Domain.Scheme.Actors.CP
+      Domain.Scheme.Actors.Contract
       Domain.Erlang.Class
       Lattice
       Lattice.Class
@@ -53,9 +54,7 @@ library
       Data.TypeLevel.HMap
       Data.Finite
   other-modules:
-      Data.TypeLevel.HList
       Data.TypeLevel.HMap.TH
-      Data.TypeLevel.Struct
       Domain.Core.BoolDomain
       Domain.Core.BoolDomain.Class
       Domain.Core.BoolDomain.ConstantPropagation
@@ -89,9 +88,9 @@ library
       Domain.Python.DataFrameDomain.DataFrameSet
       Domain.Python.Objects.Class
       Domain.Python.Objects.PyObjHMap
-      Domain.Scheme.Actors.Contract
       Domain.Scheme.Actors.Modular
       Domain.Scheme.CPDomain
+      Lattice.Equal
       Lattice.HMapLattice
       Lattice.IntervalLattice
       Lattice.ListLattice
@@ -135,7 +134,6 @@ library
     , extra
     , hashable
     , maf2-syntax
-    , maf2-typelevel
     , mtl
     , singletons
     , singletons-th
@@ -189,7 +187,6 @@ test-suite maf2-domains-test
     , hspec-contrib
     , maf2-domains
     , maf2-syntax
-    , maf2-typelevel
     , mtl
     , singletons
     , singletons-th

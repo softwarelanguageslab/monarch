@@ -25,10 +25,16 @@ source-repository head
 
 library
   exposed-modules:
+      Analysis.Contracts
+      Analysis.Contracts.Behavior
+      Analysis.Contracts.Monad
+      Analysis.Contracts.Semantics
       Analysis.Symbolic
       Analysis.Symbolic.Monad
       Analysis.Symbolic.Semantics
       Analysis.Traces
+      Domain.Contract
+      Domain.Contract.Store
       Domain.Symbolic
       Domain.Symbolic.Class
       Domain.Symbolic.CPDomain
@@ -56,6 +62,10 @@ library
       FlexibleContexts
       ConstraintKinds
       FlexibleInstances
+      FunctionalDependencies
+      InstanceSigs
+      TypeOperators
+      DataKinds
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
@@ -66,6 +76,7 @@ library
     , maf2-syntax
     , mtl
     , process
+    , transformers
   default-language: Haskell2010
 
 executable maf2-scv-exe
@@ -88,6 +99,10 @@ executable maf2-scv-exe
       FlexibleContexts
       ConstraintKinds
       FlexibleInstances
+      FunctionalDependencies
+      InstanceSigs
+      TypeOperators
+      DataKinds
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -99,6 +114,7 @@ executable maf2-scv-exe
     , maf2-syntax
     , mtl
     , process
+    , transformers
   default-language: Haskell2010
 
 test-suite maf2-scv-test
@@ -122,6 +138,10 @@ test-suite maf2-scv-test
       FlexibleContexts
       ConstraintKinds
       FlexibleInstances
+      FunctionalDependencies
+      InstanceSigs
+      TypeOperators
+      DataKinds
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -133,4 +153,5 @@ test-suite maf2-scv-test
     , maf2-syntax
     , mtl
     , process
+    , transformers
   default-language: Haskell2010

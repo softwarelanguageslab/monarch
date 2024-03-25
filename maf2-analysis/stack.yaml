@@ -35,7 +35,6 @@ packages:
 extra-deps: 
   - ../maf2-domains/
   - ../maf2-syntax/
-  - ../maf2-typelevel/
  
 # Override default flag values for local packages and extra-deps
 # flags: {}

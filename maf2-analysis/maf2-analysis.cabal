@@ -38,7 +38,6 @@ library
       Analysis.Actors.Semantics
       Analysis.Actors.Mailbox
       Interpreter.Scheme
-      Control.SVar.ModX
       Control.Monad.Layer
       Control.Monad.State.SVar
       Control.Monad.State.IntPool
@@ -50,20 +49,11 @@ library
       Analysis.Erlang.Semantics
       Analysis.IO
       Analysis.Python
-      Analysis.Python.Common
-      Analysis.Python.Fixpoint
-      Analysis.Python.Monad
-      Analysis.Python.Objects
-      Analysis.Python.Primitives
-      Analysis.Python.Semantics
-      Analysis.Python.Syntax
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
       Control.Monad.Cond
       Control.Monad.Error
-      Control.Monad.State.Scoped
-      Control.SVar.GenId
       Data.ListExtra
       Data.Print
       Data.SetExtra
@@ -111,7 +101,6 @@ library
     , list-t
     , maf2-domains
     , maf2-syntax
-    , maf2-typelevel
     , mtl
     , optparse-applicative
     , singletons
@@ -167,7 +156,6 @@ executable maf-exe
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
-    , maf2-typelevel
     , mtl
     , optparse-applicative
     , pretty-simple
@@ -219,7 +207,6 @@ test-suite maf2-analysis-test
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
-    , maf2-typelevel
     , mtl
     , optparse-applicative
     , singletons

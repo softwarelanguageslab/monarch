@@ -83,7 +83,7 @@ allPrimitives = [
    -- fix2 "make-string" todo, 
    fix1 "number?" (\v -> return $ inject (isReal v || isInteger v)),
    fix1 "pair?" (return . inject . isPaiPtr),
-   -- fix1 "procedure?" todo, 
+   fix1 "procedure?" (return . inject . Domain.isProc), 
    fix2 "quotient" quotient,
    fix1 "real?" (return . inject . isReal),
    fix2 "remainder" remainder,

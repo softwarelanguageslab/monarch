@@ -27,7 +27,6 @@ dependencies:
 - data-default
 - extra
 - maf2-syntax
-- maf2-typelevel
 - hashable
 - vector 
 - singletons
@@ -65,6 +64,7 @@ library:
     - Domain.Scheme.Actors.Class
     - Domain.Scheme.Actors
     - Domain.Scheme.Actors.CP
+    - Domain.Scheme.Actors.Contract
     - Domain.Erlang.Class
     - Lattice
     - Lattice.Class 

@@ -39,7 +39,6 @@ dependencies:
 - IfElse
 - maf2-domains
 - maf2-syntax
-- maf2-typelevel
 - hashmap
 - list-t
 - singletons
@@ -92,7 +91,6 @@ library:
   - Analysis.Actors.Semantics
   - Analysis.Actors.Mailbox
   - Interpreter.Scheme
-  - Control.SVar.ModX
   - Control.Monad.Layer
   - Control.Monad.State.SVar
   - Control.Monad.State.IntPool
