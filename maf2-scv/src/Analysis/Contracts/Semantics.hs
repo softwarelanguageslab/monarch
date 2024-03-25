@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Analysis.Contracts.Semantics(eval, ContractM) where
 
 import Syntax.Scheme
@@ -12,7 +13,7 @@ import Domain.Contract.Store (ConAdr)
 
 -- | This evaluation function extends 'Analysis.Symbolic.Semantics.eval' 
 -- with support for contracts on actors.
-eval :: ContractM m v c msg mb => Exp -> m v
+eval :: ContractM m v msg mb => Exp -> m v
 eval (MsgC tag rcv payload comm _) =
    messageContract <$> (MessageContract <$> eval tag <*> eval rcv <*> eval payload <*> eval comm)
 eval (BehC exs _) =  do
@@ -20,6 +21,6 @@ eval (BehC exs _) =  do
    vlus <- mapM eval exs
    contracts <- mapM (messageContracts pure) vlus
    zipWithM_ writeAdr adrs contracts
-   return (injectBehaviorContract (behaviorContract adrs))
+   return (behaviorContract adrs)
 
 eval e = Symbolic.eval e

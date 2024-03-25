@@ -54,6 +54,8 @@ default-extensions:
   - ConstraintKinds
   - FlexibleInstances
   - FunctionalDependencies
+  - InstanceSigs
+  - TypeOperators
 
 library:
   source-dirs: src

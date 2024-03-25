@@ -54,6 +54,7 @@ module Data.TypeLevel.HMap (
     genHKeys, 
     MapWith,
     MapWithAt,
+    Sigma(..)
 ) where
 
 import Prelude hiding (map, filter, foldr, null)
