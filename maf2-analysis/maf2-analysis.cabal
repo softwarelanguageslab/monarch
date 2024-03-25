@@ -50,10 +50,13 @@ library
       Analysis.Erlang.Semantics
       Analysis.IO
       Analysis.Python
+      Analysis.Python.Common
+      Analysis.Python.Fixpoint
       Analysis.Python.Monad
-      Analysis.Python.OO
+      Analysis.Python.Objects
       Analysis.Python.Primitives
       Analysis.Python.Semantics
+      Analysis.Python.Syntax
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
