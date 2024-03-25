@@ -1,26 +1,27 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Analysis.Contracts.Semantics(eval, ContractM) where
 
+import Lattice
 import Syntax.Scheme
-import Analysis.Monad(alloc, writeAdr)
+import Analysis.Monad(alloc, writeAdr, store)
 import Analysis.Contracts.Monad (ContractM)
 import Domain.Contract (ContractDomain(..))
 import Domain.Scheme.Actors.Contract (MessageContract(MessageContract))
-import qualified Analysis.Symbolic.Semantics as Symbolic
+import qualified Analysis.Scheme.Semantics as Scheme
 import Control.Monad (zipWithM_)
 import Analysis.Contracts.Behavior (behaviorContract)
 import Domain.Contract.Store (ConAdr)
+import qualified Data.Set as Set
+import Control.Monad.Join
 
 -- | This evaluation function extends 'Analysis.Symbolic.Semantics.eval' 
 -- with support for contracts on actors.
-eval :: ContractM m v msg mb => Exp -> m v
-eval (MsgC tag rcv payload comm _) =
-   messageContract <$> (MessageContract <$> eval tag <*> eval rcv <*> eval payload <*> eval comm)
+eval :: forall v m . ContractM m v => Exp -> m v
+eval exp@(MsgC tag rcv payload comm _) =
+   messageContract <$> (store exp =<< (MessageContract <$> eval tag <*> eval rcv <*> eval payload <*> eval comm))
 eval (BehC exs _) =  do
-   adrs <- mapM (alloc @_ @_ @ConAdr) exs
    vlus <- mapM eval exs
-   contracts <- mapM (messageContracts pure) vlus
-   zipWithM_ writeAdr adrs contracts
-   return (behaviorContract adrs)
+   adrs <- foldr join bottom <$> mapM (messageContracts (pure . Set.singleton)) vlus
+   return (behaviorContract @_ @v (Set.toList adrs))
 
-eval e = Symbolic.eval e
+eval e = Scheme.eval e
