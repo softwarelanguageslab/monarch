@@ -5,6 +5,7 @@ module Lattice.ConstantPropagationLattice(CP(..), fromCP) where
 
 import Lattice.Class 
 import Domain.Class 
+import Domain.Core.BoolDomain.Class
 
 import GHC.Generics
 
@@ -38,6 +39,14 @@ instance (Show a, Ord a) => JoinLattice (CP a) where
 instance (Show a, Ord a) => Domain (CP a) a where
    inject = Constant
 
+instance (Eq a) => (EqualLattice (CP a)) where   
+   eql Bottom _ = bottom
+   eql _ Bottom = bottom
+   eql (Constant a) (Constant b) 
+      | a == b = inject True 
+      | otherwise = inject False
+   eql _ _ = boolTop
+   
 instance Functor CP where
     fmap _ Bottom = Bottom
     fmap f (Constant x) = Constant (f x)
