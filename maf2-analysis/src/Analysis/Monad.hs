@@ -17,6 +17,7 @@ module Analysis.Monad(
  CtxM(..),
  CallM(..),
  deref,
+ store,
  -- Implementations
  runStoreT,
  runStoreT',
@@ -104,6 +105,11 @@ class (Monad m) => StoreM m t adr v | m adr -> v t where
 
 deref :: forall m adr v a t . (StoreM m t adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
 deref = lookups lookupAdr
+
+-- | Store the given value in the store using the an address
+-- allocator on the monadic stack.
+store :: forall m from t adr v . (AllocM m from t adr, StoreM m t adr v) => from -> v -> m adr
+store from v = alloc @_ @_ @t @adr from >>= (\adr -> writeAdr adr v >> pure adr)
 
 --
 
@@ -232,8 +238,6 @@ instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx t 
       f   <- ask
       return $ f from ctx
 
-instance {-# OVERLAPPING #-} TypeError (Text "No AllocM found on stack for " :$$: (ShowType from) :$$: (ShowType to) :$$: (ShowType t)) => AllocM Identity from t to
-
 instance (Monad (l m), AllocM m from t to, MonadLayer l) => AllocM (l m) from t to where
    alloc = upperM . alloc @m @from @t @to
 
@@ -268,7 +272,7 @@ runCallBottomT (CallBottomT ma) = runIdentityT ma
 -- state together using a JoinLattice, anything 
 -- below this on the stack will not be joined together and 
 -- is assumed to be global across all paths
-newtype JoinT m a = JoinT { getJoinT :: IdentityT m a } deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor) 
+newtype JoinT m a = JoinT { getJoinT :: IdentityT m a } deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor)
 
 instance (Monad m) => MonadJoin (JoinT m) where
    mzero = return bottom

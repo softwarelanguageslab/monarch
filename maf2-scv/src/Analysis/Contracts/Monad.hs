@@ -10,7 +10,7 @@ import Domain.Scheme.Actors.Contract (MessageContract)
 import Analysis.Contracts.Behavior (BehaviorContract, MAdr)
 import Domain.Contract.Store(ConAdr)
 
-type ContractM m v msg mb = 
+type ContractM m v = 
    (  StoreM m ConAdr (MAdr v) (MessageContract v),
       AllocM m Exp ConAdr (MAdr v),
-      ContractDomain v, ActorEvalM m v msg mb, SymbolicM m v)
+      ContractDomain v, SchemeM m v)

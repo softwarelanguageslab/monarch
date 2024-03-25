@@ -6,11 +6,13 @@ import Syntax.Scheme
 import Analysis.Symbolic.Monad
 import Analysis.Actors.Monad
 import qualified Analysis.Symbolic.Semantics as Symbolic
+import qualified Analysis.Contracts.Semantics as Contracts
 import Analysis.Scheme hiding (Sto)
 import Analysis.Scheme.Store
 import Control.Monad.Layer
 import Domain.Symbolic.CPDomain
 import Domain.Scheme.Store
+import Domain.Contract.Store
 import Control.Monad.Escape
 import Control.Monad.DomainError
 import Control.Monad.State.IntPool
@@ -139,10 +141,12 @@ simpleAnalysis e = do
                                          & runStoreT @PaAdr (pairs   store)
                                          & runStoreT @VeAdr (vecs    store)
                                          & combineStores
+                                         -- & runStoreT @ConAdr Map.empty
                                          & runAlloc @PaAdr PointerAdr
                                          & runAlloc @VeAdr PointerAdr
                                          & runAlloc @StAdr PointerAdr
                                          & runAlloc @VrAdr Adr
+                                         -- & runAlloc @ConAdr PointerAdr
                                          & runCtx []
                                          & runEnv env
                                          & runActorT @MB Set.empty EntryPid
