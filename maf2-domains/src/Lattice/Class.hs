@@ -90,4 +90,5 @@ instance Joinable Void where
    join x _ = absurd x
 instance JoinLattice Void where  
    bottom = error "no bottom for Void"
-
+instance Meetable Void where  
+   meet x _ = absurd x
