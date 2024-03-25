@@ -55,10 +55,15 @@ data Exp = Num Integer Span          -- ^ number literals
          | BehC [Exp] Span           -- ^ behavior/c contract
          | EnsC [Exp] Span           -- ^ ensures/c  contract
          | OnlC [Exp] Span           -- ^ only/c     contract
+         | Mon Labels Exp Exp Span   -- ^ contract monitor
          deriving (Eq,Ord, Generic)
 
 data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler
    deriving (Eq, Ord, Generic)
+
+-- | Blame labels used for blaming the correct party.
+data Labels = Labels { positive :: String, negative :: String } 
+             deriving (Ord, Eq, Generic)
 
 -- AST predicates -- 
 
@@ -103,6 +108,7 @@ spanOf (MsgC _ _ _ _ s) = s
 spanOf (BehC _ s)       = s
 spanOf (EnsC _ s)       = s
 spanOf (OnlC _ s)       = s
+spanOf (Mon _ _ _ s)    = s
 
 -- Show --
 
@@ -155,6 +161,13 @@ instance Show Exp where
       printf "(mirror (%s) %s)" (unwords $ map show args) (show hdls)
    show (Ter _) =
       "(terminate)"
+   show (BehC cs _) = 
+      printf "(behavior/c %s)" (unwords $ map show cs)
+   show (MsgC tag rcpt payload comm _) = 
+      printf "(message/c %s %s %s %s)" (show tag) (show rcpt) (show payload) (show comm)
+   show (Mon (Labels neg pos) contract value _) = 
+      printf "(mon %s %s %s %s)" neg pos (show contract) (show value)
+   show _ = "<unrecognized-expr>"
 
 
 instance Show Hdl where
@@ -265,6 +278,8 @@ compile e@(SExp.Atom "behavior/c" _ ::: contracts) =
    BehC <$> compileSequence contracts <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "message/c" _ ::: tag ::: payload ::: rcpt ::: comm ::: SExp.SNil _) =
    MsgC <$> compile tag <*> compile payload <*> compile rcpt <*> compile comm <*> pure (SExp.spanOf e)
+compile e@(SExp.Atom "mon" _ ::: SExp.Atom positive _ ::: SExp.Atom negative _ ::: contract ::: value ::: SExp.SNil _) = 
+   Mon (Labels positive negative) <$> compile contract <*> compile value <*> pure (SExp.spanOf e)
 -- quotes
 compile (SExp.Quo exp _) = local (const False) (compileQuoted exp)
 compile (SExp.Qua exp _) = local (const True)  (compileQuoted exp)
