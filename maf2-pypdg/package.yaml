@@ -85,7 +85,6 @@ library:
   exposed-modules:
   - Analysis.Monad
   - Analysis.Python.Fixpoint
-  - Analysis.Python.Objects.PyObjHMap 
 
 executables:
   maf-exe:

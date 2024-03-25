@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.36.0.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -28,17 +28,13 @@ library
   exposed-modules:
       Analysis.Monad
       Analysis.Python.Fixpoint
-      Analysis.Python.Objects.PyObjHMap
   other-modules:
       Analysis.Environment
       Analysis.IO
       Analysis.Python
       Analysis.Python.Common
-      Analysis.Python.Infrastructure
       Analysis.Python.Monad
       Analysis.Python.Objects
-      Analysis.Python.Objects.Class
-      Analysis.Python.OO
       Analysis.Python.Primitives
       Analysis.Python.Semantics
       Analysis.Python.Syntax

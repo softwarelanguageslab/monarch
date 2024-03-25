@@ -16,8 +16,8 @@ module Analysis.Python.Common (
 ) where
 
 import Lattice
+import Domain.Python.World
 import Analysis.Python.Syntax 
-import Analysis.Python.Infrastructure
 
 import Prelude hiding (True, False, all)
 import Data.Map (Map)
