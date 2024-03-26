@@ -36,10 +36,11 @@ assert :: forall v m . (ContractM m v) => (v -> CP Bool) -> AssertionMessage -> 
 assert b e v = cond (pure (b v)) (return v) (escape (AssertionError e))
 
 -- | This evaluation function extends 'Analysis.Symbolic.Semantics.eval' 
--- with support for contracts on actorserver1043.andy10gbit.xyzs.
+-- with support for contracts on actors.
 eval :: forall v m . ContractM m v => Exp -> m v
 eval exp@(MsgC tag rcv payload comm _) =
-   messageContract <$> (store exp =<< (MessageContract <$> Monad.eval tag <*> Monad.eval rcv <*> Monad.eval payload <*> Monad.eval comm))
+   messageContract <$> 
+      (store exp =<< (MessageContract <$> Monad.eval tag <*> Monad.eval rcv <*> Monad.eval payload <*> Monad.eval comm))
 eval (BehC exs _) =  do
    vlus <- mapM Monad.eval exs
    adrs <- joins <$> mapM (assert isMessageContract ExpectedMessageContract >=> pure . messageContracts) vlus

@@ -6,7 +6,7 @@ import Syntax.Scheme (Exp, Ide)
 import Domain hiding (Exp, Env)
 import qualified Domain.Scheme.Actors.CP as CP
 import Data.Map (Map)
-import Data.TypeLevel.HMap (Assign, (::->))
+import Data.TypeLevel.HMap ((::->))
 import Analysis.Contracts.Behavior 
 import Analysis.Monad
 import qualified Analysis.Contracts.Semantics as Sem
