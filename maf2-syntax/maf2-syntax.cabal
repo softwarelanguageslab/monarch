@@ -28,6 +28,7 @@ library
       Syntax.Scheme.Undefiner
       Syntax.Scheme.Actor
       Syntax.Scheme.Parser
+      Syntax.Span
       Syntax.Erlang
       Syntax.Erlang.Parser
       Syntax.Erlang.Compiler

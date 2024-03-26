@@ -2,14 +2,15 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-module Syntax.Scheme.AST (Exp(..), Ide(..), parseSchemeExp, parseSchemeExp', testParser, isDefine, spanOf, Span, Hdl(..)) where
+module Syntax.Scheme.AST (Exp(..), Ide(..), parseSchemeExp, parseSchemeExp', testParser, isDefine, spanOf, Span, Hdl(..), Labels) where
 
 import GHC.Generics (Generic)
 import qualified Data.Set as Set
 import Control.Monad.Except
 import Text.Printf
 import qualified Syntax.Scheme.Parser as SExp
-import Syntax.Scheme.Parser (Span(..), SExp, pattern (:::))
+import Syntax.Scheme.Parser (SExp, pattern (:::))
+import Syntax.Span
 import Control.Applicative
 import Control.Monad.Reader
 
@@ -56,6 +57,7 @@ data Exp = Num Integer Span          -- ^ number literals
          | EnsC [Exp] Span           -- ^ ensures/c  contract
          | OnlC [Exp] Span           -- ^ only/c     contract
          | Mon Labels Exp Exp Span   -- ^ contract monitor
+         | Flat Exp Span             -- ^ flat contract
          deriving (Eq,Ord, Generic)
 
 data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler
@@ -73,42 +75,43 @@ isDefine (Dff {}) = True
 isDefine _ = False
 
 -- | Returns the span of the AST node
-spanOf :: Exp -> Span
-spanOf (Num _ s) = s
-spanOf (Str _ s) = s
-spanOf (Sym _ s) = s
-spanOf (Bln _ s) = s
-spanOf (Var (Ide _ s)) = s
-spanOf (Iff _ _ _ s) = s
-spanOf (Lam _ _ s) = s
-spanOf (Bgn _ s) = s
-spanOf (Dfv _ _ s) = s
-spanOf (Dff _ _ _ s) =  s
-spanOf (Set _ _ s)   = s
-spanOf (Let _ _ s)   = s
-spanOf (Ltt _ _ s)   = s
-spanOf (Ltr _ _ s)   = s
-spanOf (Lrr _ _ s)   = s
-spanOf (App _ _ s)   = s
-spanOf (Nll s)       = s
-spanOf (Rea _ s)     = s
-spanOf (Cha _ s)     = s
--- λα
-spanOf (Spw _ _ s)   = s
-spanOf (Bec _ _ s)   = s
-spanOf (Sen _ _ _ s) = s
-spanOf (Beh _ _ s)   = s
-spanOf (Mir _ _ s)   = s
-spanOf (Rcv _ s)     = s
-spanOf (Ter s)       = s
---
-spanOf Empty = error "no span for empty expressions"
--- λα/c
-spanOf (MsgC _ _ _ _ s) = s
-spanOf (BehC _ s)       = s
-spanOf (EnsC _ s)       = s
-spanOf (OnlC _ s)       = s
-spanOf (Mon _ _ _ s)    = s
+instance SpanOf Exp where
+   spanOf (Num _ s) = s
+   spanOf (Str _ s) = s
+   spanOf (Sym _ s) = s
+   spanOf (Bln _ s) = s
+   spanOf (Var (Ide _ s)) = s
+   spanOf (Iff _ _ _ s) = s
+   spanOf (Lam _ _ s) = s
+   spanOf (Bgn _ s) = s
+   spanOf (Dfv _ _ s) = s
+   spanOf (Dff _ _ _ s) =  s
+   spanOf (Set _ _ s)   = s
+   spanOf (Let _ _ s)   = s
+   spanOf (Ltt _ _ s)   = s
+   spanOf (Ltr _ _ s)   = s
+   spanOf (Lrr _ _ s)   = s
+   spanOf (App _ _ s)   = s
+   spanOf (Nll s)       = s
+   spanOf (Rea _ s)     = s
+   spanOf (Cha _ s)     = s
+   -- λα
+   spanOf (Spw _ _ s)   = s
+   spanOf (Bec _ _ s)   = s
+   spanOf (Sen _ _ _ s) = s
+   spanOf (Beh _ _ s)   = s
+   spanOf (Mir _ _ s)   = s
+   spanOf (Rcv _ s)     = s
+   spanOf (Ter s)       = s
+   --
+   spanOf Empty = error "no span for empty expressions"
+   -- λα/c
+   spanOf (MsgC _ _ _ _ s) = s
+   spanOf (BehC _ s)       = s
+   spanOf (EnsC _ s)       = s
+   spanOf (OnlC _ s)       = s
+   spanOf (Mon _ _ _ s)    = s
+   spanOf (Flat _ s)       = s
 
 -- Show --
 
@@ -167,6 +170,8 @@ instance Show Exp where
       printf "(message/c %s %s %s %s)" (show tag) (show rcpt) (show payload) (show comm)
    show (Mon (Labels neg pos) contract value _) = 
       printf "(mon %s %s %s %s)" neg pos (show contract) (show value)
+   show (Flat e _) =
+      printf "(flat %s)" (show e)
    show _ = "<unrecognized-expr>"
 
 
@@ -280,6 +285,8 @@ compile e@(SExp.Atom "message/c" _ ::: tag ::: payload ::: rcpt ::: comm ::: SEx
    MsgC <$> compile tag <*> compile payload <*> compile rcpt <*> compile comm <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "mon" _ ::: SExp.Atom positive _ ::: SExp.Atom negative _ ::: contract ::: value ::: SExp.SNil _) = 
    Mon (Labels positive negative) <$> compile contract <*> compile value <*> pure (SExp.spanOf e)
+compile e@(SExp.Atom "flat" _ ::: prc ::: SExp.SNil _) =
+   Flat <$> (compile prc) <*> pure (spanOf e)
 -- quotes
 compile (SExp.Quo exp _) = local (const False) (compileQuoted exp)
 compile (SExp.Qua exp _) = local (const True)  (compileQuoted exp)

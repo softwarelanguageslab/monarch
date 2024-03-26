@@ -9,10 +9,9 @@ import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 import Text.Printf
+import Syntax.Span
 
 -- | Location information
-data Span = Span { filename :: String, line :: Int, column :: Int } deriving (Show, Ord, Eq, Generic)
-instance Hashable Span
 fromSourcePos :: SourcePos -> Span
 fromSourcePos pos = Span {
    filename = sourceName pos,
@@ -51,19 +50,19 @@ smap _ _ = error "invalid list"
 -- Span computation
 --
 
-spanOf :: SExp -> Span
-spanOf (Num _ s) = s
-spanOf (Rea _ s) = s
-spanOf (Str _ s) = s
-spanOf (Cha _ s) = s
-spanOf (Atom _ s) = s
-spanOf (Pai _ _ s) = s
-spanOf (SNil s) = s
-spanOf (Quo _ s) = s
-spanOf (Qua _ s) = s
-spanOf (Unq _ s) = s
-spanOf (Uqs _ s) = s
-spanOf (Bln _ s) = s
+instance SpanOf SExp where
+   spanOf (Num _ s) = s
+   spanOf (Rea _ s) = s
+   spanOf (Str _ s) = s
+   spanOf (Cha _ s) = s
+   spanOf (Atom _ s) = s
+   spanOf (Pai _ _ s) = s
+   spanOf (SNil s) = s
+   spanOf (Quo _ s) = s
+   spanOf (Qua _ s) = s
+   spanOf (Unq _ s) = s
+   spanOf (Uqs _ s) = s
+   spanOf (Bln _ s) = s
 
 --
 -- Showing

@@ -16,6 +16,7 @@ module Analysis.Monad(
  AllocM(..),
  CtxM(..),
  CallM(..),
+ AssertM(..),
  deref,
  store,
  -- Implementations
@@ -28,6 +29,7 @@ module Analysis.Monad(
  runNonDetT,
  runIdentityDebug,
  runJoinT,
+ runSpanT,
  -- Types for implementations
  NonDetT,
  JoinT,
@@ -57,6 +59,7 @@ import qualified Data.Map as Map
 import ListT
 import Control.Applicative (liftA2)
 import Control.Monad.Identity (IdentityT (runIdentityT))
+import Syntax.Span
 
 ----------------------------------------------------------------------------------------------------
 -- Typeclasses for monadic analysis functionality
@@ -121,6 +124,25 @@ class (Monad m) => CallM m env v where
 
 class (Monad m) => EvalM m v e  | m -> v where
    eval :: e -> m v
+
+-- | Adds location information to the context
+class SpanM m where   
+   withSpan  :: Span -> m a -> m a
+   usingSpan :: (Span -> a) -> m a
+
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, SpanM m) => SpanM (t m) where 
+   withSpan s m = lowerM (withSpan s) m
+   usingSpan    = upperM   . usingSpan
+
+-- | Assert that certain conditions hold on the given value
+-- and give an assertion error if they do not.
+class (Monad m, SpanM m, MonadJoin m, MonadEscape m) => AssertM m where   
+   assert :: JoinLattice v => (Domain (Esc m) e) => (v -> CP Bool) -> (Span -> e) -> v -> m v
+   assert b e v = cond (pure $ b v) (pure v) (escape =<< usingSpan e) 
+
+-- Auto instance
+instance {-# OVERLAPPABLE #-} (Monad m, SpanM m, MonadJoin m, MonadEscape m) => AssertM m
+   
 
 ----------------------------------------------------------------------------------------------------
 -- Instances
@@ -297,3 +319,16 @@ runNonDetT :: Monad m => NonDetT m a -> m [a]
 runNonDetT (NonDetT ma) = uncons ma >>= fix'
    where fix' Nothing         = return []
          fix' (Just (x, mxs)) = fmap (x:) (uncons mxs >>= fix')
+
+--
+-- SpanT
+--
+
+newtype SpanT m a = SpanT (ReaderT Span m a) deriving (Functor, Applicative, Monad, MonadLayer, MonadTrans, MonadReader Span)
+
+instance (Monad m) => SpanM (SpanT m) where
+   withSpan  s = local (const s)
+   usingSpan f = asks f
+
+runSpanT :: SpanOf e => e -> SpanT m a -> m a 
+runSpanT e (SpanT m) = runReaderT m (spanOf e)

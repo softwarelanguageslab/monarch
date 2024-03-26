@@ -30,7 +30,7 @@ data MayEscape e v = Bottom
                    | Escape e 
                    | Value v
                    | MayBoth v e
-   deriving (Eq, Ord, Functor)
+   deriving (Eq, Ord, Functor, Show)
 
 addError :: Joinable e => e -> MayEscape e a -> MayEscape e a
 addError _ Bottom = Bottom

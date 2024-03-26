@@ -180,6 +180,8 @@ undefineM (OnlC contracts span) =
    OnlC <$> notAllowed (mapM undefineM contracts) <*> pure span
 undefineM (Mon labels contract value span) =    
    Mon labels <$> notAllowed (undefineM contract) <*> notAllowed (undefineM value) <*> pure span
+undefineM (Flat contract span) = 
+   Flat <$> notAllowed (undefineM contract) <*> pure span
 undefineM e = error $ "unrecognized expression" ++ show e
 
 undefineHandler :: UndefineM m => Hdl -> m Hdl
