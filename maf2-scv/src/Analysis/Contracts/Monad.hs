@@ -32,5 +32,6 @@ type ContractM m v =
    (  StoreM m ConAdr (MAdr v) (MessageContract v),
       StoreM m FlaAdr (FAdr v) (Flat v),
       AllocM m Exp ConAdr (MAdr v),
+      AllocM m Exp FlaAdr (FAdr v),
       Domain (Esc m) Error,
       ContractDomain v, SchemeM m v)

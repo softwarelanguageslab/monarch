@@ -1,6 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Analysis.Contracts where
 
+import Prelude hiding (exp)
 import Syntax.Scheme (Exp, Ide)
 import Domain hiding (Exp, Env)
 import qualified Domain.Scheme.Actors.CP as CP
@@ -101,6 +102,7 @@ runAnalysis exp = let ((((((v, _), _), _), _), _), sto) =  Sem.eval @V exp
                          & runStoreT @VrAdr @Addr @V Map.empty
                          & runSchemeAllocT VarAdr PtrAdr
                          & runAlloc @ConAdr PtrAdr
+                         & runAlloc @FlaAdr PtrAdr
                          & runCtx ()
                          & runIdentity
                   in (v, sto)
