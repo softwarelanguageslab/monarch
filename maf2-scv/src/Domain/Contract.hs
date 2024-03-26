@@ -34,8 +34,12 @@ class (SchemeDomain v, BehaviorContract v v) => ContractDomain v where
   isMessageContract :: (BoolDomain b) => v -> b
 
   --
+  -- | Check if the value is flat contract 
   isFlat :: (BoolDomain b) => v -> b
+  -- | Returns the set of flat contracts
   flats :: v -> Set (FAdr v)
+  -- | Inserts a pointer to a flat contract in the abstract domain
+  flat :: FAdr v -> v
 
 ------------------------------------------------------------
 -- Instance for ModularSchemeValue
@@ -45,12 +49,8 @@ instance (IsBehaviorContract m) => ContractDomain (SchemeVal m) where
   type FAdr (SchemeVal m) = (Assoc FlaConf m)
   messageContract = SchemeVal . HMap.singleton @MeCKey . Set.singleton
   messageContracts = fromMaybe Set.empty . HMap.get @MeCKey . getSchemeVal
-  isMessageContract = check . Set.toList . HMap.keys . getSchemeVal
-    where check [] = bottom
-          check [MeCKey] = inject True
-          check xs
-            | MeCKey `elem` xs = boolTop
-            | otherwise = inject False
-
---
-
+  isMessageContract = hasType MeCKey
+  --
+  flat   = SchemeVal . HMap.singleton @FlaKey . Set.singleton
+  flats  = fromMaybe Set.empty . HMap.get @FlaKey . getSchemeVal
+  isFlat = hasType FlaKey
