@@ -27,4 +27,3 @@ evalApp app op opr =
 
 applyFun :: SymbolicM m v => Exp -> v -> [v] -> m v
 applyFun app op ags = ap op ags <$> Scheme.applyFun app op ags
-

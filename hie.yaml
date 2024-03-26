@@ -50,9 +50,3 @@ cradle:
 
     - path: "maf2-syntax/test"
       component: "maf2-syntax:test:maf2-syntax-test"
-
-    - path: "maf2-typelevel/src"
-      component: "maf2-typelevel:lib"
-
-    - path: "maf2-typelevel/test"
-      component: "maf2-typelevel:test:maf2-typelevel-test"

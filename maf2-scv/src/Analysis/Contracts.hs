@@ -13,7 +13,6 @@ import Lattice
 import Data.Function ((&))
 import Control.Monad.Identity
 import Control.Monad.DomainError
-import Data.Functor.Identity (runIdentity)
 import Control.Monad.Trans.Class
 import Control.Monad.Layer
 import qualified Data.Map as Map
@@ -64,15 +63,15 @@ newtype EvalT m a = EvalT { getEvalT :: (IdentityT m a) }
                   deriving (Monad, Applicative, Functor, MonadTrans, MonadJoin, MonadLayer)
 
 
-instance (Esc m ~ Set DomainError, MonadJoin m, ContractM (EvalT m) V, Monad m) => EvalM (EvalT m) V Exp where 
+instance (Esc m ~ Set Error, MonadJoin m, ContractM (EvalT m) V, Monad m) => EvalM (EvalT m) V Exp where 
    eval = Sem.eval
 
 runEvalT :: EvalT m a -> m a
 runEvalT (EvalT m) = runIdentityT m
 
 
-instance (Monad m, MonadEscape m, Esc m ~ Set DomainError) => MonadEscape (EvalT m) where
-   type Esc (EvalT m) = Set DomainError
+instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (EvalT m) where
+   type Esc (EvalT m) = Set Error
    escape = upperM . escape
    catch (EvalT (IdentityT m)) hdl = EvalT $ IdentityT $ catch @_ m (runIdentityT . getEvalT . hdl)
 
@@ -88,11 +87,10 @@ instance Address Addr
 
 type Sto = Map Addr V
 
-
-runAnalysis :: Exp -> (MayEscape (Set DomainError) V, Sto)
+runAnalysis :: Exp -> (MayEscape (Set Error) V, Sto)
 runAnalysis exp = let ((((((v, _), _), _), _), _), sto) =  Sem.eval @V exp
                          & runEvalT 
-                         & runMayEscape @(Set DomainError)
+                         & runMayEscape @(Set Error)
                          & runCallBottomT @V
                          & runEnv Map.empty
                          & runStoreT @PaAdr @Addr @_ Map.empty
