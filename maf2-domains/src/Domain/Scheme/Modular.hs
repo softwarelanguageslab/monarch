@@ -79,6 +79,7 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | MoαConf    -- ^ abstraction for monitors on actor references
                    | BeCConf    -- ^ abstraction for behavior contracts
                    | PMeConf    -- ^ pointer to message contracts
+                   | FlaConf    -- ^ pointer to flat contracts
 
 ----------------------------------------------
 -- Modular Scheme lattice

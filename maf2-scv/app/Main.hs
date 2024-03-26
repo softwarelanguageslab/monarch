@@ -43,5 +43,6 @@ main :: IO ()
 main = do
    text   <- readFile "/tmp/test.scm"
    let program = fromJust (parseString text)
-   let result = Contracts.runAnalysis program
+   let (v, result) = Contracts.runAnalysis program
+   print v
    putStrLn $ printSto $ result

@@ -46,6 +46,7 @@ type M = '[
        VarConf ::-> Addr,
        PidConf ::-> CP.Pid (),
        BeCConf ::-> UnorderedBehaviorContract Addr,
+       FlaConf ::-> Addr,
        PMeConf ::-> Addr]
 
 type V = SchemeVal M
@@ -88,8 +89,8 @@ instance Address Addr
 type Sto = Map Addr V
 
 
-runAnalysis :: Exp -> Sto
-runAnalysis exp = let (_, sto) =  Sem.eval @V exp
+runAnalysis :: Exp -> (MayEscape (Set DomainError) V, Sto)
+runAnalysis exp = let ((((((v, _), _), _), _), _), sto) =  Sem.eval @V exp
                          & runEvalT 
                          & runMayEscape @(Set DomainError)
                          & runCallBottomT @V
@@ -98,9 +99,10 @@ runAnalysis exp = let (_, sto) =  Sem.eval @V exp
                          & runStoreT @VeAdr @Addr @_ Map.empty
                          & runStoreT @StAdr @Addr @_ Map.empty
                          & runStoreT @ConAdr @Addr Map.empty 
+                         & runStoreT @FlaAdr @Addr Map.empty
                          & runStoreT @VrAdr @Addr @V Map.empty
                          & runSchemeAllocT VarAdr PtrAdr
                          & runAlloc @ConAdr PtrAdr
                          & runCtx ()
                          & runIdentity
-                  in sto
+                  in (v, sto)

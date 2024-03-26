@@ -1,3 +1,4 @@
-module Domain.Contract.Store(ConAdr) where  
+module Domain.Contract.Store(ConAdr, FlaAdr) where  
 
 data ConAdr
+data FlaAdr
