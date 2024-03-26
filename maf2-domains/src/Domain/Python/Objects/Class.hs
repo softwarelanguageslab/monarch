@@ -1,11 +1,9 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Analysis.Python.Objects.Class (
+module Domain.Python.Objects.Class (
     PyObj(..), 
     at,
-    from, 
-    from', 
     has,
     get,
     set,
@@ -13,19 +11,18 @@ module Analysis.Python.Objects.Class (
     atAttr,
 ) where
 
-import Analysis.Python.Infrastructure
-import Analysis.Python.Common 
-
-import Domain hiding (set, from)
 import Lattice
-import Data.TypeLevel.HMap hiding (set, get)
-import Domain.Core.SeqDomain (CPList)
+import Domain.Core hiding (set, from)
+import qualified Domain.Core as Domain 
+import Domain.Python.World 
+import Domain.Core.SeqDomain (SeqDomain)
 import qualified Domain.Core.SeqDomain as SeqDomain 
+
 import Control.Monad.Join
 import Control.Monad.Escape
-
 import Control.Monad.AbstractM (AbstractM)
 import Control.Monad.DomainError (DomainError(..))
+import Data.TypeLevel.HMap hiding (set, get)
 
 import Data.Singletons
 import Data.Kind 
@@ -40,11 +37,12 @@ class (
     ForAll PyPrmKey (AbsJoinLattice obj),
     Abs obj NonPrm ~ (),
     Abs obj PrmPrm ~ Set PyPrim, 
-    Abs obj BndPrm ~ Map ObjAdr PyVal, 
-    Abs obj TupPrm ~ CPList PyVal,
-    Abs obj LstPrm ~ CPList PyVal,
-    Abs obj CloPrm ~ Set PyClo,
-    SeqDomain.Vlu (Abs obj TupPrm) ~ PyVal, 
+    Abs obj CloPrm ~ Set (Clo obj),
+    Abs obj BndPrm ~ Map (Adr obj) (Ref obj),   -- TODO: this can be generalised  
+    SeqDomain     (Abs obj LstPrm),
+    SeqDomain.Vlu (Abs obj LstPrm) ~ Ref obj, 
+    SeqDomain     (Abs obj TupPrm),
+    SeqDomain.Vlu (Abs obj TupPrm) ~ Ref obj, 
     IntDomain     (Abs obj IntPrm),
     Domain.Boo    (Abs obj IntPrm) ~ Abs obj BlnPrm, 
     Domain.Rea    (Abs obj IntPrm) ~ Abs obj ReaPrm,
@@ -55,8 +53,12 @@ class (
   ) 
   => 
   PyObj obj where
+    -- custom representation of ...
+    type Ref obj :: Type    -- ... Python references/values
+    type Adr obj :: Type    -- ... Python addresses
+    type Clo obj :: Type    -- ... Python closures
     -- object creation (with a given class)
-    new :: PyVal -> obj 
+    new :: Ref obj -> obj 
     -- an object should contain "primitive fields" ...
     type Abs obj (k :: PyPrmKey) :: Type
     hasPrm :: forall (k :: PyPrmKey) b . BoolDomain b => Sing k -> obj -> b  
@@ -64,19 +66,19 @@ class (
     setPrm :: forall k . Sing k -> Abs obj k -> obj -> obj 
     -- ... and user-defined keyts/attributes
     hasAttr :: BoolDomain b => String -> obj -> b
-    getAttr :: String -> obj -> PyVal 
-    setAttr :: String -> PyVal -> obj -> obj
-    setAttrWeak :: String -> PyVal -> obj -> obj 
+    getAttr :: String -> obj -> Ref obj  
+    setAttr :: String -> Ref obj -> obj -> obj
+    setAttrWeak :: String -> Ref obj -> obj -> obj 
     setAttrWeak k v o = o `join` setAttr k v o 
 
 -- | Convenience function to check and retrieve a certain attribute
-atAttr :: (AbstractM m, PyObj obj) => String -> obj -> m PyVal 
+atAttr :: (AbstractM m, PyObj obj) => String -> obj -> m (Ref obj) 
 atAttr attr obj = condCP (return $ hasAttr attr obj)
                          (return $ getAttr attr obj)
                          (escape KeyNotFound)
 
 -- | Convenience function to set multiple attributes
-setAttrs :: PyObj obj => [(String, PyVal)] -> obj -> obj
+setAttrs :: PyObj obj => [(String, Ref obj)] -> obj -> obj
 setAttrs attrs obj = Prelude.foldr (uncurry setAttr) obj attrs 
 
 -- | Shorter alternative (using SingI) for hasPrm
@@ -90,15 +92,6 @@ get = getPrm (sing @k)
 -- | Shorter alternative (using SingI) for setPrm
 set :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => Abs obj k -> obj -> obj
 set = setPrm (sing @k)
-
--- | Convenience function to construct a Python object immediately from primitive abstract value
-from :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => Abs obj k -> obj 
-from v = set @k v (new cls)
-  where cls = constant $ TypeObject $ classFor $ sing @k 
-
--- | Convenience function to construct a Python object immediately from primitive concrete value
-from' :: forall (k :: PyPrmKey) obj v . (PyObj obj, Domain (Abs obj k) v, SingI k) => v -> obj 
-from' = from @k . Domain.inject  
 
 -- | Convenience function to retrieve a primitive field from a Python object, throwing an error if not present
 at :: forall (k :: PyPrmKey) obj m . (AbstractM m, PyObj obj, SingI k) => obj -> m (Abs obj k)

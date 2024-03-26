@@ -49,10 +49,6 @@ library
       Analysis.Erlang.Semantics
       Analysis.IO
       Analysis.Python
-      Analysis.Python.Monad
-      Analysis.Python.OO
-      Analysis.Python.Primitives
-      Analysis.Python.Semantics
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs

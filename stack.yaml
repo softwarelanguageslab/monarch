@@ -5,4 +5,5 @@ packages:
  - maf2-analysis/
  - maf2-syntax/
  - maf2-domains/
+ - maf2-typelevel/
  - maf2-scv/

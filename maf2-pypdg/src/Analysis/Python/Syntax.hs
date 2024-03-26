@@ -3,7 +3,6 @@ module Analysis.Python.Syntax(    -- TODO [?]: should this be integrated into An
     PyExp, 
     PyLhs, 
     PyIde, 
-    ideName,
     lexNam,
     PyPar, 
     PyArg, 

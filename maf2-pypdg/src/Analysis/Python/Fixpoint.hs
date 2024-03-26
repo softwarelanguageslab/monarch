@@ -4,17 +4,16 @@ module Analysis.Python.Fixpoint where
 
 import Analysis.Python.Monad
 import Analysis.Python.Common
-import Analysis.Python.Infrastructure
 import Analysis.Python.Syntax hiding (Return, Break, Continue)
-
 import Analysis.Python.Semantics
-import Analysis.Python.Objects.Class
 import Analysis.Python.Objects 
 
 import qualified Analysis.Environment as Env
 
 import Control.Monad.Join
 import Lattice (JoinLattice(..), Joinable(..), justOrBot)
+import Domain.Python.Objects 
+import Domain.Python.World
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -32,6 +31,7 @@ import Control.Monad.Layer (MonadLayer(..))
 import Data.Function ((&))
 import Prelude hiding (init)
 import Debug.Trace (trace)
+import Domain.Core.SeqDomain (CPList)
 
 class WorkList s where
     empty :: s a
@@ -65,7 +65,7 @@ instance (Ord a, JoinLattice v) => Store (Map a v) a v where
     extendSto = Map.insertWith join
     updateSto a _ fw = Map.update (Just . fw) a
 
-type PySto obj = (Map VarAdr PyVal, Map ObjAdr obj)
+type PySto obj = (Map VarAdr PyVal, Map ObjAdr (obj PyVal ObjAdr PyClo))
 type PyRes = Map PyCmp (MayEscape (Set PyEsc) PyVal)
 
 data PyDep = ObjDep ObjAdr
@@ -79,7 +79,7 @@ initialBds = [("type", constant Type)]
 initialEnv :: PyEnv
 initialEnv = Env.extends (map (\(nam, _) -> (nam, VarAdr nam)) initialBds) Env.empty
 
-initialSto :: JoinLattice obj => PySto obj
+initialSto :: JoinLattice (m PyVal ObjAdr PyClo) => PySto m
 initialSto = (extendsSto (map (Bi.first VarAdr) initialBds) emptySto, emptySto)
 
 data Effects = Effects { read :: Set PyDep, write :: Set PyDep, spawn :: Set PyCmp }
@@ -98,7 +98,7 @@ instance Semigroup Effects where
 instance Monoid Effects where
     mempty = Effects Set.empty Set.empty Set.empty
 
-newtype AnalysisM obj a = AnalysisM { run :: PyEnv -> PyRes -> PySto obj -> (a, PySto obj, Effects) }
+newtype AnalysisM (m :: * -> * -> * -> *) a = AnalysisM { run :: PyEnv -> PyRes -> PySto m -> (a, PySto m, Effects) }
 
 instance Functor (AnalysisM obj) where
     fmap f m = AnalysisM $ \env res sto -> let (va, sto', effs) = run m env res sto
@@ -127,35 +127,39 @@ instance Domain (Set PyEsc) DomainError where
 instance Domain (Set PyEsc) PyError where
     inject = Set.singleton . PyError
 
-instance {-# OVERLAPPING #-} EnvM (AnalysisM obj) VarAdr PyEnv where
+instance {-# OVERLAPPING #-} EnvM (AnalysisM m) VarAdr PyEnv where
     getEnv = AnalysisM $ \env _ sto -> (env, sto, mempty)
     lookupEnv s = AnalysisM $ \env _ sto -> (Env.lookup s env, sto, mempty)
     withEnv f m = AnalysisM $ \env res sto -> run m (f env) res sto  
 
-instance MonadJoin (AnalysisM obj) where 
+instance MonadJoin (AnalysisM m) where 
     mzero = AnalysisM $ \_ _ sto -> (bottom, sto, mempty)
     mjoin m1 m2 = AnalysisM $ \env res sto -> 
                                 let (v1, sto1, eff1) = run m1 env res sto
                                     (v2, sto2, eff2) = run m2 env res sto1
                                  in (v1 `join` v2, sto2, eff1 `mappend` eff2)
 
-instance {-# OVERLAPPING #-} StoreM (AnalysisM obj) VarAdr PyVal where
+instance {-# OVERLAPPING #-} StoreM (AnalysisM m) VarAdr PyVal where
     lookup adr = AnalysisM $ \_ _ sto@(vsto, _) -> (lookupSto adr vsto, sto, readEffect (VarDep adr))  
     extend adr vlu = AnalysisM $ \_ _ (vsto, osto) -> ((), (extendSto adr vlu vsto, osto), writeEffect (VarDep adr)) 
     update adr fs fw = AnalysisM $ \_ _ (vsto, osto) -> ((), (updateSto adr fs fw vsto, osto), writeEffect (VarDep adr))
 
-instance {-# OVERLAPPING #-} PyObj obj => StoreM (AnalysisM obj) ObjAdr obj where
+instance {-# OVERLAPPING #-} PyObj (m PyVal ObjAdr PyClo) => StoreM (AnalysisM m) ObjAdr (m PyVal ObjAdr PyClo) where
     lookup adr = AnalysisM $ \_ _ sto@(_, osto) -> (lookupSto adr osto, sto, readEffect (ObjDep adr))  
     extend adr vlu = AnalysisM $ \_ _ (vsto, osto) -> ((), (vsto, extendSto adr vlu osto), writeEffect (ObjDep adr)) 
     update adr fs fw = AnalysisM $ \_ _ (vsto, osto) -> ((), (vsto, updateSto adr fs fw osto), writeEffect (ObjDep adr))
 
-instance PyObj obj => PyM (MayEscapeT (AnalysisM obj) (Set PyEsc)) obj where
+instance (PyObj (m PyVal ObjAdr PyClo),
+          Ref (m PyVal ObjAdr PyClo) ~ PyVal, 
+          Clo (m PyVal ObjAdr PyClo) ~ PyClo,
+          Adr (m PyVal ObjAdr PyClo) ~ ObjAdr, 
+          Abs (m PyVal ObjAdr PyClo) TupPrm ~ CPList PyVal) => PyM (MayEscapeT (Set PyEsc) (AnalysisM m)) (m PyVal ObjAdr PyClo) where
     callCmp cmp = MayEscapeT $ AnalysisM $ \_ res sto -> (justOrBot $ Map.lookup cmp res, sto, spawnEffect cmp)
     returnWith = escape . Return 
     break = escape Break  
     continue = escape Continue  
 
-analyze :: forall obj . PyObj obj => PyPrg -> (MayEscape (Set PyEsc) PyVal, PySto obj)
+analyze :: forall m obj . (obj ~ m PyVal ObjAdr PyClo, PyObj obj, Ref obj ~ PyVal, Clo obj ~ PyClo, Adr obj ~ ObjAdr, Abs obj TupPrm ~ CPList PyVal) => PyPrg -> (MayEscape (Set PyEsc) PyVal, PySto m)
 analyze prg = let (_, sto, _) = runM init initialEnv initialRes initialSto 
                in inter initialWrk initialRes sto initialDep initialVis
     where -- setup 
@@ -183,9 +187,9 @@ analyze prg = let (_, sto, _) = runM init initialEnv initialRes initialSto
                               wrk' = addAll rst (new `Set.union` tri)
                             in inter wrk' res' sto' dep' vis'
           -- intra-component analysis
-          runM :: MayEscapeT (AnalysisM obj) (Set PyEsc) a -> PyEnv -> PyRes -> PySto obj -> (MayEscape (Set PyEsc) a, PySto obj, Effects)
+          runM :: MayEscapeT (Set PyEsc) (AnalysisM m) a -> PyEnv -> PyRes -> PySto m -> (MayEscape (Set PyEsc) a, PySto m, Effects)
           runM = run . runMayEscape
-          intra :: PyCmp -> PyRes -> PySto obj -> (MayEscape (Set PyEsc) PyVal, PySto obj, Effects)
+          intra :: PyCmp -> PyRes -> PySto m -> (MayEscape (Set PyEsc) PyVal, PySto m, Effects)
           intra (MainCmp prg) = 
             runM (exec (programStmt prg) >> return (constant None)) initialEnv 
           intra cmp@(LoopCmp cnd bdy env) = 

@@ -1,4 +1,3 @@
-{-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE GADTs                    #-}
 {-# LANGUAGE FlexibleInstances        #-}
 {-# LANGUAGE UndecidableInstances     #-}
@@ -6,7 +5,6 @@
 {-# LANGUAGE PolyKinds                #-}
 {-# LANGUAGE AllowAmbiguousTypes      #-}
 {-# LANGUAGE RankNTypes               #-}
-{-# LANGUAGE LambdaCase               #-}
 {-# LANGUAGE ConstraintKinds          #-}
 
 module Analysis.Python.Objects where
@@ -14,8 +12,6 @@ module Analysis.Python.Objects where
 import Lattice hiding (insert)
 import Analysis.Python.Syntax hiding (Dict)
 import Analysis.Python.Common 
-import Analysis.Python.Primitives
-import Analysis.Python.Infrastructure
 import Analysis.Python.Monad 
 import Data.TypeLevel.HMap (Assoc, AtKey1, ForAll(..),  (::->), (:->), BindingFrom)
 import qualified Domain.Core.HMapDomain as HMapDomain
@@ -24,8 +20,11 @@ import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
 import Control.Monad.DomainError ( orElse, MonadEscape(escape) )
-import Domain (BoolDomain, IntDomain, RealDomain, StringDomain, CPDictionary)
+import Domain (Domain, BoolDomain, IntDomain, RealDomain, StringDomain, CPDictionary)
 import qualified Domain
+import Domain.Python.Objects 
+import Domain.Python.World 
+import Data.Finite
 
 import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import qualified Prelude
@@ -39,9 +38,16 @@ import Data.Kind
 import Control.Monad ((<=<))
 import Data.Bifunctor
 import Data.Maybe (fromJust)
-
-import Analysis.Python.Objects.Class 
 import Control.Applicative (Applicative(liftA2))
+
+-- | Convenience function to construct a Python object immediately from primitive abstract value
+from :: forall (k :: PyPrmKey) obj . (PyObj obj, Ref obj ~ PyVal, SingI k) => Abs obj k -> obj 
+from v = set @k v (new cls)
+  where cls = constant $ TypeObject $ classFor $ sing @k 
+
+-- | Convenience function to construct a Python object immediately from primitive concrete value
+from' :: forall (k :: PyPrmKey) obj v . (PyObj obj, Ref obj ~ PyVal, Domain (Abs obj k) v, SingI k) => v -> obj 
+from' = from @k . Domain.inject  
 
 --
 -- Python constants 
@@ -53,7 +59,7 @@ init = mapM_ initConstant (all :: [PyConstant])
 initConstant :: PyM pyM obj => PyConstant -> pyM ()
 initConstant c = extend (allocCst c) (injectPyConstant c)
 
-injectPyConstant :: PyObj obj => PyConstant -> obj
+injectPyConstant :: (PyObj obj, Ref obj ~ PyVal) => PyConstant -> obj
 injectPyConstant Type             = new (constant Type)  
 injectPyConstant Object           = new (constant Type)
 injectPyConstant True             = from' @BlnPrm Prelude.True
@@ -68,13 +74,13 @@ injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new (constant Type)
         allAttrs    = map (bimap attrStr constant) (typeAttrs ++ methodAttrs)
                       
 
-isBindable :: (BoolDomain b, PyM pyM obj) => PyVal -> pyM b
+isBindable :: (BoolDomain b, PyM pyM obj) => Ref obj -> pyM b
 isBindable = fmap isBindableObj . pyDeref'
 
 isBindableObj :: (BoolDomain b, PyObj obj) => obj -> b
 isBindableObj = liftA2 Domain.or (has @PrmPrm) (has @CloPrm)
 
-lookupAttr :: PyM pyM obj => PyLoc -> String -> PyVal -> pyM PyVal
+lookupAttr :: PyM pyM obj => PyLoc -> String -> Ref obj -> pyM (Ref obj)
 lookupAttr loc attr =
   pyDeref $ \adr obj ->
               condCP  (return $ hasAttr attr obj)
@@ -83,14 +89,14 @@ lookupAttr loc attr =
                       (do cls <- atAttr (attrStr ClassAttr) obj
                           lookupAttrInClass loc attr adr cls)
 
-lookupAttrInClass :: PyM pyM obj => PyLoc -> String -> ObjAdr -> PyVal -> pyM PyVal
+lookupAttrInClass :: PyM pyM obj => PyLoc -> String -> ObjAdr -> Ref obj -> pyM (Ref obj)
 lookupAttrInClass loc attr self cls = do vlu <- lookupAttrMRO attr cls
                                          condCP (isBindable vlu)
                                                 (bind vlu)
                                                 (return vlu)
   where bind value = pyAlloc loc $ from @BndPrm (Map.singleton self value) 
 
-lookupAttrMRO :: PyM pyM obj => String -> PyVal -> pyM PyVal
+lookupAttrMRO :: PyM pyM obj => String -> Ref obj -> pyM (Ref obj)
 lookupAttrMRO attr =
    pyDeref $ \_ cls ->
               do  mroObj <- atAttr (attrStr MROAttr) cls
@@ -105,6 +111,6 @@ lookupAttrMRO attr =
 
 -- --
 
-assignAttr :: PyM pyM obj => String -> PyVal -> PyVal -> pyM ()
-assignAttr attr vlu = mjoinMap updateAdr . addrs   -- TODO: support strong update
+assignAttr :: PyM pyM obj => String -> Ref obj -> Ref obj -> pyM ()
+assignAttr attr vlu = mjoinMap updateAdr . addrs
     where updateAdr adr = update adr (setAttr attr vlu) (setAttrWeak attr vlu) 

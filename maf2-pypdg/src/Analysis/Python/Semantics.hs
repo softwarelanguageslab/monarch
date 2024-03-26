@@ -4,10 +4,10 @@
 
 module Analysis.Python.Semantics where
 
-import Analysis.Python.Infrastructure
+import Domain.Python.Objects 
+import Domain.Python.World
 import Analysis.Python.Syntax
 import Analysis.Python.Objects
-import Analysis.Python.Objects.Class 
 import Analysis.Python.Common
 import Analysis.Python.Monad 
 import Analysis.Python.Primitives

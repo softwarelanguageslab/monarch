@@ -1,45 +1,13 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE StandaloneKindSignatures #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Analysis.Python.Infrastructure (
-  Finite(..),
-  PyConstant(..), 
-  PyPrim(..), 
-  PyType(..), 
-  name, 
-  methods, 
-  PyAttr(..),
-  attrStr,
-  PyError(..),
-  PyPrmKey(..),
-  SPyPrmKey(..),
-  classFor
-) where
+module Domain.Python.World where
 
+import Data.Finite
 import Data.TypeLevel.HMap (All, ForAllOf, ForAll(..), Dict(..), genHKeys)
 
 import Prelude hiding (True, False, all)
 import Data.Singletons (Sing)
 
---
--- Finite typeclass
---
-
--- | A typeclass to enumerate all values of a certain type
-class Finite a where
-  all :: [a]
-  size :: Int
-  size = length (all :: [a]) 
-
-instance {-# OVERLAPPABLE #-} (Enum a, Bounded a) => Finite a where 
-  all = [minBound..maxBound]
-
---
--- The Python World 
---
 
 -- | Built-in types in Python
 data PyType = NoneType

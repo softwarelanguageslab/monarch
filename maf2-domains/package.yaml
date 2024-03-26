@@ -59,6 +59,8 @@ library:
     - Domain.Scheme.Store
     - Domain.Scheme.Modular
     - Domain.Python
+    - Domain.Python.World
+    - Domain.Python.Objects
     - Domain.Scheme.Actors.Class
     - Domain.Scheme.Actors
     - Domain.Scheme.Actors.CP
@@ -74,6 +76,7 @@ library:
     - Control.Monad.AbstractM
     - Control.Monad.Escape
     - Data.TypeLevel.HMap
+    - Data.Finite 
 
 default-extensions:
   - TypeFamilies
@@ -90,6 +93,7 @@ default-extensions:
   - MultiParamTypeClasses
   - FunctionalDependencies
   - GeneralizedNewtypeDeriving
+  - StandaloneKindSignatures
   - ConstraintKinds
   - FlexibleInstances
   - FlexibleContexts

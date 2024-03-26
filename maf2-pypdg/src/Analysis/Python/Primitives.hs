@@ -9,17 +9,18 @@
 
 module Analysis.Python.Primitives (applyPrim) where
 
-import Analysis.Python.Objects.Class
+import Domain.Python.World 
+import Domain.Python.Objects
 
 import Lattice hiding (insert)
-import Domain (NumberDomain)
+import Domain (Domain, NumberDomain)
 import qualified Domain
 import Analysis.Python.Syntax hiding (Dict)
 import Analysis.Python.Monad 
-import Analysis.Python.Infrastructure
 import Analysis.Python.Common 
 import Control.Monad.Join
 import Control.Monad.DomainError
+import Analysis.Python.Objects 
 
 import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import Control.Monad (liftM2)

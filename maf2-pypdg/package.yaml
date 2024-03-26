@@ -39,7 +39,6 @@ dependencies:
 - IfElse
 - maf2-domains
 - maf2-syntax
-- maf2-typelevel
 - hashmap
 - list-transformer
 - singletons
@@ -85,7 +84,6 @@ library:
   exposed-modules:
   - Analysis.Monad
   - Analysis.Python.Fixpoint
-  - Analysis.Python.Objects.PyObjHMap 
 
 executables:
   maf-exe:

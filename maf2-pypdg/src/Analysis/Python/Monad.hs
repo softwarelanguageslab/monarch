@@ -16,20 +16,21 @@ module Analysis.Python.Monad (
 
 import Lattice
 import Domain.Class 
+import Domain.Python.Objects 
 import Control.Monad.Join
 import Control.Monad.DomainError
 import Analysis.Python.Syntax
 import Analysis.Python.Common 
-import Analysis.Python.Objects.Class
-import Analysis.Python.Infrastructure
 
 import Analysis.Monad
+import Domain.Python.World 
 
 import Prelude hiding (lookup)
 import Data.Set (Set)
 import qualified Data.Set as Set 
 import qualified Data.Map as Map 
 import Control.Monad.Layer (MonadLayer(..))
+import Domain.Core.SeqDomain (CPList)
 
 --
 -- TODO: reuse existing for these?
@@ -73,7 +74,12 @@ data PyCmp = MainCmp PyPrg
 class (Monad m,
        MonadJoin m,
        MonadEscape m,
+       -- value configuration
        PyObj obj,
+       Ref obj ~ PyVal,
+       Adr obj ~ ObjAdr,
+       Clo obj ~ PyClo, 
+       Abs obj TupPrm ~ CPList PyVal,
        Domain (Esc m) PyError,
        Domain (Esc m) DomainError,
        AllocM m PyLoc ObjAdr,
