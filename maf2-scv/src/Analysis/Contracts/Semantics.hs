@@ -5,6 +5,7 @@ import Prelude hiding (exp)
 import Lattice
 import Syntax.Scheme
 import Analysis.Monad(store, deref)
+import qualified Analysis.Monad as Monad
 import Analysis.Contracts.Monad (ContractM, Error (BlameError, AssertionError), AssertionMessage (..))
 import Domain.Contract ( ContractDomain(..), Flat(..) )
 import Domain.Scheme.Actors.Contract (MessageContract(MessageContract))
@@ -38,16 +39,16 @@ assert b e v = cond (pure (b v)) (return v) (escape (AssertionError e))
 -- with support for contracts on actorserver1043.andy10gbit.xyzs.
 eval :: forall v m . ContractM m v => Exp -> m v
 eval exp@(MsgC tag rcv payload comm _) =
-   messageContract <$> (store exp =<< (MessageContract <$> eval tag <*> eval rcv <*> eval payload <*> eval comm))
+   messageContract <$> (store exp =<< (MessageContract <$> Monad.eval tag <*> Monad.eval rcv <*> Monad.eval payload <*> Monad.eval comm))
 eval (BehC exs _) =  do
-   vlus <- mapM eval exs
+   vlus <- mapM Monad.eval exs
    adrs <- joins <$> mapM (assert isMessageContract ExpectedMessageContract >=> pure . messageContracts) vlus
    return (behaviorContract @_ @v (Set.toList adrs))
 eval exp@(Syntax.Scheme.Flat e _) = do
-   flat <$> (store exp . Domain.Contract.Flat =<< eval e)
+   flat <$> (store exp . Domain.Contract.Flat =<< Monad.eval e)
 eval exp@(Mon labels contract value _) = do  
-   contract' <- eval contract
-   value'    <- eval value
+   contract' <- Monad.eval contract
+   value'    <- Monad.eval value
    mon exp labels contract' value'
 
 eval e = Scheme.eval e
