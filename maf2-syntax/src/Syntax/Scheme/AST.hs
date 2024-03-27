@@ -65,7 +65,7 @@ data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler
 
 -- | Blame labels used for blaming the correct party.
 data Labels = Labels { positive :: String, negative :: String } 
-             deriving (Ord, Eq, Generic)
+             deriving (Ord, Eq, Generic, Show)
 
 -- AST predicates -- 
 

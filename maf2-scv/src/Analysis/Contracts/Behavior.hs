@@ -3,6 +3,7 @@
 
 module Analysis.Contracts.Behavior where
 
+import Domain (inject)
 import Analysis.Monad
 import Data.Kind
 import Data.Set (Set)
@@ -40,6 +41,9 @@ class (Ord (MAdr c)) => BehaviorContract c v where
   -- list of message contracts.
   behaviorContract :: [MAdr c] -> c
 
+  -- | Checks whether the given value is a bheavior contract
+  isBehaviorContract :: BoolDomain b => c -> b
+
   -- | Returns all message contracts that (might) match
   -- the given tag.
   matchingContracts :: (StoreM storeM t (MAdr c) (MessageContract v)) => v -> c -> storeM (Set (MessageContract v))
@@ -56,6 +60,9 @@ instance (Show ptr) => Show (UnorderedBehaviorContract ptr) where
 instance (Ord ptr, Ord v, EqualLattice v) => BehaviorContract (UnorderedBehaviorContract ptr) v where
   type MAdr (UnorderedBehaviorContract ptr) = ptr
   behaviorContract = UnorderedBehaviorContract . Set.fromList
+  isBehaviorContract v 
+    | v == bottom = bottom
+    | otherwise = inject True -- trivially true
   matchingContracts t (UnorderedBehaviorContract ms) =
     Set.fromList . filter (isTrue @(CP Bool) . eql t . tag) <$> mapM lookupAdr (Set.toList ms)
 
@@ -73,5 +80,6 @@ instance (IsBehaviorContract m) => BehaviorContract (SchemeVal m) (SchemeVal m) 
   type MAdr (SchemeVal m) = (Assoc PMeConf m)
 
   behaviorContract = SchemeVal . HMap.singleton @BeCKey . behaviorContract @_ @(SchemeVal m)
+  isBehaviorContract = hasType BeCKey
   matchingContracts t = maybe (return Set.empty) (matchingContracts t) . HMap.get @BeCKey . getSchemeVal
 

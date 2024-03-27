@@ -78,7 +78,7 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    -- λα
                    | PidConf    -- ^ type of actor references
                    -- λα/c
-                   | MoαConf    -- ^ abstraction for monitors on actor references
+                   | MoαConf    -- ^ pointer to actor monitors
                    | BeCConf    -- ^ abstraction for behavior contracts
                    | PMeConf    -- ^ pointer to message contracts
                    | FlaConf    -- ^ pointer to flat contracts
@@ -133,7 +133,7 @@ type Values m = '[
    PidKey  ::-> Set (Assoc PidConf m),
    BehKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
    -- λα/c language
-   MoαKey  ::-> Assoc MoαConf m,
+   MoαKey  ::-> Set (Assoc MoαConf m),
    BeCKey  ::-> Assoc BeCConf m,
    MeCKey  ::-> Set (Assoc PMeConf m),
    FlaKey  ::-> Set (Assoc FlaConf m)

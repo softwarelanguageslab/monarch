@@ -7,7 +7,7 @@ import Domain hiding (Exp, Env)
 import qualified Domain.Scheme.Actors.CP as CP
 import Data.Map (Map)
 import Data.TypeLevel.HMap ((::->))
-import Analysis.Contracts.Behavior 
+import Analysis.Contracts.Behavior
 import Analysis.Monad
 import qualified Analysis.Contracts.Semantics as Sem
 import Lattice
@@ -19,9 +19,12 @@ import Control.Monad.Layer
 import qualified Data.Map as Map
 import Analysis.Scheme.Store
 import Data.Set (Set)
+import qualified Data.Set as Set
 import Domain.Contract.Store
 import Analysis.Contracts.Monad
 import Control.Monad.Join
+import Analysis.Actors.Mailbox (SimpleMessage)
+import Analysis.Actors.Monad
 
 ------------------------------------------------------------
 -- Environment
@@ -46,6 +49,7 @@ type M = '[
        VarConf ::-> Addr,
        PidConf ::-> CP.Pid (),
        BeCConf ::-> UnorderedBehaviorContract Addr,
+       MoαConf ::-> Addr,
        FlaConf ::-> Addr,
        PMeConf ::-> Addr]
 
@@ -57,14 +61,21 @@ type instance VecDom V = PIVector V V
 type instance StrDom V = SchemeString (CP String) V
 
 ------------------------------------------------------------
+-- Actors
+------------------------------------------------------------
+
+type Msg = SimpleMessage V
+type MB  = Set Msg
+
+------------------------------------------------------------
 -- EvalT
 ------------------------------------------------------------
 
-newtype EvalT m a = EvalT { getEvalT :: (IdentityT m a) }
+newtype EvalT m a = EvalT { getEvalT :: IdentityT m a }
                   deriving (Monad, Applicative, Functor, MonadTrans, MonadJoin, MonadLayer)
 
 
-instance (Esc m ~ Set Error, MonadJoin m, ContractM (EvalT m) V, Monad m) => EvalM (EvalT m) V Exp where 
+instance (Esc m ~ Set Error, MonadJoin m, ContractM (EvalT m) V Msg MB, Monad m) => EvalM (EvalT m) V Exp where
    eval = Sem.eval
 
 runEvalT :: EvalT m a -> m a
@@ -81,7 +92,7 @@ instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (EvalT m) wh
 ------------------------------------------------------------
 
 data Addr = VarAdr Ide ()
-            | PtrAdr Exp ()
+            | PtrAdr Exp ()
             deriving (Eq, Ord, Show)
 
 instance Address Addr
@@ -89,20 +100,25 @@ instance Address Addr
 type Sto = Map Addr V
 
 runAnalysis :: Exp -> (MayEscape (Set Error) V, Sto)
-runAnalysis exp = let ((((((v, _), _), _), _), _), sto) =  Sem.eval @V exp
-                         & runEvalT 
+runAnalysis exp = let ((((((((v, _), _), _), _), _), _), sto), _) =  Sem.eval @V exp
+                         & runEvalT
                          & runMayEscape @(Set Error)
                          & runCallBottomT @V
                          & runEnv Map.empty
                          & runStoreT @PaAdr @Addr @_ Map.empty
                          & runStoreT @VeAdr @Addr @_ Map.empty
                          & runStoreT @StAdr @Addr @_ Map.empty
-                         & runStoreT @ConAdr @Addr Map.empty 
+                         & runStoreT @ConAdr @Addr Map.empty
                          & runStoreT @FlaAdr @Addr Map.empty
+                         & runStoreT @MoαAdr @Addr Map.empty
                          & runStoreT @VrAdr @Addr @V Map.empty
                          & runSchemeAllocT VarAdr PtrAdr
+                         & runActorT @MB Set.empty EntryPid
                          & runAlloc @ConAdr PtrAdr
                          & runAlloc @FlaAdr PtrAdr
+                         & runAlloc @MoαAdr PtrAdr
                          & runCtx ()
+                         & runNoSpawnT
+                         & runNoSendT
                          & runIdentity
                   in (v, sto)
