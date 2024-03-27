@@ -9,6 +9,7 @@ import Data.TypeLevel.HMap (Assoc)
 import qualified Data.TypeLevel.HMap as HMap
 import Control.Monad.Join
 
+import Data.Maybe
 import qualified Data.Set as Set
 import Data.Singletons
 import Control.Monad.AbstractM
@@ -26,6 +27,8 @@ instance (IsSchemeValue m) => ActorDomain (SchemeVal m) where
       where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM a
             select SPidKey vs = mjoins (fmap f (Set.toList vs))
             select _ _ = escape WrongType
+   arefs'     = fromMaybe Set.empty . HMap.get @PidKey . getSchemeVal
+   isActorRef = hasType PidKey
 
    -- behaviors
    beh = SchemeVal . HMap.singleton @BehKey . Set.singleton
