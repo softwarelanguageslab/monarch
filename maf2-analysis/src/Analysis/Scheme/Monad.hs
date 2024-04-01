@@ -24,10 +24,10 @@ type SchemeM' m v = (
    -- Environment
    EnvM m (Adr v) (Env v),
    -- Store interactions
-   StoreM m PaAdr (PAdr v) (PaiDom v),
-   StoreM m VrAdr (Adr v)  (VarDom v),
-   StoreM m VeAdr (VAdr v) (VecDom v),
-   StoreM m StAdr (SAdr v) (StrDom v),
+   StoreM m (PAdr v) (PaiDom v),
+   StoreM m (Adr v)  (VarDom v),
+   StoreM m (VAdr v) (VecDom v),
+   StoreM m (SAdr v) (StrDom v),
    -- Allocation
    AllocM m Ide VrAdr (Adr v),     -- variable allocation
    AllocM m Exp PaAdr (PAdr v),    -- pair allocation

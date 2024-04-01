@@ -42,7 +42,7 @@ type ErlangM m v mb = (
    -- Base monads
    AbstractM m,
    EnvM m (Adr m) (BasicEnv (Adr m)),
-   StoreM m () (Adr m) v,
+   StoreM m (Adr m) v,
    AllocM m Loc () (Adr m),
    Env v ~ BasicEnv (Adr m),
    -- Erlang specific

@@ -98,7 +98,7 @@ lookups look f = Set.fold (mjoin . deref') Control.Monad.Join.mzero
 
 -- 
 
-class (Monad m) => StoreM m t adr v | m adr -> v t where
+class (Monad m) => StoreM m adr v | m adr -> v where
    -- | Write to a newly allocated address
    writeAdr  :: adr -> v -> m ()
    -- | Update an existing address
@@ -106,12 +106,12 @@ class (Monad m) => StoreM m t adr v | m adr -> v t where
    -- | Lookup the value at the given address, returns bottom if the address does not exist
    lookupAdr :: adr -> m v
 
-deref :: forall m adr v a t . (StoreM m t adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
+deref :: forall m adr v a t . (StoreM m adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
 deref = lookups lookupAdr
 
 -- | Store the given value in the store using the an address
 -- allocator on the monadic stack.
-store :: forall m from t adr v . (AllocM m from t adr, StoreM m t adr v) => from -> v -> m adr
+store :: forall m from t adr v . (AllocM m from t adr, StoreM m adr v) => from -> v -> m adr
 store from v = alloc @_ @_ @t @adr from >>= (\adr -> writeAdr adr v >> pure adr)
 
 --
@@ -197,32 +197,32 @@ runCtx initialCtx (CtxT m) = runReaderT m initialCtx
 ---
 
 
-newtype StoreT t adr v m a = StoreT { getStoreT :: StateT (Map adr v) m a }
+newtype StoreT adr v m a = StoreT { getStoreT :: StateT (Map adr v) m a }
                               deriving (Applicative, Functor, Monad, MonadState (Map adr v), MonadLayer, MonadTrans)
 
-instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT t adr v m) where
+instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT adr v m) where
    mjoin (StoreT ma) (StoreT mb) = StoreT $ mjoin ma mb
    mzero = StoreT mzero
 
-instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT t adr v m) t adr v where
+instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT adr v m) adr v where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    lookupAdr = gets  . Store.lookupSto
 
-instance (Monad (t m), StoreM m w adr v, MonadLayer t) => StoreM (t m) w adr v where
+instance (Monad (t m), StoreM m adr v, MonadLayer t) => StoreM (t m) adr v where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
    lookupAdr  =  upperM .  lookupAdr
 
-runStoreT :: forall t adr v m a . Map adr v -> StoreT t adr v m a -> m (a, Map adr v)
+runStoreT :: forall t adr v m a . Map adr v -> StoreT adr v m a -> m (a, Map adr v)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
 
 ---
 
-newtype StoreT' t adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
+newtype StoreT' adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
                               deriving (Applicative, Functor, Monad, MonadState (Map adr (SVar v)), MonadLayer, MonadTrans)
 
-instance {-# OVERLAPPING #-} (Monad m, SVar.MonadStateVar m, JoinLattice v, Ord adr) => StoreM (StoreT' t adr v m) t adr v where
+instance {-# OVERLAPPING #-} (Monad m, SVar.MonadStateVar m, JoinLattice v, Ord adr) => StoreM (StoreT' adr v m) adr v where
    writeAdr adr vlu =
       gets (Map.lookup adr) >>=
          maybe (SVar.new vlu >>= (\var -> modify (Map.insert adr var) >> void (SVar.modify (const (Just vlu)) var)))
@@ -233,11 +233,11 @@ instance {-# OVERLAPPING #-} (Monad m, SVar.MonadStateVar m, JoinLattice v, Ord 
          gets (Map.lookup adr) >>= maybe (SVar.depend bottom >>= insert) SVar.read
       where insert var = modify (Map.insert adr var) >> return bottom
 
-instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT' t adr v m) where
+instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT' adr v m) where
    mjoin (StoreT' ma) (StoreT' mb) = StoreT' $ mjoin ma mb
    mzero = StoreT' mzero
 
-runStoreT' :: forall adr v t m a . Map adr (SVar v) -> StoreT' t adr v m a -> m (a, Map adr (SVar v))
+runStoreT' :: forall adr v m a . Map adr (SVar v) -> StoreT' adr v m a -> m (a, Map adr (SVar v))
 runStoreT' initial = flip runStateT initial . getStoreT'
 
 --

@@ -123,7 +123,7 @@ instance {-# OVERLAPPING #-}
   ( EF.EffectM m Component,
     CtxM m Ctx,
     ActorLocalM m Pid Msg MB,
-    StoreM m VrAdr Adr V,
+    StoreM m Adr V,
     EnvM m Adr Env
   ) => CallM (CallT m) Env V where
 

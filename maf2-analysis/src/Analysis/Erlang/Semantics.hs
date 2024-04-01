@@ -23,7 +23,7 @@ evalFn (Function _ bdy loc) = do
    adr <- alloc @_ @_ @() loc
    env <- getEnv
    let vlu = clo (env, bdy)
-   writeAdr @_ @() @(Adr m) @v adr vlu
+   writeAdr @_ @(Adr m) @v adr vlu
    return vlu
 evalFn _ = return nil
 

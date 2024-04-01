@@ -63,10 +63,10 @@ fromValues vls = SchemeStore {
 -- | A monadic stack that represents the store
 -- implementations for each store part
 type SchemeStoreT' adr vadr sadr padr v m a =
-   StoreT' VrAdr adr (VarDom v)
-      (StoreT' VeAdr vadr (VecDom v)
-         (StoreT' PaAdr padr (PaiDom v)
-            (StoreT' StAdr sadr (StrDom v) m)))
+   StoreT' adr (VarDom v)
+      (StoreT' vadr (VecDom v)
+         (StoreT' padr (PaiDom v)
+            (StoreT' sadr (StrDom v) m)))
       a
 
 
