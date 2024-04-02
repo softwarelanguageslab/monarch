@@ -111,12 +111,12 @@ deref = lookups lookupAdr
 
 -- | Store the given value in the store using the an address
 -- allocator on the monadic stack.
-store :: forall m from t adr v . (AllocM m from t adr, StoreM m adr v) => from -> v -> m adr
-store from v = alloc @_ @_ @t @adr from >>= (\adr -> writeAdr adr v >> pure adr)
+store :: forall m from t adr v . (AllocM m from adr, StoreM m adr v) => from -> v -> m adr
+store from v = alloc @_ @_ @adr from >>= (\adr -> writeAdr adr v >> pure adr)
 
 --
 
-class (Monad m) => AllocM m from t adr  where
+class (Monad m) => AllocM m from adr  where
    alloc :: from -> m adr
 
 class (Monad m) => CallM m env v where
@@ -254,14 +254,14 @@ instance (MonadJoin m) => MonadJoin (AllocT from ctx t to m) where
    mjoin (AllocT ma) = AllocT . mjoin ma . getAllocReader
    mzero = AllocT mzero
 
-instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx t to m) from t to where
+instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx t to m) from to where
    alloc from = do
       ctx <- AllocT $ lift getCtx
       f   <- ask
       return $ f from ctx
 
-instance (Monad (l m), AllocM m from t to, MonadLayer l) => AllocM (l m) from t to where
-   alloc = upperM . alloc @m @from @t @to
+instance (Monad (l m), AllocM m from to, MonadLayer l) => AllocM (l m) from to where
+   alloc = upperM . alloc @m @from @to
 
 
 runAlloc :: forall t from ctx to m a . Allocator from ctx to -> AllocT from ctx t to m a ->  m a
@@ -277,7 +277,7 @@ instance (Monad (t m), CallM m env v, MonadLayer t) => CallM (t m) env v where
 
 -- | Mock instance that ignores the call and always
 -- returns bottom.
-newtype CallBottomT v m a = CallBottomT { getCallBottomT :: IdentityT m a }
+newtype CallBottomT v m a = CallBottomT { _getCallBottomT :: IdentityT m a }
                         deriving (Applicative, Functor, Monad, MonadJoin, MonadLayer, MonadTrans)
 
 instance {-# OVERLAPPING #-} (Monad m, JoinLattice v) => CallM (CallBottomT v m) env v where
@@ -294,7 +294,7 @@ runCallBottomT (CallBottomT ma) = runIdentityT ma
 -- state together using a JoinLattice, anything 
 -- below this on the stack will not be joined together and 
 -- is assumed to be global across all paths
-newtype JoinT m a = JoinT { getJoinT :: IdentityT m a } deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor)
+newtype JoinT m a = JoinT { _getJoinT :: IdentityT m a } deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor)
 
 instance (Monad m) => MonadJoin (JoinT m) where
    mzero = return bottom

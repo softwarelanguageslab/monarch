@@ -43,7 +43,7 @@ type ErlangM m v mb = (
    AbstractM m,
    EnvM m (Adr m) (BasicEnv (Adr m)),
    StoreM m (Adr m) v,
-   AllocM m Loc () (Adr m),
+   AllocM m Loc (Adr m),
    Env v ~ BasicEnv (Adr m),
    -- Erlang specific
    ActorM m v (Msg m) mb,
