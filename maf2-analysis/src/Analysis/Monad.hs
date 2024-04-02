@@ -103,10 +103,10 @@ class (Monad m, Joinable v) => StoreM m a v | m a -> v where
    writeAdr  :: a -> v -> m ()
    -- | Update an existing address
    updateAdr :: a -> v -> m ()
-   updateAdr adr v = updateWith adr (const v) (`Lattice.join` v)
+   updateAdr adr v = updateWith (const v) (`Lattice.join` v) adr
    -- | Update an existing address using either a strong or weak update function
-   updateWith :: a -> {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> m ()
-   updateWith adr fs _ = lookupAdr adr >>= updateAdr adr . fs
+   updateWith :: {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> m ()
+   updateWith fs _ adr = lookupAdr adr >>= updateAdr adr . fs
    -- | Lookup the value at the given address, returns bottom if the address does not exist
    lookupAdr :: a -> m v
 
@@ -213,12 +213,14 @@ instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT adr v m) 
 instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT adr v m) adr v where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
+   updateWith fs fw adr = modify (Store.updateStoWith fs fw adr)
    lookupAdr = gets  . Store.lookupSto
 
 instance (Monad (t m), StoreM m adr v, MonadLayer t) => StoreM (t m) adr v where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
-   lookupAdr  =  upperM .  lookupAdr
+   lookupAdr  =  upperM . lookupAdr
+   updateWith fs fw = upperM . updateWith fs fw 
 
 runStoreT :: forall t adr v m a . Map adr v -> StoreT adr v m a -> m (a, Map adr v)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
