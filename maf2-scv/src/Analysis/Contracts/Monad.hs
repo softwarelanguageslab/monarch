@@ -11,13 +11,14 @@ import Control.Monad.DomainError
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Domain (ActorDomain)
+import Lattice (EqualLattice)
 
 data AssertionMessage = ExpectedMessageContract
    deriving (Eq, Ord, Show)
 
 -- | Error types that could occur while evaluating 
 -- the program with contracts
-data Error = BlameError String      -- ^ blame error, consisting of the party being blamed for the contract violation  
+data Error = BlameError (Set String) -- ^ blame error, consisting of the party being blamed for the contract violation  
            | AssertionError AssertionMessage 
            | DomainWrap DomainError  -- ^ errors originating from implementations of the domain
            deriving (Eq, Ord, Show)
@@ -40,6 +41,7 @@ type ContractM m v msg mb =
       Domain (Esc m) Error,
       ContractDomain v, 
       ActorDomain v,
+      EqualLattice v,
       -- Semantics monads
       ActorEvalM m v msg mb,
       SchemeM m v)

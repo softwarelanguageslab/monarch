@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies, AllowAmbiguousTypes, DeriveFunctor #-}
 module Control.Monad.Escape (MonadEscape(..), MayEscape(Value), MayEscapeT(..), orElse, try) where
 
-import Lattice hiding (Bottom)
+import Lattice.Class hiding (Bottom)
 import Domain.Class 
 
 import Control.Monad.Join

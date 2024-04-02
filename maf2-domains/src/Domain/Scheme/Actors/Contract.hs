@@ -4,17 +4,19 @@ module Domain.Scheme.Actors.Contract(MessageContract(..)) where
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Lattice (Joinable(..), JoinLattice(..))
+import Domain.Core.SeqDomain.CPList (CPList)
+import Domain.Core.SeqDomain.BoundedList
 
 -- | Abstraction of a message contract, its join is performed
 -- pairwise. 
 data MessageContract v = MessageContract {
-      tag      :: v,       -- ^ expected message tag
-      rcpt     :: v,       -- ^ expected recipient (λ)
-      payload  :: v,       -- ^ payload contracts, allocated as a list in the store
-      comm     :: v        -- ^ communication contract (λ)
+      tag      :: v,             -- ^ expected message tag
+      rcpt     :: v,             -- ^ expected recipient (λ)
+      payload  :: BoundedList v, -- ^ payload contracts, allocated as a list in the store
+      comm     :: v              -- ^ communication contract (λ)
    } | Bottom deriving (Show, Eq, Ord)
 
-instance (Joinable v) => Joinable (MessageContract v) where
+instance (JoinLattice v) => Joinable (MessageContract v) where
    join Bottom v = v
    join v Bottom = v
    join (MessageContract tag1 rcpt1 payload1 comm1) (MessageContract tag2 rcpt2 payload2 comm2) =

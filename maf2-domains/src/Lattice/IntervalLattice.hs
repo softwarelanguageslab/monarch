@@ -1,48 +1,31 @@
 -- | A simple interval domain, with an upper and lower bound
 module Lattice.IntervalLattice(Interval(..), Bound(..)) where
 
-import Prelude hiding (min, max)
+import Prelude 
 import Lattice.Class 
 import Domain.Class 
+import Domain.Core.BoolDomain
+import Domain.Core.NumberDomain.Class
+import Lattice.ConstantPropagationLattice
 
 import qualified Data.Set as Set 
 
 -- | A bound of the interval domain, 
 -- is either a concrete value or infinity. 
-data Bound a = Bounded a 
+data Bound a = NegInfinity
+             | Bounded a 
              | Infinity 
-  deriving (Eq, Ord)
-
--- | <= comparison of lower bounds, hence Infinity as negative infinity
-lle :: Ord a => Bound a -> Bound a -> Bool
-lle Infinity _ = True 
-lle _ Infinity = False
-lle (Bounded a) (Bounded b) = a <= b
-
--- | Take the minimum bound of the lower bound of the interval
-min :: Ord a => Bound a -> Bound a -> Bound a 
-min a b
-  | lle a b   = a
-  | otherwise = b 
-
--- | <= comparison of upper bounds, hence Infinity as positive infinity
-ule :: Ord a => Bound a -> Bound a -> Bool
-ule _ Infinity = True   
-ule Infinity _ = False  
-ule (Bounded a) (Bounded b) = a <= b
-
--- | Take the maximum bound of the upper bound of the interval
-max :: Ord a => Bound a -> Bound a -> Bound a
-max a b
-  | ule a b = b
-  | otherwise = a 
+  deriving (Eq, Ord, Show)
 
 -- | The interval itself with its upper and lower bound .
--- `Infinity` in the lower bound is always interpreted to mean negative infinity, 
--- the converse is taken for the upper bound.
 data Interval a = BottomInterval
                 | Interval (Bound a) (Bound a) 
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
+
+-- true if there is an overlap between the two intervals
+overlaps :: Ord a => Interval a -> Interval a -> Bool
+overlaps (Interval l1 u1) (Interval l2 u2) = 
+   max l1 l2 <= min u1 u2
 
 -- Lattice implementations
 
@@ -57,10 +40,10 @@ instance (Ord a) => JoinLattice (Interval a) where
   subsumes _ BottomInterval = True 
   subsumes BottomInterval _ = True 
   subsumes (Interval left1 right1) (Interval left2 right2) = 
-    left1 `lle` left2 && right2 `ule` right1
+    left1 < left2 && right2 < right1
 
 instance (Ord a) => TopLattice (Interval a) where 
-  top = Interval Infinity Infinity
+  top = Interval NegInfinity Infinity
 
 instance (Ord a) => Domain (Interval a) a where
    inject a = Interval (Bounded a) (Bounded a)
@@ -70,3 +53,25 @@ instance (Enum a, Ord a) => SplitLattice (Interval a) where
     where interval = [a..b]
           make l u = Interval (Bounded l) (Bounded u)
   split int = Set.singleton int 
+
+instance (Ord a) => Meetable (Interval a) where   
+   meet i1@(Interval l1 u1) i2@(Interval l2 u2) 
+      | overlaps i1 i2 = Interval (max l1 l2) (min l1 l2)
+   meet _ _ = BottomInterval
+   
+
+instance NumberDomain (Interval Integer) where  
+   -- TODO: implement isZero, random, plus, minus,times, div, expt
+   type Boo (Interval Integer) = CP Bool
+   random = const $ return top
+   eq BottomInterval _ = return bottom
+   eq _ BottomInterval = return bottom
+   eq i1@(Interval l1 u1) i2@(Interval l2 u2) 
+      | l1 == u1 && i1 == i2 = return (inject True)
+      | overlaps i1 i2       = return boolTop
+      | otherwise            = return (inject False)
+   lt i1@(Interval l1 u1) i2@(Interval l2 u2)
+      | l1 == u1 && i1 == i2 = return (inject False)     -- values are equal!
+      | overlaps i1 i2       = return boolTop            -- if there is overlap, they might be smaller than each-other
+      | otherwise            = return (inject $ u1 < l2) -- if there is no overlap, lower bound of the second one must be bigger than the other
+

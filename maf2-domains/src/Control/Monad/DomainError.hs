@@ -6,7 +6,9 @@ module Control.Monad.DomainError(DomainError(..), MonadEscape(..), MayEscapeT(..
 
 import Control.Monad.Escape
 
-import Lattice hiding (Bottom)
+import Lattice.Class hiding (Bottom)
+import Lattice.SetLattice
+import Lattice.UnitLattice
 import Domain.Class 
 
 import Control.Monad.Join
