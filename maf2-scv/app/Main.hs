@@ -8,6 +8,7 @@ import Symbolic.SMT
 import Analysis.Scheme.Store (SchemeStore(..), values)
 import Analysis.Symbolic
 import Syntax.Scheme
+import qualified Syntax.Scheme.Actor as Actor
 
 import Data.Maybe (fromJust)
 import Data.Function ((&))
@@ -42,8 +43,8 @@ printSto m =
 
 main :: IO ()
 main = do
-   text   <- readFile "/tmp/test.scm"
-   let program = fromJust (parseString text)
+   text   <- readFile "../maf2-analysis/programs/actor/acontracts/tests/behavior.scm"
+   let program = fromJust (parseString $ Actor.prelude ++ text)
    let (v, result) = Contracts.runAnalysis program
    print v
    putStrLn $ printSto $ result

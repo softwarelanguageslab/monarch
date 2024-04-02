@@ -44,7 +44,7 @@ data SExp =
 smap :: (SExp -> a) -> SExp -> [a]
 smap _ (SNil _) = []
 smap f (Pai a as _) = f a : smap f as
-smap _ _ = error "invalid list"
+smap _ e = error $ "invalid list " ++ show e
 
 --
 -- Span computation

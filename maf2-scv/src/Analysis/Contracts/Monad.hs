@@ -18,14 +18,15 @@ data AssertionMessage = ExpectedMessageContract
 
 -- | Error types that could occur while evaluating 
 -- the program with contracts
-data Error = BlameError (Set String) -- ^ blame error, consisting of the party being blamed for the contract violation  
+data Error v = BlameError (Set String) -- ^ blame error, consisting of the party being blamed for the contract violation  
            | AssertionError AssertionMessage 
+           | NotAContract v
            | DomainWrap DomainError  -- ^ errors originating from implementations of the domain
            deriving (Eq, Ord, Show)
 
 -- | For a `Set` representation of errors we already have `Domain (Set Error) Error` (by the 'SetLattice').
 -- This instance translates a `DomainError` (as defined in 'Control.Monad.DomainError') into `Set Error`.
-instance Domain (Set Error) DomainError where   
+instance (Ord v) => Domain (Set (Error v)) DomainError where   
    inject = Set.singleton . DomainWrap
 
 type ContractM m v msg mb = 
@@ -38,7 +39,7 @@ type ContractM m v msg mb =
       AllocM m Exp (FAdr v),
       AllocM m Exp (OAdr v),
       -- Domains
-      Domain (Esc m) Error,
+      Domain (Esc m) (Error v),
       ContractDomain v, 
       ActorDomain v,
       EqualLattice v,

@@ -1,12 +1,13 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Analysis.Contracts.Semantics(eval, ContractM) where
 
+import Debug.Trace
 import Prelude hiding (exp)
 import Lattice hiding (Bottom)
 import Syntax.Scheme
 import Analysis.Monad(store, deref)
 import qualified Analysis.Monad as Monad
-import Analysis.Contracts.Monad (ContractM, Error (BlameError, AssertionError), AssertionMessage (..))
+import Analysis.Contracts.Monad (ContractM, Error (NotAContract, BlameError, AssertionError), AssertionMessage (..))
 import Domain.Contract ( ContractDomain(..), Flat(..), Moα (..) )
 import Domain.Scheme.Actors.Contract (MessageContract(MessageContract))
 import qualified Domain.Scheme.Actors.Contract as Contract
@@ -31,11 +32,11 @@ flipLabel :: Labels -> Labels
 flipLabel (Labels pos neg) = Labels neg pos
 
 -- | Monitors a flat contract against a value
-monFlat :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
+monFlat :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 monFlat e lbl contract value =
       cond (deref (const $ flip (Scheme.applyFun e) [value] . flatProc) (flats contract))
            (return value)
-           (escape $ BlameError (Set.map positive lbl))
+           (escape $ BlameError @v (Set.map positive lbl))
 
 -- | Monitors on actor references result in monitored
 -- actor references. These actor references keep track
@@ -43,7 +44,7 @@ monFlat e lbl contract value =
 -- (flipped) blame labels.
 monAct :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 monAct e lbl contract value =
-      αmon <$> store e (Moα (Set.map flipLabel lbl) contract value)
+      αmon <$> store e (Moα lbl contract value)
 
 -- | Contract monitoring function, monitors a contract on value,
 -- blaming the positive part of `Labels` if a contract violation is found.
@@ -55,9 +56,7 @@ mon e lbl contract value =
        -- [MonAct]
        (pure (isBehaviorContract @_ @v contract), monAct e lbl contract value)]
       {- else -}
-      (escape WrongType)
-
--- | 
+      (escape $ NotAContract contract)
 
 -- | Checks whether the given send is valid according to the contract.
 -- It applies `f` on the resulting actor references and passes the monitored payload 
@@ -100,7 +99,7 @@ monSend contract tag values =
 
 -- | TODO: use AssertM (assert)
 assert :: forall v m msg mb . (ContractM m v msg mb) => (v -> CP Bool) -> AssertionMessage -> v -> m v
-assert b e v = cond (pure (b v)) (return v) (escape (AssertionError e))
+assert b e v = cond (pure (b v)) (return v) (escape (AssertionError @v e))
 
 -- | This evaluation function extends 'Analysis.Symbolic.Semantics.eval' 
 -- with support for contracts on actors.
