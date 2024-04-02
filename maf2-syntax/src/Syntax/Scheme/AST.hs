@@ -53,7 +53,7 @@ data Exp = Num Integer Span          -- ^ number literals
          | Ter Span                  -- ^ terminate actor
          | Sel Span                  -- ^ self reference
          -- λα/c
-         | MsgC Exp Exp Exp Exp Span -- ^ message/c  contract
+         | MsgC Exp Exp [Exp] Exp Span -- ^ message/c  contract
          | BehC [Exp] Span           -- ^ behavior/c contract
          | EnsC [Exp] Span           -- ^ ensures/c  contract
          | OnlC [Exp] Span           -- ^ only/c     contract
@@ -171,7 +171,7 @@ instance Show Exp where
    show (BehC cs _) =
       printf "(behavior/c %s)" (unwords $ map show cs)
    show (MsgC tag rcpt payload comm _) =
-      printf "(message/c %s %s %s %s)" (show tag) (show rcpt) (show payload) (show comm)
+      printf "(message/c %s %s %s %s)" (show tag) (show rcpt) (unwords $ map show payload) (show comm)
    show (Mon (Labels neg pos) contract value _) =
       printf "(mon %s %s %s %s)" neg pos (show contract) (show value)
    show (Flat e _) =
@@ -288,7 +288,7 @@ compile e@(SExp.Atom "only/c" _ ::: contracts) =
 compile e@(SExp.Atom "behavior/c" _ ::: contracts) =
    BehC <$> compileSequence contracts <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "message/c" _ ::: tag ::: payload ::: rcpt ::: comm ::: SExp.SNil _) =
-   MsgC <$> compile tag <*> compile payload <*> compile rcpt <*> compile comm <*> pure (SExp.spanOf e)
+   MsgC <$> compile tag <*> compile rcpt <*> sequence (SExp.smap compile payload) <*> compile comm <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "mon" _ ::: SExp.Atom positive _ ::: SExp.Atom negative _ ::: contract ::: value ::: SExp.SNil _) =
    Mon (Labels positive negative) <$> compile contract <*> compile value <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "flat" _ ::: prc ::: SExp.SNil _) =

@@ -2,7 +2,7 @@
 module Analysis.Contracts where
 
 import Prelude hiding (exp)
-import Syntax.Scheme (Exp, Ide)
+import Syntax.Scheme (Exp)
 import Domain hiding (Exp, Env)
 import qualified Domain.Scheme.Actors.CP as CP
 import Data.Map (Map)
@@ -17,7 +17,6 @@ import Control.Monad.DomainError
 import Control.Monad.Trans.Class
 import Control.Monad.Layer
 import qualified Data.Map as Map
-import Analysis.Scheme.Store
 import Analysis.Scheme (EnvAdr (..), PaiAdr (..), VecAdr (VecAdr), StrAdr (..))
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -75,7 +74,7 @@ newtype EvalT m a = EvalT { getEvalT :: IdentityT m a }
                   deriving (Monad, Applicative, Functor, MonadTrans, MonadJoin, MonadLayer)
 
 
-instance (Esc m ~ Set Error, MonadJoin m, ContractM (EvalT m) V Msg MB, Monad m) => EvalM (EvalT m) V Exp where
+instance (Esc m ~ Set Error, ContractM (EvalT m) V Msg MB) => EvalM (EvalT m) V Exp where
    eval = Sem.eval
 
 runEvalT :: EvalT m a -> m a

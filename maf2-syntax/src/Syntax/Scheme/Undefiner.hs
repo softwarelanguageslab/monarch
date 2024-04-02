@@ -167,11 +167,11 @@ undefineM (Sel span) =
 undefineM (Ter span) =
    return (Ter span)
 -- λα/c
-undefineM (MsgC tag payload rcpt comm span) =   
+undefineM (MsgC tag rcpt payload comm span) =   
          MsgC 
      <$> notAllowed (undefineM tag)
-     <*> notAllowed (undefineM payload)
      <*> notAllowed (undefineM rcpt)
+     <*> notAllowed (mapM undefineM payload)
      <*> notAllowed (undefineM comm)
      <*> pure span
 undefineM (BehC contracts span) =

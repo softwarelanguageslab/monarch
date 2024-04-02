@@ -53,6 +53,7 @@ library
       Control.Monad.Escape
       Data.TypeLevel.HMap
       Data.Finite
+      Domain.Core.SeqDomain.BoundedList
   other-modules:
       Data.TypeLevel.HMap.TH
       Domain.Core.BoolDomain
@@ -73,7 +74,6 @@ library
       Domain.Core.PairDomain
       Domain.Core.PairDomain.Class
       Domain.Core.PairDomain.SimplePair
-      Domain.Core.SeqDomain.BoundedList
       Domain.Core.SeqDomain.Class
       Domain.Core.SeqDomain.CPList
       Domain.Core.SeqDomain.CPVector

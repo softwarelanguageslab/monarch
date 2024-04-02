@@ -9,9 +9,10 @@ import qualified Analysis.Monad as Monad
 import Analysis.Contracts.Monad (ContractM, Error (BlameError, AssertionError), AssertionMessage (..))
 import Domain.Contract ( ContractDomain(..), Flat(..), Moα (..) )
 import Domain.Scheme.Actors.Contract (MessageContract(MessageContract))
+import qualified Domain.Scheme.Actors.Contract as Contract
 import qualified Analysis.Actors.Semantics as Actors
 import qualified Analysis.Scheme.Semantics as Scheme
-import Control.Monad ((>=>), void)
+import Control.Monad ((>=>), void, zipWithM)
 import Analysis.Contracts.Behavior (behaviorContract, BehaviorContract (..))
 import qualified Data.Set as Set
 import Control.Monad.Join
@@ -19,8 +20,9 @@ import Control.Monad.DomainError (escape, DomainError (WrongType))
 import Domain (ActorDomain(..), Domain (..))
 import Analysis.Actors.Mailbox (Message(message))
 import Analysis.Actors.Monad ((!), sendMessage)
-import qualified Domain.Scheme.Actors.Contract as Contract
+import qualified Domain.Core.SeqDomain.BoundedList as BoundedList
 import Domain.Scheme (nil)
+import Data.Set (Set)
 import Domain (SchemeDomain(symbol))
 
 -- | Flip the negative and positive parties of the blame 
@@ -29,23 +31,23 @@ flipLabel :: Labels -> Labels
 flipLabel (Labels pos neg) = Labels neg pos
 
 -- | Monitors a flat contract against a value
-monFlat :: ContractM m v msg mb => Exp -> Labels -> v -> v -> m v
+monFlat :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 monFlat e lbl contract value =
       cond (deref (const $ flip (Scheme.applyFun e) [value] . flatProc) (flats contract))
            (return value)
-           (escape $ BlameError (Set.singleton (positive lbl)))
+           (escape $ BlameError (Set.map positive lbl))
 
 -- | Monitors on actor references result in monitored
 -- actor references. These actor references keep track
 -- of their original behavior contract and some additional
 -- (flipped) blame labels.
-monAct :: ContractM m v msg mb => Exp -> Labels -> v -> v -> m v
+monAct :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 monAct e lbl contract value =
-      αmon <$> store e (Moα (Set.singleton (flipLabel lbl)) contract value)
+      αmon <$> store e (Moα (Set.map flipLabel lbl) contract value)
 
 -- | Contract monitoring function, monitors a contract on value,
 -- blaming the positive part of `Labels` if a contract violation is found.
-mon :: forall m v msg mb . ContractM m v msg mb => Exp -> Labels -> v -> v -> m v
+mon :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 mon e lbl contract value =
    conds @(CP Bool)
       [-- [MonFlat]
@@ -68,7 +70,20 @@ checkSend f tag payload (Moα lbl contract value) =
            (pure $ isαmon value, do
                { payload' <- check ; deref (const $ checkSend f tag payload') (αmons value) }) ]
          (escape WrongType)
-   where check = undefined
+   where check :: m [v]
+         check = 
+            BoundedList.elements <$> cond @(CP Bool) (pure $ isBehaviorContract @_ @v contract)
+               (do
+                  -- TODO: actually this is not quite sound, we also need 
+                  -- to consider the case where we are not sure whether
+                  -- a tag matches the tag of the message, and if so 
+                  -- generate a blame error!
+                  contracts <- matchingContracts (symbol tag) contract
+                  BoundedList.fromList <$> mjoinMap
+                     (\contract -> zipWithM (mon undefined (Set.map flipLabel lbl)) (BoundedList.elements (Contract.payload contract)) payload)
+                     contracts
+               )
+               (escape WrongType)
 checkSend _ _ _ Bottom = mzero
 
 
@@ -92,7 +107,7 @@ assert b e v = cond (pure (b v)) (return v) (escape (AssertionError e))
 eval :: forall v m msg mb . ContractM m v msg mb => Exp -> m v
 eval exp@(MsgC tag rcv payload comm _) =
    messageContract <$>
-      (store exp =<< (MessageContract <$> Monad.eval tag <*> Monad.eval rcv <*> Monad.eval payload <*> Monad.eval comm))
+      (store exp =<< (MessageContract <$> Monad.eval tag <*> Monad.eval rcv <*> (BoundedList.fromList <$> mapM Monad.eval payload) <*> Monad.eval comm))
 eval (BehC exs _) =  do
    vlus <- mapM Monad.eval exs
    adrs <- joins <$> mapM (assert isMessageContract ExpectedMessageContract >=> pure . messageContracts) vlus

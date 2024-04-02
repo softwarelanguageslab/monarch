@@ -1,10 +1,7 @@
 -- This module provides abstractions for contracts and their monitors
 module Domain.Scheme.Actors.Contract(MessageContract(..)) where
 
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Lattice (Joinable(..), JoinLattice(..))
-import Domain.Core.SeqDomain.CPList (CPList)
 import Domain.Core.SeqDomain.BoundedList
 
 -- | Abstraction of a message contract, its join is performed

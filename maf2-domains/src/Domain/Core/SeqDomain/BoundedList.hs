@@ -1,8 +1,7 @@
 -- | A bounded list abstraction abstracts lists of bounded length. 
-module Domain.Core.SeqDomain.BoundedList(BoundedList(elements), ref) where
+module Domain.Core.SeqDomain.BoundedList(BoundedList(elements), ref, fromList) where
 
-import qualified Data.Map as Map
-import Data.Map (Map)
+import qualified Prelude hiding (lookup)
 import Lattice.Class
 import Prelude hiding (length)
 import Lattice.IntervalLattice 
@@ -12,7 +11,6 @@ import Control.Monad.AbstractM
 import Data.List.Extra (zipWithLongest)
 import Control.Monad.Join
 import Data.Maybe
-import Control.Monad.Join
 import Domain.Class
 
 maybeBot :: JoinLattice a => Maybe a -> a
@@ -42,4 +40,8 @@ ref (BoundedList length elements) i
                [(lt i (inject l1),  values),
                 (gt i (inject u1), escape IndexOutOfBounds)]
                (mjoin values (escape IndexOutOfBounds))
+         rangedRef _ = error "unreachable" -- this case is unreachable since we never make unbounded lengths
          lookup n e = cond (eq i (inject n)) (return e) (return bottom)
+
+fromList :: [a] -> BoundedList a
+fromList as = BoundedList (inject (Prelude.length as)) as
