@@ -79,8 +79,8 @@ checkSend f tag payload (Moα lbl contract value) =
                   -- a tag matches the tag of the message, and if so 
                   -- generate a blame error!
                   contracts <- matchingContracts (symbol tag) contract
-                  BoundedList.fromList <$> mjoinMap
-                     (\contract -> zipWithM (mon undefined (Set.map flipLabel lbl)) (BoundedList.elements (Contract.payload contract)) payload)
+                  mjoinMap
+                     (\contract -> BoundedList.fromList <$> zipWithM (mon undefined (Set.map flipLabel lbl)) (BoundedList.elements (Contract.payload contract)) payload)
                      contracts
                )
                (escape WrongType)
@@ -117,7 +117,7 @@ eval exp@(Syntax.Scheme.Flat e _) = do
 eval exp@(Mon labels contract value _) = do
    contract' <- Monad.eval contract
    value'    <- Monad.eval value
-   mon exp labels contract' value'
+   mon exp (Set.singleton labels) contract' value'
 eval (Sen rcpt tag values _) = do
    rcpt'    <- Monad.eval rcpt
    values'  <- mapM Monad.eval values
