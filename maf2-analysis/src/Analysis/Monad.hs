@@ -98,13 +98,19 @@ lookups look f = Set.fold (mjoin . deref') Control.Monad.Join.mzero
 
 -- 
 
-class (Monad m) => StoreM m adr v | m adr -> v where
+class (Monad m, Joinable v) => StoreM m a v | m a -> v where
    -- | Write to a newly allocated address
-   writeAdr  :: adr -> v -> m ()
+   writeAdr  :: a -> v -> m ()
    -- | Update an existing address
-   updateAdr :: adr -> v -> m ()
+   updateAdr :: a -> v -> m ()
+   updateAdr adr v = updateWith adr (const v) (`Lattice.join` v)
+   -- | Update an existing address using either a strong or weak update function
+   updateWith :: a -> {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> m ()
+   updateWith adr fs _ = lookupAdr adr >>= updateAdr adr . fs
    -- | Lookup the value at the given address, returns bottom if the address does not exist
-   lookupAdr :: adr -> m v
+   lookupAdr :: a -> m v
+
+   {-# MINIMAL lookupAdr, writeAdr, (updateAdr | updateWith) #-}
 
 deref :: forall m adr v a t . (StoreM m adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
 deref = lookups lookupAdr
