@@ -47,12 +47,9 @@ import Syntax.Scheme.AST
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain hiding (Exp)
-import Lattice
+import Lattice hiding (insert)
 import qualified Analysis.Store as Store
 import Control.Monad.Layer
-import Control.Monad.Trans.Maybe
-import Control.Monad.Writer hiding (mzero)
-import GHC.TypeError
 import Data.Functor.Identity
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -112,13 +109,13 @@ class (Monad m, Joinable v) => StoreM m a v | m a -> v where
 
    {-# MINIMAL lookupAdr, writeAdr, (updateAdr | updateWith) #-}
 
-deref :: forall m adr v a t . (StoreM m adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
+deref :: (StoreM m adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
 deref = lookups lookupAdr
 
 -- | Store the given value in the store using the an address
 -- allocator on the monadic stack.
-store :: forall m from t adr v . (AllocM m from adr, StoreM m adr v) => from -> v -> m adr
-store from v = alloc @_ @_ @adr from >>= (\adr -> writeAdr adr v >> pure adr)
+store :: (AllocM m from adr, StoreM m adr v) => from -> v -> m adr
+store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 
 --
 
@@ -137,8 +134,8 @@ class SpanM m where
    usingSpan :: (Span -> a) -> m a
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, SpanM m) => SpanM (t m) where 
-   withSpan s m = lowerM (withSpan s) m
-   usingSpan    = upperM   . usingSpan
+   withSpan s = lowerM (withSpan s)
+   usingSpan = upperM   . usingSpan
 
 -- | Assert that certain conditions hold on the given value
 -- and give an assertion error if they do not.
@@ -263,10 +260,10 @@ instance (MonadJoin m) => MonadJoin (AllocT from ctx to m) where
    mzero = AllocT mzero
 
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
-   alloc from = do
+   alloc loc = do
       ctx <- AllocT $ lift getCtx
       f   <- ask
-      return $ f from ctx
+      return $ f loc ctx
 
 instance (Monad (l m), AllocM m from to, MonadLayer l) => AllocM (l m) from to where
    alloc = upperM . alloc @m @from @to
