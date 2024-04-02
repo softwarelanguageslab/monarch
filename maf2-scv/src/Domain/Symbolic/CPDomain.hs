@@ -20,18 +20,18 @@ import Control.Monad ((>=>))
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
 
 -- TODO: pass down the context as well
-type CPSymbolicValue ptr var = 
-   PairedSymbolic (CPActorValue var ptr ()) ptr var
+type CPSymbolicValue pai vec str var = 
+   PairedSymbolic (CPActorValue var pai vec str ()) pai vec str var
 
-type instance VarDom (CPSymbolicValue ptr var) = CPSymbolicValue ptr var
-type instance PaiDom (CPSymbolicValue ptr var) = SimplePair (CPSymbolicValue ptr var)
-type instance VecDom (CPSymbolicValue ptr var) = PIVector (CPSymbolicValue ptr var) (CPSymbolicValue ptr var)
-type instance StrDom (CPSymbolicValue ptr var) = SchemeString (CP String) (CPSymbolicValue ptr var)
+type instance VarDom (CPSymbolicValue pai vec str var) = CPSymbolicValue pai vec str var
+type instance PaiDom (CPSymbolicValue pai vec str var) = SimplePair (CPSymbolicValue pai vec str var)
+type instance VecDom (CPSymbolicValue pai vec str var) = PIVector (CPSymbolicValue pai vec str var) (CPSymbolicValue pai vec str var)
+type instance StrDom (CPSymbolicValue pai vec str var) = SchemeString (CP String) (CPSymbolicValue pai vec str var)
 
-instance (Address ptr, Address var) => StringDomain (SchemeString (CP String) (CPSymbolicValue ptr var)) where
-   type IntS (SchemeString (CP String) (CPSymbolicValue ptr var)) = CPSymbolicValue ptr var
-   type ChaS (SchemeString (CP String) (CPSymbolicValue ptr var)) = CPSymbolicValue ptr var
-   type BooS (SchemeString (CP String) (CPSymbolicValue ptr var)) = CPSymbolicValue ptr var
+instance (Address pai, Address vec, Address str, Address var) => StringDomain (SchemeString (CP String) (CPSymbolicValue pai vec str var)) where
+   type IntS (SchemeString (CP String) (CPSymbolicValue pai vec str var)) = CPSymbolicValue pai vec str var
+   type ChaS (SchemeString (CP String) (CPSymbolicValue pai vec str var)) = CPSymbolicValue pai vec str var
+   type BooS (SchemeString (CP String) (CPSymbolicValue pai vec str var)) = CPSymbolicValue pai vec str var
    length = (length . sconst) >=> (return . mkLeft . insertInt)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = mkLeft . insertChar <$> (ref (sconst s) =<< integers (leftValue i))

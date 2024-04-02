@@ -67,27 +67,12 @@ runSymbolicEvalT (SymbolicEvalT m) = m
 -- Domain instantation
 ------------------------------------------------------------
 
-type Vlu = CPSymbolicValue PointerAdr VariableAdr
+type Vlu = CPSymbolicValue (PaiAdr K) (VecAdr K) (StrAdr K) (EnvAdr K)
 type Sto = DSto K Vlu
 
 ------------------------------------------------------------
 -- ModF instantation
 ------------------------------------------------------------
-
--- | Type of pointer address
-data PointerAdr  = PointerAdr Exp [Exp]
-                 deriving (Eq, Ord, Show)
-data VariableAdr = Adr Ide [Exp]
-                 | Prm String
-                 deriving (Eq, Ord)
-
-instance Show VariableAdr where
-   show (Adr ide ctx) = printf "Adr(%s, %s)" (show ide) (show ctx)
-   show (Prm nam)     = printf "Prm(%s)" nam
-
-instance VarAdr VariableAdr V K where
-   retAdr = undefined
-   prmAdr = Prm
 
 -- | Alias for k-sensitivity context
 type K = [Exp]
@@ -101,29 +86,6 @@ type Msg = SimpleMessage V
 -- | Alias for the mailbox
 type MB = Set Msg
 
--- | Type of dependency 
-data AdrDep = VarAdrDep VariableAdr
-            | PtrDep PointerAdr
-            deriving (Eq, Ord)
-
--- | AdrDep is indeed a `Dependency` (i.e. it satisfies
--- the `Dependency` typeclass)
-instance Dependency PointerAdr AdrDep where
-   dep = PtrDep
-instance Dependency VariableAdr AdrDep where
-   dep = VarAdrDep
-
-instance Address VariableAdr
-instance Address PointerAdr
-
--- | The allocator
-instance SchemeAlloc K VariableAdr PointerAdr PointerAdr PointerAdr where
-   allocVar = Adr
-   allocCtx = const id
-   allocPai = PointerAdr
-   allocVec = PointerAdr
-   allocStr = PointerAdr
-
 ------------------------------------------------------------
 -- Analysis
 ------------------------------------------------------------
@@ -136,16 +98,16 @@ simpleAnalysis e = do
                                          & runMayEscape @(Set DomainError)
                                          & runFormulaT
                                          & runCallBottomT @V
-                                         & runStoreT @VrAdr (values  store)
-                                         & runStoreT @StAdr (strings store)
-                                         & runStoreT @PaAdr (pairs   store)
-                                         & runStoreT @VeAdr (vecs    store)
+                                         & runStoreT (values  store)
+                                         & runStoreT (strings store)
+                                         & runStoreT (pairs   store)
+                                         & runStoreT (vecs    store)
                                          & combineStores
                                          -- & runStoreT @ConAdr Map.empty
-                                         & runAlloc @PaAdr PointerAdr
-                                         & runAlloc @VeAdr PointerAdr
-                                         & runAlloc @StAdr PointerAdr
-                                         & runAlloc @VrAdr Adr
+                                         & runAlloc @_ @K PaiAdr
+                                         & runAlloc @_ @K VecAdr
+                                         & runAlloc @_ @K StrAdr 
+                                         & runAlloc @_ @K EnvAdr
                                          -- & runAlloc @ConAdr PointerAdr
                                          & runCtx []
                                          & runEnv env
