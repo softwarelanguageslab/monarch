@@ -1,0 +1,29 @@
+-- | A bounded list abstraction abstracts lists of bounded length. 
+module Domain.Core.SeqDomain.BoundedList where
+-- 
+-- import Domain.Core.SeqDomain.Class
+-- import qualified Data.Map as Map
+-- import Data.Map (Map)
+-- import Lattice.IntervalLattice 
+-- import Data.List.Extra (zipWithLongest)
+-- 
+-- maybeBot :: JoinLattice a => Maybe a -> a
+-- maybeBot = fromMaybe bottom
+-- 
+-- data BoundedList a = BoundedList {
+--    length    :: Interval Int,
+--    elements  :: [a]
+-- }
+-- 
+-- instance (Joinable a) => Joinable (BoundedList a) where
+--    join l1 l2 = BoundedList {
+--       length    = join (length l1) (length l2),
+--       elements  = zipWithLongest (\a b -> join (maybeBot a) (maybeBot b)) (elements l1) (elements l2)
+--    }
+-- 
+-- instance JoinLattice (BoundedList a) where   
+--    bottom = BoundedList bottom []
+-- 
+-- ref :: BoundedList a -> a
+-- ref = undefined
+-- 
