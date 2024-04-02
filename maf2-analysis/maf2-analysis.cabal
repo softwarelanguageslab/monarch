@@ -49,6 +49,16 @@ library
       Analysis.Erlang.Monad
       Analysis.Erlang.Semantics
       Analysis.IO
+      Analysis.Monad.Allocation
+      Analysis.Monad.Assertion
+      Analysis.Monad.Call
+      Analysis.Monad.Context
+      Analysis.Monad.Environment
+      Analysis.Monad.Eval
+      Analysis.Monad.Identity
+      Analysis.Monad.Join
+      Analysis.Monad.Span
+      Analysis.Monad.Store
       Analysis.Python
       Analysis.Semantics
       Analysis.Store
