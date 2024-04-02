@@ -24,15 +24,15 @@ type SchemeM' m v = (
    -- Environment
    EnvM m (Adr v) (Env v),
    -- Store interactions
-   StoreM m PaAdr (PAdr v) (PaiDom v),
-   StoreM m VrAdr (Adr v)  (VarDom v),
-   StoreM m VeAdr (VAdr v) (VecDom v),
-   StoreM m StAdr (SAdr v) (StrDom v),
+   StoreM m (PAdr v) (PaiDom v),
+   StoreM m (Adr v)  (VarDom v),
+   StoreM m (VAdr v) (VecDom v),
+   StoreM m (SAdr v) (StrDom v),
    -- Allocation
-   AllocM m Ide VrAdr (Adr v),     -- variable allocation
-   AllocM m Exp PaAdr (PAdr v),    -- pair allocation
-   AllocM m Exp VeAdr (VAdr v),    -- vector allocation
-   AllocM m Exp StAdr (SAdr v),    -- string allocation
+   AllocM m Ide (Adr v),     -- variable allocation
+   AllocM m Exp (PAdr v),    -- pair allocation
+   AllocM m Exp (VAdr v),    -- vector allocation
+   AllocM m Exp (SAdr v),    -- string allocation
    --
    CallM m (Env v) v,
    Boo v ~ v,
@@ -44,10 +44,10 @@ type SchemeM m v = (
    EvalM m v Exp)
 
 allocPai :: SchemeM m v => Exp -> m (PAdr v)
-allocPai = alloc @_ @_ @PaAdr
+allocPai = alloc
 allocVec :: SchemeM m v => Exp -> m (VAdr v)
-allocVec = alloc @_ @_ @VeAdr
+allocVec = alloc 
 allocStr :: SchemeM m v => Exp -> m (SAdr v)
-allocStr = alloc @_ @_ @StAdr
+allocStr = alloc
 allocVar :: SchemeM m v => Ide -> m (Adr v)
-allocVar = alloc @_ @_ @VrAdr
+allocVar = alloc

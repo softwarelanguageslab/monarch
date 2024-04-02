@@ -73,6 +73,7 @@ library
       Domain.Core.PairDomain
       Domain.Core.PairDomain.Class
       Domain.Core.PairDomain.SimplePair
+      Domain.Core.SeqDomain.BoundedList
       Domain.Core.SeqDomain.Class
       Domain.Core.SeqDomain.CPList
       Domain.Core.SeqDomain.CPVector

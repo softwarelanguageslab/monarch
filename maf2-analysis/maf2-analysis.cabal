@@ -43,6 +43,7 @@ library
       Control.Monad.State.IntPool
       Control.Fixpoint.WorkList
       Control.Fixpoint.EffectDriven
+      Data.Print
   other-modules:
       Analysis.Environment
       Analysis.Erlang.Monad
@@ -55,7 +56,6 @@ library
       Control.Monad.Cond
       Control.Monad.Error
       Data.ListExtra
-      Data.Print
       Data.SetExtra
       Interpreter.Actors
       Interpreter.Scheme.Eval

@@ -132,7 +132,7 @@ allPrimitives = [
    fix1 "display" $ const (return Domain.nil),
    fix1 "displayln" $ const (return Domain.nil),
    -- TODO: format does not executed the formatting and returns a top from the string lattice
-   evar "format" (\e -> const (do { adr <- alloc @_ @_ @StAdr e ; writeAdr adr topString ; return (sptr adr) }))
+   evar "format" (\e -> const (do { adr <- alloc @_ @_ e ; writeAdr adr topString ; return (sptr adr) }))
    -- fix1 "error" todo
    ]
 

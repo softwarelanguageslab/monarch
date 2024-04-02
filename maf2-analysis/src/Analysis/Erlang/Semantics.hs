@@ -15,22 +15,22 @@ import qualified Data.Map as Map
 -- definitions.
 populate :: ErlangM m v mb => Declaration -> m [(String, Adr m)]
 populate (Function (FunctionIdentifier nam _ _) _ loc) =
-   List.singleton <$> ((nam,) <$> alloc @_ @_ @() loc)
+   List.singleton . (nam,) <$> alloc @_ @_ loc
 populate _ = return mempty
 
 evalFn :: forall m v mb . ErlangM m v mb => Declaration -> m v
 evalFn (Function _ bdy loc) = do
-   adr <- alloc @_ @_ @() loc
+   adr <- alloc @_ @_ loc
    env <- getEnv
    let vlu = clo (env, bdy)
-   writeAdr @_ @() @(Adr m) @v adr vlu
+   writeAdr @_ @(Adr m) @v adr vlu
    return vlu
 evalFn _ = return nil
 
 -- | Calls the function named "main" in 
 -- the program
 callMain :: ErlangM m v mb => m v
-callMain  = 
+callMain  =
    lookupEnv "main" >>= lookupAdr >>= clos call
 
 -- | Evaluate an Erlang module
@@ -43,9 +43,9 @@ eval (Module decls) = do
 -- | Try to evaluate a list of clauses
 evalClauses :: ErlangM m v mb => [Clause] -> m v
 evalClauses (c:cs) = evalClause c `catch` handle
-   where handle e 
-          | isMatchError e = evalClauses cs
-          | otherwise = escape e
+   where handle e
+          | isMatchError e = evalClauses cs
+          | otherwise = escape e
 evalClauses [] = escape MatchError
 
 

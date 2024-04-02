@@ -96,6 +96,7 @@ library:
   - Control.Monad.State.IntPool
   - Control.Fixpoint.WorkList
   - Control.Fixpoint.EffectDriven
+  - Data.Print
 
 executables:
   maf-exe:
