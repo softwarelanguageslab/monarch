@@ -31,7 +31,6 @@ import qualified Control.Fixpoint.WorkList as WL
 import qualified Control.Monad.State.SVar as SVar
 import qualified Data.Map as Map
 import Control.Monad ((>=>))
-import Data.Type.Equality
 
 -----------------------------------------
 -- Shorthands
@@ -54,17 +53,17 @@ type SSto ctx v = DSto' SVar ctx v
 
 data EnvAdr ctx = EnvAdr Ide ctx 
                 | PrmAdr String deriving (Eq, Ord, Show)
-data RetAdr v ctx = RetAdr (Component (EnvAdr ctx) v ctx) 
+newtype RetAdr v ctx = RetAdr (Component (EnvAdr ctx) v ctx) 
                   deriving (Eq, Ord, Show)
 data PaiAdr ctx = PaiAdr Exp ctx deriving (Eq, Ord, Show)
 data StrAdr ctx = StrAdr Exp ctx deriving (Eq, Ord, Show)
 data VecAdr ctx = VecAdr Exp ctx deriving (Eq, Ord, Show)
 
-instance (Eq ctx, Ord ctx, Show ctx) => Address (EnvAdr ctx)
-instance (Eq ctx, Ord ctx, Show ctx) => Address (RetAdr v ctx)
-instance (Eq ctx, Ord ctx, Show ctx) => Address (PaiAdr ctx)
-instance (Eq ctx, Ord ctx, Show ctx) => Address (StrAdr ctx)
-instance (Eq ctx, Ord ctx, Show ctx) => Address (VecAdr ctx)
+instance (Ord ctx, Show ctx) => Address (EnvAdr ctx)
+instance (Ord ctx, Show ctx) => Address (RetAdr v ctx)
+instance (Ord ctx, Show ctx) => Address (PaiAdr ctx)
+instance (Ord ctx, Show ctx) => Address (StrAdr ctx)
+instance (Ord ctx, Show ctx) => Address (VecAdr ctx)
 
 -----------------------------------------
 -- Store & Environment
@@ -96,7 +95,7 @@ data Component var v ctx = Call Exp (Env var) ctx
                          deriving (Eq, Ord, Show)
 
 instance (Show ctx) => PrintShort (Component var v ctx) where 
-   printShort (Main exp) = "Main"
+   printShort (Main _) = "Main"
    printShort (Call exp _ ctx) = printf "Call(%s, %s)" (show exp) (show ctx)
    
 
@@ -193,12 +192,12 @@ initialState :: forall m v var ctx . (SchemeAnalysisConstraints var v ctx, SVar.
 initialState = do
    let sto = Map.toList (initialSto @v @_ @var analysisEnv)
    vars <- mapM (\(k,v) -> (k,) <$> SVar.new v) sto
-   return $ (fromValues (Map.fromList vars), Map.empty)
+   return (fromValues (Map.fromList vars), Map.empty)
 
 -- | Evaluates the given expression in the appropriate monad and writes its result to the store
 -- on the return address
 
-evalRet :: forall v ctx m . (EvalM m v Exp, StoreM m (RetAdr v ctx) v, StoreM m (EnvAdr ctx) v) => Component (EnvAdr ctx) v ctx -> Exp -> m ()
+evalRet :: forall v ctx m . (EvalM m v Exp, StoreM m (RetAdr v ctx) v) => Component (EnvAdr ctx) v ctx -> Exp -> m ()
 evalRet cmp = eval >=> writeAdr (RetAdr cmp)
 
 -- | Analyses the given program into an analysis
@@ -218,10 +217,10 @@ analyzeProgram program initialWl initialCtx = (store', retStore')
                                      & runMayEscape @(Set DomainError)
                                      & runCallT @v @ctx
                                      & runEnv env
-                                     & runAlloc @PaAdr (allocPai @ctx)
-                                     & runAlloc @VeAdr (allocVec @ctx)
-                                     & runAlloc @StAdr (allocStr @ctx)
-                                     & runAlloc @VrAdr (allocVar @ctx)
+                                     & runAlloc (allocPai @ctx)
+                                     & runAlloc (allocVec @ctx)
+                                     & runAlloc (allocStr @ctx)
+                                     & runAlloc (allocVar @ctx)
                                      & runCtx  ctx
                                      & runJoinT
                                      & runSchemeStoreT sto

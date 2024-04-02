@@ -12,6 +12,7 @@ import Analysis.Actors.Monad
 import qualified Analysis.Actors.Semantics as Actors
 import Analysis.Monad
 import Analysis.Scheme.Store
+import Analysis.Scheme hiding (Component(..), Env, CallT, EvalT(..), State, runEvalT, RetAdr)
 import qualified Control.Fixpoint.EffectDriven as EF
 import Control.Monad (void, foldM)
 import Control.Monad.DomainError
@@ -33,20 +34,6 @@ import Control.Monad.Trans.Class
 import Domain (Address)
 
 ------------------------------------------------------------
--- Addresses
-------------------------------------------------------------
-
-data Adr
-  = VarAdr  Ide
-  | HeapAdr Exp
-  | RetAdr  Component
-  | PrmAdr  String
-  deriving (Ord, Eq, Show)
-
-
-instance Address Adr
-
-------------------------------------------------------------
 -- Domain
 ------------------------------------------------------------
 
@@ -58,20 +45,22 @@ type MB = Set Msg
 type Msg = SimpleMessage V
 
 ------------------------------------------------------------
+-- Address
+------------------------------------------------------------
+
+newtype RetAdr = RetAdr Component deriving (Ord, Eq, Show)
+instance Address RetAdr
+
+------------------------------------------------------------
 -- Shorthands
 ------------------------------------------------------------
 
-type V = CP.CPActorValue Adr Adr Ctx
+type V = CP.CPActorValue (EnvAdr Ctx) (PaiAdr Ctx) (VecAdr Ctx) (StrAdr Ctx) Ctx
 type Pid = CP.Pid Ctx
 
-type Env = Map String Adr
+type Env = Map String (EnvAdr Ctx)
 
 type Ctx = ()
-
--- | Value store
-type Sto v = Map Adr (SVar.SVar v)
--- | Unified Scheme store
-type SSto = SchemeStore' SVar V Adr Adr Adr Adr
 
 ------------------------------------------------------------
 -- Semantics
@@ -103,7 +92,7 @@ runEvalT (EvalT m) = m
 -- ModX
 ------------------------------------------------------------
 
-type State = (SSto, Map Pid (SVar.SVar (Set Msg)))
+type State = (SSto Ctx V, Map RetAdr (SVar.SVar V), Map Pid (SVar.SVar (Set Msg)))
 
 -- Function calls
 
@@ -123,8 +112,8 @@ instance {-# OVERLAPPING #-}
   ( EF.EffectM m Component,
     CtxM m Ctx,
     ActorLocalM m Pid Msg MB,
-    StoreM m Adr V,
-    EnvM m Adr Env
+    StoreM m RetAdr V,
+    EnvM m (EnvAdr Ctx) Env
   ) => CallM (CallT m) Env V where
 
   call (Lam _ bdy _, _) = do
@@ -140,7 +129,7 @@ runCallT' (CallT m) = m
 
 -- Actor spawns
 
-instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m Adr Env, EF.EffectM m Component) => ActorBehaviorM (EvalT m) V where
+instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m (EnvAdr Ctx) Env, EF.EffectM m Component) => ActorBehaviorM (EvalT m) V where
   spawn e = do
     env' <- getEnv
     upperM (EF.spawn (Actor (CP.Pid e ()) e env'))
@@ -151,27 +140,31 @@ instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m Adr Env, EF.
 -- Analysis
 ------------------------------------------------------------
 
-analyze :: Exp -> SchemeStore V Adr Adr Adr Adr
-analyze e = let ((sto, _), state) = (EF.setup initialState >>= EF.iterate intra)
+analyze :: Exp -> (DSto Ctx V, Map RetAdr V)
+analyze e = let ((sto, retSto, _), state) = (EF.setup initialState >>= EF.iterate intra)
                     & EF.runEffectT [Main e]
                     & runIdentity
-            in unifyStore sto state
+            in (unifyStore sto state, SVar.unify retSto state)
   where runIntra :: (EF.EffectM m Component, SVar.MonadStateVar m) => Component -> Pid -> Exp -> Env -> State -> m State
-        runIntra cmp pid exp' env (sto, mailboxes) = do
+        runIntra cmp pid exp' env (sto, retSto, mailboxes) = do
              (m, mailboxes') <- mailbox pid mailboxes
              r <-   (Analysis.Monad.eval exp' >>= writeAdr (RetAdr cmp))
                     & runEvalT
                     & runMayEscape @(Set DomainError)
                     & runCallT'
                     & runEnv env
-                    & runSchemeAllocT (const . VarAdr) (const . HeapAdr)
+                    & runAlloc @_ @Ctx PaiAdr
+                    & runAlloc @_ @Ctx VecAdr
+                    & runAlloc @_ @Ctx StrAdr
+                    & runAlloc @_ @Ctx EnvAdr
                     & runActorT m pid
                     & runCtx ()
                     & runJoinT
                     & runSchemeStoreT sto
+                    & runStoreT' retSto
                     & runActorSystemT mailboxes'
-             let ((_, sto'), mailboxes'') = r
-             return (sto', mailboxes'')
+             let (((_, sto'), retSto'), mailboxes'') = r
+             return (sto', retSto', mailboxes'')
         mailbox pid mailboxes = do
             var <- maybe (SVar.depend Set.empty) pure (Map.lookup pid mailboxes)
             mb  <- SVar.read var
@@ -180,5 +173,5 @@ analyze e = let ((sto, _), state) = (EF.setup initialState >>= EF.iterate intra)
         intra cmp@(Actor pid expr env) = runIntra cmp pid expr env
         initialState = do
             values <- foldM (\m (adr, v) -> SVar.new v <&> flip (Map.insert adr) m) Map.empty (Map.toList (initialSto @V analysisEnv))
-            return (fromValues @SVar @V values, Map.empty)
+            return (fromValues @SVar @V values, Map.empty, Map.empty)
         analysisEnv  = initialEnv PrmAdr

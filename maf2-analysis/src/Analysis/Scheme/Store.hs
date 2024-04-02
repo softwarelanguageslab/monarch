@@ -95,10 +95,10 @@ runSchemeStoreT sto m = do
 -- needs four functions that correspond to the allocatio
 runSchemeAllocT var heap m =   
                m 
-             & runAlloc @VrAdr var 
-             & runAlloc @PaAdr heap
-             & runAlloc @VeAdr heap
-             & runAlloc @StAdr heap
+             & runAlloc var 
+             & runAlloc heap
+             & runAlloc heap
+             & runAlloc heap
 
 -- | Replace the SVar's in the SchemeStore by their actual value
 -- using the given SVar state.

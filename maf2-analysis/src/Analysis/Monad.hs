@@ -248,13 +248,13 @@ runStoreT' initial = flip runStateT initial . getStoreT'
 type Allocator from ctx to = (from -> ctx -> to)
 
 -- Allocator that turns a function into an allocator of the suiteable type
-newtype AllocT from ctx t to m a = AllocT { getAllocReader :: ReaderT (Allocator from ctx to) m a } deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadLayer, MonadTrans)
+newtype AllocT from ctx to m a = AllocT { getAllocReader :: ReaderT (Allocator from ctx to) m a } deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadLayer, MonadTrans)
 
-instance (MonadJoin m) => MonadJoin (AllocT from ctx t to m) where
+instance (MonadJoin m) => MonadJoin (AllocT from ctx to m) where
    mjoin (AllocT ma) = AllocT . mjoin ma . getAllocReader
    mzero = AllocT mzero
 
-instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx t to m) from to where
+instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
    alloc from = do
       ctx <- AllocT $ lift getCtx
       f   <- ask
@@ -264,7 +264,7 @@ instance (Monad (l m), AllocM m from to, MonadLayer l) => AllocM (l m) from to w
    alloc = upperM . alloc @m @from @to
 
 
-runAlloc :: forall t from ctx to m a . Allocator from ctx to -> AllocT from ctx t to m a ->  m a
+runAlloc :: forall from ctx to m a . Allocator from ctx to -> AllocT from ctx to m a ->  m a
 runAlloc allocator (AllocT m) = runReaderT m allocator
 
 

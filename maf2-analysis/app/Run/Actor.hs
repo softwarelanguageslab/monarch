@@ -7,6 +7,7 @@ import Text.Printf
 import Data.List (intercalate)
 import Data.Map (Map)
 import Analysis.Actors
+import Analysis.Scheme
 import Analysis.Scheme.Store
 import qualified Data.Map as Map
 import Syntax.Scheme
@@ -14,7 +15,7 @@ import Data.Maybe
 
 newtype Options = Options String deriving Show
 
-printSto :: Map Adr V -> String
+printSto :: Map (EnvAdr Ctx) V -> String
 printSto m =
    intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs
    where adrs   = Map.toList $ Map.filterWithKey (\case { PrmAdr _ -> const False ; _ -> const True }) m
@@ -31,5 +32,5 @@ main (Options filename) = do
      contents <- readFile filename
      let program = fromJust $ parseString contents
      print program
-     putStrLn $ printSto (values (analyze program))
+     putStrLn $ printSto (values (fst (analyze program)))
 
