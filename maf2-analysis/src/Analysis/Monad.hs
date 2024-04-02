@@ -47,12 +47,9 @@ import Syntax.Scheme.AST
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain hiding (Exp)
-import Lattice
+import Lattice hiding (insert)
 import qualified Analysis.Store as Store
 import Control.Monad.Layer
-import Control.Monad.Trans.Maybe
-import Control.Monad.Writer hiding (mzero)
-import GHC.TypeError
 import Data.Functor.Identity
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -98,21 +95,27 @@ lookups look f = Set.fold (mjoin . deref') Control.Monad.Join.mzero
 
 -- 
 
-class (Monad m) => StoreM m adr v | m adr -> v where
+class (Monad m, Joinable v) => StoreM m a v | m a -> v where
    -- | Write to a newly allocated address
-   writeAdr  :: adr -> v -> m ()
+   writeAdr  :: a -> v -> m ()
    -- | Update an existing address
-   updateAdr :: adr -> v -> m ()
+   updateAdr :: a -> v -> m ()
+   updateAdr adr v = updateWith (const v) (`Lattice.join` v) adr
+   -- | Update an existing address using either a strong or weak update function
+   updateWith :: {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> m ()
+   updateWith fs _ adr = lookupAdr adr >>= updateAdr adr . fs
    -- | Lookup the value at the given address, returns bottom if the address does not exist
-   lookupAdr :: adr -> m v
+   lookupAdr :: a -> m v
 
-deref :: forall m adr v a t . (StoreM m adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
+   {-# MINIMAL lookupAdr, writeAdr, (updateAdr | updateWith) #-}
+
+deref :: (StoreM m adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
 deref = lookups lookupAdr
 
 -- | Store the given value in the store using the an address
 -- allocator on the monadic stack.
-store :: forall m from t adr v . (AllocM m from adr, StoreM m adr v) => from -> v -> m adr
-store from v = alloc @_ @_ @adr from >>= (\adr -> writeAdr adr v >> pure adr)
+store :: (AllocM m from adr, StoreM m adr v) => from -> v -> m adr
+store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 
 --
 
@@ -131,8 +134,8 @@ class SpanM m where
    usingSpan :: (Span -> a) -> m a
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, SpanM m) => SpanM (t m) where 
-   withSpan s m = lowerM (withSpan s) m
-   usingSpan    = upperM   . usingSpan
+   withSpan s = lowerM (withSpan s)
+   usingSpan = upperM   . usingSpan
 
 -- | Assert that certain conditions hold on the given value
 -- and give an assertion error if they do not.
@@ -207,12 +210,14 @@ instance (MonadJoin m, Ord adr, Eq v, Joinable v) => MonadJoin (StoreT adr v m) 
 instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT adr v m) adr v where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
+   updateWith fs fw adr = modify (Store.updateStoWith fs fw adr)
    lookupAdr = gets  . Store.lookupSto
 
 instance (Monad (t m), StoreM m adr v, MonadLayer t) => StoreM (t m) adr v where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
-   lookupAdr  =  upperM .  lookupAdr
+   lookupAdr  =  upperM . lookupAdr
+   updateWith fs fw = upperM . updateWith fs fw 
 
 runStoreT :: forall adr v m a . Map adr v -> StoreT adr v m a -> m (a, Map adr v)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
@@ -255,10 +260,10 @@ instance (MonadJoin m) => MonadJoin (AllocT from ctx to m) where
    mzero = AllocT mzero
 
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
-   alloc from = do
+   alloc loc = do
       ctx <- AllocT $ lift getCtx
       f   <- ask
-      return $ f from ctx
+      return $ f loc ctx
 
 instance (Monad (l m), AllocM m from to, MonadLayer l) => AllocM (l m) from to where
    alloc = upperM . alloc @m @from @to

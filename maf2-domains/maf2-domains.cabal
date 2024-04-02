@@ -89,6 +89,7 @@ library
       Domain.Python.DataFrameDomain.DataFrameSet
       Domain.Python.Objects.Class
       Domain.Python.Objects.PyObjHMap
+      Domain.Python.Syntax
       Domain.Scheme.Actors.Modular
       Domain.Scheme.CPDomain
       Lattice.Equal
