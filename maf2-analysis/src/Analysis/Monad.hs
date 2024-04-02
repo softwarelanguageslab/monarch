@@ -222,7 +222,7 @@ instance (Monad (t m), StoreM m adr v, MonadLayer t) => StoreM (t m) adr v where
    lookupAdr  =  upperM . lookupAdr
    updateWith fs fw = upperM . updateWith fs fw 
 
-runStoreT :: forall t adr v m a . Map adr v -> StoreT adr v m a -> m (a, Map adr v)
+runStoreT :: forall adr v m a . Map adr v -> StoreT adr v m a -> m (a, Map adr v)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
 
 ---

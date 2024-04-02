@@ -18,9 +18,9 @@ import Control.Monad.Trans.Class
 import Control.Monad.Layer
 import qualified Data.Map as Map
 import Analysis.Scheme.Store
+import Analysis.Scheme (EnvAdr (..), PaiAdr (..), VecAdr (VecAdr), StrAdr (..))
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Domain.Contract.Store
 import Analysis.Contracts.Monad
 import Control.Monad.Join
 import Analysis.Actors.Mailbox (SimpleMessage)
@@ -30,7 +30,7 @@ import Analysis.Actors.Monad
 -- Environment
 ------------------------------------------------------------
 
-type Env = Map String Addr
+type Env = Map String (EnvAdr K)
 
 ------------------------------------------------------------
 -- Domain
@@ -43,15 +43,15 @@ type M = '[
        BoolConf ::-> CP Bool,
        EnvConf ::-> Env,
        ExpConf ::-> Exp,
-       StrConf ::-> Addr,
-       PaiConf ::-> Addr,
-       VecConf ::-> Addr,
-       VarConf ::-> Addr,
-       PidConf ::-> CP.Pid (),
-       BeCConf ::-> UnorderedBehaviorContract Addr,
-       MoαConf ::-> Addr,
-       FlaConf ::-> Addr,
-       PMeConf ::-> Addr]
+       StrConf ::-> StrAdr K,
+       PaiConf ::-> PaiAdr K,
+       VecConf ::-> VecAdr K,
+       VarConf ::-> EnvAdr K,
+       PidConf ::-> CP.Pid K,
+       BeCConf ::-> UnorderedBehaviorContract MsCAdr,
+       MoαConf ::-> MoαAdr,
+       FlaConf ::-> FlaAdr,
+       PMeConf ::-> MsCAdr]
 
 type V = SchemeVal M
 
@@ -88,16 +88,23 @@ instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (EvalT m) wh
    catch (EvalT (IdentityT m)) hdl = EvalT $ IdentityT $ catch @_ m (runIdentityT . getEvalT . hdl)
 
 ------------------------------------------------------------
+-- Addresses
+------------------------------------------------------------
+
+data MsCAdr = MsCAdr Exp () deriving (Eq, Ord, Show)
+data MoαAdr = MoαAdr Exp () deriving (Eq, Ord, Show)
+data FlaAdr = FlaAdr Exp () deriving (Eq, Ord, Show)
+
+instance Address MsCAdr
+instance Address MoαAdr
+instance Address FlaAdr
+
+------------------------------------------------------------
 -- Store
 ------------------------------------------------------------
 
-data Addr = VarAdr Ide ()
-            | PtrAdr Exp ()
-            deriving (Eq, Ord, Show)
-
-instance Address Addr
-
-type Sto = Map Addr V
+type K = ()
+type Sto = Map (EnvAdr K) V
 
 runAnalysis :: Exp -> (MayEscape (Set Error) V, Sto)
 runAnalysis exp = let ((((((((v, _), _), _), _), _), _), sto), _) =  Sem.eval @V exp
@@ -105,18 +112,21 @@ runAnalysis exp = let ((((((((v, _), _), _), _), _), _), sto), _) =  Sem.eval @V
                          & runMayEscape @(Set Error)
                          & runCallBottomT @V
                          & runEnv Map.empty
-                         & runStoreT @PaAdr @Addr @_ Map.empty
-                         & runStoreT @VeAdr @Addr @_ Map.empty
-                         & runStoreT @StAdr @Addr @_ Map.empty
-                         & runStoreT @ConAdr @Addr Map.empty
-                         & runStoreT @FlaAdr @Addr Map.empty
-                         & runStoreT @MoαAdr @Addr Map.empty
-                         & runStoreT @VrAdr @Addr @V Map.empty
-                         & runSchemeAllocT VarAdr PtrAdr
+                         & runStoreT @(PaiAdr K) Map.empty
+                         & runStoreT @(VecAdr K) Map.empty
+                         & runStoreT @(StrAdr K) Map.empty
+                         & runStoreT @MsCAdr Map.empty
+                         & runStoreT @FlaAdr Map.empty
+                         & runStoreT @MoαAdr Map.empty
+                         & runStoreT @(EnvAdr K) @V Map.empty
+                         & runAlloc @_ @K PaiAdr
+                         & runAlloc @_ @K VecAdr
+                         & runAlloc @_ @K StrAdr
+                         & runAlloc @_ @K EnvAdr
+                         & runAlloc @_ @K MsCAdr
+                         & runAlloc @_ @K MoαAdr
+                         & runAlloc @_ @K FlaAdr
                          & runActorT @MB Set.empty EntryPid
-                         & runAlloc @ConAdr PtrAdr
-                         & runAlloc @FlaAdr PtrAdr
-                         & runAlloc @MoαAdr PtrAdr
                          & runCtx ()
                          & runNoSpawnT
                          & runNoSendT

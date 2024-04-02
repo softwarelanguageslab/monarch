@@ -90,6 +90,13 @@ class SchemeAlloc ctx var padr vadr sadr | ctx -> var padr vadr sadr where
   allocVar :: Ide -> ctx -> var
   allocCtx :: Exp -> ctx -> ctx
 
+instance {-# OVERLAPPABLE #-} SchemeAlloc ctx (EnvAdr ctx) (PaiAdr ctx) (VecAdr ctx) (StrAdr ctx) where
+   allocPai = PaiAdr
+   allocVec = VecAdr
+   allocStr = StrAdr
+   allocVar = EnvAdr
+   allocCtx = undefined
+
 data Component var v ctx = Call Exp (Env var) ctx
                          | Main Exp
                          deriving (Eq, Ord, Show)

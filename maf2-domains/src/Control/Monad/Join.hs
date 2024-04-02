@@ -3,7 +3,10 @@
 
 module Control.Monad.Join (MonadJoin(..), cond, conds, MonadJoinAlternative(..), mjoinMap, mjoins, msplit, condCP) where
 
-import Lattice
+import Lattice.Class
+import Lattice.ProductLattice
+import Lattice.MaybeLattice
+import Lattice.ConstantPropagationLattice
 import Domain.Core.BoolDomain
 
 import Control.Monad.Reader hiding (mzero, join)

@@ -16,6 +16,7 @@ import Data.Map (Map)
 import Data.List
 import Text.Printf
 import qualified Analysis.Contracts as Contracts
+import Analysis.Scheme (EnvAdr(..))
 
 exampleFormula :: Formula
 exampleFormula = Conjunction
@@ -33,7 +34,7 @@ runMain = do
 
 
 
-printSto :: Map Contracts.Addr Contracts.V -> String
+printSto :: Map (EnvAdr ()) Contracts.V -> String
 printSto m =
    intercalate "\n" (map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs) ++ "\n----\n"
    where adrs   = Map.toList m

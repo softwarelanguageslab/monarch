@@ -1,9 +1,9 @@
 module Domain.Core.NumberDomain.Class (NumberDomain(..), IntDomain(..), RealDomain(..)) where
 
-import Lattice
+import Lattice.Class
 import Domain.Class 
 import Control.Monad.AbstractM
-import qualified Domain.Core.BoolDomain as Bool
+import qualified Domain.Core.BoolDomain.Class as Bool
 
 import Data.Kind 
 

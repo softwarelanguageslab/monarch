@@ -174,8 +174,8 @@ instance (Address ptr,
    isUnsp    = const False
    isPrim    = const False
 
-instance (ActorDomain v, SchemeValue (PairedSymbolic v ptr var)) => ActorDomain (PairedSymbolic v ptr var) where
-   type ARef (PairedSymbolic v ptr var) = (ARef v)
+instance (ActorDomain v, SchemeValue (PairedSymbolic v pai vec str var)) => ActorDomain (PairedSymbolic v pai vec str var) where
+   type ARef (PairedSymbolic v pai vec str var) = (ARef v)
    -- TODO: figure out what symbolic representation to give to actor references
    aref ref' = SchemePairedValue (aref ref', bottom)
    arefs f   = arefs f . leftValue 
@@ -190,7 +190,7 @@ instance (ActorDomain v, SchemeValue (PairedSymbolic v ptr var)) => ActorDomain 
 -- Symbolic value
 ------------------------------------------------------------
 
-instance (SchemeValue (PairedSymbolic v ptr var)) => SymbolicValue (PairedSymbolic v ptr var) where
+instance (SchemeValue (PairedSymbolic v pai vec str var)) => SymbolicValue (PairedSymbolic v pai vec str var) where
    ap f ags res =
       SchemePairedValue (leftValue res, SymbolicVal $ Application (proposition $ rightValue f) (map (proposition . rightValue) ags))
    assertTrue (SchemePairedValue (l, SymbolicVal r)) =
@@ -205,4 +205,4 @@ instance (SchemeValue (PairedSymbolic v ptr var)) => SymbolicValue (PairedSymbol
 -- Pairing with other Scheme value
 ------------------------------------------------------------
 
-type PairedSymbolic v ptr var = SchemePairedValue v (SymbolicVal var ptr ptr ptr)
+type PairedSymbolic v pai vec str var = SchemePairedValue v (SymbolicVal var str vec pai)

@@ -2,7 +2,8 @@
 
 module Domain.Core.BoolDomain.ConstantPropagation (bool) where 
 
-import Lattice 
+import Lattice.Class
+import Lattice.ConstantPropagationLattice
 import Domain.Class 
 import Domain.Core.BoolDomain.Class 
 

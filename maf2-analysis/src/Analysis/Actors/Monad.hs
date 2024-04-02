@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT, receive, runNoSpawnT, NoSpawnT, runNoSendT) where
+module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT, receive, runNoSpawnT, NoSpawnT, runNoSendT, sendMessage) where
 
 import Syntax.Scheme.AST
 -- use the monads from the base-semantics
@@ -59,6 +59,9 @@ class ActorGlobalM m ref msg | m -> ref msg where
 
 (!) :: ActorGlobalM m ref msg => ref -> msg -> m ()
 (!) = send
+
+sendMessage :: (Message msg v, ActorGlobalM m (ARef v) msg) => String -> [v] -> ARef v -> m ()
+sendMessage tag vs = flip send (message tag vs)
 
 infixl 0 !
 

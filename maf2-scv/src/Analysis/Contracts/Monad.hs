@@ -7,18 +7,18 @@ import Analysis.Monad (StoreM, AllocM)
 import Domain.Contract (ContractDomain(..), Flat(..), Moα)
 import Domain.Scheme.Actors.Contract (MessageContract)
 import Analysis.Contracts.Behavior (MAdr)
-import Domain.Contract.Store(ConAdr, FlaAdr, MoαAdr)
 import Control.Monad.DomainError
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Domain (ActorDomain)
+import Lattice (EqualLattice)
 
 data AssertionMessage = ExpectedMessageContract
    deriving (Eq, Ord, Show)
 
 -- | Error types that could occur while evaluating 
 -- the program with contracts
-data Error = BlameError String      -- ^ blame error, consisting of the party being blamed for the contract violation  
+data Error = BlameError (Set String) -- ^ blame error, consisting of the party being blamed for the contract violation  
            | AssertionError AssertionMessage 
            | DomainWrap DomainError  -- ^ errors originating from implementations of the domain
            deriving (Eq, Ord, Show)
@@ -30,17 +30,18 @@ instance Domain (Set Error) DomainError where
 
 type ContractM m v msg mb = 
    (  -- Specialised stores
-      StoreM m ConAdr (MAdr v) (MessageContract v),
-      StoreM m FlaAdr (FAdr v) (Flat v),
-      StoreM m MoαAdr (OAdr v) (Moα v),
+      StoreM m (MAdr v) (MessageContract v),
+      StoreM m (FAdr v) (Flat v),
+      StoreM m (OAdr v) (Moα v),
       -- Specialized allocations
-      AllocM m Exp ConAdr (MAdr v),
-      AllocM m Exp FlaAdr (FAdr v),
-      AllocM m Exp MoαAdr (OAdr v),
+      AllocM m Exp (MAdr v),
+      AllocM m Exp (FAdr v),
+      AllocM m Exp (OAdr v),
       -- Domains
       Domain (Esc m) Error,
       ContractDomain v, 
       ActorDomain v,
+      EqualLattice v,
       -- Semantics monads
       ActorEvalM m v msg mb,
       SchemeM m v)

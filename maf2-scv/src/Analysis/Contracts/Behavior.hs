@@ -46,7 +46,7 @@ class (Ord (MAdr c)) => BehaviorContract c v where
 
   -- | Returns all message contracts that (might) match
   -- the given tag.
-  matchingContracts :: (StoreM storeM t (MAdr c) (MessageContract v)) => v -> c -> storeM (Set (MessageContract v))
+  matchingContracts :: (StoreM storeM (MAdr c) (MessageContract v)) => v -> c -> storeM (Set (MessageContract v))
 
 -- | An abstraction of the behavior contract that does not take ordering
 -- into account. We do so by representing the behavior contract as a set
