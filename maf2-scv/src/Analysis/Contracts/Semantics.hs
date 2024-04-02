@@ -36,7 +36,7 @@ monFlat :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v ->
 monFlat e lbl contract value =
       cond (deref (const $ flip (Scheme.applyFun e) [value] . flatProc) (flats contract))
            (return value)
-           (escape $ BlameError @v (Set.map positive lbl))
+           (escape $ BlameError (Set.map positive lbl))
 
 -- | Monitors on actor references result in monitored
 -- actor references. These actor references keep track
@@ -56,7 +56,7 @@ mon e lbl contract value =
        -- [MonAct]
        (pure (isBehaviorContract @_ @v contract), monAct e lbl contract value)]
       {- else -}
-      (escape $ NotAContract contract)
+      (escape $ NotAContract)
 
 -- | Checks whether the given send is valid according to the contract.
 -- It applies `f` on the resulting actor references and passes the monitored payload 
@@ -99,7 +99,7 @@ monSend contract tag values =
 
 -- | TODO: use AssertM (assert)
 assert :: forall v m msg mb . (ContractM m v msg mb) => (v -> CP Bool) -> AssertionMessage -> v -> m v
-assert b e v = cond (pure (b v)) (return v) (escape (AssertionError @v e))
+assert b e v = cond (pure (b v)) (return v) (escape (AssertionError e))
 
 -- | This evaluation function extends 'Analysis.Symbolic.Semantics.eval' 
 -- with support for contracts on actors.

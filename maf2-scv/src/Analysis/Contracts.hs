@@ -3,7 +3,7 @@ module Analysis.Contracts where
 
 import qualified Control.Fixpoint.EffectDriven as EF
 import Prelude hiding (exp)
-import Syntax.Scheme (Exp)
+import Syntax.Scheme (Exp, spanOf)
 import Domain hiding (Exp, Env)
 import qualified Domain.Scheme.Actors.CP as CP
 import Data.Map (Map)
@@ -78,15 +78,17 @@ newtype EvalT m a = EvalT { getEvalT :: IdentityT m a }
                   deriving (Monad, Applicative, Functor, MonadTrans, MonadJoin, MonadLayer)
 
 
-instance (Esc m ~ Set (Error V), ContractM (EvalT m) V Msg MB) => EvalM (EvalT m) V Exp where
-   eval = Sem.eval
+instance (Esc m ~ Set Error, ContractM (EvalT m) V Msg MB) => EvalM (EvalT m) V Exp where
+   eval e = Sem.eval e `catch` (mjoins . map handle . Set.toList)
+      where handle err@(WithLoc _ _) = escape err
+            handle err = escape (WithLoc err $ spanOf e)
 
 runEvalT :: EvalT m a -> m a
 runEvalT (EvalT m) = runIdentityT m
 
 
-instance (Monad m, MonadEscape m, Esc m ~ Set (Error V)) => MonadEscape (EvalT m) where
-   type Esc (EvalT m) = Set (Error V)
+instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (EvalT m) where
+   type Esc (EvalT m) = Set Error
    escape = upperM . escape
    catch (EvalT (IdentityT m)) hdl = EvalT $ IdentityT $ catch @_ m (runIdentityT . getEvalT . hdl)
 
@@ -127,7 +129,7 @@ runSpawnT (SpawnT m) = runIdentityT m
 type K = ()
 type Sto = Map (EnvAdr K) V
 
-runAnalysis :: Exp -> (MayEscape (Set (Error V)) V, Sto)
+runAnalysis :: Exp -> (MayEscape (Set Error) V, Sto)
 runAnalysis exp = let ((((((((v, _), _), _), _), _), _), sto), _) =  Sem.eval @V exp
                          & runEvalT
                          & runMayEscape 

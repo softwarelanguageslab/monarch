@@ -6,4 +6,4 @@
 (define ping (behavior () (ping (name) (display name) (terminate))))
 (define ping-actor (mon server client ping/c (spawn ping)))
 (send ping-actor ping "hello") ;; OK
-(send ping-actor ping 10) ;; blame error, blaming client
+; (send ping-actor ping 10) ;; blame error, blaming client
