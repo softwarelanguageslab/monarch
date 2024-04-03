@@ -31,7 +31,7 @@ class (Monad m) => AllocM m from adr where
 type Allocator from ctx to = from -> ctx -> to
 
 -- Allocator that turns a function into an allocator of the suiteable type
-newtype AllocT from ctx to m a = AllocT { getAllocReader :: ReaderT (Allocator from ctx to) m a } 
+newtype AllocT from ctx to m a = AllocT (ReaderT (Allocator from ctx to) m a) 
     deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoin, MonadLayer, MonadTrans)
 
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
