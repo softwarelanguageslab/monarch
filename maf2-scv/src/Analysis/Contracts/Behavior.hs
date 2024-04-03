@@ -1,6 +1,10 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+-- TODO: this is more of a domain module, but
+-- due to the matchingContracts function
+-- (which requires a store to be executed)
+-- it is in the analysis. See if we can move this.
 module Analysis.Contracts.Behavior where
 
 import Domain (inject)

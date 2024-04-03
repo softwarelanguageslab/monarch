@@ -10,6 +10,8 @@ import Data.Map (Map)
 import Symbolic.AST
 import Domain.Symbolic.Class
 import Domain.Scheme.Actors.Class
+import Analysis.Contracts.Behavior
+import Domain.Contract (ContractDomain(..))
 
 --------------------------------------------------
 -- Declaration
@@ -203,6 +205,32 @@ instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v pa
       SchemePairedValue (isActorRef (leftValue v), SymbolicVal $ Predicate "actor?/v" [proposition $ rightValue v])
 
 
+------------------------------------------------------------
+-- Contract domain
+------------------------------------------------------------
+
+instance (BehaviorContract v v, SchemeValue v) => BehaviorContract (PairedSymbolic v pai vec str var) (PairedSymbolic v pai vec str var) where 
+   type MAdr (PairedSymbolic v pai vec str var) = MAdr v
+
+instance (SchemeValue (PairedSymbolic v pai vec str var), SchemeValue v, ContractDomain v) => ContractDomain (PairedSymbolic v pai vec str var) where
+   type FAdr (PairedSymbolic v pai vec str var) = FAdr v
+   type OAdr (PairedSymbolic v pai vec str var) = OAdr v
+
+   -- TODO: do we need to represent the message contract 
+   -- symbolically? Probably not...
+   messageContract adr = 
+      SchemePairedValue (messageContract adr, bottom) 
+   messageContracts    = messageContracts . leftValue
+   isMessageContract   = isMessageContract . leftValue
+
+   -- 
+   isFlat  = isFlat . leftValue
+   flats   = flats  . leftValue
+   flat a  = 
+      SchemePairedValue (flat a, bottom)
+
+
+      
 
 ------------------------------------------------------------
 -- Symbolic value
