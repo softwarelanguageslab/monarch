@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Analysis.Contracts.Semantics(eval, ContractM) where
 
-import Debug.Trace
 import Prelude hiding (exp)
 import Lattice hiding (Bottom)
 import Syntax.Scheme
@@ -18,25 +17,33 @@ import Analysis.Contracts.Behavior (behaviorContract, BehaviorContract (..))
 import qualified Data.Set as Set
 import Control.Monad.Join
 import Control.Monad.DomainError (escape, DomainError (WrongType))
-import Domain (ActorDomain(..), Domain (..))
+import Domain ( ActorDomain(..), SchemeDomain(symbol) )
 import Analysis.Actors.Mailbox (Message(message))
 import Analysis.Actors.Monad ((!), sendMessage)
 import qualified Domain.Core.SeqDomain.BoundedList as BoundedList
 import Domain.Scheme (nil)
 import Data.Set (Set)
-import Domain (SchemeDomain(symbol))
+import Data.Bifunctor
 
 -- | Flip the negative and positive parties of the blame 
 -- label
 flipLabel :: Labels -> Labels
 flipLabel (Labels pos neg) = Labels neg pos
 
--- | Monitors a flat contract against a value
+-- | Monitors a flat contract against a value, or a recipient contract
+-- against an actor reference
 monFlat :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 monFlat e lbl contract value =
       cond (deref (const $ flip (Scheme.applyFun e) [value] . flatProc) (flats contract))
            (return value)
            (escape $ BlameError (Set.map positive lbl))
+
+-- | Same as `monFlat` but first checks whether the contrat is indeed a flat contract
+ensureMonFlat :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
+ensureMonFlat exp lbls contract value = 
+      cond @(CP Bool) (pure $ isFlat contract) 
+           (monFlat exp lbls contract value)
+           (escape NotAContract)
 
 -- | Monitors on actor references result in monitored
 -- actor references. These actor references keep track
@@ -56,7 +63,7 @@ mon e lbl contract value =
        -- [MonAct]
        (pure (isBehaviorContract @_ @v contract), monAct e lbl contract value)]
       {- else -}
-      (escape $ NotAContract)
+      (escape NotAContract)
 
 -- | Checks whether the given send is valid according to the contract.
 -- It applies `f` on the resulting actor references and passes the monitored payload 
@@ -65,24 +72,29 @@ checkSend :: forall v a m msg mb . (JoinLattice a, ContractM m v msg mb) =>  (St
 checkSend f tag payload (Moα lbl contract value) =
       conds @(CP Bool)
          [ (pure $ isActorRef value, do
-               { payload' <- check ; mjoins $ map (f tag payload') (Set.toList (arefs' value)) }),
+               { (rcptc, payload') <- check ; mjoins $ map (checkRcpt rcptc tag payload') (Set.toList (arefs' value)) }),
            (pure $ isαmon value, do
-               { payload' <- check ; deref (const $ checkSend f tag payload') (αmons value) }) ]
+               { (rcptc, payload') <- check ; deref (const $ checkSend (checkRcpt rcptc) tag payload') (αmons value) }) ]
          (escape WrongType)
-   where check :: m [v]
-         check = 
-            BoundedList.elements <$> cond @(CP Bool) (pure $ isBehaviorContract @_ @v contract)
+   where check :: m (v, [v])
+         check =
+             second BoundedList.elements <$> cond @(CP Bool) (pure $ isBehaviorContract @_ @v contract)
                (do
                   -- TODO: actually this is not quite sound, we also need 
                   -- to consider the case where we are not sure whether
                   -- a tag matches the tag of the message, and if so 
                   -- generate a blame error!
                   contracts <- matchingContracts (symbol tag) contract
-                  mjoinMap
-                     (\contract -> BoundedList.fromList <$> zipWithM (mon undefined (Set.map flipLabel lbl)) (BoundedList.elements (Contract.payload contract)) payload)
-                     contracts
+                  payload' <- mjoinMap checkPayload contracts
+                  return (joinMap Contract.rcpt contracts , payload')
                )
                (escape WrongType)
+         checkRcpt rcptc tag' payload' rcpt =
+            mjoinMap (f tag' payload') . Set.toList . arefs' =<< ensureMonFlat undefined (Set.map flipLabel lbl) rcptc (aref rcpt)
+         checkPayload contract' =
+            BoundedList.fromList <$> zipWithM (mon undefined (Set.map flipLabel lbl))
+                                              (BoundedList.elements (Contract.payload contract'))
+                                              payload
 checkSend _ _ _ Bottom = mzero
 
 

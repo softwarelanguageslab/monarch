@@ -132,7 +132,11 @@ allPrimitives = [
    fix1 "display" $ const (return Domain.nil),
    fix1 "displayln" $ const (return Domain.nil),
    -- TODO: format does not executed the formatting and returns a top from the string lattice
-   evar "format" (\e -> const (do { adr <- alloc @_ @_ e ; writeAdr adr topString ; return (sptr adr) }))
+   evar "format" (\e -> const (do { adr <- alloc @_ @_ e ; writeAdr adr topString ; return (sptr adr) })),
+   -- NOTE: these are actually not Scheme primitives but help to run the analyses without fixpoints
+   -- for some trivial programs
+   evar "constant-true" (const $ const $ return (inject True)),
+   evar "constant-false" (const $ const $ return (inject False))
    -- fix1 "error" todo
    ]
 
