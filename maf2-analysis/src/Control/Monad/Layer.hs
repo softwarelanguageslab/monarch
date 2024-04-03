@@ -1,15 +1,15 @@
 {-# LANGUAGE UndecidableInstances, FlexibleContexts, FlexibleInstances, RankNTypes, QuantifiedConstraints #-}
 module Control.Monad.Layer(MonadLayer(..)) where
 
-import Data.Kind
-import Control.Monad.State
-import Control.Monad.Reader
-import Control.Monad.Writer
+import Control.Monad.State  hiding (mzero)
+import Control.Monad.Reader hiding (mzero)
+import Control.Monad.Writer hiding (mzero)
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
 import Lattice.Class
-import Control.Monad.DomainError (MayEscapeT(..), MonadEscape(..), MayEscape(..))
+import Control.Monad.DomainError (MayEscapeT(..), MayEscape(..))
 import ListT
+import Control.Monad.Join
 
 -- | A Monad "Layer" is similar to a Monad transformer, but is also provides a function to remove one level from the monad transformer stack. 
 class (forall m . Monad m => Monad (t m), MonadTrans t) => MonadLayer t where
@@ -26,7 +26,7 @@ instance MonadLayer (StateT s) where
 
 -- | ReaderT instance
 instance MonadLayer (ReaderT s) where
-   lowerM f m = ReaderT  (f . runReaderT m)
+   lowerM f m = ReaderT (f . runReaderT m)
 
 -- WriterT instance
 instance (Monoid w) => MonadLayer (WriterT w) where

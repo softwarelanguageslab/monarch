@@ -27,7 +27,8 @@ import Control.Applicative
 -- state together using a JoinLattice, anything 
 -- below this on the stack will not be joined together and 
 -- is assumed to be global across all paths
-newtype JoinT m a = JoinT { _getJoinT :: IdentityT m a } deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor)
+newtype JoinT m a = JoinT { _getJoinT :: IdentityT m a } 
+    deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor)
 
 instance (Monad m) => MonadJoin (JoinT m) where
    mzero = return bottom

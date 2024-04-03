@@ -6,10 +6,8 @@ module Analysis.Monad.Identity (
 import Control.Monad.Join 
 import Control.Monad.Identity hiding (mzero)
 
-newtype IdentityDebug a b = IdentityDebug (Identity b) deriving (Applicative, Monad, Functor)
-instance MonadJoin (IdentityDebug a) where
-   mzero = IdentityDebug mzero
-   mjoin (IdentityDebug ma) (IdentityDebug mb) = IdentityDebug $ mjoin ma mb
+newtype IdentityDebug a b = IdentityDebug (Identity b) 
+    deriving (Applicative, Monad, MonadJoin, Functor)
 
 runIdentityDebug :: IdentityDebug a b -> b
 runIdentityDebug (IdentityDebug m) = runIdentity m
