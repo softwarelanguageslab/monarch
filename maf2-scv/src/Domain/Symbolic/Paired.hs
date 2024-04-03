@@ -177,8 +177,6 @@ instance (Address ptr,
    isUnsp    = const False
    isPrim    = const False
 
-
-
 ------------------------------------------------------------
 -- Actor domain
 ------------------------------------------------------------
@@ -228,9 +226,6 @@ instance (SchemeValue (PairedSymbolic v pai vec str var), SchemeValue v, Contrac
    flats   = flats  . leftValue
    flat a  = 
       SchemePairedValue (flat a, bottom)
-
-
-      
 
 ------------------------------------------------------------
 -- Symbolic value
