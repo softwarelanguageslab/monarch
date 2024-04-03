@@ -133,6 +133,7 @@ instance CharDomain (SymbolicVal ptr sptr vptr pptr) where
    charEqCI _ _              = return bottom
    charLtCI _ _              = return bottom
 
+
 ------------------------------------------------------------
 -- SchemeDomain instance
 ------------------------------------------------------------
@@ -174,15 +175,32 @@ instance (Address ptr,
    isUnsp    = const False
    isPrim    = const False
 
-instance (ActorDomain v, SchemeValue (PairedSymbolic v pai vec str var)) => ActorDomain (PairedSymbolic v pai vec str var) where
+
+
+------------------------------------------------------------
+-- Actor domain
+------------------------------------------------------------
+
+-- | Constraints that have to be satisfied for 
+class SymbolicARef a where 
+   -- | Compute the symbolic identity of the given value
+   identity :: a -> Proposition
+
+-- | An instance of the actor domain is defined for symbolic
+-- values is defined if the actor reference used in the underlying 
+-- Scheme domain supports representing its identity as a proposition
+instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v pai vec str var)) => ActorDomain (PairedSymbolic v pai vec str var) where
    type ARef (PairedSymbolic v pai vec str var) = (ARef v)
-   -- TODO: figure out what symbolic representation to give to actor references
-   aref ref' = SchemePairedValue (aref ref', bottom)
+   
+   aref ref' = SchemePairedValue (aref ref', SymbolicVal $ identity ref')
    arefs f   = arefs f . leftValue 
 
-   -- TODO: figure out what symbolic representation to give to an actor behavior
-   beh beh'  = SchemePairedValue (beh beh', bottom)
+   -- TODO: do we need to symbolically represent a behavior as well?
+   beh beh'   = SchemePairedValue (beh beh', bottom)
    withBehs f = withBehs f . leftValue
+
+   isActorRef v = 
+      SchemePairedValue (isActorRef (leftValue v), SymbolicVal $ Predicate "actor?/v" [proposition $ rightValue v])
 
 
 

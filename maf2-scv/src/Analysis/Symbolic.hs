@@ -12,7 +12,9 @@ import Analysis.Scheme.Store
 import Control.Monad.Layer
 import Domain.Symbolic.CPDomain
 import Domain.Scheme.Store
+import Domain.Symbolic.Paired
 import Domain.Contract.Store
+import Symbolic.AST (Proposition(Actor))
 import Control.Monad.Escape
 import Control.Monad.DomainError
 import Control.Monad.State.IntPool
@@ -62,6 +64,15 @@ instance (Monad m, MonadEscape m, Esc m ~ Set DomainError) => MonadEscape (Symbo
 
 runSymbolicEvalT :: SymbolicEvalT v m a -> m a
 runSymbolicEvalT (SymbolicEvalT m) = m
+
+------------------------------------------------------------
+-- Symbolic Pid representation
+------------------------------------------------------------
+
+instance SymbolicARef (Pid ctx) where  
+   identity EntryPid   = Actor Nothing
+   identity (Pid e _)  = Actor (Just $ spanOf e)
+
 
 ------------------------------------------------------------
 -- Domain instantation

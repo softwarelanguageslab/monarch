@@ -70,7 +70,7 @@ mon e lbl contract value =
 -- along.
 checkSend :: forall v a m msg mb . (JoinLattice a, ContractM m v msg mb) =>  (String -> [v] -> ARef v -> m a) -> String -> [v] -> Moα v -> m a
 checkSend f tag payload (Moα lbl contract value) =
-      conds @(CP Bool)
+      conds
          [ (pure $ isActorRef value, do
                { (rcptc, payload') <- check ; mjoins $ map (checkRcpt rcptc tag payload') (Set.toList (arefs' value)) }),
            (pure $ isαmon value, do
@@ -101,7 +101,7 @@ checkSend _ _ _ Bottom = mzero
 -- | Monitored message send (sender-side contracts)
 monSend :: forall m v msg mb . ContractM m v msg mb => v -> String -> [v] -> m v
 monSend contract tag values =
-   conds @(CP Bool)
+   conds 
       [-- Actor reference ==> regular send
        (pure $ isActorRef contract, mjoins $ map (! message tag values) (Set.toList (arefs' contract))),
        -- Monitored value 

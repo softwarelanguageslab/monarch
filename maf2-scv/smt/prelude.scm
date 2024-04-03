@@ -1,11 +1,19 @@
 (declare-datatypes ()
+                   ((Span (KnownSpan Int Int)
+                          (UnknownSpan))))
+
+(declare-datatypes ()
                    ((V (VInteger (unwrap-VInteger Int))
                        (VReal    (unwrap-VReal    Real))
                        (VNil)
-                       (VBool    (unwrap-bool    Bool))
-                       (VString  (unwrap-string  String))
+                       (VBool    (unwrap-bool     Bool))
+                       (VString  (unwrap-string String))
                        (VSymbol  (unwrap-symbol String))
+                       (VActor   (actor-identity Span)) ;; todo is this the right representation for the identity?
                        (VError))))
+
+(define-fun actor?/v ((a V)) V
+            (VBool (is-VActor a)))
 
 (define-fun boolean?/v ((b V)) V
             (VBool (is-VBool b)))

@@ -5,6 +5,7 @@ import Text.Printf
 import Symbolic.AST
 import Data.FileEmbed
 import Data.List
+import Syntax.Span (Span(..))
 import Solver
 
 --------------------------------------------------
@@ -32,6 +33,10 @@ translateAtomic (Predicate nam props) =
    printf "(%s %s)" nam (unwords $ map translateAtomic props)
 translateAtomic (Application f1 f2) =
    printf "(%s %s)" (translateAtomic f1) (unwords $ map translateAtomic f2)
+translateAtomic (Actor (Just span))  = 
+   printf "(KnownSpan %s %s)" (show (line span)) (show (column (span)))
+translateAtomic (Actor _) = 
+   printf "(UnknownSpan)"
 
 -- | Translate a formula to a string compatible
 -- with the SMTLib format.

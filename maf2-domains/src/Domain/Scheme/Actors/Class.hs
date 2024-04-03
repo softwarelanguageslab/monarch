@@ -6,6 +6,7 @@ import Control.Monad.AbstractM
 import Lattice.Class (JoinLattice)
 import Data.Set (Set)
 import Domain.Core.BoolDomain (BoolDomain)
+import Domain.Core.NumberDomain (Boo)
 
 class ActorRef a where 
    -- | The type of actor where the actor reference points to
@@ -22,7 +23,7 @@ class (SchemeDomain v) => ActorDomain v where
    arefs :: (AbstractM m, JoinLattice a) => (ARef v -> m a) -> v -> m  a
 
    -- | Check if the given actor value is an actor reference
-   isActorRef :: BoolDomain b => v -> b
+   isActorRef :: v -> Boo v
 
    -- | Extract the set of actor references from the abstract value 
    -- by returning a set of their abstract values

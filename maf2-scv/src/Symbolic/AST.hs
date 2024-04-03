@@ -3,6 +3,8 @@
 -- program under analysis.
 module Symbolic.AST(SolverResult(..), Formula(..), Proposition(..), Literal(..), SelectVariable(..), isSat, isUnsat, isUnknown) where
 
+import Syntax.Scheme (Span)
+
 -- | A literal as they appear in a source program
 data Literal   = Num  Integer
                | Rea  Double
@@ -21,6 +23,7 @@ data Literal   = Num  Integer
 -- quantified.
 data Proposition = Variable  String
                  | Literal   Literal
+                 | Actor     (Maybe Span)
                  | IsTrue    Proposition -- ^ assertion that the proposition's truth value is "true"
                  | IsFalse   Proposition -- ^ assertion that the proposition's trught value is "false
                  | Predicate   String [Proposition] -- ^ an atomic predicate
