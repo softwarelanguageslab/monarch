@@ -29,7 +29,8 @@ class CtxM m ctx | m -> ctx where
 ---
 
 
-newtype CtxT ctx m a = CtxT { getContextReader :: ReaderT ctx m a } deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor)
+newtype CtxT ctx m a = CtxT { getContextReader :: ReaderT ctx m a } 
+   deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor)
 instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask
    withCtx = local
