@@ -109,7 +109,7 @@ intBinop' f = intBinop @IntPrm @ReaPrm f f
 intBinop'' :: forall r pyM obj . (PyM pyM obj, SingI r)
           => (forall d . (NumberDomain d, Domain.Boo d ~ Abs obj BlnPrm) => d -> d -> pyM (Abs obj r)) -- another common case
           -> obj -> obj -> pyM obj
-intBinop'' f = intBinop @r @r f f 
+intBinop'' f = intBinop @r @r f f
 
 floatBinop :: forall r pyM obj . (PyM pyM obj, SingI r)
           => (Abs obj ReaPrm -> Abs obj ReaPrm -> pyM (Abs obj r))

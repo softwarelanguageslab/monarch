@@ -54,7 +54,6 @@ library
       Analysis.Monad.Context
       Analysis.Monad.Environment
       Analysis.Monad.Eval
-      Analysis.Monad.Identity
       Analysis.Monad.Join
       Analysis.Monad.Span
       Analysis.Monad.Store

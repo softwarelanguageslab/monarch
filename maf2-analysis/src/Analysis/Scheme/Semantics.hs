@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <&>" #-}

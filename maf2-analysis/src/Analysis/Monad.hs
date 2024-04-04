@@ -11,7 +11,6 @@ module Analysis.Monad(
    module Analysis.Monad.Context,
    module Analysis.Monad.Environment,
    module Analysis.Monad.Eval,
-   module Analysis.Monad.Identity,
    module Analysis.Monad.Join,
    module Analysis.Monad.Span,
    module Analysis.Monad.Store, 
@@ -23,7 +22,6 @@ import Analysis.Monad.Call
 import Analysis.Monad.Context
 import Analysis.Monad.Environment
 import Analysis.Monad.Eval
-import Analysis.Monad.Identity
 import Analysis.Monad.Join
 import Analysis.Monad.Span
 import Analysis.Monad.Store 
