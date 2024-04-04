@@ -2,7 +2,7 @@
 -- | Symbolic version of the Scheme domain
 module Domain.Symbolic.Paired where
 
-import Lattice (Joinable(..), JoinLattice(..))
+import Lattice (Joinable(..), JoinLattice(..), EqualLattice(..))
 import qualified Syntax.Scheme as Scheme (Exp)
 import Domain
 import Control.Monad.Join
@@ -241,6 +241,18 @@ instance (SchemeValue (PairedSymbolic v pai vec str var)) => SymbolicValue (Pair
    symbolic (SchemePairedValue (_, SymbolicVal r)) = r
    var idx vlu =
       SchemePairedValue (leftValue vlu, SymbolicVal $ Variable ("x" ++ show idx))
+
+------------------------------------------------------------
+-- Equality
+------------------------------------------------------------
+
+instance (EqualLattice v) => EqualLattice (PairedSymbolic v pai vec str var) where 
+   -- TODO: we might want to introduce a symbolic constraint here,
+   -- but we cannot do this currently since a generic 'b' is expected
+   -- that satisfies BoolDomain
+   eql a b = 
+      eql (leftValue a) (leftValue b)
+
 
 ------------------------------------------------------------
 -- Pairing with other Scheme value

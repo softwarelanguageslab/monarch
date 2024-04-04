@@ -9,8 +9,9 @@ import qualified Analysis.Symbolic.Semantics as Symbolic
 import qualified Analysis.Contracts.Semantics as Contracts
 import Analysis.Scheme hiding (Sto)
 import Analysis.Scheme.Store
+import Analysis.Contracts.Monad
 import Control.Monad.Layer
-import Domain.Symbolic.CPDomain
+import Domain.Contract.Symbolic
 import Domain.Scheme.Store
 import Domain.Symbolic.Paired
 import Domain.Contract.Store
@@ -51,14 +52,14 @@ instance MonadLayer (SymbolicEvalT v) where
    upperM = SymbolicEvalT
    lowerM f (SymbolicEvalT m) = SymbolicEvalT (f m)
 
-instance (ActorEvalM (SymbolicEvalT v m) v msg mb, SymbolicM (SymbolicEvalT v m) v) => EvalM (SymbolicEvalT v m) v Exp where
+instance (ContractM (SymbolicEvalT v m) v msg mb, SymbolicM (SymbolicEvalT v m) v) => EvalM (SymbolicEvalT v m) v Exp where
    eval = Symbolic.eval
 
 -- TODO: this is rather ugly right now but needed
 -- since we cannot derive MonadEscape yet if it 
 -- is not on top of the layers (see Control.Monad.Layer)
-instance (Monad m, MonadEscape m, Esc m ~ Set DomainError) => MonadEscape (SymbolicEvalT v m) where
-   type Esc (SymbolicEvalT v m) = Set DomainError
+instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (SymbolicEvalT v m) where
+   type Esc (SymbolicEvalT v m) = Set Error
    escape = upperM . escape
    catch (SymbolicEvalT m) hdl = SymbolicEvalT $ catch @_ m (getSymbolicEvalT . hdl)
 
@@ -78,7 +79,7 @@ instance SymbolicARef (Pid ctx) where
 -- Domain instantation
 ------------------------------------------------------------
 
-type Vlu = CPSymbolicValue (PaiAdr K) (VecAdr K) (StrAdr K) (EnvAdr K)
+type Vlu = V K
 type Sto = DSto K Vlu
 
 ------------------------------------------------------------
@@ -88,11 +89,8 @@ type Sto = DSto K Vlu
 -- | Alias for k-sensitivity context
 type K = [Exp]
 
--- | Alias for values
-type V = Vlu
-
 -- | Alias for messages
-type Msg = SimpleMessage V
+type Msg = SimpleMessage Vlu
 
 -- | Alias for the mailbox
 type MB = Set Msg
@@ -102,23 +100,31 @@ type MB = Set Msg
 ------------------------------------------------------------
 
 -- | Simple intra-analysis
-simpleAnalysis :: Exp -> IO [(MayEscape (Set DomainError) Vlu, Sto)]
+simpleAnalysis :: Exp -> IO [(MayEscape (Set Error) Vlu, Sto)]
 simpleAnalysis e = do
                  fmap result $ (setupSMT >> Symbolic.eval e)
                                          & runSymbolicEvalT
-                                         & runMayEscape @(Set DomainError)
+                                         & runMayEscape @(Set Error)
                                          & runFormulaT
-                                         & runCallBottomT @V
+                                         & runCallBottomT @Vlu
                                          & runStoreT (values  store)
                                          & runStoreT (strings store)
                                          & runStoreT (pairs   store)
                                          & runStoreT (vecs    store)
                                          & combineStores
+                                         -- actor & contract specific
+                                         & runStoreT @(MsCAdr K) Map.empty
+                                         & runStoreT @(FlaAdr K) Map.empty
+                                         & runStoreT @(MoαAdr K) Map.empty
                                          -- & runStoreT @ConAdr Map.empty
                                          & runAlloc @_ @K PaiAdr
                                          & runAlloc @_ @K VecAdr
                                          & runAlloc @_ @K StrAdr 
                                          & runAlloc @_ @K EnvAdr
+                                         -- contracts
+                                         & runAlloc @_ @K MsCAdr
+                                         & runAlloc @_ @K MoαAdr
+                                         & runAlloc @_ @K FlaAdr
                                          -- & runAlloc @ConAdr PointerAdr
                                          & runCtx []
                                          & runEnv env
@@ -130,5 +136,5 @@ simpleAnalysis e = do
                                          & runZ3Solver
     where env    = analysisEnv
           store  = analysisStore @Vlu env
-          result = fmap (\(((r, _pc), sto), _) -> (r, sto))
+          result = fmap (\((((((r, _pc), sto), _), _), _), _) -> (r, sto))
 

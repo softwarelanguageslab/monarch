@@ -1,4 +1,4 @@
-module Domain.Contract.CP where  
+module Domain.Contract.CP where
 
 import Domain.Scheme.Modular
 import Domain.Scheme.Store
@@ -9,13 +9,10 @@ import Data.TypeLevel.HMap ((::->))
 import Syntax.Scheme
 import Analysis.Contracts.Behavior (UnorderedBehaviorContract)
 
-import Domain.Symbolic (PairedSymbolic)
 import Domain.Scheme.Class hiding (Exp, Env)
-import Domain.Core (SimplePair, PIVector, StringDomain(..))
+import Domain.Core (SimplePair, PIVector)
 import Prelude hiding (length)
-import Domain.Scheme.Derived.Pair (mkLeft, leftValue)
 
-import Control.Monad
 import Data.Map (Map)
 
 type Env k = Map String (EnvAdr k)
@@ -32,10 +29,10 @@ type M k = '[
        VecConf  ::-> VecAdr k,
        VarConf  ::-> EnvAdr k,
        PidConf  ::-> CP.Pid k,
-       BeCConf  ::-> UnorderedBehaviorContract MsCAdr,
-       MoαConf  ::-> MoαAdr,
-       FlaConf  ::-> FlaAdr,
-       PMeConf  ::-> MsCAdr]
+       BeCConf  ::-> UnorderedBehaviorContract (MsCAdr k),
+       MoαConf  ::-> MoαAdr k,
+       FlaConf  ::-> FlaAdr k,
+       PMeConf  ::-> MsCAdr k]
 
 type CPContractValue k = SchemeVal (M k)
 

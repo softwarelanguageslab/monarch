@@ -7,14 +7,9 @@ module Domain.Symbolic.CPDomain(CPSymbolicValue) where
 
 import Domain.Symbolic.Paired
 import Domain.Scheme
-import Domain.Scheme.Modular
-import Domain.Scheme.Actors.CP
 import Domain
 import Lattice
-import qualified Syntax.Scheme as Scheme
-import Data.TypeLevel.HMap((::->))
 
-import Data.Map (Map)
 import Control.Monad ((>=>))
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)

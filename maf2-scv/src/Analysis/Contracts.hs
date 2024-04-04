@@ -18,7 +18,7 @@ import Control.Monad.DomainError
 import Control.Monad.Trans.Class
 import Control.Monad.Layer
 import qualified Data.Map as Map
-import Domain.Contract.Store 
+import Domain.Contract.Store
 import Domain.Scheme.Store (EnvAdr (..), PaiAdr (..), VecAdr (VecAdr), StrAdr (..))
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -52,10 +52,10 @@ type M = '[
        VecConf ::-> VecAdr K,
        VarConf ::-> EnvAdr K,
        PidConf ::-> CP.Pid K,
-       BeCConf ::-> UnorderedBehaviorContract MsCAdr,
-       MoαConf ::-> MoαAdr,
-       FlaConf ::-> FlaAdr,
-       PMeConf ::-> MsCAdr]
+       BeCConf ::-> UnorderedBehaviorContract (MsCAdr K),
+       MoαConf ::-> MoαAdr K,
+       FlaConf ::-> FlaAdr K,
+       PMeConf ::-> MsCAdr K]
 
 type V = SchemeVal M
 
@@ -121,16 +121,16 @@ type Sto = Map (EnvAdr K) V
 runAnalysis :: Exp -> (MayEscape (Set Error) V, Sto)
 runAnalysis exp = let ((((((((v, _), _), _), _), _), _), sto), _) =  Sem.eval @V exp
                          & runEvalT
-                         & runMayEscape 
+                         & runMayEscape
                          & runCallBottomT @V
                          & runSpawnT
                          & runEnv (analysisEnv @K)
                          & runStoreT @(PaiAdr K) Map.empty
                          & runStoreT @(VecAdr K) Map.empty
                          & runStoreT @(StrAdr K) Map.empty
-                         & runStoreT @MsCAdr Map.empty
-                         & runStoreT @FlaAdr Map.empty
-                         & runStoreT @MoαAdr Map.empty
+                         & runStoreT @(MsCAdr K) Map.empty
+                         & runStoreT @(FlaAdr K) Map.empty
+                         & runStoreT @(MoαAdr K) Map.empty
                          & runStoreT @(EnvAdr K) @V (initialSto (analysisEnv @K))
                          & runAlloc @_ @K PaiAdr
                          & runAlloc @_ @K VecAdr
