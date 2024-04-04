@@ -36,8 +36,7 @@ jobs:
 
     - name: Install dependencies
       working-directory: maf2-analysis
-      run: |
-        cabal install hspec-discover
+      run: cabal update
     - name: Build
       working-directory: maf2-analysis
       run: cabal build
