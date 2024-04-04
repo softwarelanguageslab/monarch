@@ -34,7 +34,9 @@ library
       Analysis.Symbolic.Semantics
       Analysis.Traces
       Domain.Contract
+      Domain.Contract.CP
       Domain.Contract.Store
+      Domain.Contract.Symbolic
       Domain.Symbolic
       Domain.Symbolic.Class
       Domain.Symbolic.CPDomain

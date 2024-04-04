@@ -2,7 +2,7 @@ name: Analysis CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "2cabal" ]
   pull_request:
     branches: [ "main" ]
 
@@ -16,10 +16,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - uses: actions/setup-haskell@v1
+    - uses: haskell-actions/setup@v2
       with:
-        ghc-version: '8.10.3'
-        cabal-version: '3.2'
+        ghc-version: '9.4.8'
+        cabal-version: '3.10'
+        ghcup-release-channel: 'https://raw.githubusercontent.com/haskell/ghcup-metadata/develop/ghcup-0.0.8.yaml'
 
     - name: Cache
       uses: actions/cache@v3
@@ -36,11 +37,10 @@ jobs:
     - name: Install dependencies
       working-directory: maf2-analysis
       run: |
-        stack update
-        stack build
+        cabal install hspec-discover
     - name: Build
       working-directory: maf2-analysis
-      run: stack build
+      run: cabal build
     - name: Run tests
       working-directory: maf2-analysis
-      run: stack test
+      run: cabal test

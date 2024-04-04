@@ -1,0 +1,5 @@
+with-compiler: ghc-9.4.8
+
+packages:
+   ../maf2-syntax/
+   ./
