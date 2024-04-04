@@ -6,14 +6,14 @@ module Analysis.Python.Semantics where
 
 import Domain.Python.Objects 
 import Domain.Python.World
-import Analysis.Python.Syntax
+import Domain.Python.Syntax
 import Analysis.Python.Objects
 import Analysis.Python.Common
 import Analysis.Python.Monad 
 import Analysis.Python.Primitives
+import Analysis.Monad hiding (eval, call)
 
-import Control.Monad (zipWithM, (>=>), (<=<), (=<<), void)
-import qualified Control.Monad
+import Control.Monad (zipWithM, (>=>), (<=<), void)
 import qualified Domain.Core.SeqDomain as SeqDomain
 import Lattice
 import Control.Monad.Join
@@ -48,7 +48,7 @@ execExp = void . eval
 
 execAss :: forall pyM obj . PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
-   where assignTo (IdePat ide) val     = lookupEnv @pyM (lexNam ide) >>= flip update' val 
+   where assignTo (IdePat ide) val     = lookupEnv @pyM (lexNam ide) >>= flip updateAdr val 
          assignTo (Field e nam _) val  = eval e >>= assignAttr (ideName nam) val 
          assignTo (ListPat _ _) val    = todo "list assignment"
          assignTo (TuplePat _ _) val   = todo "tuple assignment"
@@ -97,7 +97,7 @@ evalLam prs bdy loc = do env <- getEnv
                          pyAlloc loc (from' @CloPrm clo)
 
 evalVar :: PyM pyM obj => PyIde -> pyM PyVal
-evalVar = lookupEnv . lexNam >=> lookup
+evalVar = lookupEnv . lexNam >=> lookupAdr
 
 evalLit :: PyM pyM obj => PyLit -> pyM PyVal
 evalLit (Bool bln loc)     = pyAlloc loc (from' @BlnPrm bln)
@@ -142,7 +142,7 @@ callClo pos ags = mjoinMap apply
                                                                 callCmp cmp 
 
 bindPar :: PyM pyM obj => PyPar -> PyVal -> pyM (String, VarAdr)
-bindPar (Prm ide _) v = extend adr v >> return (lexNam ide, adr)
+bindPar (Prm ide _) v = writeAdr adr v >> return (lexNam ide, adr)
    where adr = allocVar ide 
 bindPar (VarArg _ _) v = todo "vararg parameter"
 bindPar (VarKeyword _ _) v = todo "keyword parameters"

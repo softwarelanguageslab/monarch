@@ -61,6 +61,7 @@ library:
     - Domain.Python
     - Domain.Python.World
     - Domain.Python.Objects
+    - Domain.Python.Syntax
     - Domain.Scheme.Actors.Class
     - Domain.Scheme.Actors
     - Domain.Scheme.Actors.CP

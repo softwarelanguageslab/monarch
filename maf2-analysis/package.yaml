@@ -41,6 +41,7 @@ dependencies:
 - hashmap
 - list-t
 - singletons
+- singletons-th
 
 default-extensions:
   - FlexibleContexts

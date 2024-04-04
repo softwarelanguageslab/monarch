@@ -58,6 +58,9 @@ library
       Analysis.Monad.Span
       Analysis.Monad.Store
       Analysis.Python
+      Analysis.Python.Common
+      Analysis.Python.Monad
+      Analysis.Python.Primitives
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
@@ -112,6 +115,7 @@ library
     , mtl
     , optparse-applicative
     , singletons
+    , singletons-th
     , transformers
     , unordered-containers
     , vector
@@ -168,6 +172,7 @@ executable maf-exe
     , optparse-applicative
     , pretty-simple
     , singletons
+    , singletons-th
     , transformers
     , unordered-containers
     , vector
@@ -218,6 +223,7 @@ test-suite maf2-analysis-test
     , mtl
     , optparse-applicative
     , singletons
+    , singletons-th
     , transformers
     , unordered-containers
     , vector
