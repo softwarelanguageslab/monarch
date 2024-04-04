@@ -9,6 +9,7 @@ module Analysis.Monad.Store (
     runStoreT',
     lookups,
     deref,
+    deref',
     store,
 ) 
 where
@@ -25,7 +26,7 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set 
 import Control.Monad.State hiding (mzero, join)
-import Control.Monad.Join (MonadJoin(..))
+import Control.Monad.Join (MonadJoin(..), mjoinMap, mjoins)
 
 import Control.Monad.Layer
 
@@ -52,12 +53,14 @@ class (Monad m, Joinable v) => StoreM m a v | m a -> v where
 
 -- | Lookup
 lookups :: (JoinLattice a, MonadJoin m) => (adr -> m v) -> (adr -> v -> m a) -> Set adr -> m a
-lookups look f = Set.fold (mjoin . deref') Control.Monad.Join.mzero
-      where deref' adr = look adr >>= f adr
+lookups look f = mjoinMap (\adr -> look adr >>= f adr)
 
 -- | Deref 
-deref :: (StoreM m adr v, MonadJoin m, JoinLattice a) => (adr -> v -> m a) -> Set adr -> m a
+deref :: (StoreM m a v, MonadJoin m, JoinLattice r) => (a -> v -> m r) -> Set a -> m r
 deref = lookups lookupAdr
+
+deref' :: (StoreM m a v, MonadJoin m, JoinLattice v) => Set a -> m v 
+deref' = mjoins . map lookupAdr . Set.toList
 
 -- | Store the given value in the store using the an address allocator on the monadic stack.
 store :: (AllocM m from adr, StoreM m adr v) => from -> v -> m adr
