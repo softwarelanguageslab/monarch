@@ -61,7 +61,7 @@ mon e lbl contract value =
       [-- [MonFlat]
        (pure (isFlat contract), monFlat e lbl contract value),
        -- [MonAct]
-       (pure (isBehaviorContract @_ @v contract), monAct e lbl contract value)]
+       (pure (isBehaviorContract @_ contract), monAct e lbl contract value)]
       {- else -}
       (escape NotAContract)
 
@@ -78,7 +78,7 @@ checkSend f tag payload (Moα lbl contract value) =
          (escape WrongType)
    where check :: m (v, [v])
          check =
-             second BoundedList.elements <$> cond @(CP Bool) (pure $ isBehaviorContract @_ @v contract)
+             second BoundedList.elements <$> cond @(CP Bool) (pure $ isBehaviorContract @_ contract)
                (do
                   -- TODO: actually this is not quite sound, we also need 
                   -- to consider the case where we are not sure whether
@@ -122,7 +122,7 @@ eval exp@(MsgC tag rcv payload comm _) =
 eval (BehC exs _) =  do
    vlus <- mapM Monad.eval exs
    adrs <- joins <$> mapM (assert isMessageContract ExpectedMessageContract >=> pure . messageContracts) vlus
-   return (behaviorContract @_ @v (Set.toList adrs))
+   return (behaviorContract @_ (Set.toList adrs))
 eval exp@(Syntax.Scheme.Flat e _) = do
    flat <$> (store exp . Domain.Contract.Flat =<< Monad.eval e)
 eval exp@(Mon labels contract value _) = do

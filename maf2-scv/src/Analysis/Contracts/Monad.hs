@@ -46,4 +46,4 @@ type ContractM m v msg mb =
       EqualLattice v,
       -- Semantics monads
       ActorEvalM m v msg mb,
-      SchemeM m v)
+      SchemeM m v, Ord v)

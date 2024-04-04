@@ -38,7 +38,7 @@ import Data.List (intercalate)
 --
 --  For termination, we assume that each contract is behind a pointer
 --  that corresponds to its allocation site.
-class (Ord (MAdr c)) => BehaviorContract c v where
+class (Ord (MAdr c)) => BehaviorContract c where
   type MAdr c :: Type
 
   -- | Create a new behavior contract from the given
@@ -50,7 +50,7 @@ class (Ord (MAdr c)) => BehaviorContract c v where
 
   -- | Returns all message contracts that (might) match
   -- the given tag.
-  matchingContracts :: (StoreM storeM (MAdr c) (MessageContract v)) => v -> c -> storeM (Set (MessageContract v))
+  matchingContracts :: (EqualLattice v, Ord v, StoreM storeM (MAdr c) (MessageContract v)) => v -> c -> storeM (Set (MessageContract v))
 
 -- | An abstraction of the behavior contract that does not take ordering
 -- into account. We do so by representing the behavior contract as a set
@@ -61,7 +61,7 @@ newtype UnorderedBehaviorContract ptr = UnorderedBehaviorContract {getMessageCon
 instance (Show ptr) => Show (UnorderedBehaviorContract ptr) where
    show (UnorderedBehaviorContract ms) = "behavior/c {" ++ intercalate "," (map show (Set.toList ms)) ++ "}"
 
-instance (Ord ptr, Ord v, EqualLattice v) => BehaviorContract (UnorderedBehaviorContract ptr) v where
+instance Ord ptr => BehaviorContract (UnorderedBehaviorContract ptr) where
   type MAdr (UnorderedBehaviorContract ptr) = ptr
   behaviorContract = UnorderedBehaviorContract . Set.fromList
   isBehaviorContract v 
@@ -76,14 +76,14 @@ instance (Ord ptr, Ord v, EqualLattice v) => BehaviorContract (UnorderedBehavior
 
 type IsBehaviorContract m = (
    IsSchemeValue m,
-   BehaviorContract (Assoc BeCConf m) (SchemeVal m),
+   BehaviorContract (Assoc BeCConf m),
    MAdr (Assoc BeCConf m) ~ MAdr (SchemeVal m))
      
 
-instance (IsBehaviorContract m) => BehaviorContract (SchemeVal m) (SchemeVal m) where
+instance (IsBehaviorContract m) => BehaviorContract (SchemeVal m) where
   type MAdr (SchemeVal m) = (Assoc PMeConf m)
 
-  behaviorContract = SchemeVal . HMap.singleton @BeCKey . behaviorContract @_ @(SchemeVal m)
+  behaviorContract = SchemeVal . HMap.singleton @BeCKey . behaviorContract 
   isBehaviorContract = hasType BeCKey
   matchingContracts t = maybe (return Set.empty) (matchingContracts t) . HMap.get @BeCKey . getSchemeVal
 

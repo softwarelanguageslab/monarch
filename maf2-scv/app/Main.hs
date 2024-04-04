@@ -42,5 +42,6 @@ main = do
    text   <- readFile "../maf2-analysis/programs/actor/acontracts/tests/behavior.scm"
    let program = fromJust (parseString $ Actor.prelude ++ text)
    (v, result) <- unzip <$> Symbolic.simpleAnalysis program
+   putStrLn $ "analysis finished -- " ++ "number of paths is " ++ show (length v)
    mapM_ print v
    mapM_ (putStrLn . printSto . values) result
