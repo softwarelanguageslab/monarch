@@ -11,6 +11,8 @@ import Analysis.Scheme hiding (Sto)
 import Analysis.Scheme.Store
 import Analysis.Contracts.Monad
 import Control.Monad.Layer
+import qualified Domain.Contract.CP as CCP
+import qualified Domain.Scheme.Actors.CP as CP
 import Domain.Contract.Symbolic
 import Domain.Scheme.Store
 import Domain.Symbolic.Paired
@@ -39,6 +41,7 @@ import Prelude hiding (exp)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad.Trans.Class
+import Control.Monad.Identity
 
 ------------------------------------------------------------
 -- Evaluation function
@@ -96,6 +99,24 @@ type Msg = SimpleMessage Vlu
 type MB = Set Msg
 
 ------------------------------------------------------------
+-- SpawnT
+------------------------------------------------------------
+
+newtype SpawnT m a = SpawnT (IdentityT m a) deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer, MonadJoin)
+
+-- TODO: this is just a test to see whether the implementation
+-- works without actually using the fixpoint
+instance {-# OVERLAPPING #-} (Monad m, EnvM m (EnvAdr K) (CCP.Env K)) => ActorBehaviorM (SpawnT m) Vlu where
+  spawn e = do
+    --env' <- getEnv
+    --upperM (EF.spawn (Actor (CP.Pid e ()) e env'))
+    return (aref (CP.Pid e []))
+  become = void . spawn
+
+runSpawnT :: SpawnT m a -> m a
+runSpawnT (SpawnT m) = runIdentityT m
+
+------------------------------------------------------------
 -- Analysis
 ------------------------------------------------------------
 
@@ -127,10 +148,10 @@ simpleAnalysis e = do
                                          & runAlloc @_ @K FlaAdr
                                          -- & runAlloc @ConAdr PointerAdr
                                          & runCtx []
+                                         & runSpawnT
                                          & runEnv env
                                          & runActorT @MB Set.empty EntryPid
                                          & runNonDetT
-                                         & runNoSpawnT
                                          & runNoSendT
                                          & runIntegerPoolT
                                          & runZ3Solver

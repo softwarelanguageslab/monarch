@@ -31,7 +31,7 @@ instance (Eq v, Joinable v) => JoinLattice (Moα v) where
 -- ContractDomain
 ------------------------------------------------------------
 
-class (SchemeDomain v, BehaviorContract v v) => ContractDomain v where
+class (SchemeDomain v, BehaviorContract v) => ContractDomain v where
   -- |  Address of pointers to flat contracts
   type FAdr v :: Type
   -- | Address of pointers to monitors on actor references
