@@ -9,6 +9,7 @@ import Data.Map (Map)
 import Analysis.Actors
 import Analysis.Scheme
 import Analysis.Scheme.Store
+import Domain.Scheme.Store
 import qualified Data.Map as Map
 import Syntax.Scheme
 import Data.Maybe

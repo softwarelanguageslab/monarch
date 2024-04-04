@@ -14,6 +14,7 @@ import Control.Monad.Layer
 
 import Syntax.Scheme
 import Domain.Scheme hiding (Exp, Env)
+import Domain.Scheme.Store
 import Data.Print
 import Text.Printf
 
@@ -47,24 +48,6 @@ type DSto' f ctx v           = SchemeStore' f v
 type DSto ctx v = DSto' Id ctx v
 type SSto ctx v = DSto' SVar ctx v
 
-------------------------------------------------------------
--- Addresses
-------------------------------------------------------------
-
-data EnvAdr ctx = EnvAdr Ide ctx 
-                | PrmAdr String deriving (Eq, Ord, Show)
-newtype RetAdr v ctx = RetAdr (Component (EnvAdr ctx) v ctx) 
-                  deriving (Eq, Ord, Show)
-data PaiAdr ctx = PaiAdr Exp ctx deriving (Eq, Ord, Show)
-data StrAdr ctx = StrAdr Exp ctx deriving (Eq, Ord, Show)
-data VecAdr ctx = VecAdr Exp ctx deriving (Eq, Ord, Show)
-
-instance (Ord ctx, Show ctx) => Address (EnvAdr ctx)
-instance (Ord ctx, Show ctx) => Address (RetAdr v ctx)
-instance (Ord ctx, Show ctx) => Address (PaiAdr ctx)
-instance (Ord ctx, Show ctx) => Address (StrAdr ctx)
-instance (Ord ctx, Show ctx) => Address (VecAdr ctx)
-
 -----------------------------------------
 -- Store & Environment
 -----------------------------------------
@@ -82,6 +65,11 @@ analysisStore = fromValues . initialSto @v
 -----------------------------------------
 -- ModF
 -----------------------------------------
+
+newtype RetAdr v ctx = RetAdr (Component (EnvAdr ctx) v ctx) 
+                  deriving (Eq, Ord, Show)
+
+instance (Ord ctx, Show ctx) => Address (RetAdr v ctx)
 
 class SchemeAlloc ctx var padr vadr sadr | ctx -> var padr vadr sadr where
   allocPai :: Exp -> ctx -> padr

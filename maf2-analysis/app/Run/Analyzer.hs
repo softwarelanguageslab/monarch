@@ -9,8 +9,8 @@ import Data.List (intercalate)
 import Data.Map (Map)
 import Analysis.Scheme.Store (values)
 import qualified Data.Map as Map
+import Domain.Scheme.Store
 import Data.Print
-import Analysis.Scheme (EnvAdr(..))
 
 newtype Options = Options String deriving Show
 

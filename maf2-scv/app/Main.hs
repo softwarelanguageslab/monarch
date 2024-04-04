@@ -17,7 +17,7 @@ import Data.Map (Map)
 import Data.List
 import Text.Printf
 import qualified Analysis.Contracts as Contracts
-import Analysis.Scheme (EnvAdr(..))
+import Domain.Scheme.Store (EnvAdr(..))
 
 exampleFormula :: Formula
 exampleFormula = Conjunction

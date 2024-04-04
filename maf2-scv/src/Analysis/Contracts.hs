@@ -18,7 +18,8 @@ import Control.Monad.DomainError
 import Control.Monad.Trans.Class
 import Control.Monad.Layer
 import qualified Data.Map as Map
-import Analysis.Scheme (EnvAdr (..), PaiAdr (..), VecAdr (VecAdr), StrAdr (..))
+import Domain.Contract.Store 
+import Domain.Scheme.Store (EnvAdr (..), PaiAdr (..), VecAdr (VecAdr), StrAdr (..))
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Analysis.Contracts.Monad
@@ -91,18 +92,6 @@ instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (EvalT m) wh
    type Esc (EvalT m) = Set Error
    escape = upperM . escape
    catch (EvalT (IdentityT m)) hdl = EvalT $ IdentityT $ catch @_ m (runIdentityT . getEvalT . hdl)
-
-------------------------------------------------------------
--- Addresses
-------------------------------------------------------------
-
-data MsCAdr = MsCAdr Exp () deriving (Eq, Ord, Show)
-data MoαAdr = MoαAdr Exp () deriving (Eq, Ord, Show)
-data FlaAdr = FlaAdr Exp () deriving (Eq, Ord, Show)
-
-instance Address MsCAdr
-instance Address MoαAdr
-instance Address FlaAdr
 
 ------------------------------------------------------------
 -- SpawnT
