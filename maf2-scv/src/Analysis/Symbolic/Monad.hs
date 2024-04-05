@@ -26,8 +26,16 @@ class (Monad m) => MonadPathCondition m v | m -> v where
 -- | Choose between the two branches non-deterministically
 choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b) => m v -> m b -> m b -> m b
 choice mv mcsq malt = mjoin t f
-   where t = mv >>= (\v -> if isTrue  v then extendPc (assertTrue v)  >> ifFeasible mcsq else mzero)
-         f = mv >>= (\v -> if isFalse v then extendPc (assertFalse v) >> ifFeasible malt else mzero)
+   where t = mv >>= checkTrue
+         f = mv >>= checkFalse
+         checkTrue v  
+            | isTrue  v && Prelude.not (isFalse v) = mcsq
+            | isTrue  v = extendPc (assertTrue v)  >> ifFeasible mcsq
+            | otherwise = mzero
+         checkFalse v 
+            | isFalse v && Prelude.not (isTrue v) = malt
+            | isFalse v = extendPc (assertFalse v)  >> ifFeasible mcsq
+            | otherwise = mzero
 
 -- | Same as `conds` but keeps track of path conditions
 choices :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b)
