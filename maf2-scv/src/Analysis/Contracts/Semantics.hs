@@ -41,8 +41,8 @@ monFlat e lbl contract value =
 
 -- | Same as `monFlat` but first checks whether the contrat is indeed a flat contract
 ensureMonFlat :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
-ensureMonFlat exp lbls contract value = 
-      cond @(CP Bool) (pure $ isFlat contract) 
+ensureMonFlat exp lbls contract value =
+      cond @(CP Bool) (pure $ isFlat contract)
            (monFlat exp lbls contract value)
            (escape NotAContract)
 
@@ -58,7 +58,7 @@ monAct e lbl contract value =
 -- blaming the positive part of `Labels` if a contract violation is found.
 mon :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 mon e lbl contract value =
-   choices 
+   choices
       [-- [MonFlat]
        (pure (isFlat contract), monFlat e lbl contract value),
        -- [MonAct]
@@ -69,13 +69,13 @@ mon e lbl contract value =
 -- | Checks whether the given send is valid according to the contract.
 -- It applies `f` on the resulting actor references and passes the monitored payload 
 -- along.
-checkSend :: forall v a m msg mb . (JoinLattice a, ContractM m v msg mb) =>  (String -> [v] -> ARef v -> m a) -> String -> [v] -> Moα v -> m a
-checkSend f tag payload (Moα lbl contract value) =
+checkSend :: forall v a m msg mb . (JoinLattice a, ContractM m v msg mb) => Exp -> (String -> [v] -> ARef v -> m a) -> String -> [v] -> Moα v -> m a
+checkSend e f tag payload (Moα lbl contract value) =
       choices
          [ (pure $ isActorRef value, do
                { (rcptc, payload') <- check ; mjoins $ map (checkRcpt rcptc tag payload') (Set.toList (arefs' value)) }),
            (pure $ isαmon value, do
-               { (rcptc, payload') <- check ; deref (const $ checkSend (checkRcpt rcptc) tag payload') (αmons value) }) ]
+               { (rcptc, payload') <- check ; deref (const $ checkSend e (checkRcpt rcptc) tag payload') (αmons value) }) ]
          (escape WrongType)
    where check :: m (v, [v])
          check =
@@ -87,26 +87,27 @@ checkSend f tag payload (Moα lbl contract value) =
                   -- generate a blame error!
                   contracts <- matchingContracts (symbol tag) contract
                   payload' <- mjoinMap checkPayload contracts
-                  return (joinMap Contract.rcpt contracts , payload')
+                  rcptc <- Scheme.applyFun e (joinMap Contract.rcpt contracts) (BoundedList.elements payload')
+                  return (rcptc, payload')
                )
                (escape WrongType)
          checkRcpt rcptc tag' payload' rcpt =
-            mjoinMap (f tag' payload') . Set.toList . arefs' =<< ensureMonFlat undefined (Set.map flipLabel lbl) rcptc (aref rcpt)
+            mjoinMap (f tag' payload') . Set.toList . arefs' =<< ensureMonFlat e (Set.map flipLabel lbl) rcptc (aref rcpt)
          checkPayload contract' =
-            BoundedList.fromList <$> zipWithM (mon undefined (Set.map flipLabel lbl))
+            BoundedList.fromList <$> zipWithM (mon e (Set.map flipLabel lbl))
                                               (BoundedList.elements (Contract.payload contract'))
                                               payload
-checkSend _ _ _ Bottom = mzero
+checkSend _ _ _ _ Bottom = mzero
 
 
 -- | Monitored message send (sender-side contracts)
-monSend :: forall m v msg mb . ContractM m v msg mb => v -> String -> [v] -> m v
-monSend contract tag values =
-   choices 
+monSend :: forall m v msg mb . ContractM m v msg mb => Exp -> v -> String -> [v] -> m v
+monSend e contract tag values =
+   choices
       [-- Actor reference ==> regular send
        (pure $ isActorRef contract, mjoins $ map (! message tag values) (Set.toList (arefs' contract))),
        -- Monitored value 
-       (pure $ isαmon contract, void $ deref (const $ checkSend sendMessage tag values) (αmons contract) )]
+       (pure $ isαmon contract, void $ deref (const $ checkSend e sendMessage tag values) (αmons contract) )]
       {- else -}
       (escape WrongType) >> return nil
 
@@ -130,10 +131,10 @@ eval exp@(Mon labels contract value _) = do
    contract' <- Monad.eval contract
    value'    <- Monad.eval value
    mon exp (Set.singleton labels) contract' value'
-eval (Sen rcpt tag values _) = do
+eval e@(Sen rcpt tag values _) = do
    rcpt'    <- Monad.eval rcpt
    values'  <- mapM Monad.eval values
-   monSend rcpt' tag values'
+   monSend e rcpt' tag values'
 
 
 eval e = Actors.eval e
