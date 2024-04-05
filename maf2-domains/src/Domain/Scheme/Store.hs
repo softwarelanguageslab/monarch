@@ -18,10 +18,12 @@ module Domain.Scheme.Store(
    StrAdr(..),
    VecAdr(..),
    EnvAdr(..),
+   Env,
 ) where
 
 import Syntax.Scheme
-import Domain.Scheme.Class hiding (Exp)
+import Domain.Scheme.Class hiding (Exp, Env)
+import Data.Map (Map)
 
 data EnvAdr ctx = EnvAdr Ide ctx 
                 | PrmAdr String deriving (Eq, Ord, Show)
@@ -33,3 +35,7 @@ instance (Ord ctx, Show ctx) => Address (EnvAdr ctx)
 instance (Ord ctx, Show ctx) => Address (PaiAdr ctx)
 instance (Ord ctx, Show ctx) => Address (StrAdr ctx)
 instance (Ord ctx, Show ctx) => Address (VecAdr ctx)
+
+-- | With sensible defaults for addresses comes a sensible
+-- default for the environment.
+type Env ctx =  Map String (EnvAdr ctx)

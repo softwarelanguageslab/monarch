@@ -58,8 +58,6 @@ instance Address RetAdr
 type V = CP.CPActorValue (EnvAdr Ctx) (PaiAdr Ctx) (VecAdr Ctx) (StrAdr Ctx) Ctx
 type Pid = CP.Pid Ctx
 
-type Env = Map String (EnvAdr Ctx)
-
 type Ctx = ()
 
 ------------------------------------------------------------
@@ -98,7 +96,7 @@ type State = (SSto Ctx V, Map RetAdr (SVar.SVar V), Map Pid (SVar.SVar (Set Msg)
 
 data Component
   = Main Exp
-  | Actor Pid Exp Env
+  | Actor Pid Exp (Env Ctx)
   deriving (Eq, Ord, Show)
 
 newtype CallT m a = CallT (m a) deriving (Applicative, Monad, Functor, MonadJoin)
@@ -113,8 +111,8 @@ instance {-# OVERLAPPING #-}
     CtxM m Ctx,
     ActorLocalM m Pid Msg MB,
     StoreM m RetAdr V,
-    EnvM m (EnvAdr Ctx) Env
-  ) => CallM (CallT m) Env V where
+    EnvM m (EnvAdr Ctx) (Env Ctx)
+  ) => CallM (CallT m) (Env Ctx) V where
 
   call (Lam _ bdy _, _) = do
     env' <- upperM getEnv
@@ -129,7 +127,7 @@ runCallT' (CallT m) = m
 
 -- Actor spawns
 
-instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m (EnvAdr Ctx) Env, EF.EffectM m Component) => ActorBehaviorM (EvalT m) V where
+instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m (EnvAdr Ctx) (Env Ctx), EF.EffectM m Component) => ActorBehaviorM (EvalT m) V where
   spawn e = do
     env' <- getEnv
     upperM (EF.spawn (Actor (CP.Pid e ()) e env'))
@@ -145,7 +143,7 @@ analyze e = let ((sto, retSto, _), state) = (EF.setup initialState >>= EF.iterat
                     & EF.runEffectT [Main e]
                     & runIdentity
             in (unifyStore sto state, SVar.unify retSto state)
-  where runIntra :: (EF.EffectM m Component, SVar.MonadStateVar m) => Component -> Pid -> Exp -> Env -> State -> m State
+  where runIntra :: (EF.EffectM m Component, SVar.MonadStateVar m) => Component -> Pid -> Exp -> (Env Ctx) -> State -> m State
         runIntra cmp pid exp' env (sto, retSto, mailboxes) = do
              (m, mailboxes') <- mailbox pid mailboxes
              r <-   (Analysis.Monad.eval exp' >>= writeAdr (RetAdr cmp))

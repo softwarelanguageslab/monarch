@@ -15,8 +15,6 @@ import Prelude hiding (length)
 
 import Data.Map (Map)
 
-type Env k = Map String (EnvAdr k)
-
 type M k = '[
        RealConf ::-> CP Double,
        IntConf  ::-> CP Integer,

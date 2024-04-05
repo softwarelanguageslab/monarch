@@ -26,7 +26,7 @@ import qualified Data.Map as Map
 import Control.Monad.Join
 import Analysis.Scheme hiding (Sto)
 import Domain (Address)
-import Domain.Scheme hiding (Exp)
+import Domain.Scheme hiding (Exp, Env)
 import Solver.Z3
 import Solver (setup)
 import Symbolic.SMT (setupSMT)
@@ -106,7 +106,7 @@ newtype SpawnT m a = SpawnT (IdentityT m a) deriving (Applicative, Monad, Functo
 
 -- TODO: this is just a test to see whether the implementation
 -- works without actually using the fixpoint
-instance {-# OVERLAPPING #-} (Monad m, EnvM m (EnvAdr K) (CCP.Env K)) => ActorBehaviorM (SpawnT m) Vlu where
+instance {-# OVERLAPPING #-} (Monad m, EnvM m (EnvAdr K) (Env K)) => ActorBehaviorM (SpawnT m) Vlu where
   spawn e = do
     --env' <- getEnv
     --upperM (EF.spawn (Actor (CP.Pid e ()) e env'))
@@ -146,7 +146,7 @@ simpleAnalysis e = do
                                          & runAlloc @_ @K MsCAdr
                                          & runAlloc @_ @K MoαAdr
                                          & runAlloc @_ @K FlaAdr
-                                         -- & runAlloc @ConAdr PointerAdr
+                                         --
                                          & runCtx []
                                          & runSpawnT
                                          & runEnv env
