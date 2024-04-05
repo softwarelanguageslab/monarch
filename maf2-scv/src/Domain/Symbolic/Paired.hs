@@ -9,7 +9,6 @@ import Control.Monad.Join
 import Data.Map (Map)
 import Symbolic.AST
 import Domain.Symbolic.Class
-import Domain.Scheme.Actors.Class
 import Analysis.Contracts.Behavior
 import Domain.Contract (ContractDomain(..))
 
@@ -176,6 +175,8 @@ instance (Address ptr,
    isNil     = const False
    isUnsp    = const False
    isPrim    = const False
+   symbols   = const bottom
+   symbol    = SymbolicVal . Literal . Sym
 
 ------------------------------------------------------------
 -- Actor domain
@@ -194,9 +195,10 @@ instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v pa
    
    aref ref' = SchemePairedValue (aref ref', SymbolicVal $ identity ref')
    arefs f   = arefs f . leftValue 
+   arefs'    = arefs'  . leftValue
 
    -- TODO: do we need to symbolically represent a behavior as well?
-   beh beh'   = SchemePairedValue (beh beh', bottom)
+   beh beh'   = SchemePairedValue (beh beh', SymbolicVal $ Literal Beh)
    withBehs f = withBehs f . leftValue
 
    isActorRef v = 
@@ -207,8 +209,14 @@ instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v pa
 -- Contract domain
 ------------------------------------------------------------
 
-instance (BehaviorContract v v, SchemeValue v) => BehaviorContract (PairedSymbolic v pai vec str var) (PairedSymbolic v pai vec str var) where 
+instance (BehaviorContract v, SchemeValue v) => BehaviorContract (PairedSymbolic v pai vec str var) where 
    type MAdr (PairedSymbolic v pai vec str var) = MAdr v
+
+   behaviorContract contracts =
+      SchemePairedValue (behaviorContract @_ contracts, bottom)
+
+   isBehaviorContract = isBehaviorContract @_ . leftValue
+   matchingContracts tag  = matchingContracts tag . leftValue
 
 instance (SchemeValue (PairedSymbolic v pai vec str var), SchemeValue v, ContractDomain v) => ContractDomain (PairedSymbolic v pai vec str var) where
    type FAdr (PairedSymbolic v pai vec str var) = FAdr v
@@ -226,6 +234,11 @@ instance (SchemeValue (PairedSymbolic v pai vec str var), SchemeValue v, Contrac
    flats   = flats  . leftValue
    flat a  = 
       SchemePairedValue (flat a, bottom)
+
+   --
+   αmon v = SchemePairedValue (αmon v, SymbolicVal $ Literal Mon)
+   αmons  = αmons . leftValue
+   isαmon = isαmon . leftValue 
 
 ------------------------------------------------------------
 -- Symbolic value

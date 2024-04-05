@@ -55,7 +55,7 @@ terminateZ3Solver = terminateProcess . getZ3Handle
 -- Where the handle to become inactive (due to the process being killed)
 -- the Z3 process is spawned again and its setup code reevaluted.
 newtype Z3Solver a = Z3Solver (StateT (Maybe Z3SolverState) IO a)
-                        deriving (Applicative, Functor, Monad, MonadState (Maybe Z3SolverState))
+                        deriving (Applicative, Functor, Monad, MonadIO, MonadState (Maybe Z3SolverState))
 
 -- | Terminate the current instance of the solver
 terminateZ3 :: Z3Solver ()
@@ -127,6 +127,7 @@ instance {-# OVERLAPPING #-} FormulaSolver Z3Solver where
 
    solve script   = do
       restoreCheckpoint
+      liftIO (putStrLn $ "solving script " ++ show script)
       -- Declare all variables as constants
       let names = variables script
       -- evaluate the mall in the solver

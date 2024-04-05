@@ -24,6 +24,7 @@ import qualified Domain.Core.SeqDomain.BoundedList as BoundedList
 import Domain.Scheme (nil)
 import Data.Set (Set)
 import Data.Bifunctor
+import Analysis.Symbolic.Monad (choices, choice)
 
 -- | Flip the negative and positive parties of the blame 
 -- label
@@ -57,11 +58,11 @@ monAct e lbl contract value =
 -- blaming the positive part of `Labels` if a contract violation is found.
 mon :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 mon e lbl contract value =
-   conds @(CP Bool)
+   choices 
       [-- [MonFlat]
        (pure (isFlat contract), monFlat e lbl contract value),
        -- [MonAct]
-       (pure (isBehaviorContract @_ @v contract), monAct e lbl contract value)]
+       (pure (isBehaviorContract @_ contract), monAct e lbl contract value)]
       {- else -}
       (escape NotAContract)
 
@@ -70,7 +71,7 @@ mon e lbl contract value =
 -- along.
 checkSend :: forall v a m msg mb . (JoinLattice a, ContractM m v msg mb) =>  (String -> [v] -> ARef v -> m a) -> String -> [v] -> Moα v -> m a
 checkSend f tag payload (Moα lbl contract value) =
-      conds
+      choices
          [ (pure $ isActorRef value, do
                { (rcptc, payload') <- check ; mjoins $ map (checkRcpt rcptc tag payload') (Set.toList (arefs' value)) }),
            (pure $ isαmon value, do
@@ -78,7 +79,7 @@ checkSend f tag payload (Moα lbl contract value) =
          (escape WrongType)
    where check :: m (v, [v])
          check =
-             second BoundedList.elements <$> cond @(CP Bool) (pure $ isBehaviorContract @_ @v contract)
+             second BoundedList.elements <$> choice (pure $ isBehaviorContract @_ contract)
                (do
                   -- TODO: actually this is not quite sound, we also need 
                   -- to consider the case where we are not sure whether
@@ -101,7 +102,7 @@ checkSend _ _ _ Bottom = mzero
 -- | Monitored message send (sender-side contracts)
 monSend :: forall m v msg mb . ContractM m v msg mb => v -> String -> [v] -> m v
 monSend contract tag values =
-   conds 
+   choices 
       [-- Actor reference ==> regular send
        (pure $ isActorRef contract, mjoins $ map (! message tag values) (Set.toList (arefs' contract))),
        -- Monitored value 
@@ -122,7 +123,7 @@ eval exp@(MsgC tag rcv payload comm _) =
 eval (BehC exs _) =  do
    vlus <- mapM Monad.eval exs
    adrs <- joins <$> mapM (assert isMessageContract ExpectedMessageContract >=> pure . messageContracts) vlus
-   return (behaviorContract @_ @v (Set.toList adrs))
+   return (behaviorContract @_ (Set.toList adrs))
 eval exp@(Syntax.Scheme.Flat e _) = do
    flat <$> (store exp . Domain.Contract.Flat =<< Monad.eval e)
 eval exp@(Mon labels contract value _) = do

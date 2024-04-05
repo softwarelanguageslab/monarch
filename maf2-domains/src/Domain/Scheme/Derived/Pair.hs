@@ -31,6 +31,7 @@ import Domain.Core
 import Domain.Class 
 import Domain.Scheme.Class
 import Control.Monad.Join
+import qualified Data.Set as Set
 
 ------------------------------------------------------------
 -- Declaration
@@ -242,3 +243,6 @@ instance (-- both subdomains should talk about the same environment
    isNil (SchemePairedValue (l, r))     = isNil l  || isNil r
    isUnsp (SchemePairedValue (l, r))    = isUnsp l || isUnsp r
    isPrim (SchemePairedValue (l, r))    = isPrim l || isPrim r
+
+   symbol s  = SchemePairedValue (symbol s, symbol s)
+   symbols v = Set.union (symbols $ leftValue v) (symbols $ rightValue v)

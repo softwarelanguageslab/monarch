@@ -11,6 +11,9 @@ data Literal   = Num  Integer
                | Str  String
                | Boo  Bool
                | Cha  Char
+               | Sym  String
+               | Beh             -- ^ a behavior of an actor
+               | Mon             -- ^ a contract monitor
                | Nil
                | Unsp
                deriving (Eq, Ord, Show)
@@ -67,6 +70,7 @@ instance SelectVariable Proposition where
    variables (Literal _) = []
    variables Fresh       = []
    variables Bottom      = []
+   variables (Actor _)   = []
    variables (Application p1 p2) = variables p1 ++ mconcat (map variables p2)
 
 

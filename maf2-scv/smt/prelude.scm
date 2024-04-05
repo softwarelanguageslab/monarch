@@ -9,7 +9,9 @@
                        (VBool    (unwrap-bool     Bool))
                        (VString  (unwrap-string String))
                        (VSymbol  (unwrap-symbol String))
-                       (VActor   (actor-identity Span)) ;; todo is this the right representation for the identity?
+                       (VActor   (actor-identity Span))  ;; todo is this the right representation for the identity?
+                       (VBeh)
+                       (VMon)
                        (VError))))
 
 (define-fun actor?/v ((a V)) V

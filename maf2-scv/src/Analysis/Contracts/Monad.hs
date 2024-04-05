@@ -12,6 +12,7 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import Domain (ActorDomain)
 import Lattice (EqualLattice)
+import Analysis.Symbolic.Monad (SymbolicM)
 
 data AssertionMessage = ExpectedMessageContract
    deriving (Eq, Ord, Show)
@@ -39,6 +40,8 @@ type ContractM m v msg mb =
       AllocM m Exp (MAdr v),
       AllocM m Exp (FAdr v),
       AllocM m Exp (OAdr v),
+      -- Symbolic execution
+      SymbolicM m v,
       -- Domains
       Domain (Esc m) Error,
       ContractDomain v, 
@@ -46,4 +49,4 @@ type ContractM m v msg mb =
       EqualLattice v,
       -- Semantics monads
       ActorEvalM m v msg mb,
-      SchemeM m v)
+      SchemeM m v, Ord v)
