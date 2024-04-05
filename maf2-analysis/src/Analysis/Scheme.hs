@@ -180,7 +180,9 @@ type SchemeAnalysisConstraints var v ctx = (
          StrAdr ctx ~ SAdr v,
          VecAdr ctx ~ VAdr v,
          SchemeConstraints v Exp var (Env var),
-         Ord ctx, Ord v, SchemeAlloc ctx var (PAdr v) (VAdr v) (SAdr v))
+         Ord ctx, 
+         Ord v, 
+         SchemeAlloc ctx var (PAdr v) (VAdr v) (SAdr v))
 
 
 initialState :: forall m v var ctx . (SchemeAnalysisConstraints var v ctx, SVar.MonadStateVar m) => m (SSto ctx v, Map (RetAdr v ctx) (SVar.SVar v))
@@ -199,8 +201,8 @@ evalRet cmp = eval >=> writeAdr (RetAdr cmp)
 -- result. It uses the default initial environment
 -- as specified in `Analysis.Scheme.Primitives`
 analyzeProgram :: forall v ctx wl . 
-                  (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, WorkList wl)
-                => Exp -> wl (Component (EnvAdr ctx) v ctx) -> ctx -> (DSto ctx v, Map (RetAdr v ctx) v)
+                  (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, WorkList wl (Component (EnvAdr ctx) v ctx))
+                => Exp -> wl -> ctx -> (DSto ctx v, Map (RetAdr v ctx) v)
 analyzeProgram program initialWl initialCtx = (store', retStore')
    where ((rsto, rretSto), state) = runIdentity $ runEffectT initialWl' (setup initialState >>= iterate intra)
          store'     = unifyStore rsto state

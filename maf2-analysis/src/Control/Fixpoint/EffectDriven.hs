@@ -63,7 +63,7 @@ data EffectState c wl = EffectState {
       wl   :: wl
    }
 
-emptyEffectState :: wl c -> EffectState c (wl c)
+emptyEffectState :: wl -> EffectState c wl
 emptyEffectState = EffectState Set.empty Map.empty
 
 modifyWl :: (wl -> (a, wl)) -> EffectState c wl -> (a, EffectState c wl)
@@ -82,7 +82,7 @@ instance (Ord c) => MonadTrans (EffectT c wl) where
 instance (Ord c) => MonadLayer (EffectT c wl) where  
    lowerM f (EffectT m) = EffectT $ lowerM (lowerM f) m
 
-instance {-# OVERLAPPING #-} (Ord c, WorkList wl, MonadStateVar m, MonadStateVarTracking m, Monad m) => EffectM (EffectT c (wl c) m) c where
+instance {-# OVERLAPPING #-} (Ord c, WorkList wl c, MonadStateVar m, MonadStateVarTracking m, Monad m) => EffectM (EffectT c wl m) c where
    spawn = tell . Set.singleton
    intra c ma = do
        (v, r, w, spawns) <- censor (const Set.empty) (do
@@ -95,15 +95,15 @@ instance {-# OVERLAPPING #-} (Ord c, WorkList wl, MonadStateVar m, MonadStateVar
        return v
    done  = gets (isEmpty . wl)
    setup ma = ma >>= (\v -> reset >> return v)
-   next = state (modifyWl remove)
+   next = state $ modifyWl (fromJust . pop)
 
-integrate :: (Ord c, WorkList wl)
+integrate :: (Ord c, WorkList wl c)
           => c
           -> Set RDep  -- ^ registered read dependencies
           -> Set WDep  -- ^ write effects 
           -> Set c     -- ^ set of spawns
-          -> EffectState c (wl c)
-          -> EffectState c (wl c)
+          -> EffectState c wl
+          -> EffectState c wl
 integrate c r w s st = st {
       seen = Set.union (seen st) spawns',
       deps = deps',
@@ -117,11 +117,14 @@ integrate c r w s st = st {
          newCmps   = Set.union toAnalyze spawns'
 
 
-loop :: forall c m state . (Ord c, EffectM m c, MonadStateVar m) => (c -> state -> m state) -> state -> m state
+loop :: forall c m state . (Ord c, EffectM m c, MonadStateVar m) 
+      => (c -> state -> m state) 
+      -> state 
+      -> m state
 loop analyze st  =
       ifM done
       {- then -} (return st)
-      {- then -} (next >>= (\c -> (intra c (analyze c st)) >>= loop analyze))
+      {- then -} (next >>= (\c -> intra c (analyze c st) >>= loop analyze))
 
 iterate :: (Ord c, MonadStateVar m, EffectM m c)
         => (c -> state -> m state) -- ^ analysis function
@@ -129,7 +132,7 @@ iterate :: (Ord c, MonadStateVar m, EffectM m c)
         -> m state
 iterate = loop
 
-runEffectT :: forall c m a wl .(Monad m, Ord c) => wl c -> EffectT c (wl c) (TrackingStateVarT (StateVarT (IntegerPoolT m))) a -> m (a, VarState)
+runEffectT :: forall c m a wl .(Monad m, Ord c) => wl -> EffectT c wl (TrackingStateVarT (StateVarT (IntegerPoolT m))) a -> m (a, VarState)
 runEffectT wl (EffectT ma) =
        runIntegerPoolT
     $  runStateVarT
