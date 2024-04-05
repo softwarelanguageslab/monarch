@@ -12,6 +12,8 @@ data Literal   = Num  Integer
                | Boo  Bool
                | Cha  Char
                | Sym  String
+               | Beh             -- ^ a behavior of an actor
+               | Mon             -- ^ a contract monitor
                | Nil
                | Unsp
                deriving (Eq, Ord, Show)

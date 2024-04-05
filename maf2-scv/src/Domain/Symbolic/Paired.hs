@@ -198,7 +198,7 @@ instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v pa
    arefs'    = arefs'  . leftValue
 
    -- TODO: do we need to symbolically represent a behavior as well?
-   beh beh'   = SchemePairedValue (beh beh', bottom)
+   beh beh'   = SchemePairedValue (beh beh', SymbolicVal $ Literal Beh)
    withBehs f = withBehs f . leftValue
 
    isActorRef v = 
@@ -236,7 +236,7 @@ instance (SchemeValue (PairedSymbolic v pai vec str var), SchemeValue v, Contrac
       SchemePairedValue (flat a, bottom)
 
    --
-   αmon v = SchemePairedValue (αmon v, bottom)
+   αmon v = SchemePairedValue (αmon v, SymbolicVal $ Literal Mon)
    αmons  = αmons . leftValue
    isαmon = isαmon . leftValue 
 

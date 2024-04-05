@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
-module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), SymbolicValue, runFormulaT, choice) where
+module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), SymbolicValue, runFormulaT, choice, choices) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
@@ -28,6 +28,12 @@ choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m
 choice mv mcsq malt = mjoin t f
    where t = mv >>= (\v -> if isTrue  v then extendPc (assertTrue v)  >> ifFeasible mcsq else mzero)
          f = mv >>= (\v -> if isFalse v then extendPc (assertFalse v) >> ifFeasible malt else mzero)
+
+-- | Same as `conds` but keeps track of path conditions
+choices :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b)
+        => [(m v, m b)] -> m b -> m b
+choices clauses els = 
+   foldr (uncurry choice) els clauses
 
 -- | Executes the given action when the path condition is feasible
 -- otherwise returns `mzero`
@@ -68,7 +74,7 @@ instance {-# OVERLAPPING #-} (MonadJoin m, SymbolicValue v) => MonadPathConditio
    extendPc pc'     = modify $ Set.map (Conjunction (Atomic $ symbolic pc'))
    getPc = get
 
-instance (Monad m, MonadPathCondition m v, MonadLayer t) => MonadPathCondition (t m) v where 
+instance (MonadPathCondition m v, MonadLayer t) => MonadPathCondition (t m) v where 
    extendPc = upperM . extendPc
    getPc    = upperM getPc
 

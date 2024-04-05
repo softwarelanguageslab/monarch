@@ -25,6 +25,10 @@ translateAtomic (Literal (Str s)) =
    printf "(VStr \"%s\")" s
 translateAtomic (Literal (Boo b)) =
    printf "(VBool %s)" (if b then "true" else "false")
+translateAtomic (Literal (Sym s)) =
+   printf "(VSymbol %s)" s
+translateAtomic (Literal Beh) = "(VBeh)"
+translateAtomic (Literal Mon) = "(Mon)"
 translateAtomic (IsTrue prop) =
    printf "(true?/v %s)" (translateAtomic prop)
 translateAtomic (IsFalse prop) =
@@ -37,6 +41,7 @@ translateAtomic (Actor (Just span))  =
    printf "(KnownSpan %s %s)" (show (line span)) (show (column span))
 translateAtomic (Actor _) =
    printf "(UnknownSpan)"
+translateAtomic Bottom = "(VError)"
 
 -- | Translate a formula to a string compatible
 -- with the SMTLib format.

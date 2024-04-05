@@ -4,9 +4,9 @@
 module Control.Monad.Join (MonadJoin(..), cond, conds, MonadJoinAlternative(..), mjoinMap, mjoins, msplit, condCP) where
 
 import Lattice.Class
-import Lattice.ProductLattice
-import Lattice.MaybeLattice
 import Lattice.ConstantPropagationLattice
+import Lattice.MaybeLattice()
+import Lattice.ProductLattice()
 import Domain.Core.BoolDomain
 
 import Control.Monad.Reader hiding (mzero, join)

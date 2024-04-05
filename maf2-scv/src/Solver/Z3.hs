@@ -127,6 +127,7 @@ instance {-# OVERLAPPING #-} FormulaSolver Z3Solver where
 
    solve script   = do
       restoreCheckpoint
+      liftIO (putStrLn $ "solving script " ++ show script)
       -- Declare all variables as constants
       let names = variables script
       -- evaluate the mall in the solver

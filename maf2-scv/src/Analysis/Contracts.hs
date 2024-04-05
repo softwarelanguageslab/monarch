@@ -119,28 +119,29 @@ type K = ()
 type Sto = Map (EnvAdr K) V
 
 runAnalysis :: Exp -> (MayEscape (Set Error) V, Sto)
-runAnalysis exp = let ((((((((v, _), _), _), _), _), _), sto), _) =  Sem.eval @V exp
-                         & runEvalT
-                         & runMayEscape
-                         & runCallBottomT @V
-                         & runSpawnT
-                         & runEnv (analysisEnv @K)
-                         & runStoreT @(PaiAdr K) Map.empty
-                         & runStoreT @(VecAdr K) Map.empty
-                         & runStoreT @(StrAdr K) Map.empty
-                         & runStoreT @(MsCAdr K) Map.empty
-                         & runStoreT @(FlaAdr K) Map.empty
-                         & runStoreT @(MoαAdr K) Map.empty
-                         & runStoreT @(EnvAdr K) @V (initialSto (analysisEnv @K))
-                         & runAlloc @_ @K PaiAdr
-                         & runAlloc @_ @K VecAdr
-                         & runAlloc @_ @K StrAdr
-                         & runAlloc @_ @K EnvAdr
-                         & runAlloc @_ @K MsCAdr
-                         & runAlloc @_ @K MoαAdr
-                         & runAlloc @_ @K FlaAdr
-                         & runActorT @MB Set.empty EntryPid
-                         & runCtx ()
-                         & runNoSendT
-                         & runIdentity
-                  in (v, sto)
+runAnalysis = undefined
+-- runAnalysis exp = let ((((((((v, _), _), _), _), _), _), sto), _) =  Sem.eval @V exp
+--                          & runEvalT
+--                          & runMayEscape
+--                          & runCallBottomT @V
+--                          & runSpawnT
+--                          & runEnv (analysisEnv @K)
+--                          & runStoreT @(PaiAdr K) Map.empty
+--                          & runStoreT @(VecAdr K) Map.empty
+--                          & runStoreT @(StrAdr K) Map.empty
+--                          & runStoreT @(MsCAdr K) Map.empty
+--                          & runStoreT @(FlaAdr K) Map.empty
+--                          & runStoreT @(MoαAdr K) Map.empty
+--                          & runStoreT @(EnvAdr K) @V (initialSto (analysisEnv @K))
+--                          & runAlloc @_ @K PaiAdr
+--                          & runAlloc @_ @K VecAdr
+--                          & runAlloc @_ @K StrAdr
+--                          & runAlloc @_ @K EnvAdr
+--                          & runAlloc @_ @K MsCAdr
+--                          & runAlloc @_ @K MoαAdr
+--                          & runAlloc @_ @K FlaAdr
+--                          & runActorT @MB Set.empty EntryPid
+--                          & runCtx ()
+--                          & runNoSendT
+--                          & runIdentity
+--                   in (v, sto)
