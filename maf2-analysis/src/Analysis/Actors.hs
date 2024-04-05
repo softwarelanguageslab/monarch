@@ -9,10 +9,11 @@ import Debug.Trace
 import Analysis.Scheme.Primitives
 import Analysis.Actors.Mailbox
 import Analysis.Actors.Monad
+import Analysis.Scheme.Actors.Components
 import qualified Analysis.Actors.Semantics as Actors
 import Analysis.Monad
 import Analysis.Scheme.Store
-import Analysis.Scheme hiding (Component(..), Env, CallT, EvalT(..), State, runEvalT, RetAdr)
+import Analysis.Scheme hiding (runCallT, Component(..), Env, CallT, EvalT(..), State, runEvalT, RetAdr)
 import qualified Control.Fixpoint.EffectDriven as EF
 import Control.Monad (void, foldM)
 import Control.Monad.DomainError
@@ -45,13 +46,6 @@ type MB = Set Msg
 type Msg = SimpleMessage V
 
 ------------------------------------------------------------
--- Address
-------------------------------------------------------------
-
-newtype RetAdr = RetAdr Component deriving (Ord, Eq, Show)
-instance Address RetAdr
-
-------------------------------------------------------------
 -- Shorthands
 ------------------------------------------------------------
 
@@ -66,7 +60,7 @@ type Ctx = ()
 
 newtype EvalT m a = EvalT (m a) deriving (Applicative, Monad, Functor, MonadJoin)
 
-instance MonadTrans EvalT where   
+instance MonadTrans EvalT where
    lift = EvalT
 
 instance MonadLayer EvalT where
@@ -90,66 +84,25 @@ runEvalT (EvalT m) = m
 -- ModX
 ------------------------------------------------------------
 
-type State = (SSto Ctx V, Map RetAdr (SVar.SVar V), Map Pid (SVar.SVar (Set Msg)))
-
--- Function calls
-
-data Component
-  = Main Exp
-  | Actor Pid Exp (Env Ctx)
-  deriving (Eq, Ord, Show)
-
-newtype CallT m a = CallT (m a) deriving (Applicative, Monad, Functor, MonadJoin)
-instance MonadTrans CallT where  
-  lift = CallT
-instance MonadLayer CallT where
-  upperM = CallT
-  lowerM f (CallT m) = CallT $ f m
-
-instance {-# OVERLAPPING #-}
-  ( EF.EffectM m Component,
-    CtxM m Ctx,
-    ActorLocalM m Pid Msg MB,
-    StoreM m RetAdr V,
-    EnvM m (EnvAdr Ctx) (Env Ctx)
-  ) => CallM (CallT m) (Env Ctx) V where
-
-  call (Lam _ bdy _, _) = do
-    env' <- upperM getEnv
-    pid <- upperM self
-    let comp = Actor pid bdy env'
-    upperM $ EF.spawn comp
-    lookupAdr (RetAdr comp)
-  call _ = error "invalid call"
-
-runCallT' :: CallT m a -> m a
-runCallT' (CallT m) = m
-
--- Actor spawns
-
-instance {-# OVERLAPPING #-} (ActorEvalM (EvalT m) V Msg MB, EnvM m (EnvAdr Ctx) (Env Ctx), EF.EffectM m Component) => ActorBehaviorM (EvalT m) V where
-  spawn e = do
-    env' <- getEnv
-    upperM (EF.spawn (Actor (CP.Pid e ()) e env'))
-    return (aref (CP.Pid e ()))
-  become = void . spawn
+type State = (SSto Ctx V, Map (Component Ctx) (SVar.SVar V), Map Pid (SVar.SVar (Set Msg)))
 
 ------------------------------------------------------------
 -- Analysis
 ------------------------------------------------------------
 
-analyze :: Exp -> (DSto Ctx V, Map RetAdr V)
+analyze :: Exp -> (DSto Ctx V, Map (Component Ctx) V)
 analyze e = let ((sto, retSto, _), state) = (EF.setup initialState >>= EF.iterate intra)
                     & EF.runEffectT [Main e]
                     & runIdentity
             in (unifyStore sto state, SVar.unify retSto state)
-  where runIntra :: (EF.EffectM m Component, SVar.MonadStateVar m) => Component -> Pid -> Exp -> (Env Ctx) -> State -> m State
+  where runIntra :: (EF.EffectM m (Component Ctx), SVar.MonadStateVar m) => Component Ctx -> Pid -> Exp -> Env Ctx -> State -> m State
         runIntra cmp pid exp' env (sto, retSto, mailboxes) = do
              (m, mailboxes') <- mailbox pid mailboxes
-             r <-   (Analysis.Monad.eval exp' >>= writeAdr (RetAdr cmp))
+             r <-   (Analysis.Monad.eval exp' >>= writeAdr cmp)
                     & runEvalT
                     & runMayEscape @(Set DomainError)
-                    & runCallT'
+                    & runCallT @V @Ctx
+                    & runSpawnT
                     & runEnv env
                     & runAlloc @_ @Ctx PaiAdr
                     & runAlloc @_ @Ctx VecAdr
@@ -168,7 +121,7 @@ analyze e = let ((sto, retSto, _), state) = (EF.setup initialState >>= EF.iterat
             mb  <- SVar.read var
             return (mb, Map.insert pid var mailboxes)
         intra cmp@(Main expr) = runIntra cmp CP.EntryPid expr analysisEnv
-        intra cmp@(Actor pid expr env) = runIntra cmp pid expr env
+        intra cmp@(Actor pid expr ctx env) = runIntra cmp pid expr env
         initialState = do
             values <- foldM (\m (adr, v) -> SVar.new v <&> flip (Map.insert adr) m) Map.empty (Map.toList (initialSto @V analysisEnv))
             return (fromValues @SVar @V values, Map.empty, Map.empty)
