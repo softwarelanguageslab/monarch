@@ -26,8 +26,34 @@ class (Monad m) => MonadPathCondition m v | m -> v where
 -- | Choose between the two branches non-deterministically
 choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b) => m v -> m b -> m b -> m b
 choice mv mcsq malt = mjoin t f
-   where t = mv >>= (\v -> if isTrue  v then extendPc (assertTrue v)  >> ifFeasible mcsq else mzero)
-         f = mv >>= (\v -> if isFalse v then extendPc (assertFalse v) >> ifFeasible malt else mzero)
+   where t = mv >>= checkTrue
+         f = mv >>= checkFalse
+         -- Below you find a way of checking whether the condition is true or false 
+         -- depending on the abstract value and the current path condition.
+         --
+         -- This might seem a bit convoluted at first but the distinction between the different
+         -- cases is rather important. We discuss the `checkTrue` case in detail, the `checkFalse`
+         -- case is symmetric.
+         -- 
+         -- (1) the first case checks whether the condition is true and whether it is possible
+         -- that (according to the abstract values) it is false too. If not, this case will 
+         -- only extend the path condition and execute the consequent. The path condition
+         -- **must** be extended with the condition (even though it might be trivial)
+         -- for checking path sensitive or relational constraints in the future. 
+         -- (2) the second check handles the case where the abstract domain provides
+         -- insufficient information about the truth value of the condition. Here,
+         -- a symbolic solver is invoked to check whether the path leading up to the 
+         -- current program state is feasible in combination with the current condition.
+         -- (3) otherwise the condition was not true and the consequent does not need to be
+         --  executed.
+         checkTrue v  
+            | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
+            | isTrue  v = extendPc (assertTrue v)  >> ifFeasible mcsq
+            | otherwise = mzero
+         checkFalse v 
+            | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
+            | isFalse v = extendPc (assertFalse v)  >> ifFeasible mcsq
+            | otherwise = mzero
 
 -- | Same as `conds` but keeps track of path conditions
 choices :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b)

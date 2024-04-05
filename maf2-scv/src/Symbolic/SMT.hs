@@ -28,7 +28,7 @@ translateAtomic (Literal (Boo b)) =
 translateAtomic (Literal (Sym s)) =
    printf "(VSymbol %s)" s
 translateAtomic (Literal Beh) = "(VBeh)"
-translateAtomic (Literal Mon) = "(Mon)"
+translateAtomic (Literal Mon) = "(VMon)"
 translateAtomic (IsTrue prop) =
    printf "(true?/v %s)" (translateAtomic prop)
 translateAtomic (IsFalse prop) =
