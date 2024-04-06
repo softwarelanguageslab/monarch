@@ -9,7 +9,7 @@ import Data.Typeable
 import Data.Maybe (fromMaybe)
 
 -- | A generic store typeclass
-class (JoinLattice v) => Store s a v where
+class (JoinLattice v) => Store s a v | s -> a v where
    emptySto  :: s
    lookupSto :: a -> s -> v
    extendSto :: a -> v -> s -> s

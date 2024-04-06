@@ -32,6 +32,7 @@ import Control.Monad.State hiding (mzero, join)
 import Control.Monad.Join (MonadJoin(..), mjoinMap, mjoins)
 
 import Control.Monad.Layer
+import Analysis.Store (Store)
 
 
 
@@ -39,7 +40,7 @@ import Control.Monad.Layer
 --- StoreM typeclass
 ---
 
-class (Monad m, Joinable v) => StoreM m a v | m a -> v where
+class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
    -- | Write to a newly allocated address
    writeAdr  :: a -> v -> m ()
    -- | Update an existing address
@@ -53,22 +54,22 @@ class (Monad m, Joinable v) => StoreM m a v | m a -> v where
 
    {-# MINIMAL lookupAdr, writeAdr, (updateAdr | updateWith) #-}
 
-updateAndCheck :: (StoreM m a v, Eq v) => a -> (a -> m ()) -> m Bool
+updateAndCheck :: StoreM m a v => a -> (a -> m ()) -> m Bool
 updateAndCheck a f = do old <- lookupAdr a
                         f a
                         new <- lookupAdr a
                         return (old == new)
 
 -- | Convenience function: writes to an address `a` and checks if the value in the store at `a` has changed
-writeAdr' :: (StoreM m a v, Eq v) => a -> v -> m Bool
+writeAdr' :: StoreM m a v => a -> v -> m Bool
 writeAdr' a v = updateAndCheck a (`writeAdr` v)
 
 -- | Convenience function: updates an address `a` and checks if the value in the store at `a` has changed
-updateAdr' :: (StoreM m a v, Eq v) => a -> v -> m Bool
+updateAdr' :: StoreM m a v => a -> v -> m Bool
 updateAdr' a v = updateAndCheck a (`updateAdr` v)
 
 -- | Convenience function: updates an address `a` and checks if the value in the store at `a` has changed
-updateWith' :: (StoreM m a v, Eq v) => {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> m Bool
+updateWith' :: StoreM m a v => {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> m Bool
 updateWith' fs fw a = updateAndCheck a (updateWith fs fw)
 
 -- | Lookup
@@ -91,10 +92,10 @@ store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 --- StoreT monad transformer 
 --- 
 
-newtype StoreT adr v m a = StoreT { getStoreT :: StateT (Map adr v) m a }
-                              deriving (Applicative, Functor, Monad, MonadJoin, MonadState (Map adr v), MonadLayer, MonadTrans)
+newtype StoreT s m a = StoreT { getStoreT :: StateT s m a }
+                              deriving (Applicative, Functor, Monad, MonadJoin, MonadState s, MonadLayer, MonadTrans)
 
-instance {-# OVERLAPPING #-} (Monad m, JoinLattice v, Ord adr) => StoreM (StoreT adr v m) adr v where
+instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM (StoreT s m) a v where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    updateWith fs fw adr = modify (Store.updateStoWith fs fw adr)
@@ -106,7 +107,7 @@ instance (Monad (t m), StoreM m adr v, MonadLayer t) => StoreM (t m) adr v where
    lookupAdr  =  upperM . lookupAdr
    updateWith fs fw = upperM . updateWith fs fw
 
-runStoreT :: forall adr v m a . Map adr v -> StoreT adr v m a -> m (a, Map adr v)
+runStoreT :: forall s m a . s -> StoreT s m a -> m (a, s)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
 
 
