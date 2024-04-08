@@ -38,8 +38,7 @@ import Control.Monad ((>=>))
 -----------------------------------------
 
 type Program              = Exp
-type Env var              = Map String var          -- ^ the initial environment
-type Sto var ctx v        = Map var v               -- ^ non-heap allocated values
+type Sto var ctx v        = Map var v                    -- ^ non-heap allocated values
 type DSto' f ctx v           = SchemeStore' f v
                                        (EnvAdr ctx)
                                        (StrAdr ctx)
@@ -54,12 +53,12 @@ type SSto ctx v = DSto' SVar ctx v
 
 -- | The initial environment used by 
 -- the analysis
-analysisEnv :: forall ctx . Env (EnvAdr ctx)
+analysisEnv :: forall ctx . Env ctx
 analysisEnv = initialEnv PrmAdr
 
 -- | The initial store
-analysisStore :: forall v ctx var . (SchemeAnalysisConstraints var v ctx)
-              => Env var -> DSto ctx v
+analysisStore :: forall v ctx . (SchemeAnalysisConstraints (EnvAdr ctx) v ctx)
+              => Env ctx -> DSto ctx v
 analysisStore = fromValues . initialSto @v
 
 -----------------------------------------
@@ -85,7 +84,7 @@ instance {-# OVERLAPPABLE #-} SchemeAlloc ctx (EnvAdr ctx) (PaiAdr ctx) (VecAdr 
    allocVar = EnvAdr
    allocCtx = undefined
 
-data Component var v ctx = Call Exp (Env var) ctx
+data Component var v ctx = Call Exp (Env ctx) ctx
                          | Main Exp
                          deriving (Eq, Ord, Show)
 
@@ -142,11 +141,11 @@ newtype CallT v ctx m a = CallT (IdentityT m a) deriving (Monad, Functor, Applic
 instance {-# OVERLAPPING #-} (
           CtxM m ctx,
           StoreM m (EnvAdr ctx) v,
-          EnvM m (EnvAdr ctx) (Env (EnvAdr ctx)),
+          EnvM m (EnvAdr ctx) (Env ctx),
           StoreM m (RetAdr v ctx) v,
           EffectM m (Component (EnvAdr ctx) v ctx),
           SchemeAnalysisConstraints (EnvAdr ctx) v ctx
-         ) => CallM (CallT v ctx m) (Env (EnvAdr ctx)) v where
+         ) => CallM (CallT v ctx m) (Env ctx) v where
    call (Lam _ bdy _, _) = do
        -- get the extended environment 
        env' <- CallT $ lift getEnv
@@ -179,15 +178,15 @@ type SchemeAnalysisConstraints var v ctx = (
          PaiAdr ctx ~ PAdr v,
          StrAdr ctx ~ SAdr v,
          VecAdr ctx ~ VAdr v,
-         SchemeConstraints v Exp var (Env var),
+         SchemeConstraints v Exp var (Env ctx),
          Ord ctx, 
          Ord v, 
          SchemeAlloc ctx var (PAdr v) (VAdr v) (SAdr v))
 
 
-initialState :: forall m v var ctx . (SchemeAnalysisConstraints var v ctx, SVar.MonadStateVar m) => m (SSto ctx v, Map (RetAdr v ctx) (SVar.SVar v))
+initialState :: forall m v ctx . (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, SVar.MonadStateVar m) => m (SSto ctx v, Map (RetAdr v ctx) (SVar.SVar v))
 initialState = do
-   let sto = Map.toList (initialSto @v @_ @var analysisEnv)
+   let sto = Map.toList (initialSto @v @_ @(EnvAdr ctx) analysisEnv)
    vars <- mapM (\(k,v) -> (k,) <$> SVar.new v) sto
    return (fromValues (Map.fromList vars), Map.empty)
 

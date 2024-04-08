@@ -5,6 +5,7 @@ module Analysis.Scheme.Simple where
 
 import Syntax.Scheme
 import Analysis.Scheme
+import Domain.Scheme.Store
 import Domain.Scheme hiding (Exp)
 import GHC.Generics
 import Data.Maybe

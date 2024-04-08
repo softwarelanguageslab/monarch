@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances, FlexibleContexts, FlexibleInstances, RankNTypes #-}
-module Control.Monad.Layer(MonadLayer(..)) where
+module Control.Monad.Layer(MonadLayer(..), MonadTrans(..)) where
 
 import Data.Void
 import Data.Kind

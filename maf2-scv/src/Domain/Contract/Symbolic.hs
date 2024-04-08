@@ -1,17 +1,12 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- | Pairs a CP domain with a symbolic domain for contracts
 -- on actors.
-module Domain.Contract.Symbolic(V, Env) where
+module Domain.Contract.Symbolic(V) where
 
 import Domain.Contract.CP
 import Domain.Scheme.Modular
 import Domain.Scheme.Store
-import Domain.Contract.Store
-import qualified Domain.Scheme.Actors.CP as CP
 import Lattice.ConstantPropagationLattice
-import Data.TypeLevel.HMap ((::->))
-import Syntax.Scheme
-import Analysis.Contracts.Behavior (UnorderedBehaviorContract)
 
 import Domain.Symbolic (PairedSymbolic)
 import Domain.Scheme.Class hiding (Exp, Env)
@@ -20,7 +15,6 @@ import Prelude hiding (length)
 import Domain.Scheme.Derived.Pair (mkLeft, leftValue)
 
 import Control.Monad
-import Data.Map (Map)
 
 
 type V k       = PairedSymbolic (CPContractValue k) (PaiAdr k) (VecAdr k) (StrAdr k) (EnvAdr k)

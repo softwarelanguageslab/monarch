@@ -68,6 +68,7 @@ library
       Analysis.Python.Objects
       Analysis.Python.Primitives
       Analysis.Python.Semantics
+      Analysis.Scheme.Actors.Components
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
