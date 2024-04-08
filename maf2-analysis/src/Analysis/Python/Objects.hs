@@ -22,6 +22,7 @@ import qualified Domain
 import Domain.Python.Objects 
 import Domain.Python.World 
 import Data.Finite
+import qualified Analysis.Environment as Env
 
 import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import qualified Prelude
@@ -33,25 +34,33 @@ import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad
 
 -- | Convenience function to construct a Python object immediately from primitive abstract value
-from :: forall (k :: PyPrmKey) obj . (PyObj obj, Ref obj ~ PyVal, SingI k) => Abs obj k -> obj 
+from :: forall (k :: PyPrmKey) obj . (PyObj' obj, SingI k) => Abs obj k -> obj 
 from v = set @k v (new cls)
   where cls = constant $ TypeObject $ classFor $ sing @k 
 
 -- | Convenience function to construct a Python object immediately from primitive concrete value
-from' :: forall (k :: PyPrmKey) obj v . (PyObj obj, Ref obj ~ PyVal, Domain (Abs obj k) v, SingI k) => v -> obj 
+from' :: forall (k :: PyPrmKey) obj v . (PyObj' obj, Domain (Abs obj k) v, SingI k) => v -> obj 
 from' = from @k . Domain.inject  
 
 --
 -- Python constants 
 --
 
-init :: PyM pyM obj => pyM ()
-init = mapM_ initConstant (all :: [PyConstant])  
+initialBds :: [(String, VarAdr, PyVal)]
+initialBds = map (\(nam, vlu) -> (nam, VarAdr nam, vlu)) bds 
+  where bds = [("type", constant Type)]
 
-initConstant :: PyM pyM obj => PyConstant -> pyM ()
+initialEnv :: PyEnv
+initialEnv = Env.extends (map (\(nam, adr, _) -> (nam, adr)) initialBds) Env.empty
+
+init :: (StoreM m VarAdr PyVal, StoreM m ObjAdr obj, PyObj' obj) => m ()
+init = do mapM_ (\(_, adr, vlu) -> writeAdr adr vlu) initialBds
+          mapM_ initConstant (all :: [PyConstant])  
+
+initConstant :: (StoreM m ObjAdr obj, PyObj' obj) => PyConstant -> m ()
 initConstant c = writeAdr (allocCst c) (injectPyConstant c)
 
-injectPyConstant :: (PyObj obj, Ref obj ~ PyVal) => PyConstant -> obj
+injectPyConstant :: PyObj' obj => PyConstant -> obj
 injectPyConstant Type             = new (constant Type)  
 injectPyConstant Object           = new (constant Type)
 injectPyConstant True             = from' @BlnPrm Prelude.True

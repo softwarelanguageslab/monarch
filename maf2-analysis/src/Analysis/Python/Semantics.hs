@@ -9,7 +9,7 @@ import Domain.Python.World
 import Domain.Python.Syntax
 import Analysis.Python.Objects
 import Analysis.Python.Common
-import Analysis.Python.Monad 
+import Analysis.Python.Monad hiding (Return, Continue, Break)
 import Analysis.Python.Primitives
 import Analysis.Monad hiding (eval, call)
 
@@ -79,7 +79,7 @@ execCnt :: PyM pyM obj => pyM ()
 execCnt = continue
 
 execWhi :: PyM pyM obj => PyExp -> PyStm -> pyM ()
-execWhi cnd bdy = void $ getEnv >>= callCmp . LoopCmp cnd bdy 
+execWhi cnd bdy = void $ callWhi cnd bdy 
 
 eval :: PyM pyM obj => PyExp -> pyM PyVal
 eval (Lam prs bdy loc _)   = evalLam prs bdy loc
@@ -137,9 +137,7 @@ callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal
 callClo pos ags = mjoinMap apply
  where apply (prs, bdy, env) = 
          withEnv (const env) $ do bindings <- zipWithM bindPar prs ags
-                                  withExtendedEnv bindings $ do ext <- getEnv
-                                                                let cmp = CallCmp bdy ext
-                                                                callCmp cmp 
+                                  withExtendedEnv bindings (callBdy bdy)
 
 bindPar :: PyM pyM obj => PyPar -> PyVal -> pyM (String, VarAdr)
 bindPar (Prm ide _) v = writeAdr adr v >> return (lexNam ide, adr)

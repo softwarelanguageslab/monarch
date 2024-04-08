@@ -18,7 +18,7 @@ import Control.Monad.Layer
 ---
 
 -- | Reading from an environment 
-class (Environment env adr) => EnvM m adr env | m -> env, m -> adr where
+class (Monad m, Environment env adr) => EnvM m adr env | m -> env, m -> adr where
    -- | Lookup the address of the given identifier,
    -- may throw an exception if the identifier is not found 
    -- since it means that the program is not well-formed.

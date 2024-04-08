@@ -23,7 +23,7 @@ import Control.Monad.Cond
 newtype IntraAnalysisT cmp m a = IntraAnalysisT (ReaderT cmp m a)
     deriving (Functor, Applicative, Monad, MonadReader cmp, MonadTrans, MonadLayer, MonadJoin)
 
-instance (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp) => ComponentTrackingM (IntraAnalysisT cmp m) cmp where
+instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp) => ComponentTrackingM (IntraAnalysisT cmp m) cmp where
     spawn cmp = unlessM (upperM $ has cmp)
                         (upperM $ spawn cmp >> add cmp)
     components = upperM components

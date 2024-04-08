@@ -90,6 +90,7 @@ library:
   - Analysis.Actors.Monad
   - Analysis.Actors.Semantics
   - Analysis.Actors.Mailbox
+  - Analysis.Python.Fixpoint
   - Interpreter.Scheme
   - Control.Monad.Layer
   - Control.Monad.State.SVar

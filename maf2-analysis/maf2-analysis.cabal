@@ -36,6 +36,7 @@ library
       Analysis.Actors.Monad
       Analysis.Actors.Semantics
       Analysis.Actors.Mailbox
+      Analysis.Python.Fixpoint
       Interpreter.Scheme
       Control.Monad.Layer
       Control.Monad.State.SVar
@@ -51,16 +52,22 @@ library
       Analysis.Monad.Allocation
       Analysis.Monad.Assertion
       Analysis.Monad.Call
+      Analysis.Monad.ComponentTracking
       Analysis.Monad.Context
+      Analysis.Monad.DependencyTracking
       Analysis.Monad.Environment
       Analysis.Monad.Eval
+      Analysis.Monad.IntraAnalysis
       Analysis.Monad.Join
       Analysis.Monad.Span
       Analysis.Monad.Store
+      Analysis.Monad.WorkList
       Analysis.Python
       Analysis.Python.Common
       Analysis.Python.Monad
+      Analysis.Python.Objects
       Analysis.Python.Primitives
+      Analysis.Python.Semantics
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
