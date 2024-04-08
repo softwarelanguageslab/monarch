@@ -6,6 +6,7 @@ module Analysis.Monad.Store (
     StoreT,
     StoreT',
     runStoreT,
+    runWithStore,
     runStoreT',
     lookups,
     deref,
@@ -80,7 +81,7 @@ lookups look f = mjoinMap (\adr -> look adr >>= f adr)
 deref :: (StoreM m a v, MonadJoin m, JoinLattice r) => (a -> v -> m r) -> Set a -> m r
 deref = lookups lookupAdr
 
-deref' :: (StoreM m a v, MonadJoin m, JoinLattice v) => Set a -> m v
+deref' :: (StoreM m a v, MonadJoin m) => Set a -> m v
 deref' = mjoins . map lookupAdr . Set.toList
 
 -- | Store the given value in the store using the an address allocator on the monadic stack.
@@ -92,10 +93,10 @@ store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 --- StoreT monad transformer 
 --- 
 
-newtype StoreT s m a = StoreT { getStoreT :: StateT s m a }
-                              deriving (Applicative, Functor, Monad, MonadJoin, MonadState s, MonadLayer, MonadTrans)
+newtype StoreT s adr vlu m a = StoreT { getStoreT :: StateT s m a }
+   deriving (Applicative, Functor, Monad, MonadJoin, MonadState s, MonadLayer, MonadTrans)
 
-instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM (StoreT s m) a v where
+instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM (StoreT s a v m) a v where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    updateWith fs fw adr = modify (Store.updateStoWith fs fw adr)
@@ -107,9 +108,11 @@ instance (Monad (t m), StoreM m adr v, MonadLayer t) => StoreM (t m) adr v where
    lookupAdr  =  upperM . lookupAdr
    updateWith fs fw = upperM . updateWith fs fw
 
-runStoreT :: forall s m a . s -> StoreT s m a -> m (a, s)
+runStoreT :: forall s adr vlu m a . s -> StoreT s adr vlu m a -> m (a, s)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
 
+runWithStore :: forall s adr vlu m a . Store s adr vlu => StoreT s adr vlu m a -> m (a, s)
+runWithStore = runStoreT Store.emptySto
 
 
 ---

@@ -13,6 +13,10 @@ class (JoinLattice v) => Store s a v | s -> a v where
    emptySto  :: s
    lookupSto :: a -> s -> v
    extendSto :: a -> v -> s -> s
+   extendsSto :: [(a,v)] -> s -> s 
+   extendsSto = flip $ foldr (uncurry extendSto)
+   from :: [(a,v)] -> s
+   from = flip extendsSto emptySto 
    updateSto :: a -> v -> s -> s
    updateSto adr v = updateStoWith (const v) (`join` v) adr 
    updateStoWith :: {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> s -> s
