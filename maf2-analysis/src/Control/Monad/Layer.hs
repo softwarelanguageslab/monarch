@@ -10,6 +10,7 @@ import Lattice.Class
 import Control.Monad.DomainError (MayEscapeT(..), MayEscape(..))
 import ListT
 import Control.Monad.Join
+import Control.Monad.Escape
 
 -- | A Monad "Layer" is similar to a Monad transformer, but is also provides a function to remove one level from the monad transformer stack. 
 class (forall m . Monad m => Monad (t m), MonadTrans t) => MonadLayer t where
@@ -52,7 +53,7 @@ instance MonadLayer ListT where
    lowerM f m = ListT $ f (uncons m)
 
 
--- instance {-# OVERLAPPABLE #-} (MonadLayer m, MonadEscape (Lower m) e) => MonadEscape m e where
---    type Esc m = Esc (Lower m)
---    escape = upperM escape
+--instance {-# OVERLAPPABLE #-} (MonadEscape m, MonadLayer t) => MonadEscape (t m) where
+    --type Esc (t m) = Esc m 
+    --escape = upperM escape
 --    catch ma hdl = lowerM (`catch` hdl) ma
