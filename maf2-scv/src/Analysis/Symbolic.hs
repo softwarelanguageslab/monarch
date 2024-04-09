@@ -19,6 +19,7 @@ import qualified Analysis.Symbolic.Semantics as Symbolic
 import Analysis.Contracts.Store
 import Analysis.Actors.Mailbox
 
+-- ModX
 import Analysis.Scheme.Actors.Components
 
 -- Domains
@@ -50,7 +51,6 @@ import Text.Printf
 import Prelude hiding (exp)
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Analysis.Scheme (DSto)
 
 ------------------------------------------------------------
 -- Evaluation function
@@ -85,7 +85,6 @@ runSymbolicEvalT (SymbolicEvalT m) = m
 instance SymbolicARef (Pid ctx) where
    identity EntryPid   = Symbolic.Actor Nothing
    identity (Pid e _)  = Symbolic.Actor (Just $ spanOf e)
-
 
 ------------------------------------------------------------
 -- Domain instantation

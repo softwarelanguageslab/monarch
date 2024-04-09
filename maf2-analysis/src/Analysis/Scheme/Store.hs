@@ -2,6 +2,8 @@
 
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE PolyKinds #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 -- | A store for Scheme-based analyses.
 --
 -- The store is divided into four parts: 
@@ -9,10 +11,29 @@
 -- - a store for storing the pairs allocated by the program
 -- - a store for storing the vector allocated by the program
 -- - a store for storing the strings allocated by the program
-module Analysis.Scheme.Store(fromValues, SchemeStore'(..), SchemeStore, runSchemeStoreT, combineStores, unifyStore, SVar, Id, runSchemeAllocT) where
+--
+-- This module provides the monads needed for managing these 
+-- stores during an analysis, as well as its allocation 
+-- functions. Furthermore, two stores named `DSto` 
+-- and `SSto`, refering to a 'SchemeStore' with and without 
+-- SVars respecively, provide default store types for 
+-- sensible address defaults (cf. 'Domain.Scheme.Store').
+module Analysis.Scheme.Store(
+   -- * Store
+   fromValues, 
+   SchemeStore'(..), 
+   SchemeStore, 
+   runSchemeStoreT, 
+   unifyStore, 
+   SVar, 
+   Id, 
+   runSchemeAllocT,
+   -- * Defaults
+   SSto,
+   DSto
+) where
 
 import Domain.Scheme
-
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Analysis.Monad
@@ -21,7 +42,13 @@ import Data.Singletons
 import Data.Kind
 import Data.Function ((&))
 import Data.TypeLevel.HMap
+import Domain.Scheme.Store
 
+------------------------------------------------------------
+-- SchemeStore itself
+------------------------------------------------------------
+
+-- TODO: these two things should be moved elsewhere.
 data Id :: k ~> k
 type instance Apply Id (x :: k) = x
 
@@ -96,7 +123,7 @@ runSchemeStoreT sto m = do
               })
 
 -- | Add Scheme address allocators to the monadic stack,
--- needs four functions that correspond to the allocatio
+-- needs four functions that correspond to the allocation
 runSchemeAllocT var vec pai str m =
                m
              & runAlloc var
@@ -117,7 +144,11 @@ unifyStore store state = SchemeStore {
       strings = SVar.unify (strings store) state
    }
 
+---------------------------------------------------------------
+-- Default store aliases
+---------------------------------------------------------------
 
--- | DEPRECATED: combine the result of the SchemeStoreT monad into a single store, this is now superceded by runSchemeStoreT
-combineStores :: Monad m => m ((((a, Map var (VarDom v)), Map str (StrDom v)), Map pai (PaiDom v)), Map vec (VecDom v)) -> m (a, SchemeStore v var str pai vec)
-combineStores m = m >>= (\((((a, vars), strings), pairs), vecs) -> return (a, SchemeStore vars strings pairs vecs))
+type DSto k v = 
+   SchemeStore' Id v (EnvAdr k) (StrAdr k) (PaiAdr k) (VecAdr k)
+type SSto k v  =
+   SchemeStore' SVar v (EnvAdr k) (StrAdr k) (PaiAdr k) (VecAdr k)

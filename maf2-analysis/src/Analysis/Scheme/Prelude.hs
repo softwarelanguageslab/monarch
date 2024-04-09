@@ -11,8 +11,6 @@ module Analysis.Scheme.Prelude(
    -- * Store
    module Analysis.Scheme.Store,
    module Domain.Scheme.Store,
-   -- | SVar-based SchemeStore
-   SSto,
    -- | Store with initial primitives
    initialSto, 
    -- | Environment with initial primitives
@@ -45,5 +43,5 @@ import Control.Fixpoint.EffectDriven
 import Control.Monad.Join
 
 -- Analysis setup
-import Analysis.Scheme (SSto, analysisEnv)
+import Analysis.Scheme (analysisEnv)
 import Analysis.Scheme.Primitives (initialSto)

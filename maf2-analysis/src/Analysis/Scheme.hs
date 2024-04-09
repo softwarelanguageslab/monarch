@@ -38,14 +38,6 @@ import Control.Monad ((>=>))
 -----------------------------------------
 
 type Program              = Exp
-type Sto var ctx v        = Map var v                    -- ^ non-heap allocated values
-type DSto' f ctx v           = SchemeStore' f v
-                                       (EnvAdr ctx)
-                                       (StrAdr ctx)
-                                       (PaiAdr ctx)
-                                       (VecAdr ctx)
-type DSto ctx v = DSto' Id ctx v
-type SSto ctx v = DSto' SVar ctx v
 
 -----------------------------------------
 -- Store & Environment
@@ -65,30 +57,11 @@ analysisStore = fromValues . initialSto @v
 -- ModF
 -----------------------------------------
 
-newtype RetAdr v ctx = RetAdr (Component (EnvAdr ctx) v ctx) 
-                  deriving (Eq, Ord, Show)
-
-instance (Ord ctx, Show ctx) => Address (RetAdr v ctx)
-
-class SchemeAlloc ctx var padr vadr sadr | ctx -> var padr vadr sadr where
-  allocPai :: Exp -> ctx -> padr
-  allocVec :: Exp -> ctx -> vadr
-  allocStr :: Exp -> ctx -> sadr
-  allocVar :: Ide -> ctx -> var
-  allocCtx :: Exp -> ctx -> ctx
-
-instance {-# OVERLAPPABLE #-} SchemeAlloc ctx (EnvAdr ctx) (PaiAdr ctx) (VecAdr ctx) (StrAdr ctx) where
-   allocPai = PaiAdr
-   allocVec = VecAdr
-   allocStr = StrAdr
-   allocVar = EnvAdr
-   allocCtx = undefined
-
-data Component var v ctx = Call Exp (Env ctx) ctx
+data Component v ctx = Call Exp (Env ctx) ctx
                          | Main Exp
                          deriving (Eq, Ord, Show)
 
-instance (Show ctx) => PrintShort (Component var v ctx) where 
+instance (Show ctx) => PrintShort (Component v ctx) where 
    printShort (Main _) = "Main"
    printShort (Call exp _ ctx) = printf "Call(%s, %s)" (show exp) (show ctx)
    
@@ -135,8 +108,8 @@ instance {-# OVERLAPPING #-} (
           CtxM m ctx,
           StoreM m (EnvAdr ctx) v,
           EnvM m (EnvAdr ctx) (Env ctx),
-          StoreM m (RetAdr v ctx) v,
-          EffectM m (Component (EnvAdr ctx) v ctx),
+          StoreM m (Component v ctx) v,
+          EffectM m (Component v ctx),
           SchemeAnalysisConstraints (EnvAdr ctx) v ctx
          ) => CallM (CallT v ctx m) (Env ctx) v where
    call (Lam _ bdy _, _) = do
@@ -149,7 +122,7 @@ instance {-# OVERLAPPING #-} (
        --  spawn  the new component
        _ <- CallT $ spawn comp
        -- lookup the return value of the component
-       lookupAdr (RetAdr comp)
+       lookupAdr comp
    call _ = error "call can only be a lambda expression"
 
 -- | Run the CallT monad and peel it off the stack whilst returning 
@@ -173,11 +146,10 @@ type SchemeAnalysisConstraints var v ctx = (
          VecAdr ctx ~ VAdr v,
          SchemeConstraints v Exp var (Env ctx),
          Ord ctx, 
-         Ord v, 
-         SchemeAlloc ctx var (PAdr v) (VAdr v) (SAdr v))
+         Ord v)
 
 
-initialState :: forall m v ctx . (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, SVar.MonadStateVar m) => m (SSto ctx v, Map (RetAdr v ctx) (SVar.SVar v))
+initialState :: forall m v ctx . (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, SVar.MonadStateVar m) => m (SSto ctx v, Map (Component v ctx) (SVar.SVar v))
 initialState = do
    let sto = Map.toList (initialSto @v @_ @(EnvAdr ctx) analysisEnv)
    vars <- mapM (\(k,v) -> (k,) <$> SVar.new v) sto
@@ -186,15 +158,15 @@ initialState = do
 -- | Evaluates the given expression in the appropriate monad and writes its result to the store
 -- on the return address
 
-evalRet :: forall v ctx m . (EvalM m v Exp, StoreM m (RetAdr v ctx) v) => Component (EnvAdr ctx) v ctx -> Exp -> m ()
-evalRet cmp = eval >=> writeAdr (RetAdr cmp)
+evalRet :: forall v ctx m . (EvalM m v Exp, StoreM m (Component v ctx) v) => Component v ctx -> Exp -> m ()
+evalRet cmp = eval >=> writeAdr cmp
 
 -- | Analyses the given program into an analysis
 -- result. It uses the default initial environment
 -- as specified in `Analysis.Scheme.Primitives`
 analyzeProgram :: forall v ctx wl . 
-                  (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, WorkList wl (Component (EnvAdr ctx) v ctx))
-                => Exp -> wl -> ctx -> (DSto ctx v, Map (RetAdr v ctx) v)
+                  (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, WorkList wl (Component v ctx))
+                => Exp -> wl -> ctx -> (DSto ctx v, Map (Component v ctx) v)
 analyzeProgram program initialWl initialCtx = (store', retStore')
    where ((rsto, rretSto), state) = runIdentity $ runEffectT initialWl' (setup initialState >>= iterate intra)
          store'     = unifyStore rsto state
@@ -206,10 +178,10 @@ analyzeProgram program initialWl initialCtx = (store', retStore')
                                      & runMayEscape @(Set DomainError)
                                      & runCallT @v @ctx
                                      & runEnv env
-                                     & runAlloc (allocPai @ctx)
-                                     & runAlloc (allocVec @ctx)
-                                     & runAlloc (allocStr @ctx)
-                                     & runAlloc (allocVar @ctx)
+                                     & runAlloc (PaiAdr @ctx) 
+                                     & runAlloc (VecAdr @ctx)
+                                     & runAlloc (StrAdr @ctx)
+                                     & runAlloc (EnvAdr @ctx)
                                      & runCtx  ctx
                                      & runJoinT
                                      & runSchemeStoreT sto
