@@ -53,6 +53,7 @@ library
       Control.Monad.AbstractM
       Control.Monad.Escape
       Data.TypeLevel.HMap
+      Data.TypeLevel.AssocList
       Data.Finite
       Domain.Core.SeqDomain.BoundedList
   other-modules:
