@@ -17,7 +17,8 @@ module Control.Monad.State.SVar
     reset,
     getDeps,
     SVar,
-    unify
+    unify,
+    fromMap
   )
 where
 
@@ -35,8 +36,8 @@ import Prelude hiding (read)
 import Data.Bifunctor (second)
 import Control.Monad.Cond
 import Lattice (Joinable(..), JoinLattice(..))
-import Debug.Trace
-import Control.Arrow ((&&&), (>>>), Kleisli(..))
+import Control.Monad (foldM)
+import Data.Functor ((<&>))
 
 -- Holds dynamic data
 data SomeVal where
@@ -76,7 +77,7 @@ class (Monad m) => MonadStateVar m where
   depend :: a -> m (SVar a)
   depend vlu = do
     var <- new vlu
-    vlu <- read var
+    _ <- read var
     return var
 
 instance (Monad (t m), MonadLayer t, MonadStateVar m) => MonadStateVar (t m) where
@@ -132,17 +133,25 @@ unify m st =
    Map.fromList $ map
       (second $ unsafeCoerceVal . fromJust . flip Map.lookup (state st) . getSVar) (Map.toList m)
 
+-- | Turn a map of values into a map of SVars that 
+-- point to these values
+fromMap :: (MonadStateVar m) => Ord a => Map a b -> m (Map a (SVar b))
+fromMap  =
+   foldM (\m (key, val) -> new val <&> flip (Map.insert key) m)
+         Map.empty . Map.toList
+
+
 ------------------------------------------------------------
 -- Tracking SVar's
 ------------------------------------------------------------
 
-class Monad m => MonadStateVarTracking m where    
+class Monad m => MonadStateVarTracking m where
    -- | Reset tracking
    reset   :: m ()
    -- | Get dependencies 
    getDeps :: m TrackingState
 
-instance {-# OVERLAPPABLE #-} (MonadStateVarTracking m, MonadLayer t) => MonadStateVarTracking (t m) where  
+instance {-# OVERLAPPABLE #-} (MonadStateVarTracking m, MonadLayer t) => MonadStateVarTracking (t m) where
    reset    = upperM reset
    getDeps  = upperM getDeps
 
@@ -176,7 +185,7 @@ register dep st =
 newtype TrackingStateVarT m a = TrackingStateVarT {runTrackingStateVarT' :: StateT TrackingState m a}
   deriving (Applicative, Monad, Functor, MonadState TrackingState, MonadLayer, MonadTrans)
 
-instance (Monad m) => MonadStateVarTracking (TrackingStateVarT m) where   
+instance (Monad m) => MonadStateVarTracking (TrackingStateVarT m) where
    reset   = ST.put emptyTrackingState
    getDeps = ST.get
 
@@ -184,7 +193,7 @@ runTrackingStateVarT :: (Monad m) => TrackingStateVarT m a -> m a
 runTrackingStateVarT (TrackingStateVarT ma) = ST.evalStateT ma emptyTrackingState
 
 instance {-# OVERLAPPING #-} (MonadStateVar m) => MonadStateVar (TrackingStateVarT m) where
-  new = lift . new 
+  new = lift . new
 
   modify f var@(SVar i) =
     ifM

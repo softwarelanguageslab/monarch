@@ -82,6 +82,7 @@ library:
   - Analysis.Scheme.Simple
   - Analysis.Scheme.Semantics
   - Analysis.Scheme.Primitives
+  - Analysis.Scheme.Prelude
   - Analysis.Actors
   - Analysis.Monad
   - Analysis.Scheme
@@ -90,6 +91,7 @@ library:
   - Analysis.Actors.Monad
   - Analysis.Actors.Semantics
   - Analysis.Actors.Mailbox
+  - Analysis.Scheme.Actors.Components
   - Analysis.Python.Fixpoint
   - Interpreter.Scheme
   - Control.Monad.Layer

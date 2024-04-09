@@ -20,6 +20,7 @@ import qualified Control.Monad.State.SVar as SVar
 import Data.Singletons
 import Data.Kind
 import Data.Function ((&))
+import Data.TypeLevel.HMap
 
 data Id :: k ~> k
 type instance Apply Id (x :: k) = x
@@ -47,6 +48,13 @@ data SchemeStore' f v var str pai vec = SchemeStore {
      vecs    :: Map vec (f @@ VecDom v)
 }
 
+type StoreMapping (f :: Type ~> Type) v var str pai vec = '[
+      var ::-> VarDom v,
+      vec ::-> VecDom v,
+      pai ::-> PaiDom v,
+      str ::-> StrDom v
+   ]
+
 -- | A SchemeStore where `f` is fixed to 'Id'.
 type SchemeStore v var str pai vec = SchemeStore' Id v var str pai vec
 
@@ -63,11 +71,7 @@ fromValues vls = SchemeStore {
 -- | A monadic stack that represents the store
 -- implementations for each store part
 type SchemeStoreT' adr vadr sadr padr v m a =
-   StoreT' adr (VarDom v)
-      (StoreT' vadr (VecDom v)
-         (StoreT' padr (PaiDom v)
-            (StoreT' sadr (StrDom v) m)))
-      a
+   StackStoreT (StoreMapping SVar v adr sadr padr vadr) m a
 
 
 -- | Given a stack with a SchemeStoreT type on
@@ -93,12 +97,12 @@ runSchemeStoreT sto m = do
 
 -- | Add Scheme address allocators to the monadic stack,
 -- needs four functions that correspond to the allocatio
-runSchemeAllocT var heap m =   
-               m 
-             & runAlloc var 
-             & runAlloc heap
-             & runAlloc heap
-             & runAlloc heap
+runSchemeAllocT var vec pai str m =
+               m
+             & runAlloc var
+             & runAlloc vec
+             & runAlloc pai
+             & runAlloc str
 
 -- | Replace the SVar's in the SchemeStore by their actual value
 -- using the given SVar state.

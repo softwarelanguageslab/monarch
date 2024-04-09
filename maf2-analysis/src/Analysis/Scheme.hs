@@ -124,13 +124,6 @@ runEvalT :: BaseSchemeEvalT v m a -> m a
 runEvalT (BaseSchemeEvalT m) = m
 
 -----------------------------------------
--- Polymorphic ModF dependencies 
------------------------------------------
-
-class (Ord dep) => Dependency adr dep | adr -> dep where
-   dep :: adr -> dep
-
------------------------------------------
 -- CallM & StoreM implementation
 -----------------------------------------
 

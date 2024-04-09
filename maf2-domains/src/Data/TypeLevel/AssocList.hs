@@ -35,9 +35,11 @@ import Data.Kind
 import Data.Void
 import Data.Singletons
 import Data.Singletons.Sigma
+import Data.TypeLevel.HList
 
 data a :-> b = a :-> b
 type a ::-> b = a ':-> b -- nicer than the ':-> syntax ':-) 
+infixr 6 ::-> 
 
 type family Assoc (kt :: k) (m :: [k :-> Type]) :: Type where
   Assoc kt (kt ::-> t : r)  = t
@@ -88,14 +90,6 @@ type KeyIs (c :: Type ~> Constraint) (m :: [k :-> Type]) (kt :: k) = AtKey c m @
 -- equivalent to KeyIs (InstanceOf c) m kt,  for some c m and kt
 type KeyIs1 (c :: Type -> Constraint) (m :: [k :-> Type]) (kt :: k) = AtKey1 c m @@ kt
 
-data HList :: [Type] -> Type where
-   HNil  :: HList '[]
-   (:+:) :: a -> HList as -> HList (a ': as)
-
-infixr 6 :+:
-
-nil  :: HList '[] 
-nil  = HNil
 
 type family Transform (m :: [k :-> Type]) where
    Transform '[] = '[]

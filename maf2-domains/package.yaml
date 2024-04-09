@@ -78,6 +78,7 @@ library:
     - Control.Monad.Escape
     - Data.TypeLevel.HMap
     - Data.TypeLevel.AssocList
+    - Data.TypeLevel.HList
     - Data.Finite 
     - Domain.Core.SeqDomain.BoundedList
 
