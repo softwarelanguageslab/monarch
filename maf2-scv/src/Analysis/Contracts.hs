@@ -26,7 +26,7 @@ import Analysis.Contracts.Monad
 import Control.Monad.Join
 import Analysis.Scheme (analysisEnv, analysisStore)
 import Analysis.Scheme.Primitives
-import Analysis.Actors (Component(..))
+import Analysis.Actors ()
 import Analysis.Actors.Mailbox (SimpleMessage)
 import Analysis.Actors.Monad
 

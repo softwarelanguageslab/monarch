@@ -1,38 +1,48 @@
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 module Analysis.Symbolic where
 
-import Analysis.Monad
-import Syntax.Scheme
+import Analysis.Scheme.Prelude
+
+-- Syntax
+import qualified Symbolic.AST as Symbolic
+
+-- Monads
 import Analysis.Symbolic.Monad
 import Analysis.Actors.Monad
-import qualified Analysis.Symbolic.Semantics as Symbolic
-import qualified Analysis.Contracts.Semantics as Contracts
-import Analysis.Scheme hiding (Sto)
-import Analysis.Scheme.Store
 import Analysis.Contracts.Monad
-import Control.Monad.Layer
+
+-- Semantics
+import qualified Analysis.Contracts.Semantics as Contracts
+import qualified Analysis.Symbolic.Semantics as Symbolic
+
+-- Stores
+import Analysis.Contracts.Store
+import Analysis.Actors.Mailbox
+
+import Analysis.Scheme.Actors.Components
+
+-- Domains
 import qualified Domain.Contract.CP as CCP
 import qualified Domain.Scheme.Actors.CP as CP
 import Domain.Contract.Symbolic
-import Domain.Scheme.Store
 import Domain.Symbolic.Paired
 import Domain.Contract.Store
-import Symbolic.AST (Proposition(Actor))
-import Control.Monad.Escape
-import Control.Monad.DomainError
-import Control.Monad.State.IntPool
-import qualified Data.Map as Map
 
-import Control.Monad.Join
-import Analysis.Scheme hiding (Sto)
-import Domain (Address)
-import Domain.Scheme hiding (Exp, Env)
-import Solver.Z3
-import Solver (setup)
+-- Control monads
+import qualified Control.Monad.State.SVar as SVar
+
+import Control.Monad.Trans.Class
+import Control.Monad.Identity
+
+-- Solving
+import Solver (setup, FormulaSolver)
 import Symbolic.SMT (setupSMT)
+import Solver.Z3 (runZ3Solver)
 
-import Analysis.Actors.Mailbox
 
+-- Builtin data
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Function ((&))
 import Data.Functor.Identity
 import Data.Maybe
@@ -40,8 +50,7 @@ import Text.Printf
 import Prelude hiding (exp)
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Control.Monad.Trans.Class
-import Control.Monad.Identity
+import Analysis.Scheme (DSto)
 
 ------------------------------------------------------------
 -- Evaluation function
@@ -49,7 +58,7 @@ import Control.Monad.Identity
 
 newtype SymbolicEvalT v m a = SymbolicEvalT { getSymbolicEvalT :: m a } deriving (Applicative, Functor, Monad, MonadJoin)
 
-instance MonadTrans (SymbolicEvalT v) where  
+instance MonadTrans (SymbolicEvalT v) where
    lift = SymbolicEvalT
 instance MonadLayer (SymbolicEvalT v) where
    upperM = SymbolicEvalT
@@ -73,9 +82,9 @@ runSymbolicEvalT (SymbolicEvalT m) = m
 -- Symbolic Pid representation
 ------------------------------------------------------------
 
-instance SymbolicARef (Pid ctx) where  
-   identity EntryPid   = Actor Nothing
-   identity (Pid e _)  = Actor (Just $ spanOf e)
+instance SymbolicARef (Pid ctx) where
+   identity EntryPid   = Symbolic.Actor Nothing
+   identity (Pid e _)  = Symbolic.Actor (Just $ spanOf e)
 
 
 ------------------------------------------------------------
@@ -83,7 +92,8 @@ instance SymbolicARef (Pid ctx) where
 ------------------------------------------------------------
 
 type Vlu = V K
-type Sto = DSto K Vlu
+type Sto = SSto K Vlu
+type RetSto = Map (Component K) Vlu
 
 ------------------------------------------------------------
 -- ModF instantation
@@ -99,63 +109,44 @@ type Msg = SimpleMessage Vlu
 type MB = Set Msg
 
 ------------------------------------------------------------
--- SpawnT
-------------------------------------------------------------
-
-newtype SpawnT m a = SpawnT (IdentityT m a) deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer, MonadJoin)
-
--- TODO: this is just a test to see whether the implementation
--- works without actually using the fixpoint
-instance {-# OVERLAPPING #-} (Monad m, EnvM m (EnvAdr K) (Env K)) => ActorBehaviorM (SpawnT m) Vlu where
-  spawn e = do
-    --env' <- getEnv
-    --upperM (EF.spawn (Actor (CP.Pid e ()) e env'))
-    return (aref (CP.Pid e []))
-  become = void . spawn
-
-runSpawnT :: SpawnT m a -> m a
-runSpawnT (SpawnT m) = runIdentityT m
-
-------------------------------------------------------------
 -- Analysis
 ------------------------------------------------------------
 
--- | Simple intra-analysis
-simpleAnalysis :: Exp -> IO [(MayEscape (Set Error) Vlu, Sto)]
-simpleAnalysis e = do
-                 fmap result $ (setupSMT >> Symbolic.eval e)
-                                         & runSymbolicEvalT
-                                         & runMayEscape @(Set Error)
-                                         & runFormulaT
-                                         & runCallBottomT @Vlu
-                                         & runStoreT (values  store)
-                                         & runStoreT (strings store)
-                                         & runStoreT (pairs   store)
-                                         & runStoreT (vecs    store)
-                                         & combineStores
-                                         -- actor & contract specific
-                                         & runStoreT @(MsCAdr K) Map.empty
-                                         & runStoreT @(FlaAdr K) Map.empty
-                                         & runStoreT @(MoαAdr K) Map.empty
-                                         -- & runStoreT @ConAdr Map.empty
-                                         & runAlloc @_ @K PaiAdr
-                                         & runAlloc @_ @K VecAdr
-                                         & runAlloc @_ @K StrAdr 
-                                         & runAlloc @_ @K EnvAdr
-                                         -- contracts
-                                         & runAlloc @_ @K MsCAdr
-                                         & runAlloc @_ @K MoαAdr
-                                         & runAlloc @_ @K FlaAdr
-                                         --
-                                         & runCtx []
-                                         & runSpawnT
-                                         & runEnv env
-                                         & runActorT @MB Set.empty EntryPid
-                                         & runNonDetT
-                                         & runNoSendT
-                                         & runIntegerPoolT
-                                         & runZ3Solver
-    where env    = analysisEnv
-          store  = analysisStore @Vlu env
-          result = fmap (\((((((r, _pc), sto), _), _), _), _) -> (r, sto))
+type State = (Sto, RetSto, ContractStore K Vlu)
 
+-- | Simple intra-analysis
+intra :: forall m . (FormulaSolver m, EffectM m (Component K), SVar.MonadStateVar m, Monad m) 
+      => Exp 
+      -> State
+      -> m [(MayEscape (Set Error) Vlu, State)]
+intra e (store, retStore, contractStore) = do
+           fmap (fmap result)  $ (setupSMT >> Symbolic.eval e)
+                               & runSymbolicEvalT
+                               & runMayEscape @(Set Error)
+                               & runFormulaT
+                               & runCallT @Vlu @K
+                               & runSchemeStoreT store
+                               & runSchemeAllocT (EnvAdr @K) (VecAdr @K) (PaiAdr @K) (StrAdr @K)
+                               -- actor & contract specific
+                               & runStoreT'' @(MsCAdr K) (messageContracts contractStore)
+                               & runStoreT'' @(FlaAdr K) (flats contractStore)
+                               & runStoreT'' @(MoαAdr K) (monitors contractStore)
+                               & runStoreT'' @(Component K) retStore
+                               -- contracts
+                               & runAlloc @_ @K MsCAdr
+                               & runAlloc @_ @K MoαAdr
+                               & runAlloc @_ @K FlaAdr
+                               --
+                               & runSpawnT
+                               & runCtx @[Exp] []
+                               & runEnv env
+                               & runActorT @MB Set.empty EntryPid
+                               & runNonDetT
+                               & runNoSendT
+                               & runIntegerPoolT
+    where env    = analysisEnv
+          result (((((((a, pc), store), msg), fla), mon), ret), mb) =
+            (a, (store, ret, ContractStore msg fla mon))
+
+simpleAnalysis :: Exp -> IO [(MayEscape (Set Error) Vlu, DSto K Vlu)]
+simpleAnalysis = undefined

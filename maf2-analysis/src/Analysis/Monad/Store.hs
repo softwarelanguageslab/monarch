@@ -5,7 +5,9 @@ module Analysis.Monad.Store (
     StoreM(..),
     StoreT,
     StoreT',
+    StackStoreT,
     runStoreT,
+    runStoreT'',
     runWithStore,
     runStoreT',
     lookups,
@@ -34,8 +36,7 @@ import Control.Monad.Join (MonadJoin(..), mjoinMap, mjoins)
 
 import Control.Monad.Layer
 import Analysis.Store (Store)
-
-
+import Data.TypeLevel.AssocList
 
 ---
 --- StoreM typeclass
@@ -111,6 +112,9 @@ instance (Monad (t m), StoreM m adr v, MonadLayer t) => StoreM (t m) adr v where
 runStoreT :: forall s adr vlu m a . s -> StoreT s adr vlu m a -> m (a, s)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
 
+runStoreT'' :: forall adr vlu m a . Map adr vlu -> StoreT (Map adr vlu) adr vlu m a -> m (a, Map adr vlu)
+runStoreT'' initialSto = flip runStateT initialSto . getStoreT
+
 runWithStore :: forall s adr vlu m a . Store s adr vlu => StoreT s adr vlu m a -> m (a, s)
 runWithStore = runStoreT Store.emptySto
 
@@ -135,3 +139,13 @@ instance {-# OVERLAPPING #-} (SVar.MonadStateVar m, JoinLattice v, Ord adr) => S
 
 runStoreT' :: forall adr v m a . Map adr (SVar v) -> StoreT' adr v m a -> m (a, Map adr (SVar v))
 runStoreT' initial = flip runStateT initial . getStoreT'
+
+--
+-- Run a stack of StoreT's given 
+-- by the mapping 'stores'
+--
+
+type family StackStoreT stores m where 
+   StackStoreT '[] m = m
+   StackStoreT (adr ::-> v ': r) m = StoreT' adr v (StackStoreT r m)
+

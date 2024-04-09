@@ -29,6 +29,7 @@ library
       Analysis.Contracts.Behavior
       Analysis.Contracts.Monad
       Analysis.Contracts.Semantics
+      Analysis.Contracts.Store
       Analysis.Symbolic
       Analysis.Symbolic.Monad
       Analysis.Symbolic.Semantics
