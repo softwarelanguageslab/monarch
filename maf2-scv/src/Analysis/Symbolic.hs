@@ -87,16 +87,12 @@ instance SymbolicARef (Pid ctx) where
    identity (Pid e _)  = Symbolic.Actor (Just $ spanOf e)
 
 ------------------------------------------------------------
--- Domain instantation
+-- Aliases for convenience
 ------------------------------------------------------------
 
 type Vlu = V K
 type Sto = SSto K Vlu
 type RetSto = Map (Component K) Vlu
-
-------------------------------------------------------------
--- ModF instantation
-------------------------------------------------------------
 
 -- | Alias for k-sensitivity context
 type K = [Exp]

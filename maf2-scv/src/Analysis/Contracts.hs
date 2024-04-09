@@ -1,9 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Analysis.Contracts where
 
-import qualified Control.Fixpoint.EffectDriven as EF
 import Prelude hiding (exp)
-import Syntax.Scheme (Exp, spanOf)
 import Domain hiding (Exp, Env)
 import qualified Domain.Scheme.Actors.CP as CP
 import Data.Map (Map)
@@ -12,23 +10,19 @@ import Analysis.Contracts.Behavior
 import Analysis.Monad
 import qualified Analysis.Contracts.Semantics as Sem
 import Lattice
-import Data.Function ((&))
 import Control.Monad.Identity
 import Control.Monad.DomainError
 import Control.Monad.Trans.Class
 import Control.Monad.Layer
-import qualified Data.Map as Map
 import Domain.Contract.Store
-import Domain.Scheme.Store (EnvAdr (..), PaiAdr (..), VecAdr (VecAdr), StrAdr (..))
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Analysis.Contracts.Monad
 import Control.Monad.Join
-import Analysis.Scheme (analysisEnv, analysisStore)
-import Analysis.Scheme.Primitives
 import Analysis.Actors ()
 import Analysis.Actors.Mailbox (SimpleMessage)
 import Analysis.Actors.Monad
+import Analysis.Scheme.Prelude hiding (spawn, Env)
 
 ------------------------------------------------------------
 -- Environment
@@ -101,7 +95,7 @@ newtype SpawnT m a = SpawnT (IdentityT m a) deriving (Applicative, Monad, Functo
 
 -- TODO: this is just a test to see whether the implementation
 -- works without actually using the fixpoint
-instance {-# OVERLAPPING #-} (Monad m, EnvM m (EnvAdr K) Env) => ActorBehaviorM (SpawnT m) V where
+instance {-# OVERLAPPING #-} (EnvM m (EnvAdr K) Env) => ActorBehaviorM (SpawnT m) V where
   spawn e = do
     --env' <- getEnv
     --upperM (EF.spawn (Actor (CP.Pid e ()) e env'))
