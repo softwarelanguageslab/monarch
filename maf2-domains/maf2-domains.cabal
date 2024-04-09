@@ -58,7 +58,6 @@ library
       Domain.Core.SeqDomain.BoundedList
   other-modules:
       Data.TypeLevel.HMap.TH
-      Data.TypeLevel.HRecord
       Domain.Core.BoolDomain
       Domain.Core.BoolDomain.Class
       Domain.Core.BoolDomain.ConstantPropagation
