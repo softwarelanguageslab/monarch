@@ -118,14 +118,13 @@ type PyAnalysisM m obj = (PyObj' obj,
                           WorkListM m PyCmp)
 
 intra :: PyAnalysisM m obj => PyCmp -> m ()
-intra cmp = do res <- run cmp
-                        & runMayEscape
-                        & runAlloc (const . allocPtr)
-                        & runCtx ()
-                        & runEnv (env cmp)
-                        & runIntraAnalysis cmp
-                        & runJoinT
-               writeAdr cmp res
+intra cmp = runIntraAnalysis cmp $ do res <- run cmp
+                                                & runMayEscape
+                                                & runAlloc (const . allocPtr)
+                                                & runCtx ()
+                                                & runEnv (env cmp)
+                                                & runJoinT
+                                      writeAdr cmp res
 
 inter :: PyAnalysisM m obj => PyPrg -> m ()
 inter prg = do init                   -- initialize Python infrastructure
