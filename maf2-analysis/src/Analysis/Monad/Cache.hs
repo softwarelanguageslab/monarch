@@ -2,12 +2,9 @@
 
 module Analysis.Monad.Cache (
     MonadCache(..),
-    save,
-    load,
     runCacheT,
 ) where
 
-import Analysis.Monad.Store
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.Writer
@@ -32,12 +29,6 @@ class Monad m => MonadCache m where
                        return $ f a c
     restore :: Cache m a -> m a  
 
-save :: (MonadCache m, StoreM m k (Cache m v)) => k -> m v -> m ()
-save k = cache >=> writeAdr k 
-
-load :: (MonadCache m, StoreM m k (Cache m v)) => k -> m v
-load = lookupAdr >=> restore  
-
 ---
 --- MonadCache instances 
 ---
@@ -46,6 +37,11 @@ instance MonadCache Identity where
     type Cache Identity a = a
     cache = id
     restore = Identity
+
+instance (MonadCache m) => MonadCache (IdentityT m) where
+    type Cache (IdentityT m) a = Cache m a 
+    cache = IdentityT . cache . runIdentityT
+    restore = IdentityT . restore  
 
 instance (MonadCache m) => MonadCache (ReaderT r m) where
     type Cache (ReaderT r m) a = Cache m a

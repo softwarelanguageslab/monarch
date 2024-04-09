@@ -31,6 +31,7 @@ import Control.Monad.Join
 import Control.Monad.Escape
 import Control.Monad.DomainError
 import Data.Function ((&))
+import Analysis.Monad.Result
 
 ---
 --- Python components 
@@ -75,12 +76,14 @@ instance StoreDep VarAdr PyDep where
 instance StoreDep PyCmp PyDep where
     dep = RetDep
 
-instance (Joinable e,
+instance (Monad m,
           EnvM m VarAdr PyEnv,
           ComponentTrackingM m PyCmp,
-          StoreM m PyCmp (MayEscape e PyVal)) => PyCache (MayEscapeT e m) where
-  callBdy = callComponent >=> MayEscapeT . call
-  callWhi cnd bdy = loopComponent cnd bdy >>= MayEscapeT . call
+          MonadJoin m,
+          MonadCache m,
+          ResultM m PyCmp (Cache m PyVal)) => PyCache m where
+  callBdy = callComponent >=> call 
+  callWhi cnd bdy = loopComponent cnd bdy >>= call
 
 data PyEsc = EscPyError PyError
            | EscDomainError DomainError
@@ -94,28 +97,40 @@ instance Domain (Set PyEsc) PyError where
 instance Domain (Set PyEsc) PyControlEsc where
     inject = Set.singleton . EscPyControl
 
-intra cmp = runIntraAnalysis cmp $ do res <- run cmp
-                                                & runMayEscape
-                                                & runAlloc (const . allocPtr)
-                                                & runCtx ()
-                                                & runEnv (env cmp)
-                                                & runJoinT
-                                      writeAdr cmp res
+type AnalysisM m obj = (PyObj' obj, 
+                        StoreM m VarAdr PyVal,
+                        StoreM m ObjAdr obj,
+                        ResultM m PyCmp (MayEscape (Set PyEsc) PyVal),
+                        ComponentTrackingM m PyCmp,
+                        DependencyTrackingM m PyCmp PyDep,
+                        WorkListM m PyCmp)
 
+
+--intra :: forall m obj . AnalysisM m obj => PyCmp -> m () 
+intra cmp = void $ save cmp (run cmp) 
+                    & runMayEscape @(Set PyEsc)
+                    & runAlloc (const . allocPtr)
+                    & runCtx ()
+                    & runEnv (env cmp)
+                    & runJoinT
+                    & runCacheT
+                    & runIntraAnalysis cmp
+
+--inter :: forall m obj . AnalysisM m obj => PyPrg -> m () 
 inter prg = do init                   -- initialize Python infrastructure
                add (MainCmp prg)      -- add the main component to the worklist
                iterateWL intra        -- start the analysis 
 
 analyze :: forall obj. PyObj' obj => PyPrg -> (Map VarAdr PyVal, Map ObjAdr obj)
 analyze prg =
-    let (((_,vsto),osto),rsto) = inter prg
-                                    & runWithStore @(Map VarAdr PyVal) @VarAdr
-                                    & runWithStore @(Map ObjAdr obj) @ObjAdr
-                                    & runWithStore @(Map PyCmp (MayEscape (Set PyEsc) PyVal)) @PyCmp
-                                    & runWithDependencyTracking @PyCmp @PyDep
-                                    & runWithComponentTracking @PyCmp
-                                    & runWithWorkList @(Set PyCmp)
-                                    & runIdentity
+    let ((_,vsto),osto) = inter prg
+                            & runWithStore @(Map VarAdr PyVal) @VarAdr
+                            & runWithStore @(Map ObjAdr obj) @ObjAdr
+                            & runWithResultMap @PyCmp
+                            & runWithDependencyTracking @PyCmp @PyDep
+                            & runWithComponentTracking @PyCmp
+                            & runWithWorkList @(Set PyCmp)
+                            & runIdentity
      in (vsto, osto)
 
 ---

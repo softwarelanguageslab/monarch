@@ -51,6 +51,7 @@ library
       Analysis.IO
       Analysis.Monad.Allocation
       Analysis.Monad.Assertion
+      Analysis.Monad.Cache
       Analysis.Monad.Call
       Analysis.Monad.ComponentTracking
       Analysis.Monad.Context
@@ -59,6 +60,7 @@ library
       Analysis.Monad.Eval
       Analysis.Monad.IntraAnalysis
       Analysis.Monad.Join
+      Analysis.Monad.Result
       Analysis.Monad.Span
       Analysis.Monad.Store
       Analysis.Monad.WorkList

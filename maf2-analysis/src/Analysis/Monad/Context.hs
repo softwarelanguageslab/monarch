@@ -10,6 +10,7 @@ module Analysis.Monad.Context (
 import Control.Monad.Reader hiding (mzero)
 import Control.Monad.Layer 
 import Control.Monad.Join 
+import Analysis.Monad.Cache (MonadCache)
 
 
 ---
@@ -28,9 +29,8 @@ class CtxM m ctx | m -> ctx where
 --- CtxT monad transfomer
 ---
 
-
 newtype CtxT ctx m a = CtxT { getContextReader :: ReaderT ctx m a } 
-   deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor)
+   deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor, MonadCache)
 instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask
    withCtx = local
