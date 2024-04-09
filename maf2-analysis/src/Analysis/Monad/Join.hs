@@ -18,6 +18,7 @@ import ListT
 import Control.Monad.Identity
 import Control.Monad.Trans
 import Control.Applicative
+import Analysis.Monad.Cache
 
 --
 -- JoinT
@@ -28,7 +29,7 @@ import Control.Applicative
 -- below this on the stack will not be joined together and 
 -- is assumed to be global across all paths
 newtype JoinT m a = JoinT { _getJoinT :: IdentityT m a } 
-    deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor)
+    deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor, MonadCache)
 
 instance (Monad m) => MonadJoin (JoinT m) where
    mzero = return bottom

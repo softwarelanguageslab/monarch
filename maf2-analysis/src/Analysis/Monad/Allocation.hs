@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Analysis.Monad.Allocation (
     AllocM(..),
@@ -10,6 +11,7 @@ import Analysis.Monad.Context
 import Control.Monad.Reader hiding (mzero)
 import Control.Monad.Join (MonadJoin(..))
 import Control.Monad.Layer 
+import Analysis.Monad.Cache
 
 
 
@@ -32,7 +34,7 @@ type Allocator from ctx to = from -> ctx -> to
 
 -- Allocator that turns a function into an allocator of the suiteable type
 newtype AllocT from ctx to m a = AllocT (ReaderT (Allocator from ctx to) m a) 
-    deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoin, MonadLayer, MonadTrans)
+    deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoin, MonadLayer, MonadTrans, MonadCache)
 
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
    alloc loc = do
