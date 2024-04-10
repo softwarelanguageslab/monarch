@@ -80,6 +80,7 @@ library
     , maf2-syntax
     , mtl
     , process
+    , singletons
     , transformers
   default-language: Haskell2010
 
@@ -118,6 +119,7 @@ executable maf2-scv-exe
     , maf2-syntax
     , mtl
     , process
+    , singletons
     , transformers
   default-language: Haskell2010
 
@@ -157,5 +159,6 @@ test-suite maf2-scv-test
     , maf2-syntax
     , mtl
     , process
+    , singletons
     , transformers
   default-language: Haskell2010

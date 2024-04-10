@@ -29,6 +29,7 @@ dependencies:
 - maf2-syntax
 - maf2-analysis
 - transformers
+- singletons
 
 ghc-options:
 - -Wall

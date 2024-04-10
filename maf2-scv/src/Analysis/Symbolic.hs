@@ -97,7 +97,8 @@ type Sto = SSto K Vlu
 type RetSto = Map (Component K) Vlu
 
 -- | Alias for k-sensitivity context
-type K = [Exp]
+data K = K [Exp] Symbolic.PC
+       deriving (Ord, Eq, Show)
 
 -- | Alias for messages
 type Msg = SimpleMessage Vlu
@@ -109,7 +110,7 @@ type MB = Set Msg
 -- Analysis
 ------------------------------------------------------------
 
-type State = (Sto, RetSto, ContractStore K Vlu)
+type State = (Sto, RetSto, ContractStore' SVar K Vlu)
 
 -- | Inter analysis monad
 type InterM m = (
@@ -138,9 +139,8 @@ intra e ctx (store, retStore, contractStore) = do
                                & runSchemeStoreT store
                                & runSchemeAllocT (EnvAdr @K) (VecAdr @K) (PaiAdr @K) (StrAdr @K)
                                -- actor & contract specific
-                               & runStoreT'' @(MsCAdr K) (messageContracts contractStore)
-                               & runStoreT'' @(FlaAdr K) (flats contractStore)
-                               & runStoreT'' @(MoαAdr K) (monitors contractStore)
+                               & runContractStoreT contractStore
+                               --
                                & runStoreT'' @(Component K) retStore
                                -- contracts
                                & runContractAllocT @K
@@ -152,8 +152,8 @@ intra e ctx (store, retStore, contractStore) = do
                                & runNonDetT
                                & runIntegerPoolT
     where env    = analysisEnv
-          result (((((((a, pc), store), msg), fla), mon), ret), localMb) =
-            (a, (store, ret, ContractStore msg fla mon))
+          result (((((a, pc), store'), contractStore'), ret), localMb) =
+            (a, (store', ret, contractStore'))
 
 runIntra :: Component K -> State -> m State
 runIntra = undefined
