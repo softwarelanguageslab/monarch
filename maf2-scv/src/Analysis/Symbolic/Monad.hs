@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
-module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), SymbolicValue, runFormulaT, choice, choices) where
+module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), SymbolicValue, runFormulaT, runWithFormulaT, choice, choices) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
@@ -102,6 +102,9 @@ instance {-# OVERLAPPING #-} (MonadJoin m, SymbolicValue v) => MonadPathConditio
 instance (MonadPathCondition m v, MonadLayer t) => MonadPathCondition (t m) v where 
    extendPc = upperM . extendPc
    getPc    = upperM getPc
+
+runWithFormulaT :: PC -> FormulaT v m a -> m (a, PC)
+runWithFormulaT pc = flip runStateT pc . runFormulaT'
 
 runFormulaT :: FormulaT v m a -> m (a, PC)
 runFormulaT = flip runStateT (Set.singleton Empty) . runFormulaT'

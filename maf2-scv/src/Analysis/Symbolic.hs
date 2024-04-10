@@ -48,7 +48,7 @@ import Data.Function ((&))
 import Data.Functor.Identity
 import Data.Maybe
 import Text.Printf
-import Prelude hiding (exp)
+import Prelude hiding (exp, iterate)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Analysis.Contracts.Store (runContractAllocT)
@@ -100,6 +100,9 @@ type RetSto = Map (Component K) Vlu
 data K = K [Exp] Symbolic.PC
        deriving (Ord, Eq, Show)
 
+emptyK :: K
+emptyK = K [] Set.empty
+
 -- | Alias for messages
 type Msg = SimpleMessage Vlu
 
@@ -128,13 +131,15 @@ type IntraResult = [(MayEscape (Set Error) Vlu, State)]
 intra :: forall m . InterM m
       => Exp
       -> K
+      -> Pid K
+      -> Env K
       -> State
       -> m IntraResult
-intra e ctx (store, retStore, contractStore) = do
+intra e ctx@(K _ pc) pid env (store, retStore, contractStore) = do
            fmap (fmap result)  $ (setupSMT >> Symbolic.eval e)
                                & runSymbolicEvalT
                                & runMayEscape @(Set Error)
-                               & runFormulaT
+                               & runWithFormulaT pc
                                & runCallT @Vlu @K
                                & runSchemeStoreT store
                                & runSchemeAllocT (EnvAdr @K) (VecAdr @K) (PaiAdr @K) (StrAdr @K)
@@ -148,17 +153,32 @@ intra e ctx (store, retStore, contractStore) = do
                                & runSpawnT
                                & runCtx ctx
                                & runEnv env
-                               & runActorT @MB Set.empty EntryPid
+                               & runActorT @MB Set.empty pid
                                & runNonDetT
                                & runIntegerPoolT
-    where env    = analysisEnv
-          result (((((a, pc), store'), contractStore'), ret), localMb) =
+    where result (((((a, pc), store'), contractStore'), ret), localMb) =
             (a, (store', ret, contractStore'))
 
-runIntra :: Component K -> State -> m State
-runIntra = undefined
+-- | Join all paths of the intra-analysis together
+joinIntra :: IntraResult -> m State
+joinIntra = undefined
 
-inter = undefined
+-- | Run the intra analysis based on the state of a component
+runIntra :: InterM m => Component K -> State -> m State
+runIntra (Main e) = intra e emptyK EntryPid analysisEnv >=> joinIntra
+runIntra (Actor pid e k env) = intra e k pid env >=> joinIntra 
 
+-- | Compute the initial state of the analysis
+initialState :: State
+initialState = undefined
+
+-- | Run the inter analysis
+inter :: Exp -> IO State
+inter e =   runZ3Solver 
+          $ fmap (fst . fst) $ runEffectT [Main e]
+          $ runActorSystemT (emptyActorSystem @MB) 
+          $ iterate runIntra initialState
+
+-- 
 simpleAnalysis :: Exp -> IO [(MayEscape (Set Error) Vlu, DSto K Vlu)]
 simpleAnalysis = undefined

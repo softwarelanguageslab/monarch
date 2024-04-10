@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT, receive, runNoSpawnT, NoSpawnT, runNoSendT, sendMessage) where
+module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT, receive, runNoSpawnT, NoSpawnT, runNoSendT, sendMessage, emptyActorSystem) where
 
 import Syntax.Scheme.AST
 -- use the monads from the base-semantics
@@ -130,6 +130,9 @@ runActorT initialMailbox selfRef (ActorT ma) = runReaderT (runStateT ma (ActorSt
 ------------------------------------------------------------
 
 type ActorSystemState ref mb = Map ref (SVar mb)
+
+emptyActorSystem :: forall mb ref . ActorSystemState ref mb 
+emptyActorSystem = Map.empty
 
 -- | An actor system keeps track of the mailboxes
 -- of each actor in the system. For this is keeps
