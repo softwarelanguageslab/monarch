@@ -15,7 +15,7 @@ import qualified Data.Map as Map
 -- MapM typeclass
 --
 
-class Monad m => MapM k v m | m -> k v where
+class Monad m => MapM k v m | m k -> v where
     get :: k -> m (Maybe v)
     put :: k -> v -> m ()
 
