@@ -22,6 +22,8 @@ class (Monad m) => MonadPathCondition m v | m -> v where
    extendPc :: v -> m ()
    -- | Get the current path condition
    getPc :: m PC
+   -- | Integrate the given path condition in the current one
+   integrate :: PC -> m ()
 
 -- | Choose between the two branches non-deterministically
 choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b) => m v -> m b -> m b -> m b
@@ -83,9 +85,6 @@ type SymbolicM m v = (SchemeM m v,
 --------------------------------------------------------------------------
 
 -- MonadPathCondition
-
--- | The path condition is an unordered conjunction of formulas
-type PC = Set Formula
 
 -- | The FormulaT monad keeps track of the path condition 
 -- and implements the `MonadPathCondition` monad.

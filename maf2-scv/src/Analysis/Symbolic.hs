@@ -51,6 +51,8 @@ import Text.Printf
 import Prelude hiding (exp)
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Analysis.Contracts.Store (runContractAllocT)
+import Analysis.Actors.Monad (runActorSystemT)
 
 ------------------------------------------------------------
 -- Evaluation function
@@ -109,12 +111,25 @@ type MB = Set Msg
 
 type State = (Sto, RetSto, ContractStore K Vlu)
 
+-- | Inter analysis monad
+type InterM m = (
+         FormulaSolver m,
+         EffectM m (Component K),
+         SVar.MonadStateVar m,
+         Monad m, 
+         ActorGlobalM m (ARef Vlu) Msg
+      )
+
+-- | Result of intra-analysis
+type IntraResult = [(MayEscape (Set Error) Vlu, State)]
+
 -- | Simple intra-analysis
-intra :: forall m . (FormulaSolver m, EffectM m (Component K), SVar.MonadStateVar m, Monad m) 
-      => Exp 
+intra :: forall m . InterM m
+      => Exp
+      -> K
       -> State
-      -> m [(MayEscape (Set Error) Vlu, State)]
-intra e (store, retStore, contractStore) = do
+      -> m IntraResult
+intra e ctx (store, retStore, contractStore) = do
            fmap (fmap result)  $ (setupSMT >> Symbolic.eval e)
                                & runSymbolicEvalT
                                & runMayEscape @(Set Error)
@@ -128,20 +143,22 @@ intra e (store, retStore, contractStore) = do
                                & runStoreT'' @(MoαAdr K) (monitors contractStore)
                                & runStoreT'' @(Component K) retStore
                                -- contracts
-                               & runAlloc @_ @K MsCAdr
-                               & runAlloc @_ @K MoαAdr
-                               & runAlloc @_ @K FlaAdr
-                               --
+                               & runContractAllocT @K
+                               -- 
                                & runSpawnT
-                               & runCtx @[Exp] []
+                               & runCtx ctx
                                & runEnv env
                                & runActorT @MB Set.empty EntryPid
                                & runNonDetT
-                               & runNoSendT
                                & runIntegerPoolT
     where env    = analysisEnv
-          result (((((((a, pc), store), msg), fla), mon), ret), mb) =
+          result (((((((a, pc), store), msg), fla), mon), ret), localMb) =
             (a, (store, ret, ContractStore msg fla mon))
+
+runIntra :: Component K -> State -> m State
+runIntra = undefined
+
+inter = undefined
 
 simpleAnalysis :: Exp -> IO [(MayEscape (Set Error) Vlu, DSto K Vlu)]
 simpleAnalysis = undefined

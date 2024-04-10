@@ -1,8 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Analysis.Monad.Allocation (
     AllocM(..),
+    AllocT,
     runAlloc,
 ) where 
 
@@ -12,22 +14,19 @@ import Control.Monad.Reader hiding (mzero)
 import Control.Monad.Join (MonadJoin(..))
 import Control.Monad.Layer 
 import Analysis.Monad.Cache
+import Data.TypeLevel.AssocList
+import Data.Kind (Type)
 
-
-
----
+------------------------------------------------------------
 --- The AllocM typeclass
----
+------------------------------------------------------------
 
 class (Monad m) => AllocM m from adr where
    alloc :: from -> m adr
 
-
-
----
+------------------------------------------------------------
 --- The AllocT monad transformer
----
-
+------------------------------------------------------------
 
 -- | Allocator represented as a function
 type Allocator from ctx to = from -> ctx -> to

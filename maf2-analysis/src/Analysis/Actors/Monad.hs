@@ -147,8 +147,8 @@ instance {-# OVERLAPPING #-} (Ord ref, Mailbox mb msg, SVar.MonadStateVar m) => 
       mb <- gets (Map.lookup ref) >>= maybe (upperM $ SVar.new MB.empty) pure
       modify (Map.insert ref mb)
       -- TODO: we check whether the mailbox abstraction has changed in order
-      -- to signal a change to the SVar layer or not. This is not very 
-      -- efficient. Depending on the abstraction used a more efficient version
+      -- to signal a change to the SVar layer or not. This is currently not very 
+      -- efficient since it uses Eq's equality. Depending on the abstraction used a more efficient version
       -- of this could be provided.
       void $ upperM $ SVar.modify (\mb -> let mb' = enqueue msg mb in if mb == mb' then Nothing else Just mb') mb
 
