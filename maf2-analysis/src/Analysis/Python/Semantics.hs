@@ -11,7 +11,7 @@ import Analysis.Python.Objects
 import Analysis.Python.Common
 import Analysis.Python.Monad hiding (Return, Continue, Break)
 import Analysis.Python.Primitives
-import Analysis.Monad hiding (eval, call)
+import Analysis.Monad hiding (eval, call, get)
 
 import Control.Monad (zipWithM, (>=>), (<=<), void)
 import qualified Domain.Core.SeqDomain as SeqDomain

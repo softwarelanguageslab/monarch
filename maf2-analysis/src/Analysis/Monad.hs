@@ -16,6 +16,7 @@ module Analysis.Monad(
    module Analysis.Monad.Eval,
    module Analysis.Monad.IntraAnalysis, 
    module Analysis.Monad.Join,
+   module Analysis.Monad.Map,
    module Analysis.Monad.Span,
    module Analysis.Monad.Store, 
    module Analysis.Monad.WorkList, 
@@ -32,6 +33,7 @@ import Analysis.Monad.Environment
 import Analysis.Monad.Eval
 import Analysis.Monad.IntraAnalysis
 import Analysis.Monad.Join
+import Analysis.Monad.Map 
 import Analysis.Monad.Span
 import Analysis.Monad.Store 
 import Analysis.Monad.WorkList 
