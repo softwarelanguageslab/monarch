@@ -25,7 +25,7 @@ class (Monad m) => AllocM m from adr where
    alloc :: from -> m adr
 
 
----
+------------------------------------------------------------
 --- The AllocT monad transformer
 ------------------------------------------------------------
 
@@ -45,6 +45,9 @@ instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to
       ctx <- AllocT $ lift getCtx
       f   <- ask
       return $ f loc ctx
+
+instance (AllocM m from to, MonadLayer l) => AllocM (l m) from to where
+   alloc = upperM . alloc @m @from @to
 
 runAlloc :: forall from ctx to m a . Allocator from ctx to -> AllocT from ctx to m a ->  m a
 runAlloc allocator (AllocT m) = runReaderT m allocator
