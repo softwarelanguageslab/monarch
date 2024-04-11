@@ -22,7 +22,7 @@ import Data.Maybe (fromMaybe)
 --- Dependency tracking typeclass
 ---
 
-class Monad m => DependencyTrackingM m cmp dep | m -> dep where
+class Monad m => DependencyTrackingM m cmp dep where
     register :: dep -> cmp -> m ()
     dependent :: dep -> m (Set cmp)
 

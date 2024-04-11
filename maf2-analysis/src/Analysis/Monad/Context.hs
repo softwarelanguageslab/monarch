@@ -29,18 +29,17 @@ class CtxM m ctx | m -> ctx where
 --- CtxT monad transfomer
 ---
 
-newtype CtxT ctx m a = CtxT { getContextReader :: ReaderT ctx m a } 
-   deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor, MonadCache)
+newtype CtxT ctx m a = CtxT (ReaderT ctx m a)
+   deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor, MonadJoin)
+
+deriving instance MonadCache (k, ctx) v m => MonadCache k v (CtxT ctx m)
+
 instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask
    withCtx = local
 instance (MonadLayer t, Monad m, CtxM m ctx) => CtxM (t m) ctx where
    getCtx =  upperM getCtx
    withCtx f = lowerM (withCtx f)
-
-instance (MonadJoin m) => MonadJoin (CtxT ctx m) where
-   mjoin (CtxT ma) = CtxT . mjoin ma . getContextReader
-   mzero = CtxT mzero
 
 runCtx :: ctx -> (CtxT ctx m) a -> m a
 runCtx initialCtx (CtxT m) = runReaderT m initialCtx

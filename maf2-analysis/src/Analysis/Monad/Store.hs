@@ -60,7 +60,7 @@ updateAndCheck :: StoreM m a v => a -> (a -> m ()) -> m Bool
 updateAndCheck a f = do old <- lookupAdr a
                         f a
                         new <- lookupAdr a
-                        return (old == new)
+                        return (old /= new)
 
 -- | Convenience function: writes to an address `a` and checks if the value in the store at `a` has changed
 writeAdr' :: StoreM m a v => a -> v -> m Bool

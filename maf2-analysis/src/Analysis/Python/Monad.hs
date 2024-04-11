@@ -4,8 +4,8 @@
 
 module Analysis.Python.Monad (
   PyControl(..),
-  PyCache(..),
   PyControlEsc(..),
+  PyBdy(..),
   PyM,
   pyAlloc,
   pyDeref,
@@ -28,10 +28,6 @@ import Control.Monad.Layer
 -- The Python monad 
 --
 
-class Monad m => PyCache m where
-  callBdy :: PyStm -> m PyVal
-  callWhi :: PyExp -> PyStm -> m PyVal 
-
 class (Monad m, MonadEscape m) => PyControl m where
   returnWith :: PyVal -> m ()
   break :: m ()
@@ -47,16 +43,22 @@ instance (Monad m, MonadEscape m, Domain (Esc m) PyControlEsc) => PyControl m wh
   break = escape Break
   continue = escape Continue 
   
+-- | Python components
+data PyBdy = Main PyPrg
+           | FuncBdy PyStm
+           | LoopBdy PyExp PyStm
+  deriving (Eq, Ord, Show)
+
 type PyM m obj = (PyObj' obj,
                   MonadJoin m,
                   PyControl m,
+                  MonadCache PyBdy PyVal m,
                   Domain (Esc m) PyError,
                   Domain (Esc m) DomainError,
                   EnvM m VarAdr PyEnv, 
                   AllocM m PyLoc ObjAdr,
                   StoreM m ObjAdr obj,
-                  StoreM m VarAdr PyVal,
-                  PyCache m)
+                  StoreM m VarAdr PyVal)
 
 pyDeref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
 pyDeref f = deref f . addrs 

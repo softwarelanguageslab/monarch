@@ -3,7 +3,6 @@
 
 module Analysis.Monad.IntraAnalysis (
     IntraAnalysisT,
-    StoreDep(..),
     runIntraAnalysis,
 ) where
 
@@ -15,6 +14,7 @@ import Control.Monad.Join
 import Analysis.Monad.DependencyTracking
 import Analysis.Monad.Store
 import Control.Monad.Cond
+import Analysis.Monad.Map
 
 ---
 --- IntraAnalysis monad layer 
@@ -28,16 +28,17 @@ instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp
                         (upperM $ spawn cmp >> add cmp)
     components = upperM components
 
--- | typeclass for dependencies on store values
-class StoreDep a dep | a -> dep where
-    dep :: a -> dep
-
-instance {-# OVERLAPPING #-} (StoreM m a v, StoreDep a dep, DependencyTrackingM m cmp dep, WorkListM m cmp)
+instance {-# OVERLAPPING #-} (StoreM m a v, DependencyTrackingM m cmp a, WorkListM m cmp)
         => StoreM (IntraAnalysisT cmp m) a v where
-    lookupAdr a = ask >>= upperM . register (dep a) >> upperM (lookupAdr a)
-    writeAdr a v = whenM (upperM $ writeAdr' a v) (upperM $ trigger $ dep a)
-    updateAdr a v = whenM (upperM $ updateAdr' a v) (upperM $ trigger $ dep a)
-    updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger $ dep a)
+    lookupAdr a = ask >>= upperM . register a >> upperM (lookupAdr a)
+    writeAdr a v = whenM (upperM $ writeAdr' a v) (upperM $ trigger a)
+    updateAdr a v = whenM (upperM $ updateAdr' a v) (upperM $ trigger a)
+    updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger a)
+
+instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM m cmp k, WorkListM m cmp)
+    => MapM k v (IntraAnalysisT cmp m) where
+        get k = ask >>= upperM . register k >> upperM (get k)
+        put k v = whenM (upperM $ put' k v) (upperM $ trigger k)
 
 runIntraAnalysis :: cmp -> IntraAnalysisT cmp m a -> m a
 runIntraAnalysis cmp (IntraAnalysisT f) = runReaderT f cmp

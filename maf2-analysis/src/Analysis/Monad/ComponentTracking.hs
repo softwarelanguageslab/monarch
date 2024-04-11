@@ -15,7 +15,6 @@ import Control.Monad.Layer
 import Data.Set (Set)
 import qualified Data.Set as Set 
 import Control.Monad.State as State 
-import Analysis.Monad.Result
 import Analysis.Monad.Cache
 import Control.Monad.Join
 import Lattice (JoinLattice)
@@ -31,8 +30,8 @@ class Monad m => ComponentTrackingM m cmp | m -> cmp where
 has :: (ComponentTrackingM m cmp, Ord cmp) => cmp -> m Bool
 has cmp = Set.member cmp <$> components
 
-call :: (ComponentTrackingM m cmp, MonadJoin m, JoinLattice v, MonadCache m, ResultM m cmp (Cache m v)) => cmp -> m v
-call cmp = spawn cmp >> load cmp
+call :: (ComponentTrackingM m cmp, MonadCache cmp v m) => cmp -> m v
+call cmp = spawn cmp >> cached cmp
 
 
 
