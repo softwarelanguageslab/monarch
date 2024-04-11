@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT, receive, runNoSpawnT, NoSpawnT, runNoSendT, sendMessage) where
+module Analysis.Actors.Monad(ActorEvalM, ActorBehaviorM(..), ActorLocalM(..), ActorLocalMScoped(..), ActorGlobalM(..), ActorM, runActorT, module Analysis.Scheme.Monad, (!), runActorSystemT, receive, runNoSpawnT, NoSpawnT, runNoSendT, sendMessage, emptyActorSystem) where
 
 import Syntax.Scheme.AST
 -- use the monads from the base-semantics
@@ -131,6 +131,9 @@ runActorT initialMailbox selfRef (ActorT ma) = runReaderT (runStateT ma (ActorSt
 
 type ActorSystemState ref mb = Map ref (SVar mb)
 
+emptyActorSystem :: forall mb ref . ActorSystemState ref mb 
+emptyActorSystem = Map.empty
+
 -- | An actor system keeps track of the mailboxes
 -- of each actor in the system. For this is keeps
 -- a mapping from actor references to mailboxes
@@ -147,8 +150,8 @@ instance {-# OVERLAPPING #-} (Ord ref, Mailbox mb msg, SVar.MonadStateVar m) => 
       mb <- gets (Map.lookup ref) >>= maybe (upperM $ SVar.new MB.empty) pure
       modify (Map.insert ref mb)
       -- TODO: we check whether the mailbox abstraction has changed in order
-      -- to signal a change to the SVar layer or not. This is not very 
-      -- efficient. Depending on the abstraction used a more efficient version
+      -- to signal a change to the SVar layer or not. This is currently not very 
+      -- efficient since it uses Eq's equality. Depending on the abstraction used a more efficient version
       -- of this could be provided.
       void $ upperM $ SVar.modify (\mb -> let mb' = enqueue msg mb in if mb == mb' then Nothing else Just mb') mb
 

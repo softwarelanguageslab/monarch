@@ -22,7 +22,7 @@ class CtxM m ctx | m -> ctx where
    -- | Changes the current context for the given subcomputation
    withCtx  :: (ctx -> ctx) -> m a -> m a
    -- | Retrieves the current context
-   getCtx    :: m ctx
+   getCtx   :: m ctx
 
 
 ---

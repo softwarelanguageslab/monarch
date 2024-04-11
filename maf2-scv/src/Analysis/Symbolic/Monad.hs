@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
-module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), SymbolicValue, runFormulaT, choice, choices) where
+module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), SymbolicValue, runFormulaT, runWithFormulaT, choice, choices) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
@@ -22,6 +22,8 @@ class (Monad m) => MonadPathCondition m v | m -> v where
    extendPc :: v -> m ()
    -- | Get the current path condition
    getPc :: m PC
+   -- | Integrate the given path condition in the current one
+   integrate :: PC -> m ()
 
 -- | Choose between the two branches non-deterministically
 choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b) => m v -> m b -> m b -> m b
@@ -84,9 +86,6 @@ type SymbolicM m v = (SchemeM m v,
 
 -- MonadPathCondition
 
--- | The path condition is an unordered conjunction of formulas
-type PC = Set Formula
-
 -- | The FormulaT monad keeps track of the path condition 
 -- and implements the `MonadPathCondition` monad.
 newtype FormulaT v m a = FormulaT { runFormulaT' :: StateT PC m a }
@@ -103,6 +102,9 @@ instance {-# OVERLAPPING #-} (MonadJoin m, SymbolicValue v) => MonadPathConditio
 instance (MonadPathCondition m v, MonadLayer t) => MonadPathCondition (t m) v where 
    extendPc = upperM . extendPc
    getPc    = upperM getPc
+
+runWithFormulaT :: PC -> FormulaT v m a -> m (a, PC)
+runWithFormulaT pc = flip runStateT pc . runFormulaT'
 
 runFormulaT :: FormulaT v m a -> m (a, PC)
 runFormulaT = flip runStateT (Set.singleton Empty) . runFormulaT'

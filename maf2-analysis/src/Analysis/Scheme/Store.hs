@@ -44,16 +44,16 @@ import Data.Function ((&))
 import Data.TypeLevel.HMap
 import Domain.Scheme.Store
 
-------------------------------------------------------------
--- SchemeStore itself
-------------------------------------------------------------
-
 -- TODO: these two things should be moved elsewhere.
 data Id :: k ~> k
 type instance Apply Id (x :: k) = x
 
 data SVar :: Type ~> Type
 type instance Apply SVar (x :: Type) = SVar.SVar x
+
+------------------------------------------------------------
+-- SchemeStore itself
+------------------------------------------------------------
 
 -- | A SchemeStore is a combination of the stores
 -- for values, strings, pairs and vecs.
