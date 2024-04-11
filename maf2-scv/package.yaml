@@ -30,6 +30,7 @@ dependencies:
 - maf2-analysis
 - transformers
 - singletons
+- extra
 
 ghc-options:
 - -Wall

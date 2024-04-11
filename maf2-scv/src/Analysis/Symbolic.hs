@@ -35,6 +35,7 @@ import Control.Monad.State.SVar (mergeMap)
 
 import Control.Monad.Trans.Class
 import Control.Monad.Identity
+import Control.Monad.Extra
 
 -- Solving
 import Solver (FormulaSolver, runCachedSolver)
@@ -109,11 +110,14 @@ type Msg = SimpleMessage Vlu
 -- | Alias for the mailbox
 type MB = Set Msg
 
+-- | State of all mailboxes
+type Mailboxes = Map (Component K) (SVar MB)
+
 ------------------------------------------------------------
 -- Analysis
 ------------------------------------------------------------
 
-type State = (Sto, RetSto, ContractStore' SVar K Vlu)
+data State = State Sto RetSto (ContractStore' SVar K Vlu)
 
 -- | Inter analysis monad
 type InterM m = (
@@ -134,7 +138,7 @@ intra :: forall m . InterM m
       -> Env K
       -> State
       -> m IntraResult
-intra e ctx@(K _ pc) pid env (store, retStore, contractStore) = fmap (fmap result)  $ (setupSMT >> Symbolic.eval e)
+intra e ctx@(K _ pc) pid env (State store retStore contractStore) = fmap (fmap result)  $ (setupSMT >> Symbolic.eval e)
                     & runSymbolicEvalT
                     & runMayEscape @(Set Error)
                     & runWithFormulaT pc
@@ -155,16 +159,13 @@ intra e ctx@(K _ pc) pid env (store, retStore, contractStore) = fmap (fmap resul
                     & runNonDetT
                     & runIntegerPoolT
     where result (((((a, pc), store'), contractStore'), ret), localMb) =
-            (a, (store', ret, contractStore'))
+            (a, State store' ret contractStore')
 
 -- | Join all paths of the intra-analysis together
 joinIntra :: (SVar.MonadStateVar m) => IntraResult -> m State
-joinIntra result =
-   foldM (\(vsto, rsto, csto) (_, (vsto', rsto', csto')) -> do
-      vsto'' <- mergeSchemeStore vsto vsto'
-      csto'' <- mergeContractStore csto csto'
-      rsto'' <- mergeMap rsto rsto'
-      return (vsto'', rsto'', csto'')) (snd $ head result) (tail result)
+joinIntra =
+   fold1M (\(State vsto rsto csto) (State vsto' rsto' csto') -> 
+            State <$> mergeSchemeStore vsto vsto' <*> mergeMap rsto rsto' <*> mergeContractStore csto csto) . map snd
 
 -- | Run the intra analysis based on the state of a component
 runIntra :: InterM m => Component K -> State -> m State
@@ -175,7 +176,7 @@ runIntra (Actor pid e k env) = intra e k pid env >=> joinIntra
 initialState :: (SVar.MonadStateVar m) => m State
 initialState = do
    analysisSto <- SVar.fromMap $ initialSto analysisEnv
-   return (fromValues analysisSto, Map.empty, emptyContractStore)
+   return (State (fromValues analysisSto) Map.empty emptyContractStore)
 
 -- | Run the inter analysis
 inter :: Exp -> IO State
