@@ -31,6 +31,7 @@ import Domain.Contract.Store
 
 -- Control monads
 import qualified Control.Monad.State.SVar as SVar
+import Control.Monad.State.SVar (mergeMap)
 
 import Control.Monad.Trans.Class
 import Control.Monad.Identity
@@ -93,7 +94,7 @@ instance SymbolicARef (Pid ctx) where
 
 type Vlu = V K
 type Sto = SSto K Vlu
-type RetSto = Map (Component K) Vlu
+type RetSto = Map (Component K) (SVar.SVar Vlu)
 
 -- | Alias for k-sensitivity context
 data K = K [Exp] Symbolic.PC
@@ -143,7 +144,7 @@ intra e ctx@(K _ pc) pid env (store, retStore, contractStore) = fmap (fmap resul
                     -- actor & contract specific
                     & runContractStoreT contractStore
                     --
-                    & runStoreT'' @(Component K) retStore
+                    & runStoreT' @(Component K) retStore
                     -- contracts
                     & runContractAllocT @K
                     -- 
@@ -157,8 +158,13 @@ intra e ctx@(K _ pc) pid env (store, retStore, contractStore) = fmap (fmap resul
             (a, (store', ret, contractStore'))
 
 -- | Join all paths of the intra-analysis together
-joinIntra :: IntraResult -> m State
-joinIntra = undefined
+joinIntra :: (SVar.MonadStateVar m) => IntraResult -> m State
+joinIntra result =
+   foldM (\(vsto, rsto, csto) (_, (vsto', rsto', csto')) -> do
+      vsto'' <- mergeSchemeStore vsto vsto'
+      csto'' <- mergeContractStore csto csto'
+      rsto'' <- mergeMap rsto rsto'
+      return (vsto'', rsto'', csto'')) (snd $ head result) (tail result)
 
 -- | Run the intra analysis based on the state of a component
 runIntra :: InterM m => Component K -> State -> m State

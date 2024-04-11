@@ -21,8 +21,6 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Monad.State hiding (modify)
 import qualified Control.Monad.State as ST
-import Control.Monad.Writer
-import Debug.Trace
 import Data.Maybe
 import Control.Monad.Identity
 import Control.Monad.Cond (ifM)
@@ -53,7 +51,7 @@ instance (Monad m, MonadLayer t, ComponentM m cmp) => ComponentM (t m) cmp where
 -- SVar tracking
 ------------------------------------------------------------
 
-newtype Dep = Dep Int deriving (Ord, Eq, Show)
+newtype Dep = Dep (Set Int) deriving (Ord, Eq, Show)
 
 newtype TrackingStateVarT m a = TrackingStateVarT (IdentityT m a)
                               deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)

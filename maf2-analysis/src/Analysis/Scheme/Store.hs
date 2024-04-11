@@ -20,13 +20,14 @@
 -- sensible address defaults (cf. 'Domain.Scheme.Store').
 module Analysis.Scheme.Store(
    -- * Store
-   fromValues, 
-   SchemeStore'(..), 
-   SchemeStore, 
-   runSchemeStoreT, 
-   unifyStore, 
-   SVar, 
-   Id, 
+   fromValues,
+   SchemeStore'(..),
+   SchemeStore,
+   runSchemeStoreT,
+   unifyStore,
+   mergeSchemeStore,
+   SVar,
+   Id,
    runSchemeAllocT,
    -- * Defaults
    SSto,
@@ -43,6 +44,9 @@ import Data.Kind
 import Data.Function ((&))
 import Data.TypeLevel.HMap
 import Domain.Scheme.Store
+import Control.Applicative
+import qualified Control.Monad
+import Lattice (Joinable)
 
 -- TODO: these two things should be moved elsewhere.
 data Id :: k ~> k
@@ -84,6 +88,13 @@ type StoreMapping (f :: Type ~> Type) v var str pai vec = '[
 
 -- | A SchemeStore where `f` is fixed to 'Id'.
 type SchemeStore v var str pai vec = SchemeStore' Id v var str pai vec
+
+mergeSchemeStore :: forall m v var str pai vec .  (SchemeValue v, Ord var, Ord str, Ord pai, Ord vec, SVar.MonadStateVar m) 
+      => SchemeStore' SVar v var str pai vec
+      -> SchemeStore' SVar v var str pai vec
+      -> m (SchemeStore' SVar v var str pai vec)
+mergeSchemeStore (SchemeStore var str pai vec) (SchemeStore var' str' pai' vec') =
+   SchemeStore <$> SVar.mergeMap var var' <*> SVar.mergeMap str str' <*> SVar.mergeMap pai pai' <*> SVar.mergeMap vec vec'
 
 -- | Create a new SchemeStore with the given map 
 -- as the partition for the values.
@@ -148,7 +159,7 @@ unifyStore store state = SchemeStore {
 -- Default store aliases
 ---------------------------------------------------------------
 
-type DSto k v = 
+type DSto k v =
    SchemeStore' Id v (EnvAdr k) (StrAdr k) (PaiAdr k) (VecAdr k)
 type SSto k v  =
    SchemeStore' SVar v (EnvAdr k) (StrAdr k) (PaiAdr k) (VecAdr k)
