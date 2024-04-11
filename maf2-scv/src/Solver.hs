@@ -26,8 +26,6 @@ class Monad m => FormulaSolver m where
       result <- solve formula
       return (isSat result || isUnknown result)
 
-   
-
 --------------------------------------------------
 -- Caching Monad
 --------------------------------------------------

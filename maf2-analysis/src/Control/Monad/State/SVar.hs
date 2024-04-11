@@ -4,19 +4,10 @@
 
 module Control.Monad.State.SVar
   ( MonadStateVar (..),
-    MonadStateVarTracking,
     VarState,
-    TrackingStateVarT,
     runStateVarT,
     StateVarT,
-    runTrackingStateVarT,
-    wdep, rdep,
-    Dep,
-    RDep,
-    WDep,
-    reset,
-    getDeps,
-    SVar,
+    SVar(..),
     unify,
     fromMap
   )
@@ -38,6 +29,7 @@ import Control.Monad.Cond
 import Lattice (Joinable(..), JoinLattice(..))
 import Control.Monad (foldM)
 import Data.Functor ((<&>))
+import Control.Monad.Join
 
 -- Holds dynamic data
 data SomeVal where
@@ -122,6 +114,11 @@ instance {-# OVERLAPPING #-} (MonadIntegerPool m) => MonadStateVar (StateVarT m)
     -- if it is not in the map
     ST.gets (unsafeCoerceVal . fromJust . Map.lookup i . state)
 
+instance (Monad m) => MonadJoin (StateVarT m) where
+  mjoin = undefined
+  mzero = mzero
+
+
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
@@ -139,66 +136,3 @@ fromMap :: (MonadStateVar m) => Ord a => Map a b -> m (Map a (SVar b))
 fromMap  =
    foldM (\m (key, val) -> new val <&> flip (Map.insert key) m)
          Map.empty . Map.toList
-
-
-------------------------------------------------------------
--- Tracking SVar's
-------------------------------------------------------------
-
-class Monad m => MonadStateVarTracking m where
-   -- | Reset tracking
-   reset   :: m ()
-   -- | Get dependencies 
-   getDeps :: m TrackingState
-
-instance {-# OVERLAPPABLE #-} (MonadStateVarTracking m, MonadLayer t) => MonadStateVarTracking (t m) where
-   reset    = upperM reset
-   getDeps  = upperM getDeps
-
--- |  A dependency on an SVar
-newtype Dep = Dep Int deriving (Ord, Eq, Show)
-
--- for convience
-
--- |  A read dependency
-type RDep = Dep
-
--- | A write dependency
-type WDep = Dep
-
--- | State for tracking of dependencies
-data TrackingState = TrackingState {wdep :: Set WDep, rdep :: Set RDep} deriving (Show)
-
-emptyTrackingState :: TrackingState
-emptyTrackingState = TrackingState Set.empty Set.empty
-
-trigger :: WDep -> TrackingState -> TrackingState
-trigger dep st =
-   st {wdep = Set.insert dep (wdep st)}
-
-register :: WDep -> TrackingState -> TrackingState
-register dep st =
-   st {rdep = Set.insert dep (rdep st)}
-
--- | Monad that intercepts changes
--- to SVar and tracks their reads and writes
-newtype TrackingStateVarT m a = TrackingStateVarT {runTrackingStateVarT' :: StateT TrackingState m a}
-  deriving (Applicative, Monad, Functor, MonadState TrackingState, MonadLayer, MonadTrans)
-
-instance (Monad m) => MonadStateVarTracking (TrackingStateVarT m) where
-   reset   = ST.put emptyTrackingState
-   getDeps = ST.get
-
-runTrackingStateVarT :: (Monad m) => TrackingStateVarT m a -> m a
-runTrackingStateVarT (TrackingStateVarT ma) = ST.evalStateT ma emptyTrackingState
-
-instance {-# OVERLAPPING #-} (MonadStateVar m) => MonadStateVar (TrackingStateVarT m) where
-  new = lift . new
-
-  modify f var@(SVar i) =
-    ifM
-      (lift (modify f var))
-      {- then -} (ST.modify (trigger (Dep i)) >> return True)
-      {- else -} (return False)
-  read var@(SVar i) =
-    ST.modify (register (Dep i)) >> lift (read var)

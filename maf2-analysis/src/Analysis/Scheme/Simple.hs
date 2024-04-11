@@ -21,5 +21,5 @@ type V = (CPValue (PaiAdr K) (VecAdr K) (StrAdr K) VariableAdr Exp)
 
 -- | Expose a function to run the analysis
 runAnalysis :: String -> DSto K V
-runAnalysis program = fst $ analyzeProgram @V exp [] []
+runAnalysis program = fst $ analyzeProgram @V @_ @([_]) exp []
    where exp = fromJust $ parseString program

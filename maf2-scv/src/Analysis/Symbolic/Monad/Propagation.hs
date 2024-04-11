@@ -105,7 +105,14 @@ instance
   ) =>
   CallM (NaivePropagationT ref msg ctx mb cmp v m) env v
   where
-  call = withEntry . upperM . call -- TODO: also propagate path conditions back from the callers
+  call = withEntry . upperM . call 
+
+instance {-# OVERLAPPING #-} (StoreM m cmp v, MonadPathCondition m v, StoreM m cmp PC) => StoreM (NaivePropagationT ref msg ctx mb cmp v m) cmp v where
+   writeAdr  adr = upperM . writeAdr adr
+   updateAdr adr = upperM . updateAdr adr 
+   lookupAdr adr = do
+      integrate =<< lookupAdr adr 
+      lookupAdr adr
 
 -- | In an actor system paths from message senders need to be combined
 -- with the paths that the actor has already taken. To achieve this,

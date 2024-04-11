@@ -36,7 +36,8 @@ import Control.Monad.Trans.Class
 import Control.Monad.Identity
 
 -- Solving
-import Solver (setup, FormulaSolver)
+import Solver (FormulaSolver, runCachedSolver)
+import qualified Solver
 import Symbolic.SMT (setupSMT)
 import Solver.Z3 (runZ3Solver)
 
@@ -51,8 +52,6 @@ import Text.Printf
 import Prelude hiding (exp, iterate)
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Analysis.Contracts.Store (runContractAllocT)
-import Analysis.Actors.Monad (runActorSystemT)
 
 ------------------------------------------------------------
 -- Evaluation function
@@ -120,7 +119,6 @@ type InterM m = (
          FormulaSolver m,
          EffectM m (Component K),
          SVar.MonadStateVar m,
-         Monad m, 
          ActorGlobalM m (ARef Vlu) Msg
       )
 
@@ -135,27 +133,26 @@ intra :: forall m . InterM m
       -> Env K
       -> State
       -> m IntraResult
-intra e ctx@(K _ pc) pid env (store, retStore, contractStore) = do
-           fmap (fmap result)  $ (setupSMT >> Symbolic.eval e)
-                               & runSymbolicEvalT
-                               & runMayEscape @(Set Error)
-                               & runWithFormulaT pc
-                               & runCallT @Vlu @K
-                               & runSchemeStoreT store
-                               & runSchemeAllocT (EnvAdr @K) (VecAdr @K) (PaiAdr @K) (StrAdr @K)
-                               -- actor & contract specific
-                               & runContractStoreT contractStore
-                               --
-                               & runStoreT'' @(Component K) retStore
-                               -- contracts
-                               & runContractAllocT @K
-                               -- 
-                               & runSpawnT
-                               & runCtx ctx
-                               & runEnv env
-                               & runActorT @MB Set.empty pid
-                               & runNonDetT
-                               & runIntegerPoolT
+intra e ctx@(K _ pc) pid env (store, retStore, contractStore) = fmap (fmap result)  $ (setupSMT >> Symbolic.eval e)
+                    & runSymbolicEvalT
+                    & runMayEscape @(Set Error)
+                    & runWithFormulaT pc
+                    & runCallT @Vlu @K
+                    & runSchemeStoreT store
+                    & runSchemeAllocT (EnvAdr @K) (VecAdr @K) (PaiAdr @K) (StrAdr @K)
+                    -- actor & contract specific
+                    & runContractStoreT contractStore
+                    --
+                    & runStoreT'' @(Component K) retStore
+                    -- contracts
+                    & runContractAllocT @K
+                    -- 
+                    & runSpawnT
+                    & runCtx ctx
+                    & runEnv env
+                    & runActorT @MB Set.empty pid
+                    & runNonDetT
+                    & runIntegerPoolT
     where result (((((a, pc), store'), contractStore'), ret), localMb) =
             (a, (store', ret, contractStore'))
 
@@ -166,18 +163,21 @@ joinIntra = undefined
 -- | Run the intra analysis based on the state of a component
 runIntra :: InterM m => Component K -> State -> m State
 runIntra (Main e) = intra e emptyK EntryPid analysisEnv >=> joinIntra
-runIntra (Actor pid e k env) = intra e k pid env >=> joinIntra 
+runIntra (Actor pid e k env) = intra e k pid env >=> joinIntra
 
 -- | Compute the initial state of the analysis
-initialState :: State
-initialState = undefined
+initialState :: (SVar.MonadStateVar m) => m State
+initialState = do
+   analysisSto <- SVar.fromMap $ initialSto analysisEnv
+   return (fromValues analysisSto, Map.empty, emptyContractStore)
 
 -- | Run the inter analysis
 inter :: Exp -> IO State
-inter e =   runZ3Solver 
+inter e =   runZ3Solver
+          $ runCachedSolver
           $ fmap (fst . fst) $ runEffectT [Main e]
-          $ runActorSystemT (emptyActorSystem @MB) 
-          $ iterate runIntra initialState
+          $ runActorSystemT (emptyActorSystem @MB)
+          $ setupSMT >> setup initialState >>= iterate runIntra
 
 -- 
 simpleAnalysis :: Exp -> IO [(MayEscape (Set Error) Vlu, DSto K Vlu)]

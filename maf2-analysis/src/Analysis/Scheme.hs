@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Analysis.Scheme where
 
 import Prelude hiding (iterate, exp, lookup)
@@ -166,12 +167,11 @@ evalRet cmp = eval >=> writeAdr cmp
 -- as specified in `Analysis.Scheme.Primitives`
 analyzeProgram :: forall v ctx wl . 
                   (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, WorkList wl (Component v ctx))
-                => Exp -> wl -> ctx -> (DSto ctx v, Map (Component v ctx) v)
-analyzeProgram program initialWl initialCtx = (store', retStore')
-   where ((rsto, rretSto), state) = runIdentity $ runEffectT initialWl' (setup initialState >>= iterate intra)
+                => Exp -> ctx -> (DSto ctx v, Map (Component v ctx) v)
+analyzeProgram program initialCtx = (store', retStore')
+   where ((rsto, rretSto), state) = runIdentity $ runEffectT @wl (Main program) (setup initialState >>= iterate intra)
          store'     = unifyStore rsto state
          retStore'  = SVar.unify rretSto state
-         initialWl' = WL.add (Main program) initialWl
          run m env ctx (sto, retSto) = do
             ((_, sto'), retSto') <- m
                                      & runEvalT
