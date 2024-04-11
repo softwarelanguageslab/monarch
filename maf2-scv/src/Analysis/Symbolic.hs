@@ -175,7 +175,7 @@ initialState = do
 inter :: Exp -> IO State
 inter e =   runZ3Solver
           $ runCachedSolver
-          $ fmap (fst . fst) $ runEffectT [Main e]
+          $ fmap (fst . fst) $ runEffectT @[_] (Main e)
           $ runActorSystemT (emptyActorSystem @MB)
           $ setupSMT >> setup initialState >>= iterate runIntra
 
