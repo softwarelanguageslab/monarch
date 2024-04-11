@@ -182,12 +182,10 @@ analyzeProgram program initialWl initialCtx = (store', retStore')
                                      & runAlloc (VecAdr @ctx)
                                      & runAlloc (StrAdr @ctx)
                                      & runAlloc (EnvAdr @ctx)
-                                     & runCtx  ctx
+                                     & runCtx ctx
                                      & runJoinT
                                      & runSchemeStoreT sto
                                      & runStoreT' retSto
             return (sto', retSto')
          intra cmp@(Main exp) = run (evalRet cmp exp) analysisEnv initialCtx
          intra cmp@(Call exp env ctx) = run (evalRet cmp exp) env ctx
-
-

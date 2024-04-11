@@ -24,10 +24,19 @@ import Data.Set (Set)
 import qualified Data.Map as Map 
 import Prelude hiding (break, exp, lookup)
 import Data.Bifunctor (Bifunctor(bimap))
+import Data.Functor (($>))
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
 todo = error . ("[TODO] NYI: " ++)
+
+-- | Evaluate a Python component
+evalBdy :: PyM m obj => PyBdy -> m PyVal
+evalBdy (Main prg) = exec (programStmt prg) $> constant None
+evalBdy loop@(LoopBdy cnd bdy) = cond (eval cnd >>= isTrue)
+                                      (exec bdy >> cached loop)
+                                      (return $ constant None)
+evalBdy (FuncBdy bdy) = exec bdy $> constant None
 
 -- | Execute a single statement
 exec :: PyM pyM obj => PyStm -> pyM ()
@@ -79,7 +88,7 @@ execCnt :: PyM pyM obj => pyM ()
 execCnt = continue
 
 execWhi :: PyM pyM obj => PyExp -> PyStm -> pyM ()
-execWhi cnd bdy = void $ callWhi cnd bdy 
+execWhi cnd bdy = void $ cached (LoopBdy cnd bdy) 
 
 eval :: PyM pyM obj => PyExp -> pyM PyVal
 eval (Lam prs bdy loc _)   = evalLam prs bdy loc
@@ -137,7 +146,7 @@ callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal
 callClo pos ags = mjoinMap apply
  where apply (prs, bdy, env) = 
          withEnv (const env) $ do bindings <- zipWithM bindPar prs ags
-                                  withExtendedEnv bindings (callBdy bdy)
+                                  withExtendedEnv bindings $ cached (FuncBdy bdy)
 
 bindPar :: PyM pyM obj => PyPar -> PyVal -> pyM (String, VarAdr)
 bindPar (Prm ide _) v = writeAdr adr v >> return (lexNam ide, adr)

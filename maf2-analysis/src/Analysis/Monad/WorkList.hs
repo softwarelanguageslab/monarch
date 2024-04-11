@@ -50,5 +50,5 @@ instance (MonadLayer t, WorkListM m cmp) => WorkListM (t m) cmp where
 runWithWorkList :: forall w cmp m a . (Monad m, WorkList w cmp) => WorkListT w m a -> m a
 runWithWorkList (WorkListT m) = fst <$> runStateT m WL.empty 
 
-iterateWL :: WorkListM m cmp => (cmp -> m ()) -> m ()
+iterateWL :: WorkListM m cmp => (cmp -> m a) -> m ()
 iterateWL f = unlessM done (pop >>= f >> iterateWL f)
