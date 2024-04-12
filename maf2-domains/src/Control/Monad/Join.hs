@@ -1,7 +1,17 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Control.Monad.Join (MonadJoin(..), cond, conds, MonadJoinAlternative(..), mjoinMap, mjoins, msplit, condCP) where
+module Control.Monad.Join (
+   MonadJoin(..), 
+   cond, 
+   conds, 
+   condCP, 
+   condsCP,
+   MonadJoinAlternative(..), 
+   mjoinMap, 
+   mjoins, 
+   msplit, 
+) where
 
 import Lattice.Class
 import Lattice.ConstantPropagationLattice
@@ -35,6 +45,9 @@ conds clauses els = foldr (uncurry cond) els clauses
 
 condCP :: (MonadJoin m, JoinLattice v) => m (CP Bool) -> m v -> m v -> m v
 condCP = cond 
+
+condsCP :: (MonadJoin m, JoinLattice v) => [(m (CP Bool), m v)] -> m v -> m v
+condsCP = conds
 
 mjoinMap :: (MonadJoin m, Foldable t, JoinLattice b) => (a -> m b) -> t a -> m b 
 mjoinMap f = foldr (mjoin . f) mzero
