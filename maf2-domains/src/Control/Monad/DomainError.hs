@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- | This module provides a class of monads that are used to throw errors 
 -- in the implementation of our abstract domains.
-module Control.Monad.DomainError(DomainError(..), MonadEscape(..), MayEscapeT(..), MayEscape(Value), orElse, try) where
+module Control.Monad.DomainError(DomainError(..), MonadEscape(..), MayEscapeT(..), MayEscape(Value), orElse, try, escape) where
 
 import Control.Monad.Escape
 

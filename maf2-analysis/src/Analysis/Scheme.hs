@@ -84,7 +84,7 @@ instance MonadLayer (BaseSchemeEvalT v) where
 -- is not on top of the layers (see Control.Monad.Layer)
 instance (Monad m, MonadEscape m, Esc m ~ Set DomainError) => MonadEscape (BaseSchemeEvalT v m) where
    type Esc (BaseSchemeEvalT v m) = Set DomainError
-   escape = upperM . escape
+   throw = upperM . throw
    catch (BaseSchemeEvalT m) hdl = BaseSchemeEvalT $ catch @_ m (getInnerEvalT . hdl)
 
 instance MonadTrans (BaseSchemeEvalT v) where

@@ -71,7 +71,7 @@ instance (ActorEvalM (EvalT m) V Msg MB) => EvalM (EvalT m) V Exp where
 
 instance (Monad m, MonadEscape m, Esc m ~ Set DomainError) => MonadEscape (EvalT m) where
   type Esc (EvalT m) = Set DomainError
-  escape = upperM . escape
+  throw = upperM . throw
   catch (EvalT m) hdl = EvalT $ catch @_ m (getInnerEvalT . hdl)
     where
       getInnerEvalT (EvalT m') = m'

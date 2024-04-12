@@ -1,5 +1,13 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies, AllowAmbiguousTypes, DeriveFunctor #-}
-module Control.Monad.Escape (MonadEscape(..), MayEscape(Value), MayEscapeT(..), orElse, try) where
+
+module Control.Monad.Escape (
+   MonadEscape(..), 
+   MayEscape(..), 
+   MayEscapeT(..),
+   escape, 
+   orElse, 
+   try,
+) where
 
 import Lattice.Class hiding (Bottom)
 import Domain.Class 
@@ -13,8 +21,11 @@ import Data.Functor ((<&>))
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
    type Esc m
-   escape :: (JoinLattice a, Domain (Esc m) e) => e -> m a 
+   throw :: JoinLattice a => Esc m -> m a 
    catch :: JoinLattice a => m a -> (Esc m -> m a) -> m a
+
+escape :: (MonadEscape m, Domain (Esc m) e, JoinLattice a) => e -> m a 
+escape = throw . inject 
 
 orElse :: (MonadEscape m, JoinLattice a) => m a -> m a -> m a
 orElse a = catch a . const  
@@ -77,7 +88,7 @@ instance (Monad m, Joinable e) => Monad (MayEscapeT e m) where
 
 instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT e m) where
    type Esc (MayEscapeT e m) = e 
-   escape = MayEscapeT . return . Escape . inject
+   throw = MayEscapeT . return . Escape
    catch (MayEscapeT m) hdl = MayEscapeT $ m >>= handle
       where handle Bottom        = return Bottom
             handle (Escape e)    = runMayEscape (hdl e)
@@ -95,7 +106,7 @@ instance (Eq e, Joinable e, MonadJoin m) => MonadJoin (MayEscapeT e m) where
 
 instance MonadEscape Maybe where 
    type Esc Maybe = ()
-   escape = const Nothing
+   throw = const Nothing
    -- NOTE: this is an overapproximation,
    -- we assume that an error can always occur in the `ma` 
    -- value because `mjoin Nothing (Just a)` = Just a

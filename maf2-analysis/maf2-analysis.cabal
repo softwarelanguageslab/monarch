@@ -68,6 +68,7 @@ library
       Analysis.Monad.WorkList
       Analysis.Python
       Analysis.Python.Common
+      Analysis.Python.Escape
       Analysis.Python.Monad
       Analysis.Python.Objects
       Analysis.Python.Primitives
