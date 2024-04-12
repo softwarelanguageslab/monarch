@@ -25,6 +25,7 @@ import qualified Data.Map as Map
 import Prelude hiding (break, exp, lookup)
 import Data.Bifunctor (Bifunctor(bimap))
 import Data.Functor (($>))
+import Analysis.Python.Escape (PyEscape(..))
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -32,11 +33,21 @@ todo = error . ("[TODO] NYI: " ++)
 
 -- | Evaluate a Python component
 evalBdy :: PyM m obj => PyBdy -> m PyVal
-evalBdy (Main prg) = exec (programStmt prg) $> constant None
-evalBdy loop@(LoopBdy cnd bdy) = cond (eval cnd >>= isTrue)
-                                      (exec bdy >> cached loop)
-                                      (return $ constant None)
-evalBdy (FuncBdy bdy) = exec bdy $> constant None
+evalBdy (Main prg) = catchReturn (exec (programStmt prg) $> constant None)
+evalBdy loop@(LoopBdy cnd bdy) = 
+   cond (eval cnd >>= isTrue)
+        ((exec bdy >> cached loop) `catch` \esc -> condsCP [(return (isContinue esc), cached loop),
+                                                            (return (isBreak esc), return (constant None))]
+                                                {- else -} (return $ constant None))
+        (return $ constant None)
+evalBdy (FuncBdy bdy) = catchReturn (exec bdy $> constant None)
+
+catchReturn :: PyM m obj => m PyVal -> m PyVal
+catchReturn = (`catch` \esc -> condCP (return $ isReturn esc)
+                                      (getReturn esc)
+                                      (throw esc))
+
+
 
 -- | Execute a single statement
 exec :: PyM pyM obj => PyStm -> pyM ()
@@ -129,10 +140,10 @@ call :: PyM pyM obj => PyLoc -> [PyVal] -> PyVal -> pyM PyVal
 call loc ags = callObj loc ags <=< pyDeref' 
 
 callObj :: PyM pyM obj => PyLoc -> [PyVal] -> obj -> pyM PyVal 
-callObj pos ags obj = conds @(CP Bool) [(return (has @BndPrm obj), callBnd pos ags (get @BndPrm obj)),
-                                        (return (has @CloPrm obj), callClo pos ags (get @CloPrm obj)),
-                                        (return (has @PrmPrm obj), callPrm pos ags (get @PrmPrm obj))]
-                                       (escape NotCallable)
+callObj pos ags obj = condsCP [(return (has @BndPrm obj), callBnd pos ags (get @BndPrm obj)),
+                               (return (has @CloPrm obj), callClo pos ags (get @CloPrm obj)),
+                               (return (has @PrmPrm obj), callPrm pos ags (get @PrmPrm obj))]
+                   {- else -} (escape NotCallable)
 
 callBnd :: PyM pyM obj => PyLoc -> [PyVal] -> Map ObjAdr PyVal -> pyM PyVal 
 callBnd pos ags = mjoinMap apply . Map.toList

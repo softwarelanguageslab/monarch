@@ -28,28 +28,13 @@ import Control.Monad.Identity
 import Control.Monad.Escape
 import Control.Monad.DomainError
 import Data.Function ((&))
-
----
---- Python errors (TODO: refactor MayEscapeT)
----
-
-data PyEsc = EscPyError PyError
-           | EscDomainError DomainError
-           | EscPyControl PyControlEsc
-    deriving (Eq, Ord)
-
-instance Domain (Set PyEsc) DomainError where
-    inject = Set.singleton . EscDomainError
-instance Domain (Set PyEsc) PyError where
-    inject = Set.singleton . EscPyError
-instance Domain (Set PyEsc) PyControlEsc where
-    inject = Set.singleton . EscPyControl
+import Lattice (EqualLattice (..))
+import Control.Lens (Field1(_1))
+import Analysis.Python.Escape
 
 ---
 --- Python analysis fixpoint algorithm
 ---
-
-type PyCmp = ((PyBdy, PyEnv), ())
 
 -- type AnalysisM m obj = (PyObj' obj, 
 --                         StoreM m VarAdr PyVal,
@@ -60,6 +45,8 @@ type PyCmp = ((PyBdy, PyEnv), ())
 --                         DependencyTrackingM m PyCmp ObjAdr,
 --                         DependencyTrackingM m PyCmp PyCmp,
 --                         WorkListM m PyCmp)
+
+type PyCmp = ((PyBdy, PyEnv), ())
 
 --intra :: forall m obj . AnalysisM m obj => PyCmp -> m (MayEscape (Set PyEsc) PyVal)
 intra cmp@((bdy, env), ctx) = cache bdy (evalBdy bdy) 

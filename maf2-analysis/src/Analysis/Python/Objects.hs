@@ -16,7 +16,7 @@ import Analysis.Python.Monad
 import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
-import Control.Monad.DomainError ( orElse, MonadEscape(escape) )
+import Control.Monad.DomainError ( orElse, escape )
 import Domain (Domain, BoolDomain)
 import qualified Domain
 import Domain.Python.Objects 

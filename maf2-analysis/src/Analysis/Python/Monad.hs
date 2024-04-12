@@ -3,13 +3,15 @@
 {-# LANGUAGE ConstraintKinds #-}
 
 module Analysis.Python.Monad (
-  PyControl(..),
   PyControlEsc(..),
   PyBdy(..),
   PyM,
   pyAlloc,
   pyDeref,
   pyDeref',
+  break,
+  continue,
+  returnWith
 ) where
 
 import Lattice
@@ -20,28 +22,13 @@ import Analysis.Python.Common
 import Analysis.Monad
 import Domain.Python.Syntax hiding (Continue, Break, Return)
 import Domain.Python.World 
+import Analysis.Python.Escape 
 
 import Prelude hiding (lookup, exp, break)
-import Control.Monad.Layer
 
 --
 -- The Python monad 
 --
-
-class (Monad m, MonadEscape m) => PyControl m where
-  returnWith :: PyVal -> m ()
-  break :: m ()
-  continue :: m () 
-
-data PyControlEsc = Return PyVal 
-                  | Break 
-                  | Continue 
-  deriving (Eq, Ord)
-
-instance (Monad m, MonadEscape m, Domain (Esc m) PyControlEsc) => PyControl m where 
-  returnWith = escape . Return 
-  break = escape Break
-  continue = escape Continue 
   
 -- | Python components
 data PyBdy = Main PyPrg
@@ -51,10 +38,11 @@ data PyBdy = Main PyPrg
 
 type PyM m obj = (PyObj' obj,
                   MonadJoin m,
-                  PyControl m,
                   MonadCache PyBdy PyVal m,
+                  MonadEscape m,
                   Domain (Esc m) PyError,
                   Domain (Esc m) DomainError,
+                  PyEscape (Esc m),
                   EnvM m VarAdr PyEnv, 
                   AllocM m PyLoc ObjAdr,
                   StoreM m ObjAdr obj,
@@ -68,3 +56,12 @@ pyDeref' = deref' . addrs
 
 pyAlloc :: PyM m obj => PyLoc -> obj -> m PyVal
 pyAlloc loc = fmap injectAdr . store loc
+
+break :: PyM pyM obj => pyM ()
+break = escape Break
+
+continue :: PyM pyM obj => pyM ()
+continue = escape Continue
+
+returnWith :: PyM pyM obj => PyVal -> pyM ()
+returnWith = escape . Return 
