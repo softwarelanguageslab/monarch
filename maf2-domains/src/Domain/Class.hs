@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Domain.Class (Domain(..), Domain') where
 
 import Data.Kind
@@ -11,6 +12,8 @@ class JoinLattice v => Domain v c where
    inject :: c -> v
    injects :: Foldable t => t c -> v 
    injects = joinMap inject 
+   gamma :: v -> c -> Bool
+   gamma v = subsumes v . inject 
 
 -- | A curried and flipped version of the `Domain` constraint
 data Domain' (c :: Type) :: Type ~> Constraint
