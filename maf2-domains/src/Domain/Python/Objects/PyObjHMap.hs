@@ -17,11 +17,16 @@ import Data.TypeLevel.HMap
 import qualified Data.TypeLevel.HMap as HMap  
 
 import Data.Set (Set)
+import qualified Data.Set as Set 
 import Data.Map (Map)
+import qualified Data.Map as Map 
 import Data.Kind 
 import Data.Maybe
 import Data.Singletons (fromSing)
 import Data.Singletons.Sigma (Sigma((:&:)))
+import Lattice.ReversePowerSetLattice as RSet 
+import Data.Function ((&))
+import Data.List (intercalate)
 
 --
 -- Configuring the abstractions 
@@ -74,11 +79,33 @@ instance (JoinLattice vlu, AllJoin m vlu adr clo) => JoinLattice (PyObjHMap m vl
   bottom = PyObjHMap bottom bottom
 
 instance (Show vlu, ForAll PyPrmKey (AtKey1 Show (PyPrm m vlu adr clo))) => Show (PyObjHMap m vlu adr clo) where
-  show (PyObjHMap dct (HMapAbs (prm, _))) = show primitives ++ "(" ++ attributes ++ ")" 
-    where attributes = show dct
-          primitives = Prelude.map showPrm (HMap.toList prm)
-          showPrm :: BindingFrom (PyPrm m vlu adr clo) -> (String, String) 
-          showPrm (key :&: vlu) = withC_ @(AtKey1 Show (PyPrm m vlu adr clo)) (show $ fromSing key, show vlu) key
+  show (PyObjHMap BotDict _) = "⊥"
+  show (PyObjHMap _ (HMapAbs (_, RPBottom))) = "⊥"
+  show (PyObjHMap (TopDict _ _) _) = error "this should not happen" -- because we only use Constant CP keys
+  show (PyObjHMap (CPDict objKys objMap _) (HMapAbs (prmMap, prmKys))) = str 
+    where -- user object bindings
+          objAttrs = Prelude.map showBnd (Map.toList objMap)
+          showBnd (key, vlu) =
+            let prefix
+                  | Set.member key objKys = ""
+                  | otherwise             = "?"
+             in (prefix ++ key, show vlu)
+          -- primitive object bindings
+          prmAttrs = Prelude.map showPrm (HMap.toList prmMap)
+          showPrm (key :&: vlu) = 
+            let dkey = fromSing key 
+                prefix
+                  | RSet.contains dkey prmKys = "@"
+                  | otherwise                 = "?@"
+             in withC_ @(AtKey1 Show (PyPrm m vlu adr clo)) (prefix ++ show dkey, show vlu) key
+          -- all bindings
+          allAttrs = objAttrs ++ prmAttrs 
+          str = allAttrs 
+                  & Prelude.map (\(k,v) -> k ++ " → " ++ v)
+                  & intercalate ", "
+                  & ("{" ++)
+                  & (++ "}")
+
 
 --
 -- Making an instance of PyObj 

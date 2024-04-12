@@ -93,6 +93,7 @@ library:
   - Analysis.Actors.Mailbox
   - Analysis.Scheme.Actors.Components
   - Analysis.Python.Fixpoint
+  - Analysis.Python.Common
   - Interpreter.Scheme
   - Control.Monad.Layer
   - Control.Monad.State.SVar

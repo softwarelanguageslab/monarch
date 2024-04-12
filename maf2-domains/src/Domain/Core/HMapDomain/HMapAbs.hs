@@ -16,6 +16,7 @@ import Data.Kind (Type)
 import Data.Singletons
 
 -- | HMapDomain instance
+-- TODO: should also have an explicit bottom!
 newtype HMapAbs m = HMapAbs (HMap m, ReversePowerSet (KeyType m))
     
 deriving instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Eq m)) => Eq (HMapAbs m)

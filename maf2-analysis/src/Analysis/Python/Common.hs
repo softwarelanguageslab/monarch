@@ -4,7 +4,7 @@
 
 module Analysis.Python.Common (
   VarAdr(..), 
-  ObjAdr, 
+  ObjAdr(..), 
   allocVar,
   allocPtr,
   allocCst,
@@ -27,6 +27,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set 
 import Domain.Python.Objects
 import Domain.Core.SeqDomain (CPList)
+import Language.Python.Common.SrcLocation (startRow, startCol)
 
 --
 -- Addresses
@@ -37,7 +38,7 @@ newtype VarAdr = VarAdr String
 
 data ObjAdr = PtrAdr PyLoc
             | PrmAdr PyConstant
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
 
 allocVar :: PyIde -> VarAdr
 allocVar = VarAdr . ideName . lexIde
@@ -48,12 +49,19 @@ allocPtr = PtrAdr
 allocCst :: PyConstant -> ObjAdr
 allocCst = PrmAdr 
 
+instance Show ObjAdr where 
+  show (PtrAdr s) = "[" ++ show (startRow s) ++ ":" ++ show (startCol s) ++ "]" 
+  show (PrmAdr c) = "[" ++ show c ++ "]"
+
 --
 -- Values 
 --
 
 newtype PyVal = PyVal { addrs :: Set ObjAdr }
-  deriving (Eq, Ord, Show, Joinable, JoinLattice)
+  deriving (Eq, Ord, Joinable, JoinLattice)
+
+instance Show PyVal where
+  show = show . Set.toList .addrs 
 
 injectAdr :: ObjAdr -> PyVal
 injectAdr = PyVal . Set.singleton
