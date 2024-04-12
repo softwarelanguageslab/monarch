@@ -5,7 +5,6 @@ module Lattice.SetLattice where
 
 import Lattice.Class
 import Domain.Class 
-import Domain.Core.BoolDomain.Class
 
 import Data.Set (Set)
 import qualified Data.Set as Set 
@@ -22,10 +21,7 @@ instance (Ord a) => JoinLattice (Set a) where
 -- | Implementation of of `meet` for sets. It is implemented
 -- as the intersection of the sets.
 --
--- NOTE: The assumption here is also that each element in the set
--- is "disjoint" from each-other meaning that for each set S of 
--- size strictly greater than 1,
--- ∀x ∈ S: ⨅ x == ⊥
+-- NOTE: The assumption here is that `a` is a concrete value type
 instance (Ord a) => Meetable (Set a) where
    meet = Set.intersection
 
