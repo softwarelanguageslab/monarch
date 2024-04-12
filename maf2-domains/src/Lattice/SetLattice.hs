@@ -23,7 +23,9 @@ instance (Ord a) => JoinLattice (Set a) where
 -- | Implementation of of `meet` for sets. It is implemented
 -- as the intersection of the sets.
 --
--- NOTE: The assumption here is that `a` is a concrete value type
+-- NOTE: The assumption here is that all elements of type `a` are "disjoint" from each other
+-- meaning that for each set S of type (Set a):
+-- ∀x, y ∈ S: x /= y => x ⨅ y == ⊥
 instance (Ord a) => Meetable (Set a) where
    meet = Set.intersection
 
