@@ -36,11 +36,12 @@ instance (Ord a) => SplitLattice (Set a) where
 instance Ord a => Domain (Set a) a where
    inject = Set.singleton
 
--- | Equal instance for sets
--- NOTE: The assumption here is that `a` is a concrete value type
-instance Ord a => EqualLattice (Set a) where
-   eql s1 s2
-      | Set.null s1 || Set.null s2 = bottom 
-      | Set.size s1 == 1 && Set.size s2 == 1 = inject (s1 == s2)
-      | Set.null (Set.intersection s1 s2) = inject False
-      | otherwise = boolTop
+-- | More precise equal instance for sets
+-- TODO: The assumption here is that `a` is a concrete value type
+--       Since this is often not the case currently, we disable this instance for now
+-- instance Ord a => EqualLattice (Set a) where
+--    eql s1 s2
+--       | Set.null s1 || Set.null s2 = bottom 
+--       | Set.size s1 == 1 && Set.size s2 == 1 = inject (s1 == s2)
+--       | Set.null (Set.intersection s1 s2) = inject False
+--       | otherwise = boolTop
