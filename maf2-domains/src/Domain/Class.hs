@@ -13,7 +13,7 @@ class JoinLattice v => Domain v c where
    injects :: Foldable t => t c -> v 
    injects = joinMap inject 
    gamma :: v -> c -> Bool
-   gamma v = subsumes v . inject 
+   gamma v = subsumes v . inject    -- valid since for a Galois connection: c ∈ γ(a) <=> α(c) ⊑ a  
 
 -- | A curried and flipped version of the `Domain` constraint
 data Domain' (c :: Type) :: Type ~> Constraint
