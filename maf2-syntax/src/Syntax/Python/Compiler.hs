@@ -22,6 +22,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Bitraversable
 import Control.Monad.Cond
+import Language.Python.Common.SrcLocation (spanning)
+import Language.Python.Common (Span)
 
 
 todo :: String -> a
@@ -63,11 +65,11 @@ assign :: (SimplifyM m a) => Ide a -> Exp a AfterSimplification -> m (Stmt a Aft
 assign nam e = namespacedLhs nam <&> flip (Assg ()) e
 
 -- | Compile Python programs into the reduced Python syntax
-compile :: (SimplifyM m a) => Module a -> m (Program a AfterSimplification)
+compile :: (SimplifyM m SrcSpan) => Module SrcSpan -> m (Program SrcSpan AfterSimplification)
 compile (Module stmts) = (pure . Program) . Seq () =<< mapM compileStmt  stmts
 
 -- | Compile a statement in the Python reduced syntax
-compileStmt :: (SimplifyM m a) => Statement a -> m (Stmt a AfterSimplification)
+compileStmt :: (SimplifyM m SrcSpan) => Statement SrcSpan -> m (Stmt SrcSpan AfterSimplification)
 compileStmt (Fun nam ags _ bdy a)         = assign (Ide nam) =<< compileFun ags bdy a
 compileStmt (While cnd bdy els a)         = Loop () (compileExp cnd) <$> compileSequence bdy <*> pure a
 compileStmt (AsyncFun def _)              = error "not supported AsyncFun"
@@ -97,15 +99,15 @@ compileStmt (Assert exs _)                = todo "assertion statement"
 compileStmt stmt = error "unsupported exp"
 
 -- | Compiles a sequence without introducing a block
-compileSequence :: (SimplifyM m a) => Suite a -> m (Stmt a AfterSimplification)
+compileSequence :: (SimplifyM m SrcSpan) => Suite SrcSpan -> m (Stmt SrcSpan AfterSimplification)
 compileSequence es = Seq () <$> mapM compileStmt es
 
 -- | Compiles a block (something that has a different lexical scope)
-compileFun :: (SimplifyM m a) => [Parameter a] -> Suite a -> a -> m (Exp a AfterSimplification)
+compileFun :: (SimplifyM m SrcSpan) => [Parameter SrcSpan] -> Suite SrcSpan -> SrcSpan -> m (Exp SrcSpan AfterSimplification)
 compileFun prs bdy a = blockify $ Lam (compilePrs prs) <$> local (const Nothing) (compileSequence bdy) <*> pure a
 
 -- | Compile the parameters of a function
-compilePrs :: [Parameter a] -> [Par a AfterSimplification]
+compilePrs :: [Parameter SrcSpan] -> [Par SrcSpan AfterSimplification]
 compilePrs [] = []
 compilePrs ((Param nam _ def a) : xs) = Prm (Ide nam) a  : compilePrs xs
 compilePrs ((EndPositional _) : xs) = compilePrs xs
@@ -118,7 +120,7 @@ compilePrs _ = error "unknown type of expression"
 -------------------------------------------------------------------------------
 
 -- | Compiles an expression into a reduced Python expression
-compileExp :: Expr a -> Exp a AfterSimplification
+compileExp :: Expr SrcSpan -> Exp SrcSpan AfterSimplification
 -- | Variables
 compileExp (AST.Var ident _) = Var (Ide ident)
 -- literals
@@ -153,12 +155,12 @@ compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ 
 compileExp (AST.Tuple exs _)          = todo "eval tuples"
 compileExp ex = error "unsupported expression"-- ++ show (pretty ex))
 
-compileArg :: Argument a -> Arg a AfterSimplification
+compileArg :: Argument SrcSpan -> Arg SrcSpan AfterSimplification
 compileArg (ArgExpr e a) = PosArg (compileExp e) a
 compileArg (ArgKeyword k e a) = KeyArg (Ide k) (compileExp e) a
 compileArg _ = error "should not happen for compileArg"
 
-findKeyword :: String -> [Arg a ξ] -> Exp a ξ -> a -> (Exp a ξ, a)
+findKeyword :: Span SrcSpan => String -> [Arg SrcSpan ξ] -> Exp SrcSpan ξ -> SrcSpan -> (Exp SrcSpan ξ, SrcSpan)
 findKeyword nam [] def defa = (def, defa)
 findKeyword needle (KeyArg (Ide (Ident nam a)) ex _ : _)  _ _
    | nam == needle = (ex, a)
@@ -169,7 +171,7 @@ positional = map (\case PosArg e _ -> e) . filter (\case PosArg _ _ -> True ; Ke
 
 -- | Compiles a class definition
 -- A class definition is compiled to 
-compileClassInstance :: MonadWriter [Ide a] m => a -> String -> [Argument a] -> m (Exp a AfterSimplification)
+compileClassInstance :: MonadWriter [Ide SrcSpan] m => SrcSpan -> String -> [Argument SrcSpan] -> m (Exp SrcSpan AfterSimplification)
 compileClassInstance a nam ags =
    -- First find out which meta-class to use for the instantation
    let arguments = map compileArg ags
@@ -184,21 +186,23 @@ compileClassInstance a nam ags =
 
 
 -- | Compiles a class body
-compileClassBdy :: (SimplifyM m a) => Ide a -> Suite a -> m (Stmt a AfterSimplification)
+compileClassBdy :: SimplifyM m SrcSpan => Ide SrcSpan -> Suite SrcSpan -> m (Stmt SrcSpan AfterSimplification)
 compileClassBdy nam bdy = Seq () <$> mapM (local (const $ Just nam) . compileStmt) bdy
 
 -- | Compiles the left-hand-side of an assignment
-compileLhs :: (SimplifyM m a) => [Expr a] -> m (Lhs a AfterSimplification)
+compileLhs :: SimplifyM m SrcSpan => [Expr SrcSpan] -> m (Lhs SrcSpan AfterSimplification)
 compileLhs [AST.Var ident _] = namespacedLhs (Ide ident)
 compileLhs [Dot e x a] = return $ Field (compileExp e) (Ide x) a
 compileLhs ex = error "unsupported expression as LHS in assignment"
 
 -- | Translates a binary operation to a function call
-binaryToCall :: Op a -> Expr a -> Expr a -> a -> Exp a AfterSimplification
+binaryToCall :: Op SrcSpan -> Expr SrcSpan -> Expr SrcSpan -> SrcSpan -> Exp SrcSpan AfterSimplification
 binaryToCall op left right a =
    let compiledLeft  = compileExp left
        compiledRight = compileExp right
-   in Call (Read compiledLeft (opToIde op) (annot left)) [PosArg compiledRight (annot right)] a
+   in Call (Read compiledLeft (opToIde op) (spanning (annot left) (annot op)))
+           [PosArg compiledRight (annot right)] 
+           a
 
 
 opToIde :: Op a -> Ide a
