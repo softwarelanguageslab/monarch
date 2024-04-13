@@ -137,6 +137,7 @@ library
     , data-default
     , extra
     , hashable
+    , language-python
     , maf2-syntax
     , mtl
     , singletons
@@ -189,6 +190,7 @@ test-suite maf2-domains-test
     , hashable
     , hspec
     , hspec-contrib
+    , language-python
     , maf2-domains
     , maf2-syntax
     , mtl

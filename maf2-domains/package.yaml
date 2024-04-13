@@ -32,6 +32,7 @@ dependencies:
 - singletons
 - singletons-th
 - template-haskell
+- language-python
 
 ghc-options:
 - -Wall

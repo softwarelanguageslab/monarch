@@ -40,6 +40,8 @@ library
       Analysis.Scheme.Actors.Components
       Analysis.Python.Fixpoint
       Analysis.Python.Common
+      Analysis.Python.Monad
+      Analysis.Python.Escape
       Interpreter.Scheme
       Control.Monad.Layer
       Control.Monad.State.SVar
@@ -68,8 +70,6 @@ library
       Analysis.Monad.Store
       Analysis.Monad.WorkList
       Analysis.Python
-      Analysis.Python.Escape
-      Analysis.Python.Monad
       Analysis.Python.Objects
       Analysis.Python.Primitives
       Analysis.Python.Semantics

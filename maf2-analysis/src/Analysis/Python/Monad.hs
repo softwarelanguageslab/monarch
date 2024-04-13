@@ -32,8 +32,8 @@ import Prelude hiding (lookup, exp, break)
   
 -- | Python components
 data PyBdy = Main PyPrg
-           | FuncBdy PyStm
-           | LoopBdy PyExp PyStm
+           | FuncBdy PyLoc PyStm
+           | LoopBdy PyLoc PyExp PyStm
   deriving (Eq, Ord, Show)
 
 type PyM m obj = (PyObj' obj,

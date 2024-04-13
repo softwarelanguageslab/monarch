@@ -94,6 +94,8 @@ library:
   - Analysis.Scheme.Actors.Components
   - Analysis.Python.Fixpoint
   - Analysis.Python.Common
+  - Analysis.Python.Monad
+  - Analysis.Python.Escape
   - Interpreter.Scheme
   - Control.Monad.Layer
   - Control.Monad.State.SVar

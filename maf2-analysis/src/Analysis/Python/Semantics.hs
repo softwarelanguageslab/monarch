@@ -34,13 +34,13 @@ todo = error . ("[TODO] NYI: " ++)
 -- | Evaluate a Python component
 evalBdy :: PyM m obj => PyBdy -> m PyVal
 evalBdy (Main prg) = catchReturn (exec (programStmt prg) $> constant None)
-evalBdy loop@(LoopBdy cnd bdy) = 
+evalBdy loop@(LoopBdy _ cnd bdy) = 
    cond (eval cnd >>= isTrue)
         ((exec bdy >> cached loop) `catch` \esc -> condsCP [(return (isContinue esc), cached loop),
                                                             (return (isBreak esc), return (constant None))]
                                                 {- else -} (return $ constant None))
         (return $ constant None)
-evalBdy (FuncBdy bdy) = catchReturn (exec bdy $> constant None)
+evalBdy (FuncBdy _ bdy) = catchReturn (exec bdy $> constant None)
 
 catchReturn :: PyM m obj => m PyVal -> m PyVal
 catchReturn = (`catch` \esc -> condCP (return $ isReturn esc)
@@ -56,7 +56,7 @@ exec (Let _ vrs bdy)             = execLet vrs bdy
 exec (Return _ exp loc)          = execRet exp loc
 exec (Conditional _ brs els _ )  = execIff brs els
 exec (StmtExp _ e _)             = execExp e
-exec (Loop _ cnd bdy _)          = execWhi cnd bdy
+exec (Loop _ cnd bdy loc)        = execWhi cnd bdy loc 
 exec (Seq _ sts)                 = execSeq sts
 exec (Break _ _)                 = execBrk
 exec (Continue _ _)              = execCnt
@@ -98,8 +98,8 @@ execBrk = break
 execCnt :: PyM pyM obj => pyM ()
 execCnt = continue
 
-execWhi :: PyM pyM obj => PyExp -> PyStm -> pyM ()
-execWhi cnd bdy = void $ cached (LoopBdy cnd bdy) 
+execWhi :: PyM pyM obj => PyExp -> PyStm -> PyLoc -> pyM ()
+execWhi cnd bdy loc = void $ cached (LoopBdy loc cnd bdy) 
 
 eval :: PyM pyM obj => PyExp -> pyM PyVal
 eval (Lam prs bdy loc _)   = evalLam prs bdy loc
@@ -113,7 +113,7 @@ evalRea obj nam loc = lookupAttr loc nam =<< eval obj
 
 evalLam :: forall pyM obj . PyM pyM obj => [PyPar] -> PyStm -> PyLoc -> pyM PyVal
 evalLam prs bdy loc = do env <- getEnv
-                         let clo = (prs, bdy, env)
+                         let clo = (loc, prs, bdy, env)
                          pyAlloc loc (from' @CloPrm clo)
 
 evalVar :: PyM pyM obj => PyIde -> pyM PyVal
@@ -129,11 +129,11 @@ evalLit (Dict _)           = todo "dictionary literal"
 
 -- | Applies a procedure
 
-evalCll :: forall pyM obj . PyM pyM obj => PyExp -> [PyArg] -> PyLoc -> pyM PyVal
+evalCll :: PyM pyM obj => PyExp -> [PyArg] -> PyLoc -> pyM PyVal
 evalCll opr opd loc = do fun <- eval opr
                          ags <- mapM evalArg opd
                          call loc ags fun
-   where evalArg (PosArg arg _) = eval @pyM arg
+   where evalArg (PosArg arg _) = eval arg
          evalArg (KeyArg _ _ _) = todo "keyword arguments"
 
 call :: PyM pyM obj => PyLoc -> [PyVal] -> PyVal -> pyM PyVal 
@@ -155,9 +155,9 @@ callPrm pos ags = mjoinMap apply
 
 callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal 
 callClo pos ags = mjoinMap apply
- where apply (prs, bdy, env) = 
+ where apply (loc, prs, bdy, env) = 
          withEnv (const env) $ do bindings <- zipWithM bindPar prs ags
-                                  withExtendedEnv bindings $ cached (FuncBdy bdy)
+                                  withExtendedEnv bindings $ cached (FuncBdy loc bdy)
 
 bindPar :: PyM pyM obj => PyPar -> PyVal -> pyM (String, VarAdr)
 bindPar (Prm ide _) v = writeAdr adr v >> return (lexNam ide, adr)

@@ -27,7 +27,6 @@ import Data.Set (Set)
 import qualified Data.Set as Set 
 import Domain.Python.Objects
 import Domain.Core.SeqDomain (CPList)
-import Language.Python.Common.SrcLocation (startRow, startCol)
 
 --
 -- Addresses
@@ -50,7 +49,7 @@ allocCst :: PyConstant -> ObjAdr
 allocCst = PrmAdr 
 
 instance Show ObjAdr where 
-  show (PtrAdr s) = "[" ++ show (startRow s) ++ ":" ++ show (startCol s) ++ "]" 
+  show (PtrAdr s) = "[" ++ showLoc s ++ "]" 
   show (PrmAdr c) = "[" ++ show c ++ "]"
 
 --
@@ -70,7 +69,7 @@ constant :: PyConstant -> PyVal
 constant = injectAdr . allocCst  
 
 type PyEnv = Map String VarAdr
-type PyClo = ([PyPar], PyStm, PyEnv)
+type PyClo = (PyLoc, [PyPar], PyStm, PyEnv)
 
 --
 -- Python objects with the common objects/values instantiated
