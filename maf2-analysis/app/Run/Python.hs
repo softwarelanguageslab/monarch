@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+
 module Run.Python(main, Options, options) where
 
 import Syntax.Python
@@ -34,6 +35,6 @@ printOSto m =
 main :: Options -> IO ()
 main (Options _) = 
    let Just parsed = parse "testje" prg 
-       (vsto, osto) = analyzeCP parsed 
+       (rsto, osto, vsto) = analyzeCP parsed 
     in putStrLn (printOSto osto)
 

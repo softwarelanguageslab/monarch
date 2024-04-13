@@ -40,5 +40,8 @@ instance (MapM k v m, MonadLayer t) => MapM k v (t m) where
     get = upperM . get
     put k = upperM . put k 
 
-runWithMapping :: forall k v m a . Monad m => MapT k v m a -> m a 
-runWithMapping (MapT m) = fst <$> runStateT m Map.empty 
+runWithMapping :: forall k v m a . MapT k v m a -> m (a, Map k v) 
+runWithMapping (MapT m) = runStateT m Map.empty 
+
+runWithMapping' :: forall k v m a . Monad m => MapT k v m a -> m a 
+runWithMapping' = fmap fst . runWithMapping 

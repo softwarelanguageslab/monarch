@@ -63,18 +63,18 @@ inter prg = do init                                 -- initialize Python infrast
                add ((Main prg, initialEnv), ())     -- add the main component to the worklist
                iterateWL intra                      -- start the analysis 
 
-analyze :: forall obj. PyObj' obj => PyPrg -> (Map VarAdr PyVal, Map ObjAdr obj)
-analyze prg = (vsto, osto)
-    where ((_,vsto),osto) = inter prg
-                                & runWithStore @(Map VarAdr PyVal) @VarAdr
-                                & runWithStore @(Map ObjAdr obj) @ObjAdr
-                                & runWithMapping @PyCmp
-                                & runWithDependencyTracking @PyCmp @VarAdr
-                                & runWithDependencyTracking @PyCmp @ObjAdr
-                                & runWithDependencyTracking @PyCmp @PyCmp
-                                & runWithComponentTracking @PyCmp
-                                & runWithWorkList @(Set PyCmp)
-                                & runIdentity
+analyze :: forall obj. PyObj' obj => PyPrg -> (Map PyCmp (MayEscape (Set PyEsc) PyVal), Map ObjAdr obj, Map VarAdr PyVal)
+analyze prg = (rsto, osto, vsto)
+    where (((_,vsto),osto),rsto) = inter prg
+                                    & runWithStore @(Map VarAdr PyVal) @VarAdr
+                                    & runWithStore @(Map ObjAdr obj) @ObjAdr
+                                    & runWithMapping @PyCmp
+                                    & runWithDependencyTracking @PyCmp @VarAdr
+                                    & runWithDependencyTracking @PyCmp @ObjAdr
+                                    & runWithDependencyTracking @PyCmp @PyCmp
+                                    & runWithComponentTracking @PyCmp
+                                    & runWithWorkList @(Set PyCmp)
+                                    & runIdentity
 
 ---
 --- CP instantiation
@@ -82,5 +82,5 @@ analyze prg = (vsto, osto)
 
 type PyObjCP' = PyObjCP PyVal ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map VarAdr PyVal, Map ObjAdr PyObjCP')
+analyzeCP :: PyPrg -> (Map PyCmp (MayEscape (Set PyEsc) PyVal), Map ObjAdr PyObjCP', Map VarAdr PyVal)
 analyzeCP = analyze @PyObjCP'
