@@ -29,4 +29,4 @@ instance (JoinLattice v, Ord a) => Store (Map a v) a v where
    lookupSto = Map.findWithDefault bottom
    extendSto adr vlu = Map.alter (Just . join vlu . justOrBot) adr
    -- a simple store only supports weak updates
-   updateStoWith _ fw = Map.alter $ Just . fw . fromMaybe (error "updating a non-existent address")
+   updateStoWith _ fw = Map.alter (Just . fw . justOrBot)
