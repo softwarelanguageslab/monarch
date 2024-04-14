@@ -32,8 +32,12 @@ options = Options <$>
 
 prg :: String
 prg = unlines [
-               "def id(x): return x+1",
-               "return id(2)"
+               "def fac(n):",
+               "    if n == 0:",
+               "        return 1",
+               "    else:",
+               "        return n * fac (n-1)",
+               "return fac(5)"
               ]
 
 printOSto :: Show obj => Map ObjAdr obj -> String

@@ -27,7 +27,7 @@ import Language.Python.Common (Span)
 
 
 todo :: String -> a
-todo = undefined
+todo = error . ("COMPILER ERROR: " ++)
 
 -------------------------------------------------------------------------------
 -- From String to AST
