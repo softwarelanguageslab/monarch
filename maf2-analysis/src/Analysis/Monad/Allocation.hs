@@ -36,9 +36,11 @@ type Allocator from ctx to = from -> ctx -> to
 newtype AllocT from ctx to m a = AllocT (ReaderT (Allocator from ctx to) m a)
     deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoin, MonadLayer, MonadTrans)
 
-instance (Monad m, MonadCache k v m) => MonadCache k v (AllocT from ctx to m) where
-   cached = upperM . cached
-   cache k (AllocT m) = AllocT (ReaderT (cache k . runReaderT m))
+instance (MonadCache k v m) => MonadCache k v (AllocT from ctx to m) where
+   type Key (AllocT from ctx to m) k = Key m k 
+   key = lift . key
+   cached = upperM . cached @k 
+   cache k (AllocT m) = AllocT (ReaderT (cache @k k . runReaderT m))
 
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
    alloc loc = do

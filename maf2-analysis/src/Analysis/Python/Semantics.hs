@@ -12,6 +12,7 @@ import Analysis.Python.Common
 import Analysis.Python.Monad hiding (Return, Continue, Break)
 import Analysis.Python.Primitives
 import Analysis.Monad hiding (eval, call, get)
+import qualified Analysis.Monad.ComponentTracking as M
 
 import Control.Monad (zipWithM, (>=>), (<=<), void)
 import qualified Domain.Core.SeqDomain as SeqDomain
@@ -36,7 +37,7 @@ evalBdy :: PyM m obj => PyBdy -> m PyVal
 evalBdy (Main prg) = catchReturn (exec (programStmt prg) $> constant None)
 evalBdy loop@(LoopBdy _ cnd bdy) = 
    cond (eval cnd >>= isTrue)
-        ((exec bdy >> cached loop) `catch` \esc -> condsCP [(return (isContinue esc), cached loop),
+        ((exec bdy >> M.call loop) `catch` \esc -> condsCP [(return (isContinue esc), M.call loop),
                                                             (return (isBreak esc), return (constant None))]
                                                 {- else -} (return $ constant None))
         (return $ constant None)
@@ -99,7 +100,7 @@ execCnt :: PyM pyM obj => pyM ()
 execCnt = continue
 
 execWhi :: PyM pyM obj => PyExp -> PyStm -> PyLoc -> pyM ()
-execWhi cnd bdy loc = void $ cached (LoopBdy loc cnd bdy) 
+execWhi cnd bdy loc = void $ M.call (LoopBdy loc cnd bdy) 
 
 eval :: PyM pyM obj => PyExp -> pyM PyVal
 eval (Lam prs bdy loc _)   = evalLam prs bdy loc
@@ -157,7 +158,7 @@ callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal
 callClo pos ags = mjoinMap apply
  where apply (PyClo loc prs bdy env) = 
          withEnv (const env) $ do bindings <- zipWithM bindPar prs ags
-                                  withExtendedEnv bindings $ cached (FuncBdy loc bdy)
+                                  withExtendedEnv bindings $ M.call (FuncBdy loc bdy)
 
 bindPar :: PyM pyM obj => PyPar -> PyVal -> pyM (String, VarAdr)
 bindPar (Prm ide _) v = writeAdr adr v >> return (lexNam ide, adr)

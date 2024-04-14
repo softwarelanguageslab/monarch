@@ -31,7 +31,10 @@ options = Options <$>
 --
 
 prg :: String
-prg = "return 42"
+prg = unlines [
+               "def id(x): return x+1",
+               "return id(2)"
+              ]
 
 printOSto :: Show obj => Map ObjAdr obj -> String
 printOSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs

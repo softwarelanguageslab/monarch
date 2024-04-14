@@ -25,6 +25,7 @@ import Domain.Python.World
 import Analysis.Python.Escape 
 
 import Prelude hiding (lookup, exp, break)
+import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 
 --
 -- The Python monad 
@@ -39,6 +40,7 @@ data PyBdy = Main PyPrg
 type PyM m obj = (PyObj' obj,
                   MonadJoin m,
                   MonadCache PyBdy PyVal m,
+                  ComponentTrackingM m (Key m PyBdy),
                   MonadEscape m,
                   Domain (Esc m) PyError,
                   Domain (Esc m) DomainError,

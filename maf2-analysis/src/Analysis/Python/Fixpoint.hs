@@ -49,7 +49,7 @@ import Analysis.Python.Escape
 type PyCmp = ((PyBdy, PyEnv), ())
 
 --intra :: forall m obj . AnalysisM m obj => PyCmp -> m (MayEscape (Set PyEsc) PyVal)
-intra cmp@((bdy, env), ctx) = cache bdy (evalBdy bdy) 
+intra cmp@((bdy, env), ctx) = (key bdy >>= \k -> cache k (evalBdy bdy))
                                 & runMayEscape @(Set PyEsc)
                                 & runAlloc (const . allocPtr)
                                 & runEnv env

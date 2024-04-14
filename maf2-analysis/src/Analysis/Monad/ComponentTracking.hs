@@ -30,8 +30,8 @@ class Monad m => ComponentTrackingM m cmp | m -> cmp where
 has :: (ComponentTrackingM m cmp, Ord cmp) => cmp -> m Bool
 has cmp = Set.member cmp <$> components
 
-call :: (ComponentTrackingM m cmp, MonadCache cmp v m) => cmp -> m v
-call cmp = spawn cmp >> cached cmp
+call :: forall m cmp v . (ComponentTrackingM m (Key m cmp), MonadCache cmp v m) => cmp -> m v
+call cmp = key cmp >>= \k -> spawn k >> cached @cmp k 
 
 
 
