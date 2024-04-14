@@ -113,7 +113,7 @@ evalRea obj nam loc = lookupAttr loc nam =<< eval obj
 
 evalLam :: forall pyM obj . PyM pyM obj => [PyPar] -> PyStm -> PyLoc -> pyM PyVal
 evalLam prs bdy loc = do env <- getEnv
-                         let clo = (loc, prs, bdy, env)
+                         let clo = PyClo loc prs bdy env
                          pyAlloc loc (from' @CloPrm clo)
 
 evalVar :: PyM pyM obj => PyIde -> pyM PyVal
@@ -155,7 +155,7 @@ callPrm pos ags = mjoinMap apply
 
 callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal 
 callClo pos ags = mjoinMap apply
- where apply (loc, prs, bdy, env) = 
+ where apply (PyClo loc prs bdy env) = 
          withEnv (const env) $ do bindings <- zipWithM bindPar prs ags
                                   withExtendedEnv bindings $ cached (FuncBdy loc bdy)
 

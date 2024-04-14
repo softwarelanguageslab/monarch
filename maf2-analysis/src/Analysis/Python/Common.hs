@@ -13,7 +13,7 @@ module Analysis.Python.Common (
   injectAdr,
   constant, 
   PyEnv, 
-  PyClo,
+  PyClo(..),
   PyObj',
 ) where
 
@@ -69,7 +69,11 @@ constant :: PyConstant -> PyVal
 constant = injectAdr . allocCst  
 
 type PyEnv = Map String VarAdr
-type PyClo = (PyLoc, [PyPar], PyStm, PyEnv)
+data PyClo = PyClo PyLoc [PyPar] PyStm PyEnv
+  deriving (Eq, Ord)
+
+instance Show PyClo where
+  show (PyClo loc _ _ _) = "<func@" ++ showLoc loc ++ ">" 
 
 --
 -- Python objects with the common objects/values instantiated
