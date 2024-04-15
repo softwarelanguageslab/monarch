@@ -47,6 +47,7 @@ import Solver.Z3 (runZ3Solver)
 -- Builtin data
 import Data.Map (Map)
 import qualified Data.Map as Map
+import qualified Data.Map.Extra as Map.Extra
 import Data.Function ((&))
 import Data.Functor.Identity
 import Data.Maybe
@@ -54,6 +55,10 @@ import Text.Printf
 import Prelude hiding (exp, iterate)
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Analysis.Actors.Monad (runActorSystemT, emptyActorSystem)
+import qualified Data.Map.Extra as Map.Extra
+import Data.Bifunctor
+import Data.Tuple.Extra
 
 ------------------------------------------------------------
 -- Evaluation function
@@ -75,7 +80,7 @@ instance (ContractM (SymbolicEvalT v m) v msg mb, SymbolicM (SymbolicEvalT v m) 
 -- is not on top of the layers (see Control.Monad.Layer)
 instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (SymbolicEvalT v m) where
    type Esc (SymbolicEvalT v m) = Set Error
-   escape = upperM . escape
+   throw = upperM . throw
    catch (SymbolicEvalT m) hdl = SymbolicEvalT $ catch @_ m (getSymbolicEvalT . hdl)
 
 runSymbolicEvalT :: SymbolicEvalT v m a -> m a
@@ -111,24 +116,25 @@ type Msg = SimpleMessage Vlu
 type MB = Set Msg
 
 -- | State of all mailboxes
-type Mailboxes = Map (Component K) (SVar MB)
+type Mailboxes = Map (Pid K) (SVar.SVar MB)
 
 ------------------------------------------------------------
 -- Analysis
 ------------------------------------------------------------
 
-data State = State Sto RetSto (ContractStore' SVar K Vlu)
+data Stores = Stores { vsto :: Sto, rsto ::  RetSto, csto :: ContractStore' SVar K Vlu }
+
+type State  = (Stores, Mailboxes)
+
 
 -- | Inter analysis monad
 type InterM m = (
          FormulaSolver m,
          EffectM m (Component K),
-         SVar.MonadStateVar m,
-         ActorGlobalM m (ARef Vlu) Msg
-      )
+         SVar.MonadStateVar m)
 
 -- | Result of intra-analysis
-type IntraResult = [(MayEscape (Set Error) Vlu, State)]
+type IntraResult = ([(MayEscape (Set Error) Vlu, Stores)], Mailboxes)
 
 -- | Simple intra-analysis
 intra :: forall m . InterM m
@@ -138,52 +144,58 @@ intra :: forall m . InterM m
       -> Env K
       -> State
       -> m IntraResult
-intra e ctx@(K _ pc) pid env (State store retStore contractStore) = fmap (fmap result)  $ (setupSMT >> Symbolic.eval e)
-                    & runSymbolicEvalT
-                    & runMayEscape @(Set Error)
-                    & runWithFormulaT pc
-                    & runCallT @Vlu @K
-                    & runSchemeStoreT store
-                    & runSchemeAllocT (EnvAdr @K) (VecAdr @K) (PaiAdr @K) (StrAdr @K)
-                    -- actor & contract specific
-                    & runContractStoreT contractStore
-                    --
-                    & runStoreT' @(Component K) retStore
-                    -- contracts
-                    & runContractAllocT @K
-                    -- 
-                    & runSpawnT
-                    & runCtx ctx
-                    & runEnv env
-                    & runActorT @MB Set.empty pid
-                    & runNonDetT
-                    & runIntegerPoolT
+intra e ctx@(K _ pc) pid env (Stores store retStore contractStore, mbs) = do
+         (mailbox, mbs') <- firstM SVar.read =<< Map.Extra.lookupInsertDefaultF (SVar.depend empty) pid mbs
+         let paths = (fmap . fmap) result $ (setupSMT >> Symbolic.eval e)
+                                              & runSymbolicEvalT
+                                              & runMayEscape @(Set Error)
+                                              & runWithFormulaT pc
+                                              & runCallT @Vlu @K
+                                              & runSchemeStoreT store
+                                              & runSchemeAllocT (EnvAdr @K) (VecAdr @K) (PaiAdr @K) (StrAdr @K)
+                                              -- actor & contract specific
+                                              & runContractStoreT contractStore
+                                              --
+                                              & runStoreT' @(Component K) retStore
+                                              -- contracts
+                                              & runContractAllocT @K
+                                              -- 
+                                              & runSpawnT
+                                              & runCtx ctx
+                                              & runEnv env
+                                              & runActorT @MB mailbox pid
+                                              & runNonDetT
+                                              & runIntegerPoolT
+
+         runActorSystemT mbs' paths
+         
     where result (((((a, pc), store'), contractStore'), ret), localMb) =
-            (a, State store' ret contractStore')
+            (a, Stores store' ret contractStore')
 
 -- | Join all paths of the intra-analysis together
-joinIntra :: (SVar.MonadStateVar m) => IntraResult -> m State
-joinIntra =
-   fold1M (\(State vsto rsto csto) (State vsto' rsto' csto') -> 
-            State <$> mergeSchemeStore vsto vsto' <*> mergeMap rsto rsto' <*> mergeContractStore csto csto) . map snd
+joinIntra :: (SVar.MonadStateVar m) => [(MayEscape (Set Error) Vlu, Stores)] -> m Stores
+joinIntra = fold1M merge . map snd
+   where
+      merge s1 s2 = Stores <$> mergeSchemeStore (vsto s1) (vsto s2)
+                           <*> mergeMap (rsto s1) (rsto s2)
+                           <*> mergeContractStore (csto s1) (csto s2)
 
 -- | Run the intra analysis based on the state of a component
 runIntra :: InterM m => Component K -> State -> m State
-runIntra (Main e) = intra e emptyK EntryPid analysisEnv >=> joinIntra
-runIntra (Actor pid e k env) = intra e k pid env >=> joinIntra
+runIntra (Main e) = intra e emptyK EntryPid analysisEnv >=>  firstM joinIntra
+runIntra (Actor pid e k env) = intra e k pid env >=> firstM joinIntra 
 
 -- | Compute the initial state of the analysis
 initialState :: (SVar.MonadStateVar m) => m State
 initialState = do
    analysisSto <- SVar.fromMap $ initialSto analysisEnv
-   return (State (fromValues analysisSto) Map.empty emptyContractStore)
+   return (Stores (fromValues analysisSto) Map.empty emptyContractStore, emptyActorSystem)
 
 -- | Run the inter analysis
 inter :: Exp -> IO State
 inter e =   runZ3Solver
           $ runCachedSolver
-          $ fmap (fst . fst) $ runEffectT @[_] (Main e)
-          $ runActorSystemT (emptyActorSystem @MB)
+          $ fmap fst $ runEffectT @[_] (Main e)
           $ setupSMT >> setup initialState >>= iterate runIntra
 
 -- 

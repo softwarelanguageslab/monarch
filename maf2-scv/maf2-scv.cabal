@@ -35,6 +35,7 @@ library
       Analysis.Symbolic.Monad.Propagation
       Analysis.Symbolic.Semantics
       Analysis.Traces
+      Data.Map.Extra
       Domain.Contract
       Domain.Contract.CP
       Domain.Contract.Store

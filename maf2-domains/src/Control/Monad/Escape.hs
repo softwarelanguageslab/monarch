@@ -15,7 +15,6 @@ import Domain.Class
 import Control.Monad.Join
 import Data.Kind (Type)
 import Control.Monad (ap)
-import Data.Set (Set) 
 import Data.Functor ((<&>))
 
 -- | Monad to handle errors in the abstract domain

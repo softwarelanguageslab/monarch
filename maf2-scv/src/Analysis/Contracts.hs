@@ -84,7 +84,7 @@ runEvalT (EvalT m) = runIdentityT m
 
 instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (EvalT m) where
    type Esc (EvalT m) = Set Error
-   escape = upperM . escape
+   throw = upperM . throw
    catch (EvalT (IdentityT m)) hdl = EvalT $ IdentityT $ catch @_ m (runIdentityT . getEvalT . hdl)
 
 ------------------------------------------------------------
