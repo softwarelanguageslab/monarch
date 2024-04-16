@@ -18,6 +18,7 @@ import Control.Monad.Join
 import Control.Monad ((>=>))
 import Syntax.Scheme.AST
 import Control.Monad.DomainError
+import Debug.Trace
 
 data Prim v = Prim { primName :: String, run :: forall m . PrimM m v => Exp -> [v] -> m v }
 
@@ -58,8 +59,8 @@ allPrimitives = [
    fix1 "acos" Domain.acos,
    fix1 "atan" Domain.atan,
    -- fix1 "boolean?" (return . isBool),
-   fix1 "true?" (return . inject . isTrue),
-   fix1 "false?" (return . inject . isFalse),
+   fix1 "true?" return,
+   fix1 "false?" (return . Domain.not),
    fix1 "car" (pptrs >=> deref (const (return . car))),
    fix1 "cdr" (pptrs >=> deref (const (return . cdr))),
    fix1 "ceiling" Domain.ceiling,

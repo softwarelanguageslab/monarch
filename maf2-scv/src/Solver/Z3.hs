@@ -127,7 +127,6 @@ instance {-# OVERLAPPING #-} FormulaSolver Z3Solver where
 
    solve script   = do
       restoreCheckpoint
-      liftIO (putStrLn $ "solving script " ++ show script)
       -- Declare all variables as constants
       let names = variables script
       -- evaluate the mall in the solver
@@ -135,4 +134,6 @@ instance {-# OVERLAPPING #-} FormulaSolver Z3Solver where
       -- Evaluate all the assertions, and ignore any errors
       _ <- eval (printf "(assert %s)" (translate script))
       -- Check whether the model is satisfiable
-      parseResult <$> eval "(check-sat)"
+      result <- parseResult <$> eval "(check-sat)"
+      liftIO (putStrLn $ "solved script " ++ translate script ++ " with result " ++ show result)
+      return result

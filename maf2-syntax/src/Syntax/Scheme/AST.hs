@@ -59,6 +59,8 @@ data Exp = Num Integer Span          -- ^ number literals
          | OnlC [Exp] Span           -- ^ only/c     contract
          | Mon Labels Exp Exp Span   -- ^ contract monitor
          | Flat Exp Span             -- ^ flat contract
+         -- misc
+         | Debug String              -- ^ a debug statement, used for debugging the analysis
          deriving (Eq,Ord, Generic)
 
 data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler
@@ -298,6 +300,12 @@ compile (SExp.Quo exp _) = local (const False) (compileQuoted exp)
 compile (SExp.Qua exp _) = local (const True)  (compileQuoted exp)
 compile (SExp.Atom "quote" _ ::: e) = local (const False) (compileQuoted e)
 compile (SExp.Atom "quasiquote" _ ::: e) = local (const True) (compileQuoted e)
+-- test specifications are just ordinary Haskell code so their contents is ignored 
+-- by the compiler
+compile e@(SExp.Atom "test-spec" _ ::: _) = return $ Nll (spanOf e)
+-- debug
+compile (SExp.Atom "debug" _ ::: SExp.Str msg _ ::: SExp.SNil _) =
+   return (Debug msg)
 -- application
 compile e@(operator ::: operands) = case operator of
       SExp.Atom nam _ | isReserved nam -> throwError $ "Invalid syntax for " ++ nam ++ " in " ++ show e

@@ -254,6 +254,8 @@ instance (SchemeValue (PairedSymbolic v pai vec str var)) => SymbolicValue (Pair
    symbolic (SchemePairedValue (_, SymbolicVal r)) = r
    var idx vlu =
       SchemePairedValue (leftValue vlu, SymbolicVal $ Variable ("x" ++ show idx))
+   unsymbolic (SchemePairedValue (v, _)) = 
+      SchemePairedValue (v, SymbolicVal Fresh)
 
 ------------------------------------------------------------
 -- Equality

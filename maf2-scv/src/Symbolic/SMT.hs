@@ -35,6 +35,9 @@ translateAtomic (IsFalse prop) =
    printf "(false?/v %s)" (translateAtomic prop)
 translateAtomic (Predicate nam props) =
    printf "(%s %s)" nam (unwords $ map translateAtomic props)
+-- SMTlib does not allow functions without arguments,
+-- so we translate those differently
+translateAtomic (Application f1 []) = translateAtomic f1
 translateAtomic (Application f1 f2) =
    printf "(%s %s)" (translateAtomic f1) (unwords $ map translateAtomic f2)
 translateAtomic (Actor (Just span))  =

@@ -21,3 +21,5 @@ class (SchemeValue v) => SymbolicValue v where
    -- | Attaches a fresh identifier 
    -- to the given value
    var :: Int -> v -> v
+   -- | Remove the symbolic part from the value
+   unsymbolic :: v -> v

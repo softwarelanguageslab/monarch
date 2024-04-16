@@ -1,5 +1,5 @@
 (declare-datatypes ()
-                   ((Span (KnownSpan Int Int)
+                   ((Span (KnownSpan (span-line Int) (span-column Int))
                           (UnknownSpan))))
 
 (declare-datatypes ()
@@ -148,4 +148,3 @@
             (ite (is-VBool n) (unwrap-bool n) false))
 (define-fun false?/v ((b V)) Bool
             (ite (is-VBool b) (not (unwrap-bool b)) false))
-

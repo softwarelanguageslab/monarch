@@ -64,6 +64,7 @@ instance {-# OVERLAPPING #-} (MonadStateVar m, DependencyM m Dep) => MonadStateV
       {- then -} (trigger (Dep i) >> return True)
       {- else -} (return False)
    read var@(SVar i) = register (Dep i) >> upperM (read var)
+   merge var1 = upperM . merge var1
 
 runTrackingStateVarT :: TrackingStateVarT m a -> m a
 runTrackingStateVarT (TrackingStateVarT m) = runIdentityT m

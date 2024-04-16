@@ -16,6 +16,7 @@ import Analysis.Scheme.Primitives
 import Control.Monad.Join
 import Control.Monad (zipWithM_)
 import Prelude hiding (exp, lex)
+import Debug.Trace
 
 -- | Base level evaluation function
 eval ::  forall m v . (SchemeDomain v, SchemeM m v) => Exp -> m v
@@ -33,6 +34,7 @@ eval (Ltt bds bdy _)      = evalLetStar bds bdy
 eval (Ltr bds bdy _)      = evalLetRec bds bdy
 eval (Lrr bds bdy _)      = evalLetrecStar bds bdy
 eval e@(App op opr  _)    = evalApp e op opr
+eval (Debug msg)          = trace msg $ return nil
 eval e                    = error $ "Unrecognized expression" ++ show e
 
 evalLet :: (SchemeDomain v, SchemeM m v) => [(Ide, Exp)] -> Exp -> m v
