@@ -47,4 +47,4 @@ main = do
    let program = either error id (parseString' $ Actor.prelude ++ text)
    result <- Symbolic.simpleAnalysis program
    -- putStrLn $ "analysis finished -- " ++ "number of paths is " ++ show (length v)
-   putStrLn $ printSto $ values result
+   putStrLn $ printSto $ values $ snd result

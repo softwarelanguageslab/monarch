@@ -45,6 +45,13 @@ translateAtomic (Actor (Just span))  =
 translateAtomic (Actor _) =
    printf "(UnknownSpan)"
 translateAtomic Bottom = "(VError)"
+translateAtomic Fresh = "fresh"
+translateAtomic (Choice a b) = 
+   -- we currently do not have good support for joins 
+   -- in the symbolic representation, hence we simply return a fresh 
+   -- variable that has no relation with other fresh variables.
+   "(fresh)"
+translateAtomic e = error $ "pattern " ++ show e ++ "not matched"
 
 -- | Translate a formula to a string compatible
 -- with the SMTLib format.
