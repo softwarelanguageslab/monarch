@@ -1,6 +1,6 @@
 (test-spec 
    ;; All reachable paths are supposed to return "True"
-   "result `shouldBe` inject True")
+   "(unsymbolic result) `shouldBe` (unsymbolic $ inject True)")
 
 (define x (fresh (random 4)))
 (define y (if (> x 0)

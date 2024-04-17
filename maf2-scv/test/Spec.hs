@@ -13,6 +13,7 @@ import Syntax.Scheme
 import Domain.Scheme.Modular
 import Lattice.ConstantPropagationLattice (CP)
 import Domain.Scheme.Derived.Pair
+import Domain.Symbolic.Class
 
 type Sto = DSto K Vlu
 type Res = Vlu

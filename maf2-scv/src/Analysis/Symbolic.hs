@@ -59,6 +59,7 @@ import qualified Data.Set as Set
 import Data.Tuple.Extra
 
 import Debug.Trace
+import Analysis.Symbolic.Monad (runSymbolicStoreT)
 
 ------------------------------------------------------------
 -- Evaluation function
@@ -176,6 +177,8 @@ intra e cmp ctx@(K _ pc) pid env (Stores store retStore contractStore, mbs) = do
                                               & runCtx ctx
                                               & runEnv env
                                               & runActorT @MB mailbox pid
+                                              & runSymbolicStoreT @(EnvAdr K) @Vlu (initialSto analysisEnv)
+                                              & runSymbolicStoreT @(Component K) @Vlu Map.empty
                                               & runNonDetT
                                               & runSchemeStoreT store                  -- scheme store
                                               & runContractStoreT contractStore        -- contract store
@@ -186,7 +189,7 @@ intra e cmp ctx@(K _ pc) pid env (Stores store retStore contractStore, mbs) = do
 
     where result ((((as, ssto'), csto'), rsto'), mbs') =
             (fmap localResult as, (Stores ssto' rsto' csto', mbs'))
-          localResult ((a, _pc), _) = a
+          localResult ((((a, _pc), _), _symSto), rSymSto) = a
 
 -- | Run the intra analysis based on the state of a component
 runIntra :: InterM m => Component K -> State -> m State
@@ -211,7 +214,3 @@ simpleAnalysis :: Exp -> IO (Vlu, DSto K Vlu)
 simpleAnalysis e = ret . uncurry unifyStores . first stores <$> inter e
    where unifyStores stores state = (SVar.unify (rsto stores) state, unifyStore (vsto stores) state)
          ret (rsto, vsto) = (fromMaybe bottom $ Map.lookup (Main e) rsto, vsto)
-         
-
-
-
