@@ -6,7 +6,7 @@
 -- keeping track of changes on shared state between elements
 -- of the analysis (control flow graph nodes, components in a modular analysis, ...)
 --
-module Control.Fixpoint.EffectDriven(EffectM, ComponentM(..), setup, EffectT, runEffectT, iterate) where
+module Control.Fixpoint.EffectDriven(EffectM, ComponentM(..), setup, EffectT, runEffectT, runEffectT', iterate) where
 
 import Control.Monad.State.SVar
 import Control.Monad.State.IntPool
@@ -23,9 +23,8 @@ import Control.Monad.State hiding (modify)
 import qualified Control.Monad.State as ST
 import Data.Maybe
 import Control.Monad.Identity
-import Control.Monad.Cond (ifM)
-import Debug.Trace
 import Control.Monad.Reader 
+import Data.Function ((&))
 
 ------------------------------------------------------------
 -- ComponentM
@@ -147,7 +146,7 @@ instance {-# OVERLAPPING #-} (WorkList wl c, Ord c, Monad m) => DependencyM (Eff
    trigger  dep =
       ST.gets (dependents dep) >>= (ST.modify . addsWl)
 
-loop :: forall c m state . (Ord c, EffectM m c, MonadStateVar m)
+loop :: forall c m state . (Ord c, EffectM m c, Monad m)
       => (c -> state -> m state)
       -> state
       -> m state
@@ -156,7 +155,7 @@ loop analyze st  =
       {- then -} (return st)
       {- then -} (next >>= (\c -> withComponent c (analyze c st) >>= loop analyze))
 
-iterate :: (Ord c, MonadStateVar m, EffectM m c)
+iterate :: (Ord c, EffectM m c, Monad m)
         => (c -> state -> m state) -- ^ analysis function
         -> state                   -- ^ the initial state
         -> m state
@@ -164,6 +163,13 @@ iterate = loop
 
 setup :: m a -> m a
 setup = id
+
+runEffectT' :: forall wl c m a . (WorkList wl c, Monad m, Ord c) 
+            => c
+            -> EffectT c wl m a 
+            -> m a
+runEffectT' c ma = 
+   (spawn c >> ma) & getEffectT & flip runReaderT c & flip evalStateT (emptyEffectState @wl empty) 
 
 runEffectT :: forall wl c m a .(WorkList wl c, Monad m, Ord c) 
            => c 
