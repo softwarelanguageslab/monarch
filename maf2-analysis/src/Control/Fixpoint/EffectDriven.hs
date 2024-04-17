@@ -7,7 +7,7 @@
 -- keeping track of changes on shared state between elements
 -- of the analysis (control flow graph nodes, components in a modular analysis, ...)
 --
-module Control.Fixpoint.EffectDriven(EffectM, EffectSVarM, DependencyM, ComponentM(..), setup, EffectT, runEffectT, runEffectT', iterate) where
+module Control.Fixpoint.EffectDriven(EffectM(..), EffectSVarM, DependencyM(..), ComponentM(..), setup, EffectT, runEffectT, runEffectT', iterate) where
 
 import Control.Monad.State.SVar
 import Control.Monad.State.IntPool
