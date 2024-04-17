@@ -110,7 +110,7 @@ instance {-# OVERLAPPING #-} (
           StoreM m (EnvAdr ctx) v,
           EnvM m (EnvAdr ctx) (Env ctx),
           StoreM m (Component v ctx) v,
-          EffectM m (Component v ctx),
+          EffectSVarM m (Component v ctx),
           SchemeAnalysisConstraints (EnvAdr ctx) v ctx
          ) => CallM (CallT v ctx m) (Env ctx) v where
    call (Lam _ bdy _, _) = do
