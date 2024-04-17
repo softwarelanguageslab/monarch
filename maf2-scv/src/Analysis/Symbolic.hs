@@ -96,18 +96,6 @@ instance SymbolicARef (Pid ctx) where
    identity (Pid e _)  = Symbolic.Actor (Just $ spanOf e)
 
 
---
-
-newtype EarlyBottomT m a = EarlyBottomT (IdentityT m a)
-                        deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)
-
-instance (MonadJoin m) => MonadJoin (EarlyBottomT m) where
-   mzero = return bottom
-   mjoin (EarlyBottomT ma) (EarlyBottomT mb) = EarlyBottomT $ mjoin ma mb
-
-runEarlyBottomT :: EarlyBottomT m a -> m a
-runEarlyBottomT (EarlyBottomT ma) = runIdentityT ma
-
 ------------------------------------------------------------
 -- Aliases for convenience
 ------------------------------------------------------------
@@ -177,7 +165,7 @@ intra e cmp ctx@(K _ pc) pid env (Stores store retStore contractStore, mbs) = do
                                               & runCtx ctx
                                               & runEnv env
                                               & runActorT @MB mailbox pid
-                                              & runSymbolicStoreT @(EnvAdr K) @Vlu (initialSto analysisEnv)
+                                              & runSymbolicStoreT @(EnvAdr K) @Vlu Map.empty
                                               & runSymbolicStoreT @(Component K) @Vlu Map.empty
                                               & runNonDetT
                                               & runSchemeStoreT store                  -- scheme store

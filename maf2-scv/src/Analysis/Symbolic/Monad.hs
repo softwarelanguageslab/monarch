@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
-module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), SymbolicValue, runFormulaT, runWithFormulaT, choice, choices, runSymbolicStoreT) where
+module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), LocalStoreM(..), SymbolicValue, runFormulaT, runWithFormulaT, choice, choices, runSymbolicStoreT) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
@@ -7,7 +7,7 @@ import Analysis.Scheme.Monad (SchemeM)
 import Control.Monad.Layer
 import Control.Monad.Join
 import Control.Monad.State.IntPool
-import Control.Monad.State (StateT(..), MonadState, modify, gets, get, (>=>), runStateT)
+import Control.Monad.State (StateT(..), MonadState, modify, gets, get, (>=>), runStateT, put)
 import Domain
 import Domain.Symbolic
 import Lattice (JoinLattice(..))
@@ -18,7 +18,6 @@ import Lattice.Class (join)
 
 import qualified Data.Set as Set
 import Analysis.Monad (StoreM(..))
-import Data.Maybe (fromMaybe)
 import Data.Functor ((<&>))
 
 -- | Monad that keeps track of a path condition
@@ -74,6 +73,17 @@ ifFeasible :: (MonadJoin m, FormulaSolver m, MonadPathCondition m v,  JoinLattic
 ifFeasible ma = do
    pcs <- fmap Set.toList getPc
    mjoins (map (isFeasible >=> (\b -> if b then ma else mzero)) pcs)
+
+-- | Access the current store or replace it entirely
+class LocalStoreM m a v where
+   -- | Get a map representation of the current store contents
+   getSto :: m (Map a v)
+   -- | Replace the current store by a store with the given contents
+   putSto  :: Map a v -> m ()
+
+instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, LocalStoreM m a v) => LocalStoreM (t m) a v where
+   getSto = upperM getSto
+   putSto = upperM . putSto
 
 type SymbolicM m v = (SchemeM m v,
                       -- Domain
@@ -135,18 +145,23 @@ newtype SymbolicStoreT adr v m a = SymbolicStoreT (StateT (SymbolicStore adr v) 
 -- | The contents of a symbolic store.
 type SymbolicStore adr v = Map adr v
 
-instance {-# OVERLAPPING #-} (Ord adr, SymbolicValue v, MonadIntegerPool m, StoreM m adr v) => StoreM (SymbolicStoreT adr v m) adr v where
+instance {-# OVERLAPPING #-} (Ord adr, SymbolicValue v, MonadIntegerPool m, StoreM m adr v, v' ~ Symbolic v) => StoreM (SymbolicStoreT adr v' m) adr v where
    updateAdr adr v = do
       -- update the local version
-      modify (Map.insertWith join adr v)
+      modify (Map.insertWith join adr (symbolicValue v))
       -- write through, but remove symbolic information
       upperM (updateAdr adr (unsymbolic v))
    writeAdr = updateAdr
    lookupAdr adr = do
-      -- do global lookup always (for registering dependencies), but only return 
-      -- global result if not found locally
-      v' <- upperM (lookupAdr adr) >>= freshIdent
-      gets (fromMaybe v' . Map.lookup adr)
+      -- combine the symbolic local result (if available) with the global result
+      v' <- upperM (lookupAdr adr) >>= (\v -> if v == bottom then freshIdent v else return v)
+      gets (maybe v' (combine (abstractValue v')) . Map.lookup adr)
 
-runSymbolicStoreT :: SymbolicStore adr v -> SymbolicStoreT adr v m a -> m (a, SymbolicStore adr v)
+instance (Monad m) => LocalStoreM (SymbolicStoreT adr v' m) adr v' where
+   getSto = get
+   putSto = put
+
+runSymbolicStoreT :: SymbolicStore adr (Symbolic v) -> SymbolicStoreT adr (Symbolic v) m a -> m (a, SymbolicStore adr (Symbolic v))
 runSymbolicStoreT initialStore (SymbolicStoreT m) = runStateT m initialStore
+
+

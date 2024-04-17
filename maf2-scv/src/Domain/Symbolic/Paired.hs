@@ -245,6 +245,13 @@ instance (SchemeValue (PairedSymbolic v pai vec str var), SchemeValue v, Contrac
 ------------------------------------------------------------
 
 instance (SchemeValue (PairedSymbolic v pai vec str var)) => SymbolicValue (PairedSymbolic v pai vec str var) where
+   type Abstract (PairedSymbolic v pai vec str var) = v 
+   type Symbolic (PairedSymbolic v pai vec str var) = SymbolicVal var str vec pai
+
+   combine         = curry SchemePairedValue
+   abstractValue   = leftValue
+   symbolicValue   = rightValue
+
    ap f ags res =
       SchemePairedValue (leftValue res, SymbolicVal $ Application (proposition $ rightValue f) (map (proposition . rightValue) ags))
    assertTrue (SchemePairedValue (l, SymbolicVal r)) =
