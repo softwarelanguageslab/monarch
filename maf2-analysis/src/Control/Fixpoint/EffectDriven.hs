@@ -24,6 +24,7 @@ import qualified Control.Monad.State as ST
 import Data.Maybe
 import Control.Monad.Identity
 import Control.Monad.Cond (ifM)
+import Debug.Trace
 import Control.Monad.Reader 
 
 ------------------------------------------------------------
@@ -115,6 +116,9 @@ emptyEffectState wl = EffectState Set.empty Map.empty wl
 alreadySeen :: (Ord c) => c -> EffectState c wl -> Bool
 alreadySeen c = Set.member c . seen
 
+addSeen :: (Ord c) => c -> EffectState c wl -> EffectState c wl 
+addSeen c state = state { seen = Set.insert c (seen state) }
+
 addWl :: WorkList wl c => c -> EffectState c wl -> EffectState c wl
 addWl c state = state { wl = add c (wl state) }
 
@@ -136,7 +140,7 @@ instance {-# OVERLAPPING #-} (WorkList wl c, Ord c, Monad m) =>  ComponentM (Eff
    spawn c = do
       ifM (ST.gets (alreadySeen c))
       {- then -} (return ())
-      {- else -} (ST.modify (addWl c))
+      {- else -} (ST.modify (addWl c) >> ST.modify (addSeen c))
 
 instance {-# OVERLAPPING #-} (WorkList wl c, Ord c, Monad m) => DependencyM (EffectT c wl m) Dep where
    register dep = ask >>= (\c -> ST.modify (registerDep c dep))
