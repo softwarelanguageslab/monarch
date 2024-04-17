@@ -19,6 +19,7 @@ extra-source-files:
     README.md
     CHANGELOG.md
     programs/test/r5rs/fac.scm
+    programs/test/r5rs/fib.scm
     programs/test/solver/simple_001.scm
 
 source-repository head
