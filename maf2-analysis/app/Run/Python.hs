@@ -26,20 +26,6 @@ options :: Parser Options
 options = Options <$> 
    strOption (long "filename" <> short 'f' <> help "Name of the file to parse")
 
---
--- hardcoded example 
---
-
-prg :: String
-prg = unlines [
-               "def fac(n):",
-               "    if n == 0:",
-               "        return 1",
-               "    else:",
-               "        return n * fac (n-1)",
-               "return fac(5)"
-              ]
-
 printOSto :: Show obj => Map ObjAdr obj -> String
 printOSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs
    where adrs   = filter (\case (PrmAdr _, _) -> False 
@@ -60,10 +46,11 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
          indent = maximum (map (length . showCmp . fst) cmps) + 5
 
 main :: Options -> IO ()
-main (Options _) = 
-   let Just parsed = parse "testje" prg 
-       (rsto, osto, vsto) = analyzeCP parsed 
-    in do putStrLn "\nPROGRAM:\n"
+main (Options fileName) = 
+       do program <- readFile fileName
+          let Just parsed = parse "testje" program
+          let (rsto, osto, vsto) = analyzeCP parsed 
+          putStrLn "\nPROGRAM:\n"
           putStrLn (prettyString parsed)
           putStrLn "\nRESULTS PER COMPONENT:\n"
           putStrLn (printRSto rsto)
