@@ -25,7 +25,7 @@ newtype SymbolicVal ptr sptr vptr pptr = SymbolicVal { proposition :: Propositio
 instance Joinable (SymbolicVal ptr sptr vptr pptr) where
    join (SymbolicVal Bottom) (SymbolicVal p2) = SymbolicVal p2
    join (SymbolicVal p1) (SymbolicVal Bottom) = SymbolicVal p1
-   join (SymbolicVal p1) (SymbolicVal p2) = SymbolicVal (Choice p1 p2)
+   join (SymbolicVal p1) (SymbolicVal p2) = SymbolicVal Fresh -- TODO: maybe "Choice"? 
 
 instance JoinLattice (SymbolicVal ptr sptr vptr pptr) where
    bottom = SymbolicVal Bottom
@@ -109,7 +109,7 @@ instance Domain (SymbolicVal ptr sptr vptr pptr) Bool where
    inject n = SymbolicVal $ Literal (Boo n)
 
 instance BoolDomain (SymbolicVal ptr sptr vptr pptr) where
-   isTrue  = const False -- we unknown status of whether it is fale or true, so neither is
+   isTrue  = const False -- unknown status of whether it is fale or true, so neither is
    isFalse = const False
    not (SymbolicVal v) = SymbolicVal $ Predicate "not/v" [v]
    boolTop = SymbolicVal Fresh
@@ -245,6 +245,13 @@ instance (SchemeValue (PairedSymbolic v pai vec str var), SchemeValue v, Contrac
 ------------------------------------------------------------
 
 instance (SchemeValue (PairedSymbolic v pai vec str var)) => SymbolicValue (PairedSymbolic v pai vec str var) where
+   type Abstract (PairedSymbolic v pai vec str var) = v 
+   type Symbolic (PairedSymbolic v pai vec str var) = SymbolicVal var str vec pai
+
+   combine         = curry SchemePairedValue
+   abstractValue   = leftValue
+   symbolicValue   = rightValue
+
    ap f ags res =
       SchemePairedValue (leftValue res, SymbolicVal $ Application (proposition $ rightValue f) (map (proposition . rightValue) ags))
    assertTrue (SchemePairedValue (l, SymbolicVal r)) =
@@ -254,6 +261,8 @@ instance (SchemeValue (PairedSymbolic v pai vec str var)) => SymbolicValue (Pair
    symbolic (SchemePairedValue (_, SymbolicVal r)) = r
    var idx vlu =
       SchemePairedValue (leftValue vlu, SymbolicVal $ Variable ("x" ++ show idx))
+   unsymbolic (SchemePairedValue (v, _)) = 
+      SchemePairedValue (v, SymbolicVal Fresh)
 
 ------------------------------------------------------------
 -- Equality

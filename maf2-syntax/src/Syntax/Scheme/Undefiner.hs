@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 -- | This module removes `define`s from the AST and replaces them with a series of `letrec*`.
-module Syntax.Scheme.Undefiner(undefineExp) where
+module Syntax.Scheme.Undefiner(undefineExp, undefineExp') where
 
 import Data.List (singleton)
 import Data.Default
@@ -13,6 +13,7 @@ import Control.Monad.Writer
 import Data.Functor
 import Control.Monad.Except
 import Data.Function ((&))
+import Data.Bifunctor
 import Prelude hiding (span)
 
 data Error = DefineNotAllowed Exp | TopLevelExpression Exp deriving Show
@@ -184,6 +185,7 @@ undefineM (Mon labels contract value span) =
    Mon labels <$> notAllowed (undefineM contract) <*> notAllowed (undefineM value) <*> pure span
 undefineM (Flat contract span) = 
    Flat <$> notAllowed (undefineM contract) <*> pure span
+undefineM (Debug msg) = return (Debug msg)
 undefineM e = error $ "unrecognized expression" ++ show e
 
 undefineHandler :: UndefineM m => Hdl -> m Hdl
@@ -196,7 +198,10 @@ type Undefine = StateT Int (WriterT [(Ide, Exp)] (ReaderT IsAllowed (Except Erro
 instance UndefineM Undefine
 
 undefineExp :: Exp -> Maybe Exp
-undefineExp e = either (const Nothing) (Just . fst) result
+undefineExp = either (const Nothing) Just . undefineExp'
+
+undefineExp' :: Exp -> Either String Exp
+undefineExp' e = bimap show fst result
    where result = evalStateT (letrectify $ undefineM e) 0 &
                   runWriterT                              &
                   flip runReaderT def                     &

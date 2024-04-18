@@ -94,7 +94,7 @@ analyze e = let ((sto, retSto, _), state) = (EF.setup initialState >>= EF.iterat
                     & EF.runEffectT @[_] (Main e)
                     & runIdentity
             in (unifyStore sto state, SVar.unify retSto state)
-  where runIntra :: (EF.EffectM m (Component Ctx), SVar.MonadStateVar m) => Component Ctx -> Pid -> Exp -> Env Ctx -> State -> m State
+  where runIntra :: (EF.EffectSVarM m (Component Ctx), SVar.MonadStateVar m) => Component Ctx -> Pid -> Exp -> Env Ctx -> State -> m State
         runIntra cmp pid exp' env (sto, retSto, mailboxes) = do
              (m, mailboxes') <- mailbox pid mailboxes
              r <-   (Analysis.Monad.eval exp' >>= writeAdr cmp)

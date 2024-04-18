@@ -6,7 +6,7 @@ import Symbolic.SMT
 import Syntax.Scheme
 import qualified Syntax.Scheme.Actor as Actor
 
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.List ( intercalate )
@@ -16,6 +16,9 @@ import qualified Analysis.Contracts as Contracts
 import Analysis.Scheme.Store (values)
 import Domain.Scheme.Store (EnvAdr(..))
 import Domain.Contract.Symbolic
+
+import System.Environment
+import Data.Either.Extra (fromEither)
 
 exampleFormula :: Formula
 exampleFormula = Conjunction
@@ -39,9 +42,9 @@ printSto m =
 
 main :: IO ()
 main = do
-   text   <- readFile "../maf2-analysis/programs/actor/acontracts/tests/behavior.scm"
-   let program = fromJust (parseString $ Actor.prelude ++ text)
-   (v, result) <- unzip <$> Symbolic.simpleAnalysis program
-   putStrLn $ "analysis finished -- " ++ "number of paths is " ++ show (length v)
-   mapM_ print v
-   mapM_ (putStrLn . printSto . values) result
+   programName <- head <$> getArgs
+   text   <- readFile programName
+   let program = either error id (parseString' $ Actor.prelude ++ text)
+   result <- Symbolic.simpleAnalysis program
+   -- putStrLn $ "analysis finished -- " ++ "number of paths is " ++ show (length v)
+   putStrLn $ printSto $ values $ snd result

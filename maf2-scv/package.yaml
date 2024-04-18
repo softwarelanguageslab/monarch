@@ -9,6 +9,7 @@ copyright:           "2023 Author name here"
 extra-source-files:
 - README.md
 - CHANGELOG.md
+- programs/test/**/*.scm
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -84,3 +85,11 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - maf2-scv
+    - template-haskell
+    - either
+    - haskell-src-meta
+    - dir-traverse
+    - hspec
+    - hspec-contrib
+    - hspec-expectations
+    - hspec-core

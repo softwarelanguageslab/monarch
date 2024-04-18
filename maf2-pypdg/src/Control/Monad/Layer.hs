@@ -72,7 +72,7 @@ instance (Monad m) => MonadLayer (MayEscapeT e m) where
 
 -- Instance for ListT
 
--- instance {-# OVERLAPPABLE #-} (MonadLayer m, MonadEscape (Lower m) e) => MonadEscape m e where
---    type Esc m = Esc (Lower m)
---    escape = upperM escape
---    catch ma hdl = lowerM (`catch` hdl) ma
+--instance {-# OVERLAPPABLE #-} (MonadLayer (t m), MonadEscape m) => MonadEscape (t m) where
+--   type Esc (t m) = Esc m
+--   throw = upperM throw
+--   catch ma hdl = lowerM (`catch` hdl) ma
