@@ -50,6 +50,7 @@ library
       Control.Fixpoint.EffectDriven
       Data.Print
   other-modules:
+      Analysis.Context
       Analysis.Environment
       Analysis.Erlang.Monad
       Analysis.Erlang.Semantics

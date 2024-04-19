@@ -11,6 +11,8 @@ module Analysis.Scheme.Prelude(
    -- * Store
    module Analysis.Scheme.Store,
    module Domain.Scheme.Store,
+   -- * Context
+   module Analysis.Context,
    -- | Store with initial primitives
    initialSto, 
    -- | Environment with initial primitives
@@ -33,6 +35,9 @@ import Domain.Scheme.Store
 
 -- Domain
 import Domain.Scheme hiding (Exp, Env)
+
+-- COntexts
+import Analysis.Context
 
 -- Control
 import Control.Monad.Layer
