@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DeriveFunctor #-}
 -- This module provides a set of propagation strategies
 -- for propagating path conditions across message sending
 -- and function call boundaries.
@@ -31,15 +32,26 @@
 -- about the insertion points in the analysis.
 {-# LANGUAGE UndecidableInstances #-}
 
-module Analysis.Symbolic.Monad.Propagation (PropagationStrategy(..)) where
+module Analysis.Symbolic.Monad.Propagation
+  ( runPropagationStoreT,
+    runPropagationHookT,
+    PropagationStrategy (..),
+    NoPropagation,
+    NaivePropagation,
+    NaivePropagationCtx,
+    LoopBoundaryPropagationCtx,
+    LoopPropagation,
+  )
+where
 
-import Analysis.Actors.Monad (ActorGlobalM (..), ActorLocalM (..))
 import Analysis.Monad
 import Analysis.Symbolic.Monad
 import Control.Monad.Identity (IdentityT (..))
 import Control.Monad.Layer
 import Control.Monad.Trans.Class
+import Data.Functor.Identity (Identity)
 import Data.Kind
+import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Domain.Symbolic (Symbolic)
@@ -51,13 +63,19 @@ import Syntax.Scheme
 -- | Our propagation strategies are based on several hooks that are
 -- called in key places during the analysis.
 class (SymbolicValue v) => PropagationStrategy (s :: Type) a v | s -> a v where
-  type Context s :: Type
+  type Context s :: Type -> Type
 
   -- | Construct an empty context based on the propagation strategy
-  -- emptyContext :: Context s
+  emptyContext :: ctx -> Context s ctx
+  
+  -- | The propagation strategy decides what initial path condition 
+  -- and symbolic store a component should get, this decision 
+  -- **can** be based on the context of the component.
+  initialPc    :: Context s ctx -> PC
+  initialSSto  :: Context s ctx -> SymSto a v
 
   -- | Update the context based on the given information
-  callContext :: Exp -> PC -> SymSto a v -> Context s -> Context s
+  callContext :: Exp -> PC -> SymSto a v -> Context s ctx -> Context s ctx
 
   -- | Call-return hook: called with the old path condition and store
   --  together with the new path condition and store, and expects to
@@ -76,8 +94,15 @@ class (SymbolicValue v) => PropagationStrategy (s :: Type) a v | s -> a v where
 newtype PropagationT (s :: Type) vadr vlu cmp m a = PropagationT (IdentityT m a)
   deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer)
 
+-- |  All propagation contexts are functors, so in general we can define
+--  context allocation as `fmap alloc` for them.
+instance (Functor (Context s), PropagationStrategy s vadr vlu, AllocM m e ctx', CtxM m ctx, ctx ~ Context s ctx') => AllocM (PropagationT s vadr vlu cmp m) e ctx where
+  alloc from =
+    upperM (alloc from) >>= (\ctx -> fmap (const ctx) <$> getCtx)
+
 -- | Return address where symbolic store and path condition can be allocated
 newtype SymRet cmp = SymRet cmp
+  deriving (Eq, Ord)
 
 -- Call hook
 instance
@@ -86,7 +111,7 @@ instance
     SymbolicValue v,
     Monad m,
     MonadPathCondition m v,
-    CtxM m (Context s),
+    CtxM m (Context s ctx),
     LocalStoreM m vadr (Symbolic v),
     CallM m env v
   ) =>
@@ -118,6 +143,36 @@ instance
   writeAdr adr = upperM . writeAdr adr
   updateAdr adr = upperM . updateAdr adr
 
+type PropagationHookT s vadr v cmp ctx m a =
+  PropagationT s vadr v cmp (CtxT (Context s ctx) (FormulaT v m)) a
+
+-- | The infrastructure for propagation strategies consists of two
+-- key layers in the monadic stack.
+--
+-- (1) Hook layer: needs to be placed above layers handling
+-- calls, message sends, and return values. Additionally,
+-- since we handle context allocation, this layer also
+-- needs to be above the actual context allocation layers.
+-- (2) Storage layer: used to store all the bookkeeping
+-- structures of the propagation layer. The reason that this
+-- is a seperate layer is to make its effects global rather
+-- than local for each path in the program. The first layer
+-- must be a local layer, since it intercepts effects that
+-- are usually placed in the local layer.
+--
+-- The first layer can be introduced in the stack by calling
+-- `runPropagationHookT`, while the second layer can
+-- be introduced in the stack by calling `runPropagationStoreT`.
+runPropagationHookT :: forall s ctx vadr v cmp m a . (PropagationStrategy s vadr v, Functor m) => Context s ctx -> PropagationHookT s vadr v cmp ctx m a -> m a
+runPropagationHookT initialCtx (PropagationT ma) =
+  fmap fst $ runWithFormulaT (initialPc @s initialCtx) $ runCtx initialCtx $ runIdentityT ma
+
+type PropagationStoreT s vadr v cmp ctx m a =
+  StoreT (Map (SymRet cmp) (PC, SymSto vadr v)) (SymRet cmp) (PC, SymSto vadr v) m a
+
+runPropagationStoreT :: forall v s vadr cmp m ctx a. (SymbolicValue v, Ord vadr, Ord cmp, Eq (Symbolic v), Functor m) => PropagationStoreT s vadr v cmp ctx m a -> m a
+runPropagationStoreT = fmap fst . runWithStore
+
 ------------------------------------------------------------
 -- Propagation Strategies
 ------------------------------------------------------------
@@ -126,10 +181,10 @@ instance
 -- No propagation
 ----------------------------------------
 
-data NoPropagation a v ctx
+data NoPropagation a v
 
-instance (SymbolicValue v) => PropagationStrategy (NoPropagation a v ctx) a v where
-  type Context (NoPropagation a v ctx) = ctx
+instance (SymbolicValue v) => PropagationStrategy (NoPropagation a v) a v where
+  type Context (NoPropagation a v) = Identity
   callContext = const $ const $ const id
   callReturn = const $ const $ return ()
   returnCall = const $ const $ const $ return ()
@@ -142,15 +197,15 @@ instance (SymbolicValue v) => PropagationStrategy (NoPropagation a v ctx) a v wh
 --  through all contexts and return values and never
 --  abstracts them. Does not neccesarily terminate, in fact
 --  it easily diverges for underconstrained path conditions.
-data NaivePropagation a v ctx
+data NaivePropagation a v
 
 -- | The context in the naive propagation strategy is slightly
 -- different: it needs the path condition and symbolic store
 -- to be part of the context.
-data NaivePropagationCtx a v ctx = NaivePropagationCtx !PC !(SymSto a v) !ctx
+data NaivePropagationCtx a v ctx = NaivePropagationCtx !PC !(SymSto a v) !ctx deriving (Functor)
 
-instance (SymbolicValue v) => PropagationStrategy (NaivePropagation a v ctx) a v where
-  type Context (NaivePropagation a v ctx) = NaivePropagationCtx a v ctx
+instance (SymbolicValue v) => PropagationStrategy (NaivePropagation a v) a v where
+  type Context (NaivePropagation a v) = NaivePropagationCtx a v
   callContext = const (\pc' symSto' (NaivePropagationCtx _ _ ctx) -> NaivePropagationCtx pc' symSto' ctx)
   callReturn pc sto = integrate pc >> integrateSto sto
   returnCall pc sto retAdr = do
@@ -179,7 +234,9 @@ data LoopPropagation a v (m :: Int)
 -- |  The context used for a loop boundary
 --  propagation strategy is always fixed, since
 --  we implement m-cfa strategies ourselves.
-data LoopBoundaryPropagationCtx a v = LoopBoundaryPropagationCtx !PC !(SymSto a v) ![Exp]
+data LoopBoundaryPropagationCtx a v ctx = LoopBoundaryPropagationCtx !PC !(SymSto a v) ![Exp] deriving (Functor)
+
+deriving instance (Show a, Show (Symbolic v)) => Show (LoopBoundaryPropagationCtx a v ctx)
 
 instance (SymbolicValue v) => PropagationStrategy (LoopPropagation a v m) a v where
   type Context (LoopPropagation a v m) = LoopBoundaryPropagationCtx a v

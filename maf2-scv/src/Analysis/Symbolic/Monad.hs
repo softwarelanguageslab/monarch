@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
-module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), LocalStoreM(..), SymbolicValue, runFormulaT, runWithFormulaT, choice, choices, runSymbolicStoreT) where
+module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), LocalStoreM(..), SymbolicValue, FormulaT, runFormulaT, runWithFormulaT, choice, choices, runSymbolicStoreT) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
