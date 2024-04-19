@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 -- This module provides a set of propagation strategies
 -- for propagating path conditions across message sending
 -- and function call boundaries.
@@ -30,18 +31,117 @@
 -- about the insertion points in the analysis.
 {-# LANGUAGE UndecidableInstances #-}
 
-module Analysis.Symbolic.Monad.Propagation () where
+module Analysis.Symbolic.Monad.Propagation (runNaivePropgationT, runNoPropagationT, PropagationStrategy) where
 
 import Analysis.Actors.Monad (ActorGlobalM (..), ActorLocalM (..))
 import Analysis.Monad
 import Analysis.Symbolic.Monad
-import Control.Monad.Identity (IdentityT)
+import qualified Control.Monad
+import Control.Monad.Identity (IdentityT (..))
 import Control.Monad.Join (MonadJoin)
 import Control.Monad.Layer
 import Control.Monad.Trans.Class
+import Data.Kind
 import Data.List (group)
+import Data.Map
+import Domain.Symbolic (Symbolic)
+import Domain.Symbolic.Store (SymSto)
+import Lattice (JoinLattice)
 import Symbolic.AST (PC)
 import Syntax.Scheme
+
+-- | Our propagation strategies are based on several hooks that are
+-- called in key places during the analysis.
+class (SymbolicValue v) => PropagationStrategy (s :: Type) a v | s -> a v where
+  type Context s :: Type
+
+  -- | Construct an empty context based on the propagation strategy
+  -- emptyContext :: Context s
+
+  -- | Update the context based on the given information
+  callContext :: Context s -> PC -> Exp -> SymSto a v -> Context s
+
+  -- | Call-return hook: called with the old path condition and store
+  --  together with the new path condition and store, and expects to
+  --  return a new path condition and store.
+  --
+  -- Called in the caller of the function
+  callReturn :: (MonadPathCondition m v) => PC -> SymSto a v -> m ()
+
+  -- | Return hook, called from the callee.
+  returnCall :: (StoreM m retAdr (PC, SymSto a v)) => PC -> SymSto a v -> m ()
+
+-- | We create a monad that is parametrized by the propagation strategy,
+-- this monad hooks into several parts of the analysis and calls
+-- the functions of the propagation strategy to integrate path
+-- conditions and symbolic stores with key parts of the analysis.
+newtype PropagationT (s :: Type) vadr vlu cmp m a = PropagationT (IdentityT m a)
+  deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer)
+
+-- | Return address where symbolic store and path condition can be allocated
+newtype SymRet cmp = SymRet cmp
+
+-- Call hook
+instance
+  {-# OVERLAPPING #-}
+  ( PropagationStrategy s vadr v,
+    SymbolicValue v,
+    Monad m,
+    MonadPathCondition m v,
+    CtxM m (Context s),
+    LocalStoreM m vadr (Symbolic v),
+    CallM m env v
+  ) =>
+  CallM (PropagationT s vadr v cmp m) env v
+  where
+  call clo@(expr, _) = do
+    ctx' <- callContext @s <$> getCtx <*> getPc <*> pure expr <*> getSto
+    withCtx (const ctx') (upperM $ call clo)
+
+-- Component return hook
+instance
+  {-# OVERLAPPING #-}
+  ( Monad m,
+    JoinLattice v,
+    StoreM m cmp v,
+    SymbolicValue v,
+    PropagationStrategy s vadr v,
+    MonadPathCondition m v,
+    StoreM m cmp v,
+    StoreM m (SymRet cmp) (PC, SymSto vadr v)
+  ) =>
+  StoreM (PropagationT s vadr v cmp m) cmp v
+  where
+  lookupAdr cmp = do
+    uncurry (callReturn @s @vadr @v) =<< lookupAdr (SymRet cmp)
+    lookupAdr cmp
+
+  writeAdr adr = upperM . writeAdr adr
+  updateAdr adr = upperM . updateAdr adr
+
+------------------------------------------------------------
+------------------------------------------------------------
+-- Propagation Strategies
+------------------------------------------------------------
+------------------------------------------------------------
+
+----------------------------------------
+-- No propagation
+----------------------------------------
+
+data NoPropagation a v
+
+instance (SymbolicValue v) => PropagationStrategy (NoPropagation a v) a v where
+  callContext = _
+  callReturn = _
+  returnCall = _
+
+----------------------------------------
+-- No propagation
+----------------------------------------
+
+
+
 
 -- |  Provides the implementation for the extraction and
 --  insertion points.
@@ -67,10 +167,21 @@ class AttachInfo v info where
   getInfo :: v -> info
 
 ------------------------------------------------------------
+-- NoPropagationT
+------------------------------------------------------------
+
+-- This strategy does no propagation at all of path conditions
+-- and symbolic stores.
+newtype NoPropagationT m a = NoPropagationT (IdentityT m a)
+
+runNoPropagationT :: NoPropagationT m a -> m a
+runNoPropagationT (NoPropagationT ma) = runIdentityT ma
+
+------------------------------------------------------------
 -- TrackPathConditionT
 ------------------------------------------------------------
 
-newtype TrackPathConditionT ctx cmp v m a = TrackPathConditionT (IdentityT m a)
+newtype TrackPathConditionT ctx cmp adr v m a = TrackPathConditionT (IdentityT m a)
   deriving (Applicative, Monad, MonadTrans, MonadLayer, MonadJoin, Functor)
 
 instance
@@ -78,22 +189,27 @@ instance
     StoreM m cmp PC,
     CtxM m ctx,
     CtxM m ctx,
-    AttachInfo ctx PC
+    LocalStoreM m adr (Symbolic v),
+    AttachInfo ctx (Map adr (Symbolic v), PC)
   ) =>
-  PropagationM (TrackPathConditionT ctx cmp v m) cmp PC
+  PropagationM (TrackPathConditionT ctx cmp adr v m) cmp PC
   where
   withEntry m = do
     pc <- getPc
-    withCtx (attachInfo pc) m
+    symSto <- upperM $ getSto @_ @adr @(Symbolic v)
+    withCtx (attachInfo (symSto, pc)) m
 
   exit cmp = getPc >>= writeAdr cmp
+
+runTrackPathConditionT :: TrackPathConditionT ctx cmp adr v m a -> m a
+runTrackPathConditionT (TrackPathConditionT ma) = runIdentityT ma
 
 ------------------------------------------------------------
 -- Naive approach
 ------------------------------------------------------------
 
-newtype NaivePropagationT ref msg mb ctx cmp v m a = NaivePropagationT
-  {getNaivePropagationT :: TrackPathConditionT ctx cmp v m a}
+newtype NaivePropagationT ref msg mb ctx cmp adr v m a = NaivePropagationT
+  {getNaivePropagationT :: TrackPathConditionT ctx cmp adr v m a}
   deriving (Applicative, Monad, MonadTrans, MonadLayer, MonadJoin, Functor)
 
 -- | After a call is performed the path condition should be integrated with the
@@ -103,16 +219,16 @@ instance
     CallM m env v,
     PropagationM m cmp PC
   ) =>
-  CallM (NaivePropagationT ref msg ctx mb cmp v m) env v
+  CallM (NaivePropagationT ref msg ctx mb cmp adr v m) env v
   where
-  call = withEntry . upperM . call 
+  call = withEntry . upperM . call
 
-instance {-# OVERLAPPING #-} (StoreM m cmp v, MonadPathCondition m v, StoreM m cmp PC) => StoreM (NaivePropagationT ref msg ctx mb cmp v m) cmp v where
-   writeAdr  adr = upperM . writeAdr adr
-   updateAdr adr = upperM . updateAdr adr 
-   lookupAdr adr = do
-      integrate =<< lookupAdr adr 
-      lookupAdr adr
+instance {-# OVERLAPPING #-} (StoreM m cmp v, MonadPathCondition m v, StoreM m cmp PC) => StoreM (NaivePropagationT ref msg ctx mb cmp adr v m) cmp v where
+  writeAdr adr = upperM . writeAdr adr
+  updateAdr adr = upperM . updateAdr adr
+  lookupAdr adr = do
+    integrate =<< lookupAdr adr
+    lookupAdr adr
 
 -- | In an actor system paths from message senders need to be combined
 -- with the paths that the actor has already taken. To achieve this,
@@ -122,14 +238,29 @@ instance {-# OVERLAPPING #-} (StoreM m cmp v, MonadPathCondition m v, StoreM m c
 --
 -- The consequence of this is that messages can now be differentiated
 -- based on which path they were sent.
-instance (AttachInfo msg PC, ActorGlobalM m ref msg, MonadPathCondition m v) => ActorGlobalM (NaivePropagationT ref msg mb ctx cmp v m) ref msg where
+instance (AttachInfo msg PC, ActorGlobalM m ref msg, MonadPathCondition m v) => ActorGlobalM (NaivePropagationT ref msg mb ctx cmp adr v m) ref msg where
   send ref msg = do
     getPc >>= upperM . send ref . (`attachInfo` msg)
 
-instance (AttachInfo msg PC, ActorLocalM m ref msg mb, Monad m) => ActorLocalM (NaivePropagationT ref msg mb ctx cmp v m) ref msg mb where
+instance (AttachInfo msg PC, ActorLocalM m ref msg mb, Monad m) => ActorLocalM (NaivePropagationT ref msg mb ctx cmp adr v m) ref msg mb where
   self = upperM self
   receiveAll = upperM receiveAll -- TODO: think how to integrate this
   putMailbox = upperM . putMailbox
+
+-- | To run the naive approach, we need to add two seperate monads on the monadic stack
+-- on two different location.
+--
+-- The `NaivePropagationT` monad can be added anywhere as long as it is above interactions
+-- with `CallM` and `StoreM` on the result such that these interactions can be intercepted
+-- correctly. Furthermore, it should be added above `SymbolicStoreT` such that
+-- this store can be attached to the context of a component that is being called
+-- or a message that is being sent.
+--
+-- A `StoreT` instance for keeping track of the final path condition of a component once
+-- it is analyzed. This store should be global, thus it needs to be added after any
+-- path merging monad such as `NonDetT` or `JoinT`.
+runNaivePropgationT :: NaivePropagationT ref msg mb ctx cmp adr v m a -> m a
+runNaivePropgationT = runTrackPathConditionT . getNaivePropagationT
 
 ------------------------------------------------------------
 -- Loop-boundary approach
@@ -146,15 +277,15 @@ instance (AttachInfo msg PC, ActorLocalM m ref msg mb, Monad m) => ActorLocalM (
 -- | Information stored in the context for the loop-boundary approach
 type LoopBoundaryContext = ([Exp], PC)
 
-newtype LoopBoundaryPropagationT cmp v m a = LoopBoundaryPropagationT
-  {getLoopBoundaryPropagationT :: TrackPathConditionT LoopBoundaryContext cmp v m a}
+newtype LoopBoundaryPropagationT cmp adr v m a = LoopBoundaryPropagationT
+  {getLoopBoundaryPropagationT :: TrackPathConditionT LoopBoundaryContext cmp adr v m a}
   deriving (Applicative, Monad, Functor, MonadLayer, MonadTrans, MonadJoin)
 
 instance AttachInfo LoopBoundaryContext PC where
   attachInfo pc (history, _) = (history, pc)
   getInfo (_, pc) = pc
 
-instance (CtxM m LoopBoundaryContext, CallM m env v, PropagationM m cmp PC) => CallM (LoopBoundaryPropagationT cmp v m) env v where
+instance (CtxM m LoopBoundaryContext, CallM m env v, PropagationM m cmp PC) => CallM (LoopBoundaryPropagationT cmp adr v m) env v where
   call (expr, env) = do
     (history, pc) <- getCtx
     -- check if there is a loop in the program, if so continue without path condition
