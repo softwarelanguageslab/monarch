@@ -1,9 +1,7 @@
-def factorial(x): 
-    if x == 0:
+def fac(n): 
+    if n == 0:
         return 1
     else: 
-        return x * factorial(x-1)
+        return n * fac(n-1)
 
-
-result = factorial(5)
-print(result)
+result = fac(5)

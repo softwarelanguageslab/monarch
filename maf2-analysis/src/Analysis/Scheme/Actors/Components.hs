@@ -6,7 +6,7 @@ module Analysis.Scheme.Actors.Components (Component (..), runSpawnT, runCallT) w
 
 import Analysis.Actors.Monad (ActorBehaviorM (..), ActorLocalM (self))
 import Analysis.Monad
-import Control.Fixpoint.EffectDriven (EffectM)
+import Control.Fixpoint.EffectDriven (EffectSVarM)
 import qualified Control.Fixpoint.EffectDriven as EF
 import Control.Monad.Identity
 import Control.Monad.Join
@@ -27,7 +27,7 @@ newtype CallT v k m a = CallT (IdentityT m a)
 
 instance
   {-# OVERLAPPING #-}
-  ( EffectM m (Component k),
+  ( EffectSVarM m (Component k),
     CtxM m k,
     StoreM m (Component k) v, -- return values
     ActorLocalM m (Pid k) msg mb,
@@ -57,7 +57,7 @@ instance
     ARef v ~ Pid k,
     CtxM m k,
     EnvM m (EnvAdr k) (Env k),
-    EffectM m (Component k)
+    EffectSVarM m (Component k)
   ) =>
   ActorBehaviorM (SpawnT v m) v
   where
