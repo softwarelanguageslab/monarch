@@ -80,6 +80,10 @@ class LocalStoreM m a v where
    getSto :: m (Map a v)
    -- | Replace the current store by a store with the given contents
    putSto  :: Map a v -> m ()
+   -- | Integrate the given local store with the current one 
+   -- by replacing the keys in the current with the given if 
+   -- the key is present in the given.
+   integrateSto :: Map a v -> m ()
 
 instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, LocalStoreM m a v) => LocalStoreM (t m) a v where
    getSto = upperM getSto

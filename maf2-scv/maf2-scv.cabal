@@ -47,6 +47,7 @@ library
       Domain.Symbolic.Class
       Domain.Symbolic.CPDomain
       Domain.Symbolic.Paired
+      Domain.Symbolic.Store
       Lib
       Solver
       Solver.Z3

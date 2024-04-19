@@ -134,7 +134,7 @@ stores = fst
 -- | Inter analysis monad
 type InterM m = (
          FormulaSolver m,
-         EffectM m (Component K),
+         EffectSVarM m (Component K),
          SVar.MonadStateVar m)
 
 -- | Result of intra-analysis
