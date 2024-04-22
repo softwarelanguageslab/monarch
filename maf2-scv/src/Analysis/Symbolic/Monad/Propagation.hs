@@ -127,7 +127,7 @@ instance
   where
   lookupAdr cmp = do
     uncurry (callReturn @s @vadr @v) =<< lookupAdr (SymRet cmp)
-    lookupAdr cmp
+    upperM $ lookupAdr cmp
 
   writeAdr adr = upperM . writeAdr adr
   updateAdr adr = upperM . updateAdr adr
