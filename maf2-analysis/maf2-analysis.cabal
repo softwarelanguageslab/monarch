@@ -42,6 +42,7 @@ library
       Analysis.Python.Common
       Analysis.Python.Monad
       Analysis.Python.Escape
+      Analysis.Context
       Interpreter.Scheme
       Control.Monad.Layer
       Control.Monad.State.SVar
@@ -50,7 +51,6 @@ library
       Control.Fixpoint.EffectDriven
       Data.Print
   other-modules:
-      Analysis.Context
       Analysis.Environment
       Analysis.Erlang.Monad
       Analysis.Erlang.Semantics

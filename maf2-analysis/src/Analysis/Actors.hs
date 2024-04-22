@@ -103,6 +103,7 @@ analyze e = let ((sto, retSto, _), state) = (EF.setup initialState >>= EF.iterat
                     & runCallT @V @Ctx
                     & runSpawnT
                     & runEnv env
+                    & runAlloc @CExp @_ @Ctx (const . const ())
                     & runAlloc @_ @Ctx PaiAdr
                     & runAlloc @_ @Ctx VecAdr
                     & runAlloc @_ @Ctx StrAdr

@@ -63,6 +63,8 @@ import Data.Tuple.Extra
 import Analysis.Symbolic.Monad.Propagation
 
 import Debug.Trace
+import Analysis.Symbolic.Monad.Propagation (PropagationStrategy(initialSSto))
+import Analysis.Context (emptyMcfaContext)
 
 ------------------------------------------------------------
 -- Evaluation function
@@ -135,70 +137,71 @@ type InterM m k = (
          SVar.MonadStateVar m)
 
 -- | Convenience constraints for working with propagation strategies
-type Propagation s k  = (PropagationStrategy s (EnvAdr k) (Vlu k))
+type Propagation s k  = (PropagationStrategy s (EnvAdr k) (Vlu k) k)
 
 -- | Result of intra-analysis
 type IntraResult k = ([MayEscape (Set Error) (Vlu k)], State k)
 
 -- | Simple intra-analysis
-intra :: forall m s . (InterM m (Context s K), Propagation s (Context s K))
+intra :: forall m s k . (InterM m k, Propagation s k)
       => Exp
-      -> Component (Context s K)
-      -> Context s K
-      -> Pid (Context s K)
-      -> Env (Context s K)
-      -> State (Context s K)
-      -> m (IntraResult (Context s K))
+      -> Component k
+      -> k
+      -> Pid k
+      -> Env k
+      -> State k
+      -> m (IntraResult k)
 intra e cmp ctx pid env (Stores store retStore contractStore, mbs) = do
          (mailbox, mbs') <- firstM SVar.read =<< Map.Extra.lookupInsertDefaultF (SVar.depend empty) pid mbs
          fmap result $ setupSMT >> Symbolic.eval e >>= (\v -> writeAdr cmp v >> return v)
                                               & runSymbolicEvalT
                                               & runMayEscape @(Set Error)
-                                              & runPropagationHookT @s ctx
-                                              & runCallT @(Vlu (Context s K)) @(Context s K)
-                                              & runSchemeAllocT (EnvAdr @K) (VecAdr @K) (PaiAdr @K) (StrAdr @K)
+                                              & runCallT @(Vlu k) @k
+                                              & runPropagationHookT @s @k @(EnvAdr k) @_ @(Component k) ctx
+                                              & runWithFormulaT (initialPc @s ctx)
+                                              & runSchemeAllocT (EnvAdr @k) (VecAdr @k) (PaiAdr @k) (StrAdr @k)
                                               --
-                                              & runContractAllocT @K
+                                              & runContractAllocT @k
                                               -- 
                                               & runSpawnT
                                               & runCtx ctx
                                               & runEnv env
-                                              & runActorT @(MB (Context s K)) mailbox pid
-                                              & runSymbolicStoreT @(EnvAdr K) @(Vlu (Context s K)) Map.empty
-                                              & runSymbolicStoreT @(Component K) @(Vlu (Context s K)) Map.empty
+                                              & runActorT @(MB k) mailbox pid
+                                              & runSymbolicStoreT @(EnvAdr k) @(Vlu k) (initialSSto @s ctx)
+                                              -- & runSymbolicStoreT @(Component K) @(Vlu (Context s K)) Map.empty
                                               & runNonDetT
                                               & runSchemeStoreT store                  -- scheme store
                                               & runContractStoreT contractStore        -- contract store
-                                              & runStoreT' retStore     -- return values
-                                              & runPropagationStoreT @(Vlu (Context s K)) @s
+                                              & runStoreT' retStore                    -- return values
+                                              & runPropagationStoreT @(Vlu k) @s @(EnvAdr k) @(Component k)
                                               & runActorSystemT mbs'
                                               & runIntegerPoolT
 
 
     where result ((((as, ssto'), csto'), rsto'), mbs') =
             (fmap localResult as, (Stores ssto' rsto' csto', mbs'))
-          localResult ((((a, _pc), _), _symSto), rSymSto) = a
+          localResult ((a, _pc), _) = a
 
 -- | Run the intra analysis based on the state of a component
-runIntra :: forall m s . (InterM m (Context s K), Propagation s (Context s K)) => Component K -> State (Context s K) -> m (State (Context s K))
-runIntra c@(Main e) = trace "main" $ intra @_ @s e c emptyK EntryPid analysisEnv >=>  return . snd
-runIntra c@(Actor pid e k env) = trace "actor" $ intra @_ @s e c k pid env >=> return . snd
+runIntra :: forall m s k . (InterM m k, Propagation s k) => k -> Component k -> State k -> m (State k)
+runIntra initialCtx c@(Main e) = trace "main" $ intra @_ @s e c initialCtx EntryPid analysisEnv >=>  return . snd
+runIntra _ c@(Actor pid e k env) = trace "actor" $ intra @_ @s e c k pid env >=> return . snd
 
 -- | Compute the initial state of the analysis
-initialState :: (SVar.MonadStateVar m) => m (State k)
+initialState :: (SVar.MonadStateVar m, Ord k, Show k) => m (State k)
 initialState = do
    analysisSto <- SVar.fromMap $ initialSto analysisEnv
    return (Stores (fromValues analysisSto) Map.empty emptyContractStore, emptyActorSystem)
 
 -- | Run the inter analysis
-inter :: forall s.  PropagationStrategy s (EnvAdr (Context s K)) (Vlu (Context s K)) => Exp -> IO (State (Context s K), SVar.VarState)
-inter e =   runZ3Solver
+inter :: forall s k .  Propagation s k => k -> Exp -> IO (State k, SVar.VarState)
+inter k e = runZ3Solver
           $ runCachedSolver
           $ runEffectT @[_] (Main e)
-          $ setupSMT >> setup initialState >>= iterate (runIntra @_ @s)
+          $ setupSMT >> setup initialState >>= iterate (runIntra @_ @s k)
 
 -- 
-simpleAnalysis :: Exp -> IO (Vlu (Identity K), DSto K (Vlu (Identity K)))
-simpleAnalysis e = ret . uncurry unifyStores . first stores <$> inter @(NoPropagation _ _) e
+simpleAnalysis :: Exp -> IO (Vlu K, DSto K (Vlu K))
+simpleAnalysis e = ret . uncurry unifyStores . first stores <$> inter @(NoPropagation _ _ K) (emptyMcfaContext 1) e
    where unifyStores stores state = (SVar.unify (rsto stores) state, unifyStore (vsto stores) state)
          ret (rsto, vsto) = (fromMaybe bottom $ Map.lookup (Main e) rsto, vsto)

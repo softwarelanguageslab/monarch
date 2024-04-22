@@ -16,6 +16,7 @@ import Control.Monad.Trans.Class
 
 -- | m-cfa context,
 data MCFA e = MCFA {es :: ![e], max :: !Int}
+            deriving (Eq, Ord, Show)
 
 -- | Push an element on the m-cfa context,
 -- respecting the maximum number of elements in the context

@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Analysis.Monad.Call (
   CallM(..),
   CallBottomT,
@@ -25,8 +26,7 @@ class (Monad m) => CallM m env v where
 
 instance (Monad (t m), CallM m env v, MonadLayer t) => CallM (t m) env v where
    call = upperM . call
-
-
+      
 ---
 --- The CallBottomT monad transformer 
 ---

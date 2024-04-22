@@ -96,6 +96,7 @@ library:
   - Analysis.Python.Common
   - Analysis.Python.Monad
   - Analysis.Python.Escape
+  - Analysis.Context
   - Interpreter.Scheme
   - Control.Monad.Layer
   - Control.Monad.State.SVar

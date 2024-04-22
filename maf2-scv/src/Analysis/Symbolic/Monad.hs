@@ -7,7 +7,7 @@ import Analysis.Scheme.Monad (SchemeM)
 import Control.Monad.Layer
 import Control.Monad.Join
 import Control.Monad.State.IntPool
-import Control.Monad.State (StateT(..), MonadState, modify, gets, get, (>=>), runStateT, put)
+import Control.Monad.State (StateT(..), MonadState, modify, gets, get, (>=>), runStateT, put, evalStateT)
 import Domain
 import Domain.Symbolic
 import Lattice (JoinLattice(..))
@@ -165,7 +165,7 @@ instance (Monad m) => LocalStoreM (SymbolicStoreT adr v' m) adr v' where
    getSto = get
    putSto = put
 
-runSymbolicStoreT :: SymbolicStore adr (Symbolic v) -> SymbolicStoreT adr (Symbolic v) m a -> m (a, SymbolicStore adr (Symbolic v))
-runSymbolicStoreT initialStore (SymbolicStoreT m) = runStateT m initialStore
+runSymbolicStoreT :: forall adr v m a . (Monad m) => SymbolicStore adr (Symbolic v) -> SymbolicStoreT adr (Symbolic v) m a -> m a
+runSymbolicStoreT initialStore (SymbolicStoreT m) = evalStateT m initialStore
 
 
