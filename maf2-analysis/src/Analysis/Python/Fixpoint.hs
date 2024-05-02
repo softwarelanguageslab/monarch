@@ -4,6 +4,7 @@
 
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Analysis.Python.Fixpoint where
 
@@ -32,33 +33,42 @@ import Lattice (EqualLattice (..))
 import Control.Lens (Field1(_1))
 import Analysis.Python.Escape
 
+type family MonadStack (ts :: [(* -> *) -> * -> *]) (m :: * -> *) where
+    MonadStack '[] m = m 
+    MonadStack (t ': tr) m = t (MonadStack tr m)
+
 ---
 --- Python analysis fixpoint algorithm
 ---
 
--- type AnalysisM m obj = (PyObj' obj, 
---                         StoreM m VarAdr PyVal,
---                         StoreM m ObjAdr obj,
---                         MapM PyCmp (MayEscape (Set PyEsc) PyVal) m,
---                         ComponentTrackingM m PyCmp,
---                         DependencyTrackingM m PyCmp VarAdr,
---                         DependencyTrackingM m PyCmp ObjAdr,
---                         DependencyTrackingM m PyCmp PyCmp,
---                         WorkListM m PyCmp)
+type IntraT m = MonadStack '[
+                    MayEscapeT (Set PyEsc),
+                    AllocT PyLoc () ObjAdr,
+                    EnvT PyEnv,
+                    CtxT (),
+                    JoinT,
+                    CacheT
+                ] m 
 
-type PyCmp = ((PyBdy, PyEnv), ())
+type AnalysisM m obj = (PyObj' obj, 
+                        StoreM m VarAdr PyVal,
+                        StoreM m ObjAdr obj,
+                        MapM PyCmp (Val (IntraT m) PyVal) m,
+                        ComponentTrackingM m  PyCmp,
+                        DependencyTrackingM m PyCmp VarAdr,
+                        DependencyTrackingM m PyCmp ObjAdr,
+                        DependencyTrackingM m PyCmp PyCmp,
+                        WorkListM m PyCmp)
 
---intra :: forall m obj . AnalysisM m obj => PyCmp -> m (MayEscape (Set PyEsc) PyVal)
-intra cmp@((bdy, env), ctx) = (key bdy >>= \k -> cache k (evalBdy bdy))
-                                & runMayEscape @(Set PyEsc)
-                                & runAlloc (const . allocPtr)
-                                & runEnv env
-                                & runCtx ctx 
-                                & runJoinT
-                                & runCacheT
-                                & runIntraAnalysis cmp
+type PyCmp = Key (IntraT Identity) PyBdy
 
---inter :: forall m obj . AnalysisM m obj => PyPrg -> m () 
+intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
+intra cmp = cache @(IntraT (IntraAnalysisT PyCmp m)) cmp evalBdy
+                & runAlloc (const . allocPtr)
+                & runIntraAnalysis cmp 
+                
+
+inter :: forall m obj . AnalysisM m obj => PyPrg -> m () 
 inter prg = do init                                 -- initialize Python infrastructure
                add ((Main prg, initialEnv), ())     -- add the main component to the worklist
                iterateWL intra                      -- start the analysis 

@@ -39,7 +39,8 @@ data PyBdy = Main PyPrg
 
 type PyM m obj = (PyObj' obj,
                   MonadJoin m,
-                  MonadCache PyBdy PyVal m,
+                  MonadCache m,
+                  MapM (Key m PyBdy) (Val m PyVal) m, 
                   ComponentTrackingM m (Key m PyBdy),
                   MonadEscape m,
                   Domain (Esc m) PyError,

@@ -6,7 +6,7 @@
 module Analysis.Scheme.Semantics(eval, applyFun, applyClo, applyPrim) where
 
 import Analysis.Semantics
-import Analysis.Monad hiding (eval)
+import Analysis.Monad hiding (eval, run)
 import Analysis.Scheme.Monad
 import qualified Analysis.Monad as Monad
 import Syntax.Scheme.AST

@@ -100,7 +100,7 @@ execCnt :: PyM pyM obj => pyM ()
 execCnt = continue
 
 execWhi :: PyM pyM obj => PyExp -> PyStm -> PyLoc -> pyM ()
-execWhi cnd bdy loc = void $ M.call (LoopBdy loc cnd bdy) 
+execWhi cnd bdy loc = void $ M.call @PyVal (LoopBdy loc cnd bdy) 
 
 eval :: PyM pyM obj => PyExp -> pyM PyVal
 eval (Lam prs bdy loc _)   = evalLam prs bdy loc
@@ -112,7 +112,7 @@ eval (Read obj nam loc)    = evalRea obj (ideName nam) loc
 evalRea :: PyM pyM obj => PyExp -> String -> PyLoc -> pyM PyVal
 evalRea obj nam loc = lookupAttr loc nam =<< eval obj
 
-evalLam :: forall pyM obj . PyM pyM obj => [PyPar] -> PyStm -> PyLoc -> pyM PyVal
+evalLam :: PyM pyM obj => [PyPar] -> PyStm -> PyLoc -> pyM PyVal
 evalLam prs bdy loc = do env <- getEnv
                          let clo = PyClo loc prs bdy env
                          pyAlloc loc (from' @CloPrm clo)

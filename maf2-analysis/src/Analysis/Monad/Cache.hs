@@ -5,7 +5,9 @@
 
 module Analysis.Monad.Cache (
     MonadCache(..),
-    CacheT(..),
+    cache,
+    cached,
+    CacheT,
     runCacheT,
 ) where
 
@@ -21,79 +23,106 @@ import Control.Monad.Trans.Maybe
 import Analysis.Monad.Map
 import ListT
 import Data.Set (Set)
-import qualified Data.Set as Set 
+import qualified Data.Set as Set
 import Lattice (Joinable)
+import Data.Kind (Type)
+import Data.Maybe (fromJust)
 
 ---
 --- MonadCache typeclass
 ---
 
--- | Type class for monads that can cache the results of their computation
-class Monad m => MonadCache k v m | m k -> v where
-    type Key m k
-    key    :: k -> m (Key m k)
-    cache  :: Key m k -> m v -> m v   -- compute and save in cache
-    cached :: Key m k -> m v          -- get the cached version
 
+-- | Type class for monads that can cache the results of their computation
+class Monad m => MonadCache m where
+    type Key m k :: Type
+    type Val m v :: Type
+    type Base m  :: Type -> Type
+    key :: k -> m (Key m k)
+    val :: Val m v -> m v
+    run :: (k -> m v) -> Key m k -> Base m (Val m v)
+
+cache :: forall m k v . (MonadCache m, MapM (Key m k) (Val m v) (Base m)) => Key m k -> (k -> m v) -> Base m ()
+cache k f = run f k >>= put k
+
+cached :: forall m k v . (MonadCache m, MapM (Key m k) (Val m v) m) => Key m k -> m (Maybe v)
+cached = get >=> Prelude.traverse val
 
 ---
 --- MonadCache instances for standard monad transformers
 ---
 
-instance MonadCache k v m => MonadCache k v (IdentityT m) where
+instance MonadCache m => MonadCache (IdentityT m) where
     type Key (IdentityT m) k = Key m k
-    key = lift . key 
-    cache k = IdentityT . cache @k k . runIdentityT
-    cached = IdentityT . cached @k 
-
-instance MonadCache k (Maybe v) m => MonadCache k v (MaybeT m) where
-    type Key (MaybeT m) k = Key m k
-    key = lift . key 
-    cache k = MaybeT . cache @k k . runMaybeT
-    cached = MaybeT . cached @k 
-
-instance (Joinable e, MonadCache k (MayEscape e v) m) => MonadCache k v (MayEscapeT e m) where
-    type Key (MayEscapeT e m) k = Key m k
-    key = lift . key 
-    cache k = MayEscapeT . cache @k k . runMayEscape
-    cached = MayEscapeT . cached @k 
-
-instance MonadCache (k, r) v m => MonadCache k v (ReaderT r m) where
-    type Key (ReaderT r m) k = Key m (k, r)
-    key k = ReaderT $ \r -> key (k,r) 
-    cache k (ReaderT m) = ReaderT $ cache @(k, r) k . m
-    cached = ReaderT . const . cached @(k,r)
-
-instance (MonadCache k (v, w) m, Monoid w) => MonadCache k v (WriterT w m) where
-    type Key (WriterT w m) k = Key m k
+    type Val (IdentityT m) v = Val m v
+    type Base (IdentityT m) = Base m
     key = lift . key
-    cache k = WriterT . cache @k k . runWriterT
-    cached = WriterT . cached @k
+    val = lift . val
+    run f = run (runIdentityT . f)
 
-instance MonadCache (k, s) (v, s) m => MonadCache k v (StateT s m) where
-    type Key (StateT s m) k = Key m (k, s)
-    key k = StateT $ \s -> (,s) <$> key (k,s)
-    cache k (StateT m) = StateT $ cache @(k,s) k . m
-    cached = StateT . const . cached @(k,s)
+instance MonadCache m => MonadCache (MaybeT m) where
+    type Key (MaybeT m) k = Key m k
+    type Val (MaybeT m) v = Val m (Maybe v)
+    type Base (MaybeT m) = Base m
+    key = lift . key
+    val = MaybeT . val
+    run f = run (runMaybeT . f)
 
-instance (MonadCache k (Set v) m, Ord v) => MonadCache k v (ListT m) where
+instance MonadCache m => MonadCache (StateT s m) where
+     type Key (StateT s m) k = Key m (k, s)
+     type Val (StateT s m) v = Val m (v, s)
+     type Base (StateT s m) = Base m
+     key k = StateT $ \s -> (,s) <$> key (k, s)
+     val = StateT . const . val
+     run f = run (\(k,s) -> runStateT (f k) s)
+
+instance (Joinable e, MonadCache m) => MonadCache (MayEscapeT e m) where
+    type Key (MayEscapeT e m) k = Key m k
+    type Val (MayEscapeT e m) v = Val m (MayEscape e v)
+    type Base (MayEscapeT e m) = Base m
+    key = lift . key
+    val = MayEscapeT . val
+    run f = run (runMayEscape . f)
+
+instance MonadCache m => MonadCache (ReaderT r m) where
+    type Key (ReaderT r m) k = Key m (k, r)
+    type Val (ReaderT r m) v = Val m v
+    type Base (ReaderT r m) = Base m
+    key k = ReaderT $ \r -> key (k,r)
+    val = ReaderT . const . val
+    run f = run (\(k,r) -> runReaderT (f k) r)
+
+instance (MonadCache m, Monoid w) => MonadCache (WriterT w m) where
+    type Key (WriterT w m) k = Key m k
+    type Val (WriterT w m) v = Val m (v, w)
+    type Base (WriterT w m) = Base m
+    key = lift . key
+    val = WriterT . val
+    run f = run (runWriterT . f)
+
+instance MonadCache m => MonadCache (ListT m) where
     type Key (ListT m) k = Key m k
-    key = lift . key 
-    cache k m = ListT $ cache @k k (Set.fromList <$> ListT.toList m) >>= uncons . ListT.fromFoldable
-    cached k = ListT $ cached @k k >>= uncons . ListT.fromFoldable 
+    type Val (ListT m) v = Val m [v]
+    type Base (ListT m) = Base m
+    key = lift . key
+    val :: forall v . Val (ListT m) v -> ListT m v
+    val v = ListT (val @m @[v] v >>= uncons . ListT.fromFoldable)
+    run f = run (ListT.toList . f)
 
----
---- CacheT instance
----
+-- ---
+-- --- CacheT instance
+-- ---
 
 newtype CacheT m a = CacheT (IdentityT m a)
     deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer)
 
-instance (MapM k v m, JoinLattice v) => MonadCache k v (CacheT m) where
-    type Key (CacheT m) k = k 
-    key = CacheT . IdentityT . return 
-    cache k (CacheT m) = CacheT $ m >>= \v -> put k v $> v 
-    cached = CacheT . IdentityT . (get >=> maybe (return bottom) return)
+instance Monad m => MonadCache (CacheT m) where
+    type Key (CacheT m) k = k
+    type Val (CacheT m) v = v
+    type Base (CacheT m) = m
+    key = CacheT . return
+    val = CacheT . return
+    run f = runCacheT . f
 
 runCacheT :: CacheT m a -> m a
-runCacheT (CacheT m) = runIdentityT m 
+runCacheT (CacheT m) = runIdentityT m

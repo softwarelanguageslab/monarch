@@ -30,9 +30,7 @@ import Data.Set
 -- below this on the stack will not be joined together and 
 -- is assumed to be global across all paths
 newtype JoinT m a = JoinT { _getJoinT :: IdentityT m a } 
-    deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor)
-
-deriving instance MonadCache k v m => MonadCache k v (JoinT m)
+    deriving (Applicative, Monad, MonadLayer, MonadTrans, Functor, MonadCache)
 
 instance (Monad m) => MonadJoin (JoinT m) where
    mzero = return bottom
@@ -47,9 +45,7 @@ runJoinT (JoinT ma) = runIdentityT ma
 
 -- | Useful for running the computation non-deterministically and defering join to the end.
 newtype NonDetT m a = NonDetT (ListT m a) 
-    deriving (Functor, Applicative, Monoid, MonadLayer, MonadTrans, Semigroup, Monad)
-
-deriving instance (Ord v, Monad m, MonadCache k (Set v) m) => MonadCache k v (NonDetT m)
+    deriving (Functor, Applicative, Monoid, MonadLayer, MonadTrans, Semigroup, Monad, MonadCache)
 
 instance (Monad m) => MonadJoin (NonDetT m) where
    mzero = mempty
