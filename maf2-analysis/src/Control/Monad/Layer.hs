@@ -20,6 +20,8 @@ class (forall m . Monad m => Monad (t m), MonadTrans t) => MonadLayer t where
    upperM :: Monad m => m a -> t m a
    upperM = lift
 
+instance (MonadIO m, MonadLayer t) => MonadIO (t m) where
+   liftIO = upperM . liftIO  
 
 -- | StateT instance
 instance MonadLayer (StateT s) where
