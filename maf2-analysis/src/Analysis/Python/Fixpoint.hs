@@ -53,7 +53,7 @@ type IntraT m = MonadStack '[
 type AnalysisM m obj = (PyObj' obj, 
                         StoreM m VarAdr PyVal,
                         StoreM m ObjAdr obj,
-                        MapM PyCmp (Val (IntraT m) PyVal) m,
+                        MapM PyCmp PyRes m,
                         ComponentTrackingM m  PyCmp,
                         DependencyTrackingM m PyCmp VarAdr,
                         DependencyTrackingM m PyCmp ObjAdr,
@@ -61,6 +61,7 @@ type AnalysisM m obj = (PyObj' obj,
                         WorkListM m PyCmp)
 
 type PyCmp = Key (IntraT Identity) PyBdy
+type PyRes = Val (IntraT Identity) PyVal 
 
 intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
 intra cmp = cache @(IntraT (IntraAnalysisT PyCmp m)) cmp evalBdy
@@ -73,7 +74,7 @@ inter prg = do init                                 -- initialize Python infrast
                add ((Main prg, initialEnv), ())     -- add the main component to the worklist
                iterateWL intra                      -- start the analysis 
 
-analyze :: forall obj. PyObj' obj => PyPrg -> (Map PyCmp (MayEscape (Set PyEsc) PyVal), Map ObjAdr obj, Map VarAdr PyVal)
+analyze :: forall obj. PyObj' obj => PyPrg -> (Map PyCmp PyRes, Map ObjAdr obj, Map VarAdr PyVal)
 analyze prg = (rsto, osto, vsto)
     where (((_,vsto),osto),rsto) = inter prg
                                     & runWithStore @(Map VarAdr PyVal) @VarAdr
