@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
-module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), LocalStoreM(..), SymbolicValue, runFormulaT, runWithFormulaT, choice, choices, runSymbolicStoreT) where
+module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), LocalStoreM(..), SymbolicValue, FormulaT, runFormulaT, runWithFormulaT, choice, choices, runSymbolicStoreT) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
@@ -7,7 +7,7 @@ import Analysis.Scheme.Monad (SchemeM)
 import Control.Monad.Layer
 import Control.Monad.Join
 import Control.Monad.State.IntPool
-import Control.Monad.State (StateT(..), MonadState, modify, gets, get, (>=>), runStateT, put)
+import Control.Monad.State (StateT(..), MonadState, modify, gets, get, (>=>), runStateT, put, evalStateT)
 import Domain
 import Domain.Symbolic
 import Lattice (JoinLattice(..))
@@ -80,6 +80,10 @@ class LocalStoreM m a v where
    getSto :: m (Map a v)
    -- | Replace the current store by a store with the given contents
    putSto  :: Map a v -> m ()
+   -- | Integrate the given local store with the current one 
+   -- by replacing the keys in the current with the given if 
+   -- the key is present in the given.
+   integrateSto :: Map a v -> m ()
 
 instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, LocalStoreM m a v) => LocalStoreM (t m) a v where
    getSto = upperM getSto
@@ -161,7 +165,7 @@ instance (Monad m) => LocalStoreM (SymbolicStoreT adr v' m) adr v' where
    getSto = get
    putSto = put
 
-runSymbolicStoreT :: SymbolicStore adr (Symbolic v) -> SymbolicStoreT adr (Symbolic v) m a -> m (a, SymbolicStore adr (Symbolic v))
-runSymbolicStoreT initialStore (SymbolicStoreT m) = runStateT m initialStore
+runSymbolicStoreT :: forall adr v m a . (Monad m) => SymbolicStore adr (Symbolic v) -> SymbolicStoreT adr (Symbolic v) m a -> m a
+runSymbolicStoreT initialStore (SymbolicStoreT m) = evalStateT m initialStore
 
 

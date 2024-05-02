@@ -34,7 +34,7 @@ runMain = do
             _ <- solve exampleFormula
             loop (n-1)
 
-printSto :: Show k => Map (EnvAdr k) Symbolic.Vlu -> String
+printSto :: Show k => Map (EnvAdr k) (Symbolic.Vlu k) -> String
 printSto m =
    intercalate "\n" (map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs) ++ "\n----\n"
    where adrs   = Map.toList m

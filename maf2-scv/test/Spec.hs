@@ -15,8 +15,8 @@ import Lattice.ConstantPropagationLattice (CP)
 import Domain.Scheme.Derived.Pair
 import Domain.Symbolic.Class
 
-type Sto = DSto K Vlu
-type Res = Vlu
+type Sto = DSto K (Vlu K)
+type Res = Vlu K
 
 runAnalysisAndTest :: (Res -> Sto -> IO a) -> String -> IO a
 runAnalysisAndTest f =
