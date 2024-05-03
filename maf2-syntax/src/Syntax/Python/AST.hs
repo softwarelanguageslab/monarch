@@ -25,6 +25,7 @@ module Syntax.Python.AST(
    AfterSimplification,
    AfterLexicalAddressing,
    Micro,
+   makeSeq,
 ) where
 
 import Data.Void
@@ -148,6 +149,10 @@ data Stmt a ξ = Assg (XAsgn ξ) (Lhs a ξ) (Exp a ξ)
 deriving instance (Holds Show ξ a) => Show (Stmt a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Stmt a ξ)
 deriving instance (Holds Eq   ξ a) => Eq (Stmt a ξ)
+
+makeSeq :: (XSeq ξ ~ ()) => [Stmt a ξ] -> Stmt a ξ
+makeSeq [stm] = stm
+makeSeq lst = Seq () lst 
 
 -- | A reduced set of expressions
 data Exp a ξ = Lam [Par a ξ] (Stmt a ξ) a (XLam ξ a) -- ^ a less restricted version of Python's lambda

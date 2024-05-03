@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+{-# LANGUAGE TypeOperators #-}
 -- | Reduced Python Syntax and its compiler
 module Syntax.Python.Compiler(compile, parse, lexical) where
 
@@ -66,7 +67,7 @@ assign nam e = namespacedLhs nam <&> flip (Assg ()) e
 
 -- | Compile Python programs into the reduced Python syntax
 compile :: (SimplifyM m SrcSpan) => Module SrcSpan -> m (Program SrcSpan AfterSimplification)
-compile (Module stmts) = (pure . Program) . Seq () =<< mapM compileStmt  stmts
+compile (Module stmts) = (pure . Program) . makeSeq =<< mapM compileStmt  stmts
 
 -- | Compile a statement in the Python reduced syntax
 compileStmt :: (SimplifyM m SrcSpan) => Statement SrcSpan -> m (Stmt SrcSpan AfterSimplification)
@@ -81,7 +82,7 @@ compileStmt (For vrs gen bdy els _)       = todo "for expressions"
 compileStmt (Class nam ags bdy a)         = do
    assignment <- tell [Ide nam] >> (assign (Ide nam) =<< compileClassInstance a (ident_string nam) ags)
    ltt <- Let () [] <$> compileClassBdy (Ide nam) bdy
-   return $ Seq () [assignment, ltt]
+   return $ makeSeq [assignment, ltt]
 compileStmt (Assign to expr _)            = Assg () <$> compileLhs to <*> return (compileExp expr)
 compileStmt (AugmentedAssign to op exp a) = compileStmt (Assign [to] (BinaryOp (translateOp op) to exp a) a)
 compileStmt (Decorated decs def _)        = todo "eval decorated function"
@@ -89,18 +90,18 @@ compileStmt (AST.Return expr a)           = pure $ Return () (fmap compileExp ex
 compileStmt (Raise expr _)                = todo "eval raise statement"
 compileStmt (With ctx bdy _)              = todo "eval with statement"
 compileStmt (AsyncWith stmt _)            = todo "eval async with statement"
-compileStmt (AST.Pass a)                  = return $ Seq () []
+compileStmt (AST.Pass a)                  = return $ makeSeq []
 compileStmt (AST.Break a)                 = return $ Break () a
 compileStmt (AST.Continue a)              = return $ Continue () a
-compileStmt (AST.Global as a)             = return $ Seq () $ map (flip (Global ()) a . Ide) as
-compileStmt (AST.NonLocal as a)           = return $ Seq () $ map (flip (NonLocal ()) a . Ide) as
+compileStmt (AST.Global as a)             = return $ makeSeq $ map (flip (Global ()) a . Ide) as
+compileStmt (AST.NonLocal as a)           = return $ makeSeq $ map (flip (NonLocal ()) a . Ide) as
 compileStmt (Delete exs _)                = todo "delete statement"
 compileStmt (Assert exs _)                = todo "assertion statement"
 compileStmt stmt = error "unsupported exp"
 
 -- | Compiles a sequence without introducing a block
 compileSequence :: (SimplifyM m SrcSpan) => Suite SrcSpan -> m (Stmt SrcSpan AfterSimplification)
-compileSequence es = Seq () <$> mapM compileStmt es
+compileSequence es = makeSeq <$> mapM compileStmt es
 
 -- | Compiles a block (something that has a different lexical scope)
 compileFun :: (SimplifyM m SrcSpan) => [Parameter SrcSpan] -> Suite SrcSpan -> SrcSpan -> m (Exp SrcSpan AfterSimplification)
@@ -187,7 +188,7 @@ compileClassInstance a nam ags =
 
 -- | Compiles a class body
 compileClassBdy :: SimplifyM m SrcSpan => Ide SrcSpan -> Suite SrcSpan -> m (Stmt SrcSpan AfterSimplification)
-compileClassBdy nam bdy = Seq () <$> mapM (local (const $ Just nam) . compileStmt) bdy
+compileClassBdy nam bdy = makeSeq <$> mapM (local (const $ Just nam) . compileStmt) bdy
 
 -- | Compiles the left-hand-side of an assignment
 compileLhs :: SimplifyM m SrcSpan => [Expr SrcSpan] -> m (Lhs SrcSpan AfterSimplification)
@@ -352,11 +353,11 @@ lexical = fmap Program . lexicalStmt . programStmt
 lexicalStmt :: (LexicalM m a) => Stmt a AfterSimplification -> m (Stmt a AfterLexicalAddressing)
 lexicalStmt (NonLocal _ x _) =
    ensureInvariant (ideName x ++ " is already used as a local (nonlocal)") $
-      modify (\s -> s { nonlocals = Set.insert (ideName x) (nonlocals s) }) >> return (Seq () [])
+      modify (\s -> s { nonlocals = Set.insert (ideName x) (nonlocals s) }) >> return (makeSeq [])
 lexicalStmt (Global _ x _) =
    ensureInvariant (ideName x ++ " is already used as a local (global)") $
-      modify (\s -> s { globals = Set.insert (ideName x) (globals s) }) >> return (Seq () [])
-lexicalStmt (Seq _ as)       = Seq () <$> mapM lexicalStmt as
+      modify (\s -> s { globals = Set.insert (ideName x) (globals s) }) >> return (makeSeq [])
+lexicalStmt (Seq _ as)       = makeSeq <$> mapM lexicalStmt as
 lexicalStmt (Return _ e a)   = Return () <$> mapM lexicalExp e <*> pure a
 lexicalStmt (Assg _ lhs e)   = Assg () <$> lexicalLhs lhs <*> lexicalExp e
 lexicalStmt (Loop _ grd s a) = Loop () <$> lexicalExp grd <*> lexicalStmt s <*> pure a
