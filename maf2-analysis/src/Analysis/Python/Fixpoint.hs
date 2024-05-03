@@ -104,7 +104,8 @@ analyzeREPL read display =
             & runWithDependencyTracking @PyCmp @PyCmp
             & runWithComponentTracking @PyCmp
             & runWithWorkList @(Set PyCmp)
-    where repl = forever $ do prg <- liftIO read
+    where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
+                              liftIO $ print prg 
                               let cmp = ((Main prg, initialEnv), ())
                               add cmp 
                               iterateWL intra 

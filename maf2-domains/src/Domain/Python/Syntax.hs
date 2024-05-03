@@ -10,6 +10,7 @@ module Domain.Python.Syntax(    -- TODO [?]: should this be integrated into Anal
     PyLoc, 
     showLoc,
     PyPrg,
+    addImplicitReturn,
     module Syntax.Python
 ) where 
 
@@ -33,3 +34,8 @@ lexNam = ideName . lexIde
 
 showLoc :: PyLoc -> String
 showLoc s = show (startRow s) ++ ":" ++ show (startCol s)
+
+addImplicitReturn :: PyPrg -> PyPrg
+addImplicitReturn prg = case programStmt prg of
+                            StmtExp _ e loc -> prg { programStmt = Return () (Just e) loc } 
+                            _ -> prg 
