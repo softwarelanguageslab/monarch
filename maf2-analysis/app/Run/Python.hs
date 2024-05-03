@@ -53,7 +53,7 @@ runREPL = do count <- newIORef 0
                          (do cur <- readIORef count
                              writeIORef count (cur + 1)
                              prompt cur)
-                         (mapM_ $ putStrLn . show) 
+                         print
       where prompt cur = do putStr ">>> "
                             hFlush stdout
                             txt <- getLine 

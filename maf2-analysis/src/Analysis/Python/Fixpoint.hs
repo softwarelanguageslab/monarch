@@ -92,7 +92,7 @@ analyze prg = (rsto, osto, vsto)
 
 analyzeREPL :: forall obj . PyObj' obj
     => IO PyPrg         -- a read function
-    -> ([obj] -> IO ()) -- a display function
+    -> (obj -> IO ())   -- a display function
     -> IO ()
 analyzeREPL read display = 
     void $ (init >> repl) 
@@ -105,12 +105,11 @@ analyzeREPL read display =
             & runWithComponentTracking @PyCmp
             & runWithWorkList @(Set PyCmp)
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
-                              liftIO $ print prg 
                               let cmp = ((Main prg, initialEnv), ())
                               add cmp 
                               iterateWL intra 
                               res <- justOrBot <$> Analysis.Monad.get cmp 
-                              traverse (mapM lookupAdr . Set.toList . addrs >=> liftIO . display) res                               
+                              traverse (mapM lookupAdr . Set.toList . addrs >=> liftIO . display . joins) res
 
 ---
 --- CP instantiation
