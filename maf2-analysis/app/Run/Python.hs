@@ -18,6 +18,8 @@ import Analysis.Python.Monad (PyBdy(..))
 import Control.Monad.Escape (MayEscape(..))
 import Language.Python.Common (annot)
 import Domain.Python.Syntax (showLoc)
+import Data.IORef 
+import System.IO 
 
 newtype Options = Options String 
    deriving Show
@@ -45,16 +47,35 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
          showCmp ((FuncBdy loc _, _), _) = "<func " ++ showLoc loc ++ ">"
          indent = maximum (map (length . showCmp . fst) cmps) + 5
 
+runREPL :: IO ()
+runREPL = do count <- newIORef 0 
+             analyzeREPL @PyObjCP' 
+                         (do cur <- readIORef count
+                             writeIORef count (cur + 1)
+                             prompt cur)
+                         (mapM_ $ putStrLn . show) 
+      where prompt cur = do putStr ">>> "
+                            hFlush stdout
+                            txt <- getLine 
+                            case parse ("REPL:" ++ show cur) txt of  
+                              Just parsed -> return parsed
+                              Nothing     -> putStrLn "Invalid program" >> prompt cur 
+
+
+runFile :: String -> IO () 
+runFile fileName = 
+   do program <- readFile fileName
+      let Just parsed = parse "testje" program
+      let (rsto, osto, vsto) = analyzeCP parsed 
+      putStrLn "\nPROGRAM:\n"
+      putStrLn (prettyString parsed)
+      putStrLn "\nRESULTS PER COMPONENT:\n"
+      putStrLn (printRSto rsto)
+      putStrLn "\nOBJECT STORE RESULTS:\n"
+      putStrLn (printOSto osto)
+      putStrLn "\n"
+
 main :: Options -> IO ()
-main (Options fileName) = 
-       do program <- readFile fileName
-          let Just parsed = parse "testje" program
-          let (rsto, osto, vsto) = analyzeCP parsed 
-          putStrLn "\nPROGRAM:\n"
-          putStrLn (prettyString parsed)
-          putStrLn "\nRESULTS PER COMPONENT:\n"
-          putStrLn (printRSto rsto)
-          putStrLn "\nOBJECT STORE RESULTS:\n"
-          putStrLn (printOSto osto)
-          putStrLn "\n"
+main (Options _) = runREPL
+
 
