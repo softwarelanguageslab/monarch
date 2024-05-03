@@ -42,6 +42,18 @@ data MayEscape e v = Bottom
                    | MayBoth v e
    deriving (Eq, Ord, Functor, Show)
 
+instance Foldable (MayEscape e) where 
+   foldMap _ Bottom = mempty
+   foldMap _ (Escape _) = mempty
+   foldMap f (Value v) = f v
+   foldMap f (MayBoth v _) = f v 
+
+instance Traversable (MayEscape e) where
+   traverse _ Bottom        = pure Bottom
+   traverse _ (Escape e)    = pure (Escape e)  
+   traverse f (Value v)     = Value <$> f v
+   traverse f (MayBoth v e) = flip MayBoth e <$> f v   
+
 addError :: Joinable e => e -> MayEscape e a -> MayEscape e a
 addError _ Bottom = Bottom
 addError e1 (Escape e2) = Escape (e1 `join` e2)
