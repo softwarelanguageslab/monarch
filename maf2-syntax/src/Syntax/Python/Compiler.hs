@@ -81,7 +81,7 @@ compileStmt (FromImport items _ _)        = error "import not supported"
 compileStmt (For vrs gen bdy els _)       = todo "for expressions"
 compileStmt (Class nam ags bdy a)         = do
    assignment <- tell [Ide nam] >> (assign (Ide nam) =<< compileClassInstance a (ident_string nam) ags)
-   ltt <- Let () [] <$> compileClassBdy (Ide nam) bdy
+   ltt <- compileClassBdy (Ide nam) bdy
    return $ makeSeq [assignment, ltt]
 compileStmt (Assign to expr _)            = Assg () <$> compileLhs to <*> return (compileExp expr)
 compileStmt (AugmentedAssign to op exp a) = compileStmt (Assign [to] (BinaryOp (translateOp op) to exp a) a)
@@ -340,7 +340,7 @@ type LexicalM m a = (MonadReader (Env a) m, MonadState LexicalState m)
 runLexical :: [Ide a] -- ^ list of top-level identifiers
            -> Program a AfterSimplification   -- ^ the program to apply lexical addressing to
            -> Program a AfterLexicalAddressing
-runLexical bds (Program stmt) = Program $ Let () lexIdes $
+runLexical bds (Program stmt) = Program $ makeLet lexIdes $
       evalState (runReaderT (lexicalStmt stmt) (Env (mkFrame globalFrm) Empty)) (LexicalState Set.empty Set.empty Set.empty (lastSlot+1))
    where (lexIdes, lastSlot)   = runState (mapM (\ide -> modify (+1) >> gets (IdeLex ide)) bds) 0
          globalFrm             = zip (map ideName bds) lexIdes
@@ -368,7 +368,7 @@ lexicalStmt (Conditional _ cls els a)  =
 lexicalStmt (StmtExp _ e a)  = StmtExp () <$> lexicalExp e <*> pure a
 lexicalStmt (Let _ bds stmt)     = do
    varIdes <- mapM genIde bds
-   enterScope (zip (map ideName bds) varIdes) $ Let () varIdes <$> lexicalStmt stmt
+   enterScope (zip (map ideName bds) varIdes) $ makeLet varIdes <$> lexicalStmt stmt
 
 -- | Lookup a string and return the corresponding lexical identifier
 lookupLexIde :: (LexicalM m a) => Ide a ->  m (Either (IdeLex a, Ide a) (IdeLex a))
@@ -391,7 +391,7 @@ lexicalExp (Lam prs stmt a vrs) = do
       parIdes <- mapM (overPar genIde) prs
       vrsIdes <- mapM genIde (filter (not . flip Set.member parNames' . ideName) vrs)
       Lam parIdes
-         <$> (Let () vrsIdes <$>
+         <$> (makeLet vrsIdes <$>
                enterScope (zip (parNames ++ filter (not . flip Set.member parNames') vrsNames)
                                (map parIde parIdes ++ vrsIdes))
                           (lexicalStmt stmt))
