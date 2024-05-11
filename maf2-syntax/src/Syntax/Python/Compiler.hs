@@ -3,6 +3,8 @@
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- | Reduced Python Syntax and its compiler
 module Syntax.Python.Compiler(compile, parse, lexical) where
 
@@ -13,7 +15,7 @@ import Data.Maybe
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Applicative ((<|>), liftA2)
+import Control.Applicative ((<|>), liftA2, asum)
 import Syntax.Python.Parser (parseFile, SrcSpan)
 import Language.Python.Common.AST hiding (Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
 import qualified Language.Python.Common.AST as AST
@@ -25,6 +27,7 @@ import Data.Bitraversable
 import Control.Monad.Cond
 import Language.Python.Common.SrcLocation (spanning)
 import Language.Python.Common (Span)
+import Data.Bifunctor (Bifunctor(second))
 
 
 todo :: String -> a
@@ -38,39 +41,34 @@ todo = error . ("COMPILER ERROR: " ++)
 parse :: String  -- ^ filename
       -> String  -- ^ contents
       -> Maybe (Program SrcSpan AfterLexicalAddressing)
-parse nam = parseFile nam >=> (\ex -> return $ uncurry (flip runLexical) $ runWriter (runReaderT (compile ex) Nothing))
-
-
-data CompileError = Custom String
+parse nam = parseFile nam >=> (\ex -> runLexical <$> runReaderT (compile ex) Nothing)
 
 -------------------------------------------------------------------------------
 -- Simplification phase
 -------------------------------------------------------------------------------
 
 -- | Simplification phase monad
-type SimplifyM m a = (MonadReader (Maybe (Ide a)) m, MonadWriter [Ide a] m)
+type SimplifyM m a = MonadReader (Maybe (Ide a)) m
 
-blockify :: MonadWriter [Ide a] m => m ([Ide a] -> Exp a AfterSimplification) -> m (Exp a AfterSimplification)
-blockify mf = do
-   (f, ides) <- censor (const []) (listen mf)
-   return $ f ides
+thunkify :: a -> Stmt a AfterSimplification -> Stmt a AfterSimplification
+thunkify a bdy = StmtExp () (Call (Lam [] bdy a ()) [] a) a
 
 -- | Generate a (potentially namespaced) lhs pattern
-namespacedLhs :: (SimplifyM m a) => Ide a -> m (Lhs a AfterSimplification)
-namespacedLhs nam = ask >>= lhs
-   where lhs (Just v) = return (IdePat (NamespacedIde nam v))
-         lhs Nothing  = tell [nam] >> pure (IdePat nam)
+namespacedLhs :: SimplifyM m a => Ide a -> m (Lhs a AfterSimplification)
+namespacedLhs nam = asks lhs
+   where lhs (Just v) = IdePat (NamespacedIde nam v)
+         lhs Nothing  = IdePat nam
 
 -- | Generate an assignment
-assign :: (SimplifyM m a) => Ide a -> Exp a AfterSimplification -> m (Stmt a AfterSimplification)
+assign :: SimplifyM m a => Ide a -> Exp a AfterSimplification -> m (Stmt a AfterSimplification)
 assign nam e = namespacedLhs nam <&> flip (Assg ()) e
 
 -- | Compile Python programs into the reduced Python syntax
-compile :: (SimplifyM m SrcSpan) => Module SrcSpan -> m (Program SrcSpan AfterSimplification)
-compile (Module stmts) = (pure . Program) . makeSeq =<< mapM compileStmt  stmts
+compile :: SimplifyM m SrcSpan => Module SrcSpan -> m (Program SrcSpan AfterSimplification)
+compile (Module stmts) = Program . makeSeq <$> mapM compileStmt stmts
 
 -- | Compile a statement in the Python reduced syntax
-compileStmt :: (SimplifyM m SrcSpan) => Statement SrcSpan -> m (Stmt SrcSpan AfterSimplification)
+compileStmt :: SimplifyM m SrcSpan => Statement SrcSpan -> m (Stmt SrcSpan AfterSimplification)
 compileStmt (Fun nam ags _ bdy a)         = assign (Ide nam) =<< compileFun ags bdy a
 compileStmt (While cnd bdy els a)         = Loop () (compileExp cnd) <$> compileSequence bdy <*> pure a
 compileStmt (AsyncFun def _)              = error "not supported AsyncFun"
@@ -80,8 +78,8 @@ compileStmt (Import items _)              = error "import not supported"
 compileStmt (FromImport items _ _)        = error "import not supported"
 compileStmt (For vrs gen bdy els _)       = todo "for expressions"
 compileStmt (Class nam ags bdy a)         = do
-   assignment <- tell [Ide nam] >> (assign (Ide nam) =<< compileClassInstance a (ident_string nam) ags)
-   ltt <- compileClassBdy (Ide nam) bdy
+   assignment <- assign (Ide nam) (compileClassInstance a (ident_string nam) ags)
+   ltt <- thunkify a <$> compileClassBdy (Ide nam) bdy
    return $ makeSeq [assignment, ltt]
 compileStmt (Assign to expr _)            = Assg () <$> compileLhs to <*> return (compileExp expr)
 compileStmt (AugmentedAssign to op exp a) = compileStmt (Assign [to] (BinaryOp (translateOp op) to exp a) a)
@@ -100,12 +98,12 @@ compileStmt (Assert exs _)                = todo "assertion statement"
 compileStmt stmt = error "unsupported exp"
 
 -- | Compiles a sequence without introducing a block
-compileSequence :: (SimplifyM m SrcSpan) => Suite SrcSpan -> m (Stmt SrcSpan AfterSimplification)
+compileSequence :: SimplifyM m SrcSpan => Suite SrcSpan -> m (Stmt SrcSpan AfterSimplification)
 compileSequence es = makeSeq <$> mapM compileStmt es
 
 -- | Compiles a block (something that has a different lexical scope)
-compileFun :: (SimplifyM m SrcSpan) => [Parameter SrcSpan] -> Suite SrcSpan -> SrcSpan -> m (Exp SrcSpan AfterSimplification)
-compileFun prs bdy a = blockify $ Lam (compilePrs prs) <$> local (const Nothing) (compileSequence bdy) <*> pure a
+compileFun :: SimplifyM m SrcSpan => [Parameter SrcSpan] -> Suite SrcSpan -> SrcSpan -> m (Exp SrcSpan AfterSimplification)
+compileFun prs bdy a = Lam (compilePrs prs) <$> local (const Nothing) (compileSequence bdy) <*> pure a <*> pure ()
 
 -- | Compile the parameters of a function
 compilePrs :: [Parameter SrcSpan] -> [Par SrcSpan AfterSimplification]
@@ -134,7 +132,7 @@ compileExp (Ellipsis _)        = todo "nothing"
 compileExp (ByteStrings _ _)   = todo "eval bytestrings"
 compileExp (Strings ss a)       = Literal (String (concat ss) a)
 -- compound expressions
-compileExp c@(AST.Call fun arg a) = Call (compileExp fun) (map compileArg arg) a
+compileExp c@(AST.Call fun arg a)     = Call (compileExp fun) (map compileArg arg) a
 compileExp (Subscript e i _)          = todo "eval subscript"
 compileExp (SlicedExpr e sl _)        = todo "eval sliced"
 compileExp (Yield yld _)              = todo "eval yield"
@@ -152,7 +150,7 @@ compileExp (CondExpr tru cnd fls _)   = todo "eval conditional expression"
 compileExp (BinaryOp op left right a) = binaryToCall op left right a
 compileExp (UnaryOp op arg _)         = todo "eval unary op"
 compileExp (Dot rcv atr a)            = Read (compileExp rcv) (Ide atr) a
-compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ compileExp bdy) annot) annot [] -- note: [] is because of no local variables
+compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ compileExp bdy) annot) annot () -- note: [] is because of no local variables
 compileExp (AST.Tuple exs _)          = todo "eval tuples"
 compileExp ex = error "unsupported expression"-- ++ show (pretty ex))
 
@@ -172,18 +170,17 @@ positional = map (\case PosArg e _ -> e) . filter (\case PosArg _ _ -> True ; Ke
 
 -- | Compiles a class definition
 -- A class definition is compiled to 
-compileClassInstance :: MonadWriter [Ide SrcSpan] m => SrcSpan -> String -> [Argument SrcSpan] -> m (Exp SrcSpan AfterSimplification)
+compileClassInstance :: SrcSpan -> String -> [Argument SrcSpan] -> Exp SrcSpan AfterSimplification
 compileClassInstance a nam ags =
    -- First find out which meta-class to use for the instantation
    let arguments = map compileArg ags
        (metaclass, a') = findKeyword "metaclass" arguments (Var (Ide (Ident "type" a))) a
        superclasses    = positional arguments
-   in return $
-         Call (Read metaclass (Ide (Ident "__new__" a')) a')
-              [PosArg (Var (Ide (Ident "type" a))) a,
-               PosArg (Literal (String nam a)) a, 
-               PosArg (Literal (Tuple superclasses a)) a, 
-               PosArg (Literal (Dict a)) a] a
+   in Call (Read metaclass (Ide (Ident "__new__" a')) a')
+           [PosArg (Var (Ide (Ident "type" a))) a,
+            PosArg (Literal (String nam a)) a,
+            PosArg (Literal (Tuple superclasses a)) a,
+            PosArg (Literal (Dict a)) a] a
 
 
 -- | Compiles a class body
@@ -202,7 +199,7 @@ binaryToCall op left right a =
    let compiledLeft  = compileExp left
        compiledRight = compileExp right
    in Call (Read compiledLeft (opToIde op) (spanning (annot left) (annot op)))
-           [PosArg compiledRight (annot right)] 
+           [PosArg compiledRight (annot right)]
            a
 
 
@@ -256,94 +253,91 @@ translateOp op = case op of
 
 -- | A frame is a flat mapping from strings to lexical addresses
 newtype Frame a = Frame { getFrame :: Map String (IdeLex a) }
-
-mkFrame :: [(String, IdeLex a)] -> Frame a
-mkFrame = Frame . Map.fromList
-
 -- | An environment is a linked list of frames
-data Env a = Empty | Env (Frame a) (Env a)
+type Env a = [Frame a]
 
 -- | Look something up in the given frame
-lookupFrame :: String -> Frame a -> Maybe (IdeLex a)
-lookupFrame nam = Map.lookup nam . getFrame
+lookupFrm :: String -> Frame a -> Maybe (IdeLex a)
+lookupFrm nam = Map.lookup nam . getFrame
 
 -- | Look something up in the environment
-lookupEnv ::  String -> Env a -> Maybe (IdeLex a)
-lookupEnv nam Empty      = Just (IdeGbl nam (-1)) -- assume that it is a global if not found
-lookupEnv nam (Env e es) = lookupFrame nam e <|> lookupEnv nam es
-
--- | Get a pointer to the global frame
-global :: Env a -> Env a
-global (Env frm Empty) = Env frm Empty
-global (Env frm frms)  = global frms
+lookupEnv ::  String -> Env a -> IdeLex a
+lookupEnv nam env  = fromMaybe (IdeGbl nam) (asum $ map (lookupFrm nam) env)
 
 -- | Returns the nonlocal environment (i.e. skips the global frame)
-nonlocal :: Env a -> Env a
-nonlocal (Env frm frms)  = frms
-
--- | Returns true if the given variable is global in the current context
-isGlobal :: (LexicalM m a) => String -> m Bool
-isGlobal nam = gets (Set.member nam . globals)
-
--- | Returns true if the given variable is a nonlocal in the current context
-isNonLocal :: (LexicalM m a) => String -> m Bool
-isNonLocal nam = gets (Set.member nam . nonlocals)
-
--- | Returns true if the invariant still holds in the current scope
-checkInvariant :: (LexicalM m a) => m Bool
-checkInvariant =
-   gets (\s -> Set.intersection (locals s) (Set.union (globals s) (nonlocals s)) == Set.empty)
-
--- | Ensures that the invariant holds and if it does not produces an error with the given message
-ensureInvariant :: (LexicalM m a) => String -> m x -> m x
-ensureInvariant msg m = m >>= (\v -> checkInvariant >>= (\b -> if not b then error msg else return v))
+nonlocalEnv :: Env a -> Env a
+nonlocalEnv = tail
 
 -- | Extends the given environment with a new frame consisting of the giving bindings
 extendedEnv :: [(String, IdeLex a)] -> Env a -> Env a
-extendedEnv bds = Env frame'
-   where frame' = Frame $ Map.fromList bds
+extendedEnv bds = (frm:)
+   where frm = Frame $ Map.fromList bds
+
+-- | Lexical addresser state
+
+data VarScope = LocalScope | NonLocalScope | GlobalScope
+   deriving (Eq, Ord, Show)
+
+data LexicalState = LexicalState {
+   vars  :: Map String VarScope,
+   fresh :: Int  -- ^ fresh variable counter
+}
+
+isScopedAs :: LexicalM m a => VarScope -> String -> m Bool
+isScopedAs typ nam = gets (\s -> Map.lookup nam (vars s) == Just typ)
+
+isLocal :: LexicalM m a => String -> m Bool
+isLocal     = isScopedAs LocalScope
+isNonLocal :: LexicalM m a => String -> m Bool
+isNonLocal  = isScopedAs NonLocalScope
+isGlobal :: LexicalM m a => String -> m Bool
+isGlobal    = isScopedAs GlobalScope
+
+getLocals :: LexicalM m a => m [String]
+getLocals = gets (Map.keys . Map.filter (== LocalScope) . vars)
 
 -- | Enters a new scope by resetting all global and nonlocal variables
 -- and creating a new frame with the given bindigs to execute the given computation in
-enterScope :: (LexicalM m a) => [(String, IdeLex a)] -> m b -> m b
+enterScope :: (LexicalM m a) => [(String, IdeLex a)] -> m b -> m (b, [String])
 enterScope bds m = do
    -- first snapshot the current set of globals, nonlocals and locals
    snapshot <- get
    -- then continue with their reset
-   modify (\s -> s { globals = Set.empty, nonlocals = Set.empty, locals = Set.empty })
+   modify (\s -> s { vars = Map.fromList (map (second $ const LocalScope) bds) })
    -- run the computation in the extended environment
    v <- local (extendedEnv bds) m
    -- reset to the snapshot, but keep the fresh
+   l <- getLocals
    modify (\s' -> snapshot { fresh = fresh s' })
    -- return the value of the computation
-   return v
+   return (v, l)
 
--- | Lexical addresser state.
---
--- The following invariant should always hold for the state:
--- locals ∩ (globals ∪ nonlocals) == ∅
-data LexicalState = LexicalState {
-   globals   :: Set String,      -- ^ set of variables considered to be global in the current scope
-   nonlocals :: Set String,      -- ^ set of variables considered to be nonlocal in the current scope
-   locals    :: Set String,      -- ^ set of variables considered to be local in the current scope
-   fresh     :: Int              -- ^ fresh variable counter
-}
+addVar :: LexicalM m a => VarScope -> String -> m ()
+addVar scp nam = modify (\s -> s { vars = Map.insertWith checkSame nam scp (vars s) })
+   where checkSame a b
+            | a == b = a
+            | otherwise = error ("Var previously declared " ++ show a ++ " is now declared " ++ show b)
+
+addLocal :: LexicalM m a => String -> m ()
+addLocal    = addVar LocalScope
+addNonLocal :: LexicalM m a => String -> m ()
+addNonLocal = addVar NonLocalScope
+addGlobal :: LexicalM m a => String -> m ()
+addGlobal   = addVar GlobalScope
+
 
 -- | Generate a new identifier based on the given identifier
-genIde :: (LexicalM m a) => Ide a -> m (IdeLex a)
+genIde :: LexicalM m a => Ide a -> m (IdeLex a)
 genIde ide = modify (\s -> s { fresh = fresh s + 1 }) >> gets (IdeLex ide . fresh)
 
 -- | Lexical addresser monad
 type LexicalM m a = (MonadReader (Env a) m, MonadState LexicalState m)
 
 -- | Run the lexical addresser on the given program
-runLexical :: [Ide a] -- ^ list of top-level identifiers
-           -> Program a AfterSimplification   -- ^ the program to apply lexical addressing to
+runLexical :: Program a AfterSimplification     -- ^ the program to apply lexical addressing to
            -> Program a AfterLexicalAddressing
-runLexical bds (Program stmt) = Program $ makeLet lexIdes $
-      evalState (runReaderT (lexicalStmt stmt) (Env (mkFrame globalFrm) Empty)) (LexicalState Set.empty Set.empty Set.empty (lastSlot+1))
-   where (lexIdes, lastSlot)   = runState (mapM (\ide -> modify (+1) >> gets (IdeLex ide)) bds) 0
-         globalFrm             = zip (map ideName bds) lexIdes
+runLexical (Program stmt) = Program $ evalState (runReaderT (lexicalStmt stmt) []) initialLexState
+      where initialLexState = LexicalState Map.empty 0
 
 -- | Run the lexical addresser on the given program, but keep track of an effectful context
 lexical :: (LexicalM m a) => Program a AfterSimplification -> m (Program a AfterLexicalAddressing)
@@ -351,12 +345,8 @@ lexical = fmap Program . lexicalStmt . programStmt
 
 -- | Run the lexical addresser on a single statement
 lexicalStmt :: (LexicalM m a) => Stmt a AfterSimplification -> m (Stmt a AfterLexicalAddressing)
-lexicalStmt (NonLocal _ x _) =
-   ensureInvariant (ideName x ++ " is already used as a local (nonlocal)") $
-      modify (\s -> s { nonlocals = Set.insert (ideName x) (nonlocals s) }) >> return (makeSeq [])
-lexicalStmt (Global _ x _) =
-   ensureInvariant (ideName x ++ " is already used as a local (global)") $
-      modify (\s -> s { globals = Set.insert (ideName x) (globals s) }) >> return (makeSeq [])
+lexicalStmt (NonLocal _ x _) = addNonLocal (ideName x) >> return (makeSeq [])
+lexicalStmt (Global _ x _)   = addGlobal (ideName x) >> return (makeSeq [])
 lexicalStmt (Seq _ as)       = makeSeq <$> mapM lexicalStmt as
 lexicalStmt (Return _ e a)   = Return () <$> mapM lexicalExp e <*> pure a
 lexicalStmt (Assg _ lhs e)   = Assg () <$> lexicalLhs lhs <*> lexicalExp e
@@ -366,38 +356,28 @@ lexicalStmt (Continue _ a)   = return $ Continue () a
 lexicalStmt (Conditional _ cls els a)  =
    Conditional () <$> mapM (bimapM lexicalExp lexicalStmt) cls <*> lexicalStmt els <*> pure a
 lexicalStmt (StmtExp _ e a)  = StmtExp () <$> lexicalExp e <*> pure a
-lexicalStmt (Let _ bds stmt)     = do
-   varIdes <- mapM genIde bds
-   enterScope (zip (map ideName bds) varIdes) $ makeLet varIdes <$> lexicalStmt stmt
 
 -- | Lookup a string and return the corresponding lexical identifier
-lookupLexIde :: (LexicalM m a) => Ide a ->  m (Either (IdeLex a, Ide a) (IdeLex a))
+lookupLexIde :: (LexicalM m a) => Ide a -> m (Either (IdeLex a, Ide a) (IdeLex a))
 lookupLexIde ide = condM [
-      (isNonLocal name, asks (Right . try . lookupEnv name . nonlocal)),
-      (isGlobal name, asks (Right  . try . lookupEnv name . global)),
+      (isNonLocal name, asks (Right . lookupEnv name . nonlocalEnv)),
+      (isGlobal name, return $ Right (IdeGbl name)),
       (pure True, case ide of
-                    Ide i -> asks (Right . try . lookupEnv name)
-                    NamespacedIde i ns -> asks (Left . (, i) . try . lookupEnv (ideName ns)))]
-   where try   = fromMaybe (error $ "variable " ++ name ++ "not found")
-         name  = ideName ide
+                    Ide i -> asks (Right . lookupEnv name)
+                    NamespacedIde i ns -> asks (Left . (, i) . lookupEnv (ideName ns)))]
+   where name = ideName ide
 
 -- | Run the lexical addresser on the given expression
-lexicalExp :: (LexicalM m a) => Exp a AfterSimplification -> m (Exp a AfterLexicalAddressing)
+lexicalExp :: forall m a . (LexicalM m a) => Exp a AfterSimplification -> m (Exp a AfterLexicalAddressing)
 lexicalExp (Var ide) = either (\(e, x) -> Read (Var e) x (annot (getIdeIdent $ lexIde e))) Var <$> lookupLexIde ide
-lexicalExp (Lam prs stmt a vrs) = do
-      let parNames  = map (ideName . parIde) prs
-      let parNames' = Set.fromList parNames
-      let vrsNames  = map ideName vrs
-      parIdes <- mapM (overPar genIde) prs
-      vrsIdes <- mapM genIde (filter (not . flip Set.member parNames' . ideName) vrs)
-      Lam parIdes
-         <$> (makeLet vrsIdes <$>
-               enterScope (zip (parNames ++ filter (not . flip Set.member parNames') vrsNames)
-                               (map parIde parIdes ++ vrsIdes))
-                          (lexicalStmt stmt))
-         <*> pure a
-         <*> pure ()
-   where overPar f (Prm ide a)        = Prm <$> f ide <*> pure a
+lexicalExp (Lam prs stmt a ()) = do
+      genPars <- mapM (overPar genIde) prs
+      let parIdes = map parIde genPars
+      let parNames = map (ideName . parIde) prs
+      (bdy, lcs) <- enterScope (zip parNames parIdes) $ lexicalStmt stmt
+      return $ Lam genPars bdy a lcs
+   where overPar :: (Ide a -> m (IdeLex a)) -> Par a AfterSimplification -> m (Par a AfterLexicalAddressing)
+         overPar f (Prm ide a)        = Prm <$> f ide <*> pure a
          overPar f (VarArg ide a)     = VarArg <$> f ide <*> pure a
          overPar f (VarKeyword ide a) = VarKeyword <$> f ide <*> pure a
 
@@ -422,10 +402,9 @@ lexicalLhs (Field e x a) = Field <$> lexicalExp e <*> pure x <*> pure a
 lexicalLhs (ListPat ps a ) = ListPat <$> mapM lexicalLhs ps <*> pure a
 lexicalLhs (TuplePat ps a) = TuplePat <$> mapM lexicalLhs ps <*> pure a
 lexicalLhs (IdePat x)      = do
-   -- first check whether the variable is already a local or a global
-   unlessM (liftA2 (||) (isGlobal (ideName x)) (isNonLocal (ideName x))) $ do
-      -- register the variable as local if it is not
-      modify (\s -> s { locals = Set.insert (ideName x) (locals s) })
-   -- lookup the variable and paste it into the pattern
-   either (\(e, x) -> Field (Var e) x (annot $ getIdeIdent x)) IdePat <$> lookupLexIde x
+      -- first check whether the variable is already a local or a global => register as local if not 
+      unlessM (liftA2 (||) (isGlobal nam) (isNonLocal nam)) $ addLocal nam
+      -- lookup the variable and paste it into the pattern
+      either (\(e, x) -> Field (Var e) x (annot $ getIdeIdent x)) IdePat <$> lookupLexIde x
+   where nam = ideName x
 

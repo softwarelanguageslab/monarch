@@ -32,6 +32,7 @@ import Control.Monad ((<=<))
 import Data.Bifunctor
 import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad
+import Data.Map (Map)
 
 -- | Convenience function to construct a Python object immediately from primitive abstract value
 from :: forall (k :: PyPrmKey) obj . (PyObj' obj, SingI k) => Abs obj k -> obj 
@@ -46,16 +47,11 @@ from' = from @k . Domain.inject
 -- Python constants 
 --
 
-initialBds :: [(String, VarAdr, PyVal)]
-initialBds = map (\(nam, vlu) -> (nam, VarAdr nam, vlu)) bds 
-  where bds = [("type", constant Type)]
+initialEnv :: Map String ObjAdr
+initialEnv = Map.empty  
 
-initialEnv :: PyEnv
-initialEnv = Env.extends (map (\(nam, adr, _) -> (nam, adr)) initialBds) Env.empty
-
-init :: (StoreM m VarAdr PyVal, StoreM m ObjAdr obj, PyObj' obj) => m ()
-init = do mapM_ (\(_, adr, vlu) -> writeAdr adr vlu) initialBds
-          mapM_ initConstant (all :: [PyConstant])  
+init :: (PyObj' obj, StoreM m ObjAdr obj) => m ()
+init = mapM_ initConstant (all :: [PyConstant])  
 
 initConstant :: (StoreM m ObjAdr obj, PyObj' obj) => PyConstant -> m ()
 initConstant c = writeAdr (allocCst c) (injectPyConstant c)
@@ -66,6 +62,7 @@ injectPyConstant Object           = new (constant Type)
 injectPyConstant True             = from' @BlnPrm Prelude.True
 injectPyConstant False            = from' @BlnPrm Prelude.False
 injectPyConstant None             = from' @NonPrm ()
+injectPyConstant GlobalFrame      = new $ constant (TypeObject FrameType)
 injectPyConstant (TypeName typ)   = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm) = from' @PrmPrm prm
 injectPyConstant (TypeMRO typ)    = from  @TupPrm (SeqDomain.fromList $ map constant [TypeObject typ, Object])
@@ -74,7 +71,6 @@ injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new (constant Type)
         methodAttrs = map (second PrimObject) (methods typ)
         allAttrs    = map (bimap attrStr constant) (typeAttrs ++ methodAttrs)
                       
-
 isBindable :: (BoolDomain b, PyM pyM obj) => Ref obj -> pyM b
 isBindable = fmap isBindableObj . pyDeref'
 
@@ -113,5 +109,7 @@ lookupAttrMRO attr =
 -- --
 
 assignAttr :: PyM pyM obj => String -> Ref obj -> Ref obj -> pyM ()
-assignAttr attr vlu = mjoinMap updateAdr . addrs
-    where updateAdr = updateWith (setAttr attr vlu) (setAttrWeak attr vlu)
+assignAttr attr vlu = mjoinMap (assignAttrAt attr vlu) . addrs
+
+assignAttrAt :: PyM pyM obj => String -> Ref obj -> Adr obj -> pyM ()
+assignAttrAt attr vlu = updateWith (setAttr attr vlu) (setAttrWeak attr vlu)

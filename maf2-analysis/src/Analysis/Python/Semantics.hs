@@ -48,12 +48,18 @@ catchReturn = (`catch` \esc -> condCP (return $ isReturn esc)
                                       (getReturn esc)
                                       (throw esc))
 
+globalFrame :: ObjAdr
+globalFrame = allocCst GlobalFrame
 
+-- | Variable to frame object
+frame :: PyM m obj => PyIde -> m (ObjAdr, String)
+frame (IdeGbl nam)   = return (globalFrame, nam)
+frame (IdeLex ide _) = (,nam) <$> lookupEnv nam
+   where nam = ideName ide
 
 -- | Execute a single statement
 exec :: PyM pyM obj => PyStm -> pyM ()
 exec (Assg _ lhs rhs)            = execAss lhs rhs
-exec (Let _ vrs bdy)             = execLet vrs bdy
 exec (Return _ exp loc)          = execRet exp loc
 exec (Conditional _ brs els _ )  = execIff brs els
 exec (StmtExp _ e _)             = execExp e
@@ -69,7 +75,8 @@ execExp = void . eval
 
 execAss :: forall pyM obj . PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
-   where assignTo (IdePat ide) val     = lookupEnv @pyM (lexNam ide) >>= flip updateAdr val 
+   where assignTo (IdePat ide) val     = do (frm, nam) <- frame ide
+                                            assignAttrAt nam val frm 
          assignTo (Field e nam _) val  = eval e >>= assignAttr (ideName nam) val 
          assignTo (ListPat _ _) val    = todo "list assignment"
          assignTo (TuplePat _ _) val   = todo "tuple assignment"
@@ -83,11 +90,6 @@ isTrue = pyDeref' >=> at @BlnPrm
 
 execSeq :: PyM pyM obj => [PyStm] -> pyM ()
 execSeq = mapM_ exec
-
-execLet :: PyM pyM obj => [PyIde] -> PyStm -> pyM ()
-execLet vrs stm = withExtendedEnv (zip nms ads) (exec stm)
-   where nms = map lexNam vrs
-         ads = map allocVar vrs
         
 execRet :: PyM pyM obj => Maybe PyExp -> PyLoc -> pyM ()
 execRet (Just exp) _    = eval exp >>= returnWith
@@ -103,7 +105,7 @@ execWhi :: PyM pyM obj => PyExp -> PyStm -> PyLoc -> pyM ()
 execWhi cnd bdy loc = void $ M.call @PyVal (LoopBdy loc cnd bdy) 
 
 eval :: PyM pyM obj => PyExp -> pyM PyVal
-eval (Lam prs bdy loc _)   = evalLam prs bdy loc
+eval (Lam prs bdy loc lcl) = evalLam prs bdy loc lcl
 eval (Var ide)             = evalVar ide
 eval (Literal lit)         = evalLit lit
 eval (Call fun arg loc)    = evalCll fun arg loc
@@ -112,13 +114,15 @@ eval (Read obj nam loc)    = evalRea obj (ideName nam) loc
 evalRea :: PyM pyM obj => PyExp -> String -> PyLoc -> pyM PyVal
 evalRea obj nam loc = lookupAttr loc nam =<< eval obj
 
-evalLam :: PyM pyM obj => [PyPar] -> PyStm -> PyLoc -> pyM PyVal
-evalLam prs bdy loc = do env <- getEnv
-                         let clo = PyClo loc prs bdy env
-                         pyAlloc loc (from' @CloPrm clo)
+evalLam :: PyM pyM obj => [PyPar] -> PyStm -> PyLoc -> [String] -> pyM PyVal
+evalLam prs bdy loc lcl = do env <- getEnv
+                             let clo = PyClo loc prs bdy lcl env
+                             pyAlloc loc (from' @CloPrm clo)
 
 evalVar :: PyM pyM obj => PyIde -> pyM PyVal
-evalVar = lookupEnv . lexNam >=> lookupAdr
+evalVar var = do (adr, nam) <- frame var
+                 frm <- lookupAdr adr
+                 return $ getAttr nam frm 
 
 evalLit :: PyM pyM obj => PyLit -> pyM PyVal
 evalLit (Bool bln loc)     = pyAlloc loc (from' @BlnPrm bln)
@@ -156,12 +160,13 @@ callPrm pos ags = mjoinMap apply
 
 callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal 
 callClo pos ags = mjoinMap apply
- where apply (PyClo loc prs bdy env) = 
-         withEnv (const env) $ do bindings <- zipWithM bindPar prs ags
+ where apply (PyClo loc prs bdy lcl env) = 
+         withEnv (const env) $ do frame <- store loc (new $ constant $ TypeObject FrameType)
+                                  mapM_ (\(par, arg) -> bindPar par arg frame) (zip prs ags)
+                                  let bindings = map (,frame) lcl 
                                   withExtendedEnv bindings $ M.call (FuncBdy loc bdy)
 
-bindPar :: PyM pyM obj => PyPar -> PyVal -> pyM (String, VarAdr)
-bindPar (Prm ide _) v = writeAdr adr v >> return (lexNam ide, adr)
-   where adr = allocVar ide 
-bindPar (VarArg _ _) v = todo "vararg parameter"
-bindPar (VarKeyword _ _) v = todo "keyword parameters"
+bindPar :: PyM pyM obj => PyPar -> PyVal -> ObjAdr -> pyM ()
+bindPar (Prm ide _) vlu = assignAttrAt (ideName $ lexIde ide) vlu 
+bindPar (VarArg _ _) vlu = todo "vararg parameter"
+bindPar (VarKeyword _ _) vlu = todo "keyword parameters"

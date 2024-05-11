@@ -49,12 +49,11 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
 
 runREPL :: IO ()
 runREPL = do count <- newIORef 0 
-             analyzeREPL @PyObjCP' 
-                         (do cur <- readIORef count
-                             writeIORef count (cur + 1)
-                             prompt cur)
-                         print
-      where prompt cur = do putStr ">>> "
+             analyzeREPL @PyObjCP' (read count) print 
+      where read count = do cur <- readIORef count
+                            writeIORef count (cur + 1)
+                            prompt cur
+            prompt cur = do putStr ">>> "
                             hFlush stdout
                             txt <- getLine 
                             case parse ("REPL:" ++ show cur) txt of  
@@ -66,7 +65,7 @@ runFile :: String -> IO ()
 runFile fileName = 
    do program <- readFile fileName
       let Just parsed = parse "testje" program
-      let (rsto, osto, vsto) = analyzeCP parsed 
+      let (rsto, osto) = analyzeCP parsed 
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"

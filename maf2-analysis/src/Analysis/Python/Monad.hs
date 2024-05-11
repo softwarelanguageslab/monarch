@@ -46,10 +46,9 @@ type PyM m obj = (PyObj' obj,
                   Domain (Esc m) PyError,
                   Domain (Esc m) DomainError,
                   PyEscape (Esc m),
-                  EnvM m VarAdr PyEnv, 
+                  EnvM m ObjAdr PyEnv, 
                   AllocM m PyLoc ObjAdr,
-                  StoreM m ObjAdr obj,
-                  StoreM m VarAdr PyVal)
+                  StoreM m ObjAdr obj)
 
 pyDeref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
 pyDeref f = deref f . addrs 

@@ -26,7 +26,6 @@ module Syntax.Python.AST(
    AfterLexicalAddressing,
    Micro,
    makeSeq,
-   makeLet,
 ) where
 
 import Data.Void
@@ -57,7 +56,6 @@ import Data.List (intersperse)
 data AfterSimplification
 
 type instance XAsgn AfterSimplification      = ()     -- assigment is allowed
-type instance XLet AfterSimplification       = ()     -- lets are allowed   
 type instance XSeq AfterSimplification       = ()     -- sequencing is allowed
 type instance XRet AfterSimplification       = ()     -- return is allowed
 type instance XLoop AfterSimplification      = ()     -- loops are allowed
@@ -65,7 +63,7 @@ type instance XBreak AfterSimplification     = ()     -- breaks are allowed
 type instance XCond AfterSimplification      = ()     -- conditionals are allowed
 type instance XContinue AfterSimplification  = () -- continue is allowed
 type instance XStmtExp AfterSimplification   = ()
-type instance XLam AfterSimplification a     = [Ide a]
+type instance XLam AfterSimplification a     = ()
 type instance XNlcl AfterSimplification      = ()
 type instance XGbl AfterSimplification       = ()
 type instance XIde AfterSimplification a     = Ide a
@@ -77,7 +75,6 @@ type instance XIde AfterSimplification a     = Ide a
 data AfterLexicalAddressing
 
 type instance XAsgn AfterLexicalAddressing       = ()     -- assigment is allowed
-type instance XLet AfterLexicalAddressing        = ()     -- Let statements are not introduced by this phase
 type instance XSeq AfterLexicalAddressing        = ()     -- sequencing is allowed
 type instance XRet AfterLexicalAddressing        = ()     -- return is allowed
 type instance XLoop AfterLexicalAddressing       = ()     -- loops are allowed
@@ -85,7 +82,7 @@ type instance XBreak AfterLexicalAddressing      = ()     -- breaks are allowed
 type instance XCond AfterLexicalAddressing       = ()     -- conditionals are allowed
 type instance XContinue AfterLexicalAddressing   = ()     -- continue is allowed
 type instance XStmtExp AfterLexicalAddressing    = ()
-type instance XLam AfterLexicalAddressing a      = ()
+type instance XLam AfterLexicalAddressing a      = [String]
 type instance XNlcl AfterLexicalAddressing       = Void   -- nonlocal is compiled away
 type instance XGbl  AfterLexicalAddressing       = Void   -- global is compiled away
 type instance XIde  AfterLexicalAddressing a     = IdeLex a
@@ -105,14 +102,17 @@ deriving instance (Holds Eq ξ a) => Eq (Program a ξ)
 deriving instance (Holds Ord ξ a) => Ord (Program a ξ)
 
 -- | An identifier is backed by the Language.Python identifier
-data Ide a = Ide {getIdeIdent :: Ident a} | NamespacedIde { getIdent :: Ide a, namespace :: Ide a } deriving (Eq, Ord, Show, Generic)
+data Ide a = Ide { getIdeIdent :: Ident a } 
+           | NamespacedIde { getIdent :: Ide a, namespace :: Ide a } 
+   deriving (Eq, Ord, Show, Generic)
 
 -- | An identifier that is augmented with lexical addressing information
-data IdeLex a = IdeLex {lexIde :: Ide a, num :: Int } | IdeGbl String Int deriving (Eq, Show, Ord, Generic)
+data IdeLex a = IdeLex { lexIde :: Ide a, num :: Int } 
+              | IdeGbl String 
+   deriving (Eq, Show, Ord, Generic)
 
 -- Phase information for each type of statement
 type family XAsgn ξ
-type family XLet ξ
 type family XSeq ξ
 type family XRet ξ
 type family XLoop ξ
@@ -127,7 +127,7 @@ type family XIde ξ a :: Type
 
 -- Creates a constraint that says that the given constraint should hold on all types of phase information
 type Holds (c :: Type -> Constraint) ξ a =
-   (c (XAsgn ξ), c (XLet ξ), c (XSeq ξ), c (XRet ξ), c (XLoop ξ), c (XBreak ξ),
+   (c (XAsgn ξ), c (XSeq ξ), c (XRet ξ), c (XLoop ξ), c (XBreak ξ),
     c (XContinue ξ), c (XCond ξ), c (XStmtExp ξ), c (XLam ξ a), c (XNlcl ξ), c (XGbl ξ),
     c (XIde ξ a), c a)
 
@@ -136,7 +136,6 @@ type Holds (c :: Type -> Constraint) ξ a =
 -- type level functions (aka type families) on `ξ` to determine whether 
 -- the type of statement is possible during the given phase `ξ`.
 data Stmt a ξ = Assg (XAsgn ξ) (Lhs a ξ) (Exp a ξ)
-              | Let (XLet ξ) [XIde ξ a] (Stmt a ξ)                       -- ^ blocks introduce local variables into the scope
               | Seq (XSeq ξ) [Stmt a ξ]                                  -- ^ a sequence is a list of statements  
               | Return (XRet ξ) (Maybe (Exp a ξ)) a                      -- ^ returns the value of the given expression
               | Loop (XLoop ξ) (Exp a ξ) (Stmt a ξ) a                    -- ^ a loop with a loop head and body
@@ -154,11 +153,6 @@ deriving instance (Holds Eq   ξ a) => Eq (Stmt a ξ)
 makeSeq :: (XSeq ξ ~ ()) => [Stmt a ξ] -> Stmt a ξ
 makeSeq [stm] = stm
 makeSeq lst = Seq () lst 
-
-makeLet :: (XLet ξ ~ ()) => [XIde ξ a] -> Stmt a ξ -> Stmt a ξ
-makeLet [] stm = stm
-makeLet bds stm = Let () bds stm 
-
 
 -- | A reduced set of expressions
 data Exp a ξ = Lam [Par a ξ] (Stmt a ξ) a (XLam ξ a) -- ^ a less restricted version of Python's lambda
@@ -238,11 +232,6 @@ prettyString = concat . snd . runWriter . flip runReaderT 0 . pretty
 
 instance Pretty (Stmt a AfterLexicalAddressing) where
    pretty (Assg _ lhs e) = pretty lhs >> out " = " >> pretty e
-   pretty (Let _ ides s) = do
-      out "let ("
-      sequence_ (intersperse (out ",") (map pretty ides))
-      out "): "
-      idented (pretty s)
    pretty (Seq _ stmts)       = sequence_ (intersperse newline (map pretty stmts))
    pretty (Return _ (Just v) _) = out "return " >> pretty v
    pretty (Return _ Nothing  _) = out "return"
@@ -287,7 +276,7 @@ instance Pretty (Lit a AfterLexicalAddressing) where
    pretty (Dict _) = out "{}"
 instance Pretty (IdeLex a) where
    pretty (IdeLex ide at) = out (ideName ide) >> out "@" >> out (show at)
-   pretty (IdeGbl nam _) = out nam >> out "@" >> out "gbl"
+   pretty (IdeGbl nam) = out nam >> out "@" >> out "gbl"
 instance Pretty (Ide a) where
    pretty = out . ideName
 

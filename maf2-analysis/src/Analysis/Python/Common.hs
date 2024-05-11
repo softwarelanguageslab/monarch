@@ -3,9 +3,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 
 module Analysis.Python.Common (
-  VarAdr(..), 
   ObjAdr(..), 
-  allocVar,
   allocPtr,
   allocCst,
   PyVal, 
@@ -32,15 +30,9 @@ import Domain.Core.SeqDomain (CPList)
 -- Addresses
 --
 
-newtype VarAdr = VarAdr String
-  deriving (Eq, Ord, Show)
-
 data ObjAdr = PtrAdr PyLoc
             | PrmAdr PyConstant
   deriving (Eq, Ord)
-
-allocVar :: PyIde -> VarAdr
-allocVar = VarAdr . ideName . lexIde
 
 allocPtr :: PyLoc -> ObjAdr
 allocPtr = PtrAdr
@@ -68,12 +60,12 @@ injectAdr = PyVal . Set.singleton
 constant :: PyConstant -> PyVal
 constant = injectAdr . allocCst  
 
-type PyEnv = Map String VarAdr
-data PyClo = PyClo PyLoc [PyPar] PyStm PyEnv
+type PyEnv = Map String ObjAdr 
+data PyClo = PyClo PyLoc [PyPar] PyStm [String] PyEnv
   deriving (Eq, Ord)
 
 instance Show PyClo where
-  show (PyClo loc _ _ _) = "<func@" ++ showLoc loc ++ ">" 
+  show (PyClo loc _ _ _ _) = "<func@" ++ showLoc loc ++ ">" 
 
 --
 -- Python objects with the common objects/values instantiated

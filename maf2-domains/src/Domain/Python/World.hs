@@ -20,6 +20,7 @@ data PyType = NoneType
             | CloType
             | FloatType
             | ListType 
+            | FrameType 
   deriving (Eq, Ord, Enum, Bounded, Show) 
 
 -- | The name of a built-in Python type 
@@ -34,6 +35,7 @@ name PrimType   = "primitive"
 name CloType    = "function"
 name BoundType  = "bound function" 
 name ListType   = "list"
+name FrameType  = "frame"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -65,6 +67,7 @@ methods PrimType    = []
 methods BoundType   = []
 methods CloType     = []
 methods ListType    = []
+methods FrameType   = []
 
 -- | Built-in primitives in Python
 data PyPrim     = 
@@ -149,6 +152,7 @@ data PyConstant = Type      -- 'type'
                 | None
                 | True
                 | False
+                | GlobalFrame 
                 | TypeObject PyType 
                 | TypeName   PyType 
                 | TypeMRO    PyType 
@@ -156,7 +160,7 @@ data PyConstant = Type      -- 'type'
   deriving (Eq, Ord, Show)
 
 instance Finite PyConstant where
-  all = [Type, Object, None, True, False] 
+  all = [Type, Object, None, True, False, GlobalFrame] 
         ++ map TypeObject all 
         ++ map TypeName   all 
         ++ map TypeMRO    all

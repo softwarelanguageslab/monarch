@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Domain.Class (Domain(..), Domain') where
 
 import Data.Kind
@@ -14,6 +15,7 @@ class JoinLattice v => Domain v c where
    injects = joinMap inject 
    gamma :: v -> c -> Bool
    gamma v = subsumes v . inject    -- valid since for a Galois connection: c ∈ γ(a) <=> α(c) ⊑ a  
+
 
 -- | A curried and flipped version of the `Domain` constraint
 data Domain' (c :: Type) :: Type ~> Constraint

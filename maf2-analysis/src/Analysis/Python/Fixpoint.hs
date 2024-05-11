@@ -54,11 +54,9 @@ type IntraT m = MonadStack '[
                 ] m 
 
 type AnalysisM m obj = (PyObj' obj, 
-                        StoreM m VarAdr PyVal,
                         StoreM m ObjAdr obj,
                         MapM PyCmp PyRes m,
                         ComponentTrackingM m  PyCmp,
-                        DependencyTrackingM m PyCmp VarAdr,
                         DependencyTrackingM m PyCmp ObjAdr,
                         DependencyTrackingM m PyCmp PyCmp,
                         WorkListM m PyCmp)
@@ -77,18 +75,16 @@ inter prg = do init                                 -- initialize Python infrast
                add ((Main prg, initialEnv), ())     -- add the main component to the worklist
                iterateWL intra                      -- start the analysis 
 
-analyze :: forall obj . PyObj' obj => PyPrg -> (Map PyCmp PyRes, Map ObjAdr obj, Map VarAdr PyVal)
-analyze prg = (rsto, osto, vsto)
-    where (((_,vsto),osto),rsto) = inter prg
-                                    & runWithStore @(Map VarAdr PyVal) @VarAdr
-                                    & runWithStore @(Map ObjAdr obj) @ObjAdr
-                                    & runWithMapping @PyCmp
-                                    & runWithDependencyTracking @PyCmp @VarAdr
-                                    & runWithDependencyTracking @PyCmp @ObjAdr
-                                    & runWithDependencyTracking @PyCmp @PyCmp
-                                    & runWithComponentTracking @PyCmp
-                                    & runWithWorkList @(Set PyCmp)
-                                    & runIdentity
+analyze :: forall obj . PyObj' obj => PyPrg -> (Map PyCmp PyRes, Map ObjAdr obj)
+analyze prg = (rsto, osto)
+    where ((_,osto),rsto) = inter prg
+                                & runWithStore @(Map ObjAdr obj) @ObjAdr
+                                & runWithMapping @PyCmp
+                                & runWithDependencyTracking @PyCmp @ObjAdr
+                                & runWithDependencyTracking @PyCmp @PyCmp
+                                & runWithComponentTracking @PyCmp
+                                & runWithWorkList @(Set PyCmp)
+                                & runIdentity
 
 analyzeREPL :: forall obj . PyObj' obj
     => IO PyPrg         -- a read function
@@ -96,10 +92,8 @@ analyzeREPL :: forall obj . PyObj' obj
     -> IO ()
 analyzeREPL read display = 
     void $ (init >> repl) 
-            & runWithStore @(Map VarAdr PyVal) @VarAdr
             & runWithStore @(Map ObjAdr obj) @ObjAdr
             & runWithMapping @PyCmp
-            & runWithDependencyTracking @PyCmp @VarAdr
             & runWithDependencyTracking @PyCmp @ObjAdr
             & runWithDependencyTracking @PyCmp @PyCmp
             & runWithComponentTracking @PyCmp
@@ -117,5 +111,5 @@ analyzeREPL read display =
 
 type PyObjCP' = PyObjCP PyVal ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp (MayEscape (Set PyEsc) PyVal), Map ObjAdr PyObjCP', Map VarAdr PyVal)
+analyzeCP :: PyPrg -> (Map PyCmp (MayEscape (Set PyEsc) PyVal), Map ObjAdr PyObjCP')
 analyzeCP = analyze @PyObjCP'
