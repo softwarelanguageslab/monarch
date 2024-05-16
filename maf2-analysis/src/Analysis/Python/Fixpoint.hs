@@ -47,6 +47,7 @@ type family MonadStack (ts :: [(* -> *) -> * -> *]) (m :: * -> *) where
 type IntraT m = MonadStack '[
                     MayEscapeT (Set PyEsc),
                     AllocT PyLoc () ObjAdr,
+                    AllocT FrmLoc () ObjAdr,
                     EnvT PyEnv,
                     CtxT (),
                     JoinT,
@@ -67,6 +68,7 @@ type PyRes = Val (IntraT Identity) PyVal
 intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
 intra cmp = cache @(IntraT (IntraAnalysisT PyCmp m)) cmp evalBdy
                 & runAlloc (const . allocPtr)
+                & runAlloc (const . allocFrm)
                 & runIntraAnalysis cmp 
                 
 

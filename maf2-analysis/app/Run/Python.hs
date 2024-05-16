@@ -20,6 +20,7 @@ import Language.Python.Common (annot)
 import Domain.Python.Syntax (showLoc)
 import Data.IORef 
 import System.IO 
+import Data.Function ((&))
 
 newtype Options = Options String 
    deriving Show
@@ -30,9 +31,8 @@ options = Options <$>
 
 printOSto :: Show obj => Map ObjAdr obj -> String
 printOSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs
-   where adrs   = filter (\case (PrmAdr _, _) -> False 
-                                _             -> True) 
-                  (Map.toList m)
+   where adrs   = Map.toList m
+                     & filter (\case (PrmAdr _, _) -> False ; _ -> True)
          indent = maximum (map (length . show . fst) adrs) + 5
 
 printRSto :: Map PyCmp (MayEscape (Set PyEsc) PyVal) -> String
@@ -75,6 +75,6 @@ runFile fileName =
       putStrLn "\n"
 
 main :: Options -> IO ()
-main (Options _) = runREPL
+main (Options fileName) = runFile fileName 
 
 

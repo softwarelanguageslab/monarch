@@ -161,9 +161,9 @@ callPrm pos ags = mjoinMap apply
 callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal 
 callClo pos ags = mjoinMap apply
  where apply (PyClo loc prs bdy lcl env) = 
-         withEnv (const env) $ do frame <- store loc (new $ constant $ TypeObject FrameType)
-                                  mapM_ (\(par, arg) -> bindPar par arg frame) (zip prs ags)
-                                  let bindings = map (,frame) lcl 
+         withEnv (const env) $ do frm <- store (FrmLoc loc) (new $ constant $ TypeObject FrameType)
+                                  mapM_ (\(par, arg) -> bindPar par arg frm) (zip prs ags)
+                                  let bindings = map (,frm) lcl 
                                   withExtendedEnv bindings $ M.call (FuncBdy loc bdy)
 
 bindPar :: PyM pyM obj => PyPar -> PyVal -> ObjAdr -> pyM ()
