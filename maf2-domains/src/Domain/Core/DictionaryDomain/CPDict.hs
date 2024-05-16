@@ -69,8 +69,8 @@ instance CPDict k v => DictionaryDomain (CPDictionary k v) where
       | v == bottom = d                                
    updateWeak _ _ d@BotDict = d                           
    updateWeak (Constant key) vlu (CPDict kys dct joi) =
-      CPDict (Set.insert key kys) (Map.insertWith join key vlu dct) (joi `join` vlu)
-   updateWeak (Constant key) vlu (TopDict kys joi) = TopDict (Set.insert key kys) (joi `join` vlu)
+      CPDict kys (Map.insertWith join key vlu dct) (joi `join` vlu)
+   updateWeak (Constant _) vlu (TopDict kys joi) = TopDict kys (joi `join` vlu)
    updateWeak Top vlu (CPDict kys _ joi) = TopDict kys (joi `join` vlu)
    updateWeak Top vlu (TopDict kys joi) = TopDict kys (joi `join` vlu)
 
