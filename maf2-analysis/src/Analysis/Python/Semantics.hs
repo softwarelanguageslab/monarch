@@ -167,6 +167,6 @@ callClo pos ags = mjoinMap apply
                                   withExtendedEnv bindings $ M.call (FuncBdy loc bdy)
 
 bindPar :: PyM pyM obj => PyPar -> PyVal -> ObjAdr -> pyM ()
-bindPar (Prm ide _) vlu = assignAttrAt (ideName $ lexIde ide) vlu 
-bindPar (VarArg _ _) vlu = todo "vararg parameter"
-bindPar (VarKeyword _ _) vlu = todo "keyword parameters"
+bindPar (Prm ide _) = assignAttrAt (ideName $ lexIde ide) 
+bindPar (VarArg _ _) = todo "vararg parameter"
+bindPar (VarKeyword _ _) = todo "keyword parameters"
