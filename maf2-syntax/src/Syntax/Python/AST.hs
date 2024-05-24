@@ -14,7 +14,6 @@ module Syntax.Python.AST(
    Program(..), 
    Lhs(..), 
    Ide(..), 
-   Arg(..), 
    Stmt(..), 
    Exp(..), 
    ideName, 
@@ -155,11 +154,11 @@ makeSeq [stm] = stm
 makeSeq lst = Seq () lst 
 
 -- | A reduced set of expressions
-data Exp a ξ = Lam [Par a ξ] (Stmt a ξ) a (XLam ξ a) -- ^ a less restricted version of Python's lambda
-             | Var (XIde ξ a)                          -- ^ a variable 
-             | Read (Exp a ξ) (Ide a) a                -- ^ field access e.x
-             | Call (Exp a ξ) [Arg a ξ] a              -- ^ function call
-             | Literal (Lit a ξ)                       -- ^ a value literal
+data Exp a ξ = Lam [Par a ξ] (Stmt a ξ) a (XLam ξ a)           -- ^ a less restricted version of Python's lambda
+             | Var (XIde ξ a)                                  -- ^ a variable 
+             | Read (Exp a ξ) (Ide a) a                        -- ^ field access e.x
+             | Call (Exp a ξ) [Exp a ξ] [(Ide a, Exp a ξ)] a   -- ^ function call
+             | Literal (Lit a ξ)                               -- ^ a value literal
 
 deriving instance (Holds Show ξ a) => Show (Exp a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Exp a ξ)
@@ -176,12 +175,12 @@ deriving instance (Holds Eq   ξ a) => Eq (Par a ξ)
 
 
 -- | Arguments
-data Arg a ξ = PosArg (Exp a ξ) a         -- ^ Positional argument
-             | KeyArg (Ide a) (Exp a ξ) a -- ^ Keyword argument 
+--data Arg a ξ = PosArg (Exp a ξ) a         -- ^ Positional argument
+--             | KeyArg (Ide a) (Exp a ξ) a -- ^ Keyword argument 
 
-deriving instance (Holds Show ξ a) => Show (Arg a ξ)
-deriving instance (Holds Ord  ξ a) => Ord (Arg a ξ)
-deriving instance (Holds Eq   ξ a) => Eq (Arg a ξ)
+--deriving instance (Holds Show ξ a) => Show (Arg a ξ)
+--deriving instance (Holds Ord  ξ a) => Ord (Arg a ξ)
+--deriving instance (Holds Eq   ξ a) => Eq (Arg a ξ)
 
 
 -- | The left-hand-side of an assignment
@@ -260,11 +259,12 @@ instance Pretty (Exp a AfterLexicalAddressing) where
    pretty (Var x) = pretty x
    pretty (Read e x _) =
       pretty e >> out "." >> pretty x
-   pretty (Call e ags _) = do
+   pretty (Call e ags kwags _) = do
       pretty e
       out "("
-      sequence_ (intersperse (out ",") (map pretty ags))
+      sequence_ $ intersperse (out ",") $ map pretty ags ++ map (\(k,r) -> pretty k >> out "=" >> pretty r) kwags
       out ")"
+
    pretty (Literal l) = pretty l
 
 instance Pretty (Lit a AfterLexicalAddressing) where
@@ -280,9 +280,6 @@ instance Pretty (IdeLex a) where
 instance Pretty (Ide a) where
    pretty = out . ideName
 
-instance Pretty (Arg a AfterLexicalAddressing) where
-   pretty (PosArg e _)   = pretty e
-   pretty (KeyArg x e _) = pretty x >> out "=" >> pretty e
 instance Pretty (Par a AfterLexicalAddressing) where
    pretty (Prm ide _) = pretty ide
    pretty (VarArg ide _) = out "*" >> pretty ide
