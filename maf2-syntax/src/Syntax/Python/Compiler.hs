@@ -182,10 +182,13 @@ compileArgs args = (posCompiled, kwCompiled)
 compileClassInstance :: SrcSpan -> String -> [Argument SrcSpan] -> Exp SrcSpan AfterSimplification
 compileClassInstance a nam ags =
    -- First find out which meta-class to use for the instantation
+   -- NOTE -- this transformation assumes that:
+   -- * the variable 'type' is not shadowed
+   -- * the metaclass expression is a simple expression (easily fixable though)
    let (posArgs, kwArgs) = compileArgs ags
        metaclass = fromMaybe (Var (Ide (Ident "type" a))) $ lookup "metaclass" $ map (first ideName) kwArgs  --findKeyword "metaclass" arguments (Var (Ide (Ident "type" a))) a
    in Call (Read metaclass (Ide (Ident "__new__" a)) a)
-           [Var (Ide (Ident "type" a)),
+           [metaclass,
             Literal (String nam a),
             Literal (Tuple posArgs a),
             Literal (Dict a)]
