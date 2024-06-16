@@ -5,7 +5,6 @@ module Domain.Python.Syntax(    -- TODO [?]: should this be integrated into Anal
     PyIde, 
     lexNam,
     PyPar, 
-    PyArg, 
     PyLit, 
     PyLoc, 
     showLoc,
@@ -24,7 +23,6 @@ type PyPrg = Program PyLoc PyLan
 type PyStm = Stmt PyLoc PyLan
 type PyExp = Exp PyLoc PyLan
 type PyLhs = Lhs PyLoc PyLan
-type PyArg = Arg PyLoc PyLan
 type PyPar = Par PyLoc PyLan  
 type PyLit = Lit PyLoc PyLan
 type PyIde = IdeLex PyLoc 

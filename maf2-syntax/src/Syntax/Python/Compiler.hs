@@ -27,7 +27,8 @@ import Data.Bitraversable
 import Control.Monad.Cond
 import Language.Python.Common.SrcLocation (spanning)
 import Language.Python.Common (Span)
-import Data.Bifunctor (Bifunctor(second))
+import Data.Bifunctor (Bifunctor(second, first)) 
+import Data.Function ((&))
 
 
 todo :: String -> a
@@ -51,7 +52,7 @@ parse nam = parseFile nam >=> (\ex -> runLexical <$> runReaderT (compile ex) Not
 type SimplifyM m a = MonadReader (Maybe (Ide a)) m
 
 thunkify :: a -> Stmt a AfterSimplification -> Stmt a AfterSimplification
-thunkify a bdy = StmtExp () (Call (Lam [] bdy a ()) [] a) a
+thunkify a bdy = StmtExp () (Call (Lam [] bdy a ()) [] [] a) a
 
 -- | Generate a (potentially namespaced) lhs pattern
 namespacedLhs :: SimplifyM m a => Ide a -> m (Lhs a AfterSimplification)
@@ -132,7 +133,7 @@ compileExp (Ellipsis _)        = todo "nothing"
 compileExp (ByteStrings _ _)   = todo "eval bytestrings"
 compileExp (Strings ss a)       = Literal (String (concat ss) a)
 -- compound expressions
-compileExp c@(AST.Call fun arg a)     = Call (compileExp fun) (map compileArg arg) a
+compileExp c@(AST.Call fun arg a)     = compileCall fun arg a -- Call (compileExp fun) (map compileArg arg) a
 compileExp (Subscript e i _)          = todo "eval subscript"
 compileExp (SlicedExpr e sl _)        = todo "eval sliced"
 compileExp (Yield yld _)              = todo "eval yield"
@@ -154,33 +155,42 @@ compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ 
 compileExp (AST.Tuple exs _)          = todo "eval tuples"
 compileExp ex = error "unsupported expression"-- ++ show (pretty ex))
 
-compileArg :: Argument SrcSpan -> Arg SrcSpan AfterSimplification
-compileArg (ArgExpr e a) = PosArg (compileExp e) a
-compileArg (ArgKeyword k e a) = KeyArg (Ide k) (compileExp e) a
-compileArg _ = error "should not happen for compileArg"
+compileCall :: Expr SrcSpan -> [Argument SrcSpan] -> SrcSpan -> Exp SrcSpan AfterSimplification
+compileCall fun args = Call (compileExp fun) posArgs kwArgs 
+   where (posArgs, kwArgs) = compileArgs args
 
-findKeyword :: Span SrcSpan => String -> [Arg SrcSpan ξ] -> Exp SrcSpan ξ -> SrcSpan -> (Exp SrcSpan ξ, SrcSpan)
-findKeyword nam [] def defa = (def, defa)
-findKeyword needle (KeyArg (Ide (Ident nam a)) ex _ : _)  _ _
-   | nam == needle = (ex, a)
-findKeyword nam (_ : ags) def defa = findKeyword nam ags def defa
+compileArgs :: [Argument SrcSpan] -> ([Exp SrcSpan AfterSimplification], [(Ide SrcSpan, Exp SrcSpan AfterSimplification)])
+compileArgs args = (posCompiled, kwCompiled)
+   where (posArgs, kwArgs) = args & span (\case ArgExpr{} -> True
+                                                _         -> False) 
+         posCompiled = posArgs & map (\case ArgExpr e _ -> compileExp e
+                                            _           -> error "should not happen!")
+         kwCompiled = kwArgs & map (\case ArgKeyword k e _ -> (Ide k, compileExp e)
+                                          _                -> error "nonkeyword argument not allowed after keywords")
 
-positional :: [Arg a ξ] -> [Exp a ξ]
-positional = map (\case PosArg e _ -> e) . filter (\case PosArg _ _ -> True ; KeyArg {} -> False)
+--findKeyword :: Span SrcSpan => String -> [Arg SrcSpan ξ] -> Exp SrcSpan ξ -> SrcSpan -> (Exp SrcSpan ξ, SrcSpan)
+--findKeyword nam [] def defa = (def, defa)
+--findKeyword needle (KeyArg (Ide (Ident nam a)) ex _ : _)  _ _
+--   | nam == needle = (ex, a)
+--findKeyword nam (_ : ags) def defa = findKeyword nam ags def defa
+
+--positional :: [Arg a ξ] -> [Exp a ξ]
+--positional = map (\case PosArg e _ -> e) . filter (\case PosArg _ _ -> True ; KeyArg {} -> False)
 
 -- | Compiles a class definition
 -- A class definition is compiled to 
 compileClassInstance :: SrcSpan -> String -> [Argument SrcSpan] -> Exp SrcSpan AfterSimplification
 compileClassInstance a nam ags =
    -- First find out which meta-class to use for the instantation
-   let arguments = map compileArg ags
-       (metaclass, a') = findKeyword "metaclass" arguments (Var (Ide (Ident "type" a))) a
-       superclasses    = positional arguments
-   in Call (Read metaclass (Ide (Ident "__new__" a')) a')
-           [PosArg (Var (Ide (Ident "type" a))) a,
-            PosArg (Literal (String nam a)) a,
-            PosArg (Literal (Tuple superclasses a)) a,
-            PosArg (Literal (Dict a)) a] a
+   let (posArgs, kwArgs) = compileArgs ags
+       metaclass = fromMaybe (Var (Ide (Ident "type" a))) $ lookup "metaclass" $ map (first ideName) kwArgs  --findKeyword "metaclass" arguments (Var (Ide (Ident "type" a))) a
+   in Call (Read metaclass (Ide (Ident "__new__" a)) a)
+           [Var (Ide (Ident "type" a)),
+            Literal (String nam a),
+            Literal (Tuple posArgs a),
+            Literal (Dict a)]
+           []
+           a 
 
 
 -- | Compiles a class body
@@ -199,9 +209,9 @@ binaryToCall op left right a =
    let compiledLeft  = compileExp left
        compiledRight = compileExp right
    in Call (Read compiledLeft (opToIde op) (spanning (annot left) (annot op)))
-           [PosArg compiledRight (annot right)]
+           [compiledRight]
+           []
            a
-
 
 opToIde :: Op a -> Ide a
 opToIde op = case op of
@@ -382,12 +392,11 @@ lexicalExp (Lam prs stmt a ()) = do
          overPar f (VarKeyword ide a) = VarKeyword <$> f ide <*> pure a
 
 lexicalExp (Read e x a)         = Read <$> lexicalExp e <*> pure x <*> pure a
-lexicalExp (Call e ags a)       = Call <$> lexicalExp e <*> mapM lexicalArg ags <*> pure a
+lexicalExp (Call e ags kwa a)   = Call <$> lexicalExp e 
+                                       <*> mapM lexicalExp ags 
+                                       <*> mapM (\(ide, exp) -> (ide,) <$> lexicalExp exp) kwa 
+                                       <*> pure a
 lexicalExp (Literal lit)        = Literal <$> lexicalLit lit
-
-lexicalArg :: (LexicalM m a) => Arg a AfterSimplification -> m (Arg a AfterLexicalAddressing)
-lexicalArg (PosArg e a)   = PosArg <$> lexicalExp e <*> pure a
-lexicalArg (KeyArg x e a) = KeyArg x <$> lexicalExp e <*> pure a
 
 lexicalLit :: (LexicalM m a) => Lit a AfterSimplification -> m (Lit a AfterLexicalAddressing)
 lexicalLit (Bool b a)    = return $ Bool b a

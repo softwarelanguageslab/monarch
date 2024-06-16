@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Analysis.Python.Semantics where
 
@@ -14,7 +15,7 @@ import Analysis.Python.Primitives
 import Analysis.Monad hiding (eval, call, get)
 import qualified Analysis.Monad.ComponentTracking as M
 
-import Control.Monad (zipWithM, (>=>), (<=<), void)
+import Control.Monad (zipWithM, (>=>), (<=<), void, foldM, when)
 import qualified Domain.Core.SeqDomain as SeqDomain
 import Lattice
 import Control.Monad.Join
@@ -23,8 +24,9 @@ import Data.Void
 import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Map as Map 
+import qualified Data.Set as Set 
 import Prelude hiding (break, exp, lookup)
-import Data.Bifunctor (Bifunctor(bimap))
+import Data.Bifunctor (Bifunctor(bimap), second)
 import Data.Functor (($>))
 import Analysis.Python.Escape (PyEscape(..))
 
@@ -105,11 +107,11 @@ execWhi :: PyM pyM obj => PyExp -> PyStm -> PyLoc -> pyM ()
 execWhi cnd bdy loc = void $ M.call @PyVal (LoopBdy loc cnd bdy) 
 
 eval :: PyM pyM obj => PyExp -> pyM PyVal
-eval (Lam prs bdy loc lcl) = evalLam prs bdy loc lcl
-eval (Var ide)             = evalVar ide
-eval (Literal lit)         = evalLit lit
-eval (Call fun arg loc)    = evalCll fun arg loc
-eval (Read obj nam loc)    = evalRea obj (ideName nam) loc
+eval (Lam prs bdy loc lcl)  = evalLam prs bdy loc lcl
+eval (Var ide)              = evalVar ide
+eval (Literal lit)          = evalLit lit
+eval (Call fun arg kwa loc) = evalCll fun arg kwa loc
+eval (Read obj nam loc)     = evalRea obj (ideName nam) loc
 
 evalRea :: PyM pyM obj => PyExp -> String -> PyLoc -> pyM PyVal
 evalRea obj nam loc = lookupAttr loc nam =<< eval obj
@@ -134,39 +136,46 @@ evalLit (Dict _)           = todo "dictionary literal"
 
 -- | Applies a procedure
 
-evalCll :: PyM pyM obj => PyExp -> [PyArg] -> PyLoc -> pyM PyVal
-evalCll opr opd loc = do fun <- eval opr
-                         ags <- mapM evalArg opd
-                         call loc ags fun
-   where evalArg (PosArg arg _) = eval arg
-         evalArg (KeyArg _ _ _) = todo "keyword arguments"
+evalCll :: PyM pyM obj => PyExp -> [PyExp] -> [(Ide PyLoc, PyExp)] -> PyLoc -> pyM PyVal
+evalCll opr pos kwa loc = do fun <- eval opr
+                             psv <- mapM eval pos
+                             kwv <- mapM (\(ide, exp) -> (ide,) <$> eval exp) kwa 
+                             call loc psv kwv fun
 
-call :: PyM pyM obj => PyLoc -> [PyVal] -> PyVal -> pyM PyVal 
-call loc ags = callObj loc ags <=< pyDeref' 
+call :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> PyVal -> pyM PyVal 
+call loc pos kwa = callObj loc pos kwa <=< pyDeref' 
 
-callObj :: PyM pyM obj => PyLoc -> [PyVal] -> obj -> pyM PyVal 
-callObj pos ags obj = condsCP [(return (has @BndPrm obj), callBnd pos ags (get @BndPrm obj)),
-                               (return (has @CloPrm obj), callClo pos ags (get @CloPrm obj)),
-                               (return (has @PrmPrm obj), callPrm pos ags (get @PrmPrm obj))]
-                   {- else -} (escape NotCallable)
-
-callBnd :: PyM pyM obj => PyLoc -> [PyVal] -> Map ObjAdr PyVal -> pyM PyVal 
-callBnd pos ags = mjoinMap apply . Map.toList
-  where apply (rcv, fns) = call pos (injectAdr rcv : ags) fns 
+callObj :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> obj -> pyM PyVal 
+callObj loc pos kwa obj = condsCP [(return (has @BndPrm obj), callBnd loc pos kwa (get @BndPrm obj)),
+                                   (return (has @CloPrm obj), callClo loc pos kwa (get @CloPrm obj)),
+                                   (return (has @PrmPrm obj), callPrm loc pos (get @PrmPrm obj))]
+                      {- else -}  (escape NotCallable)
 
 callPrm :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyPrim -> pyM PyVal 
 callPrm pos ags = mjoinMap apply
  where apply prm = applyPrim prm pos ags
 
-callClo :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyClo -> pyM PyVal 
-callClo pos ags = mjoinMap apply
- where apply (PyClo loc prs bdy lcl env) = 
-         withEnv (const env) $ do frm <- store (FrmLoc loc) (new $ constant $ TypeObject FrameType)
-                                  mapM_ (\(par, arg) -> bindPar par arg frm) (zip prs ags)
-                                  let bindings = map (,frm) lcl 
-                                  withExtendedEnv bindings $ M.call (FuncBdy loc bdy)
+callBnd :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> Map ObjAdr PyVal -> pyM PyVal 
+callBnd loc pos kwa = mjoinMap apply . Map.toList
+  where apply (rcv, fns) = call loc (injectAdr rcv : pos) kwa fns 
 
-bindPar :: PyM pyM obj => PyPar -> PyVal -> ObjAdr -> pyM ()
-bindPar (Prm ide _) = assignAttrAt (ideName $ lexIde ide) 
-bindPar (VarArg _ _) = todo "vararg parameter"
-bindPar (VarKeyword _ _) = todo "keyword parameters"
+callClo :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> Set PyClo -> pyM PyVal 
+callClo _ pos kwa = mjoinMap apply
+ where apply (PyClo loc prs bdy lcl env) = 
+         withEnv (const env) $ do frm  <- store (FrmLoc loc) (new $ constant $ TypeObject FrameType)
+                                  let ari = length prs 
+                                  let psn = length pos 
+                                  let kps = drop psn prs 
+                                  let akw = Set.fromList $ map (ideName . fst) kwa
+                                  let pkw = Set.fromList $ map parNam kps 
+                                  if psn <= ari && akw == pkw 
+                                    then do mapM_ (\(par, arg) -> assignAttrAt (parNam par) arg frm) (zip prs pos) -- bind positional args 
+                                            mapM_ (\(kyw, arg) -> assignAttrAt (ideName kyw) arg frm) kwa             -- bind keyword args
+                                            let bindings = map (,frm) lcl 
+                                            withExtendedEnv bindings $ M.call (FuncBdy loc bdy)   
+                                    else escape ArityError  
+
+parNam :: PyPar -> String 
+parNam (Prm ide _) = ideName (lexIde ide) 
+parNam (VarArg _ _) = todo "vararg parameter"
+parNam (VarKeyword _ _) = todo "varkeyword parameters"
