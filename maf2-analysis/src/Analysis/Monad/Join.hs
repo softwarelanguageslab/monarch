@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module Analysis.Monad.Join (
-    JoinT,
+    JoinT(..),
     NonDetT,  
     runJoinT,
     runNonDetT,
