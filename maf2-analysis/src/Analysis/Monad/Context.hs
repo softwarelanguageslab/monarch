@@ -3,7 +3,7 @@
 
 module Analysis.Monad.Context (
    CtxM(..),
-   CtxT,
+   CtxT(..),
    runCtx,
 ) where
 
