@@ -35,20 +35,20 @@ import Data.List (intercalate)
 data PyAbsKey = IntKey
               | ReaKey  
               | BlnKey
-              | StrKey
 
 type PyPrm (m :: [PyAbsKey :-> Type]) vlu adr clo =
   '[
     IntPrm ::-> Assoc IntKey m,
     ReaPrm ::-> Assoc ReaKey m,
     BlnPrm ::-> Assoc BlnKey m,
-    StrPrm ::-> Assoc StrKey m,
+    StrPrm ::-> CP String, 
     PrmPrm ::-> Set PyPrim,
     CloPrm ::-> Set clo,
     BndPrm ::-> Map adr vlu,    -- alternative, but less precise: (PyVal, PyVal)
     TupPrm ::-> CPList vlu,     -- TODO: could use a more optimised representation (e.g., CPVector)
     LstPrm ::-> CPList vlu,
-    NonPrm ::-> ()
+    NonPrm ::-> (),
+    DctPrm ::-> CPDictionary String vlu
   ]
 
 --
@@ -66,11 +66,10 @@ type AllAbs m vlu adr clo = (AllJoin m vlu adr clo,
                              BoolDomain   (Assoc BlnKey m),
                              IntDomain    (Assoc IntKey m),
                              Domain.Rea   (Assoc IntKey m) ~ Assoc ReaKey m,
-                             Domain.Str   (Assoc IntKey m) ~ Assoc StrKey m,
+                             Domain.Str   (Assoc IntKey m) ~ CP String,
                              Domain.Boo   (Assoc IntKey m) ~ Assoc BlnKey m,
                              RealDomain   (Assoc ReaKey m),
-                             Domain.Boo   (Assoc ReaKey m) ~ Assoc BlnKey m,
-                             StringDomain (Assoc StrKey m))
+                             Domain.Boo   (Assoc ReaKey m) ~ Assoc BlnKey m)
 
 deriving instance (JoinLattice vlu, ForAll PyPrmKey (AtKey1 Eq       (PyPrm m vlu adr clo))) => Eq (PyObjHMap m vlu adr clo)
 instance          (JoinLattice vlu, ForAll PyPrmKey (AtKey1 Joinable (PyPrm m vlu adr clo))) => Joinable (PyObjHMap m vlu adr clo) where
@@ -136,5 +135,4 @@ instance (Ord clo, Ord adr, AllAbs m vlu adr clo) => PyObj (PyObjHMap m vlu adr 
 
 type PyObjCP = PyObjHMap '[IntKey ::-> CP Integer,
                            ReaKey ::-> CP Double,  
-                           BlnKey ::-> CP Bool,
-                           StrKey ::-> CP String]
+                           BlnKey ::-> CP Bool]

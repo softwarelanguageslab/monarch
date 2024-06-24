@@ -27,6 +27,7 @@ library
       Domain.Class
       Domain.Core
       Domain.Core.HMapDomain
+      Domain.Core.DictionaryDomain
       Domain.Core.SeqDomain
       Domain.Scheme
       Domain.Scheme.Class
@@ -65,7 +66,6 @@ library
       Domain.Core.CharDomain
       Domain.Core.CharDomain.Class
       Domain.Core.CharDomain.ConstantPropagation
-      Domain.Core.DictionaryDomain
       Domain.Core.DictionaryDomain.Class
       Domain.Core.DictionaryDomain.CPDict
       Domain.Core.DictionaryDomain.SetDict

@@ -49,7 +49,10 @@ class (
     Domain.Str    (Abs obj IntPrm) ~ Abs obj StrPrm, 
     RealDomain    (Abs obj ReaPrm),
     Domain.Boo    (Abs obj ReaPrm) ~ Abs obj BlnPrm,
-    StringDomain  (Abs obj StrPrm)
+    StringDomain  (Abs obj StrPrm),
+    DictionaryDomain (Abs obj DctPrm),
+    DKey          (Abs obj DctPrm) ~ Abs obj StrPrm,
+    DVlu          (Abs obj DctPrm) ~ Ref obj  
   ) 
   => 
   PyObj obj where

@@ -53,6 +53,7 @@ library:
     - Domain.Core 
     - Domain.Core.HMapDomain 
     - Domain.Core.SeqDomain 
+    - Domain.Core.DictionaryDomain
     - Domain.Scheme
     - Domain.Scheme.Class
     - Domain.Scheme.Derived

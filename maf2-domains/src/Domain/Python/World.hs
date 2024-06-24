@@ -17,6 +17,7 @@ data PyType = NoneType
             | TupleType
             | PrimType
             | BoundType
+            | DictionaryType
             | CloType
             | FloatType
             | ListType 
@@ -25,17 +26,18 @@ data PyType = NoneType
 
 -- | The name of a built-in Python type 
 name :: PyType -> String
-name NoneType   = "NoneType"
-name IntType    = "int"
-name FloatType  = "float"
-name BoolType   = "bool"
-name StringType = "str"
-name TupleType  = "tuple"
-name PrimType   = "primitive"
-name CloType    = "function"
-name BoundType  = "bound function" 
-name ListType   = "list"
-name FrameType  = "frame"
+name NoneType         = "NoneType"
+name IntType          = "int"
+name FloatType        = "float"
+name BoolType         = "bool"
+name StringType       = "str"
+name TupleType        = "tuple"
+name PrimType         = "primitive"
+name CloType          = "function"
+name BoundType        = "bound function" 
+name DictionaryType   = "dictionary"
+name ListType         = "list"
+name FrameType        = "frame"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -59,15 +61,16 @@ methods FloatType = [(AddAttr,      FloatAdd),
                      (GtAttr,       FloatGt),
                      (LeAttr,       FloatLe),
                      (GeAttr,       FloatGe)] 
-methods NoneType    = []
-methods BoolType    = []
-methods StringType  = []
-methods TupleType   = [] 
-methods PrimType    = []
-methods BoundType   = []
-methods CloType     = []
-methods ListType    = []
-methods FrameType   = []
+methods NoneType          = []
+methods BoolType          = []
+methods StringType        = []
+methods TupleType         = [] 
+methods PrimType          = []
+methods BoundType         = []
+methods CloType           = []
+methods ListType          = []
+methods FrameType         = []
+methods DictionaryType    = [] 
 
 -- | Built-in primitives in Python
 data PyPrim     = 
@@ -177,6 +180,7 @@ data PyPrmKey = IntPrm
               | TupPrm
               | LstPrm
               | NonPrm 
+              | DctPrm
   deriving (Eq, Ord, Show)
 
 genHKeys ''PyPrmKey
@@ -192,6 +196,7 @@ classFor SBndPrm = BoundType
 classFor STupPrm = TupleType
 classFor SLstPrm = ListType 
 classFor SNonPrm = NoneType 
+classFor SDctPrm = DictionaryType
 
 -- | Built-in Python errors
 data PyError = AttributeNotFound

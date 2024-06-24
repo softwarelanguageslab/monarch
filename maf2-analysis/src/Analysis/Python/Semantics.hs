@@ -17,6 +17,7 @@ import qualified Analysis.Monad.ComponentTracking as M
 
 import Control.Monad (zipWithM, (>=>), (<=<), void, foldM, when)
 import qualified Domain.Core.SeqDomain as SeqDomain
+import qualified Domain.Core.DictionaryDomain as DctDomain 
 import Lattice
 import Control.Monad.Join
 import Control.Monad.Escape
@@ -75,7 +76,7 @@ exec (Global x _ _)              = absurd x          -- these can't occur in mic
 execExp :: PyM pyM obj => PyExp -> pyM ()
 execExp = void . eval
 
-execAss :: forall pyM obj . PyM pyM obj => PyLhs -> PyExp -> pyM ()
+execAss :: PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
    where assignTo (IdePat ide) val     = do (frm, nam) <- frame ide
                                             assignAttrAt nam val frm 
@@ -126,13 +127,14 @@ evalVar var = do (adr, nam) <- frame var
                  frm <- lookupAdr adr
                  return $ getAttr nam frm 
 
-evalLit :: PyM pyM obj => PyLit -> pyM PyVal
+evalLit :: forall pyM obj . PyM pyM obj => PyLit -> pyM PyVal
 evalLit (Bool bln loc)     = pyAlloc loc (from' @BlnPrm bln)
 evalLit (Integer int loc)  = pyAlloc loc (from' @IntPrm int)
 evalLit (Real rea loc)     = pyAlloc loc (from' @ReaPrm rea)
 evalLit (String str loc)   = pyAlloc loc (from' @StrPrm str)
 evalLit (Tuple eps loc)    = pyAlloc loc . from @TupPrm . SeqDomain.fromList =<< mapM eval eps 
-evalLit (Dict _)           = todo "dictionary literal"
+evalLit (Dict bds loc)     = pyAlloc loc . from @DctPrm . DctDomain.from =<< mapM evalBnd bds
+   where evalBnd (kexp, vexp) = (,) <$> (eval kexp >>= (pyDeref' >=> at @StrPrm)) <*> eval vexp 
 
 -- | Applies a procedure
 

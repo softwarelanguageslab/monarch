@@ -141,7 +141,7 @@ compileExp (Generator comp _)         = todo "eval generator expression"
 compileExp (Await ex _)               = todo "eval await expression"
 compileExp (ListComp comp _)          = todo "eval list comprehension"
 compileExp (List exs _)               = todo "eval list expressions"
-compileExp (Dictionary map _)         = todo "eval dictionary expr"
+compileExp (Dictionary map a)         = Literal (compileDict map a)
 compileExp (DictComp comp _)          = todo "eval dictionary comprehension"
 compileExp (Set exs _)                = todo "eval sets"
 compileExp (SetComp comp _)           = todo "eval set comprehension"
@@ -191,7 +191,7 @@ compileClassInstance a nam ags =
            [metaclass,
             Literal (String nam a),
             Literal (Tuple posArgs a),
-            Literal (Dict a)]
+            Literal (Dict [] a)]
            []
            a 
 
@@ -215,6 +215,11 @@ binaryToCall op left right a =
            [compiledRight]
            []
            a
+
+compileDict :: [DictKeyDatumList SrcSpan] -> SrcSpan -> Lit SrcSpan AfterSimplification
+compileDict bds = Dict (map compileBds bds)
+   where compileBds (DictMappingPair kexpr vexpr) = (compileExp kexpr, compileExp vexpr)
+         compileBds _ = error "unsupported dictionary entry (unwrapping)"
 
 opToIde :: Op a -> Ide a
 opToIde op = case op of
@@ -407,7 +412,7 @@ lexicalLit (Integer i a) = return $ Integer i a
 lexicalLit (Real r a)    = return $ Real r a
 lexicalLit (String i a)  = return $ String i a
 lexicalLit (Tuple es a)  = Tuple <$> mapM lexicalExp es <*> pure a
-lexicalLit (Dict a)      = return $ Dict a
+lexicalLit (Dict bds a)  = Dict <$> mapM (\(k,v) -> (,) <$> lexicalExp k <*> lexicalExp v) bds <*> pure a 
 
 lexicalLhs :: (LexicalM m a) => Lhs a AfterSimplification -> m (Lhs a AfterLexicalAddressing)
 lexicalLhs (Field e x a) = Field <$> lexicalExp e <*> pure x <*> pure a
