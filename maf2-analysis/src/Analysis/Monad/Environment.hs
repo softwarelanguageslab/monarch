@@ -3,7 +3,7 @@
 
 module Analysis.Monad.Environment (
    EnvM(..),
-   EnvT,
+   EnvT(..),
    runEnv,
 ) where
 

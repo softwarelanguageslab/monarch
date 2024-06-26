@@ -3,7 +3,7 @@
 
 module Analysis.Monad.Store (
     StoreM(..),
-    StoreT,
+    StoreT(..),
     StoreT',
     StackStoreT,
     runStoreT,
