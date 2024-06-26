@@ -70,7 +70,7 @@ methods BoundType         = []
 methods CloType           = []
 methods ListType          = []
 methods FrameType         = []
-methods DictionaryType    = [] 
+methods DictionaryType    = [(GetItemAttr, DictGetItem)]
 
 -- | Built-in primitives in Python
 data PyPrim     = 
@@ -96,6 +96,8 @@ data PyPrim     =
                 | FloatGt
                 | FloatLe
                 | FloatGe
+                -- dict primitives
+                | DictGetItem 
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 -- | Built-in attributes in Python
@@ -122,6 +124,7 @@ data PyAttr = ClassAttr
             | ModAttr 
             | NameAttr
             | MROAttr 
+            | GetItemAttr
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -148,6 +151,7 @@ attrStr LShiftAttr    = "__lshift__"
 attrStr RShiftAttr    = "__rshift__"
 attrStr NameAttr      = "__name__"
 attrStr MROAttr       = "__mro__"
+attrStr GetItemAttr   = "__getitem__"
 
 -- | Built-in objects in Python 
 data PyConstant = Type      -- 'type'

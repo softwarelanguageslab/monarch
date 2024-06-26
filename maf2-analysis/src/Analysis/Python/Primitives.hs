@@ -32,28 +32,30 @@ import Data.Singletons.TH
       
 applyPrim :: PyM pyM obj => PyPrim -> PyLoc -> [PyVal] -> pyM PyVal
 -- int primitives
-applyPrim IntAdd        = prim2 $ intBinop' Domain.plus 
-applyPrim IntSub        = prim2 $ intBinop' Domain.minus
-applyPrim IntMul        = prim2 $ intBinop' Domain.times  
-applyPrim IntTrueDiv    = prim2 $ intBinop @ReaPrm @ReaPrm intDiv Domain.div 
+applyPrim IntAdd        = prim2'' $ intBinop' Domain.plus 
+applyPrim IntSub        = prim2'' $ intBinop' Domain.minus
+applyPrim IntMul        = prim2'' $ intBinop' Domain.times  
+applyPrim IntTrueDiv    = prim2'' $ intBinop @ReaPrm @ReaPrm intDiv Domain.div 
   where intDiv a b = Monad.join $ liftM2 Domain.div (Domain.toReal a) (Domain.toReal b)
-applyPrim IntEq         = prim2 $ intBinop'' @BlnPrm Domain.eq
-applyPrim IntNe         = prim2 $ intBinop'' @BlnPrm Domain.ne 
-applyPrim IntLt         = prim2 $ intBinop'' @BlnPrm Domain.lt
-applyPrim IntGt         = prim2 $ intBinop'' @BlnPrm Domain.gt
-applyPrim IntLe         = prim2 $ intBinop'' @BlnPrm Domain.le
-applyPrim IntGe         = prim2 $ intBinop'' @BlnPrm Domain.ge 
+applyPrim IntEq         = prim2'' $ intBinop'' @BlnPrm Domain.eq
+applyPrim IntNe         = prim2'' $ intBinop'' @BlnPrm Domain.ne 
+applyPrim IntLt         = prim2'' $ intBinop'' @BlnPrm Domain.lt
+applyPrim IntGt         = prim2'' $ intBinop'' @BlnPrm Domain.gt
+applyPrim IntLe         = prim2'' $ intBinop'' @BlnPrm Domain.le
+applyPrim IntGe         = prim2'' $ intBinop'' @BlnPrm Domain.ge 
 -- float primitives
-applyPrim FloatAdd      = prim2 $ floatBinop @ReaPrm Domain.plus
-applyPrim FloatSub      = prim2 $ floatBinop @ReaPrm Domain.minus
-applyPrim FloatMul      = prim2 $ floatBinop @ReaPrm Domain.times
-applyPrim FloatTrueDiv  = prim2 $ floatBinop @ReaPrm Domain.div    
-applyPrim FloatEq       = prim2 $ floatBinop @BlnPrm Domain.eq 
-applyPrim FloatNe       = prim2 $ floatBinop @BlnPrm Domain.ne
-applyPrim FloatLt       = prim2 $ floatBinop @BlnPrm Domain.lt 
-applyPrim FloatGt       = prim2 $ floatBinop @BlnPrm Domain.gt 
-applyPrim FloatLe       = prim2 $ floatBinop @BlnPrm Domain.le
-applyPrim FloatGe       = prim2 $ floatBinop @BlnPrm Domain.ge 
+applyPrim FloatAdd      = prim2'' $ floatBinop @ReaPrm Domain.plus
+applyPrim FloatSub      = prim2'' $ floatBinop @ReaPrm Domain.minus
+applyPrim FloatMul      = prim2'' $ floatBinop @ReaPrm Domain.times
+applyPrim FloatTrueDiv  = prim2'' $ floatBinop @ReaPrm Domain.div    
+applyPrim FloatEq       = prim2'' $ floatBinop @BlnPrm Domain.eq 
+applyPrim FloatNe       = prim2'' $ floatBinop @BlnPrm Domain.ne
+applyPrim FloatLt       = prim2'' $ floatBinop @BlnPrm Domain.lt 
+applyPrim FloatGt       = prim2'' $ floatBinop @BlnPrm Domain.gt 
+applyPrim FloatLe       = prim2'' $ floatBinop @BlnPrm Domain.le
+applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge 
+-- dictionary primitives
+applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
 
 --
 -- Primitive helpers 
@@ -72,20 +74,28 @@ prim1 f loc [a1] = pyAlloc loc . from @r =<< f =<< at @a =<< pyDeref' a1
 prim1 _ _   _    = escape ArityError  
 
 prim2 :: PyM pyM obj
-        => (obj -> obj -> pyM obj)          -- ^ the primitive function
-        -> (PyLoc -> [PyVal] -> pyM PyVal)  -- ^ the resulting function 
-prim2 f loc [a1, a2] = do o1 <- pyDeref' a1
-                          o2 <- pyDeref' a2
-                          r  <- f o1 o2
-                          pyAlloc loc r 
-prim2 _ _   _        = escape ArityError  
+        => (PyLoc -> PyVal -> PyVal -> pyM PyVal)     -- ^ the primitive function
+        -> (PyLoc -> [PyVal]        -> pyM PyVal)     -- ^ the resulting function 
+prim2 f loc [a1, a2] = f loc a1 a2
+prim2 _ _ _          = escape ArityError
 
-prim2' :: forall a1 a2 r pyM obj . (PyM pyM obj, SingI a1, SingI a2, SingI r)
-        => (Abs obj a1 -> Abs obj a2 -> pyM (Abs obj r))  -- ^ the primitive function
-        -> (PyLoc -> [PyVal] -> pyM PyVal)                -- ^ the resulting function 
-prim2' f = prim2 $ \a b -> do va <- at @a1 a
-                              vb <- at @a2 b
-                              from @r <$> f va vb
+prim2' :: forall a1 a2 pyM obj . (SingI a1, SingI a2, PyM pyM obj)
+        => (PyLoc -> Abs obj a1 -> Abs obj a2 -> pyM PyVal)     -- ^ the primitive function
+        -> (PyLoc -> [PyVal] -> pyM PyVal)                      -- ^ the resulting function 
+prim2' f = prim2 $ \loc a1 a2 -> do v1 <- pyDeref' a1 >>= at @a1  
+                                    v2 <- pyDeref' a2 >>= at @a2
+                                    f loc v1 v2
+
+prim2'' :: PyM pyM obj
+        => (obj -> obj -> pyM obj)                      -- ^ the primitive function
+        -> (PyLoc -> [PyVal] -> pyM PyVal)              -- ^ the resulting function 
+prim2'' f = prim2 $ \loc a1 a2 -> do o1 <- pyDeref' a1
+                                     o2 <- pyDeref' a2
+                                     res <- f o1 o2
+                                     pyAlloc loc res 
+
+allocAt :: (Functor f, PyM pyM obj) => PyLoc -> f (pyM obj) -> f (pyM PyVal)
+allocAt loc = fmap (>>= pyAlloc loc)
 
 intBinop :: forall r1 r2 pyM obj . (PyM pyM obj, SingI r1, SingI r2)
           => (Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj r1))   -- the function for integers

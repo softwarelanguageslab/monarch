@@ -131,10 +131,10 @@ compileExp (Imaginary {})      = todo "eval imaginary numbers"
 compileExp (AST.Bool b a)      = Literal (Bool b a)
 compileExp (Ellipsis _)        = todo "nothing"
 compileExp (ByteStrings _ _)   = todo "eval bytestrings"
-compileExp (Strings ss a)       = Literal (String (concat ss) a)
+compileExp (Strings ss a)      = Literal (String (concat ss) a)
 -- compound expressions
 compileExp c@(AST.Call fun arg a)     = compileCall fun arg a -- Call (compileExp fun) (map compileArg arg) a
-compileExp (Subscript e i _)          = todo "eval subscript"
+compileExp (Subscript e i a)          = Call (Read (compileExp e) (Ide (Ident "__getitem__" a)) a) [compileExp i] [] a
 compileExp (SlicedExpr e sl _)        = todo "eval sliced"
 compileExp (Yield yld _)              = todo "eval yield"
 compileExp (Generator comp _)         = todo "eval generator expression"
