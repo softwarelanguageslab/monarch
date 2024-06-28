@@ -37,7 +37,6 @@ type instance Apply (AbsJoinLattice obj) k = JoinLattice (Abs obj k)
 class (
     JoinLattice obj,
     ForAll PyPrmKey (AbsJoinLattice obj),
-    Abs obj NonPrm ~ (),
     Abs obj PrmPrm ~ Set PyPrim, 
     Abs obj CloPrm ~ Set (Clo obj),
     Abs obj BndPrm ~ Map (Adr obj) (Ref obj),   -- TODO: this can be generalised  

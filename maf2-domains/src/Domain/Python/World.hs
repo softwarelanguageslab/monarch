@@ -191,7 +191,6 @@ data PyPrmKey = IntPrm
               | BndPrm
               | TupPrm
               | LstPrm
-              | NonPrm 
               | DctPrm
   deriving (Eq, Ord, Show)
 
@@ -207,7 +206,6 @@ classFor SCloPrm = CloType
 classFor SBndPrm = BoundType
 classFor STupPrm = TupleType
 classFor SLstPrm = ListType 
-classFor SNonPrm = NoneType 
 classFor SDctPrm = DictionaryType
 
 -- | Built-in Python errors

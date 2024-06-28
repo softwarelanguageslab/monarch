@@ -47,7 +47,6 @@ type PyPrm (m :: [PyAbsKey :-> Type]) vlu adr clo =
     BndPrm ::-> Map adr vlu,    -- alternative, but less precise: (PyVal, PyVal)
     TupPrm ::-> CPList vlu,     -- TODO: could use a more optimised representation (e.g., CPVector)
     LstPrm ::-> CPList vlu,
-    NonPrm ::-> (),
     DctPrm ::-> CPDictionary String vlu
   ]
 
