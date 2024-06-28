@@ -191,14 +191,12 @@ compileClassInstance a nam ags =
    -- * the metaclass expression is a simple expression (easily fixable though)
    let (posArgs, kwArgs) = compileArgs ags
        metaclass = fromMaybe (Var (Ide (Ident "type" a))) $ lookup "metaclass" $ map (first ideName) kwArgs  --findKeyword "metaclass" arguments (Var (Ide (Ident "type" a))) a
-   in Call (Read metaclass (Ide (Ident "__new__" a)) a)
-           [metaclass,
-            Literal (String nam a),
+   in Call metaclass
+           [Literal (String nam a),
             Literal (Tuple posArgs a),
             Literal (Dict [] a)]
            []
            a
-
 
 -- | Compiles a class body
 compileClassBdy :: SimplifyM m SrcSpan => Ide SrcSpan -> Suite SrcSpan -> m (Stmt SrcSpan AfterSimplification)
