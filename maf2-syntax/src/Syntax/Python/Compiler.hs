@@ -27,7 +27,7 @@ import Data.Bitraversable
 import Control.Monad.Cond
 import Language.Python.Common.SrcLocation (spanning)
 import Language.Python.Common (Span)
-import Data.Bifunctor (Bifunctor(second, first)) 
+import Data.Bifunctor (Bifunctor(second, first))
 import Data.Function ((&))
 
 
@@ -82,7 +82,11 @@ compileStmt (Class nam ags bdy a)         = do
    assignment <- assign (Ide nam) (compileClassInstance a (ident_string nam) ags)
    ltt <- thunkify a <$> compileClassBdy (Ide nam) bdy
    return $ makeSeq [assignment, ltt]
-compileStmt (Assign to expr _)            = Assg () <$> compileLhs to <*> return (compileExp expr)
+compileStmt (Assign [Subscript e i a1] r a2) = pure $ flip (StmtExp ()) a2 $ Call (Read (compileExp e) (Ide (Ident "__setitem__" a1)) a1)
+                                                                                  [compileExp i, compileExp r]
+                                                                                  []
+                                                                                  a2
+compileStmt (Assign to expr _)               = Assg () <$> compileLhs to <*> return (compileExp expr)
 compileStmt (AugmentedAssign to op exp a) = compileStmt (Assign [to] (BinaryOp (translateOp op) to exp a) a)
 compileStmt (Decorated decs def _)        = todo "eval decorated function"
 compileStmt (AST.Return expr a)           = pure $ Return () (fmap compileExp expr) a
@@ -156,13 +160,13 @@ compileExp (AST.Tuple exs _)          = todo "eval tuples"
 compileExp ex = error "unsupported expression"-- ++ show (pretty ex))
 
 compileCall :: Expr SrcSpan -> [Argument SrcSpan] -> SrcSpan -> Exp SrcSpan AfterSimplification
-compileCall fun args = Call (compileExp fun) posArgs kwArgs 
+compileCall fun args = Call (compileExp fun) posArgs kwArgs
    where (posArgs, kwArgs) = compileArgs args
 
 compileArgs :: [Argument SrcSpan] -> ([Exp SrcSpan AfterSimplification], [(Ide SrcSpan, Exp SrcSpan AfterSimplification)])
 compileArgs args = (posCompiled, kwCompiled)
    where (posArgs, kwArgs) = args & span (\case ArgExpr{} -> True
-                                                _         -> False) 
+                                                _         -> False)
          posCompiled = posArgs & map (\case ArgExpr e _ -> compileExp e
                                             _           -> error "should not happen!")
          kwCompiled = kwArgs & map (\case ArgKeyword k e _ -> (Ide k, compileExp e)
@@ -193,7 +197,7 @@ compileClassInstance a nam ags =
             Literal (Tuple posArgs a),
             Literal (Dict [] a)]
            []
-           a 
+           a
 
 
 -- | Compiles a class body
@@ -400,9 +404,9 @@ lexicalExp (Lam prs stmt a ()) = do
          overPar f (VarKeyword ide a) = VarKeyword <$> f ide <*> pure a
 
 lexicalExp (Read e x a)         = Read <$> lexicalExp e <*> pure x <*> pure a
-lexicalExp (Call e ags kwa a)   = Call <$> lexicalExp e 
-                                       <*> mapM lexicalExp ags 
-                                       <*> mapM (\(ide, exp) -> (ide,) <$> lexicalExp exp) kwa 
+lexicalExp (Call e ags kwa a)   = Call <$> lexicalExp e
+                                       <*> mapM lexicalExp ags
+                                       <*> mapM (\(ide, exp) -> (ide,) <$> lexicalExp exp) kwa
                                        <*> pure a
 lexicalExp (Literal lit)        = Literal <$> lexicalLit lit
 
@@ -412,7 +416,7 @@ lexicalLit (Integer i a) = return $ Integer i a
 lexicalLit (Real r a)    = return $ Real r a
 lexicalLit (String i a)  = return $ String i a
 lexicalLit (Tuple es a)  = Tuple <$> mapM lexicalExp es <*> pure a
-lexicalLit (Dict bds a)  = Dict <$> mapM (\(k,v) -> (,) <$> lexicalExp k <*> lexicalExp v) bds <*> pure a 
+lexicalLit (Dict bds a)  = Dict <$> mapM (\(k,v) -> (,) <$> lexicalExp k <*> lexicalExp v) bds <*> pure a
 
 lexicalLhs :: (LexicalM m a) => Lhs a AfterSimplification -> m (Lhs a AfterLexicalAddressing)
 lexicalLhs (Field e x a) = Field <$> lexicalExp e <*> pure x <*> pure a

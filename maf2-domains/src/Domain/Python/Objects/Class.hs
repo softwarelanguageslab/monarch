@@ -9,6 +9,7 @@ module Domain.Python.Objects.Class (
     set,
     setAttrs,
     atAttr,
+    modify,
 ) where
 
 import Lattice
@@ -28,6 +29,7 @@ import Data.Singletons
 import Data.Kind 
 import Data.Set (Set)
 import Data.Map (Map)
+import Control.Monad ((>=>))
 
 data AbsJoinLattice obj :: k ~> Constraint
 type instance Apply (AbsJoinLattice obj) k = JoinLattice (Abs obj k)
@@ -104,3 +106,6 @@ at obj = withC_ @(AbsJoinLattice obj) getField s
         getField = condCP (return $ hasPrm s obj)
                           (return $ getPrm s obj)
                           (escape WrongType) 
+
+modify :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => (Abs obj k -> Abs obj k) -> obj -> obj
+modify f obj = set @k (f $ get @k obj) obj 

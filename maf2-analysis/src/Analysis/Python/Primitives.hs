@@ -25,12 +25,16 @@ import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import Control.Monad (liftM2)
 import qualified Control.Monad as Monad 
 import Data.Singletons.TH
+import Analysis.Monad (StoreM(updateWith, lookupAdr))
+import Data.Functor (($>))
+import Control.Monad ((>=>))
+import Analysis.Monad.Store (deref')
 
 ---
 --- Primitives implementation
 ---
       
-applyPrim :: PyM pyM obj => PyPrim -> PyLoc -> [PyVal] -> pyM PyVal
+applyPrim :: forall pyM obj . PyM pyM obj => PyPrim -> PyLoc -> [PyVal] -> pyM PyVal
 -- int primitives
 applyPrim IntAdd        = prim2'' $ intBinop' Domain.plus 
 applyPrim IntSub        = prim2'' $ intBinop' Domain.minus
@@ -56,7 +60,14 @@ applyPrim FloatLe       = prim2'' $ floatBinop @BlnPrm Domain.le
 applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge 
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
-
+applyPrim DictSetItem   = prim3 $ \_ a1 a2 vlu -> do key <- pyDeref' a2 >>= at @StrPrm 
+                                                     mjoinMap (updateDctAdr key vlu) (addrs a1)
+                                                     return $ constant None
+   where updateDctAdr key vlu adr = condCP (has @DctPrm <$> lookupAdr adr) -- TODO: do the check in the update?
+                                           (updateWith (modify @DctPrm $ Domain.update key vlu) 
+                                                       (modify @DctPrm $ Domain.updateWeak key vlu) adr)
+                                           (escape WrongType)
+            
 --
 -- Primitive helpers 
 --
@@ -94,8 +105,11 @@ prim2'' f = prim2 $ \loc a1 a2 -> do o1 <- pyDeref' a1
                                      res <- f o1 o2
                                      pyAlloc loc res 
 
-allocAt :: (Functor f, PyM pyM obj) => PyLoc -> f (pyM obj) -> f (pyM PyVal)
-allocAt loc = fmap (>>= pyAlloc loc)
+prim3 :: PyM pyM obj
+        => (PyLoc -> PyVal -> PyVal -> PyVal -> pyM PyVal)     -- ^ the primitive function
+        -> (PyLoc -> [PyVal]                 -> pyM PyVal)     -- ^ the resulting function 
+prim3 f loc [a1, a2, a3] = f loc a1 a2 a3
+prim3 _ _ _              = escape ArityError
 
 intBinop :: forall r1 r2 pyM obj . (PyM pyM obj, SingI r1, SingI r2)
           => (Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj r1))   -- the function for integers
