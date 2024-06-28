@@ -56,8 +56,11 @@ init = mapM_ initConstant (all :: [PyConstant])
 initConstant :: (StoreM m ObjAdr obj, PyObj' obj) => PyConstant -> m ()
 initConstant c = writeAdr (allocCst c) (injectPyConstant c)
 
+typeVal :: PyType -> PyVal
+typeVal = constant . TypeObject
+
 new' :: PyObj' obj => PyType -> obj 
-new' = new . constant . TypeObject 
+new' = new . typeVal
 
 injectPyConstant :: PyObj' obj => PyConstant -> obj
 injectPyConstant True             = from' @BlnPrm Prelude.True
@@ -66,10 +69,10 @@ injectPyConstant None             = new' NoneType
 injectPyConstant GlobalFrame      = new' FrameType
 injectPyConstant (TypeName typ)   = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm) = from' @PrmPrm prm
-injectPyConstant (TypeMRO typ)    = from  @TupPrm (SeqDomain.fromList $ map constant mro)
+injectPyConstant (TypeMRO typ)    = from  @TupPrm (SeqDomain.fromList $ map typeVal mro)
   where mro = case typ of
-                ObjectType  -> [TypeObject ObjectType]
-                _           -> [TypeObject typ, TypeObject ObjectType]
+                ObjectType  -> [ObjectType]
+                _           -> [typ, ObjectType]
 injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new (constant (TypeObject TypeType)) 
   where typeAttrs = [(NameAttr, TypeName typ), (MROAttr, TypeMRO typ)]
         methodAttrs = map (second PrimObject) (methods typ)
