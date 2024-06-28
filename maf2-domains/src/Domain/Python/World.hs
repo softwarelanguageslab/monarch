@@ -11,6 +11,8 @@ import Data.Singletons (Sing)
 
 -- | Built-in types in Python
 data PyType = NoneType
+            | ObjectType
+            | TypeType 
             | BoolType
             | IntType
             | StringType
@@ -38,6 +40,8 @@ name BoundType        = "bound function"
 name DictionaryType   = "dictionary"
 name ListType         = "list"
 name FrameType        = "frame"
+name ObjectType       = "object"
+name TypeType         = "type"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -72,6 +76,8 @@ methods ListType          = []
 methods FrameType         = []
 methods DictionaryType    = [(GetItemAttr, DictGetItem),
                              (SetItemAttr, DictSetItem)]
+methods ObjectType        = []
+methods TypeType          = [] 
 
 -- | Built-in primitives in Python
 data PyPrim     = 
@@ -158,9 +164,7 @@ attrStr GetItemAttr   = "__getitem__"
 attrStr SetItemAttr   = "__setitem__"
 
 -- | Built-in objects in Python 
-data PyConstant = Type      -- 'type'
-                | Object    -- 'object'
-                | None
+data PyConstant = None
                 | True
                 | False
                 | GlobalFrame 
@@ -171,7 +175,7 @@ data PyConstant = Type      -- 'type'
   deriving (Eq, Ord, Show)
 
 instance Finite PyConstant where
-  all = [Type, Object, None, True, False, GlobalFrame] 
+  all = [None, True, False, GlobalFrame] 
         ++ map TypeObject all 
         ++ map TypeName   all 
         ++ map TypeMRO    all
