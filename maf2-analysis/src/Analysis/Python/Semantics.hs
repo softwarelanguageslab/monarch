@@ -30,6 +30,8 @@ import Prelude hiding (break, exp, lookup)
 import Data.Bifunctor (Bifunctor(bimap), second)
 import Data.Functor (($>))
 import Analysis.Python.Escape (PyEscape(..))
+import Domain (Domain(..))
+import Domain (BoolDomain(..))
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -39,7 +41,7 @@ todo = error . ("[TODO] NYI: " ++)
 evalBdy :: PyM m obj => PyBdy -> m PyVal
 evalBdy (Main prg) = catchReturn (exec (programStmt prg) $> constant None)
 evalBdy loop@(LoopBdy _ cnd bdy) = 
-   cond (eval cnd >>= isTrue)
+   cond (eval cnd >>= pyIsTrue)
         ((exec bdy >> M.call loop) `catch` \esc -> condsCP [(return (isContinue esc), M.call loop),
                                                             (return (isBreak esc), return (constant None))]
                                                 {- else -} (return $ constant None))
@@ -86,10 +88,10 @@ execAss lhs rhs = eval rhs >>= assignTo lhs
 
 execIff :: forall pyM obj . PyM pyM obj => [(PyExp, PyStm)] -> PyStm -> pyM ()
 execIff clauses els = conds (map (bimap check exec) clauses) (exec els)
-   where check = eval @pyM >=> isTrue  
+   where check = eval @pyM >=> pyIsTrue  
 
-isTrue :: PyM pyM obj => PyVal -> pyM (Abs obj BlnPrm)
-isTrue = pyDeref' >=> at @BlnPrm   
+pyIsTrue :: PyM pyM obj => PyVal -> pyM (Abs obj BlnPrm)
+pyIsTrue = pyDeref' >=> at @BlnPrm   
 
 execSeq :: PyM pyM obj => [PyStm] -> pyM ()
 execSeq = mapM_ exec
@@ -148,9 +150,9 @@ call :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> PyVal -> pyM 
 call loc pos kwa = callObj loc pos kwa <=< pyDeref' 
 
 callObj :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> obj -> pyM PyVal 
-callObj loc pos kwa obj = condsCP [(return (has @BndPrm obj), callBnd loc pos kwa (get @BndPrm obj)),
-                                   (return (has @CloPrm obj), callClo loc pos kwa (get @CloPrm obj)),
-                                   (return (has @PrmPrm obj), callPrm loc pos (get @PrmPrm obj))]
+callObj loc pos kwa obj = condsCP [(return (obj `isType` BoundType), callBnd loc pos kwa (get @BndPrm obj)),
+                                   (return (obj `isType` CloType),   callClo loc pos kwa (get @CloPrm obj)),
+                                   (return (obj `isType` PrimType),  callPrm loc pos (get @PrmPrm obj))]
                       {- else -}  (escape NotCallable)
 
 callPrm :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyPrim -> pyM PyVal 
@@ -181,3 +183,15 @@ parNam :: PyPar -> String
 parNam (Prm ide _) = ideName (lexIde ide) 
 parNam (VarArg _ _) = todo "vararg parameter"
 parNam (VarKeyword _ _) = todo "varkeyword parameters"
+
+-- TODO: move this elsewhere
+-- TODO: improve implementation?
+isType :: PyObj' obj => obj -> PyType -> CP Bool
+isType obj typ
+   | Set.null cls = bottom
+   | Set.size cls == 1 && adr `elem` cls = true 
+   | adr `notElem` cls = false 
+   | otherwise = boolTop 
+   where adr = allocCst $ TypeObject typ 
+         cls = addrs $ getAttr (attrStr ClassAttr) obj
+              
