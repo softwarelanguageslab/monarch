@@ -62,19 +62,26 @@ typeVal = constant . TypeObject
 new' :: PyObj' obj => PyType -> obj 
 new' = new . typeVal
 
+initialCst :: [(String, PyConstant)]
+initialCst = [("type", TypeObject TypeType),
+              ("True", True),
+              ("False", False),
+              ("None", None)]
+
 injectPyConstant :: PyObj' obj => PyConstant -> obj
 injectPyConstant True             = from' @BlnPrm Prelude.True
 injectPyConstant False            = from' @BlnPrm Prelude.False
 injectPyConstant None             = new' NoneType
-injectPyConstant GlobalFrame      = new' FrameType
+injectPyConstant GlobalFrame      = setAttrs initialBds $ new' FrameType
+  where initialBds = map (second constant) initialCst 
 injectPyConstant (TypeName typ)   = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm) = from' @PrmPrm prm
 injectPyConstant (TypeMRO typ)    = from  @TupPrm (SeqDomain.fromList $ map typeVal mro)
   where mro = case typ of
                 ObjectType  -> [ObjectType]
                 _           -> [typ, ObjectType]
-injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new (constant (TypeObject TypeType)) 
-  where typeAttrs = [(NameAttr, TypeName typ), (MROAttr, TypeMRO typ)]
+injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new' TypeType 
+  where typeAttrs   = [(NameAttr, TypeName typ), (MROAttr, TypeMRO typ)]
         methodAttrs = map (second PrimObject) (methods typ)
         allAttrs    = map (bimap attrStr constant) (typeAttrs ++ methodAttrs)
                       
