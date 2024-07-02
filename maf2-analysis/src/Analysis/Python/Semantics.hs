@@ -32,6 +32,7 @@ import Data.Functor (($>))
 import Analysis.Python.Escape (PyEscape(..))
 import Domain (Domain(..))
 import Domain (BoolDomain(..))
+import Debug.Trace (trace)
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -147,13 +148,17 @@ evalCll opr pos kwa loc = do fun <- eval opr
                              call loc psv kwv fun
 
 call :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> PyVal -> pyM PyVal 
-call loc pos kwa = callObj loc pos kwa <=< pyDeref' 
+call loc pos kwa = pyDeref (\adr obj -> 
+   condsCP [(return (obj `isType` BoundType), callBnd loc pos kwa (get @BndPrm obj)),
+            (return (obj `isType` CloType),   callClo loc pos kwa (get @CloPrm obj)),
+            (return (obj `isType` PrimType),  callPrm loc pos     (get @PrmPrm obj)),
+            (return (obj `isType` TypeType),  callTyp loc pos kwa (injectAdr adr))]    --TODO: metaclasses...
+{- else -} (escape NotCallable))
 
-callObj :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> obj -> pyM PyVal 
-callObj loc pos kwa obj = condsCP [(return (obj `isType` BoundType), callBnd loc pos kwa (get @BndPrm obj)),
-                                   (return (obj `isType` CloType),   callClo loc pos kwa (get @CloPrm obj)),
-                                   (return (obj `isType` PrimType),  callPrm loc pos (get @PrmPrm obj))]
-                      {- else -}  (escape NotCallable)
+callTyp :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> PyVal -> pyM PyVal
+callTyp loc pos kwa typ = ref
+   where obj = new typ
+         ref = pyAlloc loc obj 
 
 callPrm :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyPrim -> pyM PyVal 
 callPrm pos ags = mjoinMap apply
