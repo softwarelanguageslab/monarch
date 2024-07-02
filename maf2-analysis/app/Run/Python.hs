@@ -32,16 +32,16 @@ options = Options <$>
 printOSto :: Show obj => Map ObjAdr obj -> String
 printOSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs
    where adrs   = Map.toList m
-                     & filter (\case (PrmAdr _, _) -> False ; _ -> True)
+                    & filter (\case (PrmAdr _, _) -> False ; _ -> True)
          indent = maximum (map (length . show . fst) adrs) + 5
 
 printRSto :: Map PyCmp (MayEscape (Set PyEsc) PyVal) -> String
 printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showRes v)) cmps
    where cmps = Map.toList m
          showRes Bottom = "⊥"
-         showRes (Escape _) = "[!!]"
+         showRes (Escape e) = "[!!: "++show e++"]"
          showRes (Value v) = show v
-         showRes (MayBoth v _) = "[!!] " ++ show v 
+         showRes (MayBoth v e) = "[!!: "++show e++"]" ++ show v 
          showCmp ((Main _, _), _) = "<main>"
          showCmp ((LoopBdy loc _ _, _), _) = "<loop " ++ showLoc loc ++ ">"
          showCmp ((FuncBdy loc _, _), _) = "<func " ++ showLoc loc ++ ">"
@@ -75,6 +75,6 @@ runFile fileName =
       putStrLn "\n"
 
 main :: Options -> IO ()
-main (Options fileName) = runREPL 
+main (Options fileName) = runFile fileName 
 
 

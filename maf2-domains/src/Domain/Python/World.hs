@@ -215,4 +215,4 @@ data PyError = AttributeNotFound
              | ArityError
              | TypeMismatch
              | InvalidMRO
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)

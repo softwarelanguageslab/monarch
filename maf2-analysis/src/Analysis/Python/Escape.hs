@@ -20,7 +20,7 @@ import Control.Monad.Join
 data PyControlEsc = Return PyVal 
                   | Break 
                   | Continue 
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 class Domain esc PyControlEsc => PyEscape esc where
     isReturn   :: BoolDomain b => esc -> b
@@ -36,7 +36,7 @@ class Domain esc PyControlEsc => PyEscape esc where
 data PyEsc = EscPyError PyError
            | EscDomainError DomainError
            | EscPyControl PyControlEsc
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show)
 
 instance Domain (Set PyEsc) DomainError where
     inject = Set.singleton . EscDomainError

@@ -63,10 +63,10 @@ new' :: PyObj' obj => PyType -> obj
 new' = new . typeVal
 
 initialCst :: [(String, PyConstant)]
-initialCst = [("type", TypeObject TypeType),
-              ("True", True),
+initialCst = [("type",  TypeObject TypeType),
+              ("True",  True),
               ("False", False),
-              ("None", None)]
+              ("None",  None)]
 
 injectPyConstant :: PyObj' obj => PyConstant -> obj
 injectPyConstant True             = from' @BlnPrm Prelude.True
