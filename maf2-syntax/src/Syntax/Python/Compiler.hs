@@ -51,7 +51,7 @@ data PyTag = FrmTag
 instance Show PyLoc where
    show (PyLoc s t) = locStr ++ tagStr
     where locStr = show (startRow s) ++ ":" ++ show (startCol s)
-          tagStr = maybe "" (\tag -> "[" ++ show tag ++ "]") t
+          tagStr = maybe "" ((':':) . show) t
 
 untagged :: SrcSpan -> PyLoc
 untagged = flip PyLoc Nothing 
