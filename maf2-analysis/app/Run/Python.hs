@@ -17,7 +17,7 @@ import Data.Set (Set)
 import Analysis.Python.Monad (PyBdy(..))
 import Control.Monad.Escape (MayEscape(..))
 import Language.Python.Common (annot)
-import Domain.Python.Syntax (showLoc)
+import Domain.Python.Syntax 
 import Data.IORef 
 import System.IO 
 import Data.Function ((&))
@@ -43,8 +43,8 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
          showRes (Value v) = show v
          showRes (MayBoth v e) = "[!!: "++show e++"]" ++ show v 
          showCmp ((Main _, _), _) = "<main>"
-         showCmp ((LoopBdy loc _ _, _), _) = "<loop " ++ showLoc loc ++ ">"
-         showCmp ((FuncBdy loc _, _), _) = "<func " ++ showLoc loc ++ ">"
+         showCmp ((LoopBdy loc _ _, _), _) = "<loop " ++ show loc ++ ">"
+         showCmp ((FuncBdy loc _, _), _) = "<func " ++ show loc ++ ">"
          indent = maximum (map (length . showCmp . fst) cmps) + 5
 
 runREPL :: IO ()

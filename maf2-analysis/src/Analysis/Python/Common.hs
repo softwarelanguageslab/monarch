@@ -50,9 +50,9 @@ allocCst :: PyConstant -> ObjAdr
 allocCst = PrmAdr 
 
 instance Show ObjAdr where 
-  show (PtrAdr s) = "[" ++ showLoc s ++ "]" 
+  show (PtrAdr s) = "[" ++ show s ++ "]" 
   show (PrmAdr c) = "[" ++ show c ++ "]"
-  show (FrmAdr c) = "[frame at " ++ showLoc c ++ "]"
+  show (FrmAdr c) = "[frame at " ++ show c ++ "]"
 
 --
 -- Values 
@@ -75,7 +75,7 @@ data PyClo = PyClo PyLoc [PyPar] PyStm [String] PyEnv
   deriving (Eq, Ord)
 
 instance Show PyClo where
-  show (PyClo loc _ _ _ _) = "<func@" ++ showLoc loc ++ ">" 
+  show (PyClo loc _ _ _ _) = "<func@" ++ show loc ++ ">" 
 
 --
 -- Python objects with the common objects/values instantiated

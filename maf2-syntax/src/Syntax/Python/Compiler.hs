@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- | Reduced Python Syntax and its compiler
-module Syntax.Python.Compiler(compile, parse, lexical) where
+module Syntax.Python.Compiler(compile, parse, lexical, PyLoc(..)) where
 
 
 import Syntax.Python.AST
@@ -26,13 +26,38 @@ import qualified Data.Set as Set
 import Data.Bitraversable
 import Control.Monad.Cond
 import Language.Python.Common.SrcLocation (spanning)
-import Language.Python.Common (Span)
+import Language.Python.Common (Span, startRow, startCol)
 import Data.Bifunctor (Bifunctor(second, first))
 import Data.Function ((&))
 
 
 todo :: String -> a
 todo = error . ("COMPILER ERROR: " ++)
+
+
+-------------------------------------------------------------------------------
+-- Source code locations with extra Python-specific tags 
+-------------------------------------------------------------------------------
+
+data PyLoc = PyLoc SrcSpan (Maybe PyTag)
+   deriving (Eq, Ord)
+data PyTag = FrmTag
+   deriving (Eq, Ord, Show, Bounded, Enum)
+
+instance Show PyLoc where
+   show (PyLoc s t) = locStr ++ tagStr
+    where locStr = show (startRow s) ++ ":" ++ show (startCol s)
+          tagStr = maybe "" (\tag -> "[" ++ show tag ++ "]") t
+
+untagged :: SrcSpan -> PyLoc
+untagged = flip PyLoc Nothing 
+
+tagAs :: PyTag -> PyLoc -> PyLoc
+tagAs tag (PyLoc loc _) = PyLoc loc (Just tag) 
+
+spanningTagged :: PyLoc -> PyLoc -> PyLoc
+spanningTagged (PyLoc a1 Nothing) (PyLoc a2 Nothing) = PyLoc (spanning a1 a2) Nothing
+spanningTagged _ _ = error "spanning not supported for tagged locations"
 
 -------------------------------------------------------------------------------
 -- From String to AST
@@ -41,8 +66,8 @@ todo = error . ("COMPILER ERROR: " ++)
 -- | Parse a Python file to an AST
 parse :: String  -- ^ filename
       -> String  -- ^ contents
-      -> Maybe (Program SrcSpan AfterLexicalAddressing)
-parse nam = parseFile nam >=> (\ex -> runLexical <$> runReaderT (compile ex) Nothing)
+      -> Maybe (Program PyLoc AfterLexicalAddressing)
+parse nam = parseFile nam >=> (\ex -> runLexical <$> runReaderT (compile $ untagged <$> ex) Nothing)
 
 -------------------------------------------------------------------------------
 -- Simplification phase
@@ -65,11 +90,11 @@ assign :: SimplifyM m a => Ide a -> Exp a AfterSimplification -> m (Stmt a After
 assign nam e = namespacedLhs nam <&> flip (Assg ()) e
 
 -- | Compile Python programs into the reduced Python syntax
-compile :: SimplifyM m SrcSpan => Module SrcSpan -> m (Program SrcSpan AfterSimplification)
+compile :: SimplifyM m PyLoc => Module PyLoc -> m (Program PyLoc AfterSimplification)
 compile (Module stmts) = Program . makeSeq <$> mapM compileStmt stmts
 
 -- | Compile a statement in the Python reduced syntax
-compileStmt :: SimplifyM m SrcSpan => Statement SrcSpan -> m (Stmt SrcSpan AfterSimplification)
+compileStmt :: SimplifyM m PyLoc => Statement PyLoc -> m (Stmt PyLoc AfterSimplification)
 compileStmt (Fun nam ags _ bdy a)         = assign (Ide nam) =<< compileFun ags bdy a
 compileStmt (While cnd bdy els a)         = Loop () (compileExp cnd) <$> compileSequence bdy <*> pure a
 compileStmt (AsyncFun def _)              = error "not supported AsyncFun"
@@ -103,15 +128,15 @@ compileStmt (Assert exs _)                = todo "assertion statement"
 compileStmt stmt = error "unsupported exp"
 
 -- | Compiles a sequence without introducing a block
-compileSequence :: SimplifyM m SrcSpan => Suite SrcSpan -> m (Stmt SrcSpan AfterSimplification)
+compileSequence :: SimplifyM m PyLoc => Suite PyLoc -> m (Stmt PyLoc AfterSimplification)
 compileSequence es = makeSeq <$> mapM compileStmt es
 
 -- | Compiles a block (something that has a different lexical scope)
-compileFun :: SimplifyM m SrcSpan => [Parameter SrcSpan] -> Suite SrcSpan -> SrcSpan -> m (Exp SrcSpan AfterSimplification)
+compileFun :: SimplifyM m PyLoc => [Parameter PyLoc] -> Suite PyLoc -> PyLoc -> m (Exp PyLoc AfterSimplification)
 compileFun prs bdy a = Lam (compilePrs prs) <$> local (const Nothing) (compileSequence bdy) <*> pure a <*> pure ()
 
 -- | Compile the parameters of a function
-compilePrs :: [Parameter SrcSpan] -> [Par SrcSpan AfterSimplification]
+compilePrs :: [Parameter PyLoc] -> [Par PyLoc AfterSimplification]
 compilePrs [] = []
 compilePrs ((Param nam _ def a) : xs) = Prm (Ide nam) a  : compilePrs xs
 compilePrs ((EndPositional _) : xs) = compilePrs xs
@@ -124,7 +149,7 @@ compilePrs _ = error "unknown type of expression"
 -------------------------------------------------------------------------------
 
 -- | Compiles an expression into a reduced Python expression
-compileExp :: Expr SrcSpan -> Exp SrcSpan AfterSimplification
+compileExp :: Expr PyLoc -> Exp PyLoc AfterSimplification
 -- | Variables
 compileExp (AST.Var ident _) = Var (Ide ident)
 -- literals
@@ -159,11 +184,11 @@ compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ 
 compileExp (AST.Tuple exs _)          = todo "eval tuples"
 compileExp ex = error "unsupported expression"-- ++ show (pretty ex))
 
-compileCall :: Expr SrcSpan -> [Argument SrcSpan] -> SrcSpan -> Exp SrcSpan AfterSimplification
+compileCall :: Expr PyLoc -> [Argument PyLoc] -> PyLoc -> Exp PyLoc AfterSimplification
 compileCall fun args = Call (compileExp fun) posArgs kwArgs
    where (posArgs, kwArgs) = compileArgs args
 
-compileArgs :: [Argument SrcSpan] -> ([Exp SrcSpan AfterSimplification], [(Ide SrcSpan, Exp SrcSpan AfterSimplification)])
+compileArgs :: [Argument PyLoc] -> ([Exp PyLoc AfterSimplification], [(Ide PyLoc, Exp PyLoc AfterSimplification)])
 compileArgs args = (posCompiled, kwCompiled)
    where (posArgs, kwArgs) = args & span (\case ArgExpr{} -> True
                                                 _         -> False)
@@ -172,7 +197,7 @@ compileArgs args = (posCompiled, kwCompiled)
          kwCompiled = kwArgs & map (\case ArgKeyword k e _ -> (Ide k, compileExp e)
                                           _                -> error "nonkeyword argument not allowed after keywords")
 
---findKeyword :: Span SrcSpan => String -> [Arg SrcSpan ξ] -> Exp SrcSpan ξ -> SrcSpan -> (Exp SrcSpan ξ, SrcSpan)
+--findKeyword :: Span PyLoc => String -> [Arg PyLoc ξ] -> Exp PyLoc ξ -> PyLoc -> (Exp PyLoc ξ, PyLoc)
 --findKeyword nam [] def defa = (def, defa)
 --findKeyword needle (KeyArg (Ide (Ident nam a)) ex _ : _)  _ _
 --   | nam == needle = (ex, a)
@@ -183,7 +208,7 @@ compileArgs args = (posCompiled, kwCompiled)
 
 -- | Compiles a class definition
 -- A class definition is compiled to 
-compileClassInstance :: SrcSpan -> String -> [Argument SrcSpan] -> Exp SrcSpan AfterSimplification
+compileClassInstance :: PyLoc -> String -> [Argument PyLoc] -> Exp PyLoc AfterSimplification
 compileClassInstance a nam ags =
    -- First find out which meta-class to use for the instantation
    -- NOTE -- this transformation assumes that:
@@ -199,26 +224,26 @@ compileClassInstance a nam ags =
            a
 
 -- | Compiles a class body
-compileClassBdy :: SimplifyM m SrcSpan => Ide SrcSpan -> Suite SrcSpan -> m (Stmt SrcSpan AfterSimplification)
+compileClassBdy :: SimplifyM m PyLoc => Ide PyLoc -> Suite PyLoc -> m (Stmt PyLoc AfterSimplification)
 compileClassBdy nam bdy = makeSeq <$> mapM (local (const $ Just nam) . compileStmt) bdy
 
 -- | Compiles the left-hand-side of an assignment
-compileLhs :: SimplifyM m SrcSpan => [Expr SrcSpan] -> m (Lhs SrcSpan AfterSimplification)
+compileLhs :: SimplifyM m PyLoc => [Expr PyLoc] -> m (Lhs PyLoc AfterSimplification)
 compileLhs [AST.Var ident _] = namespacedLhs (Ide ident)
 compileLhs [Dot e x a] = return $ Field (compileExp e) (Ide x) a
 compileLhs ex = error "unsupported expression as LHS in assignment"
 
 -- | Translates a binary operation to a function call
-binaryToCall :: Op SrcSpan -> Expr SrcSpan -> Expr SrcSpan -> SrcSpan -> Exp SrcSpan AfterSimplification
+binaryToCall :: Op PyLoc -> Expr PyLoc -> Expr PyLoc -> PyLoc -> Exp PyLoc AfterSimplification
 binaryToCall op left right a =
    let compiledLeft  = compileExp left
        compiledRight = compileExp right
-   in Call (Read compiledLeft (opToIde op) (spanning (annot left) (annot op)))
+   in Call (Read compiledLeft (opToIde op) (spanningTagged (annot left) (annot op)))
            [compiledRight]
            []
            a
 
-compileDict :: [DictKeyDatumList SrcSpan] -> SrcSpan -> Lit SrcSpan AfterSimplification
+compileDict :: [DictKeyDatumList PyLoc] -> PyLoc -> Lit PyLoc AfterSimplification
 compileDict bds = Dict (map compileBds bds)
    where compileBds (DictMappingPair kexpr vexpr) = (compileExp kexpr, compileExp vexpr)
          compileBds _ = error "unsupported dictionary entry (unwrapping)"

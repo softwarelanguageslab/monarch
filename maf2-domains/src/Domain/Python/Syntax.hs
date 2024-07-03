@@ -7,7 +7,6 @@ module Domain.Python.Syntax(    -- TODO [?]: should this be integrated into Anal
     PyPar, 
     PyLit, 
     PyLoc, 
-    showLoc,
     PyPrg,
     addImplicitReturn,
     module Syntax.Python
@@ -16,7 +15,6 @@ module Domain.Python.Syntax(    -- TODO [?]: should this be integrated into Anal
 import Syntax.Python
 import Language.Python.Common.SrcLocation (startRow, startCol)
 
-type PyLoc = SrcSpan
 type PyLan = Micro
 
 type PyPrg = Program PyLoc PyLan
@@ -29,9 +27,6 @@ type PyIde = IdeLex PyLoc
 
 lexNam :: PyIde -> String
 lexNam = ideName . lexIde
-
-showLoc :: PyLoc -> String
-showLoc s = show (startRow s) ++ ":" ++ show (startCol s)
 
 addImplicitReturn :: PyPrg -> PyPrg
 addImplicitReturn prg = case programStmt prg of

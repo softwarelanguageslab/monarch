@@ -31,7 +31,7 @@ import qualified Syntax.Scheme as Scheme
 -- | Parse the given string as Python code
 parsePython :: String -- ^ filename 
             -> String -- ^ file contents
-            -> Maybe (Python.Program Python.SrcSpan Python.Micro)
+            -> Maybe (Python.Program Python.PyLoc Python.Micro)
 parsePython = Python.parse
 
 -- | Parse the given string as Scheme code
