@@ -48,7 +48,6 @@ type PyM m obj = (PyObj' obj,
                   PyEscape (Esc m),
                   EnvM m ObjAdr PyEnv, 
                   AllocM m PyLoc ObjAdr,
-                  AllocM m FrmLoc ObjAdr,
                   StoreM m ObjAdr obj)
 
 pyDeref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a

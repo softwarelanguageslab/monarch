@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- | Reduced Python Syntax and its compiler
-module Syntax.Python.Compiler(compile, parse, lexical, PyLoc(..)) where
+module Syntax.Python.Compiler(compile, parse, lexical, PyLoc(..), PyTag(..), tagAs) where
 
 
 import Syntax.Python.AST

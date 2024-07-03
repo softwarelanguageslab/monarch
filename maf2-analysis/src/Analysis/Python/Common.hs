@@ -3,10 +3,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 
 module Analysis.Python.Common (
-  FrmLoc(..),
   ObjAdr(..), 
   allocPtr,
-  allocFrm, 
   allocCst,
   PyVal, 
   addrs, 
@@ -37,14 +35,8 @@ data ObjAdr = PtrAdr PyLoc
             | PrmAdr PyConstant
   deriving (Eq, Ord)
 
-newtype FrmLoc = FrmLoc PyLoc
-  deriving (Eq, Ord, Show)
-
 allocPtr :: PyLoc -> ObjAdr
 allocPtr = PtrAdr
-
-allocFrm :: FrmLoc -> ObjAdr
-allocFrm (FrmLoc loc) = FrmAdr loc 
 
 allocCst :: PyConstant -> ObjAdr
 allocCst = PrmAdr 

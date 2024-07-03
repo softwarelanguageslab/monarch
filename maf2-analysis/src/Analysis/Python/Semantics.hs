@@ -171,7 +171,7 @@ callBnd loc pos kwa = mjoinMap apply . Map.toList
 callClo :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> Set PyClo -> pyM PyVal 
 callClo _ pos kwa = mjoinMap apply
  where apply (PyClo loc prs bdy lcl env) = 
-         withEnv (const env) $ do frm  <- store (FrmLoc loc) (new $ constant $ TypeObject FrameType)
+         withEnv (const env) $ do frm  <- store (tagAs FrmTag loc) (new $ constant $ TypeObject FrameType)
                                   let ari = length prs 
                                   let psn = length pos 
                                   let kps = drop psn prs 
