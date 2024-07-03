@@ -42,6 +42,10 @@ todo = error . ("COMPILER ERROR: " ++)
 data PyLoc = PyLoc SrcSpan (Maybe PyTag)
    deriving (Eq, Ord)
 data PyTag = FrmTag
+           | ClsStr
+           | ClsTup
+           | ClsDct 
+           | ClsNew 
    deriving (Eq, Ord, Show, Bounded, Enum)
 
 instance Show PyLoc where
@@ -217,11 +221,11 @@ compileClassInstance a nam ags =
    let (posArgs, kwArgs) = compileArgs ags
        metaclass = fromMaybe (Var (Ide (Ident "type" a))) $ lookup "metaclass" $ map (first ideName) kwArgs  --findKeyword "metaclass" arguments (Var (Ide (Ident "type" a))) a
    in Call metaclass
-           [Literal (String nam a),
-            Literal (Tuple posArgs a),
-            Literal (Dict [] a)]
+           [Literal (String nam $ tagAs ClsStr a),
+            Literal (Tuple posArgs $ tagAs ClsTup a),
+            Literal (Dict [] $ tagAs ClsDct a)]
            []
-           a
+           (tagAs ClsNew a)
 
 -- | Compiles a class body
 compileClassBdy :: SimplifyM m PyLoc => Ide PyLoc -> Suite PyLoc -> m (Stmt PyLoc AfterSimplification)
@@ -315,8 +319,7 @@ nonlocalEnv = tail
 
 -- | Extends the given environment with a new frame consisting of the giving bindings
 extendedEnv :: [(String, IdeLex a)] -> Env a -> Env a
-extendedEnv bds = (frm:)
-   where frm = Frame $ Map.fromList bds
+extendedEnv = (:) . Frame . Map.fromList 
 
 -- | Lexical addresser state
 
