@@ -72,22 +72,24 @@ applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do assignAttr (attrStr NameAt
                                                       mro <- computeMRO loc typ sup
                                                       assignAttr (attrStr MROAttr) mro typ 
                                                       return $ constant None
+-- object primitives
+applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None 
             
 --
 -- Primitive helpers 
 --
 
-prim0 :: forall r pyM obj . (PyM pyM obj, SingI r)  
-        => pyM (Abs obj r)                  -- ^ the primitive function
-        -> (PyLoc -> [PyVal] -> pyM PyVal)  -- ^ the resulting function   
-prim0 f loc [] = pyAlloc loc . from @r =<< f 
+prim0 :: forall pyM obj . PyM pyM obj  
+        => (PyLoc -> pyM PyVal)                 -- ^ the primitive function
+        -> (PyLoc -> [PyVal] -> pyM PyVal)      -- ^ the resulting function   
+prim0 f loc [] = f loc 
 prim0 _ _   _  = escape ArityError 
 
-prim1 :: forall a r pyM obj. (PyM pyM obj, SingI a, SingI r)
-        => (Abs obj a -> pyM (Abs obj r))   -- ^ the primitive function
-        -> (PyLoc -> [PyVal] -> pyM PyVal)  -- ^ the resulting function 
-prim1 f loc [a1] = pyAlloc loc . from @r =<< f =<< at @a =<< pyDeref' a1
-prim1 _ _   _    = escape ArityError  
+prim1 :: forall pyM obj . PyM pyM obj  
+        => (PyLoc -> PyVal   -> pyM PyVal)      -- ^ the primitive function
+        -> (PyLoc -> [PyVal] -> pyM PyVal)      -- ^ the resulting function   
+prim1 f loc [a] = f loc a  
+prim1 _ _   _  = escape ArityError 
 
 prim2 :: PyM pyM obj
         => (PyLoc -> PyVal -> PyVal -> pyM PyVal)     -- ^ the primitive function
