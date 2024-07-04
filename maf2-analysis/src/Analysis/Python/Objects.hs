@@ -28,7 +28,7 @@ import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import qualified Prelude
 import qualified Data.Map as Map
 import Data.Singletons (SingI(..))
-import Control.Monad ((<=<))
+import Control.Monad ((<=<), (>=>))
 import Data.Bifunctor
 import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad
@@ -110,15 +110,24 @@ lookupAttrInClass loc attr self cls = do vlu <- lookupAttrMRO attr cls
 lookupAttrMRO :: PyM pyM obj => String -> Ref obj -> pyM (Ref obj)
 lookupAttrMRO attr =
    pyDeref $ \_ cls ->
-              do  mroObj <- atAttr (attrStr MROAttr) cls
-                  tupObj <- pyDeref' mroObj
-                  mroTup <- at @TupPrm tupObj  
-                  case mroTup of
+              do  mro <- atAttr (attrStr MROAttr) cls
+                  tup <- pyDeref' mro >>= at @TupPrm  
+                  case tup of
                     BotList       -> escape InvalidMRO
                     CPList l _ _  -> lookupMRO l
                     TopList v     -> lookupLocal v `orElse` escape AttributeNotFound
      where lookupLocal = atAttr attr <=< pyDeref'
            lookupMRO   = foldr (orElse . lookupLocal) (escape AttributeNotFound)
+
+computeMRO :: PyM pyM obj => PyLoc -> Ref obj -> Ref obj -> pyM (Ref obj) 
+computeMRO loc cls sup = do tup <- pyDeref' sup >>= at @TupPrm
+                            mro <- case tup of
+                                  BotList           -> escape InvalidMRO
+                                  CPList [] _ _     -> return $ SeqDomain.fromList [cls, typeVal ObjectType]  -- no parent given (implicitly extends object)
+                                  CPList [par] _ _  -> SeqDomain.insertFront cls <$> getMRO par               -- single parent
+                                  _                 -> error "multiple inheritance is not yet supported"      -- multiple parents
+                            pyAlloc loc $ from @TupPrm mro
+  where getMRO = pyDeref' >=> atAttr (attrStr MROAttr) >=> pyDeref' >=> at @TupPrm
 
 -- --
 

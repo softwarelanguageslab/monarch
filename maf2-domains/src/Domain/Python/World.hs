@@ -77,7 +77,7 @@ methods FrameType         = []
 methods DictionaryType    = [(GetItemAttr, DictGetItem),
                              (SetItemAttr, DictSetItem)]
 methods ObjectType        = []
-methods TypeType          = [] 
+methods TypeType          = [(InitAttr, TypeInit)]
 
 -- | Built-in primitives in Python
 data PyPrim     = 
@@ -105,7 +105,9 @@ data PyPrim     =
                 | FloatGe
                 -- dict primitives
                 | DictGetItem 
-                | DictSetItem 
+                | DictSetItem
+                -- type primitives
+                | TypeInit  
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 -- | Built-in attributes in Python

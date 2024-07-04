@@ -16,6 +16,8 @@ class (JoinLattice v, IntDomain (Idx v), JoinLattice (Vlu v)) => SeqDomain v whe
   empty = fromList [] 
   fromList :: [Vlu v] -> v
   ref :: AbstractM m => Idx v -> v -> m (Vlu v)
+  head :: AbstractM m => v -> m (Vlu v)
+  head = ref (inject @_ @Integer 0)
   set :: AbstractM m => Idx v -> Vlu v -> v -> m v
   setWeak :: AbstractM m => Idx v -> Vlu v -> v -> m v
   setWeak idx vlu lst = join lst <$> set idx vlu lst 

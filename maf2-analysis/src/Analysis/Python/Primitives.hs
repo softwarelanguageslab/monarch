@@ -67,6 +67,11 @@ applyPrim DictSetItem   = prim3 $ \_ a1 a2 vlu -> do key <- pyDeref' a2 >>= at @
                                            (updateWith (modify @DctPrm $ Domain.update key vlu) 
                                                        (modify @DctPrm $ Domain.updateWeak key vlu) adr)
                                            (escape WrongType)
+-- type primitives
+applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do assignAttr (attrStr NameAttr) nam typ
+                                                      mro <- computeMRO loc typ sup
+                                                      assignAttr (attrStr MROAttr) mro typ 
+                                                      return $ constant None
             
 --
 -- Primitive helpers 
@@ -110,6 +115,12 @@ prim3 :: PyM pyM obj
         -> (PyLoc -> [PyVal]                 -> pyM PyVal)     -- ^ the resulting function 
 prim3 f loc [a1, a2, a3] = f loc a1 a2 a3
 prim3 _ _ _              = escape ArityError
+
+prim4 :: PyM pyM obj
+        => (PyLoc -> PyVal -> PyVal -> PyVal -> PyVal -> pyM PyVal)     -- ^ the primitive function
+        -> (PyLoc -> [PyVal]                          -> pyM PyVal)     -- ^ the resulting function 
+prim4 f loc [a1, a2, a3, a4] = f loc a1 a2 a3 a4
+prim4 _ _ _                  = escape ArityError
 
 intBinop :: forall r1 r2 pyM obj . (PyM pyM obj, SingI r1, SingI r2)
           => (Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj r1))   -- the function for integers

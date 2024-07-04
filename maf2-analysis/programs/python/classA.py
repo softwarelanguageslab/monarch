@@ -1,6 +1,7 @@
 class A(): pass
+class B(A): pass
 
 def f():
-    return A()
+    return B
 
 f()
