@@ -105,7 +105,7 @@ lookupAttrInClass loc attr self cls = do vlu <- lookupAttrMRO attr cls
                                          condCP (isBindable vlu)
                                                 (bind vlu)
                                                 (return vlu)
-  where bind value = pyAlloc loc $ from @BndPrm (Map.singleton self value) 
+  where bind value = pyAlloc loc $ from @BndPrm $ Map.singleton self value
 
 lookupAttrMRO :: PyM pyM obj => String -> Ref obj -> pyM (Ref obj)
 lookupAttrMRO attr =

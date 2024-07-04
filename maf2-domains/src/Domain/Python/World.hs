@@ -134,6 +134,7 @@ data PyAttr = ClassAttr
             | MROAttr 
             | GetItemAttr
             | SetItemAttr
+            | InitAttr
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -162,6 +163,7 @@ attrStr NameAttr      = "__name__"
 attrStr MROAttr       = "__mro__"
 attrStr GetItemAttr   = "__getitem__"
 attrStr SetItemAttr   = "__setitem__"
+attrStr InitAttr      = "__init__"
 
 -- | Built-in objects in Python 
 data PyConstant = None

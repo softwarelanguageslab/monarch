@@ -155,10 +155,12 @@ call loc pos kwa = pyDeref (\adr obj ->
             (return (obj `isType` TypeType),  callTyp loc pos kwa (injectAdr adr))]    --TODO: metaclasses...
 {- else -} (escape NotCallable))
 
-callTyp :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> PyVal -> pyM PyVal
-callTyp loc pos kwa typ = ref
+callTyp :: forall pyM obj . PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> PyVal -> pyM PyVal
+callTyp loc pos kwa typ = do ref <- pyAlloc loc obj
+                             mtd <- lookupAttr (tagAs IniBnd loc) (attrStr InitAttr) ref
+                             _   <- call (tagAs IniCll loc) pos kwa mtd    -- do the __init__ call (and ignore its result)
+                             return ref 
    where obj = new typ
-         ref = pyAlloc loc obj 
 
 callPrm :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyPrim -> pyM PyVal 
 callPrm pos ags = mjoinMap apply

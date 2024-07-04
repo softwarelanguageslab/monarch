@@ -46,6 +46,8 @@ data PyTag = FrmTag
            | ClsTup
            | ClsDct 
            | ClsNew 
+           | IniBnd
+           | IniCll
    deriving (Eq, Ord, Show, Bounded, Enum)
 
 instance Show PyLoc where
