@@ -17,7 +17,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Applicative ((<|>), liftA2, asum)
 import Syntax.Python.Parser (parseFile, SrcSpan)
-import Language.Python.Common.AST hiding (Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
+import Language.Python.Common.AST hiding (Handler, Try, Raise, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
 import qualified Language.Python.Common.AST as AST
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -44,8 +44,8 @@ data PyLoc = PyLoc SrcSpan (Maybe PyTag)
 data PyTag = FrmTag
            | ClsStr
            | ClsTup
-           | ClsDct 
-           | ClsNew 
+           | ClsDct
+           | ClsNew
            | IniBnd
            | IniCll
    deriving (Eq, Ord, Show, Bounded, Enum)
@@ -56,10 +56,10 @@ instance Show PyLoc where
           tagStr = maybe "" ((':':) . show) t
 
 untagged :: SrcSpan -> PyLoc
-untagged = flip PyLoc Nothing 
+untagged = flip PyLoc Nothing
 
 tagAs :: PyTag -> PyLoc -> PyLoc
-tagAs tag (PyLoc loc _) = PyLoc loc (Just tag) 
+tagAs tag (PyLoc loc _) = PyLoc loc (Just tag)
 
 spanningTagged :: PyLoc -> PyLoc -> PyLoc
 spanningTagged (PyLoc a1 Nothing) (PyLoc a2 Nothing) = PyLoc (spanning a1 a2) Nothing
@@ -121,7 +121,9 @@ compileStmt (Assign to expr _)               = Assg () <$> compileLhs to <*> ret
 compileStmt (AugmentedAssign to op exp a) = compileStmt (Assign [to] (BinaryOp (translateOp op) to exp a) a)
 compileStmt (Decorated decs def _)        = todo "eval decorated function"
 compileStmt (AST.Return expr a)           = pure $ Return () (fmap compileExp expr) a
-compileStmt (Raise expr _)                = todo "eval raise statement"
+compileStmt (AST.Raise rexp a)            = pure $ Raise () (compileRaiseExp rexp) a
+compileStmt (AST.Try bdy hds [] [] a)     = compileTry bdy hds a
+compileStmt (AST.Try {})                  = todo "try with finally and/or else part"
 compileStmt (With ctx bdy _)              = todo "eval with statement"
 compileStmt (AsyncWith stmt _)            = todo "eval async with statement"
 compileStmt (AST.Pass a)                  = return $ makeSeq []
@@ -132,6 +134,17 @@ compileStmt (AST.NonLocal as a)           = return $ makeSeq $ map (flip (NonLoc
 compileStmt (Delete exs _)                = todo "delete statement"
 compileStmt (Assert exs _)                = todo "assertion statement"
 compileStmt stmt = error "unsupported exp"
+
+compileRaiseExp :: RaiseExpr PyLoc -> Exp PyLoc AfterSimplification
+compileRaiseExp (RaiseV3 (Just (expr, Nothing))) = compileExp expr
+compileRaiseExp _ = todo "unsupported raise expression with from or empty raise"
+
+compileTry :: SimplifyM m PyLoc => Suite PyLoc -> [AST.Handler PyLoc] -> PyLoc -> m (Stmt PyLoc AfterSimplification)
+compileTry bdy hds loc = Try () <$> compileSequence bdy <*> mapM compileHandler hds <*> pure loc
+   where compileHandler (AST.Handler cls bdy _) = (compileClause cls,) <$> compileSequence bdy
+         compileClause  (AST.ExceptClause Nothing _)               = Var (Ide (Ident "Exception" loc))
+         compileClause  (AST.ExceptClause (Just (exc, Nothing)) _) = compileExp exc
+         compileClause _                                           = todo "unsupported except clause"
 
 -- | Compiles a sequence without introducing a block
 compileSequence :: SimplifyM m PyLoc => Suite PyLoc -> m (Stmt PyLoc AfterSimplification)
@@ -321,7 +334,7 @@ nonlocalEnv = tail
 
 -- | Extends the given environment with a new frame consisting of the giving bindings
 extendedEnv :: [(String, IdeLex a)] -> Env a -> Env a
-extendedEnv = (:) . Frame . Map.fromList 
+extendedEnv = (:) . Frame . Map.fromList
 
 -- | Lexical addresser state
 
@@ -403,6 +416,10 @@ lexicalStmt (Assg _ lhs e)   = Assg () <$> lexicalLhs lhs <*> lexicalExp e
 lexicalStmt (Loop _ grd s a) = Loop () <$> lexicalExp grd <*> lexicalStmt s <*> pure a
 lexicalStmt (Break _ a)      = return $ Break () a
 lexicalStmt (Continue _ a)   = return $ Continue () a
+lexicalStmt (Raise _ exp a)  = Raise () <$> lexicalExp exp <*> pure a
+lexicalStmt (Try _ bdy hds a) = Try () <$> lexicalStmt bdy
+                                       <*> mapM (\(exc, hdl) -> (,) <$> lexicalExp exc <*> lexicalStmt hdl) hds
+                                       <*> pure a
 lexicalStmt (Conditional _ cls els a)  =
    Conditional () <$> mapM (bimapM lexicalExp lexicalStmt) cls <*> lexicalStmt els <*> pure a
 lexicalStmt (StmtExp _ e a)  = StmtExp () <$> lexicalExp e <*> pure a

@@ -54,7 +54,7 @@ newtype PyVal = PyVal { addrs :: Set ObjAdr }
   deriving (Eq, Ord, Joinable, JoinLattice)
 
 instance Show PyVal where
-  show = show . Set.toList .addrs 
+  show = show . Set.toList . addrs 
 
 injectAdr :: ObjAdr -> PyVal
 injectAdr = PyVal . Set.singleton
@@ -77,4 +77,5 @@ type PyObj' obj = (PyObj obj,
                    Ref obj ~ PyVal,
                    Adr obj ~ ObjAdr,
                    Clo obj ~ PyClo, 
-                   Abs obj TupPrm ~ CPList PyVal)
+                   Abs obj TupPrm ~ CPList PyVal,
+                   Abs obj StrPrm ~ CP String)

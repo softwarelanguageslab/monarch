@@ -33,6 +33,7 @@ import Analysis.Python.Escape (PyEscape(..))
 import Domain (Domain(..))
 import Domain (BoolDomain(..))
 import Debug.Trace (trace)
+import Control.Monad.AbstractM (AbstractM)
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -73,11 +74,27 @@ exec (Loop _ cnd bdy loc)        = execWhi cnd bdy loc
 exec (Seq _ sts)                 = execSeq sts
 exec (Break _ _)                 = execBrk
 exec (Continue _ _)              = execCnt
+exec (Raise _ exp _)             = execRai exp 
+exec (Try _ bdy hds _)           = execTry bdy hds  
 exec (NonLocal x _ _)            = absurd x          -- these can't occur in microPython
 exec (Global x _ _)              = absurd x          -- these can't occur in microPython
 
 execExp :: PyM pyM obj => PyExp -> pyM ()
 execExp = void . eval
+
+execRai :: PyM pyM obj => PyExp -> pyM ()
+execRai = eval >=> escape 
+
+execTry :: forall pyM obj . PyM pyM obj => PyStm -> [(PyExp, PyStm)] -> pyM () 
+execTry bdy hds = exec bdy `catch` \esc -> condCP (return $ isException esc)
+                                                  (getException esc >>= checkHandlers hds)
+                                                  (throw esc)
+   where checkHandlers :: [(PyExp, PyStm)] -> PyVal -> pyM ()
+         checkHandlers [] exc = escape exc
+         checkHandlers ((exp, bdy):rst) exc = do cls <- eval exp
+                                                 condCP (isInstanceOf exc cls)
+                                                        (exec bdy)
+                                                        (checkHandlers rst exc)
 
 execAss :: PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs

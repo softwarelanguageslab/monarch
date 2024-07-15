@@ -33,6 +33,9 @@ import Data.Bifunctor
 import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad
 import Data.Map (Map)
+import Control.Monad.AbstractM (AbstractM)
+import Lattice (join)
+import Lattice (eql)
 
 -- | Convenience function to construct a Python object immediately from primitive abstract value
 from :: forall (k :: PyPrmKey) obj . (PyObj' obj, SingI k) => Abs obj k -> obj 
@@ -64,6 +67,7 @@ new' = new . typeVal
 
 initialCst :: [(String, PyConstant)]
 initialCst = [("type",  TypeObject TypeType),
+              ("Exception", TypeObject ExceptionType),
               ("True",  True),
               ("False", False),
               ("None",  None)]
@@ -136,3 +140,34 @@ assignAttr attr vlu = mjoinMap (assignAttrAt attr vlu) . addrs
 
 assignAttrAt :: PyM pyM obj => String -> Ref obj -> Adr obj -> pyM ()
 assignAttrAt attr vlu = updateWith (setAttr attr vlu) (setAttrWeak attr vlu)
+
+-- --
+
+isInstanceOf :: (PyM pyM obj, BoolDomain b) => PyVal -> PyVal -> pyM b
+isInstanceOf obj cls = pyDeref' obj >>= atAttr (attrStr ClassAttr) >>= inMRO cls 
+
+inMRO :: (PyM pyM obj, BoolDomain b) => PyVal -> PyVal -> pyM b
+inMRO cls1 cls2 = do clsObj <- pyDeref' cls2
+                     mroVal <- atAttr (attrStr MROAttr) clsObj 
+                     mroObj <- pyDeref' mroVal
+                     mroTup <- at @TupPrm mroObj
+                     anyCPList mroTup (clsEq cls1)
+
+-- TODO: this assumes that class name equality implies class equality! (not necessarily true in Python...)
+clsEq :: (PyM pyM obj, BoolDomain b) => PyVal -> PyVal -> pyM b 
+clsEq cls1 cls2 = do nam1 <- getClassName cls1 
+                     nam2 <- getClassName cls2 
+                     return $ eql nam1 nam2 
+   where getClassName = pyDeref' >=> atAttr (attrStr NameAttr) >=> pyDeref' >=> at @StrPrm  
+
+
+-- TODO: move to Domain package
+
+anyCPList :: (AbstractM m, BoolDomain b) => SeqDomain.CPList v -> (v -> m b) -> m b 
+anyCPList SeqDomain.BotList _ = mzero
+anyCPList (SeqDomain.CPList l _ _) p = go l
+   where go []     = return Domain.false
+         go (x:xs) = cond (p x)
+                          (return Domain.true)
+                          (go xs)
+anyCPList (SeqDomain.TopList v) p = (Domain.false `join`) <$> p v 

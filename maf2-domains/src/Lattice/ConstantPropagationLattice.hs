@@ -40,7 +40,7 @@ instance (Show a, Ord a) => JoinLattice (CP a) where
 instance (Show a, Ord a) => Domain (CP a) a where
    inject = Constant
 
-instance (Eq a) => EqualLattice (CP a) where   
+instance {-# OVERLAPPING #-} (Eq a) => EqualLattice (CP a) where   
    eql Bottom _ = bottom
    eql _ Bottom = bottom
    eql (Constant a) (Constant b) 

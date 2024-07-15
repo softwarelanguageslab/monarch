@@ -20,6 +20,7 @@ data PyType = NoneType
             | PrimType
             | BoundType
             | DictionaryType
+            | ExceptionType 
             | CloType
             | FloatType
             | ListType 
@@ -42,6 +43,7 @@ name ListType         = "list"
 name FrameType        = "frame"
 name ObjectType       = "object"
 name TypeType         = "type"
+name ExceptionType    = "Exception"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -78,6 +80,7 @@ methods DictionaryType    = [(GetItemAttr, DictGetItem),
                              (SetItemAttr, DictSetItem)]
 methods ObjectType        = [(InitAttr, ObjectInit)]
 methods TypeType          = [(InitAttr, TypeInit)]
+methods ExceptionType     = []
 
 -- | Built-in primitives in Python
 data PyPrim     = 

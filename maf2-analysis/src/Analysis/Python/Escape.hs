@@ -23,19 +23,22 @@ data PyControlEsc = Return PyVal
   deriving (Eq, Ord, Show)
 
 class Domain esc PyControlEsc => PyEscape esc where
-    isReturn   :: BoolDomain b => esc -> b
-    isBreak    :: BoolDomain b => esc -> b
-    isContinue :: BoolDomain b => esc -> b
-    getReturn  :: MonadJoin m => esc -> m PyVal 
-
+    isReturn     :: BoolDomain b => esc -> b  -- TODO: this one is actuallly not needed if we have `getReturn`?
+    isBreak      :: BoolDomain b => esc -> b
+    isContinue   :: BoolDomain b => esc -> b
+    getReturn    :: MonadJoin m  => esc -> m PyVal 
+    isException  :: BoolDomain b => esc -> b 
+    getException :: MonadJoin m  => esc -> m PyVal 
 
 ---
 --- PyEscape instance 
 ---
 
-data PyEsc = EscPyError PyError
-           | EscDomainError DomainError
+-- TODO: flatten these ADTs
+data PyEsc = EscDomainError DomainError
+           | EscPyError PyError
            | EscPyControl PyControlEsc
+           | EscPyException PyVal 
     deriving (Eq, Ord, Show)
 
 instance Domain (Set PyEsc) DomainError where
@@ -44,9 +47,11 @@ instance Domain (Set PyEsc) PyError where
     inject = Set.singleton . EscPyError
 instance Domain (Set PyEsc) PyControlEsc where
     inject = Set.singleton . EscPyControl
+instance Domain (Set PyEsc) PyVal where
+    inject = Set.singleton . EscPyException
 
 instance PyEscape (Set PyEsc) where
-    isReturn = joinMap $ \case EscPyControl (Return _) -> true
+    isReturn = joinMap $ \case EscPyControl (Return _) -> true 
                                _ -> false  
     isContinue = joinMap $ \case EscPyControl Continue -> true
                                  _ -> false  
@@ -54,3 +59,7 @@ instance PyEscape (Set PyEsc) where
                               _ -> false 
     getReturn = mjoinMap $ \case EscPyControl (Return v) -> return v 
                                  _ -> mzero 
+    getException = mjoinMap $ \case EscPyException e -> return e
+                                    _ -> mzero 
+    isException = joinMap $ \case EscPyException _ -> true 
+                                  _ -> false 
