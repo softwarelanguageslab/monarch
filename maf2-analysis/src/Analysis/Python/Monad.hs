@@ -47,6 +47,7 @@ type PyM m obj = (PyObj' obj,
                   Domain (Esc m) DomainError,
                   Domain (Esc m) PyVal, -- exceptions
                   PyEscape (Esc m),
+                  SplitLattice (Esc m),
                   EnvM m ObjAdr PyEnv, 
                   AllocM m PyLoc ObjAdr,
                   StoreM m ObjAdr obj)

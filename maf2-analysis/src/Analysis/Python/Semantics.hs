@@ -44,16 +44,16 @@ evalBdy :: PyM m obj => PyBdy -> m PyVal
 evalBdy (Main prg) = catchReturn (exec (programStmt prg) $> constant None)
 evalBdy loop@(LoopBdy _ cnd bdy) = 
    cond (eval cnd >>= pyIsTrue)
-        ((exec bdy >> M.call loop) `catch` \esc -> condsCP [(return (isContinue esc), M.call loop),
-                                                            (return (isBreak esc), return (constant None))]
-                                                {- else -} (throw esc))
+        ((exec bdy >> M.call loop) `catch` msplitOnCP (return . isContinue)
+                                                      (const $ M.call loop)
+                                                      (msplitOnCP (return . isBreak)
+                                                                  (const $ return $ constant None)
+                                                                  throw))
         (return $ constant None)
 evalBdy (FuncBdy _ bdy) = catchReturn (exec bdy $> constant None)
 
 catchReturn :: PyM m obj => m PyVal -> m PyVal
-catchReturn = (`catch` \esc -> condCP (return $ isReturn esc)
-                                      (getReturn esc)
-                                      (throw esc))
+catchReturn = (`catch` msplitOnCP (return . isReturn) getReturn throw)
 
 globalFrame :: ObjAdr
 globalFrame = allocCst GlobalFrame
@@ -86,16 +86,14 @@ execRai :: PyM pyM obj => PyExp -> pyM ()
 execRai = eval >=> escape 
 
 execTry :: forall pyM obj . PyM pyM obj => PyStm -> [(PyExp, PyStm)] -> pyM () 
-execTry bdy hds = exec bdy `catch` \esc -> condCP (return $ isException esc)
-                                                  (getException esc >>= checkHandlers hds)
-                                                  (throw esc)
+execTry bdy hds = exec bdy `catch` msplitOnCP (return . isException) (getException >=> checkHandlers hds) throw 
    where checkHandlers :: [(PyExp, PyStm)] -> PyVal -> pyM ()
          checkHandlers [] exc = escape exc
          checkHandlers ((exp, bdy):rst) exc = do cls <- eval exp
-                                                 condCP (isInstanceOf exc cls)
-                                                        (exec bdy)
-                                                        (checkHandlers rst exc)
-
+                                                 msplitOnCP (`isInstanceOf` cls)
+                                                            (const $ exec bdy)
+                                                            (checkHandlers rst)
+                                                            exc 
 execAss :: PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
    where assignTo (IdePat ide) val     = do (frm, nam) <- frame ide
