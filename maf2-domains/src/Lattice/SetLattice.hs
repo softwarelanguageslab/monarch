@@ -7,6 +7,7 @@ import Lattice.Class
 import Domain.Class 
 import Domain.Core.BoolDomain.Class
 import Lattice.Equal (EqualLattice(..))
+import Lattice.Split 
 
 import Data.Set (Set)
 import qualified Data.Set as Set 

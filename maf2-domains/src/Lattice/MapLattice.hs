@@ -4,6 +4,7 @@
 module Lattice.MapLattice where
 
 import Lattice.Class
+import Lattice.Split
 
 import Data.Map (Map)
 import qualified Data.Map as Map 

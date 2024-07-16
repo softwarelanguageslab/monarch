@@ -2,7 +2,6 @@ module Lattice.Class (
    Joinable(..), 
    JoinLattice(..), 
    TopLattice(..),
-   SplitLattice(..), 
    WidenLattice(..), 
    Meetable(..), 
    justOrBot, 
@@ -46,19 +45,6 @@ class (JoinLattice v) => TopLattice v where  --TODO: is JoinLattice necessary?
 justOrBot :: JoinLattice a => Maybe a -> a
 justOrBot (Just v) = v
 justOrBot _ = bottom
-
-------------------------------------------------------------
---- SplitLattice
-------------------------------------------------------------
-
--- | Split operation for lattices
-class SplitLattice v where
-   -- Splits the value into a set of values where each value contains only one subvalue
-   split :: v -> Set v
-
--- | The default, not-so-interesting instance 
-instance {-# OVERLAPPABLE #-} SplitLattice a where 
-   split = Set.singleton 
 
 ------------------------------------------------------------
 --- WidenLattice

@@ -6,6 +6,7 @@
 module Lattice.HMapLattice where
 
 import Lattice.Class
+import Lattice.Split 
 
 import Data.Singletons
 import Data.TypeLevel.HMap as HMap 

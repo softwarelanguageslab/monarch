@@ -7,6 +7,7 @@ import Domain.Class
 import Domain.Core.BoolDomain
 import Domain.Core.NumberDomain.Class
 import Lattice.ConstantPropagationLattice
+import Lattice.Split 
 
 import qualified Data.Set as Set 
 

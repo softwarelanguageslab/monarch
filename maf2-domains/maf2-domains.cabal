@@ -46,6 +46,7 @@ library
       Domain.Erlang.Class
       Lattice
       Lattice.Class
+      Lattice.Split
       Lattice.ConstantPropagationLattice
       Lattice.ReversePowerSetLattice
       Control.Monad.Cond

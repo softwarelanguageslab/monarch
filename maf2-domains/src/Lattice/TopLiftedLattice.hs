@@ -3,6 +3,7 @@
 module Lattice.TopLiftedLattice(TopLifted) where
 
 import Lattice.Class
+import Lattice.Split 
 
 import qualified Data.Set as Set
 

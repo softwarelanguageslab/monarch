@@ -11,7 +11,8 @@ module Lattice (
   module Lattice.SetLattice,
   module Lattice.TopLiftedLattice,
   module Lattice.UnitLattice,
-  module Lattice.Equal
+  module Lattice.Equal,
+  module Lattice.Split,
 ) where
 
 import Lattice.Class
@@ -27,3 +28,4 @@ import Lattice.SetLattice
 import Lattice.TopLiftedLattice
 import Lattice.UnitLattice
 import Lattice.Equal
+import Lattice.Split

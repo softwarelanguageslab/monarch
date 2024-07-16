@@ -11,10 +11,13 @@ module Control.Monad.Join (
    mjoinMap, 
    mjoins, 
    msplit, 
+   msplitOn,
+   msplitOnCP
 ) where
 
 import Lattice.Class
 import Lattice.ConstantPropagationLattice
+import Lattice.Split 
 import Lattice.MaybeLattice()
 import Lattice.ProductLattice()
 import Domain.Core.BoolDomain
@@ -57,6 +60,17 @@ mjoins = foldr mjoin mzero
 
 msplit :: (MonadJoin m, JoinLattice v, SplitLattice a) => (a -> m v) -> a -> m v
 msplit f = mjoinMap f . split
+
+msplitOn :: (MonadJoin m, BoolDomain b, JoinLattice v, JoinLattice a, SplitLattice a) => (a -> m b) -> (a -> m v) -> (a -> m v) -> a -> m v
+msplitOn p ft ff vs = do (t, f) <- splitOnM p vs
+                         protectBot ft t `mjoin` protectBot ff f
+   where protectBot f v 
+            | v == bottom = mzero
+            | otherwise   = f v 
+
+msplitOnCP :: (MonadJoin m, JoinLattice v, JoinLattice a, SplitLattice a) => (a -> m (CP Bool)) -> (a -> m v) -> (a -> m v) -> a -> m v
+msplitOnCP = msplitOn
+
 
 
 -- | Like `Alternative`, returns if a computation

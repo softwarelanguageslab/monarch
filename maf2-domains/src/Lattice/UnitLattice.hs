@@ -4,6 +4,7 @@
 module Lattice.UnitLattice where
 
 import Lattice.Class
+import Lattice.Split
 import Domain.Class 
 
 import qualified Data.Set as Set 
