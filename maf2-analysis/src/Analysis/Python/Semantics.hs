@@ -46,7 +46,7 @@ evalBdy loop@(LoopBdy _ cnd bdy) =
    cond (eval cnd >>= pyIsTrue)
         ((exec bdy >> M.call loop) `catch` \esc -> condsCP [(return (isContinue esc), M.call loop),
                                                             (return (isBreak esc), return (constant None))]
-                                                {- else -} (return $ constant None))
+                                                {- else -} (throw esc))
         (return $ constant None)
 evalBdy (FuncBdy _ bdy) = catchReturn (exec bdy $> constant None)
 
