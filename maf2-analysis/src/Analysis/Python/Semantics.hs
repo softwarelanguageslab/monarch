@@ -83,12 +83,12 @@ execExp :: PyM pyM obj => PyExp -> pyM ()
 execExp = void . eval
 
 execRai :: PyM pyM obj => PyExp -> pyM ()
-execRai = eval >=> escape 
+execRai = eval >=> throwException
 
 execTry :: forall pyM obj . PyM pyM obj => PyStm -> [(PyExp, PyStm)] -> pyM () 
 execTry bdy hds = exec bdy `catch` msplitOnCP (return . isException) (getException >=> checkHandlers hds) throw 
    where checkHandlers :: [(PyExp, PyStm)] -> PyVal -> pyM ()
-         checkHandlers [] exc = escape exc
+         checkHandlers [] exc = throwException exc
          checkHandlers ((exp, bdy):rst) exc = do cls <- eval exp
                                                  msplitOnCP (`isInstanceOf` cls)
                                                             (const $ exec bdy)

@@ -17,12 +17,13 @@ import Control.Monad.Join
 --- The PyEscape class
 ---
 
-data PyControlEsc = Return PyVal 
-                  | Break 
-                  | Continue 
+data PyEsc = Return PyVal
+           | Exception PyVal 
+           | Break 
+           | Continue 
   deriving (Eq, Ord, Show)
 
-class Domain esc PyControlEsc => PyEscape esc where
+class Domain esc PyEsc => PyEscape esc where
     isReturn     :: BoolDomain b => esc -> b  -- TODO: this one is actuallly not needed if we have `getReturn`?
     isBreak      :: BoolDomain b => esc -> b
     isContinue   :: BoolDomain b => esc -> b
@@ -34,32 +35,21 @@ class Domain esc PyControlEsc => PyEscape esc where
 --- PyEscape instance 
 ---
 
--- TODO: flatten these ADTs
-data PyEsc = EscDomainError DomainError
-           | EscPyError PyError
-           | EscPyControl PyControlEsc
-           | EscPyException PyVal 
-    deriving (Eq, Ord, Show)
-
 instance Domain (Set PyEsc) DomainError where
-    inject = Set.singleton . EscDomainError
+    inject = const Set.empty -- ignore domain errors
 instance Domain (Set PyEsc) PyError where
-    inject = Set.singleton . EscPyError
-instance Domain (Set PyEsc) PyControlEsc where
-    inject = Set.singleton . EscPyControl
-instance Domain (Set PyEsc) PyVal where
-    inject = Set.singleton . EscPyException
+    inject = const Set.empty -- ignore Python-specific domain errors
 
 instance PyEscape (Set PyEsc) where
-    isReturn = joinMap $ \case EscPyControl (Return _) -> true 
-                               _ -> false  
-    isContinue = joinMap $ \case EscPyControl Continue -> true
-                                 _ -> false  
-    isBreak = joinMap $ \case EscPyControl Break -> true
-                              _ -> false 
-    getReturn = mjoinMap $ \case EscPyControl (Return v) -> return v 
-                                 _ -> mzero 
-    getException = mjoinMap $ \case EscPyException e -> return e
-                                    _ -> mzero 
-    isException = joinMap $ \case EscPyException _ -> true 
-                                  _ -> false 
+    isReturn = joinMap $ \case Return _ -> true 
+                               _        -> false  
+    isContinue = joinMap $ \case Continue -> true
+                                 _        -> false  
+    isBreak = joinMap $ \case Break -> true
+                              _     -> false 
+    getReturn = mjoinMap $ \case Return v -> return v 
+                                 _        -> mzero 
+    getException = mjoinMap $ \case Exception e -> return e
+                                    _           -> mzero 
+    isException = joinMap $ \case Exception _ -> true 
+                                  _           -> false 

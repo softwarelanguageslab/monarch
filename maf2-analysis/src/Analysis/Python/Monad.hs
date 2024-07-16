@@ -3,7 +3,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 
 module Analysis.Python.Monad (
-  PyControlEsc(..),
   PyBdy(..),
   PyM,
   pyAlloc,
@@ -11,7 +10,8 @@ module Analysis.Python.Monad (
   pyDeref',
   break,
   continue,
-  returnWith
+  returnWith,
+  throwException
 ) where
 
 import Lattice
@@ -43,10 +43,9 @@ type PyM m obj = (PyObj' obj,
                   MapM (Key m PyBdy) (Val m PyVal) m, 
                   ComponentTrackingM m (Key m PyBdy),
                   MonadEscape m,
+                  PyEscape (Esc m),
                   Domain (Esc m) PyError,
                   Domain (Esc m) DomainError,
-                  Domain (Esc m) PyVal, -- exceptions
-                  PyEscape (Esc m),
                   SplitLattice (Esc m),
                   EnvM m ObjAdr PyEnv, 
                   AllocM m PyLoc ObjAdr,
@@ -69,3 +68,6 @@ continue = escape Continue
 
 returnWith :: PyM pyM obj => PyVal -> pyM ()
 returnWith = escape . Return 
+
+throwException :: PyM pyM obj => PyVal -> pyM ()
+throwException = escape . Exception
