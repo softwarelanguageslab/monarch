@@ -121,7 +121,7 @@ compileStmt (Assign to expr _)               = Assg () <$> compileLhs to <*> ret
 compileStmt (AugmentedAssign to op exp a) = compileStmt (Assign [to] (BinaryOp (translateOp op) to exp a) a)
 compileStmt (Decorated decs def _)        = todo "eval decorated function"
 compileStmt (AST.Return expr a)           = pure $ Return () (fmap compileExp expr) a
-compileStmt (AST.Raise rexp a)            = pure $ Raise () (compileRaiseExp rexp) a
+compileStmt (AST.Raise rexp a)            = pure $ Raise  () (compileRaiseExp rexp) a
 compileStmt (AST.Try bdy hds [] [] a)     = compileTry bdy hds a
 compileStmt (AST.Try {})                  = todo "try with finally and/or else part"
 compileStmt (With ctx bdy _)              = todo "eval with statement"
@@ -133,7 +133,11 @@ compileStmt (AST.Global as a)             = return $ makeSeq $ map (flip (Global
 compileStmt (AST.NonLocal as a)           = return $ makeSeq $ map (flip (NonLocal ()) a . Ide) as
 compileStmt (Delete exs _)                = todo "delete statement"
 compileStmt (Assert exs _)                = todo "assertion statement"
-compileStmt stmt = error "unsupported exp"
+compileStmt (AsyncFor {})                 = error "unsupported exp"
+compileStmt (AnnotatedAssign {})          = error "unsupported exp"
+compileStmt (Print {})                    = error "unsupported exp"
+compileStmt (Exec {})                     = error "unsupported exp"
+
 
 compileRaiseExp :: RaiseExpr PyLoc -> Exp PyLoc AfterSimplification
 compileRaiseExp (RaiseV3 (Just (expr, Nothing))) = compileExp expr
@@ -161,7 +165,7 @@ compilePrs ((Param nam _ def a) : xs) = Prm (Ide nam) a  : compilePrs xs
 compilePrs ((EndPositional _) : xs) = compilePrs xs
 compilePrs ((VarArgsPos nam _ a) : xs) = VarArg (Ide nam) a : compilePrs xs
 compilePrs ((VarArgsKeyword nam _ a) : xs) = VarKeyword (Ide nam) a : compilePrs xs
-compilePrs _ = error "unknown type of expression"
+compilePrs ((UnPackTuple {}) : _) = error "unknown type of expression"
 
 -------------------------------------------------------------------------------
 -- Expressions
@@ -201,7 +205,12 @@ compileExp (UnaryOp op arg _)         = todo "eval unary op"
 compileExp (Dot rcv atr a)            = Read (compileExp rcv) (Ide atr) a
 compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ compileExp bdy) annot) annot () -- note: [] is because of no local variables
 compileExp (AST.Tuple exs _)          = todo "eval tuples"
-compileExp ex = error "unsupported expression"-- ++ show (pretty ex))
+compileExp (LongInt {})               = todo "longInt"
+compileExp (Float {})                 = todo "float"
+compileExp (None {})                  = todo "none"
+compileExp (UnicodeStrings {})        = todo "unicodeStrings"
+compileExp (StringConversion {})      = todo "stringConversion"
+--compileExp ex = error "unsupported expression"-- ++ show (pretty ex))
 
 compileCall :: Expr PyLoc -> [Argument PyLoc] -> PyLoc -> Exp PyLoc AfterSimplification
 compileCall fun args = Call (compileExp fun) posArgs kwArgs
