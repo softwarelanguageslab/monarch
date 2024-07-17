@@ -17,7 +17,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Applicative ((<|>), liftA2, asum)
 import Syntax.Python.Parser (parseFile, SrcSpan)
-import Language.Python.Common.AST hiding (Handler, Try, Raise, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
+import Language.Python.Common.AST hiding (List, Handler, Try, Raise, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
 import qualified Language.Python.Common.AST as AST
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -192,7 +192,7 @@ compileExp (Yield yld _)              = todo "eval yield"
 compileExp (Generator comp _)         = todo "eval generator expression"
 compileExp (Await ex _)               = todo "eval await expression"
 compileExp (ListComp comp _)          = todo "eval list comprehension"
-compileExp (List exs _)               = todo "eval list expressions"
+compileExp (AST.List exs a)           = Literal $ List (map compileExp exs) a
 compileExp (Dictionary map a)         = Literal (compileDict map a)
 compileExp (DictComp comp _)          = todo "eval dictionary comprehension"
 compileExp (Set exs _)                = todo "eval sets"
@@ -470,6 +470,7 @@ lexicalLit (Integer i a) = return $ Integer i a
 lexicalLit (Real r a)    = return $ Real r a
 lexicalLit (String i a)  = return $ String i a
 lexicalLit (Tuple es a)  = Tuple <$> mapM lexicalExp es <*> pure a
+lexicalLit (List es a)   = List <$> mapM lexicalExp es <*> pure a 
 lexicalLit (Dict bds a)  = Dict <$> mapM (\(k,v) -> (,) <$> lexicalExp k <*> lexicalExp v) bds <*> pure a
 
 lexicalLhs :: (LexicalM m a) => Lhs a AfterSimplification -> m (Lhs a AfterLexicalAddressing)

@@ -31,7 +31,7 @@ module Syntax.Python.AST(
 import Data.Void
 import Data.Kind
 import GHC.Generics
-import Language.Python.Common.AST hiding (Try, Raise, Handler, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
+import Language.Python.Common.AST hiding (List, Try, Raise, Handler, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Data.List (intersperse)
@@ -204,7 +204,13 @@ deriving instance (Holds Eq   ξ a) => Eq (Lhs a ξ)
 
 
 -- | Value literals
-data Lit a ξ = Bool Bool a | Integer Integer a | Real Double a | String String a | Tuple [Exp a ξ] a | Dict [(Exp a ξ, Exp a ξ)] a
+data Lit a ξ = Bool Bool a 
+             | Integer Integer a 
+             | Real Double a 
+             | String String a 
+             | Tuple [Exp a ξ] a 
+             | Dict [(Exp a ξ, Exp a ξ)] a
+             | List [Exp a ξ] a
 
 deriving instance (Holds Show ξ a) => Show (Lit a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Lit a ξ)
@@ -290,8 +296,9 @@ instance Pretty (Lit a AfterLexicalAddressing) where
    pretty (Integer i _) = out (show i)
    pretty (Real r _) = out (show r)
    pretty (String s _) = out (show s)
-   pretty (Tuple exs _) = out "[" >> sequence_ (intersperse (out ",") (map pretty exs)) >> out "]"
+   pretty (Tuple exs _) = out "(" >> sequence_ (intersperse (out ",") (map pretty exs)) >> out ")"
    pretty (Dict bds _)  = out "{" >> sequence_ (intersperse (out ",") (map (\(k,v) -> pretty k >> out ":" >> pretty v) bds)) >> out "}"
+   pretty (List exs _)  = out "[" >> sequence_ (intersperse (out ",") (map pretty exs)) >> out "]"
 instance Pretty (IdeLex a) where
    pretty (IdeLex ide at) = out (ideName ide) >> out "@" >> out (show at)
    pretty (IdeGbl nam) = out nam >> out "@" >> out "gbl"

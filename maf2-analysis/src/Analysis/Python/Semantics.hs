@@ -151,6 +151,7 @@ evalLit (Integer int loc)  = pyAlloc loc (from' @IntPrm int)
 evalLit (Real rea loc)     = pyAlloc loc (from' @ReaPrm rea)
 evalLit (String str loc)   = pyAlloc loc (from' @StrPrm str)
 evalLit (Tuple eps loc)    = pyAlloc loc . from @TupPrm . SeqDomain.fromList =<< mapM eval eps 
+evalLit (List exs loc)     = pyAlloc loc . from @LstPrm . SeqDomain.fromList =<< mapM eval exs 
 evalLit (Dict bds loc)     = pyAlloc loc . from @DctPrm . DctDomain.from =<< mapM evalBnd bds
    where evalBnd (kexp, vexp) = (,) <$> (eval kexp >>= (pyDeref' >=> at @StrPrm)) <*> eval vexp 
 
