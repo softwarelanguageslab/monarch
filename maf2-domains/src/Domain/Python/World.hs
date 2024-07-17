@@ -75,7 +75,8 @@ methods PrimType          = []
 methods BoundType         = []
 methods CloType           = []
 methods ListType          = [(GetItemAttr, ListGetItem),
-                             (SetItemAttr, ListSetItem)]
+                             (SetItemAttr, ListSetItem),
+                             (LenAttr,     ListLength)]
 methods FrameType         = []
 methods DictionaryType    = [(GetItemAttr, DictGetItem),
                              (SetItemAttr, DictSetItem)]
@@ -113,6 +114,7 @@ data PyPrim     =
                 -- list primitives
                 | ListGetItem
                 | ListSetItem
+                | ListLength 
                 -- type primitives
                 | TypeInit  
                 -- object primitives
@@ -146,6 +148,7 @@ data PyAttr = ClassAttr
             | GetItemAttr
             | SetItemAttr
             | InitAttr
+            | LenAttr 
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -175,6 +178,7 @@ attrStr MROAttr       = "__mro__"
 attrStr GetItemAttr   = "__getitem__"
 attrStr SetItemAttr   = "__setitem__"
 attrStr InitAttr      = "__init__"
+attrStr LenAttr       = "__len__"
 
 -- | Built-in objects in Python 
 data PyConstant = None

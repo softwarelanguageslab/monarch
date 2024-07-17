@@ -78,7 +78,8 @@ applyPrim ListSetItem   = prim3 $ \_ a1 a2 vlu -> do idx <- pyDeref' a2 >>= at @
                                        lst  <- at @LstPrm obj 
                                        lst' <- SeqDomain.setWeak idx vlu lst    -- TODO: only weak updates until updateWith supports monadic updates ...
                                        let obj' = set @LstPrm lst' obj
-                                       updateAdr adr obj'                    
+                                       updateAdr adr obj'            
+applyPrim ListLength    = prim1' @LstPrm $ \loc a -> pyAlloc loc $ from @IntPrm (SeqDomain.length a)  
 -- type primitives
 applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do assignAttr (attrStr NameAttr) nam typ
                                                       mro <- computeMRO loc typ sup
@@ -102,6 +103,11 @@ prim1 :: forall pyM obj . PyM pyM obj
         -> (PyLoc -> [PyVal] -> pyM PyVal)      -- ^ the resulting function   
 prim1 f loc [a] = f loc a  
 prim1 _ _   _  = escape ArityError 
+
+prim1' :: forall a pyM obj . (SingI a, PyM pyM obj)  
+        => (PyLoc -> Abs obj a -> pyM PyVal)      -- ^ the primitive function
+        -> (PyLoc -> [PyVal]   -> pyM PyVal)      -- ^ the resulting function   
+prim1' f = prim1 $ \loc -> pyDeref' >=> at @a >=> f loc 
 
 prim2 :: PyM pyM obj
         => (PyLoc -> PyVal -> PyVal -> pyM PyVal)     -- ^ the primitive function
