@@ -13,6 +13,7 @@ import Domain.Python.World
 import Domain.Python.Objects
 
 import Domain (NumberDomain)
+import qualified Domain.Core.SeqDomain as SeqDomain 
 import qualified Domain
 import Domain.Python.Syntax hiding (Dict)
 import Analysis.Python.Monad 
@@ -25,7 +26,7 @@ import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import Control.Monad (liftM2)
 import qualified Control.Monad as Monad 
 import Data.Singletons.TH
-import Analysis.Monad (StoreM(updateWith, lookupAdr))
+import Analysis.Monad (StoreM(updateWith, lookupAdr, updateAdr))
 import Data.Functor (($>))
 import Control.Monad ((>=>))
 import Analysis.Monad.Store (deref')
@@ -67,6 +68,17 @@ applyPrim DictSetItem   = prim3 $ \_ a1 a2 vlu -> do key <- pyDeref' a2 >>= at @
                                            (updateWith (modify @DctPrm $ Domain.update key vlu) 
                                                        (modify @DctPrm $ Domain.updateWeak key vlu) adr)
                                            (escape WrongType)
+-- list primitives
+applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref 
+applyPrim ListSetItem   = prim3 $ \_ a1 a2 vlu -> do idx <- pyDeref' a2 >>= at @IntPrm
+                                                     mjoinMap (updateLstIdx idx vlu) (addrs a1)
+                                                     return $ constant None
+   where updateLstIdx :: Abs obj IntPrm -> PyVal -> ObjAdr -> pyM ()
+         updateLstIdx idx vlu adr = do obj  <- lookupAdr adr
+                                       lst  <- at @LstPrm obj 
+                                       lst' <- SeqDomain.setWeak idx vlu lst    -- TODO: only weak updates until updateWith supports monadic updates ...
+                                       let obj' = set @LstPrm lst' obj
+                                       updateAdr adr obj'                    
 -- type primitives
 applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do assignAttr (attrStr NameAttr) nam typ
                                                       mro <- computeMRO loc typ sup

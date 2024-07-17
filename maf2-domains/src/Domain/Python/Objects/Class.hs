@@ -42,6 +42,7 @@ class (
     Abs obj BndPrm ~ Map (Adr obj) (Ref obj),   -- TODO: this can be generalised  
     SeqDomain     (Abs obj LstPrm),
     SeqDomain.Vlu (Abs obj LstPrm) ~ Ref obj, 
+    SeqDomain.Idx (Abs obj LstPrm) ~ Abs obj IntPrm, 
     SeqDomain     (Abs obj TupPrm),
     SeqDomain.Vlu (Abs obj TupPrm) ~ Ref obj, 
     IntDomain     (Abs obj IntPrm),

@@ -470,8 +470,8 @@ lexicalLit (Integer i a) = return $ Integer i a
 lexicalLit (Real r a)    = return $ Real r a
 lexicalLit (String i a)  = return $ String i a
 lexicalLit (Tuple es a)  = Tuple <$> mapM lexicalExp es <*> pure a
-lexicalLit (List es a)   = List <$> mapM lexicalExp es <*> pure a 
-lexicalLit (Dict bds a)  = Dict <$> mapM (\(k,v) -> (,) <$> lexicalExp k <*> lexicalExp v) bds <*> pure a
+lexicalLit (List es a)   = List  <$> mapM lexicalExp es <*> pure a 
+lexicalLit (Dict bds a)  = Dict  <$> mapM (\(k,v) -> (,) <$> lexicalExp k <*> lexicalExp v) bds <*> pure a
 
 lexicalLhs :: (LexicalM m a) => Lhs a AfterSimplification -> m (Lhs a AfterLexicalAddressing)
 lexicalLhs (Field e x a) = Field <$> lexicalExp e <*> pure x <*> pure a

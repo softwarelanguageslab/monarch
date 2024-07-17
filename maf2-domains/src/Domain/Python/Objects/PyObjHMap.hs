@@ -109,7 +109,8 @@ instance (Show vlu, ForAll PyPrmKey (AtKey1 Show (PyPrm m vlu adr clo))) => Show
 -- Making an instance of PyObj 
 --
 
-instance (Ord clo, Ord adr, AllAbs m vlu adr clo) => PyObj (PyObjHMap m vlu adr clo) where
+-- TODO: this currently really only works for CP domains due to the fixed usage of CPList 
+instance (Ord clo, Ord adr, Assoc IntKey m ~ CP Integer, AllAbs m vlu adr clo) => PyObj (PyObjHMap m vlu adr clo) where
     type Ref (PyObjHMap m vlu adr clo) = vlu 
     type Adr (PyObjHMap m vlu adr clo) = adr
     type Clo (PyObjHMap m vlu adr clo) = clo 

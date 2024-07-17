@@ -74,7 +74,8 @@ methods TupleType         = []
 methods PrimType          = []
 methods BoundType         = []
 methods CloType           = []
-methods ListType          = []
+methods ListType          = [(GetItemAttr, ListGetItem),
+                             (SetItemAttr, ListSetItem)]
 methods FrameType         = []
 methods DictionaryType    = [(GetItemAttr, DictGetItem),
                              (SetItemAttr, DictSetItem)]
@@ -109,6 +110,9 @@ data PyPrim     =
                 -- dict primitives
                 | DictGetItem 
                 | DictSetItem
+                -- list primitives
+                | ListGetItem
+                | ListSetItem
                 -- type primitives
                 | TypeInit  
                 -- object primitives
