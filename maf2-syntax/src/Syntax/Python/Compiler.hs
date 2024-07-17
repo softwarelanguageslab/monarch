@@ -193,7 +193,7 @@ compileExp (Generator comp _)         = todo "eval generator expression"
 compileExp (Await ex _)               = todo "eval await expression"
 compileExp (ListComp comp _)          = todo "eval list comprehension"
 compileExp (AST.List exs a)           = Literal $ List (map compileExp exs) a
-compileExp (Dictionary map a)         = Literal (compileDict map a)
+compileExp (Dictionary bds a)         = Literal $ Dict (map compileDictBnd bds) a
 compileExp (DictComp comp _)          = todo "eval dictionary comprehension"
 compileExp (Set exs _)                = todo "eval sets"
 compileExp (SetComp comp _)           = todo "eval set comprehension"
@@ -271,10 +271,9 @@ binaryToCall op left right a =
            []
            a
 
-compileDict :: [DictKeyDatumList PyLoc] -> PyLoc -> Lit PyLoc AfterSimplification
-compileDict bds = Dict (map compileBds bds)
-   where compileBds (DictMappingPair kexpr vexpr) = (compileExp kexpr, compileExp vexpr)
-         compileBds _ = error "unsupported dictionary entry (unwrapping)"
+compileDictBnd :: DictKeyDatumList PyLoc -> (Exp PyLoc AfterSimplification, Exp PyLoc AfterSimplification)
+compileDictBnd (DictMappingPair kexpr vexpr) = (compileExp kexpr, compileExp vexpr)
+compileDictBnd _ = error "unsupported dictionary entry (unwrapping)"
 
 opToIde :: Op a -> Ide a
 opToIde op = case op of
