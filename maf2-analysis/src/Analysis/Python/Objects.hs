@@ -10,7 +10,7 @@
 
 module Analysis.Python.Objects where
 
-import Domain.Python.Syntax hiding (Dict)
+import Domain.Python.Syntax hiding (Dict, None)
 import Analysis.Python.Common 
 import Analysis.Python.Monad 
 import qualified Domain.Core.SeqDomain as SeqDomain
@@ -69,8 +69,7 @@ initialCst :: [(String, PyConstant)]
 initialCst = [("type",  TypeObject TypeType),
               ("Exception", TypeObject ExceptionType),
               ("True",  True),
-              ("False", False),
-              ("None",  None)]
+              ("False", False)]
 
 injectPyConstant :: PyObj' obj => PyConstant -> obj
 injectPyConstant True             = from' @BlnPrm Prelude.True

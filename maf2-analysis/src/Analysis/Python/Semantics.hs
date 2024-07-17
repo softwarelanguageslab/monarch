@@ -7,7 +7,8 @@ module Analysis.Python.Semantics where
 
 import Domain.Python.Objects 
 import Domain.Python.World
-import Domain.Python.Syntax
+import Domain.Python.Syntax hiding (None)
+import qualified Domain.Python.Syntax as Syntax
 import Analysis.Python.Objects
 import Analysis.Python.Common
 import Analysis.Python.Monad hiding (Return, Continue, Break)
@@ -146,6 +147,7 @@ evalVar var = do (adr, nam) <- frame var
                  return $ getAttr nam frm 
 
 evalLit :: forall pyM obj . PyM pyM obj => PyLit -> pyM PyVal
+evalLit (Syntax.None _)    = return $ constant None 
 evalLit (Bool bln loc)     = pyAlloc loc (from' @BlnPrm bln)
 evalLit (Integer int loc)  = pyAlloc loc (from' @IntPrm int)
 evalLit (Real rea loc)     = pyAlloc loc (from' @ReaPrm rea)

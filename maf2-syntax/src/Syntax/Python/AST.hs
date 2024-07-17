@@ -31,7 +31,7 @@ module Syntax.Python.AST(
 import Data.Void
 import Data.Kind
 import GHC.Generics
-import Language.Python.Common.AST hiding (List, Try, Raise, Handler, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
+import Language.Python.Common.AST hiding (None, List, Try, Raise, Handler, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Data.List (intersperse)
@@ -211,6 +211,7 @@ data Lit a ξ = Bool Bool a
              | Tuple [Exp a ξ] a 
              | Dict [(Exp a ξ, Exp a ξ)] a
              | List [Exp a ξ] a
+             | None a 
 
 deriving instance (Holds Show ξ a) => Show (Lit a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Lit a ξ)
@@ -299,6 +300,7 @@ instance Pretty (Lit a AfterLexicalAddressing) where
    pretty (Tuple exs _) = out "(" >> sequence_ (intersperse (out ",") (map pretty exs)) >> out ")"
    pretty (Dict bds _)  = out "{" >> sequence_ (intersperse (out ",") (map (\(k,v) -> pretty k >> out ":" >> pretty v) bds)) >> out "}"
    pretty (List exs _)  = out "[" >> sequence_ (intersperse (out ",") (map pretty exs)) >> out "]"
+   pretty (None _)      = out "None"
 instance Pretty (IdeLex a) where
    pretty (IdeLex ide at) = out (ideName ide) >> out "@" >> out (show at)
    pretty (IdeGbl nam) = out nam >> out "@" >> out "gbl"

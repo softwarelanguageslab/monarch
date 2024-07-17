@@ -15,7 +15,7 @@ import Domain.Python.Objects
 import Domain (NumberDomain)
 import qualified Domain.Core.SeqDomain as SeqDomain 
 import qualified Domain
-import Domain.Python.Syntax hiding (Dict)
+import Domain.Python.Syntax hiding (Dict, None)
 import Analysis.Python.Monad 
 import Analysis.Python.Common 
 import Control.Monad.Join

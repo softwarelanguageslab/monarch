@@ -17,7 +17,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Applicative ((<|>), liftA2, asum)
 import Syntax.Python.Parser (parseFile, SrcSpan)
-import Language.Python.Common.AST hiding (List, Handler, Try, Raise, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
+import Language.Python.Common.AST hiding (None, List, Handler, Try, Raise, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
 import qualified Language.Python.Common.AST as AST
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -207,7 +207,7 @@ compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ 
 compileExp (AST.Tuple exs a)          = Literal $ Tuple (map compileExp exs) a 
 compileExp (LongInt {})               = todo "longInt"
 compileExp (Float f _ a)              = Literal $ Real f a 
-compileExp (None {})                  = todo "none"
+compileExp (AST.None a)               = Literal $ None a 
 compileExp (UnicodeStrings {})        = todo "unicodeStrings"
 compileExp (StringConversion {})      = todo "stringConversion"
 --compileExp ex = error "unsupported expression"-- ++ show (pretty ex))
@@ -471,6 +471,7 @@ lexicalLit (String i a)  = return $ String i a
 lexicalLit (Tuple es a)  = Tuple <$> mapM lexicalExp es <*> pure a
 lexicalLit (List es a)   = List  <$> mapM lexicalExp es <*> pure a 
 lexicalLit (Dict bds a)  = Dict  <$> mapM (\(k,v) -> (,) <$> lexicalExp k <*> lexicalExp v) bds <*> pure a
+lexicalLit (None a)      = return $ None a 
 
 lexicalLhs :: (LexicalM m a) => Lhs a AfterSimplification -> m (Lhs a AfterLexicalAddressing)
 lexicalLhs (Field e x a) = Field <$> lexicalExp e <*> pure x <*> pure a
