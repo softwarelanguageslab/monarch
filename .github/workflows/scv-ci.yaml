@@ -36,7 +36,7 @@ jobs:
 
     - name: Install dependencies
       working-directory: maf2-scv
-      run: cabal update && cabal install hspec-discover
+      run: cabal update && cabal install --overwrite-policy=always hspec-discover
     - name: Build
       working-directory: maf2-scv
       run: cabal build
