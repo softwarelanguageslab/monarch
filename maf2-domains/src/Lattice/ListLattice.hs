@@ -10,7 +10,7 @@ import Data.List (partition)
 
 --TODO: introduce a newtype
 
-reduce :: (Meetable v, JoinLattice v) => [v] -> [v]
+reduce :: (Meetable v, Joinable v, BottomLattice v, Eq v) => [v] -> [v]
 reduce [] = []
 reduce (v:vs)
     | updated == v   = v : reduce oth
@@ -19,9 +19,11 @@ reduce (v:vs)
           updated    = joins (v:olp)
 
 -- | A List lattice instance, where the elements may be overlapping
-instance (JoinLattice l, Meetable l) => Joinable [l] where
+instance (Joinable l, Meetable l, BottomLattice l,  Eq l) => Joinable [l] where
    join l1 l2 = reduce (l1 ++ l2)  
    
-instance (JoinLattice l, Meetable l) => JoinLattice [l] where
+instance BottomLattice [l] where 
    bottom = []
+
+instance (Joinable l, Meetable l, BottomLattice l, Eq l) => PartialOrder [l] where
    subsumes l1 l2 = join l1 l2 == l1 

@@ -78,7 +78,7 @@ class (RealDomain v,
   prim  :: String -> v
   prims :: v -> Set String
 
-  withProc :: (AbstractM m, JoinLattice a) => (Either String (Exp v, Env v) -> m a) -> v -> m a
+  withProc :: (AbstractM m, Lattice a) => (Either String (Exp v, Env v) -> m a) -> v -> m a
 
   -- | Differentiate between values
   -- Note that these predicates ought to be overapproximating, so they should return `True` if it could be a value of the given type

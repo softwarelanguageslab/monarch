@@ -25,7 +25,7 @@ insertAt _ v []     = [v]
 insertAt 0 v xs     = v : xs
 insertAt n v (x:xs) = x : insertAt (n-1) v xs 
 
-insertAnyWhere :: JoinLattice v => v -> [v] -> [v]
+insertAnyWhere :: (BottomLattice v, Joinable v) => v -> [v] -> [v]
 insertAnyWhere v vs = join v <$> zipWith join (bottom : vs) (vs ++ [bottom])
 
 sliceBetween :: Int -> Int -> [v] -> [v]
@@ -41,10 +41,10 @@ instance (Joinable v) => Joinable (CPList v) where
   join (TopList vlu1) (CPList _ _ vlu2) = TopList (vlu1 `join` vlu2) 
   join (TopList vlu1) (TopList vlu2)    = TopList (vlu1 `join` vlu2)
 
-instance JoinLattice v => JoinLattice (CPList v) where
+instance BottomLattice (CPList v) where
   bottom = BotList
 
-instance JoinLattice v => SeqDomain (CPList v) where
+instance Lattice v => SeqDomain (CPList v) where
 
   type Vlu (CPList v) = v 
   type Idx (CPList v) = CP Integer 

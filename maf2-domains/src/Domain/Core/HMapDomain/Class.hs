@@ -11,10 +11,9 @@ import Data.TypeLevel.HMap hiding (empty)
 
 import Data.Kind (Type)
 import Data.Singletons
-import Data.Singletons.Sigma
 
 -- | An abstract representation of an HMap
-class (JoinLattice v) => HMapDomain v (m :: [k:->Type]) | v -> m where
+class (Lattice v) => HMapDomain v (m :: [k:->Type]) | v -> m where
     empty :: v
     member :: forall (kt :: k) b . (BoolDomain b) => Sing kt -> v -> b
     lookup :: forall kt . Sing kt -> v -> Maybe (Assoc kt m) 

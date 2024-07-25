@@ -13,7 +13,7 @@ import Control.Monad.Join
 import Data.Maybe
 import Domain.Class
 
-maybeBot :: JoinLattice a => Maybe a -> a
+maybeBot :: BottomLattice a => Maybe a -> a
 maybeBot = fromMaybe bottom
 
 data BoundedList a = BoundedList {
@@ -21,16 +21,16 @@ data BoundedList a = BoundedList {
    elements  :: [a]
 } deriving (Eq, Ord, Show)
 
-instance (JoinLattice a) => Joinable (BoundedList a) where
+instance (BottomLattice a, Joinable a) => Joinable (BoundedList a) where
    join l1 l2 = BoundedList {
       length    = join (length l1) (length l2),
       elements  = zipWithLongest (\a b -> join (maybeBot a) (maybeBot b)) (elements l1) (elements l2)
    }
 
-instance (JoinLattice a) => JoinLattice (BoundedList a) where   
+instance (BottomLattice a) => BottomLattice (BoundedList a) where   
    bottom = BoundedList bottom []
 
-ref :: (NumberDomain i, Domain i Int, JoinLattice a, AbstractM m) => BoundedList a -> i -> m a
+ref :: (NumberDomain i, Domain i Int, Joinable a, BottomLattice a, AbstractM m) => BoundedList a -> i -> m a
 ref (BoundedList length elements) i
       | length == bottom = mzero
       | otherwise        = rangedRef length

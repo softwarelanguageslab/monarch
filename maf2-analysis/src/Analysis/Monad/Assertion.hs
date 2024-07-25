@@ -25,7 +25,7 @@ import Syntax.Span
 -- | Assert that certain conditions hold on the given value
 -- and give an assertion error if they do not.
 class (Monad m, SpanM m, MonadJoin m, MonadEscape m) => AssertM m where   
-   assert :: JoinLattice v => (Domain (Esc m) e) => (v -> CP Bool) -> (Span -> e) -> v -> m v
+   assert :: Lattice v => (Domain (Esc m) e) => (v -> CP Bool) -> (Span -> e) -> v -> m v
    assert b e v = cond (pure $ b v) (pure v) (escape =<< usingSpan e) 
 
 -- Auto instance

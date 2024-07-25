@@ -36,8 +36,10 @@ instance (Ord a) => Joinable (Interval a) where
   join (Interval left1 right1) (Interval left2 right2) = 
     Interval (min left1 left2) (max right1 right2)
 
-instance (Ord a) => JoinLattice (Interval a) where
+instance BottomLattice (Interval a) where 
   bottom = BottomInterval
+
+instance (Ord a) => PartialOrder (Interval a) where
   subsumes _ BottomInterval = True 
   subsumes BottomInterval _ = True 
   subsumes (Interval left1 right1) (Interval left2 right2) = 

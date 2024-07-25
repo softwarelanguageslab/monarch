@@ -16,17 +16,12 @@ import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Monad.State hiding (get, put)
 import Control.Monad.Escape
-import Lattice (JoinLattice(..))
+import Lattice
 import Control.Monad.Layer (MonadLayer)
-import Data.Functor (($>))
 import Control.Monad.Trans.Maybe
 import Analysis.Monad.Map
 import ListT
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Lattice (Joinable)
 import Data.Kind (Type)
-import Data.Maybe (fromJust)
 
 ---
 --- MonadCache typeclass

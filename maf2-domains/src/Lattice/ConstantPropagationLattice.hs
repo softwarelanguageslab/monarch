@@ -29,9 +29,10 @@ instance Ord a => Meetable (CP a) where
       | x1 == x2 = v
    meet _ _ = Bottom
 
-instance (Show a, Ord a) => JoinLattice (CP a) where
-    bottom = Bottom
+instance BottomLattice (CP a) where
+   bottom = Bottom
 
+instance (Show a, Ord a) => PartialOrder (CP a) where
     subsumes Top _ = True
     subsumes _ Bottom = True
     subsumes (Constant x1) (Constant x2) = x1 == x2

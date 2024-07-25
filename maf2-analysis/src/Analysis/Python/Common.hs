@@ -51,7 +51,7 @@ instance Show ObjAdr where
 --
 
 newtype PyVal = PyVal { addrs :: Set ObjAdr }
-  deriving (Eq, Ord, Joinable, JoinLattice)
+  deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
 
 instance Show PyVal where
   show = show . Set.toList . addrs 

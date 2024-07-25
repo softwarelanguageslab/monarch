@@ -26,7 +26,7 @@ import qualified Data.Set as Set
 import Unsafe.Coerce
 import Prelude hiding (read)
 import Data.Bifunctor (second)
-import Lattice (Joinable(..), JoinLattice(..))
+import Lattice
 import Control.Monad (foldM)
 import qualified Control.Monad
 import Data.Functor ((<&>))
@@ -47,7 +47,7 @@ newtype SVar a = SVar { getSVar :: Set Int } deriving (Eq, Ord, Show)
 -- if the JoinT monad is used at the bottom or not.
 instance Joinable (SVar a) where
    join = error "cannot join svars"
-instance JoinLattice (SVar a) where
+instance BottomLattice (SVar a) where
    bottom = error "svar does not have bottom"
 
 class (Monad m) => MonadStateVar m where

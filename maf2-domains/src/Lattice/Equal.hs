@@ -14,7 +14,7 @@ class EqualLattice v where
    is  :: (BoolDomain b, Domain v c) => v -> c -> b
    is v = eql v . inject 
 
-instance {-# OVERLAPPABLE #-} (JoinLattice a, Meetable a) => EqualLattice a where   
+instance {-# OVERLAPPABLE #-} (BottomLattice a, Eq a, Joinable a, Meetable a) => EqualLattice a where   
    eql a b 
       | a == bottom || b == bottom = bottom
       | a `meet` b == bottom = inject False

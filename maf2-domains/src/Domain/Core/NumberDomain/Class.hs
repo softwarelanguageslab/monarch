@@ -7,7 +7,7 @@ import qualified Domain.Core.BoolDomain.Class as Bool
 
 import Data.Kind 
 
-class (JoinLattice n, Bool.BoolDomain (Boo n)) => NumberDomain n where
+class (Lattice n, Bool.BoolDomain (Boo n)) => NumberDomain n where
    type Boo n :: Type
    isZero :: AbstractM m => n -> m (Boo n)
    random :: AbstractM m => n -> m n

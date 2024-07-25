@@ -10,7 +10,7 @@ import Prelude hiding (lookup)
 import Data.Kind
 
 -- | An abstract representation of a dictionary
-class (JoinLattice d, JoinLattice (DVlu d)) => DictionaryDomain d where
+class (Lattice d, Lattice (DVlu d)) => DictionaryDomain d where
    type DKey d :: Type
    type DVlu d :: Type
    -- | Create an empty dictionary 

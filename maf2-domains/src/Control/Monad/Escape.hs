@@ -20,16 +20,16 @@ import Data.Functor ((<&>))
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
    type Esc m
-   throw :: JoinLattice a => Esc m -> m a 
-   catch :: JoinLattice a => m a -> (Esc m -> m a) -> m a
+   throw :: (BottomLattice a, Joinable a) => Esc m -> m a 
+   catch :: (BottomLattice a, Joinable a) => m a -> (Esc m -> m a) -> m a
 
-escape :: (MonadEscape m, Domain (Esc m) e, JoinLattice a) => e -> m a 
+escape :: (MonadEscape m, Domain (Esc m) e, BottomLattice a, Joinable a) => e -> m a 
 escape = throw . inject 
 
-orElse :: (MonadEscape m, JoinLattice a) => m a -> m a -> m a
+orElse :: (MonadEscape m, BottomLattice a, Joinable a) => m a -> m a -> m a
 orElse a = catch a . const  
 
-try :: (MonadEscape m, JoinLattice a) => [m a] -> m a -> m a
+try :: (MonadEscape m, BottomLattice a, Joinable a) => [m a] -> m a -> m a
 try = flip $ foldr orElse 
 
 ------------------------------------------------------------
@@ -73,7 +73,7 @@ instance (Joinable e, Joinable a) => Joinable (MayEscape e a) where
    join (MayBoth v1 e) (Value v2)         = MayBoth (v1 `join` v2) e
    join (MayBoth v1 e1) (MayBoth v2 e2)   = MayBoth (v1 `join` v2) (e1 `join` e2)
 
-instance (Eq a, Eq e, Joinable a, Joinable e) => JoinLattice (MayEscape e a) where
+instance BottomLattice (MayEscape e a) where
    bottom = Bottom
 
 ------------------------------------------------------------

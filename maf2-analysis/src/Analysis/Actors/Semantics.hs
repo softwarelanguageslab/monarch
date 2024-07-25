@@ -14,7 +14,7 @@ import Analysis.Actors.Monad
 import Analysis.Actors.Mailbox
 import qualified Analysis.Monad as Monad
 import Control.Monad.Join
-import Lattice.Class (JoinLattice, bottom)
+import Lattice.Class (Lattice, bottom)
 
 eval :: ActorEvalM m v msg mb => Exp -> m v
 eval (Spw beh args _) = initBehavior beh args spawn
@@ -34,7 +34,7 @@ eval e = Base.eval e
 
 -- | Initialize the behavior in the first argument with the arguments in the second 
 -- then run the function in the third argument on the expression of the behavior
-initBehavior :: (JoinLattice a, ActorEvalM m v msg mb) => Exp -> [Exp] -> (Exp -> m a) -> m a
+initBehavior :: (Lattice a, ActorEvalM m v msg mb) => Exp -> [Exp] -> (Exp -> m a) -> m a
 initBehavior beh args run =
    Monad.eval beh >>= withBehs (\(Beh prs bdy _, env) -> do
       vlus <- mapM Monad.eval args

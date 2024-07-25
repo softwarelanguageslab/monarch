@@ -26,8 +26,10 @@ instance (Ord a) => Joinable (ReversePowerSet a) where
    join v RPBottom = v
    join (RPSet s1) (RPSet s2) = RPSet (s1 `Set.intersection` s2)
 
-instance (Ord a) => JoinLattice (ReversePowerSet a) where
-   bottom = RPBottom 
+instance BottomLattice (ReversePowerSet a) where   
+   bottom = RPBottom
+
+instance (Ord a) => PartialOrder (ReversePowerSet a) where
    subsumes _ RPBottom = True
    subsumes RPBottom _ = False
    subsumes (RPSet s1) (RPSet s2) = s1 `Set.isSubsetOf` s2 

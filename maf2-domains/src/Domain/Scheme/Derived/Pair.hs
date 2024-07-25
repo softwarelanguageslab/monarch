@@ -44,9 +44,9 @@ leftValue (SchemePairedValue (l, _)) = l
 rightValue :: SchemePairedValue l r -> r
 rightValue (SchemePairedValue (_, r)) = r
 
-mkLeft :: (JoinLattice r) => l -> SchemePairedValue l r 
+mkLeft :: (Lattice r) => l -> SchemePairedValue l r 
 mkLeft = SchemePairedValue . (,bottom)
-mkRight :: (JoinLattice l) => r -> SchemePairedValue l r 
+mkRight :: (Lattice l) => r -> SchemePairedValue l r 
 mkRight = SchemePairedValue . (bottom,)
 
 -- | Curried constructor of SchemePairedValue
@@ -63,9 +63,8 @@ instance (Joinable l, Joinable r) => Joinable (SchemePairedValue l r) where
    join (SchemePairedValue l) (SchemePairedValue r) = SchemePairedValue $ join l r
 
 -- | The paired value has bottom and subsumes if the consistuents have them
-instance (JoinLattice l, JoinLattice r) => JoinLattice (SchemePairedValue l r) where
+instance (BottomLattice l, BottomLattice r) => BottomLattice (SchemePairedValue l r) where
    bottom = SchemePairedValue bottom
-   subsumes (SchemePairedValue l) (SchemePairedValue r) = subsumes l r
 
 ------------------------------------------------------------
 -- NumberDomain instance

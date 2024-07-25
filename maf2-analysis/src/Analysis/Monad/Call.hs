@@ -35,7 +35,7 @@ instance (Monad (t m), CallM m env v, MonadLayer t) => CallM (t m) env v where
 newtype CallBottomT v m a = CallBottomT { _getCallBottomT :: IdentityT m a }
                         deriving (Applicative, Functor, Monad, MonadJoin, MonadLayer, MonadTrans)
 
-instance {-# OVERLAPPING #-} (Monad m, JoinLattice v) => CallM (CallBottomT v m) env v where
+instance {-# OVERLAPPING #-} (Monad m, BottomLattice v) => CallM (CallBottomT v m) env v where
    call _ = CallBottomT $ return bottom
 
 runCallBottomT :: CallBottomT v m a -> m a

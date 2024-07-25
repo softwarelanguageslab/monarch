@@ -9,7 +9,7 @@ import Lattice.Class
 -- | A domain maps a concrete value `c`
 -- into an abstract value `v` using the `inject` 
 -- function.
-class JoinLattice v => Domain v c where
+class Lattice v => Domain v c where
    inject :: c -> v
    injects :: Foldable t => t c -> v 
    injects = joinMap inject 

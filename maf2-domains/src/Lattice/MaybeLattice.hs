@@ -15,9 +15,11 @@ instance (Joinable v) => Joinable (Maybe v) where
    join Nothing (Just a) = Just a
    join _ _ = Nothing
 
--- | JoinLattice implementation for Maybe
-instance (JoinLattice v) => JoinLattice (Maybe v) where
+instance BottomLattice (Maybe v) where 
    bottom = Nothing
+
+-- | PartialOrder implementation for Maybe
+instance (PartialOrder v) => PartialOrder (Maybe v) where
    subsumes (Just a) (Just b) = subsumes a b
    subsumes (Just _) Nothing = True
    subsumes Nothing Nothing = True

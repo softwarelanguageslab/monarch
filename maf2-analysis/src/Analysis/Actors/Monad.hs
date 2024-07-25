@@ -45,13 +45,14 @@ import Analysis.Monad.IntraAnalysis
 import Control.Monad.Cond (ifM)
 import Analysis.Monad.DependencyTracking (DependencyTrackingM, trigger, register)
 import Analysis.Monad.WorkList (WorkListM)
+import Lattice.Class (BottomLattice)
 
 type ActorEvalM m v msg mb = (SchemeM m v, ActorDomain v, ActorM m (ARef v) msg mb, ActorBehaviorM m v, Message msg v)
 
 class ActorBehaviorM m v | m -> v where
    -- | Spawn a new actor with the given behavior, returns an actor reference
    -- corresponding to the newly spawned actor
-   spawn  :: JoinLattice v => Exp -> m v
+   spawn  :: BottomLattice v => Exp -> m v
    -- | Change the behavior of the actor to the given new behavior
    become :: Exp -> m ()
 
@@ -71,7 +72,7 @@ class ActorLocalM m ref msg mb | m -> ref msg mb where
    -- | Put new mailbox
    putMailbox :: mb -> m ()
 
-receive :: (MonadJoin m, ActorLocalM m ref msg mb, JoinLattice a) =>(msg -> m a) -> m a
+receive :: (MonadJoin m, ActorLocalM m ref msg mb, Joinable a, BottomLattice a) => (msg -> m a) -> m a
 receive f = do
    msgs <- receiveAll
    mjoins (map (\(msg, mb') -> putMailbox mb' >> f msg) msgs)
@@ -103,7 +104,7 @@ instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, ActorGlobalM m ref msg mb)
 -- | The state of an actor that consists of its mailbox and a 
 -- reference to itself.
 newtype ActorState mb = ActorState { mailbox :: mb }
-                       deriving (Eq, Ord, Joinable, JoinLattice)
+                       deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
 
 -- | Basic implementation of the ActorM monad
 -- It keeps track of the mailbox and a self-reference using the state monad
@@ -119,7 +120,7 @@ instance MonadLayer (ActorT mb ref msg) where
    lowerM f (ActorT m) = ActorT $ lowerM (lowerM f) m 
 
 
-instance (JoinLattice mb, MonadJoin m) => MonadJoin (ActorT mb ref msg m) where
+instance (Joinable mb, BottomLattice mb, MonadJoin m) => MonadJoin (ActorT mb ref msg m) where
    mzero = ActorT mzero
    mjoin (ActorT ma) (ActorT mb) = ActorT $ mjoin ma mb
 

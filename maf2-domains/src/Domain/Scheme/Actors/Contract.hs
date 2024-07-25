@@ -1,7 +1,7 @@
 -- This module provides abstractions for contracts and their monitors
 module Domain.Scheme.Actors.Contract(MessageContract(..)) where
 
-import Lattice (Joinable(..), JoinLattice(..))
+import Lattice (Joinable(..), BottomLattice(..))
 import Domain.Core.SeqDomain.BoundedList
 
 -- | Abstraction of a message contract, its join is performed
@@ -13,7 +13,11 @@ data MessageContract v = MessageContract {
       comm     :: v              -- ^ communication contract (λ)
    } | Bottom deriving (Show, Eq, Ord)
 
-instance (JoinLattice v) => Joinable (MessageContract v) where
+
+-- TODO: the `BottomLattice` constraint is needed here because of the `BoundedList`
+-- usage which requires a bottom for its join, we should change `BoundedList`
+-- to not rely on bottom anymore.
+instance (Joinable v, BottomLattice v) => Joinable (MessageContract v) where
    join Bottom v = v
    join v Bottom = v
    join (MessageContract tag1 rcpt1 payload1 comm1) (MessageContract tag2 rcpt2 payload2 comm2) =
@@ -24,7 +28,7 @@ instance (JoinLattice v) => Joinable (MessageContract v) where
          comm    = join comm1 comm2
       }
 
-instance (JoinLattice v) => JoinLattice (MessageContract v) where   
+instance BottomLattice (MessageContract v) where   
    bottom = Bottom
 
 

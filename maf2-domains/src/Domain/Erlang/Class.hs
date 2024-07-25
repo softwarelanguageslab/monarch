@@ -4,7 +4,7 @@ import Syntax.Erlang
 import Data.Kind
 
 import Domain.Core
-import Lattice (JoinLattice)
+import Lattice (Lattice)
 import Control.Monad.AbstractM
 
 type Clo v = (Env v, [Clause])
@@ -29,11 +29,11 @@ class (NumberDomain v, IntDomain v) => ErlangDomain v where
    isNil :: v -> Bool
 
    -- | Run the given function with all pids
-   pids :: (JoinLattice a, AbstractM m) => (Pid v -> m a) -> v -> m a
+   pids :: (Lattice a, AbstractM m) => (Pid v -> m a) -> v -> m a
 
    -- | Run the given monadic code with the 
    -- closures inside the given abstract value
-   clos :: (JoinLattice a, AbstractM m) => (Clo v -> m a) -> v  -> m a
+   clos :: (Lattice a, AbstractM m) => (Clo v -> m a) -> v  -> m a
 
    -- | Extract all symbols from the abstract domain
-   symbols :: (JoinLattice a, AbstractM m) => (String -> m a) -> v -> m a 
+   symbols :: (Lattice a, AbstractM m) => (String -> m a) -> v -> m a 

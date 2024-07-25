@@ -15,7 +15,7 @@ import qualified Data.Set as Set
 instance (Ord a, Joinable v) => Joinable (Map a v) where
    join = Map.unionWith join
 
-instance (Ord a, Eq v, Joinable v) => JoinLattice (Map a v) where
+instance BottomLattice (Map a v) where
    bottom = Map.empty
 
 instance (Ord a, Ord v) => SplitLattice (Map a v) where

@@ -17,7 +17,7 @@ import qualified Data.Set as Set
 import Control.Monad.State as State hiding (mzero)
 import Analysis.Monad.Cache
 import Control.Monad.Join
-import Lattice (JoinLattice, justOrBot)
+import Lattice (Lattice, justOrBot)
 import Analysis.Monad.Map (MapM)
 
 ---
@@ -31,7 +31,7 @@ class Monad m => ComponentTrackingM m cmp | m -> cmp where
 has :: (ComponentTrackingM m cmp, Ord cmp) => cmp -> m Bool
 has cmp = Set.member cmp <$> components
 
-call :: forall v m cmp . (MonadCache m, MonadJoin m, JoinLattice v, MapM (Key m cmp) (Val m v) m, ComponentTrackingM m (Key m cmp)) => cmp -> m v
+call :: forall v m cmp . (MonadCache m, MonadJoin m, Lattice v, MapM (Key m cmp) (Val m v) m, ComponentTrackingM m (Key m cmp)) => cmp -> m v
 call cmp = do k <- key cmp
               spawn k
               m <- cached @m @cmp @v k

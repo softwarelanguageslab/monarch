@@ -32,10 +32,10 @@ import Data.Map (Map)
 import Control.Monad ((>=>))
 
 data AbsJoinLattice obj :: k ~> Constraint
-type instance Apply (AbsJoinLattice obj) k = JoinLattice (Abs obj k)
+type instance Apply (AbsJoinLattice obj) k = Lattice (Abs obj k)
 
 class (
-    JoinLattice obj,
+    Lattice obj,
     ForAll PyPrmKey (AbsJoinLattice obj),
     Abs obj PrmPrm ~ Set PyPrim, 
     Abs obj CloPrm ~ Set (Clo obj),
@@ -102,7 +102,7 @@ set = setPrm (sing @k)
 at :: forall (k :: PyPrmKey) obj m . (AbstractM m, PyObj obj, SingI k) => obj -> m (Abs obj k)
 at obj = withC_ @(AbsJoinLattice obj) getField s 
   where s = sing @k 
-        getField :: JoinLattice (Abs obj k) => m (Abs obj k)
+        getField :: Lattice (Abs obj k) => m (Abs obj k)
         getField = condCP (return $ hasPrm s obj)
                           (return $ getPrm s obj)
                           (escape WrongType) 

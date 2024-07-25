@@ -23,7 +23,6 @@ import qualified Data.Map as Map
 import Data.Kind 
 import Data.Maybe
 import Data.Singletons (fromSing)
-import Data.Singletons.Sigma (Sigma((:&:)))
 import Lattice.ReversePowerSetLattice as RSet 
 import Data.Function ((&))
 import Data.List (intercalate)
@@ -57,11 +56,12 @@ type PyPrm (m :: [PyAbsKey :-> Type]) vlu adr clo =
 data PyObjHMap (m :: [PyAbsKey :-> Type]) vlu adr clo = PyObjHMap { dct :: CPDictionary String vlu,
                                                                     prm :: HMapAbs (PyPrm m vlu adr clo) }
 
-type AllJoin m vlu adr clo = (ForAll PyPrmKey (AtKey1 JoinLattice (PyPrm m vlu adr clo)),
-                              ForAll PyPrmKey (AtKey1 Joinable (PyPrm m vlu adr clo)),
+type AllJoin m vlu adr clo = (ForAll PyPrmKey (AtKey1 Joinable (PyPrm m vlu adr clo)),
+                              ForAll PyPrmKey (AtKey1 BottomLattice (PyPrm m vlu adr clo)),
+                              ForAll PyPrmKey (AtKey1 PartialOrder (PyPrm m vlu adr clo)),
                               ForAll PyPrmKey (AtKey1 Eq (PyPrm m vlu adr clo)))
 type AllAbs m vlu adr clo = (AllJoin m vlu adr clo,
-                             JoinLattice vlu,
+                             Lattice vlu,
                              BoolDomain   (Assoc BlnKey m),
                              IntDomain    (Assoc IntKey m),
                              Domain.Rea   (Assoc IntKey m) ~ Assoc ReaKey m,
@@ -70,10 +70,10 @@ type AllAbs m vlu adr clo = (AllJoin m vlu adr clo,
                              RealDomain   (Assoc ReaKey m),
                              Domain.Boo   (Assoc ReaKey m) ~ Assoc BlnKey m)
 
-deriving instance (JoinLattice vlu, ForAll PyPrmKey (AtKey1 Eq       (PyPrm m vlu adr clo))) => Eq (PyObjHMap m vlu adr clo)
-instance          (JoinLattice vlu, ForAll PyPrmKey (AtKey1 Joinable (PyPrm m vlu adr clo))) => Joinable (PyObjHMap m vlu adr clo) where
+deriving instance (Lattice vlu, ForAll PyPrmKey (AtKey1 Eq       (PyPrm m vlu adr clo))) => Eq (PyObjHMap m vlu adr clo)
+instance          (Lattice vlu, ForAll PyPrmKey (AtKey1 Joinable (PyPrm m vlu adr clo))) => Joinable (PyObjHMap m vlu adr clo) where
   join (PyObjHMap d1 p1) (PyObjHMap d2 p2) = PyObjHMap (join d1 d2) (join p1 p2)
-instance (JoinLattice vlu, AllJoin m vlu adr clo) => JoinLattice (PyObjHMap m vlu adr clo) where
+instance (AllJoin m vlu adr clo) => BottomLattice (PyObjHMap m vlu adr clo) where
   bottom = PyObjHMap bottom bottom
 
 instance (Show vlu, ForAll PyPrmKey (AtKey1 Show (PyPrm m vlu adr clo))) => Show (PyObjHMap m vlu adr clo) where

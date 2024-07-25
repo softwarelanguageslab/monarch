@@ -10,7 +10,7 @@ import qualified Data.Set as Set
 
 -- | This typeclass specifies which operations the mailbox should understand
 -- A mailbox contains a particular type of messages, given by the `msg` type parameter.
-class (JoinLattice m) => Mailbox m msg | m -> msg where
+class (Lattice m) => Mailbox m msg | m -> msg where
    -- | Enqueue a message into the mailbox 
    enqueue :: msg -> m -> m
 

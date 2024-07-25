@@ -20,6 +20,7 @@ import Data.Kind
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Maybe (isJust)
+import Control.Exception.Extra (Partial)
 
 ------------------------------------------------------------
 -- Configuration
@@ -47,7 +48,7 @@ type Clo c = (EnvCfg c, [Clause])
 -- Utilities
 ------------------------------------------------------------
 
-binop :: forall mp m . (AllAtKey1 Eq mp, AllAtKey1 Joinable mp, AllAtKey1 JoinLattice mp, HMapKey mp, AbstractM m)
+binop :: forall mp m . (AllAtKey1 Eq mp, AllAtKey1 Joinable mp, AllAtKey1 Lattice mp, AllAtKey1 BottomLattice mp, AllAtKey1 PartialOrder mp, HMapKey mp, AbstractM m)
       => (BindingFrom mp -> BindingFrom mp -> m (HMap mp))
       -> HMap mp -> HMap mp -> m (HMap mp)
 binop f m1 m2 = mjoins (HMap.mapList select m1)
@@ -81,9 +82,11 @@ type ErlMapping c = '[
 
 
 type IsErlValue c =
-   (AllAtKey1 JoinLattice (ErlMapping c),
+   (AllAtKey1 Lattice (ErlMapping c),
     AllAtKey1 Eq (ErlMapping c),
-    AllAtKey1 Joinable    (ErlMapping c),
+    AllAtKey1 Joinable      (ErlMapping c),
+    AllAtKey1 BottomLattice (ErlMapping c),
+    AllAtKey1 PartialOrder  (ErlMapping c),
     KeyIs1 IntDomain  (ErlMapping c) IntKey,
     KeyIs1 BoolDomain (ErlMapping c) BooKey,
     Boo (Assoc IntKey (ErlMapping c)) ~ Assoc BooKey (ErlMapping c))
@@ -92,7 +95,7 @@ newtype ErlValue c = ErlValue { getValue :: HMap (ErlMapping c) }
 
 deriving instance (IsErlValue c) => Joinable (ErlValue c)
 deriving instance (IsErlValue c) => Eq (ErlValue c)
-deriving instance (IsErlValue c) => JoinLattice (ErlValue c)
+deriving instance (IsErlValue c) => BottomLattice (ErlValue c)
 
 ------------------------------------------------------------
 -- Domain instances

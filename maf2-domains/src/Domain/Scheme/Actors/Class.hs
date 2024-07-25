@@ -3,9 +3,8 @@ module Domain.Scheme.Actors.Class(ActorDomain(..)) where
 import Domain.Scheme.Class 
 import Data.Kind
 import Control.Monad.AbstractM
-import Lattice.Class (JoinLattice)
+import Lattice.Class (Lattice)
 import Data.Set (Set)
-import Domain.Core.BoolDomain (BoolDomain)
 import Domain.Core.NumberDomain (Boo)
 
 class ActorRef a where 
@@ -20,7 +19,7 @@ class (SchemeDomain v) => ActorDomain v where
    aref :: ARef v -> v
 
    -- | Extract the set of actor references from the abstract domain
-   arefs :: (AbstractM m, JoinLattice a) => (ARef v -> m a) -> v -> m  a
+   arefs :: (AbstractM m, Lattice a) => (ARef v -> m a) -> v -> m  a
 
    -- | Check if the given actor value is an actor reference
    isActorRef :: v -> Boo v
@@ -33,4 +32,4 @@ class (SchemeDomain v) => ActorDomain v where
    beh  :: (Exp v, Env v) -> v
 
    -- | Extract behaviors from the abstract values in the domain
-   withBehs :: (AbstractM m, JoinLattice a) => ((Exp v, Env v) -> m a) -> v -> m a
+   withBehs :: (AbstractM m, Lattice a) => ((Exp v, Env v) -> m a) -> v -> m a

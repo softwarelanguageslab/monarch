@@ -16,9 +16,12 @@ import qualified Data.Set as Set
 instance (Ord a) => Joinable (Set a) where
    join = Set.union
 
--- | Lattice for sets
-instance (Ord a) => JoinLattice (Set a) where
+-- | Sets have a smallest element according to their subset relation
+instance BottomLattice (Set a) where   
    bottom = Set.empty
+
+-- | Sets are partially ordered according to their subset relation
+instance (Ord a) => PartialOrder (Set a) where
    subsumes = flip Set.isSubsetOf
 
 -- | Implementation of of `meet` for sets. It is implemented

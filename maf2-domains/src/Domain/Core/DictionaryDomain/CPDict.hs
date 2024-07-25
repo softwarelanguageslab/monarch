@@ -16,7 +16,7 @@ data CPDictionary k v = BotDict
    deriving (Eq, Ord, Show)
 
 -- Typical constraints for dictionaries
-type CPDict k v = (Ord k, JoinLattice v)
+type CPDict k v = (Ord k, Lattice v)
 
 instance CPDict k v => Joinable (CPDictionary k v) where 
    join BotDict d = d
@@ -28,8 +28,10 @@ instance CPDict k v => Joinable (CPDictionary k v) where
       TopDict (kys1 `intersection` kys2) (vlu1 `join` vlu2)
    join a b = join b a
 
-instance CPDict k v => JoinLattice (CPDictionary k v) where
+instance BottomLattice (CPDictionary k v) where 
    bottom = BotDict
+
+instance CPDict k v => PartialOrder (CPDictionary k v) where
    subsumes _ BotDict   = True
    subsumes BotDict _   = False
    subsumes d1 d2       = join d1 d2 == d1

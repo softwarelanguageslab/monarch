@@ -8,7 +8,7 @@ import Lattice
 import Data.Set (Set)
 
 -- | A generic store typeclass
-class (JoinLattice v) => Store s a v | s -> a v where
+class (Lattice v) => Store s a v | s -> a v where
    emptySto  :: s
    lookupSto :: a -> s -> v
    extendSto :: a -> v -> s -> s
@@ -24,7 +24,7 @@ class (JoinLattice v) => Store s a v | s -> a v where
 
 
 -- | Simple map-based instance of the store with weak updates
-instance (JoinLattice v, Ord a) => Store (Map a v) a v where
+instance (Lattice v, Ord a) => Store (Map a v) a v where
    emptySto = Map.empty
    lookupSto = Map.findWithDefault bottom
    extendSto adr vlu = Map.alter (Just . join vlu . justOrBot) adr

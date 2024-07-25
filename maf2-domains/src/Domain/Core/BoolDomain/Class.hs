@@ -20,7 +20,7 @@ class (Domain b Bool) => BoolDomain b where
    isFalse = (`subsumes` false)
    boolTop :: b 
    boolTop = true `join` false  
-   iff :: JoinLattice a => b -> a -> a -> a
+   iff :: (Joinable a, BottomLattice a) => b -> a -> a -> a
    iff cnd csq alt = tru `join` fls
       where tru = if isTrue cnd  then csq else bottom
             fls = if isFalse cnd then alt else bottom

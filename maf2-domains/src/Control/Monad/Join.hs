@@ -7,7 +7,6 @@ module Control.Monad.Join (
    conds, 
    condCP, 
    condsCP,
-   MonadJoinAlternative(..), 
    mjoinMap, 
    mjoins, 
    msplit, 
@@ -33,53 +32,45 @@ import Data.Functor.Identity
 -- | Non-deterministic computations that can be joined together into a single computation
 class (Monad m) => MonadJoin m where
    mjoin :: Joinable v => m v -> m v -> m v
-   mzero :: JoinLattice a => m a
-   (<||>) :: JoinLattice v => m v -> m v -> m v
+   mzero :: BottomLattice a => m a
+   (<||>) :: Joinable v => m v -> m v -> m v
    a <||> b = mjoin a b
    infix 0 <||>
 
-cond :: (BoolDomain b, MonadJoin m, JoinLattice v) => m b -> m v -> m v -> m v
+cond :: (BoolDomain b, MonadJoin m, Joinable v, BottomLattice v) => m b -> m v -> m v -> m v
 cond cnd csq alt = mjoin t f
    where t = cnd >>= (\b -> if isTrue b then csq else mzero)
          f = cnd >>= (\b -> if isFalse b then alt else mzero)
 
-conds :: (BoolDomain b, MonadJoin m, JoinLattice v) => [(m b, m v)] -> m v -> m v
+conds :: (BoolDomain b, MonadJoin m, Joinable v, BottomLattice v) => [(m b, m v)] -> m v -> m v
 conds clauses els = foldr (uncurry cond) els clauses 
 
-condCP :: (MonadJoin m, JoinLattice v) => m (CP Bool) -> m v -> m v -> m v
+condCP :: (MonadJoin m, Joinable v, BottomLattice v) => m (CP Bool) -> m v -> m v -> m v
 condCP = cond 
 
-condsCP :: (MonadJoin m, JoinLattice v) => [(m (CP Bool), m v)] -> m v -> m v
+condsCP :: (MonadJoin m, Joinable v, BottomLattice v) => [(m (CP Bool), m v)] -> m v -> m v
 condsCP = conds
 
-mjoinMap :: (MonadJoin m, Foldable t, JoinLattice b) => (a -> m b) -> t a -> m b 
+mjoinMap :: (MonadJoin m, Foldable t, Joinable b, BottomLattice b) => (a -> m b) -> t a -> m b 
 mjoinMap f = foldr (mjoin . f) mzero
 
-mjoins :: (MonadJoin m, Foldable t, JoinLattice v) => t (m v) -> m v
+mjoins :: (MonadJoin m, Foldable t, Joinable v, BottomLattice v) => t (m v) -> m v
 mjoins = foldr mjoin mzero
 
-msplit :: (MonadJoin m, JoinLattice v, SplitLattice a) => (a -> m v) -> a -> m v
+msplit :: (MonadJoin m, Joinable v,  BottomLattice v, SplitLattice a) => (a -> m v) -> a -> m v
 msplit f = mjoinMap f . split
 
-msplitOn :: (MonadJoin m, BoolDomain b, JoinLattice v, JoinLattice a, SplitLattice a) => (a -> m b) -> (a -> m v) -> (a -> m v) -> a -> m v
+msplitOn :: (MonadJoin m, BoolDomain b, Lattice v, Lattice a, SplitLattice a) => (a -> m b) -> (a -> m v) -> (a -> m v) -> a -> m v
 msplitOn p ft ff vs = do (t, f) <- splitOnM p vs
                          protectBot ft t `mjoin` protectBot ff f
    where protectBot f v 
             | v == bottom = mzero
             | otherwise   = f v 
 
-msplitOnCP :: (MonadJoin m, JoinLattice v, JoinLattice a, SplitLattice a) => (a -> m (CP Bool)) -> (a -> m v) -> (a -> m v) -> a -> m v
+msplitOnCP :: (MonadJoin m, Lattice v, Lattice a, SplitLattice a) => (a -> m (CP Bool)) -> (a -> m v) -> (a -> m v) -> a -> m v
 msplitOnCP = msplitOn
 
 
-
--- | Like `Alternative`, returns if a computation
--- succeeds, otherwise tries the other one.
---
--- Difference is when a computation **might** fail,
--- then the results of the first one are joined with the second one.
-class (Monad m) => MonadJoinAlternative m where
-   (<|>) :: JoinLattice v => m v -> m v -> m v
 
 -- Some instances for convenience
 
@@ -87,11 +78,11 @@ instance (MonadJoin m) => MonadJoin (ReaderT r m) where
    mjoin ma mb = ReaderT $ \r -> mjoin (runReaderT ma r) (runReaderT mb r)
    mzero = lift Control.Monad.Join.mzero
 
-instance (MonadJoin m, JoinLattice w, Monoid w) => MonadJoin (WriterT w m) where
+instance (MonadJoin m, Joinable w, BottomLattice w, Monoid w) => MonadJoin (WriterT w m) where
    mjoin (WriterT ma) (WriterT mb) = WriterT (mjoin ma mb)
    mzero = lift mzero
 
-instance (MonadJoin m, JoinLattice s) => MonadJoin (StateT s m) where
+instance (MonadJoin m, Joinable s, BottomLattice s) => MonadJoin (StateT s m) where
    mjoin ma mb = StateT (\st -> mjoin (runStateT ma st) (runStateT mb st))
    mzero = lift mzero
 

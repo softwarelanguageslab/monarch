@@ -11,7 +11,7 @@ import qualified Data.Set as Set
 
 -- | Class of IO models, a model `m` is parametrized by its handle type `h` and the type 
 -- of values that can be written to that handle.
-class (JoinLattice m) => IOModel m h v | m -> h, m -> v where
+class (Lattice m) => IOModel m h v | m -> h, m -> v where
    -- | Write a value `v` to handle `h` and returns the updated world according to IO model `m`
    write :: m -> IOHandle h -> v -> Set m
    -- | Read a value `v` to handle `h` and returns the updated world together with the read value `v`. 
@@ -65,7 +65,6 @@ instance (Ord v) => Joinable (OutputIO v) where
    join (OutputIO v1) (OutputIO v2) = OutputIO $ join v1 v2
 
 -- | We can check whether one world subsumes another
-instance (Ord v) => JoinLattice (OutputIO v) where
+instance BottomLattice (OutputIO v) where
    bottom = OutputIO Set.empty
-   subsumes (OutputIO v1) (OutputIO v2) = subsumes v1 v2
 

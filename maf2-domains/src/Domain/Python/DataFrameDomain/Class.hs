@@ -4,7 +4,7 @@ import Lattice
 
 import Data.Kind
 
-class JoinLattice d => DataFrameDomain d where
+class Lattice d => DataFrameDomain d where
     type Nam d :: Type
     type Row d :: Type
     type Col d :: Type 

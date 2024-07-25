@@ -24,9 +24,8 @@ instance (DFConstraint Meetable s r c) => Meetable (DataFrame s r c) where
     meet (DataFrame s1 r1 c1) (DataFrame s2 r2 c2) = 
         DataFrame (s1 `meet` s2) (r1 `meet` r2) (c1 `meet` c2)
 
-instance (DFConstraint JoinLattice s r c) => JoinLattice (DataFrame s r c) where
+instance (DFConstraint BottomLattice s r c) => BottomLattice (DataFrame s r c) where
     bottom = DataFrame bottom bottom bottom
-    subsumes df1 df2 = df1 `join` df2 == df1
 
 
 ------------------------------------------------------------
@@ -36,18 +35,15 @@ instance (DFConstraint JoinLattice s r c) => JoinLattice (DataFrame s r c) where
 newtype DataFrameSet s r c = DataFrameSet [DataFrame s r c]
     deriving (Eq, Ord)
 
-instance (DFConstraint JoinLattice s r c, DFConstraint Meetable s r c) 
+instance (DFConstraint Lattice s r c, DFConstraint Meetable s r c) 
         => 
         Joinable (DataFrameSet s r c) where
     join (DataFrameSet l1) (DataFrameSet l2) = DataFrameSet (join l1 l2)
 
-instance (DFConstraint JoinLattice s r c, DFConstraint Eq s r c, DFConstraint Meetable s r c) 
-        => 
-        JoinLattice (DataFrameSet s r c) where
+instance BottomLattice (DataFrameSet s r c) where
     bottom = DataFrameSet bottom
-    subsumes (DataFrameSet l1) (DataFrameSet l2) = subsumes l1 l2
     
-instance (DFConstraint JoinLattice s r c, DFConstraint Eq s r c, DFConstraint Meetable s r c) 
+instance (DFConstraint Lattice s r c, DFConstraint Eq s r c, DFConstraint Meetable s r c) 
         => 
         DataFrameDomain (DataFrameSet s r c) where
     type Nam (DataFrameSet s r c) = s

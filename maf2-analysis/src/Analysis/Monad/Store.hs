@@ -20,7 +20,7 @@ module Analysis.Monad.Store (
 )
 where
 
-import Lattice (Joinable(..), JoinLattice(..))
+import Lattice (Joinable(..), BottomLattice(..), PartialOrder(..), Lattice)
 import qualified Analysis.Store as Store
 import Analysis.Monad.Allocation
 
@@ -42,7 +42,7 @@ import Data.TypeLevel.AssocList
 --- StoreM typeclass
 ---
 
-class (Monad m, JoinLattice v) => StoreM m a v | m a -> v where
+class (Monad m, Lattice v) => StoreM m a v | m a -> v where
    -- | Write to a newly allocated address
    writeAdr  :: a -> v -> m ()
    -- | Update an existing address
@@ -75,11 +75,11 @@ updateWith' :: StoreM m a v => {- strong update -} (v -> v) -> {- weak update -}
 updateWith' fs fw a = updateAndCheck a (updateWith fs fw)
 
 -- | Lookup
-lookups :: (JoinLattice a, MonadJoin m) => (adr -> m v) -> (adr -> v -> m a) -> Set adr -> m a
+lookups :: (Lattice a, MonadJoin m) => (adr -> m v) -> (adr -> v -> m a) -> Set adr -> m a
 lookups look f = mjoinMap (\adr -> look adr >>= f adr)
 
 -- | Deref 
-deref :: (StoreM m a v, MonadJoin m, JoinLattice r) => (a -> v -> m r) -> Set a -> m r
+deref :: (StoreM m a v, MonadJoin m, Lattice r) => (a -> v -> m r) -> Set a -> m r
 deref = lookups lookupAdr
 
 deref' :: (StoreM m a v, MonadJoin m) => Set a -> m v
@@ -126,7 +126,7 @@ runWithStore = runStoreT Store.emptySto
 newtype StoreT' adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
                               deriving (Applicative, Functor, Monad, MonadJoin, MonadState (Map adr (SVar v)), MonadLayer, MonadTrans)
 
-instance {-# OVERLAPPING #-} (SVar.MonadStateVar m, JoinLattice v, Ord adr) => StoreM (StoreT' adr v m) adr v where
+instance {-# OVERLAPPING #-} (SVar.MonadStateVar m, Lattice v, Ord adr) => StoreM (StoreT' adr v m) adr v where
    writeAdr adr vlu =
       gets (Map.lookup adr) >>=
          maybe (SVar.new vlu >>= (\var -> modify (Map.insert adr var) >> void (SVar.modify (const (Just vlu)) var)))

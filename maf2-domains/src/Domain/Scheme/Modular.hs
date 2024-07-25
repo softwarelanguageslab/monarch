@@ -49,6 +49,7 @@ import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1,
 import qualified Data.TypeLevel.HMap as HMap
 import Data.List (intercalate)
 import Text.Printf (printf)
+import Control.Exception.Extra (Partial)
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -156,8 +157,9 @@ newtype SchemeVal (m :: [SchemeConfKey :-> Type]) = SchemeVal { getSchemeVal :: 
 
 -- | A valid choice for `m` and `c` should satisfy these constraints
 type IsSchemeValue m =
-   (ForAll SchemeKey (AtKey1 JoinLattice (Values m)),
-    ForAll SchemeKey (AtKey1 Eq (Values m)),
+   (ForAll SchemeKey (AtKey1 Eq (Values m)),
+    ForAll SchemeKey (AtKey1 PartialOrder (Values m)),
+    ForAll SchemeKey (AtKey1 BottomLattice (Values m)),
     ForAll SchemeKey (AtKey1 Joinable (Values m)),
     -- expected subdomains
     KeyIs1 RealDomain (Values m) RealKey,
@@ -185,10 +187,7 @@ deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m)), 
 ------------------------------------------------------------
 
 deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Joinable (Values m))) => Joinable (SchemeVal m)
-deriving instance (HMapKey (Values m),
-                   ForAll SchemeKey (AtKey1 Eq (Values m)),
-                   ForAll SchemeKey (AtKey1 Joinable (Values m)),
-                   ForAll SchemeKey (AtKey1 JoinLattice (Values m))) => JoinLattice (SchemeVal m)
+deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 BottomLattice (Values m))) => BottomLattice (SchemeVal m)
 
 -- Show instance
 instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
@@ -353,7 +352,7 @@ instance (IsSchemeValue m) => NumberDomain (SchemeVal m) where
 -- Integer domain
 ------------------------------------------------------------
 
-typeErrorOp :: JoinLattice a => AbstractM m => b -> c -> m a
+typeErrorOp :: Lattice a => AbstractM m => b -> c -> m a
 typeErrorOp _ = const $ escape WrongType
 
 
@@ -453,7 +452,7 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
    prims = fromMaybe Set.empty . HMap.get @PrimKey . getSchemeVal
 
    -- | Extracting procedures
-   withProc :: forall schemeM a . (AbstractM schemeM, JoinLattice a) => (Either String (Exp (SchemeVal m), Env (SchemeVal m)) -> schemeM a) -> SchemeVal m ->  schemeM a
+   withProc :: forall schemeM a . (AbstractM schemeM, Lattice a) => (Either String (Exp (SchemeVal m), Env (SchemeVal m)) -> schemeM a) -> SchemeVal m ->  schemeM a
    withProc f = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM a
             select SCloKey clos' = Set.foldr (mjoin . f . Right) mzero clos'
@@ -507,8 +506,7 @@ newtype SchemeString s v = SchemeString { sconst :: s } deriving (Show, Eq, Ord)
 instance (Joinable s) => Joinable (SchemeString s v) where
    join a b = SchemeString (join (sconst a) (sconst b))
 
-instance (JoinLattice s) => JoinLattice (SchemeString s v) where
-   subsumes a b = subsumes (sconst a) (sconst b)
+instance (BottomLattice s) => BottomLattice (SchemeString s v) where
    bottom = SchemeString bottom
 instance (StringDomain s) => Domain (SchemeString s v) String where
    inject = SchemeString . inject

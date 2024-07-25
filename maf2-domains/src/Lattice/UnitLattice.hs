@@ -16,10 +16,15 @@ instance Joinable () where
 instance Meetable () where 
    meet _ _ = ()
 
--- | JoinLattice for Unit 
-instance JoinLattice () where
-   bottom       = ()
-   subsumes _ _ = True
+
+-- | A singleton set has a smallest element (itself)
+instance BottomLattice () where   
+   bottom = ()
+
+-- | A singleton set (the unit) is partially ordered since `leq` is 
+-- reflexive.
+instance PartialOrder () where
+   leq _ _ = True
 
 instance SplitLattice () where
    split = Set.singleton 

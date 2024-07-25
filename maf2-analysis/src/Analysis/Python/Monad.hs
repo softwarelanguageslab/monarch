@@ -51,7 +51,7 @@ type PyM m obj = (PyObj' obj,
                   AllocM m PyLoc ObjAdr,
                   StoreM m ObjAdr obj)
 
-pyDeref :: (JoinLattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
+pyDeref :: (Lattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
 pyDeref f = deref f . addrs 
 
 pyDeref' :: PyM m obj => PyVal -> m obj

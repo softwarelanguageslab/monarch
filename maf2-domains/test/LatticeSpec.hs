@@ -9,9 +9,6 @@ import Lattice.ConstantPropagationLattice
 import Lattice.Class
 import Test.QuickCheck
 import Test.Hspec
-import Control.Applicative (Applicative(liftA2))
-import Control.Monad.Join
-import Control.Monad.DomainError
 
 -- Utilities
 
@@ -24,13 +21,13 @@ triples m = fmap (,,) m <*> m <*> m
 -- Testing instance for `DomainError`
 
 
-errBot :: JoinLattice a => Maybe a -> a
+errBot :: Lattice a => Maybe a -> a
 errBot (Just v) = v
 errBot _ = bottom
 
 -- Properties
 
-latticeTests :: (Show v, Eq v, JoinLattice v) => Gen v -> Spec
+latticeTests :: (Show v, Eq v, Lattice v) => Gen v -> Spec
 latticeTests latGen = do
    describe "join" $ do
       -- join is commutative

@@ -14,15 +14,17 @@ data SetDictionary k v = Bot
                        | Dct (Map k v)
    deriving (Eq, Ord, Show)
 
-type SetDict k v = (Ord k, JoinLattice v)
+type SetDict k v = (Ord k, Lattice v)
 
 instance SetDict k v => Joinable (SetDictionary k v) where
    join Bot d = d
    join d Bot = d
    join (Dct d1) (Dct d2) = Dct $ Map.unionWith join d1 d2
 
-instance SetDict k v => JoinLattice (SetDictionary k v) where
+instance BottomLattice (SetDictionary k v) where   
    bottom = Bot
+
+instance SetDict k v => PartialOrder (SetDictionary k v) where
    subsumes _ Bot = True
    subsumes Bot _ = False
    subsumes d1 d2 = join d1 d2 == d1

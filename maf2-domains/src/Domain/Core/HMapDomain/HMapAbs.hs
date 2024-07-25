@@ -21,12 +21,13 @@ newtype HMapAbs m = HMapAbs (HMap m, ReversePowerSet (KeyType m))
     
 deriving instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Eq m)) => Eq (HMapAbs m)
 deriving instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Joinable m)) => Joinable (HMapAbs m)
-deriving instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Eq m), ForAll (KeyKind m) (AtKey1 Joinable m), ForAll (KeyKind m) (AtKey1 JoinLattice m)) => JoinLattice (HMapAbs m)
+deriving instance (HMapKey m, ForAll (KeyKind m) (AtKey1 BottomLattice m)) => BottomLattice (HMapAbs m)
 
 instance (HMapKey m, 
           ForAll k (AtKey1 Eq m), 
           ForAll k (AtKey1 Joinable m), 
-          ForAll k (AtKey1 JoinLattice m)) 
+          ForAll k (AtKey1 BottomLattice m), 
+          ForAll k (AtKey1 Lattice m)) 
         => HMapDomain (HMapAbs m) (m :: [k:->Type]) where
 
     empty :: HMapAbs m

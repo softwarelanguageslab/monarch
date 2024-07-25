@@ -9,7 +9,7 @@ import Prelude hiding (length)
 import Data.Kind 
 
 -- | A typeclass for a domain representing linear sequences (e.g., tuples, lists, vectors, ...)
-class (JoinLattice v, IntDomain (Idx v), JoinLattice (Vlu v)) => SeqDomain v where
+class (Lattice v, IntDomain (Idx v), Lattice (Vlu v)) => SeqDomain v where
   type Vlu v :: Type
   type Idx v :: Type
   empty :: v

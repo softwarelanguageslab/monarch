@@ -22,12 +22,12 @@ class SplitLattice v where
    split :: v -> Set v
    splitAsList :: v -> [v]
    splitAsList = Set.toList . split
-   splitOn :: (BoolDomain b, JoinLattice v) => (v -> b) -> v -> (v, v)
+   splitOn :: (BoolDomain b, Joinable v, BottomLattice v) => (v -> b) -> v -> (v, v)
    splitOn p = splitAux . map (\v -> (v, p v)) . splitAsList 
-   splitOnM :: (Monad m, BoolDomain b, JoinLattice v) => (v -> m b) -> v -> m (v, v)
+   splitOnM :: (Monad m, BoolDomain b, Joinable v, BottomLattice v) => (v -> m b) -> v -> m (v, v)
    splitOnM p = fmap splitAux . mapM (\v -> (v,) <$> p v) . splitAsList
 
-splitAux :: (BoolDomain b, JoinLattice v) => [(v, b)] -> (v, v)
+splitAux :: (BoolDomain b, Joinable v, BottomLattice v) => [(v, b)] -> (v, v)
 splitAux = foldr addEl (bottom, bottom)
     where addEl (v, b) (t, f) = let t' = if isTrue b  then t `join` v else t
                                     f' = if isFalse b then f `join` v else f 

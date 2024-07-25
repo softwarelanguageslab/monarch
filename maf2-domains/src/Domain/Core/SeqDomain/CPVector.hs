@@ -26,10 +26,10 @@ instance (Joinable v) => Joinable (CPVector v) where
   join (TopVec vlu1)  (CPVec _ vlu2) = TopVec (vlu1 `join` vlu2)
   join (TopVec vlu1)  (TopVec vlu2)  = TopVec (vlu1 `join` vlu2)
 
-instance (JoinLattice v) => JoinLattice (CPVector v) where
+instance (BottomLattice v) => BottomLattice (CPVector v) where
   bottom = BotVec 
 
-instance JoinLattice v => SeqDomain (CPVector v) where
+instance Lattice v => SeqDomain (CPVector v) where
 
   type Vlu (CPVector v) = v 
   type Idx (CPVector v) = CP Integer
