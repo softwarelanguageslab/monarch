@@ -36,7 +36,7 @@ jobs:
 
     - name: Install dependencies
       working-directory: maf2-domains
-      run: cabal update
+      run: cabal update && cabal install hspec-discover
     - name: Build
       working-directory: maf2-domains
       run: cabal build
