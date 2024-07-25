@@ -1,0 +1,70 @@
+name:                maf2-monads
+version:             0.1.0.0
+github:              "github.com/softwarelanguageslab/maf-hs"
+license:             GPL3
+author:              "Software Languages Lab"
+maintainer:          "coen.de.roover@vub.be"
+copyright:           "2024 Software Languages Lab - Vrije Universiteit Brussel"
+
+description:         Please see the README on GitHub at <https://github.com/softwarelanguageslab/maf2-hs>
+
+dependencies:
+- base >= 4.7 && < 5
+- QuickCheck >= 2.14.2
+- hspec 
+- hspec-contrib
+- hashable
+- HUnit
+- containers
+- unordered-containers
+- data-default
+- mtl
+- transformers
+- lens
+- criterion
+- language-python
+- vector
+- optparse-applicative
+- IfElse
+- maf2-domains
+- maf2-syntax
+- hashmap
+- list-t
+- singletons
+- singletons-th
+
+default-extensions:
+  - FlexibleContexts
+  - TypeFamilies
+  - TupleSections
+  - TemplateHaskell
+  - NamedFieldPuns
+  - TypeOperators
+  - InstanceSigs
+  - DeriveGeneric
+  - TypeApplications
+  - StandaloneDeriving
+  - ScopedTypeVariables
+  - DataKinds
+  - MultiParamTypeClasses
+  - FunctionalDependencies
+  - GeneralizedNewtypeDeriving
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+- -fno-warn-type-defaults
+- -O0
+- -fprint-potential-instances
+- -fprof-auto
+- -fprof-cafs
+
+library:
+  source-dirs: src
