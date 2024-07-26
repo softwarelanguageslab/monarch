@@ -29,6 +29,10 @@ class Monad m => FormulaSolver m where
    isCertainlyFeasible :: Formula -> m Bool
    isCertainlyFeasible formula = 
       fmap isSat (solve formula)
+   -- | Returns true whenever the formule is certainly unfeasible
+   isCertainlyUnfeasible :: Formula -> m Bool
+   isCertainlyUnfeasible formula = 
+      fmap isUnsat (solve formula)
 
 --------------------------------------------------
 -- Caching Monad

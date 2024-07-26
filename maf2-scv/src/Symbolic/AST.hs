@@ -62,6 +62,8 @@ data Proposition
 data Formula
   = Conjunction !Formula !Formula
   | Disjunction !Formula !Formula
+  -- TODO[urgent]: should actually be called 'implication'
+  -- since entailment is computed differently
   | Entails !Formula !Formula
   | Negation !Formula
   | Atomic !Proposition
