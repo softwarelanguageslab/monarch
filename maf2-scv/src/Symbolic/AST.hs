@@ -64,9 +64,7 @@ data Proposition
 data Formula
   = Conjunction !Formula !Formula
   | Disjunction !Formula !Formula
-  -- TODO[urgent]: should actually be called 'implication'
-  -- since entailment is computed differently
-  | Entails !Formula !Formula
+  | Implies !Formula !Formula
   | Negation !Formula
   | Atomic !Proposition
   | Empty
@@ -84,7 +82,7 @@ instance SelectVariable Formula where
   variables (Conjunction f1 f2) = variables f1 ++ variables f2
   variables (Disjunction f1 f2) = variables f1 ++ variables f2
   variables (Negation f) = variables f
-  variables (Entails f1 f2) = variables f1 ++ variables f2
+  variables (Implies f1 f2) = variables f1 ++ variables f2
   variables (Atomic prop) = variables prop
   variables Empty = []
 

@@ -79,7 +79,7 @@ formula2nf (Formula.Conjunction f1 f2) =
    merge (formula2nf f1) (formula2nf f2)
 formula2nf (Formula.Negation _) = 
    error "negations can only occur at the atom level"
-formula2nf (Formula.Entails _ _) = 
+formula2nf (Formula.Implies _ _) = 
    error "implications cannot be translated into the normal form"
 formula2nf (Formula.Disjunction _ _) = 
    error "disjunctions cannot be translated into the normal form"
@@ -87,7 +87,7 @@ formula2nf (Formula.Disjunction _ _) =
 -- | Is the second formula entailed by the first formula, if so, the second 
 -- formula is more general than the first and therefore 'bigger'.
 leq :: FormulaSolver m => Formula.Formula -> Formula.Formula -> m Bool
-leq f1 f2 = isCertainlyUnfeasible (Formula.Negation (Formula.Entails f1 f2))
+leq f1 f2 = isCertainlyUnfeasible (Formula.Negation (Formula.Implies f1 f2))
 
 -- | Subsumption is the same as `leq` but flipped.
 subsumes :: FormulaSolver m => Formula.Formula -> Formula.Formula -> m Bool 

@@ -65,7 +65,7 @@ translate (Negation f1) =
    printf "(not %s)" (translate f1)
 translate (Atomic prop) =
    printf (translateAtomic prop)
-translate (Entails f1 f2) = 
+translate (Implies f1 f2) = 
    printf "(=> %s %s)" (translate f1) (translate f2)
 translate Empty = "true"
 
