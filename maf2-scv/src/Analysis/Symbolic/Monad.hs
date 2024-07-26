@@ -14,7 +14,6 @@ import Lattice (Joinable(..), BottomLattice(..))
 import Control.Monad.Trans.Class
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Lattice.Class (join)
 
 import qualified Data.Set as Set
 import Analysis.Monad (StoreM(..))

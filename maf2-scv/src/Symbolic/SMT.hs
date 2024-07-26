@@ -29,6 +29,10 @@ translateAtomic (Literal (Sym s)) =
    printf "(VSymbol %s)" s
 translateAtomic (Literal Beh) = "(VBeh)"
 translateAtomic (Literal Mon) = "(VMon)"
+translateAtomic (Literal (Actor (Just span)))  =
+   printf "(KnownSpan %s %s)" (show (line span)) (show (column span))
+translateAtomic (Literal (Actor _)) =
+   printf "(UnknownSpan)"
 translateAtomic (IsTrue prop) =
    printf "(true?/v %s)" (translateAtomic prop)
 translateAtomic (IsFalse prop) =
@@ -40,17 +44,13 @@ translateAtomic (Predicate nam props) =
 translateAtomic (Application f1 []) = translateAtomic f1
 translateAtomic (Application f1 f2) =
    printf "(%s %s)" (translateAtomic f1) (unwords $ map translateAtomic f2)
-translateAtomic (Actor (Just span))  =
-   printf "(KnownSpan %s %s)" (show (line span)) (show (column span))
-translateAtomic (Actor _) =
-   printf "(UnknownSpan)"
 translateAtomic Bottom = "(VError)"
 translateAtomic Fresh = "fresh"
-translateAtomic (Choice a b) = 
-   -- we currently do not have good support for joins 
-   -- in the symbolic representation, hence we simply return a fresh 
-   -- variable that has no relation with other fresh variables.
-   "(fresh)"
+-- translateAtomic (Choice a b) = 
+--    -- we currently do not have good support for joins 
+--    -- in the symbolic representation, hence we simply return a fresh 
+--    -- variable that has no relation with other fresh variables.
+--    "(fresh)"
 translateAtomic e = error $ "pattern " ++ show e ++ "not matched"
 
 -- | Translate a formula to a string compatible
@@ -64,6 +64,8 @@ translate (Negation f1) =
    printf "(not %s)" (translate f1)
 translate (Atomic prop) =
    printf (translateAtomic prop)
+translate (Entails f1 f2) = 
+   printf "(=> %s %s)" (translate f1) (translate f2)
 translate Empty = ""
 
 parseResult :: String -> SolverResult

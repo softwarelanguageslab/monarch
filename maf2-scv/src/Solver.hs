@@ -25,6 +25,10 @@ class Monad m => FormulaSolver m where
    isFeasible formula = do 
       result <- solve formula
       return (isSat result || isUnknown result)
+   -- | Returns true whenever the formula is certainly feasible
+   isCertainlyFeasible :: Formula -> m Bool
+   isCertainlyFeasible formula = 
+      fmap isSat (solve formula)
 
 --------------------------------------------------
 -- Caching Monad

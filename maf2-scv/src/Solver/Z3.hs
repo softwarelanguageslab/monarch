@@ -1,5 +1,5 @@
 -- | The Z3 solver
-module Solver.Z3(Z3Handle, terminateZ3Solver, runZ3Solver)  where
+module Solver.Z3(Z3Solver, Z3Handle, terminateZ3Solver, runZ3Solver)  where
 
 import System.Process
 import System.IO

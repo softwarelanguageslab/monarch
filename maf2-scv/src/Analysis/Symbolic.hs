@@ -97,8 +97,8 @@ runSymbolicEvalT (SymbolicEvalT m) = m
 ------------------------------------------------------------
 
 instance SymbolicARef (Pid ctx) where
-   identity EntryPid   = Symbolic.Actor Nothing
-   identity (Pid e _)  = Symbolic.Actor (Just $ spanOf e)
+   identity EntryPid   = Symbolic.Literal $ Symbolic.Actor Nothing
+   identity (Pid e _)  = Symbolic.Literal $ Symbolic.Actor (Just $ spanOf e)
 
 
 ------------------------------------------------------------
