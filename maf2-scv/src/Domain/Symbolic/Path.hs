@@ -86,11 +86,11 @@ formula2nf (Formula.Disjunction _ _) =
 
 -- | Is the second formula entailed by the first formula, if so, the second 
 -- formula is more general than the first and therefore 'bigger'.
-leq :: FormulaSolver m => NormalFormFormula -> NormalFormFormula -> m Bool
-leq f1 f2 = isCertainlyUnfeasible (Formula.Negation (Formula.Entails (nf2formula f1) (nf2formula f2)))
+leq :: FormulaSolver m => Formula.Formula -> Formula.Formula -> m Bool
+leq f1 f2 = isCertainlyUnfeasible (Formula.Negation (Formula.Entails f1 f2))
 
 -- | Subsumption is the same as `leq` but flipped.
-subsumes :: FormulaSolver m => NormalFormFormula -> NormalFormFormula -> m Bool 
+subsumes :: FormulaSolver m => Formula.Formula -> Formula.Formula -> m Bool 
 subsumes = flip leq
 
 -- | The least upper bound of two path constraints is the 
@@ -104,7 +104,7 @@ join :: FormulaSolver m => NormalFormFormula -> NormalFormFormula -> m NormalFor
 join p q = fmap fromAtoms r
    where as = Set.union (atoms p) (atoms q)
          c  = Formula.Disjunction (nf2formula p) (nf2formula q)
-         r  = foldM (\s a -> ifM (isCertainlyUnfeasible (Formula.Negation (Formula.Entails c (nf2formula (fromAtoms (Set.insert a s))))))
+         r  = foldM (\s a -> ifM (leq c (nf2formula (fromAtoms (Set.insert a s))))
                                  (return $ Set.insert a s)
                                  (return s))
                     Set.empty 
