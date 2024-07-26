@@ -29,7 +29,6 @@ import Control.Monad.DomainError (runMayEscape, DomainError, MonadEscape(..))
 import Control.Monad.Identity (IdentityT(..))
 import Control.Fixpoint.EffectDriven
 import Control.Fixpoint.WorkList
-import qualified Control.Fixpoint.WorkList as WL
 import qualified Control.Monad.State.SVar as SVar
 import qualified Data.Map as Map
 import Control.Monad ((>=>))
