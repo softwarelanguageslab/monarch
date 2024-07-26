@@ -42,7 +42,7 @@ merge (Conjunction a nf) (Conjunction a' nf') =
 -- | Collect all atoms in the normal form into a set of atoms
 atoms :: NormalFormFormula -> Set Atom
 atoms (Conjunction a nf) = Set.insert a (atoms nf)
-atoms Empty = Set.empty
+atoms Empty = Set.empty -- Set.singleton (Atom Formula.Tautology)
 
 -- | Translate an atom to a formula
 atom2formula :: Atom -> Formula.Formula
@@ -99,7 +99,7 @@ subsumes = flip leq
 -- Put differently:
 --
 -- let r = join p q for path constraints p and q 
--- such that p \/ q -> r
+-- such that p \/ q |= r
 join :: FormulaSolver m => NormalFormFormula -> NormalFormFormula -> m NormalFormFormula
 join p q = fmap fromAtoms r
    where as = Set.union (atoms p) (atoms q)

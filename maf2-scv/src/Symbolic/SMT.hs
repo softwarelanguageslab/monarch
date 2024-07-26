@@ -45,6 +45,7 @@ translateAtomic (Application f1 []) = translateAtomic f1
 translateAtomic (Application f1 f2) =
    printf "(%s %s)" (translateAtomic f1) (unwords $ map translateAtomic f2)
 translateAtomic Bottom = "(VError)"
+translateAtomic Tautology = "true"
 translateAtomic Fresh = "fresh"
 -- translateAtomic (Choice a b) = 
 --    -- we currently do not have good support for joins 
@@ -66,7 +67,7 @@ translate (Atomic prop) =
    printf (translateAtomic prop)
 translate (Entails f1 f2) = 
    printf "(=> %s %s)" (translate f1) (translate f2)
-translate Empty = ""
+translate Empty = "true"
 
 parseResult :: String -> SolverResult
 parseResult "sat" = Sat

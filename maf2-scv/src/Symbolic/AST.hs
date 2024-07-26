@@ -50,6 +50,8 @@ data Proposition
   | -- | an atomic predicate
     Predicate !String ![Proposition]
   | Application !Proposition ![Proposition]
+  -- | A statement that is always true
+  | Tautology
    -- | Generate an unquantified fresh variable
   | Fresh
    -- | Representation of the bottom value, nothing can be derived from this and a
@@ -93,6 +95,7 @@ instance SelectVariable Proposition where
   variables (IsFalse prop) = variables prop
   variables (Predicate _ props) = mconcat (map variables props)
   variables (Literal _) = []
+  variables Tautology = []
   variables Fresh = []
   variables Bottom = []
   variables (Application p1 p2) = variables p1 ++ mconcat (map variables p2)

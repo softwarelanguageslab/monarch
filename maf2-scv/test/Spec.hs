@@ -42,6 +42,11 @@ formulaJoinTests =
             result <- withSolver $ P.join (P.formula2nf c1) (P.formula2nf c3) 
             result `shouldBe` P.Conjunction (P.Atom (F.IsTrue (F.Predicate "number?/v" [F.Variable "x0"]))) P.Empty
 
+      it "should arrive at an empty set if one of the paths does not have any constraints" $ do 
+         let c1 = F.Empty
+             c2 = F.Atomic (F.IsTrue (F.Predicate "real?/v" [(F.Variable "x0")]))
+          in withSolver (P.join (P.formula2nf c1) (P.formula2nf c2)) >>= (`shouldBe` P.Empty)
+
 
 main :: IO ()
 main = hspec $ do 
