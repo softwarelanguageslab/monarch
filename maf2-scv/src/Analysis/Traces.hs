@@ -47,7 +47,7 @@ newtype TraceT msg ref m a = TraceT (StateT (Trace msg) m a)
 record :: Ord msg => msg -> Trace msg -> Trace msg
 record msg = Trace . RSet.insert msg . getTrace
 
-instance (Monad m, ActorGlobalM m ref msg, Ord msg) => ActorGlobalM (TraceT msg ref m) ref msg where
+instance (Monad m, ActorGlobalM m ref msg mb, Ord msg) => ActorGlobalM (TraceT msg ref m) ref msg mb where
   send ref msg = modify (record msg) >> upperM (send ref msg)
 
 -- | Run the trace monad and obtain a trace of messages

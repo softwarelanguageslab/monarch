@@ -10,7 +10,7 @@ import Control.Monad.State.IntPool
 import Control.Monad.State (StateT(..), MonadState, modify, gets, get, (>=>), runStateT, put, evalStateT)
 import Domain
 import Domain.Symbolic
-import Lattice (JoinLattice(..))
+import Lattice (Joinable(..), BottomLattice(..))
 import Control.Monad.Trans.Class
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -30,7 +30,7 @@ class (Monad m) => MonadPathCondition m v | m -> v where
    integrate :: PC -> m ()
 
 -- | Choose between the two branches non-deterministically
-choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b) => m v -> m b -> m b -> m b
+choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, BottomLattice b, Joinable b) => m v -> m b -> m b -> m b
 choice mv mcsq malt = mjoin t f
    where t = mv >>= checkTrue
          f = mv >>= checkFalse
@@ -62,14 +62,14 @@ choice mv mcsq malt = mjoin t f
             | otherwise = mzero
 
 -- | Same as `conds` but keeps track of path conditions
-choices :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, JoinLattice b)
+choices :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, Joinable b, BottomLattice b)
         => [(m v, m b)] -> m b -> m b
 choices clauses els =
    foldr (uncurry choice) els clauses
 
 -- | Executes the given action when the path condition is feasible
 -- otherwise returns `mzero`
-ifFeasible :: (MonadJoin m, FormulaSolver m, MonadPathCondition m v,  JoinLattice a) => m a -> m a
+ifFeasible :: (MonadJoin m, FormulaSolver m, MonadPathCondition m v,  Joinable a, BottomLattice a) => m a -> m a
 ifFeasible ma = do
    pcs <- fmap Set.toList getPc
    mjoins (map (isFeasible >=> (\b -> if b then ma else mzero)) pcs)

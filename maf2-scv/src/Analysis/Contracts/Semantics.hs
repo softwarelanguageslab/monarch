@@ -69,7 +69,7 @@ mon e lbl contract value =
 -- | Checks whether the given send is valid according to the contract.
 -- It applies `f` on the resulting actor references and passes the monitored payload 
 -- along.
-checkSend :: forall v a m msg mb . (JoinLattice a, ContractM m v msg mb) => Exp -> (String -> [v] -> ARef v -> m a) -> String -> [v] -> Moα v -> m a
+checkSend :: forall v a m msg mb . (Lattice a, ContractM m v msg mb) => Exp -> (String -> [v] -> ARef v -> m a) -> String -> [v] -> Moα v -> m a
 checkSend e f tag payload (Moα lbl contract value) =
       choices
          [ (pure $ isActorRef value, do

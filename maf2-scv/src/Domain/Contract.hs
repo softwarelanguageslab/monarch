@@ -15,7 +15,7 @@ import Domain
 import Lattice.Class
 
 newtype Flat v = Flat {flatProc :: v} 
-  deriving (Eq, Ord, Joinable, JoinLattice)
+  deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
 
 data Moα v = Moα (Set Labels) v v | Bottom
            deriving (Eq, Ord, Show)
@@ -24,7 +24,7 @@ instance (Joinable v) => (Joinable (Moα v)) where
    join a Bottom = a
    join (Moα l1 c1 v1) (Moα l2 c2 v2) = 
       Moα (join l1 l2) (join c1 c2) (join v1 v2)
-instance (Eq v, Joinable v) => JoinLattice (Moα v) where  
+instance BottomLattice (Moα v) where  
    bottom = Bottom
 
 ------------------------------------------------------------

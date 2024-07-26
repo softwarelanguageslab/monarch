@@ -56,7 +56,7 @@ class (Ord (MAdr c)) => BehaviorContract c where
 -- into account. We do so by representing the behavior contract as a set
 -- of pointers to message contracts.
 newtype UnorderedBehaviorContract ptr = UnorderedBehaviorContract {getMessageContracts :: Set ptr}
-  deriving (Ord, Eq, Joinable, JoinLattice, Meetable)
+  deriving (Ord, Eq, Joinable, PartialOrder, BottomLattice, Meetable)
 
 instance (Show ptr) => Show (UnorderedBehaviorContract ptr) where
    show (UnorderedBehaviorContract ms) = "behavior/c {" ++ intercalate "," (map show (Set.toList ms)) ++ "}"

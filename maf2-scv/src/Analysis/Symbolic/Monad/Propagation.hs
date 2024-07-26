@@ -57,7 +57,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Domain.Symbolic (Symbolic)
 import Domain.Symbolic.Store (SymSto)
-import Lattice (JoinLattice)
+import Lattice.Class
 import Symbolic.AST (PC)
 import Syntax.Scheme
 import Analysis.Scheme.Actors.Components
@@ -114,7 +114,6 @@ newtype SymRet cmp = SymRet cmp
 instance
   {-# OVERLAPPING #-}
   ( Monad m,
-    JoinLattice v,
     StoreM m cmp v,
     SymbolicValue v,
     PropagationStrategy s vadr v ctx,

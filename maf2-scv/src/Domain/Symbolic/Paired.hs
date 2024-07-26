@@ -2,7 +2,7 @@
 -- | Symbolic version of the Scheme domain
 module Domain.Symbolic.Paired where
 
-import Lattice (Joinable(..), JoinLattice(..), EqualLattice(..))
+import Lattice (Joinable(..), PartialOrder(..), BottomLattice(..), EqualLattice(..))
 import qualified Syntax.Scheme as Scheme (Exp)
 import Domain
 import Control.Monad.Join
@@ -27,8 +27,10 @@ instance Joinable (SymbolicVal ptr sptr vptr pptr) where
    join (SymbolicVal p1) (SymbolicVal Bottom) = SymbolicVal p1
    join (SymbolicVal p1) (SymbolicVal p2) = SymbolicVal Fresh -- TODO: maybe "Choice"? 
 
-instance JoinLattice (SymbolicVal ptr sptr vptr pptr) where
+instance BottomLattice (SymbolicVal ptr sptr vptr pptr) where
    bottom = SymbolicVal Bottom
+
+instance PartialOrder (SymbolicVal ptr sptr vptr pptr) where
    subsumes _ (SymbolicVal Bottom) = True
    subsumes (SymbolicVal p1) (SymbolicVal p2) = p1 == p2
 

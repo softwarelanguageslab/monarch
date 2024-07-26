@@ -21,7 +21,7 @@ import Domain.Contract.Store
 import Domain.Scheme.Actors.Contract
 import Syntax.Scheme
 import Control.Monad.State.SVar (mergeMap, MonadStateVar)
-import Lattice (JoinLattice)
+import Lattice
 
 data ContractStore' f k v = ContractStore
   { messageContracts :: Map (MsCAdr k) (f @@ MessageContract v),
@@ -40,7 +40,7 @@ type ContractStoreContents k v =
 emptyContractStore :: ContractStore' f k v 
 emptyContractStore = ContractStore Map.empty Map.empty Map.empty
 
-mergeContractStore :: (JoinLattice v, Ord k, MonadStateVar m) 
+mergeContractStore :: (Joinable v, BottomLattice v, Ord k, MonadStateVar m) 
                    => ContractStore' SVar k v 
                    -> ContractStore' SVar k v
                    -> m (ContractStore' SVar k v)
