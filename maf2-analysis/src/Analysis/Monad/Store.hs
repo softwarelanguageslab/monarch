@@ -123,6 +123,8 @@ runWithStore = runStoreT Store.emptySto
 --- StoreT' monad transformer 
 ---
 
+
+-- TODO[medium]: deprecate and remove the SVar implementation
 newtype StoreT' adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
                               deriving (Applicative, Functor, Monad, MonadJoin, MonadState (Map adr (SVar v)), MonadLayer, MonadTrans)
 
