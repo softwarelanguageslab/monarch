@@ -11,10 +11,11 @@ import Data.Functor ((<&>), ($>))
 import Syntax.Scheme.AST
 import qualified Analysis.Scheme.Semantics as Base
 import Analysis.Actors.Monad
-import Analysis.Actors.Mailbox
 import qualified Analysis.Monad as Monad
 import Control.Monad.Join
 import Lattice.Class (Lattice, bottom)
+import Domain.Scheme.Actors.Message
+import Domain (BoolDomain(isTrue))
 
 eval :: ActorEvalM m v msg mb => Exp -> m v
 eval (Spw beh args _) = initBehavior beh args spawn
@@ -45,7 +46,7 @@ initBehavior beh args run =
 
 -- | Select a handler from the given list of handlers that matches the given message
 selectHandler :: ActorEvalM m v msg mb => msg -> [Hdl] -> m v
-selectHandler msg = mjoins . map runHandler . filter (matchesTag msg . nameOf)
+selectHandler msg = mjoins . map runHandler . filter (isTrue . flip matchesTagCP msg . nameOf)
    where nameOf (Hdl (Ide nam _) _ _) = nam
          runHandler (Hdl _ prs bdy) = do
             adrs <- mapM allocVar prs

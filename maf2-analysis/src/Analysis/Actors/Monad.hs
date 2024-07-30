@@ -15,7 +15,6 @@ module Analysis.Actors.Monad(
    runNoSpawnT,
    NoSpawnT,
    runNoSendT, 
-   sendMessage, 
    emptyActorSystem
 ) where
 
@@ -46,8 +45,17 @@ import Control.Monad.Cond (ifM)
 import Analysis.Monad.DependencyTracking (DependencyTrackingM, trigger, register)
 import Analysis.Monad.WorkList (WorkListM)
 import Lattice.Class (BottomLattice)
+import Domain.Scheme.Actors.Message
 
-type ActorEvalM m v msg mb = (SchemeM m v, ActorDomain v, ActorM m (ARef v) msg mb, ActorBehaviorM m v, Message msg v)
+type ActorEvalM m v msg mb = 
+   (SchemeM m v, 
+    ActorDomain v, 
+    ActorM m (ARef v) msg mb, 
+    ActorBehaviorM m v,
+    -- message representations
+    MessageDomain msg, 
+    Payload msg ~ v, 
+    Tag msg ~ CP String)
 
 class ActorBehaviorM m v | m -> v where
    -- | Spawn a new actor with the given behavior, returns an actor reference
@@ -88,8 +96,6 @@ class ActorGlobalM m ref msg mb | m -> ref msg mb where
 (!) :: (Functor m, ActorGlobalM m ref msg mb) => ref -> msg -> m ()
 (!) ref = void . send ref
 
-sendMessage :: (Message msg v, Functor m, ActorGlobalM m (ARef v) msg mb) => String -> [v] -> ARef v -> m ()
-sendMessage tag vs = void . flip send (message tag vs)
 
 infixl 0 !
 
