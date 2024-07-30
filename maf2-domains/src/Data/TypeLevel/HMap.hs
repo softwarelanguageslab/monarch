@@ -58,6 +58,7 @@ module Data.TypeLevel.HMap (
     MapWith,
     MapWithAt,
     Sigma(..),
+    buildForAllKeys
 ) where
 
 import Prelude hiding (map, filter, foldr, null)
@@ -77,6 +78,7 @@ import Data.Singletons.Decide
 
 import qualified Data.List as List
 import Data.TypeLevel.AssocList
+import GHC.Base (build)
 
 --
 -- SomeVal (TODO: move this to other utility module?)
@@ -120,6 +122,8 @@ type HMapKey m = (SingKind (KeyKind m), SDecide (KeyKind m), Ord (KeyType m))
 -- shorthand for dependent key/value pairs
 type BindingFrom m = (Sigma (KeyKind m) (LookupIn m))
 
+
+
 --
 -- Map-like interface
 --
@@ -142,10 +146,10 @@ get (HMap m) = unsafeCoerceVal <$> Map.lookup (demote @kt) m
 getWithSing :: forall kt m . (HMapKey m) => Sing kt -> HMap m -> Maybe (Assoc kt m)
 getWithSing Sing = get @kt
 
-set :: forall kt m . (HMapKey m, SingI kt) => Assoc kt m -> HMap m -> HMap m
+set :: forall {k} kt (m :: [k :-> Type]) . (Ord (KeyType m), SingKind k, SingI kt) => Assoc kt m -> HMap m -> HMap m
 set v (HMap m) = HMap $ Map.insert (demote @kt) (SomeVal v) m
 
-setWithSing :: forall kt m . (HMapKey m) => Sing kt -> Assoc kt m -> HMap m -> HMap m
+setWithSing :: forall k kt (m :: [k :-> Type])  . (Ord (KeyType m), SingKind k) => Sing kt -> Assoc kt m -> HMap m -> HMap m
 setWithSing Sing = set @kt
 
 member :: forall {k} (kt :: k)  (m :: [k :-> Type]) . (HMapKey m, SingI kt) => HMap m -> Bool
@@ -214,6 +218,24 @@ toList :: forall m . HMapKey m => HMap m -> [BindingFrom m]
 toList (HMap m) = Prelude.map (\(k, v) -> withKey (pairToSigma v) k) (Map.toList m)
   where pairToSigma :: forall (kt :: KeyKind m) . SomeVal -> Sing kt -> BindingFrom m
         pairToSigma v s = s :&: unsafeCoerceVal @(Assoc kt m) v
+
+
+-- Other utility functions
+
+
+-- | Construct a list of all keys in the hmap (at the type-level)
+class AllKeys (m :: [kt :-> Type]) where   
+   allKeys :: SingKind kt => [SomeSing kt]
+instance AllKeys '[] where 
+   allKeys = []
+instance (SingI k, AllKeys r) => AllKeys (k ::-> v ': r) where 
+   allKeys = toSing (demote @k) : allKeys @_ @r
+
+-- | Call function f with each possible key in the HMap and 
+-- return an HMap where each key is mapped to the result of 
+-- the function
+buildForAllKeys :: forall k (m :: [k :-> Type]) . (SingKind k, Ord (Demote k), AllKeys m) => (forall kt . Sing kt -> Maybe (Assoc kt m)) -> HMap m
+buildForAllKeys f = foldl (\m k -> case k of SomeSing k' -> maybe m (flip (setWithSing k') m) (f k')) empty (allKeys @_ @m)
 
 -- optionally, supporting these can be used for generic Eq/Semigroup/... instances
 type family All k :: [k]

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Analysis.Monad.Store (
     StoreM(..),
@@ -37,6 +38,9 @@ import Control.Monad.Join (MonadJoin(..), mjoinMap, mjoins)
 import Control.Monad.Layer
 import Analysis.Store (Store)
 import Data.TypeLevel.AssocList
+import Data.TypeLevel.HMap (HMap)
+import qualified Data.TypeLevel.HMap as HMap
+import Data.Kind
 
 ---
 --- StoreM typeclass
@@ -151,3 +155,20 @@ type family StackStoreT stores m where
    StackStoreT '[] m = m
    StackStoreT (adr ::-> v ': r) m = StoreT' adr v (StackStoreT r m)
 
+-- | Construct a type for a stack of stores from the given mapping
+type family FromMap stores m :: Type -> Type where
+   FromMap '[] m =  m
+   FromMap (kadr ::-> (Map adr v) ': r) m = StoreT (Map adr v) adr v (FromMap r m)
+
+class WithStores mp mp' m where
+   type FirstAdr mp' :: Type 
+   type FirstVal mp' :: Type
+   type Next mp'     :: Type -> Type
+   withStores :: HMap mp -> StoreT (Map (FirstAdr mp') (FirstVal mp')) (FirstAdr mp') (FirstVal mp') (Next mp') a -> Next mp' a
+
+-- instance WithStores mp '[kadr ::-> (Map adr v)] m where  
+--    type FirstAdr mp' 
+-- | Run the given stack of stores using a HMap to provide 
+-- the set of initial stores
+--withStores :: HMap mp -> FromMap mp m a -> m (a, HMap mp) 
+--withStores = undefined

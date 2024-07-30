@@ -44,9 +44,6 @@ import Data.Kind
 import Data.Function ((&))
 import Data.TypeLevel.HMap
 import Domain.Scheme.Store
-import Control.Applicative
-import qualified Control.Monad
-import Lattice (Joinable)
 
 -- TODO: these two things should be moved elsewhere.
 data Id :: k ~> k
