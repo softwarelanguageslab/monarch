@@ -33,7 +33,11 @@ jobs:
           ${{ runner.os }}-build-${{ env.cache-name }}-
           ${{ runner.os }}-build-
           ${{ runner.os }}-
-
+    - name: Setup Z3 
+      uses: pavpanchekha/setup-z3@0.2.0
+      with: 
+        version: 4.8.12
+        distribution: glibc-2.31
     - name: Install dependencies
       working-directory: maf2-scv
       run: cabal update && cabal install --overwrite-policy=always hspec-discover
