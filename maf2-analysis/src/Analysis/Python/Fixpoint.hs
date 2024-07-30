@@ -29,16 +29,9 @@ import Prelude hiding (init, read)
 import Control.Monad.Reader
 import Control.Monad.Identity
 import Control.Monad.Escape
-import Control.Monad.DomainError
 import Data.Function ((&))
-import Lattice (EqualLattice (..))
-import Control.Lens (Field1(_1))
 import Analysis.Python.Escape
-import Control.Monad.Join (condsCP)
-
-type family MonadStack (ts :: [(* -> *) -> * -> *]) (m :: * -> *) where
-    MonadStack '[] m = m 
-    MonadStack (t ': tr) m = t (MonadStack tr m)
+import Analysis.Monad.Stack
 
 ---
 --- Python analysis fixpoint algorithm
