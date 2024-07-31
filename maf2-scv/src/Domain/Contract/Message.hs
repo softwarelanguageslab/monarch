@@ -3,6 +3,7 @@ module Domain.Contract.Message(ContractMessageDomain(..), isEnhancedMessageCP) w
 import Data.Kind
 import Domain (BoolDomain, inject)
 import Lattice (CP, BottomLattice(bottom))
+import Lattice.Class
 import Domain.Scheme.Actors.Message
 
 -- | Typeclass to represent regular and enhanced messages (i.e., messages with contracts)
@@ -11,9 +12,8 @@ class (MessageDomain v, BottomLattice (Contract v)) => ContractMessageDomain v w
    -- | Communication contract type associated with this message representation
    type Contract v :: Type
    
-   -- | Construct an enhanced message from a string-based tag, payload and communication 
-   -- contract
-   enhancedMessage :: String -> [Payload v] -> Contract v -> v
+   -- | Construct an enhanced message from a regular message
+   enhanceMessage :: v -> Contract v -> v
 
    -- | Extract the contract from the message
    contract :: v -> Contract v
@@ -48,10 +48,11 @@ instance (MessageDomain msg) => MessageDomain (SimpleEnhancedMessage c msg) wher
    tag     = tag . getInnerMsg
 
 -- | An enhanced message satisfies the constraints from the contract message domain
-instance (MessageDomain msg, BottomLattice c) => ContractMessageDomain (SimpleEnhancedMessage c msg) where   
+instance (MessageDomain msg, Joinable c, BottomLattice c) => ContractMessageDomain (SimpleEnhancedMessage c msg) where   
    type Contract (SimpleEnhancedMessage c msg) = c
 
-   enhancedMessage t p = EnhancedMessage (message t p)
+   enhanceMessage (RegularMessage msg) c = EnhancedMessage msg c
+   enhanceMessage (EnhancedMessage msg c) c' = EnhancedMessage msg (join c c')
    contract (RegularMessage _) = bottom
    contract (EnhancedMessage _ c) = c
 

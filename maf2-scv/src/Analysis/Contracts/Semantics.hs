@@ -6,7 +6,7 @@ import Lattice hiding (Bottom)
 import Syntax.Scheme
 import Analysis.Monad(store, deref)
 import qualified Analysis.Monad as Monad
-import Analysis.Contracts.Monad (ContractM, Error (NotAContract, BlameError, AssertionError), AssertionMessage (..))
+import Analysis.Contracts.Monad (ContractM, Error (NotAContract, BlameError, AssertionError), AssertionMessage (..), MonadMonitoredContext (isMonitored, monitoredByContract, withContractMonitor))
 import Domain.Contract ( ContractDomain(..), Flat(..), Moα (..) )
 import Domain.Scheme.Actors.Contract (MessageContract(MessageContract))
 import qualified Domain.Scheme.Actors.Contract as Contract
@@ -18,13 +18,28 @@ import qualified Data.Set as Set
 import Control.Monad.Join
 import Control.Monad.DomainError (escape, DomainError (WrongType))
 import Domain ( ActorDomain(..), SchemeDomain(symbol) )
-import Analysis.Actors.Monad ((!), send)
+import Analysis.Actors.Monad ((!), send, receive)
 import Domain.Scheme.Actors.Message
 import qualified Domain.Core.SeqDomain.BoundedList as BoundedList
 import Domain.Scheme (nil)
 import Data.Set (Set)
 import Data.Bifunctor
 import Analysis.Symbolic.Monad (choices, choice)
+import Domain.Contract.Message (ContractMessageDomain(..))
+
+-- | Checks the message against the contract in the 
+-- monitored context and returns an enhanced message
+monitorMessage :: ContractM m v msg mb => ARef v -> msg -> m msg
+monitorMessage = undefined
+
+-- 'fake' send that checks whether we are in a monitored 
+-- context, and if so transforms the message being 
+-- sent in a transformed message sent.
+fakeSend :: ContractM m v msg mb => ARef v -> msg -> m ()
+fakeSend ref msg =
+   condCP isMonitored
+          (void . send ref =<< monitorMessage ref msg)
+          (void $ send ref msg)
 
 -- | Flip the negative and positive parties of the blame 
 -- label
@@ -135,6 +150,9 @@ eval e@(Sen rcpt tag values _) = do
    rcpt'    <- Monad.eval rcpt
    values'  <- mapM Monad.eval values
    monSend e rcpt' tag values'
-
+eval (Rcv hdls _) =
+   receive (\msg -> condCP (pure $ isEnhancedMessage msg) 
+                           (withContractMonitor (contract msg) (Actors.selectHandler msg hdls))
+                           (Actors.selectHandler msg hdls))
 
 eval e = Actors.eval e

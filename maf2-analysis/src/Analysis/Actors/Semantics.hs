@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 -- | Serves as an extension (i.e., it requires) for the semantics in 'Analysis.Scheme.Semantics'.
 -- It adds support for the analysis of programs contain actor-based concurrency. 
-module Analysis.Actors.Semantics(Analysis.Actors.Semantics.eval) where
+module Analysis.Actors.Semantics(Analysis.Actors.Semantics.eval, selectHandler) where
 
 import Domain.Scheme hiding (Exp)
 import Analysis.Monad

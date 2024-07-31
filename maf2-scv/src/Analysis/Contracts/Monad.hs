@@ -16,6 +16,8 @@ import Domain (ActorDomain, BoolDomain)
 import Lattice (EqualLattice, CP)
 import Analysis.Symbolic.Monad (SymbolicM)
 import Control.Monad.Reader (ReaderT, MonadReader (..), asks, MonadTrans)
+import Domain.Contract.Message (ContractMessageDomain)
+import qualified Domain.Contract.Message as CMessage
 
 data AssertionMessage = ExpectedMessageContract
    deriving (Eq, Ord, Show)
@@ -42,9 +44,13 @@ instance Domain (Set Error) DomainError where
 type Contract c b = (c, b)
 
 -- | Tracks whether the current execution is monitored by a contract
-class (BoolDomain b) => MonadMonitoredContext c b m | m -> c b where
+class (BoolDomain b, Monad m) => MonadMonitoredContext c b m | m -> c b where
    withContractMonitor :: c -> m a -> m a
+   monitoredBy :: m (Contract c b)
    isMonitored :: m b
+   isMonitored = snd <$> monitoredBy 
+   monitoredByContract :: m c
+   monitoredByContract = fst <$> monitoredBy
 
 type ContractM m v msg mb =
    (  -- Specialised stores
@@ -62,6 +68,8 @@ type ContractM m v msg mb =
       ContractDomain v,
       ActorDomain v,
       EqualLattice v,
+      ContractMessageDomain msg,
+      CMessage.Contract msg ~ v,
       -- Semantics monads
       ActorEvalM m v msg mb,
       MonadMonitoredContext v (CP Bool) m,
@@ -78,8 +86,8 @@ newtype MonitoredContextT c m a =
 
 instance Monad m => MonadMonitoredContext c (CP Bool) (MonitoredContextT c m) where
   withContractMonitor c = local (const (c, inject True))
-  isMonitored = asks snd
+  monitoredBy = ask
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMonitoredContext c b m) => MonadMonitoredContext c b (t m) where
    withContractMonitor c = lowerM (withContractMonitor c)
-   isMonitored = upperM isMonitored
+   monitoredBy = upperM monitoredBy
