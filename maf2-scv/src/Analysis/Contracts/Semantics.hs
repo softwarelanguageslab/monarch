@@ -6,7 +6,7 @@ import Lattice hiding (Bottom)
 import Syntax.Scheme
 import Analysis.Monad(store, deref)
 import qualified Analysis.Monad as Monad
-import Analysis.Contracts.Monad (ContractM, Error (NotAContract, BlameError, AssertionError), AssertionMessage (..), MonadMonitoredContext (isMonitored, monitoredByContract, withContractMonitor))
+import Analysis.Contracts.Monad (ContractM, Error (NotAContract, BlameError, AssertionError), AssertionMessage (..), MonadMonitoredContext (isMonitored, withContractMonitor))
 import Domain.Contract ( ContractDomain(..), Flat(..), Moα (..) )
 import Domain.Scheme.Actors.Contract (MessageContract(MessageContract))
 import qualified Domain.Scheme.Actors.Contract as Contract
