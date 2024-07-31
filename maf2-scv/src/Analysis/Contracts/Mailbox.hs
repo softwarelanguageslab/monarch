@@ -28,9 +28,9 @@ instance (ActorScheme.MessageDomain msg) => ActorScheme.MessageDomain (Constrain
    tag = ActorScheme.tag . getMessage
    payload = ActorScheme.payload . getMessage 
 
--- | Monad transformer that implements messagee sending
+-- | Monad transformer that implements message sending
 -- semantics by annotating the message with a the current
--- path condition.
+-- path condition and delegating message sending to a monad lower on the stack.
 newtype AnnotateMessageT v ref msg mb m a = AnnotateMessageT (IdentityT m a)
   deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer)
 
