@@ -1,8 +1,10 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Analysis.Contracts.Monad where
 
+import Control.Monad.Layer
 import Domain.Class (Domain(..))
 import Syntax.Scheme
-import Analysis.Actors.Monad 
+import Analysis.Actors.Monad
 import Analysis.Monad (StoreM, AllocM)
 import Domain.Contract (ContractDomain(..), Flat(..), Moα)
 import Domain.Scheme.Actors.Contract (MessageContract)
@@ -10,9 +12,10 @@ import Analysis.Contracts.Behavior (MAdr)
 import Control.Monad.DomainError
 import qualified Data.Set as Set
 import Data.Set (Set)
-import Domain (ActorDomain)
-import Lattice (EqualLattice)
+import Domain (ActorDomain, BoolDomain)
+import Lattice (EqualLattice, CP)
 import Analysis.Symbolic.Monad (SymbolicM)
+import Control.Monad.Reader (ReaderT, MonadReader (..), asks, MonadTrans)
 
 data AssertionMessage = ExpectedMessageContract
    deriving (Eq, Ord, Show)
@@ -20,7 +23,7 @@ data AssertionMessage = ExpectedMessageContract
 -- | Error types that could occur while evaluating 
 -- the program with contracts
 data Error = BlameError (Set String) -- ^ blame error, consisting of the party being blamed for the contract violation  
-           | AssertionError AssertionMessage 
+           | AssertionError AssertionMessage
            | NotAContract
            | WithLoc Error Span
            | DomainWrap DomainError  -- ^ errors originating from implementations of the domain
@@ -28,10 +31,22 @@ data Error = BlameError (Set String) -- ^ blame error, consisting of the party b
 
 -- | For a `Set` representation of errors we already have `Domain (Set Error) Error` (by the 'SetLattice').
 -- This instance translates a `DomainError` (as defined in 'Control.Monad.DomainError') into `Set Error`.
-instance Domain (Set Error) DomainError where   
+instance Domain (Set Error) DomainError where
    inject = Set.singleton . DomainWrap
 
-type ContractM m v msg mb = 
+
+-- | Contract used in monitored contexts.
+-- It is represent as a product of two lattices: a lattice representing 
+-- the contract itself and another lattice representing the precense 
+-- of the contract in the monitored context.
+type Contract c b = (c, b)
+
+-- | Tracks whether the current execution is monitored by a contract
+class (BoolDomain b) => MonadMonitoredContext c b m | m -> c b where
+   withContractMonitor :: c -> m a -> m a
+   isMonitored :: m b
+
+type ContractM m v msg mb =
    (  -- Specialised stores
       StoreM m (MAdr v) (MessageContract v),
       StoreM m (FAdr v) (Flat v),
@@ -44,9 +59,27 @@ type ContractM m v msg mb =
       SymbolicM m v,
       -- Domains
       Domain (Esc m) Error,
-      ContractDomain v, 
+      ContractDomain v,
       ActorDomain v,
       EqualLattice v,
       -- Semantics monads
       ActorEvalM m v msg mb,
+      MonadMonitoredContext v (CP Bool) m,
       SchemeM m v, Ord v)
+
+
+------------------------------------------------------------
+-- Instances
+------------------------------------------------------------
+
+newtype MonitoredContextT c m a =
+      MonitoredContextT { runMonitoredContextT' :: ReaderT (Contract c (CP Bool)) m a }
+   deriving (Monad, Applicative, Functor, MonadReader (Contract c (CP Bool)), MonadTrans, MonadLayer)
+
+instance Monad m => MonadMonitoredContext c (CP Bool) (MonitoredContextT c m) where
+  withContractMonitor c = local (const (c, inject True))
+  isMonitored = asks snd
+
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMonitoredContext c b m) => MonadMonitoredContext c b (t m) where
+   withContractMonitor c = lowerM (withContractMonitor c)
+   isMonitored = upperM isMonitored
