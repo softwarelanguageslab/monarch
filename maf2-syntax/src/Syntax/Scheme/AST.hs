@@ -13,6 +13,7 @@ import Syntax.Scheme.Parser (SExp, pattern (:::))
 import Syntax.Span
 import Control.Applicative
 import Control.Monad.Reader
+import Control.Monad ((>=>), forever)
 
 import Prelude hiding (span)
 

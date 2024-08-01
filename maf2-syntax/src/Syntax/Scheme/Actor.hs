@@ -4,4 +4,4 @@ module Syntax.Scheme.Actor where
 import Data.FileEmbed
 
 prelude :: String
-prelude = $(embedStringFile "./preludes/actor.scm")
+prelude = $(makeRelativeToProject "preludes/actor.scm" >>= embedStringFile)
