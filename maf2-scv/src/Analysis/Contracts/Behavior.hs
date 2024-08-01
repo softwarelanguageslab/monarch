@@ -39,6 +39,8 @@ import Data.List (intercalate)
 --  For termination, we assume that each contract is behind a pointer
 --  that corresponds to its allocation site.
 class (Ord (MAdr c)) => BehaviorContract c where
+  -- TODO: factor out this associated type family so that it 
+  -- can be used by both behavior and communication contract
   type MAdr c :: Type
 
   -- | Create a new behavior contract from the given
@@ -50,7 +52,11 @@ class (Ord (MAdr c)) => BehaviorContract c where
 
   -- | Returns all message contracts that (might) match
   -- the given tag.
-  matchingContracts :: (EqualLattice v, Ord v, StoreM storeM (MAdr c) (MessageContract v)) => v -> c -> storeM (Set (MessageContract v))
+  matchingContractsOn :: (Ord v, StoreM storeM (MAdr c) (MessageContract v)) => (forall b . BoolDomain b => MessageContract v -> b) -> c -> storeM (Set (MessageContract v))
+
+
+matchingContracts :: (BehaviorContract c, EqualLattice v, Ord v, StoreM storeM (MAdr c) (MessageContract v)) => v -> c -> storeM (Set (MessageContract v))
+matchingContracts t = matchingContractsOn (eql t . tag)
 
 -- | An abstraction of the behavior contract that does not take ordering
 -- into account. We do so by representing the behavior contract as a set
@@ -67,8 +73,8 @@ instance Ord ptr => BehaviorContract (UnorderedBehaviorContract ptr) where
   isBehaviorContract v 
     | v == bottom = bottom
     | otherwise = inject True -- trivially true
-  matchingContracts t (UnorderedBehaviorContract ms) =
-    Set.fromList . filter (isTrue @(CP Bool) . eql t . tag) <$> mapM lookupAdr (Set.toList ms)
+  matchingContractsOn f (UnorderedBehaviorContract ms) =
+    Set.fromList . filter (isTrue @(CP Bool) . f) <$> mapM lookupAdr (Set.toList ms)
 
 ------------------------------------------------------------
 -- Instance for ModularSchemeValue
@@ -85,5 +91,5 @@ instance (IsBehaviorContract m) => BehaviorContract (SchemeVal m) where
 
   behaviorContract = SchemeVal . HMap.singleton @BeCKey . behaviorContract 
   isBehaviorContract = hasType BeCKey
-  matchingContracts t = maybe (return Set.empty) (matchingContracts t) . HMap.get @BeCKey . getSchemeVal
+  matchingContractsOn f = maybe (return Set.empty) (matchingContractsOn f) . HMap.get @BeCKey . getSchemeVal
 

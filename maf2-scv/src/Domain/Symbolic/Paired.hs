@@ -11,6 +11,7 @@ import Symbolic.AST
 import Domain.Symbolic.Class
 import Analysis.Contracts.Behavior
 import Domain.Contract (ContractDomain(..))
+import Analysis.Contracts.Communication
 
 --------------------------------------------------
 -- Declaration
@@ -218,7 +219,14 @@ instance (BehaviorContract v, SchemeValue v) => BehaviorContract (PairedSymbolic
       SchemePairedValue (behaviorContract @_ contracts, bottom)
 
    isBehaviorContract = isBehaviorContract @_ . leftValue
-   matchingContracts tag  = matchingContracts tag . leftValue
+   matchingContractsOn f  = matchingContractsOn f . leftValue
+
+instance (CommunicationContract v) => CommunicationContract (PairedSymbolic v pai vec str var) where 
+   type MCAdr (PairedSymbolic v pai vec str var) = MCAdr v
+   isCommunicationContract = 
+      isCommunicationContract . leftValue
+   ensuresContract adrs = SchemePairedValue (ensuresContract adrs, bottom)
+   ensureMessageContracts = ensureMessageContracts . leftValue
 
 instance (SchemeValue (PairedSymbolic v pai vec str var), SchemeValue v, ContractDomain v) => ContractDomain (PairedSymbolic v pai vec str var) where
    type FAdr (PairedSymbolic v pai vec str var) = FAdr v

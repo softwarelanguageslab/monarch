@@ -13,7 +13,7 @@ import qualified Domain.Scheme.Actors.Contract as Contract
 import qualified Analysis.Actors.Semantics as Actors
 import qualified Analysis.Scheme.Semantics as Scheme
 import Control.Monad ((>=>), void, zipWithM)
-import Analysis.Contracts.Behavior (behaviorContract, BehaviorContract (..))
+import Analysis.Contracts.Behavior (behaviorContract, matchingContracts, BehaviorContract (..))
 import qualified Data.Set as Set
 import Control.Monad.Join
 import Control.Monad.DomainError (escape, DomainError (WrongType))
@@ -52,8 +52,7 @@ monFlat :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v ->
 monFlat e lbl contract value =
       cond (deref (const $ flip (Scheme.applyFun e) [value] . flatProc) (flats contract))
            (return value)
-           (escape $ BlameError (Set.map positive lbl))
-
+           (escape $ BlameError (Set.map positive lbl)) 
 -- | Same as `monFlat` but first checks whether the contrat is indeed a flat contract
 ensureMonFlat :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 ensureMonFlat exp lbls contract value =

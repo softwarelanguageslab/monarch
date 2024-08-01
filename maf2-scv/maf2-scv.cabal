@@ -30,6 +30,7 @@ library
   exposed-modules:
       Analysis.Contracts
       Analysis.Contracts.Behavior
+      Analysis.Contracts.Communication
       Analysis.Contracts.Mailbox
       Analysis.Contracts.Monad
       Analysis.Contracts.Semantics

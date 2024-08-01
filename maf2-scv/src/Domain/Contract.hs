@@ -5,6 +5,7 @@ module Domain.Contract (ContractDomain (..), Flat (..), Moα(..)) where
 
 import Syntax.Scheme.AST (Labels)
 import Analysis.Contracts.Behavior
+import Analysis.Contracts.Communication
 import Data.Kind
 import Data.Maybe
 import Data.Set (Set)
@@ -31,7 +32,7 @@ instance BottomLattice (Moα v) where
 -- ContractDomain
 ------------------------------------------------------------
 
-class (SchemeDomain v, BehaviorContract v) => ContractDomain v where
+class (SchemeDomain v, CommunicationContract v, BehaviorContract v) => ContractDomain v where
   -- |  Address of pointers to flat contracts
   type FAdr v :: Type
   -- | Address of pointers to monitors on actor references
@@ -74,7 +75,7 @@ class (SchemeDomain v, BehaviorContract v) => ContractDomain v where
 -- Instance for ModularSchemeValue
 ------------------------------------------------------------
 
-instance (IsBehaviorContract m) => ContractDomain (SchemeVal m) where
+instance (IsBehaviorContract m, IsCommunicationContract m) => ContractDomain (SchemeVal m) where
   type FAdr (SchemeVal m) = (Assoc FlaConf m)
   type OAdr (SchemeVal m) = (Assoc MoαConf m)
   --

@@ -81,6 +81,7 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    -- λα/c
                    | MoαConf    -- ^ pointer to actor monitors
                    | BeCConf    -- ^ abstraction for behavior contracts
+                   | ComConf    -- ^ abstraction for communication contracts
                    | PMeConf    -- ^ pointer to message contracts
                    | FlaConf    -- ^ pointer to flat contracts
 
@@ -107,6 +108,7 @@ data SchemeKey = RealKey
                -- λα/c
                | MoαKey
                | BeCKey
+               | ComKey
                | MeCKey
                | FlaKey
                deriving (Ord, Eq, Show)
@@ -137,7 +139,8 @@ type Values m = '[
    MoαKey  ::-> Set (Assoc MoαConf m),
    BeCKey  ::-> Assoc BeCConf m,
    MeCKey  ::-> Set (Assoc PMeConf m),
-   FlaKey  ::-> Set (Assoc FlaConf m)
+   FlaKey  ::-> Set (Assoc FlaConf m),
+   ComKey  ::-> Assoc ComConf m
    ]
 
 hasType :: (BoolDomain b) => SchemeKey -> SchemeVal m -> b
