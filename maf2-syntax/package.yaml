@@ -15,6 +15,9 @@ copyright:           "2023 Author name here"
 # common to point users to the README.md file.
 description:         Please see the README on GitHub at <https://github.com/githubuser/maf2-syntax#readme>
 
+extra-source-files:
+  - preludes/*
+
 dependencies:
 - base >= 4.7 && < 5
 - language-python
@@ -23,6 +26,8 @@ dependencies:
 - parsec >= 3.1
 - data-default
 - file-embed
+- template-haskell
+- process
 
 ghc-options:
 - -Wall

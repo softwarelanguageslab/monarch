@@ -14,6 +14,8 @@ maintainer:     example@example.com
 copyright:      2023 Author name here
 license:        BSD-3-Clause
 build-type:     Simple
+extra-source-files:
+    preludes/actor.scm
 
 source-repository head
   type: git
@@ -38,6 +40,7 @@ library
       Syntax.Erlang.AST
       Syntax.Python.Compiler
       Syntax.Python.Parser
+      Syntax.Scheme.TH
       Paths_maf2_syntax
   autogen-modules:
       Paths_maf2_syntax
@@ -60,6 +63,8 @@ library
     , language-python
     , mtl
     , parsec >=3.1
+    , process
+    , template-haskell
   default-language: Haskell2010
 
 test-suite maf2-syntax-test
@@ -89,4 +94,6 @@ test-suite maf2-syntax-test
     , maf2-syntax
     , mtl
     , parsec >=3.1
+    , process
+    , template-haskell
   default-language: Haskell2010
