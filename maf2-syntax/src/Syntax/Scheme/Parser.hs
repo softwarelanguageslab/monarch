@@ -2,8 +2,6 @@
 -- | Parser to S-expressions
 module Syntax.Scheme.Parser(SExp(..), Span(..), parseSexp, spanOf, pattern (:::), smap) where
 
-import GHC.Generics (Generic)
-import Data.Hashable
 import Data.Functor
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Language

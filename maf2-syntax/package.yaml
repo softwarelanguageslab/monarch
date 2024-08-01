@@ -20,7 +20,6 @@ dependencies:
 - language-python
 - mtl
 - containers
-- hashable
 - parsec >= 3.1
 - data-default
 - file-embed
