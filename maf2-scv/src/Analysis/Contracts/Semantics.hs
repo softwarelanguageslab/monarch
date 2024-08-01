@@ -4,20 +4,22 @@ module Analysis.Contracts.Semantics(eval, ContractM) where
 import Prelude hiding (exp)
 import Lattice hiding (Bottom)
 import Syntax.Scheme
-import Analysis.Monad(store, deref)
+import Analysis.Monad ( store, deref, StoreM(..) )
 import qualified Analysis.Monad as Monad
 import Analysis.Contracts.Monad (ContractM, Error (NotAContract, BlameError, AssertionError), AssertionMessage (..), MonadMonitoredContext (isMonitored, withContractMonitor))
 import Domain.Contract ( ContractDomain(..), Flat(..), Moα (..) )
 import Domain.Scheme.Actors.Contract (MessageContract(MessageContract))
+import qualified Domain.Scheme.Actors.Contract as MC
 import qualified Domain.Scheme.Actors.Contract as Contract
 import qualified Analysis.Actors.Semantics as Actors
 import qualified Analysis.Scheme.Semantics as Scheme
 import Control.Monad ((>=>), void, zipWithM)
-import Analysis.Contracts.Behavior (behaviorContract, matchingContracts, BehaviorContract (..))
+import Domain.Contract.Behavior (behaviorContract, BehaviorContract (..))
 import qualified Data.Set as Set
 import Control.Monad.Join
 import Control.Monad.DomainError (escape, DomainError (WrongType))
-import Domain ( ActorDomain(..), SchemeDomain(symbol) )
+import Domain
+    ( ActorDomain(..), SchemeDomain(symbol), BoolDomain(..) )
 import Analysis.Actors.Monad ((!), send, receive)
 import Domain.Scheme.Actors.Message
 import qualified Domain.Core.SeqDomain.BoundedList as BoundedList
@@ -26,6 +28,15 @@ import Data.Set (Set)
 import Data.Bifunctor
 import Analysis.Symbolic.Monad (choices, choice)
 import Domain.Contract.Message (ContractMessageDomain(..))
+
+-- | Get all message contracts from the given behavior contract 
+-- matching the given predicate
+matchingContractsOn :: (BehaviorContract c, Ord v, StoreM storeM (MAdr c) (MessageContract v)) => (forall b . BoolDomain b => MessageContract v -> b) -> c -> storeM (Set (MessageContract v))
+matchingContractsOn f v =
+   Set.fromList . filter (isTrue @(CP Bool) . f) <$> mapM lookupAdr (Set.toList $ behaviorMessageContracts v)
+-- | Get all message contracts from the given behavior contract that matches the given tag
+matchingContracts :: (BehaviorContract c,  Ord v, StoreM storeM (MAdr c) (MessageContract v), EqualLattice v) => v -> c -> storeM (Set (MessageContract v))
+matchingContracts t = matchingContractsOn (eql t . MC.tag)
 
 -- | Checks the message against the contract in the 
 -- monitored context and returns an enhanced message
@@ -52,7 +63,7 @@ monFlat :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v ->
 monFlat e lbl contract value =
       cond (deref (const $ flip (Scheme.applyFun e) [value] . flatProc) (flats contract))
            (return value)
-           (escape $ BlameError (Set.map positive lbl)) 
+           (escape $ BlameError (Set.map positive lbl))
 -- | Same as `monFlat` but first checks whether the contrat is indeed a flat contract
 ensureMonFlat :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
 ensureMonFlat exp lbls contract value =
@@ -134,13 +145,12 @@ assert b e v = cond (pure (b v)) (return v) (escape (AssertionError e))
 eval :: forall v m msg mb . ContractM m v msg mb => Exp -> m v
 eval exp@(MsgC tag rcv payload comm _) =
    messageContract <$>
-      (store exp =<< (MessageContract <$> Monad.eval tag <*> Monad.eval rcv <*> (BoundedList.fromList <$> mapM Monad.eval payload) <*> Monad.eval comm))
+      (store exp =<< MessageContract <$> Monad.eval tag <*> Monad.eval rcv <*> (BoundedList.fromList <$> mapM Monad.eval payload) <*> Monad.eval comm)
 eval (BehC exs _) =  do
    vlus <- mapM Monad.eval exs
    adrs <- joins <$> mapM (assert isMessageContract ExpectedMessageContract >=> pure . messageContracts) vlus
    return (behaviorContract @_ (Set.toList adrs))
-eval exp@(Syntax.Scheme.Flat e _) = do
-   flat <$> (store exp . Domain.Contract.Flat =<< Monad.eval e)
+eval exp@(Syntax.Scheme.Flat e _) = flat <$> (store exp . Domain.Contract.Flat =<< Monad.eval e)
 eval exp@(Mon labels contract value _) = do
    contract' <- Monad.eval contract
    value'    <- Monad.eval value
@@ -150,7 +160,7 @@ eval e@(Sen rcpt tag values _) = do
    values'  <- mapM Monad.eval values
    monSend e rcpt' tag values'
 eval (Rcv hdls _) =
-   receive (\msg -> condCP (pure $ isEnhancedMessage msg) 
+   receive (\msg -> condCP (pure $ isEnhancedMessage msg)
                            (withContractMonitor (contract msg) (Actors.selectHandler msg hdls))
                            (Actors.selectHandler msg hdls))
 

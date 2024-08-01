@@ -30,5 +30,3 @@ class (Domain b Bool) => BoolDomain b where
    and a b = iff a b false
    or :: b -> b -> b
    or a = iff a true  
-
-

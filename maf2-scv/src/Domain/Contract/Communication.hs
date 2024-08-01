@@ -1,7 +1,5 @@
-{-# LANGUAGE UndecidableInstances #-}
--- | Abstractions for communication contracts
-module Analysis.Contracts.Communication where
--- TODO: put this in the domain module
+{-# LANGUAGe UndecidableInstances #-}
+module Domain.Contract.Communication where
 
 import Data.TypeLevel.HMap (Assoc)
 import qualified Data.TypeLevel.HMap as HMap
@@ -26,7 +24,6 @@ class CommunicationContract v where
    -- | Returns a list of pointers to message contracts contained 
    -- within the ensure contract.
    ensureMessageContracts :: v -> Set (MCAdr v)
-
 
 ------------------------------------------------------------
 -- Instance 

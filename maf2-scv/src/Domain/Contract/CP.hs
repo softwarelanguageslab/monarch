@@ -7,7 +7,7 @@ import qualified Domain.Scheme.Actors.CP as CP
 import Lattice.ConstantPropagationLattice
 import Data.TypeLevel.HMap ((::->))
 import Syntax.Scheme
-import Analysis.Contracts.Behavior (UnorderedBehaviorContract)
+import Domain.Contract.Behavior (UnorderedBehaviorContract)
 
 import Domain.Scheme.Class hiding (Exp, Env)
 import Domain.Core (SimplePair, PIVector)

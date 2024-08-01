@@ -4,8 +4,8 @@
 module Domain.Contract (ContractDomain (..), Flat (..), Moα(..)) where
 
 import Syntax.Scheme.AST (Labels)
-import Analysis.Contracts.Behavior
-import Analysis.Contracts.Communication
+import Domain.Contract.Behavior
+import Domain.Contract.Communication
 import Data.Kind
 import Data.Maybe
 import Data.Set (Set)

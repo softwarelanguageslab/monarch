@@ -8,7 +8,7 @@ import Analysis.Actors.Monad
 import Analysis.Monad (StoreM, AllocM)
 import Domain.Contract (ContractDomain(..), Flat(..), Moα)
 import Domain.Scheme.Actors.Contract (MessageContract)
-import Analysis.Contracts.Behavior (MAdr)
+import Domain.Contract.Behavior (MAdr)
 import Control.Monad.DomainError
 import qualified Data.Set as Set
 import Data.Set (Set)

@@ -29,8 +29,6 @@ source-repository head
 library
   exposed-modules:
       Analysis.Contracts
-      Analysis.Contracts.Behavior
-      Analysis.Contracts.Communication
       Analysis.Contracts.Mailbox
       Analysis.Contracts.Monad
       Analysis.Contracts.Semantics
@@ -42,6 +40,8 @@ library
       Analysis.Traces
       Data.Map.Extra
       Domain.Contract
+      Domain.Contract.Behavior
+      Domain.Contract.Communication
       Domain.Contract.CP
       Domain.Contract.Message
       Domain.Contract.Store

@@ -9,9 +9,9 @@ import Control.Monad.Join
 import Data.Map (Map)
 import Symbolic.AST
 import Domain.Symbolic.Class
-import Analysis.Contracts.Behavior
+import Domain.Contract.Behavior
 import Domain.Contract (ContractDomain(..))
-import Analysis.Contracts.Communication
+import Domain.Contract.Communication
 
 --------------------------------------------------
 -- Declaration
@@ -219,7 +219,7 @@ instance (BehaviorContract v, SchemeValue v) => BehaviorContract (PairedSymbolic
       SchemePairedValue (behaviorContract @_ contracts, bottom)
 
    isBehaviorContract = isBehaviorContract @_ . leftValue
-   matchingContractsOn f  = matchingContractsOn f . leftValue
+   behaviorMessageContracts = behaviorMessageContracts . leftValue
 
 instance (CommunicationContract v) => CommunicationContract (PairedSymbolic v pai vec str var) where 
    type MCAdr (PairedSymbolic v pai vec str var) = MCAdr v
