@@ -16,9 +16,20 @@ extra-deps:
         - maf2-syntax/
 ```
 
-and then, add it as a dependencies to your `package.yaml`:
+or alternatively if you are using Cabal only (in your cabal.project)
+
+```yaml
+source-repository-package
+   type: git
+   location: https://github.com/softwarelanguageslab/maf-hs.git
+   tag: LATEST_COMMIT_HASH
+   subdir: maf2-syntax
+```
+
+and then, add it as a dependencies to your `package.yaml` (or equivalent entry in your `projectname.cabal` file):
 
 ```yaml
 dependencies:
     - maf2-syntax
 ```
+
