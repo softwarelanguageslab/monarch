@@ -14,3 +14,7 @@ modifyRef :: MonadConc m => (a -> a) -> IORef m a -> m (IORef m a)
 modifyRef f ref = do
    atomicModifyIORef ref ((,()) . f)
    return ref 
+
+modifyRef' :: MonadConc m => (a -> a) -> IORef m a -> m ()
+modifyRef' f ref = 
+   atomicModifyIORef ref ((,()) . f)

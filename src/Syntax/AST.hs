@@ -4,6 +4,7 @@ newtype Ide = Ide String deriving (Eq, Ord, Show)
 data Exp = Lam Ide Exp  
          | App Exp Exp   
          | Spawn Exp 
+         | Letrec Ide Exp Exp
          | Terminate 
          | Pair Exp Exp 
          | Parameter Exp 
