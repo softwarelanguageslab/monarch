@@ -6,6 +6,7 @@ data Exp = Lam Ide Exp
          | Spawn Exp 
          | Letrec Ide Exp Exp
          | Terminate 
+         | Self
          | Pair Exp Exp 
          | Parameter Exp 
          | Parametrize Ide Exp 
@@ -14,9 +15,11 @@ data Exp = Lam Ide Exp
          | Send Exp Exp
          | Literal Lit
          | Ite  Exp Exp Exp
+         | Var Ide
+         | Begin [Exp]
          deriving (Eq, Ord, Show)
 
-data Lit = Num Integer | Boolean Bool deriving (Eq, Ord, Show)
+data Lit = Num Integer | Boolean Bool | Symbol String deriving (Eq, Ord, Show)
 data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show)
 newtype Label = Label String deriving (Eq, Ord, Show)
 

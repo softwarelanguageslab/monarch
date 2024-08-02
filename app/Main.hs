@@ -1,6 +1,11 @@
 module Main (main) where
 
-import Lib
+import Syntax.Compiler
+import Data.Either
+import Interpreter
 
 main :: IO ()
-main = someFunc
+main = do
+   ast <- fmap (either (error . ("error while parsing: " ++)) id . parseFromString) (readFile "test.scm")
+   runEval (eval ast) >>= print
+   return ()

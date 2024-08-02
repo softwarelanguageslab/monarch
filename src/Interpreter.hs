@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, GADTs, AllowAmbiguousTypes, StandaloneDeriving, DerivingVia, KindSignatures #-}
+{-# LANGUAGE TemplateHaskell, GADTs, AllowAmbiguousTypes, StandaloneDeriving, DerivingVia, KindSignatures, GeneralizedNewtypeDeriving, UndecidableInstances, RankNTypes #-}
 module Interpreter where
 
 import Syntax.AST
@@ -8,15 +8,18 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import Control.Concurrent.Classy
 import Control.Monad.Extra
+import Control.Monad.Catch
 import Control.Lens hiding (Context)
 import Data.Maybe
 import Data.Kind
+import Data.Bifunctor
 
 -- | A concrete environment
 type Env = Map String Adr
 
 -- | Concrete addresses 
-newtype Adr = Adr Int deriving (Eq, Ord, Show)
+data Adr = Adr Int
+         | PrmAdr String deriving (Eq, Ord, Show)
 
 -- | An actor message is any value
 type Message m = Value m
@@ -36,6 +39,7 @@ data Value m =
      LiteralValue Lit
    | PairValue (Value m) (Value m)
    | ClosureValue Exp Env
+   | PrmValue String
    | ActorValue (ARef m)
    | ValueNil
    deriving (Eq, Ord, Show)
@@ -64,9 +68,13 @@ data Context m = Context {
 
 $(makeLenses ''Context)
 
+emptyContext :: Context m 
+emptyContext = Context Map.empty Map.empty Nothing
+
 -- | Evaluation monad
 type EvalM m = (
    MonadConc m,
+   MonadIO m,
    MonadReader (Context m) m,
    MonadState (SystemState m) m
    )
@@ -95,6 +103,9 @@ withMergedEnvironment env' = local (over environment (flip Map.union env'))
 withEnv :: EvalM m => Env -> m a -> m a
 withEnv env = local (over environment (const env))
 
+lookupEnv :: EvalM m => String -> m Adr 
+lookupEnv nam = asks (fromMaybe (error $ nam ++ " not found") . Map.lookup nam .  view environment)
+
 -- Store
 
 alloc :: EvalM m => m Adr
@@ -114,6 +125,9 @@ deref adr =
 withSelf :: EvalM m => ARef m -> m a -> m a
 withSelf self' = local (over self (const (Just self')))
 
+getSelf :: EvalM m => m (ARef m)
+getSelf = asks (fromJust . view self)
+
 newPid :: EvalM m => m Int
 newPid = do
    getsM (flip atomicModifyIORef (\v -> (v+1, v+1)) . latestPid)
@@ -128,8 +142,7 @@ receive :: EvalM m => (Value m -> m a) -> m a
 receive f = asks (fromJust . view self) >>= (\(ARef chan _) -> readChan chan >>= f)
 
 send :: EvalM m => ARef m -> Value m -> m ()
-send (ARef chan _) payload = writeChan chan payload
-
+send (ARef chan _) = writeChan chan 
 
 ------------------------------------------------------------
 -- Evaluation
@@ -148,13 +161,14 @@ eval (Ite e1 e2 e3) = do
       LiteralValue (Boolean b) -> if b then eval e2 else eval e3
       _ -> error "condition should be boolean"
 eval (Spawn e) = 
-   ActorValue <$> spawnActor (flip withSelf (void $ eval e))
+   ActorValue <$> spawnActor (`withSelf` (void $ eval e))
 eval Terminate = 
    myThreadId >>= killThread >> return bottom
 eval (Receive pats) = 
    receive (\v -> 
       let (env', e) = fromMaybe (error "no match found") (matchList pats v)
-      in allocMapping env' >>= flip withMergedEnvironment (eval e))
+      in do
+         allocMapping env' >>= flip withMergedEnvironment (eval e))
 eval (Send e1 e2) = do  
    receiver <- eval e1
    payload  <- eval e2
@@ -165,8 +179,13 @@ eval (Letrec (Ide x) e1 e2) = do
    v <- withExtendedEnv x adr (eval e1)
    store adr v
    withExtendedEnv x adr (eval e2)
+eval (Begin exs) = 
+   last <$> mapM eval exs
 eval (Pair e1 e2) = 
    PairValue <$> eval e1 <*> eval e2
+eval (Var (Ide x)) = 
+   lookupEnv x >>= deref
+eval Self = ActorValue <$> getSelf 
 eval _ = error "unsupported expression"
 
 trySend :: EvalM m => Value m -> Value m -> m ()
@@ -178,8 +197,9 @@ apply (ClosureValue (Lam (Ide x) e) env) v = do
    adr <- alloc 
    store adr v
    withEnv env (withExtendedEnv x adr (eval e))
-
-apply _ _ = error "not a closure"
+apply (PrmValue nam) v = 
+   runPrimitive (fromJust $ Map.lookup nam allPrimitives) v
+apply _ _ = error "not a closure or primitive"
    
 type Mapping m = Map String (Value m)
 
@@ -207,3 +227,39 @@ match (PairPat pat1 pat2) (PairValue v1 v2) = do
       return $ Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
                                 m1 m2
 match _ _ = Nothing
+
+------------------------------------------------------------
+-- Primitives
+------------------------------------------------------------
+
+newtype Prim = Prim (forall m . EvalM m => Value m -> m (Value m))
+
+allPrimitives :: Map String Prim
+allPrimitives = Map.fromList [
+      ("print", Prim $ liftIO . print >=> (const $ return ValueNil)) ,
+      ("inc", Prim $ \(LiteralValue (Num n)) -> return (LiteralValue (Num (n+1))))
+   ]
+
+runPrimitive :: EvalM m => Prim -> Value m -> m (Value m) 
+runPrimitive (Prim f) = ($) f
+
+initialEnv :: Map String Adr
+initialEnv = Map.mapWithKey (const . PrmAdr) allPrimitives
+
+storePrimitives :: EvalM m => m ()
+storePrimitives = mapM_ (uncurry store . first PrmAdr) (Map.toList $ Map.mapWithKey (const . PrmValue) allPrimitives)
+
+------------------------------------------------------------
+-- Execution
+------------------------------------------------------------
+
+newtype M a = M { runM :: ReaderT (Context M) (StateT (SystemState M) IO) a }
+            deriving (MonadIO, MonadCatch, MonadThrow, MonadMask, MonadConc, MonadState (SystemState M), MonadReader (Context M), Monad, Applicative, Functor)
+
+runEval ::  M a -> IO a
+runEval ma = do 
+   latestPid <- newIORef 0
+   latestAdr <- newIORef 0 
+   currStore <- newIORef Map.empty
+
+   flip evalStateT (SystemState latestPid latestAdr currStore) $ flip runReaderT (over environment (const initialEnv) emptyContext) $ runM (storePrimitives >> ma)

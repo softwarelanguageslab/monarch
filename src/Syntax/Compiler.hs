@@ -43,8 +43,15 @@ compile (Atom "if" _ ::: e1 ::: e2 ::: e3 ::: SNil _) =
    Ite <$> compile e1 <*> compile e2 <*> compile e3
 compile e@(Atom "if" _ ::: _) = 
    throwError $ "invalid syntax for if " ++ show e
+compile (Atom "begin" _ ::: exs) = 
+   Begin <$> smapM compile exs
+compile (Atom "self" _ ::: SNil _) = pure Self
+compile e@(Atom "self" _ ::: _) = 
+   throwError $ "invalid syntax for self " ++ show e
 compile (op ::: opr ::: SNil _) = 
    App <$> compile op <*> compile opr
+compile (Atom x _) = return $ Var $ Ide x
+compile (Quo (Atom s _) _) = return $ Literal (Symbol s)
 compile e = throwError $ "invalid syntax " ++ show e
 
 smapM :: MonadError String m => (SExp -> m a) -> SExp -> m [a]
@@ -56,7 +63,10 @@ smapM f (a ::: as) = do
 smapM _ e = throwError $ "malformed list " ++ show e
 
 compilePats :: MonadError String m => SExp -> m [(Pat, Exp)]
-compilePats = smapM (\(pat ::: e ::: SNil _) -> compilePat pat >>= (\p -> fmap (p,) (compile e)))
+compilePats = smapM compileHandler
+   where compileHandler :: MonadError String m => SExp -> m (Pat, Exp)
+         compileHandler (pat ::: e ::: SNil _) = compilePat pat >>= (\p -> fmap (p,) (compile e))
+         compileHandler e = throwError $ "invalid handler " ++ show e
 
 compilePat :: MonadError String m => SExp -> m Pat
 compilePat (Atom "pair" _ ::: pat1 ::: pat2 ::: SNil _) = 
@@ -64,4 +74,5 @@ compilePat (Atom "pair" _ ::: pat1 ::: pat2 ::: SNil _) =
 compilePat (Atom x _) = return (IdePat (Ide x))
 compilePat (SExp.Num n _) = return (ValuePat $ Syntax.AST.Num n)
 compilePat (SExp.Bln b _) = return (ValuePat $ Syntax.AST.Boolean b)
+compilePat (Quo (Atom s _) _) = return (ValuePat $ Syntax.AST.Symbol s)
 compilePat e = throwError $ "invalid pattern " ++ show e
