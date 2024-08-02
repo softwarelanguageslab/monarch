@@ -54,7 +54,8 @@ data SystemState m = SystemState {
    -- of contention. However, the semantics
    -- allow for some kind of scoped, localising
    -- most parts of the state per thread.
-   currStore :: IORef m (Map Adr (Value m))
+   currStore :: IORef m (Map Adr (Value m)),
+   finishSignals :: IORef m [MVar m ()]
    }
 
 -- | Evaluation context (reader)
@@ -135,7 +136,9 @@ newPid = do
 spawnActor :: EvalM m => (ARef m -> m ()) -> m (ARef m)
 spawnActor f = do
    ref <- ARef <$> newChan <*> newPid
-   void $ fork (f ref)
+   finishSignal <- newEmptyMVar 
+   getsM (void . modifyRef (finishSignal:) . finishSignals)
+   void $ forkFinally (f ref) (const $ putMVar finishSignal ())
    return ref
 
 receive :: EvalM m => (Value m -> m a) -> m a
@@ -143,6 +146,9 @@ receive f = asks (fromJust . view self) >>= (\(ARef chan _) -> readChan chan >>=
 
 send :: EvalM m => ARef m -> Value m -> m ()
 send (ARef chan _) = writeChan chan 
+
+waitUntilAllFinished :: EvalM m => m ()
+waitUntilAllFinished = getsM (readIORef . finishSignals) >>= mapM_ takeMVar
 
 ------------------------------------------------------------
 -- Evaluation
@@ -237,7 +243,8 @@ newtype Prim = Prim (forall m . EvalM m => Value m -> m (Value m))
 allPrimitives :: Map String Prim
 allPrimitives = Map.fromList [
       ("print", Prim $ liftIO . print >=> (const $ return ValueNil)) ,
-      ("inc", Prim $ \(LiteralValue (Num n)) -> return (LiteralValue (Num (n+1))))
+      ("inc", Prim $ \(LiteralValue (Num n)) -> return (LiteralValue (Num (n+1)))),
+      ("wait-until-all-finished", Prim $ (const $ waitUntilAllFinished) >=> (const $ return ValueNil))
    ]
 
 runPrimitive :: EvalM m => Prim -> Value m -> m (Value m) 
@@ -261,5 +268,7 @@ runEval ma = do
    latestPid <- newIORef 0
    latestAdr <- newIORef 0 
    currStore <- newIORef Map.empty
+   finishSignals <- newIORef []
 
-   flip evalStateT (SystemState latestPid latestAdr currStore) $ flip runReaderT (over environment (const initialEnv) emptyContext) $ runM (storePrimitives >> ma)
+
+   flip evalStateT (SystemState latestPid latestAdr currStore finishSignals) $ flip runReaderT (over environment (const initialEnv) emptyContext) $ runM (storePrimitives >> ma)

@@ -7,5 +7,5 @@
                    (beh (inc x))))))))
   (begin 
     (send (spawn (beh 0)) 'inc)
-    (letrec (f (lambda (_) (f 42))) (f 42))))
+    (wait-until-all-finished 0)))
 
