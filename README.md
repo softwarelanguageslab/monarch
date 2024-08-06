@@ -3,12 +3,8 @@
 This repository aims to simplify the semantics of communication contracts (Vandenbogaerde et al., 2024) by transforming programs in λα/c to programs in λα. 
 This simplifies the semantics by expressing it into well-understood constructs, as well as derrived tooling (e.g., static analysis).
 
-The remainder of this document is structured as follows. First we discuss the syntax of the underlying language λα and its semantics. 
-Next, we describe the syntax and semantics of λα/c as introduced by Vandenbogaerde et al. (2024). We proceed with presenting 
-a synthatic translation from λα/c to λα and conclude with a proof that the original program is semantically equivalent to
-the translated program.
 
-## Syntax 
+## Syntax of λα
 
 λα is an extension of the untyped lambda calculus. This extension includes constructs to express actor systems 
 and their communication. To this end, the language is extended with a construct to spawn new actors
@@ -28,8 +24,20 @@ variables to change value based on the dynamic extent rather than on lexical sco
 Thus we arrive at the following formal syntax of our language:
 
 $$
-a = \sqrt{10}
+\begin{aligned}
+e \in Exp &::= & \lambda x . e 
+          &\mid& e~e 
+          &\mid& \mathsf{spawn}~e
+          &\mid& \mathsf{terminate}
+          &\mid& \mathsf{self}
+          &\mid& (e, e)
+          &\mid& \mathsf{parameter}~e
+\end{aligned}
 $$
+
+## Translation from CPCF
+
+
 
 ## Structure of the artifact
 
