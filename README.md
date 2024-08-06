@@ -27,9 +27,9 @@ variables to change value based on the dynamic extent rather than on lexical sco
 
 Thus we arrive at the following formal syntax of our language:
 
-\[
-a = 10
-\]
+$$
+a = \sqrt{10}
+$$
 
 ## Structure of the artifact
 
