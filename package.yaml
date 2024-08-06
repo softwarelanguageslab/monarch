@@ -43,6 +43,8 @@ library:
     - containers 
     - mtl
     - maf2-syntax
+    - maf2-domains
+    - maf2-analysis
     - lens
     - concurrency
     - exceptions
