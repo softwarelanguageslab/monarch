@@ -12,7 +12,7 @@ the translated program.
 
 λα is an extension of the untyped lambda calculus. This extension includes constructs to express actor systems 
 and their communication. To this end, the language is extended with a construct to spawn new actors
-given a message handler in the form of a closure. Moreover, two more special constructs are added 
+given a message handler in the form of a closure. Moreover, two additional special constructs are added 
 to send and receive messages respectively. 
 
 In contrast to the classic actor model, our actor model does not feature lists of message
@@ -25,7 +25,11 @@ so that it can be overshadowed for contract checking purposes.
 λα also contains constructs for *dynamic parameters* (cf. Racket `parameters`), which allow
 variables to change value based on the dynamic extent rather than on lexical scoping.
 
-Thus we arrive at the formal syntax of our language:
+Thus we arrive at the following formal syntax of our language:
+
+\[
+a = 10
+\]
 
 ## Structure of the artifact
 
