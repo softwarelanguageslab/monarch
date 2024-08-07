@@ -27,6 +27,7 @@ library
   exposed-modules:
       Control.Monad.Extra
       Domain.SimpleActor
+      Domain.SimpleActor.Class
       GenericInterpreter
       Interpreter
       Lib
