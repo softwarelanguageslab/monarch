@@ -197,6 +197,7 @@ eval (Pair e1 e2) =
 eval (Var (Ide x)) =
    lookupEnv x >>= deref
 eval Self = ActorValue <$> getSelf
+eval (Blame k) = error $ "blaming " ++ show k
 eval _ = error "unsupported expression"
 
 trySend :: EvalM m => Value m -> Value m -> m ()
@@ -256,7 +257,10 @@ allPrimitives :: Map String Prim
 allPrimitives = Map.fromList [
       ("print", prim1 $ liftIO . print >=> const (return ValueNil)) ,
       ("inc", prim1 $ \(LiteralValue (Num n)) -> return (LiteralValue (Num (n+1)))),
-      ("wait-until-all-finished", Prim $ const waitUntilAllFinished >=> const (return ValueNil))
+      ("wait-until-all-finished", Prim $ const waitUntilAllFinished >=> const (return ValueNil)),
+      ("*", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1*n2))),
+      ("nonzero?", prim1 $ \(LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n /= 0))),
+      ("positive?", prim1 $ \(LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n > 0)))
    ]
 
 runPrimitive :: EvalM m => Prim -> [Value m] -> m (Value m)

@@ -35,6 +35,7 @@ ghc-options:
 
 default-extensions:
   - ConstraintKinds
+  - TypeFamilies
   - FlexibleContexts
 
 library:

@@ -27,7 +27,7 @@ import Domain.SimpleActor
 -- Errors
 ------------------------------------------------------------
 
-data Error = MatchError | InvalidArgument
+data Error = MatchError | InvalidArgument | BlameError Label
 
 ------------------------------------------------------------
 -- Monad typeclasses
@@ -98,6 +98,8 @@ eval (Pair e1 e2) =
 eval (Var (Ide x)) =
    lookupEnv x >>= lookupAdr
 eval Self = actorRef <$> getSelf @v
+eval (Blame k) = 
+   escape (BlameError k)
 eval _ = error "unsupported expression"
 
 trySend :: EvalM v m => v -> v -> m ()

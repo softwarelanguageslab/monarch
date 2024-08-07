@@ -48,8 +48,14 @@ compile (Atom "begin" _ ::: exs) =
 compile (Atom "self" _ ::: SNil _) = pure Self
 compile e@(Atom "self" _ ::: _) =
    throwError $ "invalid syntax for self " ++ show e
+compile (Atom "quote" span' ::: s ::: SNil _) = compile (Quo s span')
+compile (Atom "blame" _ ::: (Atom "quote" _ ::: (Atom s _) ::: _) ::: _) = 
+   return (Blame (Label s))
+compile e@(Atom "blame" _ ::: _) =
+   throwError $ "invalid syntax for blame " ++ show e
 compile (op ::: oprs) =
    App <$> compile op <*> smapM compile oprs
+
 compile (Atom x _) = return $ Var $ Ide x
 compile (Quo (Atom s _) _) = return $ Literal (Symbol s)
 compile e = throwError $ "invalid syntax " ++ show e
