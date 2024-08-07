@@ -20,10 +20,10 @@ import Data.Functor ((<&>))
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
    type Esc m
-   throw :: (BottomLattice a, Joinable a) => Esc m -> m a 
+   throw :: (BottomLattice a) => Esc m -> m a 
    catch :: (BottomLattice a, Joinable a) => m a -> (Esc m -> m a) -> m a
 
-escape :: (MonadEscape m, Domain (Esc m) e, BottomLattice a, Joinable a) => e -> m a 
+escape :: (MonadEscape m, Domain (Esc m) e, BottomLattice a) => e -> m a 
 escape = throw . inject 
 
 orElse :: (MonadEscape m, BottomLattice a, Joinable a) => m a -> m a -> m a
