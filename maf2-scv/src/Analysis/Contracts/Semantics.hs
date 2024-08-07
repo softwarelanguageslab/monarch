@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 module Analysis.Contracts.Semantics(eval, ContractM) where
 
 import Prelude hiding (exp)
@@ -17,7 +18,8 @@ import Control.Monad ((>=>), void, zipWithM)
 import Domain.Contract.Behavior (behaviorContract, BehaviorContract (..))
 import qualified Data.Set as Set
 import Control.Monad.Join
-import Control.Monad.DomainError (escape, DomainError (WrongType))
+import Control.Monad.DomainError (DomainError (WrongType))
+import Control.Monad.Escape (escape)
 import Domain
     ( ActorDomain(..), SchemeDomain(symbol), BoolDomain(..) )
 import Analysis.Actors.Monad ((!), send, receive)
@@ -60,15 +62,15 @@ flipLabel (Labels pos neg) = Labels neg pos
 -- | Monitors a flat contract against a value, or a recipient contract
 -- against an actor reference
 monFlat :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
-monFlat e lbl contract value =
-      cond (deref (const $ flip (Scheme.applyFun e) [value] . flatProc) (flats contract))
+monFlat e lbl contract' value =
+      cond (deref (const $ flip (Scheme.applyFun e) [value] . flatProc) (flats contract'))
            (return value)
            (escape $ BlameError (Set.map positive lbl))
 -- | Same as `monFlat` but first checks whether the contrat is indeed a flat contract
 ensureMonFlat :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
-ensureMonFlat exp lbls contract value =
-      cond @(CP Bool) (pure $ isFlat contract)
-           (monFlat exp lbls contract value)
+ensureMonFlat exp lbls contract' value =
+      cond @(CP Bool) (pure $ isFlat contract')
+           (monFlat exp lbls contract' value)
            (escape NotAContract)
 
 -- | Monitors on actor references result in monitored
@@ -76,18 +78,18 @@ ensureMonFlat exp lbls contract value =
 -- of their original behavior contract and some additional
 -- (flipped) blame labels.
 monAct :: ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
-monAct e lbl contract value =
-      αmon <$> store e (Moα lbl contract value)
+monAct e lbl contract' value =
+      αmon <$> store e (Moα lbl contract' value)
 
 -- | Contract monitoring function, monitors a contract on value,
 -- blaming the positive part of `Labels` if a contract violation is found.
 mon :: forall m v msg mb . ContractM m v msg mb => Exp -> Set Labels -> v -> v -> m v
-mon e lbl contract value =
+mon e lbl contract' value =
    choices
       [-- [MonFlat]
-       (pure (isFlat contract), monFlat e lbl contract value),
+       (pure (isFlat contract'), monFlat e lbl contract' value),
        -- [MonAct]
-       (pure (isBehaviorContract @_ contract), monAct e lbl contract value)]
+       (pure (isBehaviorContract @_ contract'), monAct e lbl contract' value)]
       {- else -}
       (escape NotAContract)
 

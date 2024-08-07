@@ -10,6 +10,7 @@ import Domain.Contract (ContractDomain(..), Flat(..), Moα)
 import Domain.Scheme.Actors.Contract (MessageContract)
 import Domain.Contract.Behavior (MAdr)
 import Control.Monad.DomainError
+import Control.Monad.Escape
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Domain (ActorDomain, BoolDomain)
