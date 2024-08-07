@@ -11,7 +11,7 @@ import qualified Data.Map as Map
 import Analysis.Python.Common
 import Data.List
 import Text.Printf (printf)
-import Control.Monad.DomainError (MayEscape)
+import Control.Monad.DomainError
 import Analysis.Python.Escape (PyEsc)
 import Data.Set (Set)
 import Analysis.Python.Monad (PyBdy(..))
@@ -38,9 +38,9 @@ printOSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k
 printRSto :: Map PyCmp (MayEscape (Set PyEsc) PyVal) -> String
 printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showRes v)) cmps
    where cmps = Map.toList m
-         showRes Bottom = "⊥"
          showRes (Escape e) = "[!!: "++show e++"]"
          showRes (Value v) = show v
+         showRes _ = "⊥"
          showRes (MayBoth v e) = "[!!: "++show e++"]" ++ show v 
          showCmp ((Main _, _), _) = "<main>"
          showCmp ((LoopBdy loc _ _, _), _) = "<loop " ++ show loc ++ ">"

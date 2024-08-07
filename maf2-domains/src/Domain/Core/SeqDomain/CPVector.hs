@@ -5,6 +5,7 @@ import Domain.Core.SeqDomain.Class
 import Control.Monad.AbstractM
 import Control.Monad.DomainError
 import Control.Monad.Join
+import Control.Monad.Escape
 import Domain.Core.NumberDomain.ConstantPropagation ()
 
 import Data.Vector ( (!), Vector ) 

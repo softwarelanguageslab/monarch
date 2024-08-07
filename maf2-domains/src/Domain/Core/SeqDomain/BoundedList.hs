@@ -7,6 +7,7 @@ import Prelude hiding (length)
 import Lattice.IntervalLattice 
 import Domain.Core.NumberDomain.Class
 import Control.Monad.DomainError
+import Control.Monad.Escape
 import Control.Monad.AbstractM
 import Data.List.Extra (zipWithLongest)
 import Control.Monad.Join

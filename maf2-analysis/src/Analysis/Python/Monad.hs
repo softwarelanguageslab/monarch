@@ -18,6 +18,7 @@ import Lattice
 import Domain.Class 
 import Control.Monad.Join
 import Control.Monad.DomainError
+import Control.Monad.Escape
 import Analysis.Python.Common 
 import Analysis.Monad
 import Domain.Python.Syntax hiding (Continue, Break, Return)

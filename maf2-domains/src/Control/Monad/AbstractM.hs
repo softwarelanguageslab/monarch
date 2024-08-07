@@ -1,6 +1,7 @@
 module Control.Monad.AbstractM (AbstractM, domain) where
 
 import Control.Monad.Join 
+import Control.Monad.Escape
 import Control.Monad.DomainError
 import Domain.Core.BoolDomain.Class
 import Lattice.Class 

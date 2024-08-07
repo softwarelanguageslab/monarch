@@ -7,9 +7,7 @@ import Control.Monad.Writer hiding (mzero)
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
 import Lattice.Class
-import Control.Monad.DomainError (MayEscapeT(..), MayEscape(..))
 import ListT
-import Control.Monad.Join
 import Control.Monad.Escape
 
 -- | A Monad "Layer" is similar to a Monad transformer, but is also provides a function to remove one level from the monad transformer stack. 
@@ -21,7 +19,7 @@ class (forall m . Monad m => Monad (t m), MonadTrans t) => MonadLayer t where
    upperM = lift
 
 instance {-# OVERLAPPABLE #-} (MonadIO m, MonadLayer t) => MonadIO (t m) where
-   liftIO = upperM . liftIO  
+   liftIO = upperM . liftIO
 
 -- | StateT instance
 instance MonadLayer (StateT s) where
@@ -44,13 +42,13 @@ instance MonadLayer IdentityT where
    lowerM f m = IdentityT $ f (runIdentityT m)
 
 -- Instance for MayEscapeT 
-instance MonadTrans (MayEscapeT e) where  
+instance MonadTrans (MayEscapeT e) where
    lift m = MayEscapeT (Value <$> m)
 instance (Joinable e) => MonadLayer (MayEscapeT e) where
-   lowerM f m = MayEscapeT $ f (runMayEscape m)  
+   lowerM f m = MayEscapeT $ f (runMayEscape m)
 
 -- Instance for ListT
-instance MonadLayer ListT where   
+instance MonadLayer ListT where
    upperM = lift
    lowerM f m = ListT $ f (uncons m)
 

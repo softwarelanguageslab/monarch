@@ -4,7 +4,7 @@ import Analysis.Monad hiding (CallM(..))
 import Analysis.Erlang.Monad
 import Syntax.Erlang
 import Domain.Erlang.Class
-import Control.Monad.DomainError
+import Control.Monad.Escape
 
 import qualified Data.List as List
 import qualified Data.Map as Map

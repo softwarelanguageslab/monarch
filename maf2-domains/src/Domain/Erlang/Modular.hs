@@ -12,6 +12,7 @@ import Domain (Domain(..))
 import Domain.Erlang.Class
 import Control.Monad.Join
 import Control.Monad.DomainError
+import Control.Monad.Escape
 import Control.Monad.AbstractM
 
 import Data.Void
@@ -20,7 +21,6 @@ import Data.Kind
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Maybe (isJust)
-import Control.Exception.Extra (Partial)
 
 ------------------------------------------------------------
 -- Configuration

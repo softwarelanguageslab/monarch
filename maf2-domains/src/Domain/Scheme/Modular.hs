@@ -31,6 +31,7 @@ import Domain.Core
 import Domain.Scheme.Class
 import Control.Monad.Join
 import Control.Monad.DomainError
+import Control.Monad.Escape
 import Control.Monad.AbstractM
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)

@@ -16,6 +16,7 @@ import Analysis.Scheme hiding (runCallT, Component(..), Env, CallT, EvalT(..), S
 import qualified Control.Fixpoint.EffectDriven as EF
 import Control.Monad (void, foldM)
 import Control.Monad.DomainError
+import Control.Monad.Escape
 import Control.Monad.Join
 import Control.Monad.Layer
 import qualified Control.Monad.State.SVar as SVar

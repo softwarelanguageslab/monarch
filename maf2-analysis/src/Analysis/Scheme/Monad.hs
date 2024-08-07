@@ -4,11 +4,11 @@ module Analysis.Scheme.Monad(SchemeM, SchemeM', allocPai, allocVec, allocStr, al
 import Data.Functor
 import Syntax.Scheme.AST
 import Domain hiding (Exp)
-import Domain.Scheme hiding (Exp)
 import qualified Domain.Scheme as S
 import Analysis.Monad
 import Control.Monad.Join
 import Control.Monad.DomainError
+import Control.Monad.Escape
 
 stoPai :: SchemeM m v => Exp -> PaiDom v -> m v
 stoPai ex v = allocPai ex >>= (\adr -> writeAdr adr v $> pptr adr)

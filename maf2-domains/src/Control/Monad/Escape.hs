@@ -2,7 +2,7 @@
 
 module Control.Monad.Escape (
    MonadEscape(..), 
-   MayEscape(..), 
+   MayEscape(Escape, Value, MayBoth), 
    MayEscapeT(..),
    escape, 
    orElse, 

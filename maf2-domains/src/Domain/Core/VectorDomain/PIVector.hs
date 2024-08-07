@@ -7,6 +7,7 @@ import Domain.Core.VectorDomain.Class
 import Domain.Core.NumberDomain.Class 
 import Control.Monad.Join 
 import Control.Monad.DomainError
+import Control.Monad.Escape
 
 -- position insensitive vector
 data PIVector i c = PIVector i c deriving (Show, Eq, Ord)

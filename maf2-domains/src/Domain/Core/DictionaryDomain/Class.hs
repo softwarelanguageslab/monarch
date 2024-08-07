@@ -5,6 +5,7 @@ import Domain.Core.BoolDomain
 import Control.Monad.AbstractM
 import Control.Monad.Join
 import Control.Monad.DomainError
+import Control.Monad.Escape
 
 import Prelude hiding (lookup)
 import Data.Kind

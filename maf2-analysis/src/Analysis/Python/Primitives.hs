@@ -20,6 +20,7 @@ import Analysis.Python.Monad
 import Analysis.Python.Common 
 import Control.Monad.Join
 import Control.Monad.DomainError
+import Control.Monad.Escape
 import Analysis.Python.Objects
 
 import Prelude hiding (lookup, exp, True, False, seq, length, all)
@@ -27,9 +28,7 @@ import Control.Monad (liftM2)
 import qualified Control.Monad as Monad 
 import Data.Singletons.TH
 import Analysis.Monad (StoreM(updateWith, lookupAdr, updateAdr))
-import Data.Functor (($>))
 import Control.Monad ((>=>))
-import Analysis.Monad.Store (deref')
 
 ---
 --- Primitives implementation

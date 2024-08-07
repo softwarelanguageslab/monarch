@@ -25,7 +25,8 @@ import Data.Functor.Identity
 import Data.Function ((&))
 import Analysis.Monad (EnvM(..))
 import Analysis.Scheme.Store
-import Control.Monad.DomainError (runMayEscape, DomainError, MonadEscape(..))
+import Control.Monad.DomainError (DomainError)
+import Control.Monad.Escape
 import Control.Monad.Identity (IdentityT(..))
 import Control.Fixpoint.EffectDriven
 import Control.Fixpoint.WorkList

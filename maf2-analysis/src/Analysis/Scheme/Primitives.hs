@@ -18,6 +18,7 @@ import Control.Monad.Join
 import Control.Monad ((>=>))
 import Syntax.Scheme.AST
 import Control.Monad.DomainError
+import Control.Monad.Escape
 
 data Prim v = Prim { primName :: String, run :: forall m . PrimM m v => Exp -> [v] -> m v }
 
