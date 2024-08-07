@@ -51,6 +51,7 @@ library
       Control.Fixpoint.EffectDriven
       Data.Print
   other-modules:
+      Analysis.Actors.Message
       Analysis.Environment
       Analysis.Erlang.Monad
       Analysis.Erlang.Semantics
@@ -68,6 +69,7 @@ library
       Analysis.Monad.Join
       Analysis.Monad.Map
       Analysis.Monad.Span
+      Analysis.Monad.Stack
       Analysis.Monad.Store
       Analysis.Monad.WorkList
       Analysis.Python
