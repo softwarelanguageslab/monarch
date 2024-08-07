@@ -23,54 +23,30 @@ source-repository head
 
 library
   exposed-modules:
+      Control.Monad.AbstractM
+      Control.Monad.Cond
+      Control.Monad.DomainError
+      Control.Monad.Escape
+      Control.Monad.Join
+      Data.Finite
+      Data.TypeLevel.AssocList
+      Data.TypeLevel.HList
+      Data.TypeLevel.HMap
+      Data.TypeLevel.HMap.TH
       Domain
       Domain.Class
       Domain.Core
-      Domain.Core.HMapDomain
-      Domain.Core.SeqDomain
-      Domain.Core.DictionaryDomain
-      Domain.Scheme
-      Domain.Scheme.Class
-      Domain.Scheme.Derived
-      Domain.Scheme.Derived.Pair
-      Domain.Scheme.Store
-      Domain.Scheme.Modular
-      Domain.Python
-      Domain.Python.World
-      Domain.Python.Objects
-      Domain.Python.Syntax
-      Domain.Scheme.Actors.Class
-      Domain.Scheme.Actors
-      Domain.Scheme.Actors.CP
-      Domain.Scheme.Actors.Contract
-      Domain.Scheme.Actors.Message
-      Domain.Erlang.Class
-      Lattice
-      Lattice.Class
-      Lattice.Split
-      Lattice.ConstantPropagationLattice
-      Lattice.ReversePowerSetLattice
-      Control.Monad.Cond
-      Control.Monad.Join
-      Control.Monad.DomainError
-      Control.Monad.AbstractM
-      Control.Monad.Escape
-      Data.TypeLevel.HMap
-      Data.TypeLevel.AssocList
-      Data.TypeLevel.HList
-      Data.Finite
-      Domain.Core.SeqDomain.BoundedList
-  other-modules:
-      Data.TypeLevel.HMap.TH
       Domain.Core.BoolDomain
       Domain.Core.BoolDomain.Class
       Domain.Core.BoolDomain.ConstantPropagation
       Domain.Core.CharDomain
       Domain.Core.CharDomain.Class
       Domain.Core.CharDomain.ConstantPropagation
+      Domain.Core.DictionaryDomain
       Domain.Core.DictionaryDomain.Class
       Domain.Core.DictionaryDomain.CPDict
       Domain.Core.DictionaryDomain.SetDict
+      Domain.Core.HMapDomain
       Domain.Core.HMapDomain.Class
       Domain.Core.HMapDomain.HMapAbs
       Domain.Core.NumberDomain
@@ -79,6 +55,8 @@ library
       Domain.Core.PairDomain
       Domain.Core.PairDomain.Class
       Domain.Core.PairDomain.SimplePair
+      Domain.Core.SeqDomain
+      Domain.Core.SeqDomain.BoundedList
       Domain.Core.SeqDomain.Class
       Domain.Core.SeqDomain.CPList
       Domain.Core.SeqDomain.CPVector
@@ -88,14 +66,33 @@ library
       Domain.Core.VectorDomain
       Domain.Core.VectorDomain.Class
       Domain.Core.VectorDomain.PIVector
+      Domain.Erlang.Class
       Domain.Erlang.Modular
+      Domain.Python
       Domain.Python.DataFrameDomain
       Domain.Python.DataFrameDomain.Class
       Domain.Python.DataFrameDomain.DataFrameSet
+      Domain.Python.Objects
       Domain.Python.Objects.Class
       Domain.Python.Objects.PyObjHMap
+      Domain.Python.Syntax
+      Domain.Python.World
+      Domain.Scheme
+      Domain.Scheme.Actors
+      Domain.Scheme.Actors.Class
+      Domain.Scheme.Actors.Contract
+      Domain.Scheme.Actors.CP
+      Domain.Scheme.Actors.Message
       Domain.Scheme.Actors.Modular
+      Domain.Scheme.Class
       Domain.Scheme.CPDomain
+      Domain.Scheme.Derived
+      Domain.Scheme.Derived.Pair
+      Domain.Scheme.Modular
+      Domain.Scheme.Store
+      Lattice
+      Lattice.Class
+      Lattice.ConstantPropagationLattice
       Lattice.Equal
       Lattice.HMapLattice
       Lattice.IntervalLattice
@@ -103,9 +100,12 @@ library
       Lattice.MapLattice
       Lattice.MaybeLattice
       Lattice.ProductLattice
+      Lattice.ReversePowerSetLattice
       Lattice.SetLattice
+      Lattice.Split
       Lattice.TopLiftedLattice
       Lattice.UnitLattice
+  other-modules:
       Paths_maf2_domains
   hs-source-dirs:
       src

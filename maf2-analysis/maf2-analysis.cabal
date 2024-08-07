@@ -25,37 +25,17 @@ source-repository head
 
 library
   exposed-modules:
-      Analysis.Scheme.Simple
-      Analysis.Scheme.Semantics
-      Analysis.Scheme.Primitives
-      Analysis.Scheme.Prelude
       Analysis.Actors
-      Analysis.Monad
-      Analysis.Scheme
-      Analysis.Scheme.Monad
-      Analysis.Scheme.Store
+      Analysis.Actors.Mailbox
+      Analysis.Actors.Message
       Analysis.Actors.Monad
       Analysis.Actors.Semantics
-      Analysis.Actors.Mailbox
-      Analysis.Scheme.Actors.Components
-      Analysis.Python.Fixpoint
-      Analysis.Python.Common
-      Analysis.Python.Monad
-      Analysis.Python.Escape
       Analysis.Context
-      Interpreter.Scheme
-      Control.Monad.Layer
-      Control.Monad.State.SVar
-      Control.Monad.State.IntPool
-      Control.Fixpoint.WorkList
-      Control.Fixpoint.EffectDriven
-      Data.Print
-  other-modules:
-      Analysis.Actors.Message
       Analysis.Environment
       Analysis.Erlang.Monad
       Analysis.Erlang.Semantics
       Analysis.IO
+      Analysis.Monad
       Analysis.Monad.Allocation
       Analysis.Monad.Assertion
       Analysis.Monad.Cache
@@ -73,24 +53,43 @@ library
       Analysis.Monad.Store
       Analysis.Monad.WorkList
       Analysis.Python
+      Analysis.Python.Common
+      Analysis.Python.Escape
+      Analysis.Python.Fixpoint
+      Analysis.Python.Monad
       Analysis.Python.Objects
       Analysis.Python.Primitives
       Analysis.Python.Semantics
+      Analysis.Scheme
+      Analysis.Scheme.Actors.Components
+      Analysis.Scheme.Monad
+      Analysis.Scheme.Prelude
+      Analysis.Scheme.Primitives
+      Analysis.Scheme.Semantics
+      Analysis.Scheme.Simple
+      Analysis.Scheme.Store
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
+      Control.Fixpoint.EffectDriven
+      Control.Fixpoint.WorkList
       Control.Monad.Cond
       Control.Monad.Error
-      Data.ListExtra
-      Data.SetExtra
+      Control.Monad.Layer
+      Control.Monad.State.IntPool
+      Control.Monad.State.SVar
+      Data.Print
       Interpreter.Actors
+      Interpreter.Scheme
       Interpreter.Scheme.Eval
       Interpreter.Scheme.Monad
       Interpreter.Scheme.Primitives
       Interpreter.Scheme.Semantics
       Interpreter.Scheme.Values
+  other-modules:
+      Data.SetExtra
+      Data.ListExtra
       Lib
-      Paths_maf2_analysis
   hs-source-dirs:
       src
   default-extensions:

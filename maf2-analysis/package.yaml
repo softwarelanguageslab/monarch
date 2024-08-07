@@ -78,32 +78,10 @@ ghc-options:
 
 library:
   source-dirs: src
-  exposed-modules:
-  - Analysis.Scheme.Simple
-  - Analysis.Scheme.Semantics
-  - Analysis.Scheme.Primitives
-  - Analysis.Scheme.Prelude
-  - Analysis.Actors
-  - Analysis.Monad
-  - Analysis.Scheme
-  - Analysis.Scheme.Monad
-  - Analysis.Scheme.Store
-  - Analysis.Actors.Monad
-  - Analysis.Actors.Semantics
-  - Analysis.Actors.Mailbox
-  - Analysis.Scheme.Actors.Components
-  - Analysis.Python.Fixpoint
-  - Analysis.Python.Common
-  - Analysis.Python.Monad
-  - Analysis.Python.Escape
-  - Analysis.Context
-  - Interpreter.Scheme
-  - Control.Monad.Layer
-  - Control.Monad.State.SVar
-  - Control.Monad.State.IntPool
-  - Control.Fixpoint.WorkList
-  - Control.Fixpoint.EffectDriven
-  - Data.Print
+  other-modules:
+    - Data.SetExtra
+    - Data.ListExtra
+    - Lib
 
 executables:
   maf-exe:
