@@ -1,64 +1,30 @@
-{-# LANGUAGE GADTs, AllowAmbiguousTypes, DerivingVia, UndecidableInstances, RankNTypes, ScopedTypeVariables, TypeFamilies, TypeApplications, FunctionalDependencies #-}
+{-# LANGUAGE GADTs, AllowAmbiguousTypes, DerivingVia, UndecidableInstances, RankNTypes, ScopedTypeVariables, TypeFamilies, TypeApplications #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Move brackets to avoid $" #-}
 
-module Analysis.SimpleActor.GenericInterpreter where
+module Analysis.SimpleActor.Semantics where
 
 import Syntax.AST
 import Control.Monad.Reader
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe
-import Domain (Domain, NumberDomain(plus), inject)
+import Domain (NumberDomain(plus), inject)
+
+
+import Analysis.SimpleActor.Monad
+
+import Control.Monad.Escape
+import Control.Monad.Join
+import Lattice (EqualLattice(..))
+import Data.Functor (($>))
 
 import Analysis.Monad.Allocation
 import Analysis.Monad.Environment
 import Analysis.Monad.Store
 
-import Control.Monad.Escape
-import Control.Monad.Join
-import Control.Monad.DomainError (DomainError)
-import Lattice (EqualLattice(..))
-import Data.Functor (($>))
-
 import Domain.SimpleActor
 
-------------------------------------------------------------
--- Errors
-------------------------------------------------------------
-
-data Error = MatchError | InvalidArgument | BlameError Label
-
-------------------------------------------------------------
--- Monad typeclasses
-------------------------------------------------------------
-
-class MonadActor v m | m -> v where
-   withSelf  :: ARef v -> m a -> m a
-   getSelf   :: m (ARef v)
-   spawn     :: (ARef v -> m ()) -> m (ARef v)
-   receive   :: (v -> m a) -> m a
-   send      :: ARef v -> v -> m ()
-   terminate :: m ()
-   waitUntilAllFinished :: m ()
-
-------------------------------------------------------------
--- Monad
-------------------------------------------------------------
-
--- | Evaluation monad
-type EvalM v m = (
-   MonadIO m,
-   MonadJoin m,
-   EnvM m (Adr v) (Env v),
-   AllocM m Ide (Adr v),
-   StoreM m (Adr v) v,
-   MonadActor v m,
-   MonadEscape m,
-   Domain (Esc m) DomainError,
-   Domain (Esc m) Error,
-   ValueDomain v
-   )
 
 ------------------------------------------------------------
 -- Evaluation
@@ -98,7 +64,7 @@ eval (Pair e1 e2) =
 eval (Var (Ide x)) =
    lookupEnv x >>= lookupAdr
 eval Self = actorRef <$> getSelf @v
-eval (Blame e) = 
+eval (Blame e) =
    eval e >>= mjoinMap (escape . BlameError) . labels
 eval _ = error "unsupported expression"
 

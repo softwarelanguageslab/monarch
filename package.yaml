@@ -50,6 +50,7 @@ default-extensions:
   - TupleSections
   - RankNTypes
   - ScopedTypeVariables
+  - FunctionalDependencies
   
 library:
   source-dirs: src
