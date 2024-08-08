@@ -49,6 +49,7 @@ library:
     - lens
     - concurrency
     - exceptions
+    - process
 
 executables:
   interpreter-exe:

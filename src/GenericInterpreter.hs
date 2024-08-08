@@ -98,8 +98,8 @@ eval (Pair e1 e2) =
 eval (Var (Ide x)) =
    lookupEnv x >>= lookupAdr
 eval Self = actorRef <$> getSelf @v
-eval (Blame k) = 
-   escape (BlameError k)
+eval (Blame e) = 
+   eval e >>= mjoinMap (escape . BlameError) . labels
 eval _ = error "unsupported expression"
 
 trySend :: EvalM v m => v -> v -> m ()

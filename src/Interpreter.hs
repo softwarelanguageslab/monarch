@@ -197,7 +197,9 @@ eval (Pair e1 e2) =
 eval (Var (Ide x)) =
    lookupEnv x >>= deref
 eval Self = ActorValue <$> getSelf
-eval (Blame k) = error $ "blaming " ++ show k
+eval (Blame k) = do 
+   v <- eval k
+   error $ "blaming" ++ show v
 eval _ = error "unsupported expression"
 
 trySend :: EvalM m => Value m -> Value m -> m ()

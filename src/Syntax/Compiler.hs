@@ -49,8 +49,7 @@ compile (Atom "self" _ ::: SNil _) = pure Self
 compile e@(Atom "self" _ ::: _) =
    throwError $ "invalid syntax for self " ++ show e
 compile (Atom "quote" span' ::: s ::: SNil _) = compile (Quo s span')
-compile (Atom "blame" _ ::: (Atom "quote" _ ::: (Atom s _) ::: _) ::: _) = 
-   return (Blame (Label s))
+compile (Atom "blame" _ ::: party ::: _) = Blame <$> compile party
 compile e@(Atom "blame" _ ::: _) =
    throwError $ "invalid syntax for blame " ++ show e
 compile (op ::: oprs) =

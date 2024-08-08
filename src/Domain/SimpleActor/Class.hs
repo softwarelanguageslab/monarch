@@ -21,6 +21,7 @@ class (Show v, EqualLattice v, IntDomain v, BoolDomain v, BottomLattice v) => Va
    number    :: Integer -> v
    symbol    :: String -> v
    nil       :: v
+   label     :: Label -> v
 
    -- Accessors
 
@@ -28,6 +29,7 @@ class (Show v, EqualLattice v, IntDomain v, BoolDomain v, BottomLattice v) => Va
    primitives :: v -> Set String
    actorRefs  :: v -> Set (ARef v)
    pairs :: v -> Set (v, v)
+   labels :: v -> Set Label
 
    -- Predicates
    isClosure    :: BoolDomain b => v -> m b

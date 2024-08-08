@@ -13,7 +13,7 @@ data Exp = Lam [Ide] Exp
          | Pair Exp Exp 
          | Parameter Exp 
          | Parametrize [Binding]
-         | Blame Label
+         | Blame Exp
          | Receive [(Pat, Exp)]
          | Send Exp Exp
          | Literal Lit
