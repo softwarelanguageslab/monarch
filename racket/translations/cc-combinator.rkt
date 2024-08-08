@@ -22,29 +22,6 @@
            (,(translate κ2) ,j ,k (,f (,(translate κ1) ,k ,j ,v))))))]
     [(quasiquote (mon ,j ,k ,κ ,v))
      `(,(translate κ) (quote ,j) (quote ,k) ,(translate v))]
-    [(quasiquote (lambda ,x ,e))
-     `(lambda ,x ,(translate e))]
-    [(quasiquote (spawn ,e))
-     `(spawn ,(translate e))]
-    [(quasiquote (terminate))
-     `(terminate)]
-    [(quasiquote (self))
-     `(self)]
-    [(quasiquote (pair ,e1 ,e2))
-     `(pair ,(translate e1) ,(translate e2))]
-    [(quasiquote (parameter e))
-     `(parameter ,(translate e))]
-    [(quasiquote (receive ,pats))
-     `(receive (map (lambda (pat) 
-            (match pat 
-              [(quasiquote (,pat ,e)) `(,pat ,(translate e))]))
-          pats))]
-    [(quasiquote (send ,e1 ,e2))
-     `(send ,(translate e1) ,(translate e2))]
-    [(quasiquote (if ,e1 ,e2 ,e3))
-     `(if ,(translate e1) ,(translate e2) ,(translate e3))]
-    [(quasiquote (begin ,@e1))
-     `(begin ,@(map translate e1))]
     [(quasiquote (,es ...))
      `(,@(map translate es))]
     [x x]))

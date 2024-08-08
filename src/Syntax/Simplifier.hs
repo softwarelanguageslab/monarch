@@ -21,8 +21,8 @@ import System.IO
 -- path.
 translate :: (MonadFail m, MonadIO m) => String -> m String
 translate input = do 
-   -- TODO: embed racket code in binary and copy to 
+   -- TODO: embed racket code in binary and copy to
    -- tempfile instead
-   (Just stdin', Just stdout', _,_) <- liftIO $ createProcess (proc "/usr/bin/racket" ["racket/run/translate-combinators.rkt"]) { std_in = CreatePipe, std_out = CreatePipe }
+   (Just stdin', Just stdout', _,_) <- liftIO $ createProcess (proc "/usr/bin/racket" ["racket/run/translate-full.rkt"]) { std_in = CreatePipe, std_out = CreatePipe }
    liftIO $ hPutStrLn stdin' input
    liftIO $ hGetContents stdout'
