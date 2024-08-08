@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Lattice.Equal(EqualLattice(..)) where
+module Lattice.Equal(EqualLattice(..), is) where
 
 import Domain.Core.BoolDomain.Class
 import Domain.Class
@@ -11,11 +11,12 @@ import Lattice.Class
 
 class EqualLattice v where 
    eql :: BoolDomain b => v -> v -> b
-   is  :: (BoolDomain b, Domain v c) => v -> c -> b
-   is v = eql v . inject 
    {-# MINIMAL eql #-}
 
-instance {-# OVERLAPPABLE #-} (BottomLattice a, Eq a, Joinable a, Meetable a) => EqualLattice a where   
+is  :: (EqualLattice v, BoolDomain b, Domain v c) => v -> c -> b
+is v = eql v . inject 
+
+instance {-# OVERLAPPABLE #-} (BottomLattice a, Eq a, Meetable a) => EqualLattice a where   
    eql a b 
       | a == bottom || b == bottom = bottom
       | a `meet` b == bottom = inject False
