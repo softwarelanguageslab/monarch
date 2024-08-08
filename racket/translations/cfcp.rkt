@@ -1,5 +1,10 @@
 #lang racket
 
+(provide translate)
+
+;; CFCP translation to regular
+;; λ-calculus. 
+
 (define (translate e)
   (match e
     [(quasiquote (mon ,j ,k (flat ,e) ,v))
@@ -42,29 +47,9 @@
      `(,@(map translate es))]
     [x x]))
 
-;; flat contract test
-(define test-1
-   '(mon j k (flat nonzero?) 10))
-
-;; contract on function test
-(define test-2
-   '(mon j k (-> (flat nonzero?) (flat positive?)) (lambda (x) (/ 1 (* x x)))))
-
-;; higher order contract test
-(define test-3 
-  '(mon j k (-> (-> (flat nonzero?) (flat positive?)) (flat positive?)) (lambda (f) (f 42))))
 
 (module+ main
-   ;; For `eval` to work with specific syntathic sugar forms
-   (define-namespace-anchor anc)
-   (define ns (namespace-anchor->namespace anc))
-   (define (eval_ e)
-     (eval e ns))
-   ;; Contract infrastructure
-   (define (nonzero? x) (not (= x 0)))
-   (define (blame lbl κ) 
-     (error (format "blaming ~a for violating contract ~a" lbl κ)))
-
+   (require "../tests/prelude.rkt")
 
 
    ;; tests
