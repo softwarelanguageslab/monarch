@@ -13,6 +13,7 @@ class EqualLattice v where
    eql :: BoolDomain b => v -> v -> b
    is  :: (BoolDomain b, Domain v c) => v -> c -> b
    is v = eql v . inject 
+   {-# MINIMAL eql #-}
 
 instance {-# OVERLAPPABLE #-} (BottomLattice a, Eq a, Joinable a, Meetable a) => EqualLattice a where   
    eql a b 
