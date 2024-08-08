@@ -17,8 +17,6 @@ class (Show v, EqualLattice v, IntDomain v, BoolDomain v, BottomLattice v) => Va
    closure   :: Exp -> Env v -> v
    primitive :: String -> v
    actorRef  :: ARef v -> v
-   boolean   :: Bool -> v
-   number    :: Integer -> v
    symbol    :: String -> v
    nil       :: v
    label     :: Label -> v
@@ -32,13 +30,13 @@ class (Show v, EqualLattice v, IntDomain v, BoolDomain v, BottomLattice v) => Va
    labels :: v -> Set Label
 
    -- Predicates
-   isClosure    :: BoolDomain b => v -> m b
-   isPrimitive  :: BoolDomain b => v -> m b
-   isActorRef   :: BoolDomain b => v -> m b
-   isPair       :: BoolDomain b => v -> m b
-   isBoolean    :: BoolDomain b => v -> m b
-   isNumber     :: BoolDomain b => v -> m b
-   isSymbol     :: BoolDomain b => v -> m b
+   isClosure    :: (Monad m, BoolDomain b) => v -> m b
+   isPrimitive  :: (Monad m, BoolDomain b) => v -> m b
+   isActorRef   :: (Monad m, BoolDomain b) => v -> m b
+   isPair       :: (Monad m, BoolDomain b) => v -> m b
+   isBoolean    :: (Monad m, BoolDomain b) => v -> m b
+   isNumber     :: (Monad m, BoolDomain b) => v -> m b
+   isSymbol     :: (Monad m, BoolDomain b) => v -> m b
 
 
 -- | A concrete environment

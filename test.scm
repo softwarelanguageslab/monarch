@@ -9,4 +9,4 @@
 ;;    (send (spawn (beh 0)) 'inc)
 ;;    (wait-until-all-finished 0)))
 
-((mon server client (-> (flat nonzero?) (flat nonzero?)) (lambda (x) (* 0 x))) 5)
+((mon server client (-> (flat nonzero?) (flat nonzero?)) (lambda (x) (* x x))) 5)

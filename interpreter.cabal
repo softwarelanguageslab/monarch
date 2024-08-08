@@ -25,11 +25,12 @@ source-repository head
 
 library
   exposed-modules:
+      Analysis.SimpleActor
+      Analysis.SimpleActor.GenericInterpreter
       Control.Monad.Extra
       Domain.SimpleActor
       Domain.SimpleActor.Class
       Domain.SimpleActor.Modular
-      GenericInterpreter
       Interpreter
       Lib
       Syntax.AST
@@ -44,7 +45,20 @@ library
   default-extensions:
       ConstraintKinds
       TypeFamilies
+      MultiParamTypeClasses
       FlexibleContexts
+      FlexibleInstances
+      DataKinds
+      TypeOperators
+      GeneralizedNewtypeDeriving
+      TemplateHaskell
+      StandaloneKindSignatures
+      EmptyCase
+      GADTs
+      TypeApplications
+      TupleSections
+      RankNTypes
+      ScopedTypeVariables
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
@@ -70,7 +84,20 @@ executable interpreter-exe
   default-extensions:
       ConstraintKinds
       TypeFamilies
+      MultiParamTypeClasses
       FlexibleContexts
+      FlexibleInstances
+      DataKinds
+      TypeOperators
+      GeneralizedNewtypeDeriving
+      TemplateHaskell
+      StandaloneKindSignatures
+      EmptyCase
+      GADTs
+      TypeApplications
+      TupleSections
+      RankNTypes
+      ScopedTypeVariables
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -89,7 +116,20 @@ test-suite interpreter-test
   default-extensions:
       ConstraintKinds
       TypeFamilies
+      MultiParamTypeClasses
       FlexibleContexts
+      FlexibleInstances
+      DataKinds
+      TypeOperators
+      GeneralizedNewtypeDeriving
+      TemplateHaskell
+      StandaloneKindSignatures
+      EmptyCase
+      GADTs
+      TypeApplications
+      TupleSections
+      RankNTypes
+      ScopedTypeVariables
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5

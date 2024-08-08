@@ -36,8 +36,21 @@ ghc-options:
 default-extensions:
   - ConstraintKinds
   - TypeFamilies
+  - MultiParamTypeClasses
   - FlexibleContexts
-
+  - FlexibleInstances
+  - DataKinds
+  - TypeOperators
+  - GeneralizedNewtypeDeriving
+  - TemplateHaskell
+  - StandaloneKindSignatures
+  - EmptyCase
+  - GADTs
+  - TypeApplications
+  - TupleSections
+  - RankNTypes
+  - ScopedTypeVariables
+  
 library:
   source-dirs: src
   dependencies:

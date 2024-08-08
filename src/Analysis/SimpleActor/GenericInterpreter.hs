@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Move brackets to avoid $" #-}
 
-module GenericInterpreter where
+module Analysis.SimpleActor.GenericInterpreter where
 
 import Syntax.AST
 import Control.Monad.Reader
@@ -149,9 +149,9 @@ match (PairPat pat1 pat2) v =
                       <*> match pat2 v2
 
 injectLit :: ValueDomain v => Lit -> v
-injectLit (Boolean b) = boolean b
+injectLit (Boolean b) = inject b
 injectLit (Symbol s) = symbol s
-injectLit (Num n) = number n
+injectLit (Num n) = inject n
 
 ------------------------------------------------------------
 -- Primitives

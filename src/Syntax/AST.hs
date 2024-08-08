@@ -1,4 +1,6 @@
-module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..)) where
+module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..)) where
+
+import Syntax.Span
 
 -- |  An identifier in the original source code
 newtype Ide = Ide { getName :: String } deriving (Eq, Ord, Show)
@@ -29,7 +31,7 @@ data Lit = Num Integer | Boolean Bool | Symbol String deriving (Eq, Ord, Show)
 data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show)
 
 -- | Labels for blame assignment
-newtype Label = Label String deriving (Eq, Ord, Show)
+newtype Label = Label { getLabelName :: String } deriving (Eq, Ord, Show)
 
 -- | A binding from an identifier to an expression, used in the so-called 
 -- 'binding-forms' to introduce values to which free variables within 
