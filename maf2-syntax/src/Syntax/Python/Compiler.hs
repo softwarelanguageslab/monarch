@@ -2,8 +2,6 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- | Reduced Python Syntax and its compiler
 module Syntax.Python.Compiler(compile, parse, lexical, PyLoc(..), PyTag(..), tagAs) where
@@ -15,18 +13,16 @@ import Data.Maybe
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Applicative ((<|>), liftA2, asum)
+import Control.Applicative (liftA2, asum)
 import Syntax.Python.Parser (parseFile, SrcSpan)
 import Language.Python.Common.AST hiding (None, List, Handler, Try, Raise, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
 import qualified Language.Python.Common.AST as AST
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Bitraversable
 import Control.Monad.Cond
 import Language.Python.Common.SrcLocation (spanning)
-import Language.Python.Common (Span, startRow, startCol)
+import Language.Python.Common (startRow, startCol)
 import Data.Bifunctor (Bifunctor(second, first))
 import Data.Function ((&))
 

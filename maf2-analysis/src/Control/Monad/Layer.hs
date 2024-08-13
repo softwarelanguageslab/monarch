@@ -10,7 +10,6 @@ import Lattice.Class
 import ListT
 import Control.Monad.Escape
 
--- | A Monad "Layer" is similar to a Monad transformer, but is also provides a function to remove one level from the monad transformer stack. 
 class (forall m . Monad m => Monad (t m), MonadTrans t) => MonadLayer t where
 
    lowerM :: (forall b . m b -> m b) -> t m a -> t m a
