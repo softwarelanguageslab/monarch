@@ -61,7 +61,7 @@ library
     , data-default
     , file-embed
     , language-python
-    , mtl
+    , mtl ==2.2.*
     , parsec >=3.1
     , process
     , template-haskell
@@ -92,7 +92,7 @@ test-suite maf2-syntax-test
     , file-embed
     , language-python
     , maf2-syntax
-    , mtl
+    , mtl ==2.2.*
     , parsec >=3.1
     , process
     , template-haskell

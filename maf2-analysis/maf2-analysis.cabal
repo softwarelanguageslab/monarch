@@ -125,7 +125,7 @@ library
     , list-t
     , maf2-domains
     , maf2-syntax
-    , mtl
+    , mtl ==2.2.*
     , optparse-applicative
     , singletons
     , singletons-th
@@ -181,7 +181,7 @@ executable maf-exe
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
-    , mtl
+    , mtl ==2.2.*
     , optparse-applicative
     , pretty-simple
     , singletons
@@ -233,7 +233,7 @@ test-suite maf2-analysis-test
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
-    , mtl
+    , mtl ==2.2.*
     , optparse-applicative
     , singletons
     , singletons-th

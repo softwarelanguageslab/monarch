@@ -28,7 +28,7 @@ dependencies:
 - containers
 - unordered-containers
 - data-default
-- mtl
+- mtl >= 2.2 && <2.3
 - transformers
 - lens
 - criterion

@@ -21,7 +21,7 @@ extra-source-files:
 dependencies:
 - base >= 4.17 && < 5
 - language-python
-- mtl
+- mtl >= 2.2 && <2.3
 - containers
 - parsec >= 3.1
 - data-default
