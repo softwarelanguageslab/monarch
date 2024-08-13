@@ -145,12 +145,7 @@ type Values m = '[
    ]
 
 hasType :: (BoolDomain b) => SchemeKey -> SchemeVal m -> b
-hasType k = check . HMap.keys . getSchemeVal
-   where check keys
-            | keys == Set.empty  = bottom
-            | Set.size keys == 1 && k `Set.member` keys = inject True
-            | k `Set.member` keys = boolTop
-            | otherwise = inject False
+hasType k = containsType k . getSchemeVal
 
 -- | A Scheme value is an HMap that consists of a mapping
 -- from SchemeKeys to some values. 
@@ -194,6 +189,7 @@ deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Joinable (Values
 deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 BottomLattice (Values m))) => BottomLattice (SchemeVal m)
 
 -- Show instance
+-- TODO: this should be valid for any HMap, maybe make it the default implementation?
 instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
    show (SchemeVal hm) = intercalate "," $ map showElement $ HMap.toList hm
       where showElement :: BindingFrom (Values m) -> String
