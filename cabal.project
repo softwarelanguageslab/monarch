@@ -3,5 +3,11 @@ packages: interpreter.cabal
 source-repository-package
    type: git
    location: https://github.com/softwarelanguageslab/maf-hs.git
-   tag: 111e2663acaa403f46bd1507b3b96839b8dc9633
+   tag: 111e2663acaa403f46bd1507b3b96839b8dc963
    subdir: maf2-syntax maf2-analysis maf2-domains
+
+
+source-repository-package
+   type: git
+   location: https://github.com/bramvdbogaerde/layers-mtl.git
+   tag: 3262bd78fbe23d19a176830b692cc82acddf1b63

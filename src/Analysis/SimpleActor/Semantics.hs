@@ -41,8 +41,9 @@ eval (Ite e1 e2 e3) = cond (eval e1) (eval e2) (eval e3)
 eval (Spawn e) =
    actorRef <$> spawn (`withSelf` (void $ eval e))
 eval Terminate = terminate $> nil
-eval (Receive pats) =
-   receive $
+eval (Receive pats) = do 
+   self <- getSelf
+   receive self $
       matchList
          (\e -> allocMapping >=> (`withExtendedEnv` eval e) . Map.toList)
          pats
@@ -96,7 +97,9 @@ allocMapping :: EvalM v m => Map Ide v -> m (Env v)
 allocMapping = foldM (\env' (ide@(Ide nam), v) -> do { adr <- alloc ide ; writeAdr adr v ; return (Map.insert nam adr env') }) Map.empty . Map.toList
 
 -- | Matches a list of patterns (from top to bottom) 
--- against a value
+-- against a value.
+--
+-- NOTE: written in CPS because @Exp@ is not @Joinable@
 matchList :: EvalM v m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
 matchList _ [] _ = escape MatchError
 matchList f ((pat, e):pats) value =
