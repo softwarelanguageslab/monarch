@@ -1,5 +1,10 @@
 with-compiler: ghc-9.4.8
 
+source-repository-package
+   type: git
+   location: https://github.com/bramvdbogaerde/layers-mtl.git
+   tag: a81fe9c081cc55b8bb03004e0500218464569b01
+
 packages:
    ../maf2-syntax/
    ../maf2-domains/
