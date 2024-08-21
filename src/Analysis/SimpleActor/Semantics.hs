@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, AllowAmbiguousTypes, DerivingVia, UndecidableInstances, RankNTypes, ScopedTypeVariables, TypeFamilies, TypeApplications #-}
+{-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Move brackets to avoid $" #-}
 
@@ -136,7 +136,7 @@ prim1 f = Prim match1
 
 allPrimitives :: Map String (Prim v)
 allPrimitives = Map.fromList [
-      ("print", prim1 $ liftIO . print >=> const (return nil)) ,
+      ("print", prim1 $ const $ return nil) ,
       ("inc", prim1 $ \v -> plus v (inject @_ @Integer 1)),
       ("wait-until-all-finished", Prim $ const waitUntilAllFinished >=> const (return nil))
    ]
