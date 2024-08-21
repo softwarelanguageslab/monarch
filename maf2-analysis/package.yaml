@@ -42,6 +42,7 @@ dependencies:
 - list-t
 - singletons
 - singletons-th
+- layers-mtl
 
 default-extensions:
   - FlexibleContexts

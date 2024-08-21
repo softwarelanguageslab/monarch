@@ -11,6 +11,7 @@ import Analysis.Monad.ComponentTracking
 import Analysis.Monad.WorkList
 import Control.Monad.Reader
 import Control.Monad.Layer
+import Control.Monad.Lift
 import Control.Monad.Join
 import Analysis.Monad.DependencyTracking
 import Analysis.Monad.Store
@@ -22,7 +23,7 @@ import Analysis.Monad.Map
 ---
 
 newtype IntraAnalysisT cmp m a = IntraAnalysisT (ReaderT cmp m a)
-    deriving (Functor, Applicative, Monad, MonadReader cmp, MonadTrans, MonadLayer, MonadJoin)
+    deriving (Functor, Applicative, Monad, MonadReader cmp, MonadTrans, MonadLayer, MonadTransControl, MonadJoin)
 
 instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp) => ComponentTrackingM (IntraAnalysisT cmp m) cmp where
     spawn cmp = unlessM (upperM $ has cmp)

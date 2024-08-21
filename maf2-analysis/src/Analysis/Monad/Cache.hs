@@ -16,6 +16,7 @@ import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Monad.State hiding (get, put)
 import Control.Monad.Escape
+import Control.Monad.Lift
 import Lattice
 import Control.Monad.Layer (MonadLayer)
 import Control.Monad.Trans.Maybe
@@ -109,7 +110,7 @@ instance MonadCache m => MonadCache (ListT m) where
 -- ---
 
 newtype CacheT m a = CacheT (IdentityT m a)
-    deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer)
+    deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadTransControl)
 
 instance Monad m => MonadCache (CacheT m) where
     type Key (CacheT m) k = k

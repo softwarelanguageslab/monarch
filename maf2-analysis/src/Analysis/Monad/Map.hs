@@ -30,7 +30,7 @@ put' k v = do old <- get k
 --
 
 newtype MapT k v m a = MapT (StateT (Map k v) m a)
-    deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadState (Map k v))
+    deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadTransControl, MonadState (Map k v))
 
 instance {-# OVERLAPPING #-} (Monad m, Ord k) => MapM k v (MapT k v m) where
     get = State.gets . Map.lookup 

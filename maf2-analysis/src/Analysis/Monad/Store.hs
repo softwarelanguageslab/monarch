@@ -34,6 +34,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad.State hiding (mzero, join)
 import Control.Monad.Join (MonadJoin(..), mjoinMap, mjoins)
+import Analysis.Monad.Cache
+import Control.Monad.Lift
 
 import Control.Monad.Layer
 import Analysis.Store (Store)
@@ -99,7 +101,7 @@ store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 --- 
 
 newtype StoreT s adr vlu m a = StoreT { getStoreT :: StateT s m a }
-   deriving (Applicative, Functor, Monad, MonadJoin, MonadState s, MonadLayer, MonadTrans)
+   deriving (Applicative, Functor, Monad, MonadJoin, MonadState s, MonadLayer, MonadTrans, MonadTransControl, MonadCache)
 
 instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM (StoreT s a v m) a v where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)

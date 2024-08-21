@@ -15,6 +15,7 @@ import qualified Data.Map as Map
 import Analysis.Monad.WorkList
 import Control.Monad.State
 import Control.Monad.Layer
+import Control.Monad.Lift
 import Data.Maybe (fromMaybe)
 
 
@@ -35,7 +36,7 @@ trigger = dependent >=> adds
 ---
 
 newtype DependencyTrackingT cmp dep m a = DependencyTrackingT (StateT (Map dep (Set cmp)) m a)
-    deriving (Functor, Applicative, Monad, MonadState (Map dep (Set cmp)), MonadTrans, MonadLayer)
+    deriving (Functor, Applicative, Monad, MonadState (Map dep (Set cmp)), MonadTrans, MonadLayer, MonadTransControl)
 
 instance {-# OVERLAPPING #-} (Monad m, Ord dep, Ord cmp) => DependencyTrackingM (DependencyTrackingT cmp dep m) cmp dep where
     register d = modify . Map.insertWith Set.union d . Set.singleton

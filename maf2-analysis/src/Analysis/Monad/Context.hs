@@ -8,7 +8,8 @@ module Analysis.Monad.Context (
 ) where
 
 import Control.Monad.Reader hiding (mzero)
-import Control.Monad.Layer 
+import Control.Monad.Layer
+import Control.Monad.Lift
 import Control.Monad.Join 
 import Analysis.Monad.Cache (MonadCache)
 
@@ -30,7 +31,7 @@ class CtxM m ctx | m -> ctx where
 ---
 
 newtype CtxT ctx m a = CtxT (ReaderT ctx m a)
-   deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor, MonadJoin, MonadCache)
+   deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor, MonadJoin, MonadCache, MonadTransControl)
 
 instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask

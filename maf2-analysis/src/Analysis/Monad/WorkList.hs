@@ -35,7 +35,7 @@ class Monad m => WorkListM m cmp | m -> cmp where
 ---
 
 newtype WorkListT w m a = WorkListT (StateT w m a)
-    deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadState w)
+    deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadTransControl, MonadState w)
 
 instance {-# OVERLAPPING #-} (Monad m, WorkList w cmp) => WorkListM (WorkListT w m) cmp where
     done = gets WL.isEmpty

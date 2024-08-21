@@ -1,11 +1,12 @@
 {-# LANGUAGE UndecidableInstances, FlexibleContexts, FlexibleInstances, RankNTypes, QuantifiedConstraints #-}
-module Control.Monad.Layer(MonadLayer(..)) where
+module Control.Monad.Layer(MonadLayer(..), module Control.Monad.Lift) where
 
 import Control.Monad.State  hiding (mzero)
 import Control.Monad.Reader hiding (mzero)
 import Control.Monad.Writer hiding (mzero)
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
+import Control.Monad.Lift
 import Lattice.Class
 import ListT
 import Control.Monad.Escape

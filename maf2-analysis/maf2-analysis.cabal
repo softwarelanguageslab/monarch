@@ -121,6 +121,7 @@ library
     , hspec
     , hspec-contrib
     , language-python
+    , layers-mtl
     , lens
     , list-t
     , maf2-domains
@@ -176,6 +177,7 @@ executable maf-exe
     , hspec
     , hspec-contrib
     , language-python
+    , layers-mtl
     , lens
     , list-t
     , maf2-analysis
@@ -228,6 +230,7 @@ test-suite maf2-analysis-test
     , hspec
     , hspec-contrib
     , language-python
+    , layers-mtl
     , lens
     , list-t
     , maf2-analysis

@@ -17,6 +17,7 @@ import qualified Data.Set as Set
 import Control.Monad.State as State hiding (mzero)
 import Analysis.Monad.Cache
 import Control.Monad.Join
+import Control.Monad.Lift
 import Lattice (Lattice, justOrBot)
 import Analysis.Monad.Map (MapM)
 
@@ -42,7 +43,7 @@ call cmp = do k <- key cmp
 ---
 
 newtype ComponentTrackingT cmp m a = ComponentTrackingT (StateT (Set cmp) m a)
-    deriving (Functor, Applicative, Monad, MonadState (Set cmp), MonadTrans, MonadLayer)
+    deriving (Functor, Applicative, Monad, MonadState (Set cmp), MonadTrans, MonadLayer, MonadTransControl)
 
 instance {-# OVERLAPPING #-} (Monad m, Ord cmp) => ComponentTrackingM (ComponentTrackingT cmp m) cmp where
     spawn = State.modify . Set.insert
