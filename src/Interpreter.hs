@@ -159,45 +159,45 @@ waitUntilAllFinished = getsM (readIORef . finishSignals) >>= mapM_ takeMVar
 ------------------------------------------------------------
 
 eval :: EvalM m => Exp -> m (Value m)
-eval lam@(Lam _ _) = ClosureValue lam <$> getEnv
-eval (Literal lit) = return (LiteralValue lit)
-eval (App e1 es) = do
+eval lam@(Lam {}) = ClosureValue lam <$> getEnv
+eval (Literal lit _) = return (LiteralValue lit)
+eval (App e1 es _) = do
    v1 <- eval e1
    v2 <- mapM eval es
    apply v1 v2
-eval (Ite e1 e2 e3) = do
+eval (Ite e1 e2 e3 _) = do
    cnd <- eval e1
    case cnd of
       LiteralValue (Boolean b) -> if b then eval e2 else eval e3
       _ -> error "condition should be boolean"
-eval (Spawn e) =
+eval (Spawn e _) =
    ActorValue <$> spawnActor (`withSelf` (void $ eval e))
-eval Terminate =
+eval (Terminate _) =
    myThreadId >>= killThread >> return bottom
-eval (Receive pats) =
+eval (Receive pats _) =
    receive (\v ->
       let (env', e) = fromMaybe (error "no match found") (matchList pats v)
       in do
          allocMapping env' >>= flip withMergedEnvironment (eval e))
-eval (Send e1 e2) = do
+eval (Send e1 e2 _) = do
    receiver <- eval e1
    payload  <- eval e2
    trySend receiver payload
    return ValueNil
-eval (Letrec bds e2) = do
+eval (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (getName . fst) bds) ads
    vs <- mapM (withExtendedEnv' bds' . eval . snd) bds
    mapM_ (uncurry store) (zip ads vs)
    withExtendedEnv' bds' (eval e2)
-eval (Begin exs) =
+eval (Begin exs _) =
    last <$> mapM eval exs
-eval (Pair e1 e2) =
+eval (Pair e1 e2 _) =
    PairValue <$> eval e1 <*> eval e2
-eval (Var (Ide x)) =
+eval (Var (Ide x) _) =
    lookupEnv x >>= deref
-eval Self = ActorValue <$> getSelf
-eval (Blame k) = do 
+eval (Self _) = ActorValue <$> getSelf
+eval (Blame k _) = do 
    v <- eval k
    error $ "blaming" ++ show v
 eval _ = error "unsupported expression"
@@ -207,7 +207,7 @@ trySend (ActorValue ref) p = send ref p
 trySend _ _ = error "receiver is not an actor reference"
 
 apply :: EvalM m => Value m -> [Value m] -> m (Value m)
-apply (ClosureValue (Lam prs e) env) vs = do
+apply (ClosureValue (Lam prs e _) env) vs = do
    ads <- mapM alloc prs
    let bds = zip (map getName prs) ads
    mapM_ (uncurry store) (zip ads vs)

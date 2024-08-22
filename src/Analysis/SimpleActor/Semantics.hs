@@ -33,41 +33,41 @@ spanOf = undefined
 ------------------------------------------------------------
 
 eval :: forall v m . EvalM v m => Exp -> m v
-eval lam@(Lam _ _) = closure lam <$> getEnv
-eval (Literal lit) = return (injectLit lit)
-eval (App e1 es) = do
+eval lam@(Lam {}) = closure lam <$> getEnv
+eval (Literal lit _) = return (injectLit lit)
+eval (App e1 es _) = do
    v1 <- eval e1
    v2 <- mapM eval es
    apply v1 v2
-eval (Ite e1 e2 e3) = cond (eval e1) (eval e2) (eval e3)
-eval s@(Spawn e) =
-   actorRef <$> spawn @v (spanOf s) (`withSelf` (return e))
-eval Terminate = terminate $> nil
-eval (Receive pats) = do 
+eval (Ite e1 e2 e3 _) = cond (eval e1) (eval e2) (eval e3)
+eval s@(Spawn e _) =
+   actorRef <$> spawn @v (spanOf s) (`withSelf` return e)
+eval (Terminate _) = terminate $> nil
+eval (Receive pats _) = do
    self <- getSelf
    receive self $
       matchList
          (\e -> allocMapping >=> (`withExtendedEnv` eval e) . Map.toList)
          pats
-eval (Send e1 e2) = do
+eval (Send e1 e2 _) = do
    receiver <- eval e1
    payload  <- eval e2
    trySend receiver payload
    return nil
-eval (Letrec bds e2) = do
+eval (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (getName . fst) bds) ads
    vs <- mapM (withExtendedEnv bds' . eval . snd) bds
    mapM_ (uncurry writeAdr) (zip ads vs)
    withExtendedEnv bds' (eval e2)
-eval (Begin exs) =
+eval (Begin exs _) =
    last <$> mapM eval exs
-eval (Pair e1 e2) =
+eval (Pair e1 e2 _) =
    pair <$> eval e1 <*> eval e2
-eval (Var (Ide x)) =
+eval (Var (Ide x) _) =
    lookupEnv x >>= lookupAdr
-eval Self = actorRef <$> getSelf @v
-eval (Blame e) =
+eval (Self _) = actorRef <$> getSelf @v
+eval (Blame e _) =
    eval e >>= mjoinMap (escape . BlameError) . labels
 eval _ = error "unsupported expression"
 
@@ -83,7 +83,7 @@ apply v vs = condsCP
     (isPrimitive v, mjoinMap (`applyPrimitive` vs) (primitives v))]
    (escape InvalidArgument)
 applyClosure :: EvalM v m => (Exp, Env v) -> [v] -> m v
-applyClosure (Lam prs bdy, env) vs = do
+applyClosure (Lam prs bdy _, env) vs = do
    ads <- mapM alloc prs
    let bds = zip (map getName prs) ads
    mapM_ (uncurry writeAdr) (zip ads vs)

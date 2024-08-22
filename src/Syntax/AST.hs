@@ -6,22 +6,22 @@ import Syntax.Span
 newtype Ide = Ide { getName :: String } deriving (Eq, Ord, Show)
 
 -- | An expression
-data Exp = Lam [Ide] Exp  
-         | App Exp [Exp]
-         | Spawn Exp 
-         | Letrec [Binding] Exp
-         | Terminate 
-         | Self
-         | Pair Exp Exp 
-         | Parameter Exp 
-         | Parametrize [Binding]
-         | Blame Exp
-         | Receive [(Pat, Exp)]
-         | Send Exp Exp
-         | Literal Lit
-         | Ite  Exp Exp Exp
-         | Var Ide
-         | Begin [Exp]
+data Exp = Lam [Ide] Exp Span  
+         | App Exp [Exp] Span
+         | Spawn Exp Span
+         | Letrec [Binding] Exp Span
+         | Terminate Span
+         | Self Span
+         | Pair Exp Exp Span
+         | Parameter Exp Span
+         | Parametrize [Binding] Span
+         | Blame Exp Span
+         | Receive [(Pat, Exp)] Span
+         | Send Exp Exp Span
+         | Literal Lit Span
+         | Ite  Exp Exp Exp Span
+         | Var Ide Span
+         | Begin [Exp] Span
          deriving (Eq, Ord, Show)
 
 -- | Literals are expressions that evaluate to themselves

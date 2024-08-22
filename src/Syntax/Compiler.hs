@@ -6,57 +6,61 @@ import Syntax.Scheme.Parser
 import qualified Syntax.Scheme.Parser as SExp
 import Control.Monad.Error
 import Syntax.AST
+import Syntax.Span (SpanOf)
+
+pureSpan :: (Applicative m, SpanOf e) => e -> m Span
+pureSpan = pure . spanOf
 
 parseFromString :: String -> Either String Exp
 parseFromString = fmap head . parseSexp >=> compile
 
 compile :: MonadError String m => SExp -> m Exp
-compile (Atom "lambda" _ ::: args ::: e ::: (SNil _)) =
-   Lam <$> smapM compileParam args <*> compile e
+compile ex@(Atom "lambda" _ ::: args ::: e ::: (SNil _)) =
+   Lam <$> smapM compileParam args <*> compile e <*> pureSpan ex
 compile e@(Atom "lambda" _ ::: _) =
    throwError $ "invalid syntax for lambda " ++ show e
-compile (Atom "spawn" _ ::: e ::: SNil _) = Spawn <$> compile e
+compile ex@(Atom "spawn" _ ::: e ::: SNil _) = Spawn <$> compile e <*> pureSpan ex
 compile e@(Atom "spawn" _ ::: _) =
    throwError $ "invalid syntax for spawn " ++ show e
-compile (Atom "letrec" _ ::: bds ::: e2 ::: SNil _) =
-   Letrec <$> smapM compileBdn bds <*> compile e2
+compile ex@(Atom "letrec" _ ::: bds ::: e2 ::: SNil _) =
+   Letrec <$> smapM compileBdn bds <*> compile e2 <*> pureSpan ex
 compile e@(Atom "letrec" _ ::: _) =
    throwError $ "invalid syntax for letrec " ++ show e
-compile (Atom "terminate" _ ::: SNil _) = pure Terminate
+compile ex@(Atom "terminate" _ ::: SNil _) = pure $ Terminate (spanOf ex)
 compile e@(Atom "terminate" _ ::: _) =
    throwError $ "invalid syntax for terminate " ++ show e
-compile (Atom "pair" _ ::: e1 ::: e2 ::: SNil _) =
-   Pair <$> compile e1 <*> compile e2
+compile ex@(Atom "pair" _ ::: e1 ::: e2 ::: SNil _) =
+   Pair <$> compile e1 <*> compile e2 <*> pureSpan ex
 compile e@(Atom "pair" _ ::: _) =
    throwError $ "invalid syntax for pair " ++ show e
-compile (Atom "receive" _ ::: pats ::: SNil _) =
-   Receive <$> compilePats pats
-compile (Atom "send" _ ::: receiver ::: payload ::: SNil _) =
-   Send <$> compile receiver <*> compile payload
+compile ex@(Atom "receive" _ ::: pats ::: SNil _) =
+   Receive <$> compilePats pats <*> pureSpan ex
+compile ex@(Atom "send" _ ::: receiver ::: payload ::: SNil _) =
+   Send <$> compile receiver <*> compile payload <*> pureSpan ex
 compile e@(Atom "send" _ ::: _) =
    throwError $ "invalid syntax for send " ++ show e
-compile (SExp.Num n _) =
-   return $ Literal $ Syntax.AST.Num n
-compile (SExp.Bln b _) =
-   return $ Literal $ Syntax.AST.Boolean b
-compile (Atom "if" _ ::: e1 ::: e2 ::: e3 ::: SNil _) =
-   Ite <$> compile e1 <*> compile e2 <*> compile e3
+compile ex@(SExp.Num n _) =
+   return $ Literal (Syntax.AST.Num n) (spanOf ex)
+compile ex@(SExp.Bln b _) =
+   return $ Literal (Syntax.AST.Boolean b) (spanOf ex)
+compile ex@(Atom "if" _ ::: e1 ::: e2 ::: e3 ::: SNil _) =
+   Ite <$> compile e1 <*> compile e2 <*> compile e3 <*> pureSpan ex
 compile e@(Atom "if" _ ::: _) =
    throwError $ "invalid syntax for if " ++ show e
-compile (Atom "begin" _ ::: exs) =
-   Begin <$> smapM compile exs
-compile (Atom "self" _ ::: SNil _) = pure Self
+compile ex@(Atom "begin" _ ::: exs) =
+   Begin <$> smapM compile exs <*> pureSpan ex
+compile ex@(Atom "self" _ ::: SNil _) = pure $ Self (spanOf ex)
 compile e@(Atom "self" _ ::: _) =
    throwError $ "invalid syntax for self " ++ show e
 compile (Atom "quote" span' ::: s ::: SNil _) = compile (Quo s span')
-compile (Atom "blame" _ ::: party ::: _) = Blame <$> compile party
+compile ex@(Atom "blame" _ ::: party ::: _) = Blame <$> compile party <*> pureSpan ex
 compile e@(Atom "blame" _ ::: _) =
    throwError $ "invalid syntax for blame " ++ show e
-compile (op ::: oprs) =
-   App <$> compile op <*> smapM compile oprs
+compile ex@(op ::: oprs) =
+   App <$> compile op <*> smapM compile oprs <*> pureSpan ex
 
-compile (Atom x _) = return $ Var $ Ide x
-compile (Quo (Atom s _) _) = return $ Literal (Symbol s)
+compile ex@(Atom x _) = return $ Var (Ide x) $ spanOf ex
+compile ex@(Quo (Atom s _) _) = return $ Literal (Symbol s) (spanOf ex)
 compile e = throwError $ "invalid syntax " ++ show e
 
 compileBdn :: MonadError String m => SExp -> m (Ide, Exp)
