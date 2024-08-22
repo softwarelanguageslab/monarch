@@ -42,8 +42,6 @@ instance MonadLayer IdentityT where
    lowerM f m = IdentityT $ f (runIdentityT m)
 
 -- Instance for MayEscapeT 
-instance MonadTrans (MayEscapeT e) where
-   lift m = MayEscapeT (Value <$> m)
 instance (Joinable e) => MonadLayer (MayEscapeT e) where
    lowerM f m = MayEscapeT $ f (runMayEscape m)
 
