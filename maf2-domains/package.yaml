@@ -23,6 +23,7 @@ dependencies:
 - containers
 - unordered-containers
 - mtl
+- layers-mtl
 - transformers
 - data-default
 - extra

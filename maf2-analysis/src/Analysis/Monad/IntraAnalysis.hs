@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-
 module Analysis.Monad.IntraAnalysis (
     IntraAnalysisT,
     runIntraAnalysis,

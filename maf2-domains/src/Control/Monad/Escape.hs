@@ -15,6 +15,8 @@ import Domain.Class
 import Control.Monad.Join
 import Data.Kind (Type)
 import Control.Monad (ap)
+import Control.Monad.Trans
+import Control.Monad.Lift.Class (MonadTransControl(..))
 import Data.Functor ((<&>))
 
 -- | Monad to handle errors in the abstract domain
@@ -110,6 +112,25 @@ instance (Eq e, Joinable e, MonadJoin m) => MonadJoin (MayEscapeT e m) where
     mzero = MayEscapeT mzero
     mjoin (MayEscapeT ma) (MayEscapeT mb) = MayEscapeT (mjoin ma mb)
 
+instance MonadTrans (MayEscapeT e) where  
+   lift = MayEscapeT . fmap Value
+
+instance (Joinable e) => MonadTransControl (MayEscapeT e) where  
+   type LayerState (MayEscapeT e)  = () 
+   type LayerResult (MayEscapeT e) = MayEscape e
+   
+   suspend (MayEscapeT m) () = fmap (\a -> (a, ())) m
+   resume (a, _) = MayEscapeT $ return a 
+   capture = return ()
+
+   extract = error "unsupported operation: extract"
+   -- TODO: this does not seem quite right in the `MayBoth`
+   -- so we use  `error` as the default implementation
+   -- to check whether it is actually used.
+   -- extract _ (Escape e) = Left (Escape e)
+   -- extract _ (Value a) = Right a
+   -- extract _ (MayBoth a e) = Right a
+   -- extract _ Bottom = Left Bottom
 
 ------------------------------------------------------------
 -- Maybe instance for MonadEscape
