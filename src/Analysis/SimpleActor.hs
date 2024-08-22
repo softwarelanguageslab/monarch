@@ -27,7 +27,7 @@ import Control.Monad.Escape
 import Data.Set
 
 type ActorAdr = Ide
-type ActorEnv = Map String Ide
+type ActorEnv = Map String ActorAdr
 type ActorCmp = Key (IntraT Identity) Exp
 type ActorRes = Val (IntraT Identity) SimpleActorValue
 

@@ -18,6 +18,7 @@ import Lattice.HMapLattice ()
 import Syntax.AST
 import Data.List (intercalate)
 import Text.Printf (printf)
+import Data.Map (Map)
 
 data SimpleActorKey
   = PaiKey

@@ -3,7 +3,7 @@
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Analysis.SimpleActor.Monad (ActorLocalT, Error (..), MonadActor, MonadActorLocal (..), MonadMailbox (..), MonadSpawn, EvalM, spawn, ActorError) where
+module Analysis.SimpleActor.Monad (ActorLocalT, Error (..), MonadActor, MonadActorLocal (..), MonadMailbox (..), MonadSpawn, EvalM, spawn, receive, ActorError) where
 
 import Analysis.Actors.Mailbox
 import Analysis.Monad.Allocation
@@ -15,7 +15,6 @@ import Control.Monad.DomainError
 import Control.Monad.Escape
 import Control.Monad.Join
 import Control.Monad.Layer
-import Control.Monad.Lift.Class
 import Control.Monad.Reader hiding (mzero)
 import Control.Monad.State hiding (mzero)
 import Data.Map (Map)
@@ -25,17 +24,17 @@ import qualified Data.Set as Set
 import Domain.Class
 import Domain.SimpleActor.Class
 import Lattice.Class (BottomLattice, Joinable)
+import qualified Lattice.Class as L
 import Syntax.AST
-import Lattice (Lattice)
+import Lattice (Lattice, BottomLattice (bottom))
 import Analysis.Monad.ComponentTracking (call, ComponentTrackingM)
 import Data.Functor (($>))
 import Data.Set (Set)
-import qualified Data.Set as Set
 import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
 import Analysis.Monad (DependencyTrackingM)
 import Analysis.Monad.DependencyTracking (trigger)
-import Analysis.Scheme.Prelude (WorkListM)
-import Analysis.Scheme.Prelude (DependencyTrackingM(dependent))
+import Analysis.Scheme.Prelude
+    ( WorkListM, DependencyTrackingM(dependent) )
 
 ------------------------------------------------------------
 -- Errors
@@ -48,9 +47,12 @@ data Error = MatchError | InvalidArgument | BlameError Label
 -- Monad typeclasses
 ------------------------------------------------------------
 
-class MonadMailbox v m  where
+class (BottomLattice v, Joinable v) => MonadMailbox v m  where
   send :: ARef v -> v -> m ()
-  receive :: (BottomLattice a, Joinable a) => ARef v -> (v -> m a) -> m a
+  receive' :: ARef v -> m v
+
+receive :: (MonadMailbox v m, Monad m) => ARef v -> (v -> m a) -> m a
+receive ref = (receive' ref >>=)
 
 class MonadActorLocal v m | m -> v where
   withSelf :: ARef v -> m a -> m a
@@ -74,17 +76,14 @@ instance {-# OVERLAPPABLE #-} (MonadActorLocal v m, Monad m, MonadLayer t) => Mo
 
 instance
   {-# OVERLAPPABLE #-}
-  ( LayerConstraint Joinable t,
-    LayerConstraint BottomLattice t,
-    MonadMailbox v m,
-    MonadTransControl t,
+  ( MonadMailbox v m,
     MonadLayer t,
     Monad m
   ) =>
   MonadMailbox v (t m)
   where
   send ref = upperM . send ref
-  receive ref f = control (\peel -> receive ref (peel . f))
+  receive' = upperM . receive'
 
 
 spawn :: forall v m . (Lattice v, MonadJoin m, MonadSpawn v m) => Span -> (ARef v -> m Exp) -> m (ARef v)
@@ -125,9 +124,14 @@ newtype GlobalMailboxT v mb m a = GlobalMailboxT {runGlobalMailboxT' :: StateT (
 
 deriving instance (ref ~ ARef v, Ord ref, MonadJoin m, Mailbox mb v, Joinable mb) => MonadJoin (GlobalMailboxT v mb m)
 
-instance (MonadJoin m, Joinable mb, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadMailbox v (GlobalMailboxT v mb m) where
+instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadMailbox v (GlobalMailboxT v mb m) where
   send ref v = GlobalMailboxT $ modify (Map.insertWith (const . enqueue v) ref (enqueue v empty))
-  receive ref f = GlobalMailboxT $ gets (Set.map fst . dequeue . fromMaybe empty . Map.lookup ref) >>= mjoinMap (runGlobalMailboxT' . f)
+  -- NOTE: we cannot use `MonadJoin` here since we have passed the `JoinT` layer in the monadic stack, 
+  -- thus we use a `Joinable` instance to join the values ourselves. This should **not** happen 
+  -- since the `JoinT` and `NonDetT` layers are normally responsible for providing this behavior. 
+  -- TODO: investigate how we can prevent monadic computations to be transported down in the stack 
+  -- so that they no longer skip the `JoinT` layer.
+  receive' ref = GlobalMailboxT $ gets (foldr L.join bottom . Set.toList . Set.map fst . dequeue . fromMaybe empty . Map.lookup ref)
 
 -- | Actor-local semantics
 newtype ActorLocalT v m a = ActorLocalT {runActorLocalT' :: ReaderT (ARef v) m a}
@@ -145,9 +149,9 @@ instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
 
 type Dep v = ARef v
 
-instance (MonadMailbox v m, WorkListM m cmp, Joinable cmp, BottomLattice cmp, DependencyTrackingM m cmp (Dep v)) => MonadMailbox v (IntraAnalysisT cmp m)  where
+instance (MonadMailbox v m, WorkListM m cmp, DependencyTrackingM m cmp (Dep v)) => MonadMailbox v (IntraAnalysisT cmp m)  where
    send to msg = trigger @_ @cmp to >> lift (send to msg)
-   receive ref f = dependent @_ @cmp ref >> control (\peel -> receive ref (peel . f))
+   receive' ref = dependent @_ @cmp ref >> upperM (receive' ref)
 
 ------------------------------------------------------------
 -- Error abstractions
@@ -156,7 +160,7 @@ instance (MonadMailbox v m, WorkListM m cmp, Joinable cmp, BottomLattice cmp, De
 data ActorError = ActorDomainError DomainError | ActorError Error
                deriving (Eq, Ord, Show)
 
-instance Domain (Set ActorError) DomainError where    
+instance Domain (Set ActorError) DomainError where
    inject = Set.singleton . ActorDomainError
-instance Domain (Set ActorError) Error where 
+instance Domain (Set ActorError) Error where
    inject = Set.singleton . ActorError
