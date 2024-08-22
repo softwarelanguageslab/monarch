@@ -96,6 +96,7 @@ library
       Lattice.ConstantPropagationLattice
       Lattice.Equal
       Lattice.HMapLattice
+      Lattice.Identity
       Lattice.IntervalLattice
       Lattice.ListLattice
       Lattice.MapLattice
