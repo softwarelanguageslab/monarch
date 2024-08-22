@@ -1,12 +1,15 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Analysis.SimpleActor.Monad (Error (..), MonadActor, MonadActorLocal (..), MonadMailbox (..), MonadSpawn, EvalM, spawn) where
+module Analysis.SimpleActor.Monad (ActorLocalT, Error (..), MonadActor, MonadActorLocal (..), MonadMailbox (..), MonadSpawn, EvalM, spawn, ActorError) where
 
 import Analysis.Actors.Mailbox
 import Analysis.Monad.Allocation
+import Analysis.Monad.Cache
 import Analysis.Monad.Environment
+import Analysis.Monad.Map (MapM)
 import Analysis.Monad.Store
 import Control.Monad.DomainError
 import Control.Monad.Escape
@@ -23,29 +26,39 @@ import Domain.Class
 import Domain.SimpleActor.Class
 import Lattice.Class (BottomLattice, Joinable)
 import Syntax.AST
+import Lattice (Lattice)
+import Analysis.Monad.ComponentTracking (call, ComponentTrackingM)
+import Data.Functor (($>))
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
+import Analysis.Monad (DependencyTrackingM)
+import Analysis.Monad.DependencyTracking (trigger)
+import Analysis.Scheme.Prelude (WorkListM)
+import Analysis.Scheme.Prelude (DependencyTrackingM(dependent))
 
 ------------------------------------------------------------
 -- Errors
 ------------------------------------------------------------
 
 data Error = MatchError | InvalidArgument | BlameError Label
+           deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------
 -- Monad typeclasses
 ------------------------------------------------------------
 
-class (MonadJoin m) => MonadMailbox v m | m -> v where
+class MonadMailbox v m  where
   send :: ARef v -> v -> m ()
   receive :: (BottomLattice a, Joinable a) => ARef v -> (v -> m a) -> m a
-
-class MonadSpawn v m | m -> v where
-  spawn' :: (ARef v -> m a) -> m (a, ARef v)
 
 class MonadActorLocal v m | m -> v where
   withSelf :: ARef v -> m a -> m a
   getSelf :: m (ARef v)
   terminate :: m ()
   waitUntilAllFinished :: m ()
+
+type MonadSpawn v m = (MonadCache m, ComponentTrackingM m (Key m Exp) ,MapM (Key m Exp) (Val m v) m, ARef v ~ Span)
 
 type MonadActor v m = (MonadMailbox v m, MonadSpawn v m, MonadActorLocal v m)
 
@@ -65,8 +78,8 @@ instance
     LayerConstraint BottomLattice t,
     MonadMailbox v m,
     MonadTransControl t,
-    MonadJoin (t m),
-    MonadLayer t
+    MonadLayer t,
+    Monad m
   ) =>
   MonadMailbox v (t m)
   where
@@ -74,23 +87,8 @@ instance
   receive ref f = control (\peel -> receive ref (peel . f))
 
 
-instance
- {-# OVERLAPPABLE #-}
- (MonadSpawn v m,
-  Monad m,
-  Monad (t m),
-  MonadTransControl t) =>  MonadSpawn v (t m) where
-   spawn' f = do
-         -- capture current's layer monadic state
-         st <- capture
-         -- run the lower `spawn` function 
-         (eff', ref')  <- lift $ spawn' ((`suspend` st) . f)
-         -- resume the current layer by combining it with the 
-         -- requested reference
-         (,ref') <$> resume eff'
-
-spawn :: (Functor m, MonadSpawn v m) => (ARef v -> m ()) -> m (ARef v)
-spawn f = fmap snd (spawn' f)
+spawn :: forall v m . (Lattice v, MonadJoin m, MonadSpawn v m) => Span -> (ARef v -> m Exp) -> m (ARef v)
+spawn s f = (f s >>= call @v) $> s
 
 ------------------------------------------------------------
 -- Monad
@@ -123,7 +121,7 @@ type EvalM v m =
 
 -- | Global mailbox parametrized by a mailbox abstraction
 newtype GlobalMailboxT v mb m a = GlobalMailboxT {runGlobalMailboxT' :: StateT (Map (ARef v) mb) m a}
-  deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)
+  deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadCache)
 
 deriving instance (ref ~ ARef v, Ord ref, MonadJoin m, Mailbox mb v, Joinable mb) => MonadJoin (GlobalMailboxT v mb m)
 
@@ -133,10 +131,32 @@ instance (MonadJoin m, Joinable mb, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) 
 
 -- | Actor-local semantics
 newtype ActorLocalT v m a = ActorLocalT {runActorLocalT' :: ReaderT (ARef v) m a}
-  deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer, MonadJoin)
+  deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl ,MonadLayer, MonadJoin, MonadCache)
 
 instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
   getSelf = ActorLocalT ask
   withSelf r = ActorLocalT . local (const r) . runActorLocalT'
   terminate = mzero -- no particular behavior in the abstract
   waitUntilAllFinished = return () -- no behavior in the abstract
+
+------------------------------------------------------------
+-- Effect registration for global mailboxes
+------------------------------------------------------------
+
+type Dep v = ARef v
+
+instance (MonadMailbox v m, WorkListM m cmp, Joinable cmp, BottomLattice cmp, DependencyTrackingM m cmp (Dep v)) => MonadMailbox v (IntraAnalysisT cmp m)  where
+   send to msg = trigger @_ @cmp to >> lift (send to msg)
+   receive ref f = dependent @_ @cmp ref >> control (\peel -> receive ref (peel . f))
+
+------------------------------------------------------------
+-- Error abstractions
+------------------------------------------------------------
+
+data ActorError = ActorDomainError DomainError | ActorError Error
+               deriving (Eq, Ord, Show)
+
+instance Domain (Set ActorError) DomainError where    
+   inject = Set.singleton . ActorDomainError
+instance Domain (Set ActorError) Error where 
+   inject = Set.singleton . ActorError

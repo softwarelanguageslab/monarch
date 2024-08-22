@@ -25,6 +25,8 @@ import Analysis.Monad.Store
 
 import Domain.SimpleActor
 
+spanOf :: Exp -> Span
+spanOf = undefined
 
 ------------------------------------------------------------
 -- Evaluation
@@ -38,8 +40,8 @@ eval (App e1 es) = do
    v2 <- mapM eval es
    apply v1 v2
 eval (Ite e1 e2 e3) = cond (eval e1) (eval e2) (eval e3)
-eval (Spawn e) =
-   actorRef <$> spawn (`withSelf` (void $ eval e))
+eval s@(Spawn e) =
+   actorRef <$> spawn @v (spanOf s) (`withSelf` (return e))
 eval Terminate = terminate $> nil
 eval (Receive pats) = do 
    self <- getSelf
