@@ -13,6 +13,7 @@ module Lattice (
   module Lattice.UnitLattice,
   module Lattice.Equal,
   module Lattice.Split,
+  module Lattice.Identity,
 ) where
 
 import Lattice.Class
@@ -27,5 +28,6 @@ import Lattice.ReversePowerSetLattice
 import Lattice.SetLattice
 import Lattice.TopLiftedLattice
 import Lattice.UnitLattice
+import Lattice.Identity
 import Lattice.Equal
 import Lattice.Split
