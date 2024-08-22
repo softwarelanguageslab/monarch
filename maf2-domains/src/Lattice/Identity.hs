@@ -2,7 +2,7 @@
 module Lattice.Identity where
 
 import Lattice.Class 
-import Data.Functor
+import Data.Functor.Identity
 
 
 
