@@ -199,7 +199,7 @@ callClo _ pos kwa = mjoinMap apply
                                   let pkw = Set.fromList $ map parNam kps 
                                   if psn <= ari && akw == pkw 
                                     then do mapM_ (\(par, arg) -> assignAttrAt (parNam par) arg frm) (zip prs pos) -- bind positional args 
-                                            mapM_ (\(kyw, arg) -> assignAttrAt (ideName kyw) arg frm) kwa             -- bind keyword args
+                                            mapM_ (\(kyw, arg) -> assignAttrAt (ideName kyw) arg frm) kwa          -- bind keyword args
                                             let bindings = map (,frm) lcl 
                                             withExtendedEnv bindings $ M.call (FuncBdy loc bdy)   
                                     else escape ArityError  

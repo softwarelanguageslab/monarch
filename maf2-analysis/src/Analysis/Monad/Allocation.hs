@@ -5,6 +5,7 @@
 module Analysis.Monad.Allocation (
     AllocM(..),
     AllocT,
+    -- TODO: rename this to `runAllocT`
     runAlloc,
 ) where
 
