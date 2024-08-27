@@ -194,7 +194,7 @@ eval (Begin exs _) =
    last <$> mapM eval exs
 eval (Pair e1 e2 _) =
    PairValue <$> eval e1 <*> eval e2
-eval (Var (Ide x) _) =
+eval (Var (Ide x _)) =
    lookupEnv x >>= deref
 eval (Self _) = ActorValue <$> getSelf
 eval (Blame k _) = do 
@@ -219,7 +219,7 @@ apply _ _ = error "not a closure or primitive"
 type Mapping m = Map Ide (Value m)
 
 allocMapping :: EvalM m => Map Ide (Value m) -> m Env
-allocMapping = foldM (\env' (ide@(Ide nam), v) -> do { adr <- alloc ide ; store adr v ; return (Map.insert nam adr env') }) Map.empty . Map.toList
+allocMapping = foldM (\env' (ide@(Ide nam _), v) -> do { adr <- alloc ide ; store adr v ; return (Map.insert nam adr env') }) Map.empty . Map.toList
 
 -- | Matches a list of patterns (from top to bottom) 
 -- against a value

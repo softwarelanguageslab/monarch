@@ -59,18 +59,18 @@ compile e@(Atom "blame" _ ::: _) =
 compile ex@(op ::: oprs) =
    App <$> compile op <*> smapM compile oprs <*> pureSpan ex
 
-compile ex@(Atom x _) = return $ Var (Ide x) $ spanOf ex
+compile ex@(Atom x _) = return $ Var $ Ide x (spanOf ex)
 compile ex@(Quo (Atom s _) _) = return $ Literal (Symbol s) (spanOf ex)
 compile e = throwError $ "invalid syntax " ++ show e
 
 compileBdn :: MonadError String m => SExp -> m (Ide, Exp)
-compileBdn ((Atom x _) ::: e ::: SNil _) =
-   (Ide x,) <$> compile e
+compileBdn ex@((Atom x _) ::: e ::: SNil _) =
+   (Ide x (spanOf ex) ,) <$> compile e
 compileBdn e =
    throwError $ "invalid syntax for binding in letrec " ++ show e
 
 compileParam :: MonadError String m => SExp -> m Ide
-compileParam (Atom x _) = return $ Ide x
+compileParam ex@(Atom x _) = return $ Ide x (spanOf ex)
 compileParam e = throwError $ "invalid parameter " ++ show e
 
 smapM :: MonadError String m => (SExp -> m a) -> SExp -> m [a]
@@ -90,7 +90,7 @@ compilePats = smapM compileHandler
 compilePat :: MonadError String m => SExp -> m Pat
 compilePat (Atom "pair" _ ::: pat1 ::: pat2 ::: SNil _) =
    PairPat <$> compilePat pat1 <*> compilePat pat2
-compilePat (Atom x _) = return (IdePat (Ide x))
+compilePat ex@(Atom x _) = return (IdePat (Ide x (spanOf ex)))
 compilePat (SExp.Num n _) = return (ValuePat $ Syntax.AST.Num n)
 compilePat (SExp.Bln b _) = return (ValuePat $ Syntax.AST.Boolean b)
 compilePat (Quo (Atom s _) _) = return (ValuePat $ Syntax.AST.Symbol s)

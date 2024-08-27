@@ -76,6 +76,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - containers
     - interpreter
 
 tests:

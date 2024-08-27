@@ -21,4 +21,8 @@
    (send (spawn beh 0) inc)
    (wait-until-all-finished)))
 
-;((mon server client (-> (flat nonzero?) (flat nonzero?)) (lambda (x) (* x x))) 5)
+;;(letrec 
+;;  ((foo (mon server client (-> (flat nonzero?) (flat nonzero?)) (lambda (x) (+ x x)))))
+;;
+;;  (begin (foo 5)
+;;         (foo 0)))

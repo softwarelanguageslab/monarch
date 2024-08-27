@@ -19,6 +19,10 @@ import Syntax.AST
 import Data.List (intercalate)
 import Text.Printf (printf)
 import Data.Map (Map)
+import Prelude hiding (and)
+import Control.Monad.Join (condCP)
+import Control.Monad.Escape (escape)
+import Control.Monad.DomainError (DomainError(..))
 
 data SimpleActorKey
   = PaiKey
@@ -74,6 +78,13 @@ instance BoolDomain SimpleActorValue
 
 instance NumberDomain SimpleActorValue where
    type Boo SimpleActorValue = SimpleActorValue
+
+   plus (SimpleActorValue v1) (SimpleActorValue v2) = 
+      SimpleActorValue <$>
+         condCP 
+            (return $ and (containsType NumKey v1) (containsType NumKey v2))
+            (HMap.singleton @NumKey <$> plus (fromJust $ get @NumKey v1) (fromJust $ get @NumKey v2))
+            (escape InvalidArgument)
    
 instance Domain SimpleActorValue Integer where
   inject = SimpleActorValue . HMap.singleton @NumKey . inject
@@ -85,6 +96,7 @@ instance IntDomain SimpleActorValue
 -- The actual domain for our analyses
 ------------------------------------------------------------
 
+data ActorAdr = VarAdr Ide | PrmAdr String deriving (Eq, Show, Ord)
 
 -- | Get a particular element from the product and if it does not exist
 -- return bottom
@@ -92,7 +104,7 @@ gets :: forall (k :: SimpleActorKey) . (SingI k, BottomLattice (Assoc k (SimpleA
 gets = fromMaybe bottom . HMap.get @k . getSimpleActorValue
 
 instance ValueDomain SimpleActorValue where
-  type Adr SimpleActorValue = Ide
+  type Adr SimpleActorValue = ActorAdr
   type ARef SimpleActorValue = Span
 
   pair a b = SimpleActorValue $ HMap.singleton @PaiKey (a, b)
