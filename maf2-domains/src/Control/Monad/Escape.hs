@@ -120,7 +120,7 @@ instance (Joinable e) => MonadTransControl (MayEscapeT e) where
    type LayerState (MayEscapeT e)  = () 
    type LayerResult (MayEscapeT e) = MayEscape e
    
-   suspend (MayEscapeT m) () = fmap (\a -> (a, ())) m
+   suspend (MayEscapeT m) () = fmap (,()) m
    resume (a, _) = MayEscapeT $ return a 
    capture = return ()
 
