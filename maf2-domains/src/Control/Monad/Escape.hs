@@ -18,6 +18,7 @@ import Control.Monad (ap)
 import Control.Monad.Trans
 import Control.Monad.Lift.Class (MonadTransControl(..))
 import Data.Functor ((<&>))
+import Control.Monad.Identity (IdentityT (..))
 
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
@@ -132,9 +133,15 @@ instance (Joinable e) => MonadTransControl (MayEscapeT e) where
    -- extract _ (MayBoth a e) = Right a
    -- extract _ Bottom = Left Bottom
 
+
 ------------------------------------------------------------
--- Maybe instance for MonadEscape
+-- Trivial instances
 ------------------------------------------------------------
+
+instance (MonadEscape m) => MonadEscape (IdentityT m) where  
+   type Esc (IdentityT m) = Esc m 
+   throw = IdentityT . throw 
+   catch ma f = IdentityT $ runIdentityT ma `catch` (runIdentityT . f)
 
 instance MonadEscape Maybe where 
    type Esc Maybe = ()
