@@ -70,5 +70,5 @@ continue = escape Continue
 returnWith :: PyM pyM obj => PyVal -> pyM ()
 returnWith = escape . Return 
 
-throwException :: PyM pyM obj => PyVal -> pyM ()
+throwException :: (PyM pyM obj, Lattice a) => PyVal -> pyM a 
 throwException = escape . Exception

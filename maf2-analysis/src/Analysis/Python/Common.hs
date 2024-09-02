@@ -77,5 +77,7 @@ type PyObj' obj = (PyObj obj,
                    Ref obj ~ PyVal,
                    Adr obj ~ ObjAdr,
                    Clo obj ~ PyClo, 
+                   Abs obj LsiPrm ~ CPList PyVal,
+                   Abs obj LstPrm ~ CPList PyVal, 
                    Abs obj TupPrm ~ CPList PyVal,
                    Abs obj StrPrm ~ CP String)

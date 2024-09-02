@@ -12,6 +12,7 @@ module Analysis.Python.Primitives (applyPrim) where
 import Domain.Python.World 
 import Domain.Python.Objects
 
+import Lattice 
 import Domain (NumberDomain)
 import qualified Domain.Core.SeqDomain as SeqDomain 
 import qualified Domain
@@ -29,6 +30,7 @@ import qualified Control.Monad as Monad
 import Data.Singletons.TH
 import Analysis.Monad (StoreM(updateWith, lookupAdr, updateAdr))
 import Control.Monad ((>=>))
+import qualified Debug.Trace as Debug
 
 ---
 --- Primitives implementation
@@ -78,7 +80,21 @@ applyPrim ListSetItem   = prim3 $ \_ a1 a2 vlu -> do idx <- pyDeref' a2 >>= at @
                                        lst' <- SeqDomain.setWeak idx vlu lst    -- TODO: only weak updates until updateWith supports monadic updates ...
                                        let obj' = set @LstPrm lst' obj
                                        updateAdr adr obj'            
-applyPrim ListLength    = prim1' @LstPrm $ \loc a -> pyAlloc loc $ from @IntPrm (SeqDomain.length a)  
+applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyAlloc loc $ from @IntPrm (SeqDomain.length l)  
+applyPrim ListIter      = prim1' @LstPrm $ \loc l -> pyAlloc loc $ from @LsiPrm l  
+-- list iterator primitives
+applyPrim ListIteratorNext = prim1 $ \loc a -> mjoinMap (next loc) (addrs a)
+        where next loc adr = do obj         <- lookupAdr adr
+                                lst         <- at @LsiPrm obj
+                                (val, lst') <- case lst of --TODO: add tail operation to SeqDomain?
+                                                SeqDomain.BotList           -> mzero 
+                                                SeqDomain.CPList [] _ _     -> stopIteration loc   
+                                                SeqDomain.CPList (e:es) n _ -> return (e, SeqDomain.CPList es (n-1) (joins es)) 
+                                                SeqDomain.TopList v         -> return (v, lst) `mjoin` stopIteration loc  
+                                let obj' = set @LsiPrm lst' obj 
+                                updateAdr adr obj'
+                                return val 
+              stopIteration loc = throwException =<< pyAlloc loc (new' StopIterationExceptionType) 
 -- type primitives
 applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do assignAttr (attrStr NameAttr) nam typ
                                                       mro <- computeMRO loc typ sup

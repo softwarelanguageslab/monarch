@@ -82,6 +82,7 @@ injectPyConstant (PrimObject prm) = from' @PrmPrm prm
 injectPyConstant (TypeMRO typ)    = from  @TupPrm (SeqDomain.fromList $ map typeVal mro)
   where mro = case typ of
                 ObjectType  -> [ObjectType]
+                StopIterationExceptionType -> [StopIterationExceptionType, ExceptionType, ObjectType]
                 _           -> [typ, ObjectType]
 injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new' TypeType 
   where typeAttrs   = [(NameAttr, TypeName typ), (MROAttr, TypeMRO typ)]
