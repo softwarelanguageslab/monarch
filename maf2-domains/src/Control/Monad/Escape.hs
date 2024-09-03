@@ -58,9 +58,9 @@ instance Traversable (MayEscape e) where
    traverse f (MayBoth v e) = flip MayBoth e <$> f v   
 
 addError :: Joinable e => e -> MayEscape e a -> MayEscape e a
-addError _ Bottom = Bottom
-addError e1 (Escape e2) = Escape (e1 `join` e2)
-addError e (Value v) = MayBoth v e
+addError e Bottom          = Escape e 
+addError e1 (Escape e2)    = Escape (e1 `join` e2)
+addError e (Value v)       = MayBoth v e
 addError e1 (MayBoth v e2) = MayBoth v (e1 `join` e2) 
 
 instance (Joinable e, Joinable a) => Joinable (MayEscape e a) where
