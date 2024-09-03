@@ -76,7 +76,7 @@ exec (Seq _ sts)                 = execSeq sts
 exec (Break _ _)                 = execBrk
 exec (Continue _ _)              = execCnt
 exec (Raise _ exp _)             = execRai exp 
-exec (Try _ bdy hds _)           = execTry bdy hds  
+exec (Try _ bdy hds _)           = execTry bdy hds
 exec (NonLocal x _ _)            = absurd x          -- these can't occur in microPython
 exec (Global x _ _)              = absurd x          -- these can't occur in microPython
 
@@ -87,14 +87,16 @@ execRai :: PyM pyM obj => PyExp -> pyM ()
 execRai = eval >=> throwException
 
 execTry :: forall pyM obj . PyM pyM obj => PyStm -> [(PyExp, PyStm)] -> pyM () 
-execTry bdy hds = exec bdy `catch` msplitOnCP (return . isException) (getException >=> checkHandlers hds) throw 
-   where checkHandlers :: [(PyExp, PyStm)] -> PyVal -> pyM ()
+execTry bdy hds = exec bdy `catch` msplitOnCP (return . isException) (getException >=> checkHandlers hds) throw
+   where 
+         checkHandlers :: [(PyExp, PyStm)] -> PyVal -> pyM ()
          checkHandlers [] exc = throwException exc
-         checkHandlers ((exp, bdy):rst) exc = do cls <- eval exp
+         checkHandlers ((exp, hdl):rst) exc = do cls <- eval exp
                                                  msplitOnCP (`isInstanceOf` cls)
-                                                            (const $ exec bdy)
+                                                            (const $ exec hdl)
                                                             (checkHandlers rst)
                                                             exc 
+                                                            
 execAss :: PyM pyM obj => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
    where assignTo (IdePat ide) val     = do (frm, nam) <- frame ide

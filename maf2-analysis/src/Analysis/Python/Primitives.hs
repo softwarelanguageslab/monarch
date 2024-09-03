@@ -92,7 +92,7 @@ applyPrim ListIteratorNext = prim1 $ \loc a -> mjoinMap (next loc) (addrs a)
                                                 SeqDomain.CPList (e:es) n _ -> return (e, SeqDomain.CPList es (n-1) (joins es)) 
                                                 SeqDomain.TopList v         -> return (v, lst) `mjoin` stopIteration loc  
                                 let obj' = set @LsiPrm lst' obj 
-                                updateAdr adr obj'
+                                updateAdr adr obj' 
                                 return val 
               stopIteration loc = throwException =<< pyAlloc loc (new' StopIterationExceptionType) 
 -- type primitives

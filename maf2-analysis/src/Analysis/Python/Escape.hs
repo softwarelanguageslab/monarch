@@ -23,7 +23,7 @@ data PyEsc = Return PyVal
            | Continue 
   deriving (Eq, Ord, Show)
 
-class Domain esc PyEsc => PyEscape esc where
+class (Domain esc PyEsc, Show esc) => PyEscape esc where
     isReturn     :: BoolDomain b => esc -> b  -- TODO: this one is actuallly not needed if we have `getReturn`?
     isBreak      :: BoolDomain b => esc -> b
     isContinue   :: BoolDomain b => esc -> b

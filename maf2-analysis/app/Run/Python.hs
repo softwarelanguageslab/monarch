@@ -15,12 +15,12 @@ import Control.Monad.DomainError
 import Analysis.Python.Escape (PyEsc)
 import Data.Set (Set)
 import Analysis.Python.Monad (PyBdy(..))
-import Control.Monad.Escape (MayEscape(..))
 import Language.Python.Common (annot)
 import Domain.Python.Syntax 
 import Data.IORef 
 import System.IO 
 import Data.Function ((&))
+import Control.Monad.Escape (MayEscape(..))
 
 newtype Options = Options String 
    deriving Show
@@ -40,8 +40,8 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
    where cmps = Map.toList m
          showRes (Escape e) = "[!!: "++show e++"]"
          showRes (Value v) = show v
-         showRes _ = "⊥"
          showRes (MayBoth v e) = "[!!: "++show e++"]" ++ show v 
+         showRes _ = "⊥"
          showCmp ((Main _, _), _) = "<main>"
          showCmp ((LoopBdy loc _ _, _), _) = "<loop " ++ show loc ++ ">"
          showCmp ((FuncBdy loc _, _), _) = "<func " ++ show loc ++ ">"
@@ -75,6 +75,6 @@ runFile fileName =
       putStrLn "\n"
 
 main :: Options -> IO ()
-main (Options fileName) = runREPL
+main (Options fileName) = runFile fileName
 
 
