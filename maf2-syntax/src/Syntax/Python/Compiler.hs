@@ -44,6 +44,11 @@ data PyTag = FrmTag
            | ClsNew
            | IniBnd
            | IniCll
+           | ForItr
+           | ForNxt
+           | ForBln
+           | ItrCll
+           | NxtCll
    deriving (Eq, Ord, Show, Bounded, Enum)
 
 instance Show PyLoc where
@@ -163,11 +168,11 @@ compileFun prs bdy a = Lam (compilePrs prs) <$> local (const Nothing) (compileSe
 compileFor :: SimplifyM m PyLoc => [Expr PyLoc] -> Expr PyLoc -> Suite PyLoc -> Suite PyLoc -> PyLoc -> m (Stmt PyLoc AfterSimplification)
 compileFor [AST.Var nam _] gen bdy [] a   = do var <- gensym
                                                let ide = Ide (Ident var a)
-                                               ass1 <- assign ide       (Call (Read (compileExp gen) (Ide (Ident "__iter__" a)) a) [] [] a)
-                                               ass2 <- assign (Ide nam) (Call (Read (Var ide)        (Ide (Ident "__next__" a)) a) [] [] a)
+                                               ass1 <- assign ide       (Call (Read (compileExp gen) (Ide (Ident "__iter__" a)) (tagAs ForItr a)) [] [] (tagAs ItrCll a))
+                                               ass2 <- assign (Ide nam) (Call (Read (Var ide)        (Ide (Ident "__next__" a)) (tagAs ForNxt a)) [] [] (tagAs NxtCll a))
                                                let nxt = Try () ass2 [(Var (Ide (Ident "StopIteration" a)), Break () a)] a 
                                                bdy' <- makeSeq . (nxt:) . (:[]) <$> compileSequence bdy 
-                                               let whi = Loop () (Literal (Bool True a)) bdy' a 
+                                               let whi = Loop () (Literal (Bool True (tagAs ForBln a))) bdy' a 
                                                return $ makeSeq [ass1, whi]
 compileFor _ _ _ _ _                      = todo "unsupported for form"
 
