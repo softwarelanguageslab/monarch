@@ -35,7 +35,7 @@ printOSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k
                     & filter (\case (PrmAdr _, _) -> False ; _ -> True)
          indent = maximum (map (length . show . fst) adrs) + 5
 
-printRSto :: Map PyCmp (MayEscape (Set PyEsc) PyVal) -> String
+printRSto :: PyVal v => Map (PyCmp v) (MayEscape (Set (PyEsc v)) v) -> String
 printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showRes v)) cmps
    where cmps = Map.toList m
          showRes (Escape e) = "[!!: "++show e++"]"
@@ -49,7 +49,7 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
 
 runREPL :: IO ()
 runREPL = do count <- newIORef 0 
-             analyzeREPL @PyObjCP' (read count) print 
+             analyzeREPL @PyDomainCP (read count) print 
       where read count = do cur <- readIORef count
                             writeIORef count (cur + 1)
                             prompt cur

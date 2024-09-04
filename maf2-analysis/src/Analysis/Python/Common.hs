@@ -6,13 +6,12 @@ module Analysis.Python.Common (
   ObjAdr(..), 
   allocPtr,
   allocCst,
-  PyVal, 
-  addrs, 
-  injectAdr,
+  PyVal(..), 
+  ObjAddrSet,
   constant, 
   PyEnv, 
   PyClo(..),
-  PyObj',
+  PyDomain,
 ) where
 
 import Lattice
@@ -50,16 +49,21 @@ instance Show ObjAdr where
 -- Values 
 --
 
-newtype PyVal = PyVal { addrs :: Set ObjAdr }
+class (Show v, Ord v, SplitLattice v) => PyVal v where
+  injectAdr :: ObjAdr -> v
+  addrs     :: v -> Set ObjAdr 
+
+newtype ObjAddrSet = ObjAddrSet (Set ObjAdr)
   deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
 
-instance Show PyVal where
+instance Show ObjAddrSet where
   show = show . Set.toList . addrs 
 
-injectAdr :: ObjAdr -> PyVal
-injectAdr = PyVal . Set.singleton
+instance PyVal ObjAddrSet where
+  injectAdr = ObjAddrSet . Set.singleton
+  addrs (ObjAddrSet s) = s 
 
-constant :: PyConstant -> PyVal
+constant :: PyVal v => PyConstant -> v
 constant = injectAdr . allocCst  
 
 type PyEnv = Map String ObjAdr 
@@ -73,11 +77,12 @@ instance Show PyClo where
 -- Python objects with the common objects/values instantiated
 --
 
-type PyObj' obj = (PyObj obj,
-                   Ref obj ~ PyVal,
-                   Adr obj ~ ObjAdr,
-                   Clo obj ~ PyClo, 
-                   Abs obj LsiPrm ~ CPList PyVal,
-                   Abs obj LstPrm ~ CPList PyVal, 
-                   Abs obj TupPrm ~ CPList PyVal,
-                   Abs obj StrPrm ~ CP String)
+type PyDomain obj vlu = (PyVal vlu,
+                         PyObj obj,
+                         Ref obj ~ vlu,
+                         Adr obj ~ ObjAdr,
+                         Clo obj ~ PyClo, 
+                         Abs obj LsiPrm ~ CPList vlu,
+                         Abs obj LstPrm ~ CPList vlu, 
+                         Abs obj TupPrm ~ CPList vlu,
+                         Abs obj StrPrm ~ CP String)

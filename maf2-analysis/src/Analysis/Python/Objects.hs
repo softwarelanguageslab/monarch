@@ -11,7 +11,7 @@
 module Analysis.Python.Objects where
 
 import Domain.Python.Syntax hiding (Dict, None)
-import Analysis.Python.Common 
+import Analysis.Python.Common hiding (from)
 import Analysis.Python.Monad 
 import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
@@ -38,12 +38,12 @@ import Lattice (join)
 import Lattice (eql)
 
 -- | Convenience function to construct a Python object immediately from primitive abstract value
-from :: forall (k :: PyPrmKey) obj . (PyObj' obj, SingI k) => Abs obj k -> obj 
+from :: forall (k :: PyPrmKey) obj vlu . (PyDomain obj vlu, SingI k) => Abs obj k -> obj 
 from v = set @k v (new cls)
   where cls = constant $ TypeObject $ classFor $ sing @k 
 
 -- | Convenience function to construct a Python object immediately from primitive concrete value
-from' :: forall (k :: PyPrmKey) obj v . (PyObj' obj, Domain (Abs obj k) v, SingI k) => v -> obj 
+from' :: forall (k :: PyPrmKey) obj v vlu . (PyDomain obj vlu, Domain (Abs obj k) v, SingI k) => v -> obj 
 from' = from @k . Domain.inject  
 
 --
@@ -53,16 +53,16 @@ from' = from @k . Domain.inject
 initialEnv :: Map String ObjAdr
 initialEnv = Map.empty  
 
-init :: (PyObj' obj, StoreM m ObjAdr obj) => m ()
+init :: (PyDomain obj vlu, StoreM m ObjAdr obj) => m ()
 init = mapM_ initConstant (all :: [PyConstant])  
 
-initConstant :: (StoreM m ObjAdr obj, PyObj' obj) => PyConstant -> m ()
+initConstant :: (StoreM m ObjAdr obj, PyDomain obj vlu) => PyConstant -> m ()
 initConstant c = writeAdr (allocCst c) (injectPyConstant c)
 
-typeVal :: PyType -> PyVal
+typeVal :: PyVal vlu => PyType -> vlu
 typeVal = constant . TypeObject
 
-new' :: PyObj' obj => PyType -> obj 
+new' :: PyDomain obj vlu => PyType -> obj 
 new' = new . typeVal
 
 initialCst :: [(String, PyConstant)]
@@ -72,7 +72,7 @@ initialCst = [("type",          TypeObject TypeType),
               ("True",          True),
               ("False",         False)]
 
-injectPyConstant :: PyObj' obj => PyConstant -> obj
+injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
 injectPyConstant True             = from' @BlnPrm Prelude.True
 injectPyConstant False            = from' @BlnPrm Prelude.False
 injectPyConstant None             = new' NoneType
@@ -90,13 +90,13 @@ injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new' TypeType
         methodAttrs = map (second PrimObject) (methods typ)
         allAttrs    = map (bimap attrStr constant) (typeAttrs ++ methodAttrs)
                       
-isBindable :: (BoolDomain b, PyM pyM obj) => Ref obj -> pyM b
+isBindable :: (BoolDomain b, PyM pyM obj vlu) => Ref obj -> pyM b
 isBindable = fmap isBindableObj . pyDeref'
 
 isBindableObj :: (BoolDomain b, PyObj obj) => obj -> b
 isBindableObj = liftA2 Domain.or (has @PrmPrm) (has @CloPrm)
 
-lookupAttr :: PyM pyM obj => PyLoc -> String -> Ref obj -> pyM (Ref obj)
+lookupAttr :: PyM pyM obj vlu => PyLoc -> String -> vlu -> pyM vlu
 lookupAttr loc attr =
   pyDeref $ \adr obj ->
               condCP  (return $ hasAttr attr obj)
@@ -105,14 +105,14 @@ lookupAttr loc attr =
                       (do cls <- atAttr (attrStr ClassAttr) obj
                           lookupAttrInClass loc attr adr cls)
 
-lookupAttrInClass :: PyM pyM obj => PyLoc -> String -> ObjAdr -> Ref obj -> pyM (Ref obj)
+lookupAttrInClass :: PyM pyM obj vlu => PyLoc -> String -> ObjAdr -> Ref obj -> pyM vlu
 lookupAttrInClass loc attr self cls = do vlu <- lookupAttrMRO attr cls
                                          condCP (isBindable vlu)
                                                 (bind vlu)
                                                 (return vlu)
   where bind value = pyAlloc loc $ from @BndPrm $ Map.singleton self value
 
-lookupAttrMRO :: PyM pyM obj => String -> Ref obj -> pyM (Ref obj)
+lookupAttrMRO :: PyM pyM obj vlu => String -> Ref obj -> pyM vlu
 lookupAttrMRO attr =
    pyDeref $ \_ cls ->
               do  mro <- atAttr (attrStr MROAttr) cls
@@ -124,7 +124,7 @@ lookupAttrMRO attr =
      where lookupLocal = atAttr attr <=< pyDeref'
            lookupMRO   = foldr (orElse . lookupLocal) (escape AttributeNotFound)
 
-computeMRO :: PyM pyM obj => PyLoc -> Ref obj -> Ref obj -> pyM (Ref obj) 
+computeMRO :: PyM pyM obj vlu => PyLoc -> vlu -> Ref obj -> pyM vlu
 computeMRO loc cls sup = do tup <- pyDeref' sup >>= at @TupPrm
                             mro <- case tup of
                                   BotList           -> escape InvalidMRO
@@ -136,18 +136,18 @@ computeMRO loc cls sup = do tup <- pyDeref' sup >>= at @TupPrm
 
 -- --
 
-assignAttr :: PyM pyM obj => String -> Ref obj -> Ref obj -> pyM ()
+assignAttr :: PyM pyM obj vlu => String -> vlu -> vlu -> pyM ()
 assignAttr attr vlu = mjoinMap (assignAttrAt attr vlu) . addrs
 
-assignAttrAt :: PyM pyM obj => String -> Ref obj -> Adr obj -> pyM ()
+assignAttrAt :: PyM pyM obj vlu => String -> vlu -> Adr obj -> pyM ()
 assignAttrAt attr vlu = updateWith (setAttr attr vlu) (setAttrWeak attr vlu)
 
 -- --
 
-isInstanceOf :: (PyM pyM obj, BoolDomain b) => PyVal -> PyVal -> pyM b
+isInstanceOf :: (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b
 isInstanceOf obj cls = pyDeref' obj >>= atAttr (attrStr ClassAttr) >>= inMRO cls 
 
-inMRO :: (PyM pyM obj, BoolDomain b) => PyVal -> PyVal -> pyM b
+inMRO :: (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b
 inMRO cls1 cls2 = do clsObj <- pyDeref' cls2
                      mroVal <- atAttr (attrStr MROAttr) clsObj 
                      mroObj <- pyDeref' mroVal
@@ -155,7 +155,7 @@ inMRO cls1 cls2 = do clsObj <- pyDeref' cls2
                      anyCPList mroTup (clsEq cls1)
 
 -- TODO: this assumes that class name equality implies class equality! (not necessarily true in Python...)
-clsEq :: (PyM pyM obj, BoolDomain b) => PyVal -> PyVal -> pyM b 
+clsEq :: (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b 
 clsEq cls1 cls2 = do nam1 <- getClassName cls1 
                      nam2 <- getClassName cls2 
                      return $ eql nam1 nam2 

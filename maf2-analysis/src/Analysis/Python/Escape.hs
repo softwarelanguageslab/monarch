@@ -12,35 +12,36 @@ import qualified Data.Foldable as Set
 import Control.Monad.Join (mjoinMap)
 import Lattice (joinMap)
 import Control.Monad.Join
+import Lattice
 
 ---
 --- The PyEscape class
 ---
 
-data PyEsc = Return PyVal
-           | Exception PyVal 
-           | Break 
-           | Continue 
+data PyEsc vlu = Return vlu
+               | Exception vlu 
+               | Break 
+               | Continue 
   deriving (Eq, Ord, Show)
 
-class (Domain esc PyEsc, Show esc) => PyEscape esc where
+class (Domain esc (PyEsc vlu), Show esc) => PyEscape esc vlu | esc -> vlu where
     isReturn     :: BoolDomain b => esc -> b  -- TODO: this one is actuallly not needed if we have `getReturn`?
     isBreak      :: BoolDomain b => esc -> b
     isContinue   :: BoolDomain b => esc -> b
-    getReturn    :: MonadJoin m  => esc -> m PyVal 
+    getReturn    :: MonadJoin m  => esc -> m vlu 
     isException  :: BoolDomain b => esc -> b 
-    getException :: MonadJoin m  => esc -> m PyVal 
+    getException :: MonadJoin m  => esc -> m vlu 
 
 ---
 --- PyEscape instance 
 ---
 
-instance Domain (Set PyEsc) DomainError where
+instance Ord vlu => Domain (Set (PyEsc vlu)) DomainError where
     inject = const Set.empty -- ignore domain errors
-instance Domain (Set PyEsc) PyError where
+instance Ord vlu => Domain (Set (PyEsc vlu)) PyError where
     inject = const Set.empty -- ignore Python-specific domain errors
 
-instance PyEscape (Set PyEsc) where
+instance (Ord vlu, Show vlu, Joinable vlu, BottomLattice vlu) => PyEscape (Set (PyEsc vlu)) vlu where
     isReturn = joinMap $ \case Return _ -> true 
                                _        -> false  
     isContinue = joinMap $ \case Continue -> true
