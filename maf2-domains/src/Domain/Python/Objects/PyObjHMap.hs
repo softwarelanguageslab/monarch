@@ -34,50 +34,53 @@ import Data.List (intercalate)
 data PyAbsKey = IntKey
               | ReaKey  
               | BlnKey
+              | VluKey
+              | AdrKey
+              | CloKey 
 
-type PyPrm (m :: [PyAbsKey :-> Type]) vlu adr clo =
+type PyPrm (m :: [PyAbsKey :-> Type]) =
   '[
     IntPrm ::-> Assoc IntKey m,
     ReaPrm ::-> Assoc ReaKey m,
     BlnPrm ::-> Assoc BlnKey m,
     StrPrm ::-> CP String, 
     PrmPrm ::-> Set PyPrim,
-    CloPrm ::-> Set clo,
-    BndPrm ::-> Map adr vlu,    -- alternative, but less precise: (PyVal, PyVal)
-    TupPrm ::-> CPList vlu,     -- TODO: could use a more optimised representation (e.g., CPVector)
-    LstPrm ::-> CPList vlu,
-    LsiPrm ::-> CPList vlu, 
-    DctPrm ::-> CPDictionary String vlu
+    CloPrm ::-> Set (Assoc CloKey m),
+    BndPrm ::-> Map (Assoc AdrKey m) (Assoc VluKey m),  -- alternative, but less precise: (PyVal, PyVal)
+    TupPrm ::-> CPList (Assoc VluKey m),                -- TODO: could use a more optimised representation (e.g., CPVector)
+    LstPrm ::-> CPList (Assoc VluKey m),
+    LsiPrm ::-> CPList (Assoc VluKey m), 
+    DctPrm ::-> CPDictionary String (Assoc VluKey m)
   ]
 
 --
 -- The PyObjHMap type
 --
 
-data PyObjHMap (m :: [PyAbsKey :-> Type]) vlu adr clo = PyObjHMap { dct :: CPDictionary String vlu,
-                                                                    prm :: HMapAbs (PyPrm m vlu adr clo) }
+data PyObjHMap (m :: [PyAbsKey :-> Type]) = PyObjHMap { dct :: CPDictionary String (Assoc VluKey m),
+                                                        prm :: HMapAbs (PyPrm m) }
 
-type AllJoin m vlu adr clo = (ForAll PyPrmKey (AtKey1 Joinable (PyPrm m vlu adr clo)),
-                              ForAll PyPrmKey (AtKey1 BottomLattice (PyPrm m vlu adr clo)),
-                              ForAll PyPrmKey (AtKey1 PartialOrder (PyPrm m vlu adr clo)),
-                              ForAll PyPrmKey (AtKey1 Eq (PyPrm m vlu adr clo)))
-type AllAbs m vlu adr clo = (AllJoin m vlu adr clo,
-                             Lattice vlu,
-                             BoolDomain   (Assoc BlnKey m),
-                             IntDomain    (Assoc IntKey m),
-                             Domain.Rea   (Assoc IntKey m) ~ Assoc ReaKey m,
-                             Domain.Str   (Assoc IntKey m) ~ CP String,
-                             Domain.Boo   (Assoc IntKey m) ~ Assoc BlnKey m,
-                             RealDomain   (Assoc ReaKey m),
-                             Domain.Boo   (Assoc ReaKey m) ~ Assoc BlnKey m)
+type AllJoin m = (ForAll PyPrmKey (AtKey1 Joinable (PyPrm m)),
+                  ForAll PyPrmKey (AtKey1 BottomLattice (PyPrm m)),
+                  ForAll PyPrmKey (AtKey1 PartialOrder (PyPrm m)),
+                  ForAll PyPrmKey (AtKey1 Eq (PyPrm m)))
+type AllAbs m = (AllJoin m,
+                 Lattice (Assoc VluKey m),
+                 BoolDomain   (Assoc BlnKey m),
+                 IntDomain    (Assoc IntKey m),
+                 Domain.Rea   (Assoc IntKey m) ~ Assoc ReaKey m,
+                 Domain.Str   (Assoc IntKey m) ~ CP String,
+                 Domain.Boo   (Assoc IntKey m) ~ Assoc BlnKey m,
+                 RealDomain   (Assoc ReaKey m),
+                 Domain.Boo   (Assoc ReaKey m) ~ Assoc BlnKey m)
 
-deriving instance (Lattice vlu, ForAll PyPrmKey (AtKey1 Eq       (PyPrm m vlu adr clo))) => Eq (PyObjHMap m vlu adr clo)
-instance          (Lattice vlu, ForAll PyPrmKey (AtKey1 Joinable (PyPrm m vlu adr clo))) => Joinable (PyObjHMap m vlu adr clo) where
+deriving instance (Lattice (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Eq       (PyPrm m))) => Eq       (PyObjHMap m)
+instance          (Lattice (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Joinable (PyPrm m))) => Joinable (PyObjHMap m) where
   join (PyObjHMap d1 p1) (PyObjHMap d2 p2) = PyObjHMap (join d1 d2) (join p1 p2)
-instance (AllJoin m vlu adr clo) => BottomLattice (PyObjHMap m vlu adr clo) where
+instance (AllJoin m) => BottomLattice (PyObjHMap m) where
   bottom = PyObjHMap bottom bottom
 
-instance (Show vlu, ForAll PyPrmKey (AtKey1 Show (PyPrm m vlu adr clo))) => Show (PyObjHMap m vlu adr clo) where
+instance (Show (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Show (PyPrm m))) => Show (PyObjHMap m) where
   show (PyObjHMap BotDict _) = "⊥"
   show (PyObjHMap _ (HMapAbs (_, RPBottom))) = "⊥"
   show (PyObjHMap (TopDict _ _) _) = error "this should not happen" -- because we only use Constant CP keys
@@ -96,7 +99,7 @@ instance (Show vlu, ForAll PyPrmKey (AtKey1 Show (PyPrm m vlu adr clo))) => Show
                 prefix
                   | RSet.contains dkey prmKys = "@"
                   | otherwise                 = "?@"
-             in withC_ @(AtKey1 Show (PyPrm m vlu adr clo)) (prefix ++ show dkey, show vlu) key
+             in withC_ @(AtKey1 Show (PyPrm m)) (prefix ++ show dkey, show vlu) key
           -- all bindings
           allAttrs = objAttrs ++ prmAttrs 
           str = allAttrs 
@@ -105,22 +108,21 @@ instance (Show vlu, ForAll PyPrmKey (AtKey1 Show (PyPrm m vlu adr clo))) => Show
                   & ("{" ++)
                   & (++ "}")
 
-
 --
 -- Making an instance of PyObj 
 --
 
 -- TODO: this currently really only works for CP domains due to the fixed usage of CPList 
-instance (Ord clo, Ord adr, Assoc IntKey m ~ CP Integer, AllAbs m vlu adr clo) => PyObj (PyObjHMap m vlu adr clo) where
-    type Ref (PyObjHMap m vlu adr clo) = vlu 
-    type Adr (PyObjHMap m vlu adr clo) = adr
-    type Clo (PyObjHMap m vlu adr clo) = clo 
+instance (Ord (Assoc CloKey m), Ord (Assoc AdrKey m), Assoc IntKey m ~ CP Integer, AllAbs m) => PyObj (PyObjHMap m) where
+    type Ref (PyObjHMap m) = Assoc VluKey m 
+    type Adr (PyObjHMap m) = Assoc AdrKey m
+    type Clo (PyObjHMap m) = Assoc CloKey m 
     -- creation
     new cls = PyObjHMap dct prm
         where dct = Domain.from [(Constant (attrStr ClassAttr), cls)]
               prm = HMapDomain.empty 
     -- primitives
-    type Abs (PyObjHMap m vlu adr clo) k = Assoc k (PyPrm m vlu adr clo)
+    type Abs (PyObjHMap m) k = Assoc k (PyPrm m)
     hasPrm k = HMapDomain.member k . prm 
     getPrm k = fromJust . HMapDomain.lookup k . prm 
     setPrm k v (PyObjHMap dct prm) = PyObjHMap dct $ HMapDomain.insert k v prm 
@@ -134,6 +136,9 @@ instance (Ord clo, Ord adr, Assoc IntKey m ~ CP Integer, AllAbs m vlu adr clo) =
 -- A common instantiation
 --
 
-type PyObjCP = PyObjHMap '[IntKey ::-> CP Integer,
-                           ReaKey ::-> CP Double,  
-                           BlnKey ::-> CP Bool]
+type PyObjCP vlu adr clo = PyObjHMap '[IntKey ::-> CP Integer,
+                                       ReaKey ::-> CP Double,  
+                                       BlnKey ::-> CP Bool,
+                                       VluKey ::-> vlu,
+                                       AdrKey ::-> adr, 
+                                       CloKey ::-> clo]

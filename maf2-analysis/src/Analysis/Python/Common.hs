@@ -14,7 +14,7 @@ module Analysis.Python.Common (
   PyDomain,
 ) where
 
-import Lattice
+import Lattice hiding (empty)
 import Domain.Python.World
 import Domain.Python.Syntax 
 
@@ -53,6 +53,11 @@ class (Show v, Ord v, SplitLattice v) => PyVal v where
   injectAdr :: ObjAdr -> v
   addrs     :: v -> Set ObjAdr 
 
+constant :: PyVal v => PyConstant -> v
+constant = injectAdr . allocCst  
+
+-- simple PyVal 
+
 newtype ObjAddrSet = ObjAddrSet (Set ObjAdr)
   deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
 
@@ -63,8 +68,7 @@ instance PyVal ObjAddrSet where
   injectAdr = ObjAddrSet . Set.singleton
   addrs (ObjAddrSet s) = s 
 
-constant :: PyVal v => PyConstant -> v
-constant = injectAdr . allocCst  
+-- environments and closures
 
 type PyEnv = Map String ObjAdr 
 data PyClo = PyClo PyLoc [PyPar] PyStm [String] PyEnv
