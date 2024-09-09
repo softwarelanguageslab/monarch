@@ -24,6 +24,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set 
 import Domain.Python.Objects
 import Domain.Core.SeqDomain (CPList)
+import Lattice.Tainted
 
 --
 -- Addresses
@@ -50,8 +51,8 @@ instance Show ObjAdr where
 --
 
 class (Show v, Ord v, SplitLattice v) => PyVal v where
-  injectAdr :: ObjAdr -> v
-  addrs     :: v -> Set ObjAdr 
+  injectAdr   :: ObjAdr -> v
+  addrs       :: v -> Set ObjAdr 
 
 constant :: PyVal v => PyConstant -> v
 constant = injectAdr . allocCst  
@@ -67,8 +68,6 @@ instance Show ObjAddrSet where
 instance PyVal ObjAddrSet where
   injectAdr = ObjAddrSet . Set.singleton
   addrs (ObjAddrSet s) = s 
-
--- environments and closures
 
 type PyEnv = Map String ObjAdr 
 data PyClo = PyClo PyLoc [PyPar] PyStm [String] PyEnv
