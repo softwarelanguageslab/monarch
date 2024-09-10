@@ -24,7 +24,6 @@ import Data.Set (Set)
 import qualified Data.Set as Set 
 import Domain.Python.Objects
 import Domain.Core.SeqDomain (CPList)
-import Lattice.Tainted
 
 --
 -- Addresses

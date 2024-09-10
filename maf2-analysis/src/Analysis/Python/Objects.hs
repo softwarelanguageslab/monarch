@@ -7,22 +7,22 @@
 {-# LANGUAGE RankNTypes               #-}
 {-# LANGUAGE ConstraintKinds          #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Analysis.Python.Objects where
 
 import Domain.Python.Syntax hiding (Dict, None)
-import Analysis.Python.Common hiding (from)
-import Analysis.Python.Monad 
+import Analysis.Python.Common
+import Analysis.Python.Monad
 import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
-import Control.Monad.Escape ( orElse, escape )
+import Control.Monad.Escape ( orElse )
 import Domain (Domain, BoolDomain)
 import qualified Domain
-import Domain.Python.Objects 
-import Domain.Python.World 
+import Domain.Python.Objects
+import Domain.Python.World
 import Data.Finite
-import qualified Analysis.Environment as Env
 
 import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import qualified Prelude
@@ -34,27 +34,26 @@ import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad
 import Data.Map (Map)
 import Control.Monad.AbstractM (AbstractM)
-import Lattice (join)
-import Lattice (eql)
+import Lattice ( join, eql )
 
 -- | Convenience function to construct a Python object immediately from primitive abstract value
-from :: forall (k :: PyPrmKey) obj vlu . (PyDomain obj vlu, SingI k) => Abs obj k -> obj 
+from :: forall (k :: PyPrmKey) obj vlu . (PyDomain obj vlu, SingI k) => Abs obj k -> obj
 from v = set @k v (new cls)
-  where cls = constant $ TypeObject $ classFor $ sing @k 
+  where cls = constant $ TypeObject $ classFor $ sing @k
 
 -- | Convenience function to construct a Python object immediately from primitive concrete value
-from' :: forall (k :: PyPrmKey) obj v vlu . (PyDomain obj vlu, Domain (Abs obj k) v, SingI k) => v -> obj 
-from' = from @k . Domain.inject  
+from' :: forall (k :: PyPrmKey) obj v vlu . (PyDomain obj vlu, Domain (Abs obj k) v, SingI k) => v -> obj
+from' = from @k . Domain.inject
 
 --
 -- Python constants 
 --
 
 initialEnv :: Map String ObjAdr
-initialEnv = Map.empty  
+initialEnv = Map.empty
 
 init :: (PyDomain obj vlu, StoreM m ObjAdr obj) => m ()
-init = mapM_ initConstant (all :: [PyConstant])  
+init = mapM_ initConstant (all :: [PyConstant])
 
 initConstant :: (StoreM m ObjAdr obj, PyDomain obj vlu) => PyConstant -> m ()
 initConstant c = writeAdr (allocCst c) (injectPyConstant c)
@@ -62,7 +61,7 @@ initConstant c = writeAdr (allocCst c) (injectPyConstant c)
 typeVal :: PyVal vlu => PyType -> vlu
 typeVal = constant . TypeObject
 
-new' :: PyDomain obj vlu => PyType -> obj 
+new' :: PyDomain obj vlu => PyType -> obj
 new' = new . typeVal
 
 initialCst :: [(String, PyConstant)]
@@ -77,7 +76,7 @@ injectPyConstant True             = from' @BlnPrm Prelude.True
 injectPyConstant False            = from' @BlnPrm Prelude.False
 injectPyConstant None             = new' NoneType
 injectPyConstant GlobalFrame      = setAttrs initialBds $ new' FrameType
-  where initialBds = map (second constant) initialCst 
+  where initialBds = map (second constant) initialCst
 injectPyConstant (TypeName typ)   = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm) = from' @PrmPrm prm
 injectPyConstant (TypeMRO typ)    = from  @TupPrm (SeqDomain.fromList $ map typeVal mro)
@@ -85,11 +84,11 @@ injectPyConstant (TypeMRO typ)    = from  @TupPrm (SeqDomain.fromList $ map type
                 ObjectType  -> [ObjectType]
                 StopIterationExceptionType -> [StopIterationExceptionType, ExceptionType, ObjectType]
                 _           -> [typ, ObjectType]
-injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new' TypeType 
+injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new' TypeType
   where typeAttrs   = [(NameAttr, TypeName typ), (MROAttr, TypeMRO typ)]
         methodAttrs = map (second PrimObject) (methods typ)
         allAttrs    = map (bimap attrStr constant) (typeAttrs ++ methodAttrs)
-                      
+
 isBindable :: (BoolDomain b, PyM pyM obj vlu) => Ref obj -> pyM b
 isBindable = fmap isBindableObj . pyDeref'
 
@@ -110,65 +109,69 @@ lookupAttrInClass loc attr self cls = do vlu <- lookupAttrMRO attr cls
                                          condCP (isBindable vlu)
                                                 (bind vlu)
                                                 (return vlu)
-  where bind value = pyAlloc loc $ from @BndPrm $ Map.singleton self value
+  where bind value = pyStore loc $ from @BndPrm $ Map.singleton self value
 
-lookupAttrMRO :: PyM pyM obj vlu => String -> Ref obj -> pyM vlu
+lookupAttrMRO :: PyM pyM obj vlu => String -> vlu -> pyM vlu
 lookupAttrMRO attr =
    pyDeref $ \_ cls ->
               do  mro <- atAttr (attrStr MROAttr) cls
-                  tup <- pyDeref' mro >>= at @TupPrm  
+                  tup <- pyDeref' mro >>= at @TupPrm
                   case tup of
-                    BotList       -> escape InvalidMRO
+                    BotList       -> pyError InvalidMRO
                     CPList l _ _  -> lookupMRO l
-                    TopList v     -> lookupLocal v `orElse` escape AttributeNotFound
+                    TopList v     -> lookupLocal v `orElse` pyError AttributeNotFound
      where lookupLocal = atAttr attr <=< pyDeref'
-           lookupMRO   = foldr (orElse . lookupLocal) (escape AttributeNotFound)
+           lookupMRO   = foldr (orElse . lookupLocal) (pyError AttributeNotFound)
 
-computeMRO :: PyM pyM obj vlu => PyLoc -> vlu -> Ref obj -> pyM vlu
+computeMRO :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> vlu -> Ref obj -> pyM vlu
 computeMRO loc cls sup = do tup <- pyDeref' sup >>= at @TupPrm
                             mro <- case tup of
-                                  BotList           -> escape InvalidMRO
+                                  BotList           -> pyError InvalidMRO
                                   CPList [] _ _     -> return $ SeqDomain.fromList [cls, typeVal ObjectType]  -- no parent given (implicitly extends object)
                                   CPList [par] _ _  -> SeqDomain.insertFront cls <$> getMRO par               -- single parent
                                   _                 -> error "multiple inheritance is not yet supported"      -- multiple parents
-                            pyAlloc loc $ from @TupPrm mro
-  where getMRO = pyDeref' >=> atAttr (attrStr MROAttr) >=> pyDeref' >=> at @TupPrm
+                            pyStore loc $ from @TupPrm mro
+  where 
+      getMRO :: vlu -> pyM (Abs obj TupPrm)
+      getMRO = pyDeref' >=> atAttr (attrStr MROAttr) >=> pyDeref' >=> at @TupPrm
 
 -- --
 
-assignAttr :: PyM pyM obj vlu => String -> vlu -> vlu -> pyM ()
-assignAttr attr vlu = mjoinMap (assignAttrAt attr vlu) . addrs
+-- assignAttr :: PyM pyM obj vlu => String -> vlu -> vlu -> pyM ()
+-- assignAttr attr vlu = mjoinMap (assignAttrAt attr vlu) . addrs
 
-assignAttrAt :: PyM pyM obj vlu => String -> vlu -> Adr obj -> pyM ()
-assignAttrAt attr vlu = updateWith (setAttr attr vlu) (setAttrWeak attr vlu)
+-- assignAttrAt :: PyM pyM obj vlu => String -> vlu -> Adr obj -> pyM ()
+-- assignAttrAt attr vlu = updateWith (setAttr attr vlu) (setAttrWeak attr vlu)
 
 -- --
 
 isInstanceOf :: (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b
-isInstanceOf obj cls = pyDeref' obj >>= atAttr (attrStr ClassAttr) >>= inMRO cls 
+isInstanceOf obj cls = pyDeref' obj >>= atAttr (attrStr ClassAttr) >>= inMRO cls
 
 inMRO :: (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b
 inMRO cls1 cls2 = do clsObj <- pyDeref' cls2
-                     mroVal <- atAttr (attrStr MROAttr) clsObj 
+                     mroVal <- atAttr (attrStr MROAttr) clsObj
                      mroObj <- pyDeref' mroVal
                      mroTup <- at @TupPrm mroObj
                      anyCPList mroTup (clsEq cls1)
 
 -- TODO: this assumes that class name equality implies class equality! (not necessarily true in Python...)
-clsEq :: (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b 
-clsEq cls1 cls2 = do nam1 <- getClassName cls1 
-                     nam2 <- getClassName cls2 
-                     return $ eql nam1 nam2 
-   where getClassName = pyDeref' >=> atAttr (attrStr NameAttr) >=> pyDeref' >=> at @StrPrm  
+clsEq :: forall pyM obj vlu b . (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b
+clsEq cls1 cls2 = do nam1 <- getClassName cls1
+                     nam2 <- getClassName cls2
+                     return $ eql nam1 nam2
+   where 
+      getClassName :: vlu -> pyM (Abs obj StrPrm)
+      getClassName = pyDeref' >=> atAttr (attrStr NameAttr) >=> pyDeref' >=> at @StrPrm
 
 
 -- TODO: move to Domain package
 
-anyCPList :: (AbstractM m, BoolDomain b) => SeqDomain.CPList v -> (v -> m b) -> m b 
+anyCPList :: (AbstractM m, BoolDomain b) => SeqDomain.CPList v -> (v -> m b) -> m b
 anyCPList SeqDomain.BotList _ = mzero
 anyCPList (SeqDomain.CPList l _ _) p = go l
    where go []     = return Domain.false
          go (x:xs) = cond (p x)
                           (return Domain.true)
                           (go xs)
-anyCPList (SeqDomain.TopList v) p = (Domain.false `join`) <$> p v 
+anyCPList (SeqDomain.TopList v) p = (Domain.false `join`) <$> p v
