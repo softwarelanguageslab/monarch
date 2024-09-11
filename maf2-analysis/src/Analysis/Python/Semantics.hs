@@ -33,15 +33,15 @@ import Analysis.Environment (extends)
 todo :: String -> a
 todo = error . ("[TODO] NYI: " ++)
 
+
 -- | Evaluate a Python component
 evalBdy :: PyM m obj vlu => PyBdy -> m vlu
 evalBdy (Main prg) = pyReturnable (exec (programStmt prg) $> constant None)
-evalBdy loop@(LoopBdy _ cnd bdy) =
-   cond (eval cnd >>= pyIsTrue)
-        (pyCatchLoop (exec bdy >> pyCall loop)
-                     (return $ constant None)
-                     (pyCall loop))
-        (return $ constant None)
+evalBdy loop@(LoopBdy _ cnd bdy) = pyIf (eval cnd)
+                                        (pyCatchLoop (exec bdy >> pyCall loop)
+                                                     (return $ constant None) -- break
+                                                     (pyCall loop))           -- continue
+                                        (return $ constant None)
 evalBdy (FuncBdy _ bdy) = pyReturnable (exec bdy $> constant None)
 
 globalFrame :: ObjAdr
@@ -75,15 +75,14 @@ execRai :: PyM pyM obj vlu => PyExp -> pyM ()
 execRai = eval >=> pyRaise
 
 execTry :: forall pyM obj vlu . PyM pyM obj vlu => PyStm -> [(PyExp, PyStm)] -> pyM ()
-execTry bdy hds = exec bdy `pyCatchExc` checkHandlers hds
+execTry bdy hds = exec bdy `pyCatchExc` checkHandlers hds 
    where
          checkHandlers :: [(PyExp, PyStm)] -> vlu -> pyM ()
          checkHandlers [] exc = pyRaise exc
          checkHandlers ((exp, hdl):rst) exc = do cls <- eval exp
-                                                 msplitOnCP (`isInstanceOf` cls)
-                                                            (const $ exec hdl)
-                                                            (checkHandlers rst)
-                                                            exc
+                                                 pyIf (exc `isInstanceOf` cls)
+                                                      (exec hdl)
+                                                      (checkHandlers rst exc)
 
 execAss :: forall pyM obj vlu . PyM pyM obj vlu => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
@@ -96,11 +95,10 @@ execAss lhs rhs = eval rhs >>= assignTo lhs
          assignTo (TuplePat _ _) vlu   = todo "tuple assignment"
 
 execIff :: forall pyM obj vlu . PyM pyM obj vlu => [(PyExp, PyStm)] -> PyStm -> pyM ()
-execIff clauses els = conds (map (bimap check exec) clauses) (exec els)
-   where check = eval @pyM >=> pyIsTrue
-
-pyIsTrue :: PyM pyM obj vlu => vlu -> pyM (Abs obj BlnPrm)
-pyIsTrue = pyDeref' >=> at @BlnPrm
+execIff [] els = exec els 
+execIff ((prd, bdy):rst) els = pyIf (eval prd)
+                                    (exec bdy)
+                                    (execIff rst els)
 
 execSeq :: PyM pyM obj vlu => [PyStm] -> pyM ()
 execSeq = mapM_ exec
@@ -146,10 +144,13 @@ evalLit (Real rea loc)     = pyStore loc (from' @ReaPrm rea)
 evalLit (String str loc)   = pyStore loc (from' @StrPrm str)
 evalLit (Tuple eps loc)    = pyStore loc . from @TupPrm . SeqDomain.fromList =<< mapM eval eps
 evalLit (List exs loc)     = pyStore loc . from @LstPrm . SeqDomain.fromList =<< mapM eval exs
-evalLit (Dict bds loc)     = pyStore loc . from @DctPrm . DctDomain.from =<< mapM evalBnd bds
+evalLit (Dict bds loc)     = buildDct [] =<< mapM (\(kex,vex) -> (,) <$> eval kex <*> eval vex) bds   
+   --pyStore loc . from @DctPrm . DctDomain.from =<< mapM evalBnd bds
    where 
-         evalBnd :: (PyExp, PyExp) -> pyM (CP String, vlu)
-         evalBnd (kexp, vexp) = (,) <$> (eval kexp >>= (pyDeref' >=> at @StrPrm)) <*> eval vexp
+         buildDct :: [(CP String, vlu)] -> [(vlu, vlu)] -> pyM vlu 
+         buildDct acc [] = pyStore loc $ from @DctPrm (DctDomain.from acc)
+         buildDct acc ((kv,vv):r) = pyDeref (\_ ko -> do str <- at @StrPrm ko
+                                                         buildDct ((str,vv):acc) r) kv
 
 -- | Applies a procedure
 

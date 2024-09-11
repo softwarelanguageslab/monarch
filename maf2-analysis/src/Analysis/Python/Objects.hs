@@ -8,6 +8,7 @@
 {-# LANGUAGE ConstraintKinds          #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Analysis.Python.Objects where
 
@@ -35,6 +36,9 @@ import Analysis.Monad
 import Data.Map (Map)
 import Control.Monad.AbstractM (AbstractM)
 import Lattice ( join, eql )
+import Lattice (CP)
+import Lattice.Class (Lattice)
+import Domain (BoolDomain(..))
 
 -- | Convenience function to construct a Python object immediately from primitive abstract value
 from :: forall (k :: PyPrmKey) obj vlu . (PyDomain obj vlu, SingI k) => Abs obj k -> obj
@@ -89,9 +93,6 @@ injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new' TypeType
         methodAttrs = map (second PrimObject) (methods typ)
         allAttrs    = map (bimap attrStr constant) (typeAttrs ++ methodAttrs)
 
-isBindable :: (BoolDomain b, PyM pyM obj vlu) => Ref obj -> pyM b
-isBindable = fmap isBindableObj . pyDeref'
-
 isBindableObj :: (BoolDomain b, PyObj obj) => obj -> b
 isBindableObj = liftA2 Domain.or (has @PrmPrm) (has @CloPrm)
 
@@ -105,35 +106,33 @@ lookupAttr loc attr =
                           lookupAttrInClass loc attr adr cls)
 
 lookupAttrInClass :: PyM pyM obj vlu => PyLoc -> String -> ObjAdr -> Ref obj -> pyM vlu
-lookupAttrInClass loc attr self cls = do vlu <- lookupAttrMRO attr cls
-                                         condCP (isBindable vlu)
-                                                (bind vlu)
-                                                (return vlu)
-  where bind value = pyStore loc $ from @BndPrm $ Map.singleton self value
+lookupAttrInClass loc attr self cls =
+  do vlu <- lookupAttrMRO attr cls
+     pyDeref' (\obj -> condCP (return $ isBindableObj obj)
+                              (bind vlu)
+                              (return vlu)) vlu
+  where bind = pyStore loc . from @BndPrm . Map.singleton self
 
 lookupAttrMRO :: PyM pyM obj vlu => String -> vlu -> pyM vlu
 lookupAttrMRO attr =
-   pyDeref $ \_ cls ->
-              do  mro <- atAttr (attrStr MROAttr) cls
-                  tup <- pyDeref' mro >>= at @TupPrm
-                  case tup of
-                    BotList       -> pyError InvalidMRO
-                    CPList l _ _  -> lookupMRO l
-                    TopList v     -> lookupLocal v `orElse` pyError AttributeNotFound
-     where lookupLocal = atAttr attr <=< pyDeref'
+   pyDeref' $ atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm >=> \case
+                                                                      BotList       -> pyError InvalidMRO
+                                                                      CPList l _ _  -> lookupMRO l
+                                                                      TopList v     -> lookupLocal v `orElse` pyError AttributeNotFound)
+     where lookupLocal = pyDeref' (atAttr attr)
            lookupMRO   = foldr (orElse . lookupLocal) (pyError AttributeNotFound)
 
-computeMRO :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> vlu -> Ref obj -> pyM vlu
-computeMRO loc cls sup = do tup <- pyDeref' sup >>= at @TupPrm
-                            mro <- case tup of
-                                  BotList           -> pyError InvalidMRO
-                                  CPList [] _ _     -> return $ SeqDomain.fromList [cls, typeVal ObjectType]  -- no parent given (implicitly extends object)
-                                  CPList [par] _ _  -> SeqDomain.insertFront cls <$> getMRO par               -- single parent
-                                  _                 -> error "multiple inheritance is not yet supported"      -- multiple parents
-                            pyStore loc $ from @TupPrm mro
-  where 
+computeMRO :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> vlu -> vlu -> pyM vlu
+computeMRO loc cls = pyDeref' $ at @TupPrm
+                                  >=> \case
+                                        BotList           -> pyError InvalidMRO
+                                        CPList [] _ _     -> return $ SeqDomain.fromList [cls, typeVal ObjectType]  -- no parent given (implicitly extends object)
+                                        CPList [par] _ _  -> SeqDomain.insertFront cls <$> getMRO par               -- single parent
+                                        _                 -> error "multiple inheritance is not yet supported"      -- multiple parents
+                                  >=> pyStore loc . from @TupPrm
+  where
       getMRO :: vlu -> pyM (Abs obj TupPrm)
-      getMRO = pyDeref' >=> atAttr (attrStr MROAttr) >=> pyDeref' >=> at @TupPrm
+      getMRO = pyDeref' $ atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm)
 
 -- --
 
@@ -145,33 +144,36 @@ computeMRO loc cls sup = do tup <- pyDeref' sup >>= at @TupPrm
 
 -- --
 
-isInstanceOf :: (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b
-isInstanceOf obj cls = pyDeref' obj >>= atAttr (attrStr ClassAttr) >>= inMRO cls
+isInstanceOf :: PyM pyM obj vlu => vlu -> vlu -> pyM vlu
+isInstanceOf = pyDeref2' (\obj cls -> atAttr (attrStr ClassAttr) obj >>= pyDeref' (inMRO cls))
 
-inMRO :: (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b
-inMRO cls1 cls2 = do clsObj <- pyDeref' cls2
-                     mroVal <- atAttr (attrStr MROAttr) clsObj
-                     mroObj <- pyDeref' mroVal
-                     mroTup <- at @TupPrm mroObj
-                     anyCPList mroTup (clsEq cls1)
+inMRO :: PyM pyM obj vlu => obj -> obj -> pyM vlu
+inMRO cls = atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm >=> anyCPList (pyDeref' $ clsEq cls))
 
 -- TODO: this assumes that class name equality implies class equality! (not necessarily true in Python...)
-clsEq :: forall pyM obj vlu b . (PyM pyM obj vlu, BoolDomain b) => vlu -> vlu -> pyM b
-clsEq cls1 cls2 = do nam1 <- getClassName cls1
-                     nam2 <- getClassName cls2
-                     return $ eql nam1 nam2
-   where 
-      getClassName :: vlu -> pyM (Abs obj StrPrm)
-      getClassName = pyDeref' >=> atAttr (attrStr NameAttr) >=> pyDeref' >=> at @StrPrm
+clsEq :: forall pyM obj vlu . PyM pyM obj vlu => obj -> obj -> pyM vlu
+clsEq cls1 cls2 = getClassName cls1
+                      $ \nam1 -> getClassName cls2
+                        $ \nam2 -> return $ iff @(CP Bool) (eql nam1 nam2) 
+                                                           (constant True)
+                                                           (constant False)
+   where
+      getClassName :: Lattice a => obj -> (Abs obj StrPrm -> pyM a) -> pyM a
+      getClassName cls k = atAttr (attrStr NameAttr) cls >>= pyDeref' (at @StrPrm >=> k)
 
 
 -- TODO: move to Domain package
 
-anyCPList :: (AbstractM m, BoolDomain b) => SeqDomain.CPList v -> (v -> m b) -> m b
-anyCPList SeqDomain.BotList _ = mzero
-anyCPList (SeqDomain.CPList l _ _) p = go l
-   where go []     = return Domain.false
-         go (x:xs) = cond (p x)
-                          (return Domain.true)
+anyCPList :: PyM pyM obj vlu => (vlu -> pyM vlu) -> SeqDomain.CPList vlu -> pyM vlu
+anyCPList _ SeqDomain.BotList = mzero
+anyCPList p (SeqDomain.CPList l _ _) = go l
+   where go []     = return $ constant False
+         go (x:xs) = pyIf (p x)
+                          (return $ constant True)
                           (go xs)
-anyCPList (SeqDomain.TopList v) p = (Domain.false `join`) <$> p v
+anyCPList p (SeqDomain.TopList v) = join (constant True) <$> p v
+
+-- varia
+
+pyIf :: (PyM m obj vlu, Lattice a) => m vlu -> m a -> m a -> m a
+pyIf prd csq alt = prd >>= pyDeref' (\obj -> cond (at @BlnPrm obj) csq alt)

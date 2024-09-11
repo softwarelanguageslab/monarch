@@ -5,6 +5,9 @@
 module Analysis.Python.Monad (
   PyBdy(..),
   PyM(..),
+  pyDeref',
+  pyDeref2',
+  pyDeref3',
 ) where
 
 import Lattice
@@ -58,8 +61,6 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   pyStore      :: PyLoc -> obj -> m vlu
   pyStore loc = fmap injectAdr . pyAlloc loc
   pyDeref      :: Lattice a => (ObjAdr -> obj -> m a) -> vlu -> m a
-  pyDeref'     :: vlu -> m obj
-  pyDeref' = pyDeref (const return)
   pyAssignAt   :: String -> vlu -> ObjAdr -> m ()
   pyAssign     :: String -> vlu -> vlu -> m ()
   pyAssign k v = pyDeref $ \a _ -> pyAssignAt k v a
@@ -82,6 +83,15 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
 
 catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Lattice a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
 catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw 
+
+pyDeref' :: forall m obj vlu a . (PyM m obj vlu, Lattice a) => (obj -> m a) -> vlu -> m a
+pyDeref' = pyDeref . const
+
+pyDeref2' :: forall m obj vlu a . (PyM m obj vlu, Lattice a) => (obj -> obj -> m a) -> vlu -> vlu -> m a
+pyDeref2' f a1 a2 = pyDeref' (\o1 -> pyDeref' (f o1) a2) a1 
+
+pyDeref3' :: forall m obj vlu a . (PyM m obj vlu, Lattice a) => (obj -> obj -> obj -> m a) -> vlu -> vlu -> vlu -> m a
+pyDeref3' f a1 a2 a3 = pyDeref2' (\o1 o2 -> pyDeref' (f o1 o2) a3) a1 a2
 
 instance (PyDomain obj vlu,
           MonadJoin m,

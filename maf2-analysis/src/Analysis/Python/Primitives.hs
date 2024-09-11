@@ -26,6 +26,7 @@ import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import Control.Monad ( liftM2, (>=>) )
 import qualified Control.Monad as Monad
 import Data.Singletons.TH
+import Data.Functor (($>))
 
 ---
 --- Primitives implementation
@@ -37,7 +38,9 @@ applyPrim IntAdd        = prim2'' $ intBinop' Domain.plus
 applyPrim IntSub        = prim2'' $ intBinop' Domain.minus
 applyPrim IntMul        = prim2'' $ intBinop' Domain.times
 applyPrim IntTrueDiv    = prim2'' $ intBinop @ReaPrm @ReaPrm intDiv Domain.div
-  where intDiv a b = Monad.join $ liftM2 Domain.div (Domain.toReal a) (Domain.toReal b)
+  where
+        intDiv :: Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj ReaPrm)
+        intDiv a b = Monad.join $ liftM2 Domain.div (Domain.toReal a) (Domain.toReal b)
 applyPrim IntEq         = prim2'' $ intBinop'' @BlnPrm Domain.eq
 applyPrim IntNe         = prim2'' $ intBinop'' @BlnPrm Domain.ne
 applyPrim IntLt         = prim2'' $ intBinop'' @BlnPrm Domain.lt
@@ -57,45 +60,42 @@ applyPrim FloatLe       = prim2'' $ floatBinop @BlnPrm Domain.le
 applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
-applyPrim DictSetItem   = prim3 $ \_ a1 a2 vlu -> do key <- pyDeref' a2 >>= at @StrPrm
-                                                     mjoinMap (updateDctAdr key vlu) (addrs a1)
-                                                     return $ constant None
-   where 
-        updateDctAdr :: Abs obj StrPrm -> vlu -> ObjAdr -> pyM () 
-        updateDctAdr key vlu adr = do obj  <- pyLookupSto adr
-                                      dct  <- at @DctPrm obj
-                                      let dct' = Domain.updateWeak key vlu dct
-                                      let obj' = set @DctPrm dct' obj
-                                      pyUpdate adr obj'
+applyPrim DictSetItem   = prim3 $ \_ a1 a2 vlu ->
+                                     none $ pyDeref' (\o2 -> do key <- at @StrPrm o2
+                                                                pyDeref (updateDct key vlu) a1) a2
+   where
+        updateDct :: Abs obj StrPrm -> vlu -> ObjAdr -> obj -> pyM ()
+        updateDct key vlu adr obj = do dct <- at @DctPrm obj
+                                       let dct' = Domain.updateWeak key vlu dct
+                                       let obj' = set @DctPrm dct' obj
+                                       pyUpdate adr obj'
 -- list primitives
 applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref
-applyPrim ListSetItem   = prim3 $ \_ a1 a2 vlu -> do idx <- pyDeref' a2 >>= at @IntPrm
-                                                     mjoinMap (updateLstIdx idx vlu) (addrs a1)
-                                                     return $ constant None
-   where 
-         updateLstIdx :: Abs obj IntPrm -> vlu -> ObjAdr -> pyM ()
-         updateLstIdx idx vlu adr = do obj  <- pyLookupSto adr
-                                       lst  <- at @LstPrm obj
-                                       lst' <- SeqDomain.setWeak idx vlu lst    -- TODO: only weak updates until updateWith supports monadic updates ...
-                                       let obj' = set @LstPrm lst' obj
-                                       pyUpdate adr obj'
+applyPrim ListSetItem   = prim3 $ \_ a1 a2 vlu -> 
+                                        none $ pyDeref' (\o2 -> do idx <- at @IntPrm o2
+                                                                   pyDeref (updateLst idx vlu) a1) a2 
+   where
+         updateLst :: Abs obj IntPrm -> vlu -> ObjAdr -> obj -> pyM ()
+         updateLst idx vlu adr obj = do lst  <- at @LstPrm obj
+                                        lst' <- SeqDomain.setWeak idx vlu lst    -- TODO: only weak updates until updateWith supports monadic updates ...
+                                        let obj' = set @LstPrm lst' obj
+                                        pyUpdate adr obj'
 applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyStore loc $ from @IntPrm (SeqDomain.length l)
 applyPrim ListIter      = prim1' @LstPrm $ \loc l -> pyStore loc $ from @LsiPrm l
 -- list iterator primitives
-applyPrim ListIteratorNext = prim1 $ \loc a -> mjoinMap (next loc) (addrs a)
-        where 
-              next :: PyLoc -> ObjAdr -> pyM vlu
-              next loc adr = do obj         <- pyLookupSto adr
-                                lst         <- at @LsiPrm obj
-                                (val, lst') <- case lst of --TODO: add tail operation to SeqDomain?
-                                                SeqDomain.BotList           -> mzero
-                                                SeqDomain.CPList [] _ _     -> stopIteration loc
-                                                SeqDomain.CPList (e:es) n _ -> return (e, SeqDomain.CPList es (n-1) (joins es))
-                                                SeqDomain.TopList v         -> return (v, lst) `mjoin` stopIteration loc
-                                let obj' = set @LsiPrm lst' obj
-                                pyUpdate adr obj'
-                                return val
-              stopIteration :: Lattice a => PyLoc -> pyM a 
+applyPrim ListIteratorNext = prim1 $ pyDeref . next 
+        where
+              next :: PyLoc -> ObjAdr -> obj -> pyM vlu
+              next loc adr obj = do lst         <- at @LsiPrm obj
+                                    (val, lst') <- case lst of --TODO: add tail operation to SeqDomain?
+                                        SeqDomain.BotList           -> mzero
+                                        SeqDomain.CPList [] _ _     -> stopIteration loc
+                                        SeqDomain.CPList (e:es) n _ -> return (e, SeqDomain.CPList es (n-1) (joins es))
+                                        SeqDomain.TopList v         -> return (v, lst) `mjoin` stopIteration loc
+                                    let obj' = set @LsiPrm lst' obj
+                                    pyUpdate adr obj'
+                                    return val
+              stopIteration :: Lattice a => PyLoc -> pyM a
               stopIteration loc = pyRaise =<< pyStore loc (new' StopIterationExceptionType)
 -- type primitives
 applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr) nam typ
@@ -108,6 +108,9 @@ applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
 --
 -- Primitive helpers 
 --
+
+none :: forall pyM obj vlu a . PyM pyM obj vlu => pyM a -> pyM vlu
+none = ($> constant None) 
 
 prim0 :: forall pyM obj vlu . PyM pyM obj vlu
         => (PyLoc -> pyM vlu)            -- ^ the primitive function
@@ -124,7 +127,7 @@ prim1 _ _   _  = pyError ArityError
 prim1' :: forall a pyM obj vlu . (SingI a, PyM pyM obj vlu)
         => (PyLoc -> Abs obj a -> pyM vlu)      -- ^ the primitive function
         -> (PyLoc -> [vlu]     -> pyM vlu)      -- ^ the resulting function   
-prim1' f = prim1 $ \loc -> pyDeref' >=> at @a >=> f loc
+prim1' f = prim1 $ \loc -> pyDeref' (at @a >=> f loc)
 
 prim2 :: PyM pyM obj vlu
         => (PyLoc -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
@@ -135,17 +138,14 @@ prim2 _ _ _          = pyError ArityError
 prim2' :: forall a1 a2 pyM obj vlu . (SingI a1, SingI a2, PyM pyM obj vlu)
         => (PyLoc -> Abs obj a1 -> Abs obj a2 -> pyM vlu)   -- ^ the primitive function
         -> (PyLoc -> [vlu] -> pyM vlu)                      -- ^ the resulting function 
-prim2' f = prim2 $ \loc a1 a2 -> do v1 <- pyDeref' a1 >>= at @a1
-                                    v2 <- pyDeref' a2 >>= at @a2
-                                    f loc v1 v2
+prim2' f = prim2 $ \loc -> pyDeref2' (\o1 o2 -> do v1 <- at @a1 o1
+                                                   v2 <- at @a2 o2
+                                                   f loc v1 v2)
 
 prim2'' :: PyM pyM obj vlu
         => (obj -> obj -> pyM obj)                  -- ^ the primitive function
         -> (PyLoc -> [vlu] -> pyM vlu)              -- ^ the resulting function 
-prim2'' f = prim2 $ \loc a1 a2 -> do o1 <- pyDeref' a1
-                                     o2 <- pyDeref' a2
-                                     res <- f o1 o2
-                                     pyStore loc res
+prim2'' f = prim2 $ \loc -> pyDeref2' (\o1 o2 -> pyStore loc =<< f o1 o2)
 
 prim3 :: PyM pyM obj vlu
         => (PyLoc -> vlu -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
