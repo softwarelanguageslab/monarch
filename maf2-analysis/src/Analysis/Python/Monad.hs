@@ -60,10 +60,11 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   pyAlloc      :: PyLoc -> obj -> m ObjAdr
   pyStore      :: PyLoc -> obj -> m vlu
   pyStore loc = fmap injectAdr . pyAlloc loc
-  pyDeref      :: Lattice a => (ObjAdr -> obj -> m a) -> vlu -> m a
+  pyDeref      :: (ObjAdr -> obj -> m vlu) -> vlu -> m vlu 
+  pyDeref_     :: (ObjAdr -> obj -> m ()) -> vlu -> m () 
   pyAssignAt   :: String -> vlu -> ObjAdr -> m ()
   pyAssign     :: String -> vlu -> vlu -> m ()
-  pyAssign k v = pyDeref $ \a _ -> pyAssignAt k v a
+  pyAssign k v = pyDeref_ $ \a _ -> pyAssignAt k v a
   pyUpdate     :: ObjAdr -> obj -> m ()
   -- control flow -- 
   pyBreak      :: m ()
@@ -84,13 +85,13 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
 catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Lattice a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
 catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw 
 
-pyDeref' :: forall m obj vlu a . (PyM m obj vlu, Lattice a) => (obj -> m a) -> vlu -> m a
+pyDeref' :: forall m obj vlu . PyM m obj vlu => (obj -> m vlu) -> vlu -> m vlu
 pyDeref' = pyDeref . const
 
-pyDeref2' :: forall m obj vlu a . (PyM m obj vlu, Lattice a) => (obj -> obj -> m a) -> vlu -> vlu -> m a
+pyDeref2' :: forall m obj vlu . PyM m obj vlu => (obj -> obj -> m vlu) -> vlu -> vlu -> m vlu
 pyDeref2' f a1 a2 = pyDeref' (\o1 -> pyDeref' (f o1) a2) a1 
 
-pyDeref3' :: forall m obj vlu a . (PyM m obj vlu, Lattice a) => (obj -> obj -> obj -> m a) -> vlu -> vlu -> vlu -> m a
+pyDeref3' :: forall m obj vlu . PyM m obj vlu => (obj -> obj -> obj -> m vlu) -> vlu -> vlu -> vlu -> m vlu
 pyDeref3' f a1 a2 a3 = pyDeref2' (\o1 o2 -> pyDeref' (f o1 o2) a3) a1 a2
 
 instance (PyDomain obj vlu,
@@ -111,6 +112,7 @@ instance (PyDomain obj vlu,
   pyCall = M.call 
   pyAlloc = store 
   pyDeref f = deref f . addrs 
+  pyDeref_ f = deref f . addrs 
   pyAssignAt k v = updateWith (setAttr k v) (setAttrWeak k v)
   pyAssign k v = mjoinMap (pyAssignAt k v) . addrs 
   pyUpdate = updateAdr

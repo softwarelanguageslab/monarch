@@ -61,8 +61,8 @@ applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
 applyPrim DictSetItem   = prim3 $ \_ a1 a2 vlu ->
-                                     none $ pyDeref' (\o2 -> do key <- at @StrPrm o2
-                                                                pyDeref (updateDct key vlu) a1) a2
+                                     pyDeref' (\o2 -> do key <- at @StrPrm o2
+                                                         none $ pyDeref_ (updateDct key vlu) a1) a2
    where
         updateDct :: Abs obj StrPrm -> vlu -> ObjAdr -> obj -> pyM ()
         updateDct key vlu adr obj = do dct <- at @DctPrm obj
@@ -72,8 +72,8 @@ applyPrim DictSetItem   = prim3 $ \_ a1 a2 vlu ->
 -- list primitives
 applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref
 applyPrim ListSetItem   = prim3 $ \_ a1 a2 vlu -> 
-                                        none $ pyDeref' (\o2 -> do idx <- at @IntPrm o2
-                                                                   pyDeref (updateLst idx vlu) a1) a2 
+                                        pyDeref' (\o2 -> do idx <- at @IntPrm o2
+                                                            none $ pyDeref_ (updateLst idx vlu) a1) a2 
    where
          updateLst :: Abs obj IntPrm -> vlu -> ObjAdr -> obj -> pyM ()
          updateLst idx vlu adr obj = do lst  <- at @LstPrm obj

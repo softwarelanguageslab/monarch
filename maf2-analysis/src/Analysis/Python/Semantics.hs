@@ -80,9 +80,9 @@ execTry bdy hds = exec bdy `pyCatchExc` checkHandlers hds
          checkHandlers :: [(PyExp, PyStm)] -> vlu -> pyM ()
          checkHandlers [] exc = pyRaise exc
          checkHandlers ((exp, hdl):rst) exc = do cls <- eval exp
-                                                 pyIf (exc `isInstanceOf` cls)
-                                                      (exec hdl)
-                                                      (checkHandlers rst exc)
+                                                 pyIf_ (exc `isInstanceOf` cls)
+                                                       (exec hdl)
+                                                       (checkHandlers rst exc)
 
 execAss :: forall pyM obj vlu . PyM pyM obj vlu => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
@@ -96,9 +96,9 @@ execAss lhs rhs = eval rhs >>= assignTo lhs
 
 execIff :: forall pyM obj vlu . PyM pyM obj vlu => [(PyExp, PyStm)] -> PyStm -> pyM ()
 execIff [] els = exec els 
-execIff ((prd, bdy):rst) els = pyIf (eval prd)
-                                    (exec bdy)
-                                    (execIff rst els)
+execIff ((prd, bdy):rst) els = pyIf_ (eval prd)
+                                     (exec bdy)
+                                     (execIff rst els)
 
 execSeq :: PyM pyM obj vlu => [PyStm] -> pyM ()
 execSeq = mapM_ exec

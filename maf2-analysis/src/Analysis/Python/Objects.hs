@@ -126,13 +126,12 @@ computeMRO :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> vlu -> vlu -> pyM
 computeMRO loc cls = pyDeref' $ at @TupPrm
                                   >=> \case
                                         BotList           -> pyError InvalidMRO
-                                        CPList [] _ _     -> return $ SeqDomain.fromList [cls, typeVal ObjectType]  -- no parent given (implicitly extends object)
-                                        CPList [par] _ _  -> SeqDomain.insertFront cls <$> getMRO par               -- single parent
-                                        _                 -> error "multiple inheritance is not yet supported"      -- multiple parents
-                                  >=> pyStore loc . from @TupPrm
+                                        CPList [] _ _     -> pyStore loc $ from @TupPrm $ SeqDomain.fromList [cls, typeVal ObjectType]  -- no parent given (implicitly extends object)
+                                        CPList [par] _ _  -> getMRO par (pyStore loc . from @TupPrm . SeqDomain.insertFront cls)        -- single parent
+                                        _                 -> error "multiple inheritance is not yet supported"                          -- multiple parents
   where
-      getMRO :: vlu -> pyM (Abs obj TupPrm)
-      getMRO = pyDeref' $ atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm)
+      getMRO :: vlu -> (Abs obj TupPrm -> pyM vlu) -> pyM vlu
+      getMRO v k = pyDeref' (atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm >=> k)) v
 
 -- --
 
@@ -154,11 +153,11 @@ inMRO cls = atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm >=> anyCPList (pyD
 clsEq :: forall pyM obj vlu . PyM pyM obj vlu => obj -> obj -> pyM vlu
 clsEq cls1 cls2 = getClassName cls1
                       $ \nam1 -> getClassName cls2
-                        $ \nam2 -> return $ iff @(CP Bool) (eql nam1 nam2) 
+                        $ \nam2 -> return $ iff @(CP Bool) (eql nam1 nam2)
                                                            (constant True)
                                                            (constant False)
    where
-      getClassName :: Lattice a => obj -> (Abs obj StrPrm -> pyM a) -> pyM a
+      getClassName :: obj -> (Abs obj StrPrm -> pyM vlu) -> pyM vlu
       getClassName cls k = atAttr (attrStr NameAttr) cls >>= pyDeref' (at @StrPrm >=> k)
 
 
@@ -175,5 +174,9 @@ anyCPList p (SeqDomain.TopList v) = join (constant True) <$> p v
 
 -- varia
 
-pyIf :: (PyM m obj vlu, Lattice a) => m vlu -> m a -> m a -> m a
+pyIf :: PyM m obj vlu => m vlu -> m vlu -> m vlu -> m vlu
 pyIf prd csq alt = prd >>= pyDeref' (\obj -> cond (at @BlnPrm obj) csq alt)
+
+
+pyIf_ :: PyM m obj vlu => m vlu -> m () -> m () -> m ()
+pyIf_ prd csq alt = prd >>= pyDeref_ (\_ obj -> cond (at @BlnPrm obj) csq alt)
