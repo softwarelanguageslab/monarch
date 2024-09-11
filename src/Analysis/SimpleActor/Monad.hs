@@ -30,6 +30,7 @@ import Analysis.Scheme.Prelude
   ( DependencyTrackingM (dependent),
     WorkListM,
   )
+import Analysis.Scheme.Monad (SchemeDomainM)
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Control.Monad.Join
@@ -118,7 +119,7 @@ type EvalM v m =
     MonadFixpoint m Exp v,
     Domain (Esc m) DomainError,
     Domain (Esc m) Error,
-    ValueDomain v
+    SchemeDomainM Exp v m 
   )
 
 ------------------------------------------------------------
