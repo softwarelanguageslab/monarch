@@ -20,33 +20,33 @@ import Syntax.Scheme.AST
 import Control.Monad.DomainError
 import Control.Monad.Escape
 
-data Prim v = Prim { primName :: String, run :: forall m . PrimM m v => Exp -> [v] -> m v }
+data Prim v = Prim { primName :: String, run :: forall m e . PrimM e m v => e -> [v] -> m v }
 
-type PrimM m v = (MonadEscape m, Domain (Esc m) DomainError, MonadJoin m, SchemeDomain v, SchemeM m v)
+type PrimM e m v = (MonadEscape m, Domain (Esc m) DomainError, MonadJoin m, SchemeDomain v, SchemeDomainM e v m)
 
 -- | No arguments
-fix0 :: String -> (forall m . PrimM m v => m v) -> Prim v
+fix0 :: String -> (forall m e . PrimM e m v => m v) -> Prim v
 fix0 nam f = Prim nam (\_ [] -> f)
 
 -- | Unary primitives 
-efix1 :: String -> (forall m . PrimM m v => Exp -> v -> m v) -> Prim v
+efix1 :: String -> (forall m e . PrimM e m v => e -> v -> m v) -> Prim v
 efix1 nam f = Prim nam (\ex [x1] -> f ex x1)
 -- | Binary primitives
-efix2 :: String -> (forall m . PrimM m v => Exp -> v -> v -> m v) -> Prim v
+efix2 :: String -> (forall m e . PrimM e m v => e -> v -> v -> m v) -> Prim v
 efix2 nam f = Prim nam (\ex [x1, x2] -> f ex x1 x2)
 -- | Ternary primitives
-efix3 ::  String -> (forall m . PrimM m v => Exp -> v -> v -> v -> m v) -> Prim v
+efix3 ::  String -> (forall m e . PrimM e m v => e -> v -> v -> v -> m v) -> Prim v
 efix3 nam f = Prim nam (\ex [x1, x2, x3] -> f ex x1 x2 x3)
 -- | Vararg primitives
-evar  :: String -> (forall m . PrimM m v => Exp -> [v] -> m v) -> Prim v 
+evar  :: String -> (forall m e . PrimM e m v => e -> [v] -> m v) -> Prim v 
 evar = Prim
 
 -- | Heap unrelated operations 
-fix1 :: String -> (forall m . PrimM m v => v -> m v) -> Prim v
+fix1 :: String -> (forall m e . PrimM e m v => v -> m v) -> Prim v
 fix1 nam f = efix1 nam (\_ v-> f v)
-fix2 :: String -> (forall m . PrimM m v => v -> v -> m v) -> Prim v
+fix2 :: String -> (forall m e . PrimM e m v => v -> v -> m v) -> Prim v
 fix2 nam f = efix2 nam (\_ v1 v2 -> f v1 v2)
-fix3 :: String -> (forall m . PrimM m v => v -> v -> v -> m v) -> Prim v
+fix3 :: String -> (forall m e . PrimM e m v => v -> v -> v -> m v) -> Prim v
 fix3 nam f = efix3 nam (\_ v1 v2 v3 -> f v1 v2 v3)
 
 allPrimitives :: [Prim v]

@@ -8,8 +8,6 @@ import Control.Monad.AbstractM
 import Data.Set (Set)
 import Prelude hiding (null)
 import Data.Kind
-import Data.Hashable
-import Data.Typeable
 
 -- | Reusable pre-conditions for a valid Scheme domain
 type SchemeDomainPre v =
@@ -147,11 +145,6 @@ type SchemeValue v  = (
 type SchemeConstraints v exp var env =
    (Adr v ~ var,
     Env v ~ env,
-    Exp v ~ exp,
-    Typeable v,
-    Typeable (PAdr v),
-    Typeable (SAdr v),
-    Typeable (VAdr v),
-    Typeable (Adr v)) :: Constraint
+    Exp v ~ exp) :: Constraint
 
 
