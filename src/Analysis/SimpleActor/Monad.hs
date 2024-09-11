@@ -28,7 +28,8 @@ import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
 import Analysis.Monad.Store
 import Analysis.Scheme.Prelude
   ( DependencyTrackingM (dependent),
-    WorkListM,
+    WorkListM, ActorDomain(..),
+    SchemeDomain(..)
   )
 import Analysis.Scheme.Monad (SchemeDomainM)
 import Control.Monad.DomainError
@@ -43,7 +44,6 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain.Class
-import Domain.SimpleActor.Class
 import Lattice (BottomLattice (bottom))
 import Lattice.Class (Joinable)
 import qualified Lattice.Class as L
@@ -51,12 +51,15 @@ import Syntax.AST
 import Debug.Trace
 import Analysis.Monad.Fix (MonadFixpoint)
 import Data.Kind (Type)
+import Domain (SchemeDomain(Env))
+import Lattice.Equal (EqualLattice)
 
 ------------------------------------------------------------
 -- Errors
 ------------------------------------------------------------
 
-data Error = MatchError | InvalidArgument | BlameError Label
+-- TODO: BlameErorr should contain label not a string!
+data Error = MatchError | InvalidArgument | BlameError String
   deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------
@@ -119,7 +122,10 @@ type EvalM v m =
     MonadFixpoint m Exp v,
     Domain (Esc m) DomainError,
     Domain (Esc m) Error,
-    SchemeDomainM Exp v m 
+    SchemeDomainM Exp v m, 
+    ActorDomain v,
+    EqualLattice v,
+    Show v
   )
 
 ------------------------------------------------------------
