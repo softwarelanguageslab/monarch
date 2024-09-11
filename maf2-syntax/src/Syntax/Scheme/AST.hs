@@ -13,8 +13,7 @@ import Syntax.Scheme.Parser (SExp, pattern (:::))
 import Syntax.Span
 import Control.Applicative
 import Control.Monad.Reader
-import Control.Monad ((>=>), forever)
-
+import Data.Bifunctor
 import Prelude hiding (span)
 
 -- AST definition --
@@ -61,7 +60,7 @@ data Exp = Num Integer Span          -- ^ number literals
          | Mon Labels Exp Exp Span   -- ^ contract monitor
          | Flat Exp Span             -- ^ flat contract
          -- misc
-         | Debug String              -- ^ a debug statement, used for debugging the analysis
+         | Debug String              -- ^ a debug statement, used for debugging the analysis
          deriving (Eq,Ord, Generic)
 
 data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler
@@ -219,7 +218,7 @@ compileParams (SExp.SNil _) = return ([], Nothing)
 compileParams (SExp.Atom x s) = return ([], Just (Ide x s))
 compileParams (e@(SExp.Atom x _) ::: xs) = do
    rest <- compileParams xs
-   return (Ide x (SExp.spanOf e) : fst rest, snd rest)
+   return (first (Ide x (SExp.spanOf e) :) rest)
 compileParams e = throwError $ "Not expected in parameter list " ++ show e
 
 compile :: (MonadReader Bool m, MonadError String m) => SExp -> m Exp

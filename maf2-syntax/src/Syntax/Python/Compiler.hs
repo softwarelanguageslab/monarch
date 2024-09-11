@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 -- | Reduced Python Syntax and its compiler
 module Syntax.Python.Compiler(compile, parse, lexical, PyLoc(..), PyTag(..), tagAs) where
 

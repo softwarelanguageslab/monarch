@@ -1,4 +1,4 @@
-module Syntax.Scheme.TH where
+module Syntax.Scheme.TH(printFileList) where
 
 import Language.Haskell.TH
 import Data.FileEmbed
