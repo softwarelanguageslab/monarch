@@ -1,4 +1,4 @@
-module Domain.Scheme.Actors.Class(ActorDomain(..)) where
+module Domain.Scheme.Actors.Class(ActorDomain(..), Pid(..)) where
 
 import Domain.Scheme.Class 
 import Data.Kind
@@ -7,10 +7,19 @@ import Lattice.Class (Lattice)
 import Data.Set (Set)
 import Domain.Core.NumberDomain (Boo)
 
-class ActorRef a where 
-   -- | The type of actor where the actor reference points to
-   type Actor a :: Type
+-- | Representation of actor references, 
+-- parametrized by their spawn site.
+data Pid e ctx
+  = Pid e ctx
+  | EntryPid
+  deriving (Ord, Eq, Show)
 
+-- TODO: should split this into multiple type classes 
+-- since not all actor languages have behaviors. 
+-- For example, in Erlang processes are spawned 
+-- using a lambda. 
+-- | Extension of the Scheme domain with actor references
+-- and behaviors.
 class (SchemeDomain v) => ActorDomain v where
    -- | The type of actor reference included in abtract value `v`
    type ARef v :: Type

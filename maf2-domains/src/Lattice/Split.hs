@@ -3,12 +3,10 @@
 module Lattice.Split(SplitLattice(..)) where
 
 import Domain.Core.BoolDomain.Class
-import Domain.Class
 import Lattice.Class
 
 import Data.Set (Set)
 import qualified Data.Set as Set
-import qualified Data.Foldable as Foldable
 
 
 ------------------------------------------------------------

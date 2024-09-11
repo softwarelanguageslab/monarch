@@ -460,17 +460,17 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
             select _ _ = escape WrongType
 
    -- Predicates
-   isInteger = HMap.member @IntKey  . getSchemeVal
-   isReal    = HMap.member @RealKey . getSchemeVal
-   isChar    = HMap.member @CharKey . getSchemeVal
-   isPaiPtr  = HMap.member @PaiKey  . getSchemeVal
-   isVecPtr  = HMap.member @VecKey  . getSchemeVal
-   isStrPtr  = HMap.member @StrKey  . getSchemeVal
-   isClo     = HMap.member @CloKey  . getSchemeVal
-   isBool    = HMap.member @BoolKey . getSchemeVal
-   isUnsp    = HMap.member @UnspKey . getSchemeVal
-   isNil     = HMap.member @NilKey  . getSchemeVal
-   isPrim    = HMap.member @PrimKey . getSchemeVal
+   isInteger = hasType IntKey  
+   isReal    = hasType RealKey 
+   isChar    = hasType CharKey 
+   isPaiPtr  = hasType PaiKey  
+   isVecPtr  = hasType VecKey  
+   isStrPtr  = hasType StrKey  
+   isClo     = hasType CloKey  
+   isBool    = hasType BoolKey 
+   isUnsp    = hasType UnspKey 
+   isNil     = hasType NilKey  
+   isPrim    = hasType PrimKey 
 
 ------------------------------------------------------------
 -- Original implementation

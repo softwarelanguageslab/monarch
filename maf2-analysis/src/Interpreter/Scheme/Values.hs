@@ -4,6 +4,7 @@ module Interpreter.Scheme.Values(SchemeValue(..), CAdr(..), Env, Sto, trueish ,f
 import Data.Map
 import Data.Vector hiding ((++))
 import Syntax.Scheme.AST
+import Syntax.Ide
 import Text.Printf
 
 -- | A concrete Scheme address.

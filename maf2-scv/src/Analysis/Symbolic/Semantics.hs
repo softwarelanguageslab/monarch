@@ -1,6 +1,7 @@
 module Analysis.Symbolic.Semantics(eval) where
 
 import Syntax.Scheme
+import Syntax.Ide
 import qualified Analysis.Contracts.Semantics as Contracts
 import qualified Analysis.Actors.Semantics as Actors
 import Domain.Symbolic

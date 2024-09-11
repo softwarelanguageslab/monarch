@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Syntax.Scheme.Actor where
+module Syntax.Scheme.Actor(prelude) where
 
 import Data.FileEmbed
 

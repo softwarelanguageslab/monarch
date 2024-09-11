@@ -7,6 +7,7 @@ module Syntax.Scheme.Undefiner(undefineExp, undefineExp') where
 import Data.List (singleton)
 import Data.Default
 import Syntax.Scheme.AST
+import Syntax.Ide
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer

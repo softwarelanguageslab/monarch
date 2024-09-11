@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE PolyKinds #-}
 -- | Symbolic version of the Scheme domain
 module Domain.Symbolic.Paired where
 
@@ -17,7 +18,7 @@ import Domain.Contract.Communication
 -- Declaration
 --------------------------------------------------
 
-newtype SymbolicVal ptr sptr vptr pptr = SymbolicVal { proposition :: Proposition } deriving (Eq, Ord, Show)
+newtype SymbolicVal (ptr :: k1) (sptr :: k2) (vptr :: k3) (pptr :: k4) = SymbolicVal { proposition :: Proposition } deriving (Eq, Ord, Show)
 
 --------------------------------------------------
 -- Lattice instances
@@ -167,17 +168,17 @@ instance (Address ptr,
    prim      = SymbolicVal . Variable . (++"/v")
    prims     = const bottom
    withProc  = const . const mzero
-   isInteger = const False
-   isReal    = const False
-   isChar    = const False
-   isVecPtr  = const False
-   isStrPtr  = const False
-   isPaiPtr  = const False
-   isClo     = const False
-   isBool    = const False
-   isNil     = const False
-   isUnsp    = const False
-   isPrim    = const False
+   isInteger = const $ inject False
+   isReal    = const $ inject False
+   isChar    = const $ inject False
+   isVecPtr  = const $ inject False
+   isStrPtr  = const $ inject False
+   isPaiPtr  = const $ inject False
+   isClo     = const $ inject False
+   isBool    = const $ inject False
+   isNil     = const $ inject False
+   isUnsp    = const $ inject False
+   isPrim    = const $ inject False
    symbols   = const bottom
    symbol    = SymbolicVal . Literal . Sym
 

@@ -9,24 +9,24 @@ import Domain.Symbolic.Paired
 import Domain.Scheme
 import Domain
 import Lattice
-
+import qualified Syntax.Scheme.AST as S
 import Control.Monad ((>=>))
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
 
 -- TODO: pass down the context as well
-type CPSymbolicValue pai vec str var = 
-   PairedSymbolic (CPActorValue var pai vec str ()) pai vec str var
+type CPSymbolicValue pai vec str var k = 
+   PairedSymbolic (CPActorValue var pai vec str k S.Exp) pai vec str var
 
-type instance VarDom (CPSymbolicValue pai vec str var) = CPSymbolicValue pai vec str var
-type instance PaiDom (CPSymbolicValue pai vec str var) = SimplePair (CPSymbolicValue pai vec str var)
-type instance VecDom (CPSymbolicValue pai vec str var) = PIVector (CPSymbolicValue pai vec str var) (CPSymbolicValue pai vec str var)
-type instance StrDom (CPSymbolicValue pai vec str var) = SchemeString (CP String) (CPSymbolicValue pai vec str var)
+type instance VarDom (CPSymbolicValue pai vec str var k) = CPSymbolicValue pai vec str var k
+type instance PaiDom (CPSymbolicValue pai vec str var k) = SimplePair (CPSymbolicValue pai vec str var k)
+type instance VecDom (CPSymbolicValue pai vec str var k) = PIVector (CPSymbolicValue pai vec str var k) (CPSymbolicValue pai vec str var k)
+type instance StrDom (CPSymbolicValue pai vec str var k) = SchemeString (CP String) (CPSymbolicValue pai vec str var k)
 
-instance (Address pai, Address vec, Address str, Address var) => StringDomain (SchemeString (CP String) (CPSymbolicValue pai vec str var)) where
-   type IntS (SchemeString (CP String) (CPSymbolicValue pai vec str var)) = CPSymbolicValue pai vec str var
-   type ChaS (SchemeString (CP String) (CPSymbolicValue pai vec str var)) = CPSymbolicValue pai vec str var
-   type BooS (SchemeString (CP String) (CPSymbolicValue pai vec str var)) = CPSymbolicValue pai vec str var
+instance (Ord k, Address (pai k), Address (vec k), Address (str k), Address (var k)) => StringDomain (SchemeString (CP String) (CPSymbolicValue pai vec str var k)) where
+   type IntS (SchemeString (CP String) (CPSymbolicValue pai vec str var k)) = CPSymbolicValue pai vec str var k
+   type ChaS (SchemeString (CP String) (CPSymbolicValue pai vec str var k)) = CPSymbolicValue pai vec str var k
+   type BooS (SchemeString (CP String) (CPSymbolicValue pai vec str var k)) = CPSymbolicValue pai vec str var k
    length = (length . sconst) >=> (return . mkLeft . insertInt)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = mkLeft . insertChar <$> (ref (sconst s) =<< integers (leftValue i))

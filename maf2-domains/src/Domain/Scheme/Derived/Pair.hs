@@ -24,7 +24,7 @@
 -- for the users of this domain.
 module Domain.Scheme.Derived.Pair(SchemePairedValue(..), leftValue, rightValue, mkLeft, mkRight) where
 
-import Prelude hiding (div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not)
+import Prelude hiding (or, div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not)
 
 import Lattice 
 import Domain.Core
@@ -231,17 +231,17 @@ instance (-- both subdomains should talk about the same environment
    withProc f (SchemePairedValue (l, r)) = 
       mjoin (withProc f l) (withProc f r)
 
-   isInteger (SchemePairedValue (l, r)) = isInteger l || isInteger r
-   isReal (SchemePairedValue (l, r))    = isReal l || isReal r
-   isChar (SchemePairedValue (l, r))    = isChar l || isChar r
-   isVecPtr (SchemePairedValue (l, r))  = isVecPtr l || isVecPtr r
-   isStrPtr (SchemePairedValue (l, r))  = isStrPtr l || isStrPtr r
-   isPaiPtr (SchemePairedValue (l, r))  = isPaiPtr l || isPaiPtr r
-   isClo (SchemePairedValue (l, r))     = isClo l  || isClo r
-   isBool (SchemePairedValue (l, r))    = isBool l || isBool r
-   isNil (SchemePairedValue (l, r))     = isNil l  || isNil r
-   isUnsp (SchemePairedValue (l, r))    = isUnsp l || isUnsp r
-   isPrim (SchemePairedValue (l, r))    = isPrim l || isPrim r
+   isInteger (SchemePairedValue (l, r)) = or (isInteger l) (isInteger r)
+   isReal (SchemePairedValue (l, r))    = or (isReal l) (isReal r)
+   isChar (SchemePairedValue (l, r))    = or (isChar l) (isChar r)
+   isVecPtr (SchemePairedValue (l, r))  = or (isVecPtr l) (isVecPtr r)
+   isStrPtr (SchemePairedValue (l, r))  = or (isStrPtr l) (isStrPtr r)
+   isPaiPtr (SchemePairedValue (l, r))  = or (isPaiPtr l) (isPaiPtr r)
+   isClo (SchemePairedValue (l, r))     = or (isClo l) (isClo r)
+   isBool (SchemePairedValue (l, r))    = or (isBool l) (isBool r)
+   isNil (SchemePairedValue (l, r))     = or (isNil l)  (isNil r)
+   isUnsp (SchemePairedValue (l, r))    = or (isUnsp l) (isUnsp r)
+   isPrim (SchemePairedValue (l, r))    = or (isPrim l) (isPrim r)
 
    symbol s  = SchemePairedValue (symbol s, symbol s)
    symbols v = Set.union (symbols $ leftValue v) (symbols $ rightValue v)

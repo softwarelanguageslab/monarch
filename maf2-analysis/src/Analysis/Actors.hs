@@ -26,7 +26,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Domain.Scheme.Actors.Class
+import Domain.Scheme.Actors.Class hiding (Pid)
 import Domain.Scheme.Store
 import Syntax.Scheme.AST
 import Data.Functor ((<&>))
@@ -48,8 +48,8 @@ type Msg = ()
 -- Shorthands
 ------------------------------------------------------------
 
-type V = CP.CPActorValue (EnvAdr Ctx) (PaiAdr Ctx) (VecAdr Ctx) (StrAdr Ctx) Ctx
-type Pid = CP.Pid Ctx
+type V = CP.CPActorValue EnvAdr PaiAdr VecAdr StrAdr Ctx Exp
+type Pid = CP.Pid Exp Ctx
 
 type Ctx = ()
 

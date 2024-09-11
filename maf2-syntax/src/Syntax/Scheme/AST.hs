@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-module Syntax.Scheme.AST (Exp(..), Ide(..), parseSchemeExp, parseSchemeExp', testParser, isDefine, spanOf, Span, Hdl(..), Labels(..)) where
+module Syntax.Scheme.AST (Exp(..), parseSchemeExp, parseSchemeExp', testParser, isDefine, spanOf, Span, Hdl(..), Labels(..)) where
 
 import GHC.Generics (Generic)
 import qualified Data.Set as Set
@@ -13,16 +13,11 @@ import Syntax.Scheme.Parser (SExp, pattern (:::))
 import Syntax.Span
 import Control.Applicative
 import Control.Monad.Reader
-import Control.Monad ((>=>), forever)
-
+import Data.Bifunctor
 import Prelude hiding (span)
+import Syntax.Ide
 
 -- AST definition --
-
-data Ide = Ide { name :: String, span :: Span } deriving (Ord, Eq, Generic)
-
-instance Show Ide where
-   show (Ide { name, span }) = name++":"++show (line span)++":"++show (column span)
 
 data Exp = Num Integer Span          -- ^ number literals
          | Rea Double  Span          -- ^ real number literals
@@ -61,7 +56,7 @@ data Exp = Num Integer Span          -- ^ number literals
          | Mon Labels Exp Exp Span   -- ^ contract monitor
          | Flat Exp Span             -- ^ flat contract
          -- misc
-         | Debug String              -- ^ a debug statement, used for debugging the analysis
+         | Debug String              -- ^ a debug statement, used for debugging the analysis
          deriving (Eq,Ord, Generic)
 
 data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler
@@ -219,7 +214,7 @@ compileParams (SExp.SNil _) = return ([], Nothing)
 compileParams (SExp.Atom x s) = return ([], Just (Ide x s))
 compileParams (e@(SExp.Atom x _) ::: xs) = do
    rest <- compileParams xs
-   return (Ide x (SExp.spanOf e) : fst rest, snd rest)
+   return (first (Ide x (SExp.spanOf e) :) rest)
 compileParams e = throwError $ "Not expected in parameter list " ++ show e
 
 compile :: (MonadReader Bool m, MonadError String m) => SExp -> m Exp

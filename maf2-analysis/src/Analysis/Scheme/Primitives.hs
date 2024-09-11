@@ -16,37 +16,37 @@ import Analysis.Scheme.Monad
 import Domain hiding (Exp, empty)
 import Control.Monad.Join
 import Control.Monad ((>=>))
-import Syntax.Scheme.AST
 import Control.Monad.DomainError
 import Control.Monad.Escape
+import Prelude hiding (or)
 
-data Prim v = Prim { primName :: String, run :: forall m . PrimM m v => Exp -> [v] -> m v }
+data Prim v = Prim { primName :: String, run :: forall m e . PrimM e m v => e -> [v] -> m v }
 
-type PrimM m v = (MonadEscape m, Domain (Esc m) DomainError, MonadJoin m, SchemeDomain v, SchemeM m v)
+type PrimM e m v = (MonadEscape m, Domain (Esc m) DomainError, MonadJoin m, SchemeDomain v, SchemeDomainM e v m)
 
 -- | No arguments
-fix0 :: String -> (forall m . PrimM m v => m v) -> Prim v
+fix0 :: String -> (forall m e . PrimM e m v => m v) -> Prim v
 fix0 nam f = Prim nam (\_ [] -> f)
 
 -- | Unary primitives 
-efix1 :: String -> (forall m . PrimM m v => Exp -> v -> m v) -> Prim v
+efix1 :: String -> (forall m e . PrimM e m v => e -> v -> m v) -> Prim v
 efix1 nam f = Prim nam (\ex [x1] -> f ex x1)
 -- | Binary primitives
-efix2 :: String -> (forall m . PrimM m v => Exp -> v -> v -> m v) -> Prim v
+efix2 :: String -> (forall m e . PrimM e m v => e -> v -> v -> m v) -> Prim v
 efix2 nam f = Prim nam (\ex [x1, x2] -> f ex x1 x2)
 -- | Ternary primitives
-efix3 ::  String -> (forall m . PrimM m v => Exp -> v -> v -> v -> m v) -> Prim v
+efix3 ::  String -> (forall m e . PrimM e m v => e -> v -> v -> v -> m v) -> Prim v
 efix3 nam f = Prim nam (\ex [x1, x2, x3] -> f ex x1 x2 x3)
 -- | Vararg primitives
-evar  :: String -> (forall m . PrimM m v => Exp -> [v] -> m v) -> Prim v 
+evar  :: String -> (forall m e . PrimM e m v => e -> [v] -> m v) -> Prim v 
 evar = Prim
 
 -- | Heap unrelated operations 
-fix1 :: String -> (forall m . PrimM m v => v -> m v) -> Prim v
+fix1 :: String -> (forall m e . PrimM e m v => v -> m v) -> Prim v
 fix1 nam f = efix1 nam (\_ v-> f v)
-fix2 :: String -> (forall m . PrimM m v => v -> v -> m v) -> Prim v
+fix2 :: String -> (forall m e . PrimM e m v => v -> v -> m v) -> Prim v
 fix2 nam f = efix2 nam (\_ v1 v2 -> f v1 v2)
-fix3 :: String -> (forall m . PrimM m v => v -> v -> v -> m v) -> Prim v
+fix3 :: String -> (forall m e . PrimM e m v => v -> v -> v -> m v) -> Prim v
 fix3 nam f = efix3 nam (\_ v1 v2 v3 -> f v1 v2 v3)
 
 allPrimitives :: [Prim v]
@@ -79,14 +79,14 @@ allPrimitives = [
    fix1 "floor" Domain.floor,
    -- fix1 "integer->char" todo, 
    fix1 "log" Domain.log,
-   fix1 "null?" (return . inject . isNil),
+   fix1 "null?" (return . isNil),
    -- fix1 "number->string" todo, 
    -- fix2 "make-string" todo, 
-   fix1 "number?" (\v -> return $ inject (isReal v || isInteger v)),
-   fix1 "pair?" (return . inject . isPaiPtr),
-   fix1 "procedure?" (return . inject . Domain.isProc), 
+   fix1 "number?" (\v -> return $ or (isReal v) (isInteger v)),
+   fix1 "pair?" (return .  isPaiPtr),
+   fix1 "procedure?" (return . Domain.isProc), 
    fix2 "quotient" quotient,
-   fix1 "real?" (return . inject . isReal),
+   fix1 "real?" (return . isReal),
    fix2 "remainder" remainder,
    fix1 "round" Domain.round,
    fix2 "set-car!" (\adr v -> pptrs adr >>= deref (\adr pai ->
@@ -110,7 +110,7 @@ allPrimitives = [
    fix3 "string-set!"
       (\s i c -> sptrs s >>= deref (\adr str -> updateAdr adr =<< set str i c) >> return unsp),
    -- fix2 "string<?" todo,
-   fix1 "string?" (return . inject . isStrPtr),
+   fix1 "string?" (return .  isStrPtr),
    -- fix2 "substring" todo, 
    -- fix1 "symbol->string" todo, 
    -- fix1 "symbol?" todo, 
@@ -120,7 +120,7 @@ allPrimitives = [
    fix1 "vector-length" (vptrs >=> deref (const (return . vectorLength))),
    fix2 "vector-ref" (\adr i -> vptrs adr >>= deref (const (`vectorRef` i))),
    fix3 "vector-set!" (\adr i v -> vptrs adr >>= deref (\adr vec -> updateAdr adr =<< vectorSet vec i v) >> return unsp),
-   fix1 "vector?" $ return . inject . isVecPtr,
+   fix1 "vector?" $ return . isVecPtr,
    fix2 "<" lt,
    fix2 "=" eq,
    fix2 ">" gt,

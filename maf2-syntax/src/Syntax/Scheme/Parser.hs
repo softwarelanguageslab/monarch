@@ -1,4 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 -- | Parser to S-expressions
 module Syntax.Scheme.Parser(SExp(..), Span(..), parseSexp, spanOf, pattern (:::), smap) where
 
@@ -8,6 +10,7 @@ import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 import Text.Printf
 import Syntax.Span
+import Data.Functor.Identity (Identity)
 
 -- | Location information
 fromSourcePos :: SourcePos -> Span
@@ -77,7 +80,7 @@ instance Show SExp where
    show (Bln b _) = if b then "#t" else "#f"
    show (Cha c _) = "#\\" ++ [c]
    show (Atom s _) = s
-   show p@(Pai a b _) = printf "(%s)" $ showPai p
+   show p@(Pai {}) = printf "(%s)" $ showPai p
    show (SNil _) = "'()"
    show (Quo e _) = printf "'%s" (show e)
    show (Str s _) = show s
@@ -89,7 +92,8 @@ instance Show SExp where
 -- Patterns
 --
 
-pattern (:::) car cdr <- Pai car cdr span
+pattern (:::) :: SExp -> SExp -> SExp
+pattern (:::) car cdr <- Pai car cdr _span
 infixr 7 :::
 
 --
@@ -97,12 +101,14 @@ infixr 7 :::
 --
 
 -- | Language definition
+languageDef :: GenLanguageDef String u Identity
 languageDef = emptyDef { Token.commentStart = "#|",
                          Token.commentEnd = "|#",
                          Token.commentLine = ";",
                          Token.identStart = letter <|> oneOf "*/<=>!?:$%_&~^@",
                          Token.identLetter = alphaNum <|> oneOf "+-.*/<=>!?:$%_&~^" }
 
+lexer :: Token.GenTokenParser String u Identity
 lexer = Token.makeTokenParser languageDef
 
 identifier = Token.identifier lexer
@@ -145,10 +151,11 @@ pair = parens list
 list :: Parser (Span -> SExp)
 list = option SNil parseList
 
+parseList :: Parser (Span -> SExp)
 parseList = do
-   head <- expression
-   rest <- (try $ lexeme (char '.') >> expression) <|> withSpan list
-   return $ Pai head rest
+   ex  <- expression
+   exs <- try (lexeme (char '.') >> expression) <|> withSpan list
+   return $ Pai ex exs
 
 quote :: Parser (Span -> SExp)
 quote = lexeme $ Quo <$> (char '\'' >> expression)
@@ -184,6 +191,7 @@ literal =
 booleanExp = lexeme $ char '#' >> letter >>= letterToBoolean
     where letterToBoolean 't' = return $ Bln True
           letterToBoolean 'f' = return $ Bln False
+          letterToBoolean c   = fail $ "invalid boolean character" ++ show c
 
 characterExp = Cha <$> lexeme (symbol "#\\" >> (alphaNum <|> oneOf "*/<=>!?:$%_&~^@"))
 

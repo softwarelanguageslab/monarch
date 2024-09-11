@@ -7,6 +7,7 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, ConstraintKinds, FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -Wno-partial-fields #-}
 module Syntax.Python.AST(
    -- ast nodes
    Parameter(..), 
@@ -224,6 +225,7 @@ deriving instance (Holds Eq   ξ a) => Eq (Lit a ξ)
 ideName :: Ide a -> String
 ideName (Ide (Ident nam _)) = nam
 ideName (NamespacedIde i@(Ide _) _) = ideName i
+ideName _i = error "invalid ide"
 
 -------------------------------------------------------------------------------
 -- Pretty printing
