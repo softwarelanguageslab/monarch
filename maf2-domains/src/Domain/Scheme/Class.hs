@@ -6,7 +6,7 @@ import Domain.Core
 import Control.Monad.AbstractM
 
 import Data.Set (Set)
-import Prelude hiding (null)
+import Prelude hiding (or, null)
 import Data.Kind
 
 -- | Reusable pre-conditions for a valid Scheme domain
@@ -80,19 +80,19 @@ class (RealDomain v,
 
   -- | Differentiate between values
   -- Note that these predicates ought to be overapproximating, so they should return `True` if it could be a value of the given type
-  isInteger :: v -> Bool
-  isReal :: v -> Bool
-  isChar :: v -> Bool
-  isVecPtr :: v -> Bool
-  isStrPtr :: v -> Bool
-  isPaiPtr :: v -> Bool
-  isClo :: v -> Bool
-  isBool :: v -> Bool
-  isNil  :: v -> Bool
-  isUnsp :: v -> Bool
-  isPrim :: v -> Bool
-  isProc :: v -> Bool
-  isProc v = isPrim v || isClo v
+  isInteger :: BoolDomain b => v -> b
+  isReal    :: BoolDomain b => v -> b
+  isChar    :: BoolDomain b => v -> b
+  isVecPtr  :: BoolDomain b => v -> b
+  isStrPtr  :: BoolDomain b => v -> b
+  isPaiPtr  :: BoolDomain b => v -> b
+  isClo     :: BoolDomain b => v -> b
+  isBool    :: BoolDomain b => v -> b
+  isNil     :: BoolDomain b => v -> b
+  isUnsp    :: BoolDomain b => v -> b
+  isPrim    :: BoolDomain b => v -> b
+  isProc    :: BoolDomain b => v -> b
+  isProc v = or (isPrim v) (isClo v)
 
 -- | Types of values assigned to variables
 type family VarDom v :: Type

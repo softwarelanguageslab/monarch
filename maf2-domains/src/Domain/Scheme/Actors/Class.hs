@@ -7,10 +7,8 @@ import Lattice.Class (Lattice)
 import Data.Set (Set)
 import Domain.Core.NumberDomain (Boo)
 
-class ActorRef a where 
-   -- | The type of actor where the actor reference points to
-   type Actor a :: Type
-
+-- | Extension of the Scheme domain with actor references
+-- and behaviors.
 class (SchemeDomain v) => ActorDomain v where
    -- | The type of actor reference included in abtract value `v`
    type ARef v :: Type
