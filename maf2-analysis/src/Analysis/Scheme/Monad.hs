@@ -27,8 +27,6 @@ type SchemeDomainM e v m = (
    Domain (Esc m) DomainError,
    VarDom v ~ v,
    Boo v    ~ v,
-   -- Environment
-   EnvM m (Adr v) (Env v),
    -- Store interactions
    StoreM m (PAdr v) (PaiDom v),
    StoreM m (Adr v)  (VarDom v),
@@ -45,6 +43,8 @@ type SchemeDomainM e v m = (
 -- | Scheme analysis monad (without open recursion on @eval@) 
 type SchemeM' m v = (
    SchemeDomainM Exp v m,
+   -- Environment
+   EnvM m (Adr v) (Env v),
    --
    CallM m (Env v) v)
 
