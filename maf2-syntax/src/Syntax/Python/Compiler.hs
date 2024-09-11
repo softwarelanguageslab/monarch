@@ -45,6 +45,11 @@ data PyTag = FrmTag
            | ClsNew
            | IniBnd
            | IniCll
+           | ForItr
+           | ForNxt
+           | ForBln
+           | ItrCll
+           | NxtCll
    deriving (Eq, Ord, Show, Bounded, Enum)
 
 instance Show PyLoc where
@@ -70,14 +75,19 @@ spanningTagged _ _ = error "spanning not supported for tagged locations"
 parse :: String  -- ^ filename
       -> String  -- ^ contents
       -> Maybe (Program PyLoc AfterLexicalAddressing)
-parse nam = parseFile nam >=> (\ex -> runLexical <$> runReaderT (compile $ untagged <$> ex) Nothing)
+parse nam = parseFile nam >=> (\ex -> runLexical <$> evalStateT (runReaderT (compile $ untagged <$> ex) Nothing) 0)
 
 -------------------------------------------------------------------------------
 -- Simplification phase
 -------------------------------------------------------------------------------
 
 -- | Simplification phase monad
-type SimplifyM m a = MonadReader (Maybe (Ide a)) m
+type SimplifyM m a = (MonadReader (Maybe (Ide a)) m, MonadState Int m)
+
+gensym :: SimplifyM m a => m String
+gensym = do n <- get 
+            put (n+1)
+            return ("$var" ++ show n)
 
 thunkify :: a -> Stmt a AfterSimplification -> Stmt a AfterSimplification
 thunkify a bdy = StmtExp () (Call (Lam [] bdy a ()) [] [] a) a
@@ -105,7 +115,7 @@ compileStmt (AST.Conditional grds els a)  = Conditional () <$> mapM (\(exp, st) 
 compileStmt (StmtExpr e a)                = pure (StmtExp () (compileExp e) a)
 compileStmt (Import items _)              = error "import not supported"
 compileStmt (FromImport items _ _)        = error "import not supported"
-compileStmt (For vrs gen bdy els _)       = todo "for expressions"
+compileStmt (For vrs gen bdy els a)       = compileFor vrs gen bdy els a 
 compileStmt (Class nam ags bdy a)         = do
    assignment <- assign (Ide nam) (compileClassInstance a (ident_string nam) ags)
    ltt <- thunkify a <$> compileClassBdy (Ide nam) bdy
@@ -154,6 +164,18 @@ compileSequence es = makeSeq <$> mapM compileStmt es
 -- | Compiles a block (something that has a different lexical scope)
 compileFun :: SimplifyM m PyLoc => [Parameter PyLoc] -> Suite PyLoc -> PyLoc -> m (Exp PyLoc AfterSimplification)
 compileFun prs bdy a = Lam (compilePrs prs) <$> local (const Nothing) (compileSequence bdy) <*> pure a <*> pure ()
+
+-- | Compiles a for statement to a loop
+compileFor :: SimplifyM m PyLoc => [Expr PyLoc] -> Expr PyLoc -> Suite PyLoc -> Suite PyLoc -> PyLoc -> m (Stmt PyLoc AfterSimplification)
+compileFor [AST.Var nam _] gen bdy [] a   = do var <- gensym
+                                               let ide = Ide (Ident var a)
+                                               ass1 <- assign ide       (Call (Read (compileExp gen) (Ide (Ident "__iter__" a)) (tagAs ForItr a)) [] [] (tagAs ItrCll a))
+                                               ass2 <- assign (Ide nam) (Call (Read (Var ide)        (Ide (Ident "__next__" a)) (tagAs ForNxt a)) [] [] (tagAs NxtCll a))
+                                               let nxt = Try () ass2 [(Var (Ide (Ident "StopIteration" a)), Break () a)] a 
+                                               bdy' <- makeSeq . (nxt:) . (:[]) <$> compileSequence bdy 
+                                               let whi = Loop () (Literal (Bool True (tagAs ForBln a))) bdy' a 
+                                               return $ makeSeq [ass1, whi]
+compileFor _ _ _ _ _                      = todo "unsupported for form"
 
 -- | Compile the parameters of a function
 compilePrs :: [Parameter PyLoc] -> [Par PyLoc AfterSimplification]

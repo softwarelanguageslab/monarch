@@ -21,9 +21,11 @@ data PyType = NoneType
             | BoundType
             | DictionaryType
             | ExceptionType 
+            | StopIterationExceptionType
             | CloType
             | FloatType
             | ListType 
+            | ListIteratorType
             | FrameType 
   deriving (Eq, Ord, Enum, Bounded, Show) 
 
@@ -40,10 +42,12 @@ name CloType          = "function"
 name BoundType        = "bound function" 
 name DictionaryType   = "dictionary"
 name ListType         = "list"
+name ListIteratorType = "list iterator"
 name FrameType        = "frame"
 name ObjectType       = "object"
 name TypeType         = "type"
 name ExceptionType    = "Exception"
+name StopIterationExceptionType = "StopIteration"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -76,13 +80,16 @@ methods BoundType         = []
 methods CloType           = []
 methods ListType          = [(GetItemAttr, ListGetItem),
                              (SetItemAttr, ListSetItem),
-                             (LenAttr,     ListLength)]
+                             (LenAttr,     ListLength),
+                             (IterAttr,    ListIter)]
 methods FrameType         = []
 methods DictionaryType    = [(GetItemAttr, DictGetItem),
                              (SetItemAttr, DictSetItem)]
 methods ObjectType        = [(InitAttr, ObjectInit)]
 methods TypeType          = [(InitAttr, TypeInit)]
 methods ExceptionType     = []
+methods StopIterationExceptionType = [] 
+methods ListIteratorType  = [(NextAttr, ListIteratorNext)]
 
 -- | Built-in primitives in Python
 data PyPrim     = 
@@ -114,7 +121,10 @@ data PyPrim     =
                 -- list primitives
                 | ListGetItem
                 | ListSetItem
-                | ListLength 
+                | ListLength
+                | ListIter 
+                -- list iterator primitives
+                | ListIteratorNext 
                 -- type primitives
                 | TypeInit  
                 -- object primitives
@@ -149,6 +159,8 @@ data PyAttr = ClassAttr
             | SetItemAttr
             | InitAttr
             | LenAttr 
+            | IterAttr
+            | NextAttr 
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -179,6 +191,8 @@ attrStr GetItemAttr   = "__getitem__"
 attrStr SetItemAttr   = "__setitem__"
 attrStr InitAttr      = "__init__"
 attrStr LenAttr       = "__len__"
+attrStr IterAttr      = "__iter__"
+attrStr NextAttr      = "__next__"
 
 -- | Built-in objects in Python 
 data PyConstant = None
@@ -208,6 +222,7 @@ data PyPrmKey = IntPrm
               | BndPrm
               | TupPrm
               | LstPrm
+              | LsiPrm 
               | DctPrm
   deriving (Eq, Ord, Show)
 
@@ -223,6 +238,7 @@ classFor SCloPrm = CloType
 classFor SBndPrm = BoundType
 classFor STupPrm = TupleType
 classFor SLstPrm = ListType 
+classFor SLsiPrm = ListIteratorType
 classFor SDctPrm = DictionaryType
 
 -- | Built-in Python errors

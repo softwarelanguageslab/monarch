@@ -37,60 +37,60 @@ import Analysis.Monad.Stack
 --- Python analysis fixpoint algorithm
 ---
 
-type IntraT m = MonadStack '[
-                    MayEscapeT (Set PyEsc),
-                    AllocT PyLoc () ObjAdr,
-                    EnvT PyEnv,
-                    CtxT (),
-                    JoinT,
-                    CacheT
-                ] m 
+type IntraT m vlu = MonadStack '[
+                        MayEscapeT (Set (PyEsc vlu)),
+                        AllocT PyLoc () ObjAdr,
+                        EnvT PyEnv,
+                        CtxT (),
+                        JoinT,
+                        CacheT
+                    ] m 
 
-type AnalysisM m obj = (PyObj' obj, 
-                        StoreM m ObjAdr obj,
-                        MapM PyCmp PyRes m,
-                        ComponentTrackingM m  PyCmp,
-                        DependencyTrackingM m PyCmp ObjAdr,
-                        DependencyTrackingM m PyCmp PyCmp,
-                        WorkListM m PyCmp)
+type AnalysisM m obj vlu = (PyDomain obj vlu, 
+                            StoreM m ObjAdr obj,
+                            MapM (PyCmp vlu) (PyRes vlu) m,
+                            ComponentTrackingM m  (PyCmp vlu),
+                            DependencyTrackingM m (PyCmp vlu) ObjAdr,
+                            DependencyTrackingM m (PyCmp vlu) (PyCmp vlu),
+                            WorkListM m (PyCmp vlu))
 
-type PyCmp = Key (IntraT Identity) PyBdy
-type PyRes = Val (IntraT Identity) PyVal 
+type PyCmp vlu = Key (IntraT Identity vlu) PyBdy
+type PyRes vlu = Val (IntraT Identity vlu) vlu 
 
-intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
-intra cmp = cache @(IntraT (IntraAnalysisT PyCmp m)) cmp evalBdy
+intra :: forall m obj vlu . AnalysisM m obj vlu => PyCmp vlu -> m ()
+intra cmp = cache @(IntraT (IntraAnalysisT (PyCmp vlu) m) vlu) cmp evalBdy
                 & runAlloc (const . allocPtr)
                 & runIntraAnalysis cmp 
                 
 
-inter :: forall m obj . AnalysisM m obj => PyPrg -> m () 
+inter :: forall m obj vlu . AnalysisM m obj vlu => PyPrg -> m () 
 inter prg = do init                                 -- initialize Python infrastructure
                add ((Main prg, initialEnv), ())     -- add the main component to the worklist
                iterateWL intra                      -- start the analysis 
 
-analyze :: forall obj . PyObj' obj => PyPrg -> (Map PyCmp PyRes, Map ObjAdr obj)
+analyze :: forall obj vlu . PyDomain obj vlu => PyPrg -> (Map (PyCmp vlu) (PyRes vlu), Map ObjAdr obj)
 analyze prg = (rsto, osto)
     where ((_,osto),rsto) = inter prg
                                 & runWithStore @(Map ObjAdr obj) @ObjAdr
-                                & runWithMapping @PyCmp
-                                & runWithDependencyTracking @PyCmp @ObjAdr
-                                & runWithDependencyTracking @PyCmp @PyCmp
-                                & runWithComponentTracking @PyCmp
-                                & runWithWorkList @(Set PyCmp)
+                                & runWithMapping @(PyCmp vlu)
+                                & runWithDependencyTracking @(PyCmp vlu) @ObjAdr
+                                & runWithDependencyTracking @(PyCmp vlu) @(PyCmp vlu)
+                                & runWithComponentTracking @(PyCmp vlu)
+                                & runWithWorkList @(Set (PyCmp vlu))
                                 & runIdentity
 
-analyzeREPL :: forall obj . PyObj' obj
+analyzeREPL :: forall obj vlu . PyDomain obj vlu
     => IO PyPrg         -- a read function
     -> (obj -> IO ())   -- a display function
     -> IO ()
 analyzeREPL read display = 
     void $ (init >> repl) 
             & runWithStore @(Map ObjAdr obj) @ObjAdr
-            & runWithMapping @PyCmp
-            & runWithDependencyTracking @PyCmp @ObjAdr
-            & runWithDependencyTracking @PyCmp @PyCmp
-            & runWithComponentTracking @PyCmp
-            & runWithWorkList @(Set PyCmp)
+            & runWithMapping @(PyCmp vlu)
+            & runWithDependencyTracking @(PyCmp vlu) @ObjAdr
+            & runWithDependencyTracking @(PyCmp vlu) @(PyCmp vlu)
+            & runWithComponentTracking @(PyCmp vlu)
+            & runWithWorkList @(Set (PyCmp vlu))
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
                               let cmp = ((Main prg, initialEnv), ())
                               add cmp 
@@ -102,7 +102,7 @@ analyzeREPL read display =
 --- CP instantiation
 ---
 
-type PyObjCP' = PyObjCP PyVal ObjAdr PyClo
+type PyDomainCP = PyObjCP ObjAddrSet ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp (MayEscape (Set PyEsc) PyVal), Map ObjAdr PyObjCP')
-analyzeCP = analyze @PyObjCP'
+analyzeCP :: PyPrg -> (Map (PyCmp ObjAddrSet) (MayEscape (Set (PyEsc ObjAddrSet)) ObjAddrSet), Map ObjAdr PyDomainCP)
+analyzeCP = analyze @PyDomainCP

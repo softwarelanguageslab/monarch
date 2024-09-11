@@ -15,12 +15,12 @@ import Control.Monad.DomainError
 import Analysis.Python.Escape (PyEsc)
 import Data.Set (Set)
 import Analysis.Python.Monad (PyBdy(..))
-import Control.Monad.Escape (MayEscape(..))
 import Language.Python.Common (annot)
 import Domain.Python.Syntax 
 import Data.IORef 
 import System.IO 
 import Data.Function ((&))
+import Control.Monad.Escape (MayEscape(..))
 
 newtype Options = Options String 
    deriving Show
@@ -35,13 +35,13 @@ printOSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k
                     & filter (\case (PrmAdr _, _) -> False ; _ -> True)
          indent = maximum (map (length . show . fst) adrs) + 5
 
-printRSto :: Map PyCmp (MayEscape (Set PyEsc) PyVal) -> String
+printRSto :: PyVal v => Map (PyCmp v) (MayEscape (Set (PyEsc v)) v) -> String
 printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showRes v)) cmps
    where cmps = Map.toList m
          showRes (Escape e) = "[!!: "++show e++"]"
          showRes (Value v) = show v
-         showRes _ = "⊥"
          showRes (MayBoth v e) = "[!!: "++show e++"]" ++ show v 
+         showRes _ = "⊥"
          showCmp ((Main _, _), _) = "<main>"
          showCmp ((LoopBdy loc _ _, _), _) = "<loop " ++ show loc ++ ">"
          showCmp ((FuncBdy loc _, _), _) = "<func " ++ show loc ++ ">"
@@ -49,7 +49,7 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
 
 runREPL :: IO ()
 runREPL = do count <- newIORef 0 
-             analyzeREPL @PyObjCP' (read count) print 
+             analyzeREPL @PyDomainCP (read count) print 
       where read count = do cur <- readIORef count
                             writeIORef count (cur + 1)
                             prompt cur
@@ -75,6 +75,6 @@ runFile fileName =
       putStrLn "\n"
 
 main :: Options -> IO ()
-main (Options fileName) = runREPL
+main (Options fileName) = runFile fileName
 
 

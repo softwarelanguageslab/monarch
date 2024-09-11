@@ -38,37 +38,37 @@ data PyBdy = Main PyPrg
            | LoopBdy PyLoc PyExp PyStm
   deriving (Eq, Ord, Show)
 
-type PyM m obj = (PyObj' obj,
-                  MonadJoin m,
-                  MonadCache m,
-                  MapM (Key m PyBdy) (Val m PyVal) m, 
-                  ComponentTrackingM m (Key m PyBdy),
-                  MonadEscape m,
-                  PyEscape (Esc m),
-                  Domain (Esc m) PyError,
-                  Domain (Esc m) DomainError,
-                  SplitLattice (Esc m),
-                  EnvM m ObjAdr PyEnv, 
-                  AllocM m PyLoc ObjAdr,
-                  StoreM m ObjAdr obj)
+type PyM m obj vlu = (PyDomain obj vlu,
+                      MonadJoin m,
+                      MonadCache m,
+                      MapM (Key m PyBdy) (Val m vlu) m, 
+                      ComponentTrackingM m (Key m PyBdy),
+                      MonadEscape m,
+                      PyEscape (Esc m) vlu,
+                      Domain (Esc m) PyError,
+                      Domain (Esc m) DomainError,
+                      SplitLattice (Esc m),
+                      EnvM m ObjAdr PyEnv, 
+                      AllocM m PyLoc ObjAdr,
+                      StoreM m ObjAdr obj)
 
-pyDeref :: (Lattice a, PyM m obj) => (ObjAdr -> obj -> m a) -> PyVal -> m a
+pyDeref :: (Lattice a, PyM m obj vlu) => (ObjAdr -> obj -> m a) -> vlu -> m a
 pyDeref f = deref f . addrs 
 
-pyDeref' :: PyM m obj => PyVal -> m obj
+pyDeref' :: PyM m obj vlu => vlu -> m obj
 pyDeref' = deref' . addrs 
 
-pyAlloc :: PyM m obj => PyLoc -> obj -> m PyVal
+pyAlloc :: PyM m obj vlu => PyLoc -> obj -> m vlu
 pyAlloc loc = fmap injectAdr . store loc
 
-break :: PyM pyM obj => pyM ()
-break = escape Break
+break :: forall pyM obj vlu . PyM pyM obj vlu => pyM ()
+break = escape (Break @vlu)
 
-continue :: PyM pyM obj => pyM ()
-continue = escape Continue
+continue :: forall pyM obj vlu . PyM pyM obj vlu => pyM ()
+continue = escape (Continue @vlu)
 
-returnWith :: PyM pyM obj => PyVal -> pyM ()
+returnWith :: PyM pyM obj vlu => vlu -> pyM ()
 returnWith = escape . Return 
 
-throwException :: PyM pyM obj => PyVal -> pyM ()
+throwException :: (PyM pyM obj vlu, Lattice a) => vlu -> pyM a 
 throwException = escape . Exception

@@ -12,12 +12,13 @@ module Analysis.Python.Primitives (applyPrim) where
 import Domain.Python.World 
 import Domain.Python.Objects
 
+import Lattice 
 import Domain (NumberDomain)
 import qualified Domain.Core.SeqDomain as SeqDomain 
 import qualified Domain
 import Domain.Python.Syntax hiding (Dict, None)
 import Analysis.Python.Monad 
-import Analysis.Python.Common 
+import Analysis.Python.Common hiding (from)
 import Control.Monad.Join
 import Control.Monad.DomainError
 import Control.Monad.Escape
@@ -29,12 +30,13 @@ import qualified Control.Monad as Monad
 import Data.Singletons.TH
 import Analysis.Monad (StoreM(updateWith, lookupAdr, updateAdr))
 import Control.Monad ((>=>))
+import qualified Debug.Trace as Debug
 
 ---
 --- Primitives implementation
 ---
       
-applyPrim :: forall pyM obj . PyM pyM obj => PyPrim -> PyLoc -> [PyVal] -> pyM PyVal
+applyPrim :: forall pyM obj vlu . PyM pyM obj vlu => PyPrim -> PyLoc -> [vlu] -> pyM vlu
 -- int primitives
 applyPrim IntAdd        = prim2'' $ intBinop' Domain.plus 
 applyPrim IntSub        = prim2'' $ intBinop' Domain.minus
@@ -72,13 +74,27 @@ applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref
 applyPrim ListSetItem   = prim3 $ \_ a1 a2 vlu -> do idx <- pyDeref' a2 >>= at @IntPrm
                                                      mjoinMap (updateLstIdx idx vlu) (addrs a1)
                                                      return $ constant None
-   where updateLstIdx :: Abs obj IntPrm -> PyVal -> ObjAdr -> pyM ()
+   where updateLstIdx :: Abs obj IntPrm -> vlu -> ObjAdr -> pyM ()
          updateLstIdx idx vlu adr = do obj  <- lookupAdr adr
                                        lst  <- at @LstPrm obj 
                                        lst' <- SeqDomain.setWeak idx vlu lst    -- TODO: only weak updates until updateWith supports monadic updates ...
                                        let obj' = set @LstPrm lst' obj
                                        updateAdr adr obj'            
-applyPrim ListLength    = prim1' @LstPrm $ \loc a -> pyAlloc loc $ from @IntPrm (SeqDomain.length a)  
+applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyAlloc loc $ from @IntPrm (SeqDomain.length l)  
+applyPrim ListIter      = prim1' @LstPrm $ \loc l -> pyAlloc loc $ from @LsiPrm l  
+-- list iterator primitives
+applyPrim ListIteratorNext = prim1 $ \loc a -> mjoinMap (next loc) (addrs a)
+        where next loc adr = do obj         <- lookupAdr adr
+                                lst         <- at @LsiPrm obj
+                                (val, lst') <- case lst of --TODO: add tail operation to SeqDomain?
+                                                SeqDomain.BotList           -> mzero 
+                                                SeqDomain.CPList [] _ _     -> stopIteration loc   
+                                                SeqDomain.CPList (e:es) n _ -> return (e, SeqDomain.CPList es (n-1) (joins es)) 
+                                                SeqDomain.TopList v         -> return (v, lst) `mjoin` stopIteration loc  
+                                let obj' = set @LsiPrm lst' obj 
+                                updateAdr adr obj' 
+                                return val 
+              stopIteration loc = throwException =<< pyAlloc loc (new' StopIterationExceptionType) 
 -- type primitives
 applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do assignAttr (attrStr NameAttr) nam typ
                                                       mro <- computeMRO loc typ sup
@@ -91,57 +107,57 @@ applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
 -- Primitive helpers 
 --
 
-prim0 :: forall pyM obj . PyM pyM obj  
-        => (PyLoc -> pyM PyVal)                 -- ^ the primitive function
-        -> (PyLoc -> [PyVal] -> pyM PyVal)      -- ^ the resulting function   
+prim0 :: forall pyM obj vlu . PyM pyM obj vlu 
+        => (PyLoc -> pyM vlu)            -- ^ the primitive function
+        -> (PyLoc -> [vlu] -> pyM vlu)   -- ^ the resulting function   
 prim0 f loc [] = f loc 
 prim0 _ _   _  = escape ArityError 
 
-prim1 :: forall pyM obj . PyM pyM obj  
-        => (PyLoc -> PyVal   -> pyM PyVal)      -- ^ the primitive function
-        -> (PyLoc -> [PyVal] -> pyM PyVal)      -- ^ the resulting function   
+prim1 :: forall pyM obj vlu . PyM pyM obj vlu  
+        => (PyLoc -> vlu   -> pyM vlu)      -- ^ the primitive function
+        -> (PyLoc -> [vlu] -> pyM vlu)      -- ^ the resulting function   
 prim1 f loc [a] = f loc a  
 prim1 _ _   _  = escape ArityError 
 
-prim1' :: forall a pyM obj . (SingI a, PyM pyM obj)  
-        => (PyLoc -> Abs obj a -> pyM PyVal)      -- ^ the primitive function
-        -> (PyLoc -> [PyVal]   -> pyM PyVal)      -- ^ the resulting function   
+prim1' :: forall a pyM obj vlu . (SingI a, PyM pyM obj vlu)  
+        => (PyLoc -> Abs obj a -> pyM vlu)      -- ^ the primitive function
+        -> (PyLoc -> [vlu]     -> pyM vlu)      -- ^ the resulting function   
 prim1' f = prim1 $ \loc -> pyDeref' >=> at @a >=> f loc 
 
-prim2 :: PyM pyM obj
-        => (PyLoc -> PyVal -> PyVal -> pyM PyVal)     -- ^ the primitive function
-        -> (PyLoc -> [PyVal]        -> pyM PyVal)     -- ^ the resulting function 
+prim2 :: PyM pyM obj vlu
+        => (PyLoc -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
+        -> (PyLoc -> [vlu]      -> pyM vlu)     -- ^ the resulting function 
 prim2 f loc [a1, a2] = f loc a1 a2
 prim2 _ _ _          = escape ArityError
 
-prim2' :: forall a1 a2 pyM obj . (SingI a1, SingI a2, PyM pyM obj)
-        => (PyLoc -> Abs obj a1 -> Abs obj a2 -> pyM PyVal)     -- ^ the primitive function
-        -> (PyLoc -> [PyVal] -> pyM PyVal)                      -- ^ the resulting function 
+prim2' :: forall a1 a2 pyM obj vlu . (SingI a1, SingI a2, PyM pyM obj vlu)
+        => (PyLoc -> Abs obj a1 -> Abs obj a2 -> pyM vlu)   -- ^ the primitive function
+        -> (PyLoc -> [vlu] -> pyM vlu)                      -- ^ the resulting function 
 prim2' f = prim2 $ \loc a1 a2 -> do v1 <- pyDeref' a1 >>= at @a1  
                                     v2 <- pyDeref' a2 >>= at @a2
                                     f loc v1 v2
 
-prim2'' :: PyM pyM obj
-        => (obj -> obj -> pyM obj)                      -- ^ the primitive function
-        -> (PyLoc -> [PyVal] -> pyM PyVal)              -- ^ the resulting function 
+prim2'' :: PyM pyM obj vlu
+        => (obj -> obj -> pyM obj)                  -- ^ the primitive function
+        -> (PyLoc -> [vlu] -> pyM vlu)              -- ^ the resulting function 
 prim2'' f = prim2 $ \loc a1 a2 -> do o1 <- pyDeref' a1
                                      o2 <- pyDeref' a2
                                      res <- f o1 o2
                                      pyAlloc loc res 
 
-prim3 :: PyM pyM obj
-        => (PyLoc -> PyVal -> PyVal -> PyVal -> pyM PyVal)     -- ^ the primitive function
-        -> (PyLoc -> [PyVal]                 -> pyM PyVal)     -- ^ the resulting function 
+prim3 :: PyM pyM obj vlu
+        => (PyLoc -> vlu -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
+        -> (PyLoc -> [vlu]             -> pyM vlu)     -- ^ the resulting function 
 prim3 f loc [a1, a2, a3] = f loc a1 a2 a3
 prim3 _ _ _              = escape ArityError
 
-prim4 :: PyM pyM obj
-        => (PyLoc -> PyVal -> PyVal -> PyVal -> PyVal -> pyM PyVal)     -- ^ the primitive function
-        -> (PyLoc -> [PyVal]                          -> pyM PyVal)     -- ^ the resulting function 
+prim4 :: PyM pyM obj vlu
+        => (PyLoc -> vlu -> vlu -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
+        -> (PyLoc -> [vlu]                    -> pyM vlu)     -- ^ the resulting function 
 prim4 f loc [a1, a2, a3, a4] = f loc a1 a2 a3 a4
 prim4 _ _ _                  = escape ArityError
 
-intBinop :: forall r1 r2 pyM obj . (PyM pyM obj, SingI r1, SingI r2)
+intBinop :: forall r1 r2 pyM obj vlu . (PyM pyM obj vlu, SingI r1, SingI r2)
           => (Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj r1))   -- the function for integers
           -> (Abs obj ReaPrm -> Abs obj ReaPrm -> pyM (Abs obj r2))   -- the function for floats
           -> obj -> obj -> pyM obj 
@@ -154,17 +170,17 @@ intBinop fi fr o1 o2 = condCP (return $ has @ReaPrm o2)  -- if the second arg is
                                   n2 <- at @IntPrm o2
                                   from @r1 <$> fi n1 n2)
 
-intBinop' :: forall pyM obj . (PyM pyM obj) 
+intBinop' :: forall pyM obj vlu . (PyM pyM obj vlu) 
           => (forall d . NumberDomain d => d -> d -> pyM d) -- a common case: the same function (e.g., from NumberDomain)
           -> obj -> obj -> pyM obj
 intBinop' f = intBinop @IntPrm @ReaPrm f f 
 
-intBinop'' :: forall r pyM obj . (PyM pyM obj, SingI r)
+intBinop'' :: forall r pyM obj vlu . (PyM pyM obj vlu, SingI r)
           => (forall d . (NumberDomain d, Domain.Boo d ~ Abs obj BlnPrm) => d -> d -> pyM (Abs obj r)) -- another common case
           -> obj -> obj -> pyM obj
 intBinop'' f = intBinop @r @r f f
 
-floatBinop :: forall r pyM obj . (PyM pyM obj, SingI r)
+floatBinop :: forall r pyM obj vlu . (PyM pyM obj vlu, SingI r)
           => (Abs obj ReaPrm -> Abs obj ReaPrm -> pyM (Abs obj r))
           -> obj -> obj -> pyM obj
 floatBinop f o1 o2 = condCP (return $ has @IntPrm o2)   -- if the second arg is an int ...

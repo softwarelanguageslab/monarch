@@ -41,7 +41,7 @@ todo :: String -> a
 todo = error . ("[TODO] NYI: " ++)
 
 -- | Evaluate a Python component
-evalBdy :: PyM m obj => PyBdy -> m PyVal
+evalBdy :: PyM m obj vlu => PyBdy -> m vlu
 evalBdy (Main prg) = catchReturn (exec (programStmt prg) $> constant None)
 evalBdy loop@(LoopBdy _ cnd bdy) = 
    cond (eval cnd >>= pyIsTrue)
@@ -53,20 +53,20 @@ evalBdy loop@(LoopBdy _ cnd bdy) =
         (return $ constant None)
 evalBdy (FuncBdy _ bdy) = catchReturn (exec bdy $> constant None)
 
-catchReturn :: PyM m obj => m PyVal -> m PyVal
+catchReturn :: PyM m obj vlu => m vlu -> m vlu
 catchReturn = (`catch` msplitOnCP (return . isReturn) getReturn throw)
 
 globalFrame :: ObjAdr
 globalFrame = allocCst GlobalFrame
 
 -- | Variable to frame object
-frame :: PyM m obj => PyIde -> m (ObjAdr, String)
+frame :: PyM m obj vlu => PyIde -> m (ObjAdr, String)
 frame (IdeGbl nam)   = return (globalFrame, nam)
 frame (IdeLex ide _) = (,nam) <$> lookupEnv nam
    where nam = ideName ide
 
 -- | Execute a single statement
-exec :: PyM pyM obj => PyStm -> pyM ()
+exec :: PyM pyM obj vlu => PyStm -> pyM ()
 exec (Assg _ lhs rhs)            = execAss lhs rhs
 exec (Return _ exp loc)          = execRet exp loc
 exec (Conditional _ brs els _ )  = execIff brs els
@@ -76,26 +76,28 @@ exec (Seq _ sts)                 = execSeq sts
 exec (Break _ _)                 = execBrk
 exec (Continue _ _)              = execCnt
 exec (Raise _ exp _)             = execRai exp 
-exec (Try _ bdy hds _)           = execTry bdy hds  
+exec (Try _ bdy hds _)           = execTry bdy hds
 exec (NonLocal x _ _)            = absurd x          -- these can't occur in microPython
 exec (Global x _ _)              = absurd x          -- these can't occur in microPython
 
-execExp :: PyM pyM obj => PyExp -> pyM ()
+execExp :: PyM pyM obj vlu => PyExp -> pyM ()
 execExp = void . eval
 
-execRai :: PyM pyM obj => PyExp -> pyM ()
+execRai :: PyM pyM obj vlu => PyExp -> pyM ()
 execRai = eval >=> throwException
 
-execTry :: forall pyM obj . PyM pyM obj => PyStm -> [(PyExp, PyStm)] -> pyM () 
-execTry bdy hds = exec bdy `catch` msplitOnCP (return . isException) (getException >=> checkHandlers hds) throw 
-   where checkHandlers :: [(PyExp, PyStm)] -> PyVal -> pyM ()
+execTry :: forall pyM obj vlu . PyM pyM obj vlu => PyStm -> [(PyExp, PyStm)] -> pyM () 
+execTry bdy hds = exec bdy `catch` msplitOnCP (return . isException) (getException >=> checkHandlers hds) throw
+   where 
+         checkHandlers :: [(PyExp, PyStm)] -> vlu -> pyM ()
          checkHandlers [] exc = throwException exc
-         checkHandlers ((exp, bdy):rst) exc = do cls <- eval exp
+         checkHandlers ((exp, hdl):rst) exc = do cls <- eval exp
                                                  msplitOnCP (`isInstanceOf` cls)
-                                                            (const $ exec bdy)
+                                                            (const $ exec hdl)
                                                             (checkHandlers rst)
                                                             exc 
-execAss :: PyM pyM obj => PyLhs -> PyExp -> pyM ()
+
+execAss :: PyM pyM obj vlu => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
    where assignTo (IdePat ide) val     = do (frm, nam) <- frame ide
                                             assignAttrAt nam val frm 
@@ -103,50 +105,50 @@ execAss lhs rhs = eval rhs >>= assignTo lhs
          assignTo (ListPat _ _) val    = todo "list assignment"
          assignTo (TuplePat _ _) val   = todo "tuple assignment"
 
-execIff :: forall pyM obj . PyM pyM obj => [(PyExp, PyStm)] -> PyStm -> pyM ()
+execIff :: forall pyM obj vlu . PyM pyM obj vlu => [(PyExp, PyStm)] -> PyStm -> pyM ()
 execIff clauses els = conds (map (bimap check exec) clauses) (exec els)
    where check = eval @pyM >=> pyIsTrue  
 
-pyIsTrue :: PyM pyM obj => PyVal -> pyM (Abs obj BlnPrm)
+pyIsTrue :: PyM pyM obj vlu => vlu -> pyM (Abs obj BlnPrm)
 pyIsTrue = pyDeref' >=> at @BlnPrm   
 
-execSeq :: PyM pyM obj => [PyStm] -> pyM ()
+execSeq :: PyM pyM obj vlu => [PyStm] -> pyM ()
 execSeq = mapM_ exec
         
-execRet :: PyM pyM obj => Maybe PyExp -> PyLoc -> pyM ()
+execRet :: PyM pyM obj vlu => Maybe PyExp -> PyLoc -> pyM ()
 execRet (Just exp) _    = eval exp >>= returnWith
 execRet Nothing loc     = returnWith $ constant None
 
-execBrk :: PyM pyM obj => pyM ()
+execBrk :: PyM pyM obj vlu => pyM ()
 execBrk = break
 
-execCnt :: PyM pyM obj => pyM ()
+execCnt :: PyM pyM obj vlu => pyM ()
 execCnt = continue
 
-execWhi :: PyM pyM obj => PyExp -> PyStm -> PyLoc -> pyM ()
-execWhi cnd bdy loc = void $ M.call @PyVal (LoopBdy loc cnd bdy) 
+execWhi :: forall pyM obj vlu . PyM pyM obj vlu => PyExp -> PyStm -> PyLoc -> pyM ()
+execWhi cnd bdy loc = void $ M.call @vlu (LoopBdy loc cnd bdy) 
 
-eval :: PyM pyM obj => PyExp -> pyM PyVal
+eval :: PyM pyM obj vlu => PyExp -> pyM vlu
 eval (Lam prs bdy loc lcl)  = evalLam prs bdy loc lcl
 eval (Var ide)              = evalVar ide
 eval (Literal lit)          = evalLit lit
 eval (Call fun arg kwa loc) = evalCll fun arg kwa loc
 eval (Read obj nam loc)     = evalRea obj (ideName nam) loc
 
-evalRea :: PyM pyM obj => PyExp -> String -> PyLoc -> pyM PyVal
+evalRea :: PyM pyM obj vlu => PyExp -> String -> PyLoc -> pyM vlu
 evalRea obj nam loc = lookupAttr loc nam =<< eval obj
 
-evalLam :: PyM pyM obj => [PyPar] -> PyStm -> PyLoc -> [String] -> pyM PyVal
+evalLam :: PyM pyM obj vlu => [PyPar] -> PyStm -> PyLoc -> [String] -> pyM vlu
 evalLam prs bdy loc lcl = do env <- getEnv
                              let clo = PyClo loc prs bdy lcl env
                              pyAlloc loc (from' @CloPrm clo)
 
-evalVar :: PyM pyM obj => PyIde -> pyM PyVal
+evalVar :: PyM pyM obj vlu => PyIde -> pyM vlu
 evalVar var = do (adr, nam) <- frame var
                  frm <- lookupAdr adr
                  return $ getAttr nam frm 
 
-evalLit :: forall pyM obj . PyM pyM obj => PyLit -> pyM PyVal
+evalLit :: forall pyM obj vlu . PyM pyM obj vlu => PyLit -> pyM vlu
 evalLit (Syntax.None _)    = return $ constant None 
 evalLit (Bool bln loc)     = pyAlloc loc (from' @BlnPrm bln)
 evalLit (Integer int loc)  = pyAlloc loc (from' @IntPrm int)
@@ -159,13 +161,13 @@ evalLit (Dict bds loc)     = pyAlloc loc . from @DctPrm . DctDomain.from =<< map
 
 -- | Applies a procedure
 
-evalCll :: PyM pyM obj => PyExp -> [PyExp] -> [(Ide PyLoc, PyExp)] -> PyLoc -> pyM PyVal
+evalCll :: PyM pyM obj vlu => PyExp -> [PyExp] -> [(Ide PyLoc, PyExp)] -> PyLoc -> pyM vlu
 evalCll opr pos kwa loc = do fun <- eval opr
                              psv <- mapM eval pos
                              kwv <- mapM (\(ide, exp) -> (ide,) <$> eval exp) kwa 
                              call loc psv kwv fun
 
-call :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> PyVal -> pyM PyVal 
+call :: PyM pyM obj vlu => PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> vlu -> pyM vlu 
 call loc pos kwa = pyDeref (\adr obj -> 
    condsCP [(return (obj `isType` BoundType), callBnd loc pos kwa (get @BndPrm obj)),
             (return (obj `isType` CloType),   callClo loc pos kwa (get @CloPrm obj)),
@@ -173,22 +175,22 @@ call loc pos kwa = pyDeref (\adr obj ->
             (return (obj `isType` TypeType),  callTyp loc pos kwa (injectAdr adr))]    --TODO: metaclasses...
 {- else -} (escape NotCallable))
 
-callTyp :: forall pyM obj . PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> PyVal -> pyM PyVal
+callTyp :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> vlu -> pyM vlu
 callTyp loc pos kwa typ = do ref <- pyAlloc loc obj
                              mtd <- lookupAttr (tagAs IniBnd loc) (attrStr InitAttr) ref
                              _   <- call (tagAs IniCll loc) pos kwa mtd    -- do the __init__ call (and ignore its result)
                              return ref 
    where obj = new typ
 
-callPrm :: PyM pyM obj => PyLoc -> [PyVal] -> Set PyPrim -> pyM PyVal 
+callPrm :: PyM pyM obj vlu => PyLoc -> [vlu] -> Set PyPrim -> pyM vlu 
 callPrm pos ags = mjoinMap apply
  where apply prm = applyPrim prm pos ags
 
-callBnd :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> Map ObjAdr PyVal -> pyM PyVal 
+callBnd :: PyM pyM obj vlu => PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Map ObjAdr vlu -> pyM vlu 
 callBnd loc pos kwa = mjoinMap apply . Map.toList
   where apply (rcv, fns) = call loc (injectAdr rcv : pos) kwa fns 
 
-callClo :: PyM pyM obj => PyLoc -> [PyVal] -> [(Ide PyLoc, PyVal)] -> Set PyClo -> pyM PyVal 
+callClo :: PyM pyM obj vlu => PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Set PyClo -> pyM vlu 
 callClo _ pos kwa = mjoinMap apply
  where apply (PyClo loc prs bdy lcl env) = 
          withEnv (const env) $ do frm  <- store (tagAs FrmTag loc) (new $ constant $ TypeObject FrameType)
@@ -211,7 +213,7 @@ parNam (VarKeyword _ _) = todo "varkeyword parameters"
 
 -- TODO: move this elsewhere
 -- TODO: improve implementation?
-isType :: PyObj' obj => obj -> PyType -> CP Bool
+isType :: PyDomain obj vlu => obj -> PyType -> CP Bool
 isType obj typ
    | Set.null cls = bottom
    | Set.size cls == 1 && adr `elem` cls = true 
