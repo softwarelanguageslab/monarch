@@ -9,6 +9,7 @@ import Domain.Scheme hiding (Exp)
 import Analysis.Monad
 import Data.Functor ((<&>), ($>))
 import Syntax.Scheme.AST
+import Syntax.Ide
 import qualified Analysis.Scheme.Semantics as Base
 import Analysis.Actors.Monad
 import qualified Analysis.Monad as Monad

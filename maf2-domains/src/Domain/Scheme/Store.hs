@@ -22,6 +22,7 @@ module Domain.Scheme.Store(
 ) where
 
 import Syntax.Scheme
+import Syntax.Ide
 import Domain.Scheme.Class hiding (Exp, Env)
 import Data.Map (Map)
 

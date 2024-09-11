@@ -10,6 +10,7 @@ import Analysis.Monad hiding (eval, run)
 import Analysis.Scheme.Monad
 import qualified Analysis.Monad as Monad
 import Syntax.Scheme.AST
+import Syntax.Ide
 import Domain hiding (Exp)
 import Control.Applicative (Applicative(liftA2))
 import Analysis.Scheme.Primitives

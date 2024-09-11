@@ -23,6 +23,8 @@ source-repository head
 
 library
   exposed-modules:
+      Syntax
+      Syntax.Ide
       Syntax.Python
       Syntax.Python.AST
       Syntax.Scheme

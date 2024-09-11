@@ -5,6 +5,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Interpreter.Scheme.Values
 import Syntax.Scheme.AST
+import Syntax.Ide
 import Data.Functor.Identity
 import qualified Data.Map as Map
 import Data.Functor

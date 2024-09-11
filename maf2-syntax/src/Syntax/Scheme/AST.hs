@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-module Syntax.Scheme.AST (Exp(..), Ide(..), parseSchemeExp, parseSchemeExp', testParser, isDefine, spanOf, Span, Hdl(..), Labels(..)) where
+module Syntax.Scheme.AST (Exp(..), parseSchemeExp, parseSchemeExp', testParser, isDefine, spanOf, Span, Hdl(..), Labels(..)) where
 
 import GHC.Generics (Generic)
 import qualified Data.Set as Set
@@ -15,13 +15,9 @@ import Control.Applicative
 import Control.Monad.Reader
 import Data.Bifunctor
 import Prelude hiding (span)
+import Syntax.Ide
 
 -- AST definition --
-
-data Ide = Ide { name :: String, span :: Span } deriving (Ord, Eq, Generic)
-
-instance Show Ide where
-   show (Ide { name, span }) = name++":"++show (line span)++":"++show (column span)
 
 data Exp = Num Integer Span          -- ^ number literals
          | Rea Double  Span          -- ^ real number literals
