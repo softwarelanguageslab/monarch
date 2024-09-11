@@ -26,7 +26,7 @@ type M k = '[
        PaiConf  ::-> PaiAdr k,
        VecConf  ::-> VecAdr k,
        VarConf  ::-> EnvAdr k,
-       PidConf  ::-> CP.Pid k,
+       PidConf  ::-> CP.Pid Exp k,
        BeCConf  ::-> UnorderedBehaviorContract (MsCAdr k),
        MoαConf  ::-> MoαAdr k,
        FlaConf  ::-> FlaAdr k,

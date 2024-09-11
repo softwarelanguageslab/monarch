@@ -44,7 +44,7 @@ type M = '[
        PaiConf ::-> PaiAdr K,
        VecConf ::-> VecAdr K,
        VarConf ::-> EnvAdr K,
-       PidConf ::-> CP.Pid K,
+       PidConf ::-> CP.Pid Exp K,
        BeCConf ::-> UnorderedBehaviorContract (MsCAdr K),
        MoαConf ::-> MoαAdr K,
        FlaConf ::-> FlaAdr K,

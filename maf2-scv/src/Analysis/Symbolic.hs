@@ -96,7 +96,7 @@ runSymbolicEvalT (SymbolicEvalT m) = m
 -- Symbolic Pid representation
 ------------------------------------------------------------
 
-instance SymbolicARef (Pid ctx) where
+instance SymbolicARef (Pid Exp ctx) where
    identity EntryPid   = Symbolic.Literal $ Symbolic.Actor Nothing
    identity (Pid e _)  = Symbolic.Literal $ Symbolic.Actor (Just $ spanOf e)
 
@@ -117,7 +117,7 @@ type Msg k = ()
 type MB k = Set (Msg k)
 
 -- | State of all mailboxes
-type Mailboxes k = Map (Pid k) (SVar.SVar (MB k))
+type Mailboxes k = Map (Pid Exp k) (SVar.SVar (MB k))
 
 ------------------------------------------------------------
 -- Analysis
@@ -147,7 +147,7 @@ intra :: forall m s k . (InterM m k, Propagation s k)
       => Exp
       -> Component k
       -> k
-      -> Pid k
+      -> Pid Exp k
       -> Env k
       -> State k
       -> m (IntraResult k)

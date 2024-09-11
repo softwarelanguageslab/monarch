@@ -19,7 +19,7 @@ import Syntax.Scheme (Exp (Lam))
 
 data Component k
   = Main !Exp
-  | Actor !(Pid k) !Exp !k !(Env k)
+  | Actor !(Pid Exp k) !Exp !k !(Env k)
   deriving (Eq, Ord, Show)
 
 newtype CallT v k m a = CallT (IdentityT m a)
@@ -32,7 +32,7 @@ instance
   ( EffectSVarM m (Component k),
     CtxM m k,
     StoreM m (Component k) v, -- return values
-    ActorLocalM m (Pid k) msg mb,
+    ActorLocalM m (Pid Exp k) msg mb,
     AllocM m CExp k,
     EnvM m (EnvAdr k) (Env k)
   ) =>
@@ -56,7 +56,7 @@ newtype SpawnT v m a = SpawnT (IdentityT m a)
 instance
   {-# OVERLAPPING #-}
   ( ActorDomain v,
-    ARef v ~ Pid k,
+    ARef v ~ Pid Exp k,
     CtxM m k,
     EnvM m (EnvAdr k) (Env k),
     EffectSVarM m (Component k)

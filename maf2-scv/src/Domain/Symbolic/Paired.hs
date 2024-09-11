@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE PolyKinds #-}
 -- | Symbolic version of the Scheme domain
 module Domain.Symbolic.Paired where
 
@@ -17,7 +18,7 @@ import Domain.Contract.Communication
 -- Declaration
 --------------------------------------------------
 
-newtype SymbolicVal ptr sptr vptr pptr = SymbolicVal { proposition :: Proposition } deriving (Eq, Ord, Show)
+newtype SymbolicVal (ptr :: k1) (sptr :: k2) (vptr :: k3) (pptr :: k4) = SymbolicVal { proposition :: Proposition } deriving (Eq, Ord, Show)
 
 --------------------------------------------------
 -- Lattice instances
