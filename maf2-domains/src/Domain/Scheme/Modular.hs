@@ -46,11 +46,12 @@ import Data.Kind
 import Data.Singletons
 import Data.Singletons.Sigma
 
-import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs, KeyIs1, ForAll, AtKey1, KeyKind, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, Keys, MapWith, MapWithAt, BindingFrom)
+import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs1, ForAll, AtKey1, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, MapWithAt, BindingFrom)
 import qualified Data.TypeLevel.HMap as HMap
 import Data.List (intercalate)
 import Text.Printf (printf)
-import Control.Exception.Extra (Partial)
+import Lattice.CSetLattice (CSet (CSet))
+import qualified Lattice.CSetLattice as CSet
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -83,8 +84,8 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | MoαConf    -- ^ pointer to actor monitors
                    | BeCConf    -- ^ abstraction for behavior contracts
                    | ComConf    -- ^ abstraction for communication contracts
-                   | PMeConf    -- ^ pointer to message contracts
-                   | FlaConf    -- ^ pointer to flat contracts
+                   | PMeConf    -- ^ pointer to message contracts
+                   | FlaConf    -- ^ pointer to flat contracts
 
 ----------------------------------------------
 -- Modular Scheme lattice
@@ -104,8 +105,8 @@ data SchemeKey = RealKey
                | PrimKey
                | SymKey
                -- λα
-               | PidKey
-               | BehKey 
+               | PidKey
+               | BehKey
                -- λα/c
                | MoαKey
                | BeCKey
@@ -132,7 +133,7 @@ type Values m = '[
    NilKey  ::-> (),
    CloKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
    PrimKey ::-> Set String,
-   SymKey  ::-> Set String,
+   SymKey  ::-> CSet String,
    -- λα language
    PidKey  ::-> Set (Assoc PidConf m),
    BehKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
@@ -193,12 +194,12 @@ deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 BottomLattice (V
 instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
    show (SchemeVal hm) = intercalate "," $ map showElement $ HMap.toList hm
       where showElement :: BindingFrom (Values m) -> String
-            showElement (key :&: value) = 
+            showElement (key :&: value) =
                printf "%s ↦ %s" (show $ fromSing key) (withC_ @(AtKey1 Show (Values m)) (show value) key)
 
 -- EqualLattice
 instance (IsSchemeValue m, ForAll SchemeKey (AtKey1 EqualLattice (Values m))) => EqualLattice (SchemeVal m) where
-   eql a b 
+   eql a b
       | a == bottom || b == bottom = bottom
       | HMap.isSingleton (getSchemeVal a) && HMap.isSingleton (getSchemeVal b) =
          joins $ HMap.mapList (HMap.withC @(AtKey1 EqualLattice (Values m)) check) (getSchemeVal a)
@@ -441,8 +442,8 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
    nil = SchemeVal $ HMap.singleton @NilKey ()
 
    -- Symbols
-   symbol  = SchemeVal . HMap.singleton @SymKey . Set.singleton
-   symbols = fromMaybe Set.empty . HMap.get @SymKey . getSchemeVal
+   symbol  = SchemeVal . HMap.singleton @SymKey . CSet . Set.singleton
+   symbols = maybe Set.empty CSet.getSet . HMap.get @SymKey . getSchemeVal
 
    -- Unspecified
    unsp = SchemeVal $ HMap.singleton @UnspKey ()
@@ -460,17 +461,17 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
             select _ _ = escape WrongType
 
    -- Predicates
-   isInteger = hasType IntKey  
-   isReal    = hasType RealKey 
-   isChar    = hasType CharKey 
-   isPaiPtr  = hasType PaiKey  
-   isVecPtr  = hasType VecKey  
-   isStrPtr  = hasType StrKey  
-   isClo     = hasType CloKey  
-   isBool    = hasType BoolKey 
-   isUnsp    = hasType UnspKey 
-   isNil     = hasType NilKey  
-   isPrim    = hasType PrimKey 
+   isInteger = hasType IntKey
+   isReal    = hasType RealKey
+   isChar    = hasType CharKey
+   isPaiPtr  = hasType PaiKey
+   isVecPtr  = hasType VecKey
+   isStrPtr  = hasType StrKey
+   isClo     = hasType CloKey
+   isBool    = hasType BoolKey
+   isUnsp    = hasType UnspKey
+   isNil     = hasType NilKey
+   isPrim    = hasType PrimKey
 
 ------------------------------------------------------------
 -- Original implementation
@@ -539,8 +540,8 @@ integers = mjoins . HMap.mapList select . getSchemeVal
 insertInt :: (Assoc IntKey (Values m) ~ i) => i -> SchemeVal m
 insertInt = SchemeVal . HMap.singleton @IntKey
 
-insertChar :: (Assoc CharKey (Values m) ~ c) =>  c -> SchemeVal m 
+insertChar :: (Assoc CharKey (Values m) ~ c) =>  c -> SchemeVal m
 insertChar = SchemeVal . HMap.singleton @CharKey
 
-insertBool :: (Assoc BoolKey (Values m) ~ b) => b -> SchemeVal m 
+insertBool :: (Assoc BoolKey (Values m) ~ b) => b -> SchemeVal m
 insertBool = SchemeVal . HMap.singleton @BoolKey

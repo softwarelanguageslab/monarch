@@ -33,6 +33,7 @@ import Control.Fixpoint.WorkList
 import qualified Control.Monad.State.SVar as SVar
 import qualified Data.Map as Map
 import Control.Monad ((>=>))
+import Lattice.Equal (EqualLattice)
 
 -----------------------------------------
 -- Shorthands
@@ -159,14 +160,14 @@ initialState = do
 -- | Evaluates the given expression in the appropriate monad and writes its result to the store
 -- on the return address
 
-evalRet :: forall v ctx m . (EvalM m v Exp, StoreM m (Component v ctx) v) => Component v ctx -> Exp -> m ()
+evalRet :: forall v ctx m . (EvalM m v Exp, StoreM m (Component v ctx) v, EqualLattice v) => Component v ctx -> Exp -> m ()
 evalRet cmp = eval >=> writeAdr cmp
 
 -- | Analyses the given program into an analysis
 -- result. It uses the default initial environment
 -- as specified in `Analysis.Scheme.Primitives`
 analyzeProgram :: forall v ctx wl . 
-                  (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, WorkList wl (Component v ctx))
+                  (SchemeAnalysisConstraints (EnvAdr ctx) v ctx, WorkList wl (Component v ctx), EqualLattice v)
                 => Exp -> ctx -> (DSto ctx v, Map (Component v ctx) v)
 analyzeProgram program initialCtx = (store', retStore')
    where ((rsto, rretSto), state) = runIdentity $ runEffectT @wl (Main program) (setup initialState >>= iterate intra)

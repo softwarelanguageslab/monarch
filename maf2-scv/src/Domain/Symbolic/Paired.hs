@@ -38,7 +38,7 @@ instance PartialOrder (SymbolicVal ptr sptr vptr pptr) where
    subsumes (SymbolicVal p1) (SymbolicVal p2) = p1 == p2
 
 instance Meetable (SymbolicVal ptr sptr vptr pptr) where 
-   -- TODO!
+   meet = error "TODO: meet is not implemented"
 
 ------------------------------------------------------------
 -- NumberDomain instance
