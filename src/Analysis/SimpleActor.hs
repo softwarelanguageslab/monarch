@@ -10,19 +10,22 @@ import Data.Functor.Identity
 import Analysis.Monad hiding (eval)
 import Syntax.AST
 import Analysis.Monad.Stack (MonadStack)
-import Analysis.Scheme.Prelude (CPActorValue, PaiAdr(..), EnvAdr(..), VecAdr(..), StrAdr(..))
+import Analysis.Scheme.Prelude (CPActorValue)
 import Analysis.Monad.ComponentTracking (ComponentTrackingM, runWithComponentTracking)
 import Analysis.Monad.Fix
 import Control.Monad.Escape
 import qualified Analysis.Scheme.Primitives as P
 import Data.Set (Set)
-import Debug.Trace
 import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)
 import Domain.Scheme.Store 
 import Domain.Scheme.Class (PaiDom, VecDom, StrDom)
 
-type K = ()
+------------------------------------------------------------
+-- Shortcuts
+------------------------------------------------------------
+
+type K = [Span]
 type ActorRef = Pid Exp K
 type ActorEnv = Map String (EnvAdr K)
 type ActorVlu = CPActorValue EnvAdr (PaiAdrE Exp) (VecAdrE Exp) (StrAdrE Exp) K Exp
@@ -31,14 +34,19 @@ type ActorRes = Val (IntraT Identity) ActorVlu
 type ActorMai = Map ActorRef (Set ActorVlu)
 type ActorSto = Map (EnvAdr K) ActorVlu
 
+------------------------------------------------------------
+-- Monad
+------------------------------------------------------------
+
 type IntraT m = MonadStack '[
                MayEscapeT (Set ActorError),
                EnvT ActorEnv,
-               AllocT Ide () (EnvAdr K),
-               AllocT Exp () (PaiAdrE Exp K),
-               AllocT Exp () (StrAdrE Exp K),
-               AllocT Exp () (VecAdrE Exp K),
-               CtxT (),
+               AllocT Ide K (EnvAdr K),
+               AllocT Exp K (PaiAdrE Exp K),
+               AllocT Exp K (StrAdrE Exp K),
+               AllocT Exp K (VecAdrE Exp K),
+               CtxT K,
+               MetaT, 
                ActorLocalT ActorVlu,
                JoinT,
                CacheT
@@ -66,18 +74,18 @@ type MonadInter m =
 ------------------------------------------------------------
 
 intra :: forall m . MonadInter m => ActorCmp -> m ()
-intra cmp = trace (show cmp) $ runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (eval @ActorVlu) cmp
-          & runAlloc @Ide @() @(EnvAdr K) EnvAdr
-          & runAlloc @Exp @() @(PaiAdrE Exp K) PaiAdr
-          & runAlloc @Exp @() @(StrAdrE Exp K) StrAdr
-          & runAlloc @Exp @() @(VecAdrE Exp K) VecAdr
+intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (eval @ActorVlu) cmp
+          & runAlloc @Ide @K @(EnvAdr K) EnvAdr
+          & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
+          & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
+          & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
           & runIntraAnalysis cmp
 
 initialEnv :: Env K
 initialEnv = P.initialEnv PrmAdr
 
 inter :: MonadInter m => Exp -> m ()
-inter exp = add (((exp, initialEnv), ()), Pid exp ()) >> iterateWL intra
+inter exp = add ((((exp, initialEnv), []), False), Pid exp []) >> iterateWL intra
 
 analyze :: Exp -> ((((), ActorSto), ActorMai), Map ActorCmp ActorRes)
 analyze exp =

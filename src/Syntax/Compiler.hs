@@ -39,6 +39,8 @@ compile ex@(Atom "send" _ ::: receiver ::: payload ::: SNil _) =
    Send <$> compile receiver <*> compile payload <*> pureSpan ex
 compile e@(Atom "send" _ ::: _) =
    throwError $ "invalid syntax for send " ++ show e
+compile em@(Atom "meta" _ ::: e ::: SNil _) = 
+   Meta <$> compile e <*> pure (spanOf em)
 compile ex@(SExp.Num n _) =
    return $ Literal (Syntax.AST.Num n) (spanOf ex)
 compile ex@(SExp.Bln b _) =

@@ -32,6 +32,7 @@ import Control.Applicative (liftA2)
 import Analysis.Scheme.Primitives (primitive, Prim(..))
 import Domain (Domain(inject))
 import Analysis.Environment (Environment(..))
+import Analysis.Monad.Context (CtxM(..))
 
 ------------------------------------------------------------
 -- Evaluation
@@ -59,7 +60,7 @@ eval' rec (Receive pats _) = do
          pats
    where withEnv' e = withEnv (const e)
 eval' rec (Send e1 e2 _) = do
-   receiver <- trace ("e: " ++ show e1) $ eval' rec e1
+   receiver <- eval' rec e1
    payload  <- eval' rec e2
    trySend receiver payload
    return nil
@@ -68,16 +69,18 @@ eval' rec (Letrec bds e2 _) = do
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (withExtendedEnv bds' . eval' rec . snd) bds
    mapM_ (uncurry writeAdr) (zip ads vs)
-   withExtendedEnv bds' (rec e2)
+   withExtendedEnv bds' (eval' rec e2)
 eval' rec (Begin exs _) =
    last <$> mapM (eval' rec) exs
 eval' rec e@(Pair e1 e2 _) =
-   stoPai e =<< liftA2 cons (eval e1) (eval e2)
+   stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
 eval' _ (Var (Ide x _)) =
    lookupEnv x >>= lookupAdr
 eval' _ (Self _) = aref <$> getSelf @v
 eval' rec (Blame e _) =
-   rec e >>= escape . BlameError . show
+   eval' rec e >>= escape . BlameError . show
+eval' rec (Meta e _) = 
+   withCtx (spanOf e:) (eval' rec e)
 eval' _ _ = error "unsupported expression"
 
 trySend :: EvalM v m => v -> v -> m ()
@@ -120,9 +123,9 @@ matchList f ((pat, e):pats) value =
    (match pat value >>= f e) `catch` (\_ -> matchList f pats value)
 
 -- | Match a pattern against a value
-match :: EvalM v m => Pat -> v -> m (Mapping v)
+match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
-match (ValuePat lit) v =
+match (ValuePat lit) v = trace ("l: " ++ show lit ++ " v: " ++ show v ++ " lv: " ++ show (injectLit @v lit)) $
    condCP (return $ eql (injectLit lit) v) (return Map.empty) (escape MatchError)
 match (PairPat pat1 pat2) v =
       condCP (pure $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)

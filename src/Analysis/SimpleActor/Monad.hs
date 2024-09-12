@@ -8,6 +8,7 @@ module Analysis.SimpleActor.Monad
     MonadActor,
     MonadActorLocal (..),
     MonadMailbox (..),
+    MonadMeta(..),
     receive,
     MonadSpawn,
     spawn,
@@ -15,20 +16,14 @@ module Analysis.SimpleActor.Monad
     runWithMailboxT,
     Error (..),
     ActorError,
+    MetaT
   )
 where
 
+import Analysis.Monad hiding (EvalM)
 import Analysis.Actors.Mailbox
-import Analysis.Monad (DependencyTrackingM)
-import Analysis.Monad.Allocation
-import Analysis.Monad.Cache
-import Analysis.Monad.DependencyTracking (trigger)
-import Analysis.Monad.Environment
-import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
-import Analysis.Monad.Store
 import Analysis.Scheme.Prelude
-  ( DependencyTrackingM (dependent),
-    WorkListM, ActorDomain(..),
+  ( ActorDomain(..),
     SchemeDomain(..)
   )
 import Analysis.Scheme.Monad (SchemeDomainM)
@@ -48,7 +43,6 @@ import Lattice (BottomLattice (bottom))
 import Lattice.Class (Joinable)
 import qualified Lattice.Class as L
 import Syntax.AST
-import Debug.Trace
 import Analysis.Monad.Fix (MonadFixpoint)
 import Data.Kind (Type)
 import Domain (SchemeDomain(Env))
@@ -80,9 +74,16 @@ class MonadActorLocal v m | m -> v where
   terminate :: m ()
   waitUntilAllFinished :: m ()
 
-type MonadSpawn v (m :: Type -> Type) = (ARef v ~ Pid Exp ())
+-- | Reader-like monadic interface that carries 
+-- meta-annotations.
+class MonadMeta m where 
+   isMeta :: m Bool
+   withMetaSet :: m a -> m a 
+   withMetaUnset :: m a -> m a
 
-type MonadActor v m = (MonadMailbox v m, MonadSpawn v m, MonadActorLocal v m)
+type MonadSpawn v (m :: Type -> Type) = (ARef v ~ Pid Exp [Span])
+
+type MonadActor v m = (MonadMailbox v m, MonadSpawn v m, MonadActorLocal v m, MonadMeta m)
 
 ------------------------------------------------------------
 -- Layered instances
@@ -105,10 +106,23 @@ instance
   send ref = upperM . send ref
   receive' = upperM . receive'
 
-spawn :: EvalM v m => Exp -> (ARef v -> m v) -> m (ARef v) 
-spawn e f = 
-   let s = Pid e ()
-   in withSelf s (mjoin (f s) (return nil) >> return s)
+
+instance 
+ {-# OVERLAPPABLE #-} 
+ (MonadLayer t , 
+  Monad m,
+  MonadMeta m) => 
+ MonadMeta (t m) where  
+   
+  isMeta = upperM isMeta
+  withMetaSet = lowerM withMetaSet
+  withMetaUnset = lowerM withMetaUnset
+
+spawn :: EvalM v m => Exp -> (ARef v -> m v) -> m (ARef v)
+spawn e f = do 
+   ctx <- getCtx
+   let s = Pid e ctx
+   withSelf s (mjoin (f s) (return nil) >> return s)
 
 ------------------------------------------------------------
 -- Monad
@@ -123,9 +137,10 @@ type EvalM v m =
     MonadActor v m,
     MonadEscape m,
     MonadFixpoint m Exp v,
+    CtxM m [Span],
     Domain (Esc m) DomainError,
     Domain (Esc m) Error,
-    SchemeDomainM Exp v m, 
+    SchemeDomainM Exp v m,
     ActorDomain v,
     EqualLattice v,
     Show v
@@ -172,6 +187,15 @@ instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
   terminate = mzero -- no particular behavior in the abstract
   waitUntilAllFinished = return () -- no behavior in the abstract
 
+-- | Meta-flag monad
+newtype MetaT m a = MetaT (ReaderT Bool m a) 
+                  deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoin, MonadReader Bool, MonadCache)
+
+instance (Monad m) => MonadMeta (MetaT m) where
+   isMeta = ask
+   withMetaSet = local (const True)
+   withMetaUnset = local (const False)
+
 ------------------------------------------------------------
 -- Effect registration for global mailboxes
 ------------------------------------------------------------
@@ -180,7 +204,7 @@ type Dep v = ARef v
 
 instance (MonadMailbox v m, Show v, WorkListM m cmp, DependencyTrackingM m cmp (Dep v)) => MonadMailbox v (IntraAnalysisT cmp m) where
   send to msg = trigger @_ @cmp to >> lift (send to msg)
-  receive' ref = traceShowId <$> (dependent @_ @cmp ref >> upperM (receive' ref))
+  receive' ref = dependent @_ @cmp ref >> upperM (receive' ref)
 
 ------------------------------------------------------------
 -- Error abstractions

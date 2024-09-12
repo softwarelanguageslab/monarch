@@ -7,4 +7,6 @@
 ;; A full translation from Racket actors 
 ;; with their contracts to λα/c
 
-(display (cc:translate (ac:translate (read))))
+(display (cc:translate 
+           #:meta #t
+           (ac:translate (read))))

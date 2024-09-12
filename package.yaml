@@ -78,6 +78,9 @@ executables:
     dependencies:
     - containers
     - interpreter
+    - maf2-syntax
+    - maf2-domains
+    - maf2-analysis
 
 tests:
   interpreter-test:

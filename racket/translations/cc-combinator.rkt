@@ -41,7 +41,8 @@
 (define (preluded e)
   `(letrec 
      ((any? (lambda (v) #t))
-      (meta (lambda (v) v)))
+      (meta (lambda (v) v))
+      (nonzero? (lambda (v) (not (= v 0)))))
      ,e))
 
 (define (translate e #:meta [meta #f])

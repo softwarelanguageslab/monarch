@@ -109,6 +109,9 @@ executable interpreter-exe
       base >=4.7 && <5
     , containers
     , interpreter
+    , maf2-analysis
+    , maf2-domains
+    , maf2-syntax
   default-language: Haskell2010
 
 test-suite interpreter-test
