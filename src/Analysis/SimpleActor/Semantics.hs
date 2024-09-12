@@ -80,7 +80,7 @@ eval' _ (Self _) = aref <$> getSelf @v
 eval' rec (Blame e _) =
    eval' rec e >>= escape . BlameError . show
 eval' rec (Meta e _) = 
-   withCtx (spanOf e:) (eval' rec e)
+   withMetaSet (withCtx (spanOf e:) (eval' rec e))
 eval' _ _ = error "unsupported expression"
 
 trySend :: EvalM v m => v -> v -> m ()
@@ -91,16 +91,16 @@ trySend ref p =
 
 apply :: EvalM v m => (Exp -> m v) -> Exp -> v -> [v] -> m v
 apply rec e v vs = condsCP
-   [(pure $ isClo v, mjoinMap (\env -> applyClosure env rec vs) (clos v)),
+   [(pure $ isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (pure $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
-applyClosure :: EvalM v m => (Exp, Env v) -> (Exp -> m v) -> [v] -> m v
-applyClosure (Lam prs bdy _, env) rec vs = do
+applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Exp -> m v) -> [v] -> m v
+applyClosure e (Lam prs bdy _, env) rec vs = do
    ads <- mapM alloc prs
    let bds = zip (map name prs) ads
    mapM_ (uncurry writeAdr) (zip ads vs)
-   withEnv (const env) (withExtendedEnv bds (rec bdy))
-applyClosure _ _ _ = error "invalid closure"
+   ifMetaSet (withCtx (spanOf e:)) $ withEnv (const env) (withExtendedEnv bds (rec bdy))
+applyClosure _ _ _ _ = error "invalid closure"
 applyPrimitive :: forall v m . EvalM v m => String -> Exp -> [v] -> m v
 applyPrimitive nam =
    runPrimitive (primitive @v nam)

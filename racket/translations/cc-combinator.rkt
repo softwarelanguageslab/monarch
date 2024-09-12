@@ -31,7 +31,7 @@
        (instrument-meta 
          `(lambda (,j ,k ,f) 
             (lambda (,v)
-              (,(translate-aux κ2) ,j ,k (,f (,(translate-aux κ1) ,k ,j ,v)))))))]
+              ,(instrument-meta `(,(translate-aux κ2) ,j ,k (,f ,(instrument-meta `(,(translate-aux κ1) ,k ,j ,v)))))))))]
     [(quasiquote (mon ,j ,k ,κ ,v))
      (instrument-meta `(,(translate-aux κ) (quote ,j) (quote ,k) ,(translate-aux v)))]
     [(quasiquote (,es ...))

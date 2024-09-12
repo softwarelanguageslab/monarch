@@ -9,6 +9,7 @@ module Analysis.SimpleActor.Monad
     MonadActorLocal (..),
     MonadMailbox (..),
     MonadMeta(..),
+    ifMetaSet,
     receive,
     MonadSpawn,
     spawn,
@@ -76,7 +77,7 @@ class MonadActorLocal v m | m -> v where
 
 -- | Reader-like monadic interface that carries 
 -- meta-annotations.
-class MonadMeta m where 
+class Monad m => MonadMeta m where 
    isMeta :: m Bool
    withMetaSet :: m a -> m a 
    withMetaUnset :: m a -> m a
@@ -110,7 +111,6 @@ instance
 instance 
  {-# OVERLAPPABLE #-} 
  (MonadLayer t , 
-  Monad m,
   MonadMeta m) => 
  MonadMeta (t m) where  
    
@@ -195,6 +195,9 @@ instance (Monad m) => MonadMeta (MetaT m) where
    isMeta = ask
    withMetaSet = local (const True)
    withMetaUnset = local (const False)
+
+ifMetaSet :: MonadMeta m => (m a -> m a) -> m a -> m a
+ifMetaSet f ma = isMeta >>= (\b -> if b then f ma else ma)
 
 ------------------------------------------------------------
 -- Effect registration for global mailboxes
