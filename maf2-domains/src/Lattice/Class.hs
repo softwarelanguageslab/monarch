@@ -99,11 +99,11 @@ overlap v1 v2 = v1 `meet` v2 /= bottom
 ------------------------------------------------------------
 
 instance Joinable Void where 
-   join x _ = absurd x
+   join = absurd
 -- | Void cannot have a bottom value since it does 
 -- not have any inhabitants. This instance is here 
--- to satisfy unreachable code paths but it inherintely unsafe!
+-- to satisfy unreachable code paths but it is inherentely unsafe!
 instance BottomLattice Void where 
    bottom = error "void does not have a bottom"
 instance Meetable Void where  
-   meet x _ = absurd x
+   meet = absurd
