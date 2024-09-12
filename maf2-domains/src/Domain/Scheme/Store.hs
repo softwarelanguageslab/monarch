@@ -14,28 +14,42 @@
 --
 -- The Domain.Scheme.Class defines the type for each of these addresses. This module provides a sensible concrete type for these addresses.
 module Domain.Scheme.Store(
-   PaiAdr(..),
-   StrAdr(..),
-   VecAdr(..),
+   PaiAdrE(..),
+   StrAdrE(..),
+   VecAdrE(..),
    EnvAdr(..),
+   PaiAdr,
+   StrAdr,
+   VecAdr,
    Env,
 ) where
 
-import Syntax.Scheme
 import Syntax.Ide
-import Domain.Scheme.Class hiding (Exp, Env)
+import Domain.Scheme.Class (Address)
 import Data.Map (Map)
+import qualified Syntax.Scheme.AST as Scheme
 
 data EnvAdr ctx = EnvAdr Ide ctx 
                 | PrmAdr String deriving (Eq, Ord, Show)
-data PaiAdr ctx = PaiAdr Exp ctx deriving (Eq, Ord, Show)
-data StrAdr ctx = StrAdr Exp ctx deriving (Eq, Ord, Show)
-data VecAdr ctx = VecAdr Exp ctx deriving (Eq, Ord, Show)
+
+-- | Addresses parametrized by the type of expression 
+-- so that any expression type can be used in the 
+-- abstract domain for Scheme.
+data PaiAdrE e ctx = PaiAdr e ctx deriving (Eq, Ord, Show)
+data StrAdrE e ctx = StrAdr e ctx deriving (Eq, Ord, Show)
+data VecAdrE e ctx = VecAdr e ctx deriving (Eq, Ord, Show)
+
+-- For convenience, addresses initialized to Scheme expressions ...
+type PaiAdr ctx = PaiAdrE Scheme.Exp ctx
+type StrAdr ctx = StrAdrE Scheme.Exp ctx
+type VecAdr ctx = VecAdrE Scheme.Exp ctx
+
+-- Address instances
 
 instance (Ord ctx, Show ctx) => Address (EnvAdr ctx)
-instance (Ord ctx, Show ctx) => Address (PaiAdr ctx)
-instance (Ord ctx, Show ctx) => Address (StrAdr ctx)
-instance (Ord ctx, Show ctx) => Address (VecAdr ctx)
+instance (Ord e, Show e, Ord ctx, Show ctx) => Address (PaiAdrE e ctx)
+instance (Ord e, Show e, Ord ctx, Show ctx) => Address (StrAdrE e ctx)
+instance (Ord e, Show e, Ord ctx, Show ctx) => Address (VecAdrE e ctx)
 
 -- | With sensible defaults for addresses comes a sensible
 -- default for the environment.

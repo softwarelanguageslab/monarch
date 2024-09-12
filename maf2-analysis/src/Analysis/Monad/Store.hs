@@ -41,7 +41,6 @@ import Control.Monad.Layer
 import Analysis.Store (Store)
 import Data.TypeLevel.AssocList
 import Data.TypeLevel.HMap (HMap)
-import qualified Data.TypeLevel.HMap as HMap
 import Data.Kind
 
 ---

@@ -178,9 +178,9 @@ analyzeProgram program initialCtx = (store', retStore')
                                      & runMayEscape @(Set DomainError)
                                      & runCallT @v @ctx
                                      & runEnv env
-                                     & runAlloc (PaiAdr @ctx) 
-                                     & runAlloc (VecAdr @ctx)
-                                     & runAlloc (StrAdr @ctx)
+                                     & runAlloc (PaiAdr @Exp @ctx) 
+                                     & runAlloc (VecAdr @Exp @ctx)
+                                     & runAlloc (StrAdr @Exp @ctx)
                                      & runAlloc (EnvAdr @ctx)
                                      & runCtx ctx
                                      & runJoinT

@@ -48,7 +48,7 @@ type Msg = ()
 -- Shorthands
 ------------------------------------------------------------
 
-type V = CP.CPActorValue EnvAdr PaiAdr VecAdr StrAdr Ctx Exp
+type V = CP.CPActorValue EnvAdr (PaiAdrE Exp) (VecAdrE Exp) (StrAdrE Exp) Ctx Exp
 type Pid = CP.Pid Exp Ctx
 
 type Ctx = ()
