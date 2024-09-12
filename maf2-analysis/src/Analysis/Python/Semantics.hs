@@ -139,7 +139,9 @@ evalVar var = do (adr, nam) <- frame var
 
 evalLit :: forall pyM obj vlu . PyM pyM obj vlu => PyLit -> pyM vlu
 evalLit (Syntax.None _)    = return $ constant None
-evalLit (Bool bln loc)     = pyStore loc (from' @BlnPrm bln)
+evalLit (Bool bln loc)
+   | bln                   = return $ constant True 
+   | otherwise             = return $ constant False 
 evalLit (Integer int loc)  = pyStore loc (from' @IntPrm int)
 evalLit (Real rea loc)     = pyStore loc (from' @ReaPrm rea)
 evalLit (String str loc)   = pyStore loc (from' @StrPrm str)

@@ -71,9 +71,7 @@ new' = new . typeVal
 initialCst :: [(String, PyConstant)]
 initialCst = [("type",          TypeObject TypeType),
               ("Exception",     TypeObject ExceptionType),
-              ("StopIteration", TypeObject StopIterationExceptionType),
-              ("True",          True),
-              ("False",         False)]
+              ("StopIteration", TypeObject StopIterationExceptionType)]
 
 injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
 injectPyConstant True             = from' @BlnPrm Prelude.True
