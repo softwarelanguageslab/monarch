@@ -9,6 +9,7 @@ module Analysis.SimpleActor.Monad
     MonadActorLocal (..),
     MonadMailbox (..),
     MonadMeta(..),
+    MonadDynamic(..),
     ifMetaSet,
     receive,
     MonadSpawn,
@@ -17,7 +18,8 @@ module Analysis.SimpleActor.Monad
     runWithMailboxT,
     Error (..),
     ActorError,
-    MetaT
+    MetaT, 
+    DynamicBindingT
   )
 where
 
@@ -36,7 +38,7 @@ import Control.Monad.Reader hiding (mzero)
 import Control.Monad.State hiding (mzero)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain.Class
@@ -82,9 +84,15 @@ class Monad m => MonadMeta m where
    withMetaSet :: m a -> m a 
    withMetaUnset :: m a -> m a
 
+-- | Monad for scoped dynamic bindings
+-- in the target language (à la Racket "parmetrize")
+class Monad m => MonadDynamic α m where  
+   withExtendedDynamic :: [(String, α)] -> m a -> m a
+   lookupDynamic :: String -> m α
+
 type MonadSpawn v (m :: Type -> Type) = (ARef v ~ Pid Exp [Span])
 
-type MonadActor v m = (MonadMailbox v m, MonadSpawn v m, MonadActorLocal v m, MonadMeta m)
+type MonadActor v m = (MonadMailbox v m, MonadSpawn v m, MonadActorLocal v m, MonadMeta m, MonadDynamic (Adr v) m)
 
 ------------------------------------------------------------
 -- Layered instances
@@ -118,10 +126,22 @@ instance
   withMetaSet = lowerM withMetaSet
   withMetaUnset = lowerM withMetaUnset
 
+instance 
+ {-# OVERLAPPABLE #-}
+ (MonadLayer t, 
+  MonadDynamic α m) 
+ => MonadDynamic α (t m) where   
+
+ withExtendedDynamic bds = lowerM (withExtendedDynamic bds)
+ lookupDynamic = upperM . lookupDynamic
+
 spawn :: EvalM v m => Exp -> (ARef v -> m v) -> m (ARef v)
 spawn e f = do 
    ctx <- getCtx
    let s = Pid e ctx
+   -- NOTE: we `mjoin` with `return nil` here 
+   -- since the computation from `(f s)` might 
+   -- not terminate (i.e., return `Bottom`)
    withSelf s (mjoin (f s) (return nil) >> return s)
 
 ------------------------------------------------------------
@@ -199,6 +219,14 @@ instance (Monad m) => MonadMeta (MetaT m) where
 ifMetaSet :: MonadMeta m => (m a -> m a) -> m a -> m a
 ifMetaSet f ma = isMeta >>= (\b -> if b then f ma else ma)
 
+-- | Dynamic binding monad
+newtype DynamicBindingT v m a = DynamicBindingT (ReaderT (Map String (Adr v)) m a)
+                              deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoin, MonadCache)
+
+instance (Monad m, α ~ Adr v) => MonadDynamic α (DynamicBindingT v m) where  
+   lookupDynamic vr = DynamicBindingT $ asks (fromJust . Map.lookup vr)
+   withExtendedDynamic bds (DynamicBindingT ma) = DynamicBindingT $ local (Map.union (Map.fromList bds)) ma
+   
 ------------------------------------------------------------
 -- Effect registration for global mailboxes
 ------------------------------------------------------------

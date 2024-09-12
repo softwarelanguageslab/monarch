@@ -20,6 +20,7 @@ import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)
 import Domain.Scheme.Store 
 import Domain.Scheme.Class (PaiDom, VecDom, StrDom)
+import qualified Data.Map as Map
 
 ------------------------------------------------------------
 -- Shortcuts
@@ -41,6 +42,7 @@ type ActorSto = Map (EnvAdr K) ActorVlu
 type IntraT m = MonadStack '[
                MayEscapeT (Set ActorError),
                EnvT ActorEnv,
+               DynamicBindingT ActorVlu,
                AllocT Ide K (EnvAdr K),
                AllocT Exp K (PaiAdrE Exp K),
                AllocT Exp K (StrAdrE Exp K),
@@ -85,7 +87,7 @@ initialEnv :: Env K
 initialEnv = P.initialEnv PrmAdr
 
 inter :: MonadInter m => Exp -> m ()
-inter exp = add ((((exp, initialEnv), []), False), Pid exp []) >> iterateWL intra
+inter exp = add (((((exp, initialEnv), Map.empty), []), False), Pid exp []) >> iterateWL intra
 
 analyze :: Exp -> ((((), ActorSto), ActorMai), Map ActorCmp ActorRes)
 analyze exp =

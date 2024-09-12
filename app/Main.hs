@@ -19,7 +19,7 @@ printSto printKey keepKey m  =
          indent = maximum (map (length . printKey . fst) adrs) + 5
 
 printLoc :: ActorCmp -> String
-printLoc ((((e, _), _), _), _) = let (Span filename line col) = spanOf e in show line ++ ":" ++ show col ++ "@" ++ filename
+printLoc (((((e, _), _), _), _), _) = let (Span filename line col) = spanOf e in show line ++ ":" ++ show col ++ "@" ++ filename
 
 main :: IO ()
 main = do
