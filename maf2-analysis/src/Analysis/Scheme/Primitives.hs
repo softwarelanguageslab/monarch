@@ -38,7 +38,7 @@ efix2 nam f = Prim nam (\ex [x1, x2] -> f ex x1 x2)
 efix3 ::  String -> (forall m e . PrimM e m v => e -> v -> v -> v -> m v) -> Prim v
 efix3 nam f = Prim nam (\ex [x1, x2, x3] -> f ex x1 x2 x3)
 -- | Vararg primitives
-evar  :: String -> (forall m e . PrimM e m v => e -> [v] -> m v) -> Prim v 
+evar  :: String -> (forall m e . PrimM e m v => e -> [v] -> m v) -> Prim v
 evar = Prim
 
 -- | Heap unrelated operations 
@@ -75,6 +75,7 @@ allPrimitives = [
    fix2 "char=?" charEq,
    efix2 "cons" (\ex a b -> stoPai ex (cons a b)),
    -- fix2 "eq?" todo 
+   fix2 "eq?" eql,
    fix2 "expt" expt,
    fix1 "floor" Domain.floor,
    -- fix1 "integer->char" todo, 
@@ -84,7 +85,7 @@ allPrimitives = [
    -- fix2 "make-string" todo, 
    fix1 "number?" (\v -> return $ or (isReal v) (isInteger v)),
    fix1 "pair?" (return .  isPaiPtr),
-   fix1 "procedure?" (return . Domain.isProc), 
+   fix1 "procedure?" (return . Domain.isProc),
    fix2 "quotient" quotient,
    fix1 "real?" (return . isReal),
    fix2 "remainder" remainder,
