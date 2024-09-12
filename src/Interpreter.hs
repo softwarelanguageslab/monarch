@@ -186,7 +186,7 @@ eval (Send e1 e2 _) = do
    return ValueNil
 eval (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
-   let bds' = zip (map (getName . fst) bds) ads
+   let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (withExtendedEnv' bds' . eval . snd) bds
    mapM_ (uncurry store) (zip ads vs)
    withExtendedEnv' bds' (eval e2)
@@ -209,7 +209,7 @@ trySend _ _ = error "receiver is not an actor reference"
 apply :: EvalM m => Value m -> [Value m] -> m (Value m)
 apply (ClosureValue (Lam prs e _) env) vs = do
    ads <- mapM alloc prs
-   let bds = zip (map getName prs) ads
+   let bds = zip (map name prs) ads
    mapM_ (uncurry store) (zip ads vs)
    withEnv env (withExtendedEnv' bds (eval e))
 apply (PrmValue nam) vs =

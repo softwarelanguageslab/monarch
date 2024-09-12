@@ -3,12 +3,7 @@ module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..)) where
 import Data.List (intercalate)
 import Text.Printf
 import Syntax.Span
-
--- |  An identifier in the original source code
-data Ide = Ide { getName :: String , getSpan :: Span } deriving (Eq, Ord)
-
-instance Show Ide where    
-   show (Ide x s) = x
+import Syntax.Ide
 
 -- | An expression
 data Exp = Lam [Ide] Exp Span

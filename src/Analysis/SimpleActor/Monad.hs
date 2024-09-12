@@ -53,6 +53,7 @@ import Analysis.Monad.Fix (MonadFixpoint)
 import Data.Kind (Type)
 import Domain (SchemeDomain(Env))
 import Lattice.Equal (EqualLattice)
+import Domain.Scheme.Actors.Class (Pid(..))
 
 ------------------------------------------------------------
 -- Errors
@@ -79,7 +80,7 @@ class MonadActorLocal v m | m -> v where
   terminate :: m ()
   waitUntilAllFinished :: m ()
 
-type MonadSpawn v (m :: Type -> Type) = (ARef v ~ Span)
+type MonadSpawn v (m :: Type -> Type) = (ARef v ~ Pid Exp ())
 
 type MonadActor v m = (MonadMailbox v m, MonadSpawn v m, MonadActorLocal v m)
 
@@ -104,8 +105,10 @@ instance
   send ref = upperM . send ref
   receive' = upperM . receive'
 
-spawn :: EvalM v m => Span -> (ARef v -> m v) -> m (ARef v) 
-spawn s f = withSelf s (mjoin (f s) (return nil) >> return s)
+spawn :: EvalM v m => Exp -> (ARef v -> m v) -> m (ARef v) 
+spawn e f = 
+   let s = Pid e ()
+   in withSelf s (mjoin (f s) (return nil) >> return s)
 
 ------------------------------------------------------------
 -- Monad

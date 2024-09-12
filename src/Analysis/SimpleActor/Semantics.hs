@@ -49,7 +49,7 @@ eval' rec e@(App e1 es _) = do
    apply rec e v1 v2
 eval' rec (Ite e1 e2 e3 _) = cond (eval' rec e1) (eval' rec e2) (eval' rec e3)
 eval' rec s@(Spawn e _) =
-   aref <$> spawn @v (spanOf s) (const $ rec e)
+   aref <$> spawn @v s (const $ rec e)
 eval' _ (Terminate _) = terminate $> nil
 eval' rec (Receive pats _) = do
    self <- getSelf
@@ -65,7 +65,7 @@ eval' rec (Send e1 e2 _) = do
    return nil
 eval' rec (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
-   let bds' = zip (map (getName . fst) bds) ads
+   let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (withExtendedEnv bds' . eval' rec . snd) bds
    mapM_ (uncurry writeAdr) (zip ads vs)
    withExtendedEnv bds' (rec e2)
@@ -94,7 +94,7 @@ apply rec e v vs = condsCP
 applyClosure :: EvalM v m => (Exp, Env v) -> (Exp -> m v) -> [v] -> m v
 applyClosure (Lam prs bdy _, env) rec vs = do
    ads <- mapM alloc prs
-   let bds = zip (map getName prs) ads
+   let bds = zip (map name prs) ads
    mapM_ (uncurry writeAdr) (zip ads vs)
    withEnv (const env) (withExtendedEnv bds (rec bdy))
 applyClosure _ _ _ = error "invalid closure"
