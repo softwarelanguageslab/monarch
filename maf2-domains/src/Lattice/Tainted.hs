@@ -9,4 +9,5 @@ instance (BottomLattice a, BottomLattice t) => BottomLattice (Tainted t a) where
     bottom = Tainted bottom bottom
 instance (Joinable a, Joinable t) => Joinable (Tainted t a) where
     join (Tainted a1 t1) (Tainted a2 t2) = Tainted (a1 `join` a2) (t1 `join` t2)
-instance (Lattice a, Lattice t) => Lattice (Tainted t a) 
+instance (PartialOrder a, PartialOrder t) => PartialOrder (Tainted t a) where
+    leq (Tainted a1 t1) (Tainted a2 t2) = a1 `leq` a2 && t1 `leq` t2 

@@ -27,7 +27,6 @@ import Prelude hiding (lookup, exp, break)
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import Control.Monad.AbstractM (AbstractM)
 import Control.Monad ((>=>))
-import Domain (BoolDomain)
 import Domain.Python.Objects.Class (PyObj(..))
 
 --
@@ -82,7 +81,7 @@ pyDeref3' f a1 a2 a3 = pyDeref2' (\o1 o2 -> pyDeref' (f o1 o2) a3) a1 a2
 pyStore :: PyM m obj vlu => PyLoc -> obj -> m vlu
 pyStore loc = fmap injectAdr . pyAlloc loc
 
-instance (vlu ~ ObjAddrSet,
+instance (vlu ~ PyRef, 
           PyDomain obj vlu,
           MonadJoin m,
           MonadCache m,
