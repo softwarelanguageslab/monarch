@@ -94,6 +94,7 @@ library
       Lattice
       Lattice.Class
       Lattice.ConstantPropagationLattice
+      Lattice.CSetLattice
       Lattice.Equal
       Lattice.HMapLattice
       Lattice.Identity
@@ -105,6 +106,7 @@ library
       Lattice.ReversePowerSetLattice
       Lattice.SetLattice
       Lattice.Split
+      Lattice.Tainted
       Lattice.TopLiftedLattice
       Lattice.UnitLattice
   other-modules:
