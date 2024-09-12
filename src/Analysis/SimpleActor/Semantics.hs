@@ -70,18 +70,26 @@ eval' rec (Letrec bds e2 _) = do
    vs <- mapM (withExtendedEnv bds' . eval' rec . snd) bds
    mapM_ (uncurry writeAdr) (zip ads vs)
    withExtendedEnv bds' (eval' rec e2)
+eval' rec (Parametrize bds e2 _) = do
+   ads <- mapM (alloc . fst) bds
+   let bds' = zip (map (name . fst) bds) ads
+   vs <- mapM (eval' rec . snd) bds
+   mapM_ (uncurry writeAdr) (zip ads vs)
+   withExtendedDynamic bds' (eval' rec e2)
 eval' rec (Begin exs _) =
    last <$> mapM (eval' rec) exs
 eval' rec e@(Pair e1 e2 _) =
    stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
 eval' _ (Var (Ide x _)) =
    lookupEnv x >>= lookupAdr
+eval' _ (DynVar (Ide x _)) =
+   lookupDynamic x >>= lookupAdr
 eval' _ (Self _) = aref <$> getSelf @v
 eval' rec (Blame e _) =
    eval' rec e >>= escape . BlameError . show
 eval' rec (Meta e _) = 
    withMetaSet (withCtx (spanOf e:) (eval' rec e))
-eval' _ _ = error "unsupported expression"
+eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v m => v -> v -> m ()
 trySend ref p =
@@ -90,7 +98,7 @@ trySend ref p =
           (escape InvalidArgument)
 
 apply :: EvalM v m => (Exp -> m v) -> Exp -> v -> [v] -> m v
-apply rec e v vs = condsCP
+apply rec e v vs = traceShow e $ condsCP
    [(pure $ isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (pure $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)

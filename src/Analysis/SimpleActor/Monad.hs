@@ -86,7 +86,7 @@ class Monad m => MonadMeta m where
 
 -- | Monad for scoped dynamic bindings
 -- in the target language (à la Racket "parmetrize")
-class Monad m => MonadDynamic α m where  
+class Monad m => MonadDynamic α m | m -> α where  
    withExtendedDynamic :: [(String, α)] -> m a -> m a
    lookupDynamic :: String -> m α
 

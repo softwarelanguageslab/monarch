@@ -14,14 +14,14 @@ data Exp = Lam [Ide] Exp Span
          | Terminate Span
          | Self Span
          | Pair Exp Exp Span
-         | Parameter Exp Span
-         | Parametrize [Binding] Span
+         | Parametrize [Binding] Exp Span
          | Blame Exp Span
          | Receive [(Pat, Exp)] Span
          | Send Exp Exp Span
          | Literal Lit Span
          | Ite  Exp Exp Exp Span
          | Var Ide
+         | DynVar Ide
          | Begin [Exp] Span
          | Meta Exp Span
          deriving (Eq, Ord)
@@ -56,14 +56,14 @@ instance SpanOf Exp where
                (Terminate s) -> s
                (Self s) -> s
                (Pair _ _ s) -> s
-               (Parameter _ s) -> s
-               (Parametrize _ s) -> s
+               (Parametrize _ _ s) -> s
                (Blame _ s) -> s
                (Receive _ s) -> s
                (Send _ _ s) -> s
                (Literal _ s) -> s
                (Ite _ _ _ s) -> s
                (Var (Ide _ s)) ->  s
+               (DynVar (Ide _ s)) -> s
                (Begin _ s) -> s
                (Meta _ s) -> s
 
@@ -77,13 +77,14 @@ instance Show Exp where
             (Terminate _) -> "(terminate)"
             (Self _) -> "(self)"
             (Pair e1 e2 _) -> printf "(cons %s %s)" (show e1) (show e2)
-            (Parameter e1 _) ->  printf "(parameter %s)" (show e1)
-            (Parametrize _ _) -> undefined
+            (Parametrize bds bdy _) -> 
+               printf "(parametrize (%s) %s)" (show bds) (show bdy)
             (Blame lbl _) -> printf "(blame %s)" (show lbl)
             (Receive pats _) -> printf "(receive %s)" (show pats)
             (Send e1 e2 _) -> printf "(send %s %s)" (show e1) (show e2)
             (Literal l _) -> show l
             (Ite e1 e2 e3 _) -> printf "(if %s %s %s)" (show e1) (show e2) (show e3)
             (Var x) -> show x
+            (DynVar x) -> "(dyn " ++ show x ++ ")"
             (Begin es _) -> printf "(begin %s)" (unwords (map show es))
             (Meta e _) -> printf "(meta %s)" (show e)

@@ -22,8 +22,14 @@
 ;   ;(wait-until-all-finished)))
 
 ; (if #f (blame 'server) 'nil)
-(letrec 
-  ((foo (mon server client (-> (flat nonzero?) (flat nonzero?)) (lambda (x) (* x x)))))
+; (letrec 
+;   ((foo (mon server client (-> (flat nonzero?) (flat nonzero?)) (lambda (x) (* x x)))))
+; 
+;   (begin (foo 5)
+;          (foo 5)))
+(letrec
+  ((f (lambda (y) (dyn x))))
+   (parametrize 
+     ((x 5))
 
-  (begin (foo 5)
-         (foo 5)))
+     (f 3)))

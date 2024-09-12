@@ -41,6 +41,10 @@ compile e@(Atom "send" _ ::: _) =
    throwError $ "invalid syntax for send " ++ show e
 compile em@(Atom "meta" _ ::: e ::: SNil _) = 
    Meta <$> compile e <*> pure (spanOf em)
+compile (Atom "dyn" _ ::: Atom dyn s ::: SNil _) = 
+   return $ DynVar $ Ide dyn s
+compile e@(Atom "dyn" _ ::: _) = 
+   throwError $ "invalid syntax for dyn " ++ show e
 compile ex@(SExp.Num n _) =
    return $ Literal (Syntax.AST.Num n) (spanOf ex)
 compile ex@(SExp.Bln b _) =
@@ -56,6 +60,8 @@ compile e@(Atom "self" _ ::: _) =
    throwError $ "invalid syntax for self " ++ show e
 compile (Atom "quote" span' ::: s ::: SNil _) = compile (Quo s span')
 compile ex@(Atom "blame" _ ::: party ::: _) = Blame <$> compile party <*> pureSpan ex
+compile ex@(Atom "parametrize" _ ::: bds ::: bdy ::: SNil _) = 
+   Parametrize <$> smapM compileBdn bds <*> compile bdy <*> pureSpan ex
 compile e@(Atom "blame" _ ::: _) =
    throwError $ "invalid syntax for blame " ++ show e
 compile ex@(op ::: oprs) =
