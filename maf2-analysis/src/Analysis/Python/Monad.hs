@@ -66,9 +66,6 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   -- store -- 
   pyLookupSto  :: ObjAdr -> m obj
 
-catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Lattice a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
-catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw 
-
 pyDeref' :: forall m obj vlu . PyM m obj vlu => (obj -> m vlu) -> vlu -> m vlu
 pyDeref' = pyDeref . const
 

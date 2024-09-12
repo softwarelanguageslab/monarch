@@ -7,6 +7,7 @@ module Control.Monad.Escape (
    escape, 
    orElse, 
    try,
+   catchOn
 ) where
 
 import Lattice.Class hiding (Bottom)
@@ -19,12 +20,17 @@ import Control.Monad.Trans
 import Control.Monad.Lift.Class (MonadTransControl(..))
 import Data.Functor ((<&>))
 import Control.Monad.Identity (IdentityT (..))
+import Lattice.Split (SplitLattice)
+import Lattice.ConstantPropagationLattice (CP)
 
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
    type Esc m
    throw :: (BottomLattice a) => Esc m -> m a 
    catch :: (BottomLattice a, Joinable a) => m a -> (Esc m -> m a) -> m a
+
+catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Lattice a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
+catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw 
 
 escape :: (MonadEscape m, Domain (Esc m) e, BottomLattice a) => e -> m a 
 escape = throw . inject 
