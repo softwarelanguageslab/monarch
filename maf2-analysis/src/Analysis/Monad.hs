@@ -19,6 +19,7 @@ module Analysis.Monad(
    module Analysis.Monad.Map,
    module Analysis.Monad.Span,
    module Analysis.Monad.Store, 
+   module Analysis.Monad.Taint,
    module Analysis.Monad.WorkList, 
 ) where
 
@@ -36,4 +37,5 @@ import Analysis.Monad.Join
 import Analysis.Monad.Map 
 import Analysis.Monad.Span
 import Analysis.Monad.Store 
+import Analysis.Monad.Taint
 import Analysis.Monad.WorkList 
