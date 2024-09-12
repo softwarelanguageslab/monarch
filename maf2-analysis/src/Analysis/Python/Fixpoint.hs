@@ -46,7 +46,8 @@ type IntraT m vlu = MonadStack '[
                         CacheT
                     ] m 
 
-type AnalysisM m obj vlu = (PyDomain obj vlu, 
+type AnalysisM m obj vlu = (vlu ~ ObjAddrSet,
+                            PyDomain obj vlu, 
                             StoreM m ObjAdr obj,
                             MapM (PyCmp vlu) (PyRes vlu) m,
                             ComponentTrackingM m  (PyCmp vlu),
@@ -68,29 +69,29 @@ inter prg = do init                                 -- initialize Python infrast
                add ((Main prg, initialEnv), ())     -- add the main component to the worklist
                iterateWL intra                      -- start the analysis 
 
-analyze :: forall obj vlu . PyDomain obj vlu => PyPrg -> (Map (PyCmp vlu) (PyRes vlu), Map ObjAdr obj)
+analyze :: forall obj . PyDomain obj ObjAddrSet => PyPrg -> (Map (PyCmp ObjAddrSet) (PyRes ObjAddrSet), Map ObjAdr obj)
 analyze prg = (rsto, osto)
     where ((_,osto),rsto) = inter prg
                                 & runWithStore @(Map ObjAdr obj) @ObjAdr
-                                & runWithMapping @(PyCmp vlu)
-                                & runWithDependencyTracking @(PyCmp vlu) @ObjAdr
-                                & runWithDependencyTracking @(PyCmp vlu) @(PyCmp vlu)
-                                & runWithComponentTracking @(PyCmp vlu)
-                                & runWithWorkList @(Set (PyCmp vlu))
+                                & runWithMapping @(PyCmp ObjAddrSet)
+                                & runWithDependencyTracking @(PyCmp ObjAddrSet) @ObjAdr
+                                & runWithDependencyTracking @(PyCmp ObjAddrSet) @(PyCmp ObjAddrSet)
+                                & runWithComponentTracking @(PyCmp ObjAddrSet)
+                                & runWithWorkList @(Set (PyCmp ObjAddrSet))
                                 & runIdentity
 
-analyzeREPL :: forall obj vlu . PyDomain obj vlu
+analyzeREPL :: forall obj . PyDomain obj ObjAddrSet
     => IO PyPrg         -- a read function
     -> (obj -> IO ())   -- a display function
     -> IO ()
 analyzeREPL read display = 
     void $ (init >> repl) 
             & runWithStore @(Map ObjAdr obj) @ObjAdr
-            & runWithMapping @(PyCmp vlu)
-            & runWithDependencyTracking @(PyCmp vlu) @ObjAdr
-            & runWithDependencyTracking @(PyCmp vlu) @(PyCmp vlu)
-            & runWithComponentTracking @(PyCmp vlu)
-            & runWithWorkList @(Set (PyCmp vlu))
+            & runWithMapping @(PyCmp ObjAddrSet)
+            & runWithDependencyTracking @(PyCmp ObjAddrSet) @ObjAdr
+            & runWithDependencyTracking @(PyCmp ObjAddrSet) @(PyCmp ObjAddrSet)
+            & runWithComponentTracking @(PyCmp ObjAddrSet)
+            & runWithWorkList @(Set (PyCmp ObjAddrSet))
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
                               let cmp = ((Main prg, initialEnv), ())
                               add cmp 

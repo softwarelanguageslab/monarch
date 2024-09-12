@@ -7,7 +7,7 @@ module Analysis.Python.Common (
   allocPtr,
   allocCst,
   PyVal(..), 
-  ObjAddrSet,
+  ObjAddrSet(..),
   constant, 
   PyEnv, 
   PyClo(..),
@@ -50,15 +50,14 @@ instance Show ObjAdr where
 --
 
 class (Show v, Ord v, SplitLattice v) => PyVal v where
-  injectAdr   :: ObjAdr -> v
-  addrs       :: v -> Set ObjAdr 
+  injectAdr :: ObjAdr -> v
 
 constant :: PyVal v => PyConstant -> v
 constant = injectAdr . allocCst  
 
 -- simple PyVal 
 
-newtype ObjAddrSet = ObjAddrSet (Set ObjAdr)
+newtype ObjAddrSet = ObjAddrSet { addrs :: Set ObjAdr }
   deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
 
 instance Show ObjAddrSet where
@@ -66,7 +65,6 @@ instance Show ObjAddrSet where
 
 instance PyVal ObjAddrSet where
   injectAdr = ObjAddrSet . Set.singleton
-  addrs (ObjAddrSet s) = s 
 
 type PyEnv = Map String ObjAdr 
 data PyClo = PyClo PyLoc [PyPar] PyStm [String] PyEnv

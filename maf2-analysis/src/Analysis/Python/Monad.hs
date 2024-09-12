@@ -8,6 +8,7 @@ module Analysis.Python.Monad (
   pyDeref',
   pyDeref2',
   pyDeref3',
+  pyStore,
 ) where
 
 import Lattice
@@ -39,27 +40,11 @@ data PyBdy = Main PyPrg
            | LoopBdy PyLoc PyExp PyStm
   deriving (Eq, Ord, Show)
 
--- type PyM m obj vlu = (PyDomain obj vlu,
---                       MonadJoin m,
---                       MonadCache m,
---                       MapM (Key m PyBdy) (Val m vlu) m, 
---                       ComponentTrackingM m (Key m PyBdy),
---                       MonadEscape m,
---                       PyEscape (Esc m) vlu,
---                       Domain (Esc m) PyError,
---                       Domain (Esc m) DomainError,
---                       SplitLattice (Esc m),
---                       EnvM m ObjAdr PyEnv, 
---                       AllocM m PyLoc ObjAdr,
---                       StoreM m ObjAdr obj)
-
 class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   -- components -- 
   pyCall       :: PyBdy -> m vlu
   -- objects and values --
   pyAlloc      :: PyLoc -> obj -> m ObjAdr
-  pyStore      :: PyLoc -> obj -> m vlu
-  pyStore loc = fmap injectAdr . pyAlloc loc
   pyDeref      :: (ObjAdr -> obj -> m vlu) -> vlu -> m vlu 
   pyDeref_     :: (ObjAdr -> obj -> m ()) -> vlu -> m () 
   pyAssignAt   :: String -> vlu -> ObjAdr -> m ()
@@ -94,7 +79,11 @@ pyDeref2' f a1 a2 = pyDeref' (\o1 -> pyDeref' (f o1) a2) a1
 pyDeref3' :: forall m obj vlu . PyM m obj vlu => (obj -> obj -> obj -> m vlu) -> vlu -> vlu -> vlu -> m vlu
 pyDeref3' f a1 a2 a3 = pyDeref2' (\o1 o2 -> pyDeref' (f o1 o2) a3) a1 a2
 
-instance (PyDomain obj vlu,
+pyStore :: PyM m obj vlu => PyLoc -> obj -> m vlu
+pyStore loc = fmap injectAdr . pyAlloc loc
+
+instance (vlu ~ ObjAddrSet,
+          PyDomain obj vlu,
           MonadJoin m,
           MonadCache m,
           MapM (Key m PyBdy) (Val m vlu) m,
