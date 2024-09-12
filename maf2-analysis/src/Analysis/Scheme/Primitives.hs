@@ -6,6 +6,8 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 module Analysis.Scheme.Primitives(Prim(..), allPrimitives, primitive, primitivesByName, initialEnv, initialSto) where
 
+
+import Lattice.Equal
 import Data.Functor
 import Analysis.Environment
 import Data.Maybe
@@ -75,7 +77,7 @@ allPrimitives = [
    fix2 "char=?" charEq,
    efix2 "cons" (\ex a b -> stoPai ex (cons a b)),
    -- fix2 "eq?" todo 
-   fix2 "eq?" eql,
+   fix2 "eq?" (\a -> return .  eql a),
    fix2 "expt" expt,
    fix1 "floor" Domain.floor,
    -- fix1 "integer->char" todo, 

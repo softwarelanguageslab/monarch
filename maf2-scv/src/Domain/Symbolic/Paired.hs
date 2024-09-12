@@ -13,6 +13,7 @@ import Domain.Symbolic.Class
 import Domain.Contract.Behavior
 import Domain.Contract (ContractDomain(..))
 import Domain.Contract.Communication
+import Lattice.Class
 
 --------------------------------------------------
 -- Declaration
@@ -35,6 +36,9 @@ instance BottomLattice (SymbolicVal ptr sptr vptr pptr) where
 instance PartialOrder (SymbolicVal ptr sptr vptr pptr) where
    subsumes _ (SymbolicVal Bottom) = True
    subsumes (SymbolicVal p1) (SymbolicVal p2) = p1 == p2
+
+instance Meetable (SymbolicVal ptr sptr vptr pptr) where 
+   -- TODO!
 
 ------------------------------------------------------------
 -- NumberDomain instance

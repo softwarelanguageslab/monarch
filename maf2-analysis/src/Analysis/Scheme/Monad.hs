@@ -10,6 +10,7 @@ import Control.Monad.Join
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Syntax.Ide
+import Lattice.Equal
 
 stoPai :: SchemeDomainM e v m => e -> PaiDom v -> m v
 stoPai ex v = allocPai ex >>= (\adr -> writeAdr adr v $> pptr adr)
@@ -27,6 +28,7 @@ type SchemeDomainM e v m = (
    Domain (Esc m) DomainError,
    VarDom v ~ v,
    Boo v    ~ v,
+   EqualLattice v,
    -- Store interactions
    StoreM m (PAdr v) (PaiDom v),
    StoreM m (Adr v)  (VarDom v),

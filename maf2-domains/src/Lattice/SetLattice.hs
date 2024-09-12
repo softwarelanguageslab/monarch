@@ -5,8 +5,6 @@ module Lattice.SetLattice where
 
 import Lattice.Class
 import Domain.Class 
-import Domain.Core.BoolDomain.Class
-import Lattice.Equal (EqualLattice(..))
 import Lattice.Split 
 
 import Data.Set (Set)
@@ -43,6 +41,8 @@ instance Ord a => Domain (Set a) a where
 -- | More precise equal instance for sets
 -- TODO: The assumption here is that `a` is a concrete value type
 --       Since this is often not the case currently, we disable this instance for now
+--
+-- see: CSet for that alternative implementation
 -- instance Ord a => EqualLattice (Set a) where
 --    eql s1 s2
 --       | Set.null s1 || Set.null s2 = bottom 
