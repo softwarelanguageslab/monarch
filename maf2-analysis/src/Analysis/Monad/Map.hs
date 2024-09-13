@@ -16,7 +16,7 @@ import Control.Monad.Trans.State (runStateT)
 -- MapM typeclass
 --
 
-class Monad m => MapM k v m where
+class Monad m => MapM k v m | m k -> v where
     get :: k -> m (Maybe v)
     put :: k -> v -> m ()
 

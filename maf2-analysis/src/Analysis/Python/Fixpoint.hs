@@ -47,18 +47,22 @@ type IntraT m = MonadStack '[
 type AnalysisM m obj = (PyDomain obj PyRef, 
                         StoreM m ObjAdr obj,
                         MapM PyCmp PyRes m,
-                        MapM PyCmp () m, 
+                        MapM PyCmpTaint () m, 
                         ComponentTrackingM m PyCmp,
                         DependencyTrackingM m PyCmp ObjAdr,
                         DependencyTrackingM m PyCmp PyCmp,
+                        DependencyTrackingM m PyCmp PyCmpTaint,
                         WorkListM m PyCmp)
+
+newtype PyCmpTaint = PyCmpTaint PyCmp
+    deriving (Eq, Ord)
 
 type PyCmp = Key (IntraT Identity) PyBdy
 type PyRes = Val (IntraT Identity) PyRef  
 
 intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
 intra cmp = runIntraAnalysis cmp m 
-    where m = do t <- justOrBot <$> Analysis.Monad.get @PyCmp @() cmp 
+    where m = do t <- justOrBot <$> Analysis.Monad.get (PyCmpTaint cmp)
                  cache @(IntraT (IntraAnalysisT PyCmp m)) cmp evalBdy
                     & runAlloc (const . allocPtr)
                     & runWithTaint t
@@ -72,9 +76,10 @@ analyze prg = (rsto, osto)
     where ((_,osto),rsto) = inter prg
                                 & runWithStore @(Map ObjAdr obj) @ObjAdr
                                 & runWithMapping @PyCmp
-                                & runWithMapping' @PyCmp @()
+                                & runWithMapping' @PyCmpTaint
                                 & runWithDependencyTracking @PyCmp @ObjAdr
                                 & runWithDependencyTracking @PyCmp @PyCmp
+                                & runWithDependencyTracking @PyCmp @PyCmpTaint 
                                 & runWithComponentTracking @PyCmp
                                 & runWithWorkList @(Set PyCmp)
                                 & runIdentity
@@ -87,9 +92,10 @@ analyzeREPL read display =
     void $ (init >> repl) 
             & runWithStore @(Map ObjAdr obj) @ObjAdr
             & runWithMapping' @PyCmp @PyRes 
-            & runWithMapping' @PyCmp @()
+            & runWithMapping' @PyCmpTaint 
             & runWithDependencyTracking @PyCmp @ObjAdr
             & runWithDependencyTracking @PyCmp @PyCmp
+            & runWithDependencyTracking @PyCmp @PyCmpTaint 
             & runWithComponentTracking @PyCmp
             & runWithWorkList @(Set PyCmp)
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
