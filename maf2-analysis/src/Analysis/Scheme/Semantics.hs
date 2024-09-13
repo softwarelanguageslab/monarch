@@ -6,7 +6,7 @@
 module Analysis.Scheme.Semantics(eval, applyFun, applyClo, applyPrim) where
 
 import Analysis.Semantics
-import Analysis.Monad hiding (eval, run)
+import Analysis.Monad hiding (eval, run, call)
 import Analysis.Scheme.Monad
 import qualified Analysis.Monad as Monad
 import Syntax.Scheme.AST
@@ -17,6 +17,7 @@ import Analysis.Scheme.Primitives
 import Control.Monad.Join
 import Control.Monad (zipWithM_)
 import Prelude hiding (exp, lex)
+import Analysis.Scheme.Call
 import Debug.Trace
 
 -- | Base level evaluation function

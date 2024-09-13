@@ -27,7 +27,7 @@ module Analysis.Scheme.Prelude(
 import Syntax.Scheme
 
 -- Monads
-import Analysis.Monad hiding (trigger, done, register)
+import Analysis.Monad hiding (trigger, done, register, spawn)
 
 -- Stores
 import Analysis.Scheme.Store

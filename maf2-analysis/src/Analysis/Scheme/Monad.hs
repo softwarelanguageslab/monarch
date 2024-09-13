@@ -11,6 +11,7 @@ import Control.Monad.DomainError
 import Control.Monad.Escape
 import Syntax.Ide
 import Lattice.Equal
+import Analysis.Scheme.Call 
 
 stoPai :: SchemeDomainM e v m => e -> PaiDom v -> m v
 stoPai ex v = allocPai ex >>= (\adr -> writeAdr adr v $> pptr adr)

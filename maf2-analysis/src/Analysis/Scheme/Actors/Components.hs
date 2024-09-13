@@ -5,17 +5,17 @@
 module Analysis.Scheme.Actors.Components (Component (..), runSpawnT, runCallT, CExp(..)) where
 
 import Analysis.Actors.Monad (ActorBehaviorM (..), ActorLocalM (self))
-import Analysis.Monad
+import Analysis.Monad hiding (spawn)
 import Control.Fixpoint.EffectDriven (EffectSVarM)
 import qualified Control.Fixpoint.EffectDriven as EF
 import Control.Monad.Identity
 import Control.Monad.Join
 import Control.Monad.Layer
-import Control.Monad.Trans.Class
 import Domain.Scheme (ActorDomain (ARef, aref))
 import Domain.Scheme.Actors.CP
 import Domain.Scheme.Store
 import Syntax.Scheme (Exp (Lam))
+import Analysis.Scheme.Call
 
 data Component k
   = Main !Exp

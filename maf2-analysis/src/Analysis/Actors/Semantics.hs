@@ -6,7 +6,7 @@
 module Analysis.Actors.Semantics(Analysis.Actors.Semantics.eval, selectHandler) where
 
 import Domain.Scheme hiding (Exp)
-import Analysis.Monad
+import Analysis.Monad hiding (spawn)
 import Data.Functor ((<&>), ($>))
 import Syntax.Scheme.AST
 import Syntax.Ide

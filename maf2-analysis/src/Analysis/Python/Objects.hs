@@ -9,6 +9,7 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Analysis.Python.Objects where
 
@@ -19,7 +20,7 @@ import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
 import Control.Monad.Escape ( orElse )
-import Domain (Domain, BoolDomain)
+import Domain ( Domain, BoolDomain, BoolDomain(..) )
 import qualified Domain
 import Domain.Python.Objects
 import Domain.Python.World
@@ -32,13 +33,11 @@ import Data.Singletons (SingI(..))
 import Control.Monad ((<=<), (>=>))
 import Data.Bifunctor
 import Control.Applicative (Applicative(liftA2))
-import Analysis.Monad
+import Analysis.Monad hiding (has)
 import Data.Map (Map)
 import Control.Monad.AbstractM (AbstractM)
-import Lattice ( join, eql )
-import Lattice (CP)
+import Lattice ( join, eql, CP )
 import Lattice.Class (Lattice)
-import Domain (BoolDomain(..))
 
 -- | Convenience function to construct a Python object immediately from primitive abstract value
 from :: forall (k :: PyPrmKey) obj vlu . (PyDomain obj vlu, SingI k) => Abs obj k -> obj

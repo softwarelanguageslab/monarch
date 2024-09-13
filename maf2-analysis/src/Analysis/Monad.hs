@@ -8,8 +8,7 @@ module Analysis.Monad(
    module Analysis.Monad.Allocation,
    module Analysis.Monad.Assertion,
    module Analysis.Monad.Cache,
-   module Analysis.Monad.Call,
---   module Analysis.Monad.ComponentTracking,
+   module Analysis.Monad.ComponentTracking,
    module Analysis.Monad.Context,
    module Analysis.Monad.DependencyTracking, 
    module Analysis.Monad.Environment,
@@ -26,8 +25,7 @@ module Analysis.Monad(
 import Analysis.Monad.Allocation
 import Analysis.Monad.Assertion
 import Analysis.Monad.Cache 
-import Analysis.Monad.Call
---import qualified Analysis.Monad.ComponentTracking
+import Analysis.Monad.ComponentTracking
 import Analysis.Monad.Context
 import Analysis.Monad.DependencyTracking
 import Analysis.Monad.Environment

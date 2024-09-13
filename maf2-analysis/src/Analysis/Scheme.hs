@@ -7,7 +7,7 @@ import Prelude hiding (iterate, exp, lookup)
 import Analysis.Scheme.Primitives
 import qualified Analysis.Scheme.Semantics as Semantics
 import Analysis.Scheme.Monad (SchemeM)
-import Analysis.Monad hiding (getEnv)
+import Analysis.Monad hiding (getEnv, spawn)
 
 import Control.Monad.Trans.Class
 import Control.Monad.Join
@@ -34,6 +34,7 @@ import qualified Control.Monad.State.SVar as SVar
 import qualified Data.Map as Map
 import Control.Monad ((>=>))
 import Lattice.Equal (EqualLattice)
+import Analysis.Scheme.Call
 
 -----------------------------------------
 -- Shorthands

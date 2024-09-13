@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Analysis.Monad.Call (
+
+module Analysis.Scheme.Call (
   CallM(..),
   CallBottomT,
   runCallBottomT,  

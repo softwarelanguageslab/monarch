@@ -39,7 +39,6 @@ library
       Analysis.Monad.Allocation
       Analysis.Monad.Assertion
       Analysis.Monad.Cache
-      Analysis.Monad.Call
       Analysis.Monad.ComponentTracking
       Analysis.Monad.Context
       Analysis.Monad.DependencyTracking
@@ -64,6 +63,7 @@ library
       Analysis.Python.Semantics
       Analysis.Scheme
       Analysis.Scheme.Actors.Components
+      Analysis.Scheme.Call
       Analysis.Scheme.Monad
       Analysis.Scheme.Prelude
       Analysis.Scheme.Primitives
