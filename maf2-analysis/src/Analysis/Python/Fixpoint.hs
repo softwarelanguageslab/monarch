@@ -29,7 +29,6 @@ import Control.Monad.Escape
 import Data.Function ((&))
 import Analysis.Python.Escape
 import Analysis.Monad.Stack
-import Lattice.Tainted (Tainted)
 
 ---
 --- Python analysis fixpoint algorithm
@@ -41,13 +40,15 @@ type IntraT m = MonadStack '[
                     EnvT PyEnv,
                     CtxT (),
                     JoinT,
-                    CacheT
+                    CacheT,
+                    TaintT ()
                 ] m 
 
 type AnalysisM m obj = (PyDomain obj PyRef, 
                         StoreM m ObjAdr obj,
                         MapM PyCmp PyRes m,
-                        ComponentTrackingM m  PyCmp,
+                        MapM PyCmp () m, 
+                        ComponentTrackingM m PyCmp,
                         DependencyTrackingM m PyCmp ObjAdr,
                         DependencyTrackingM m PyCmp PyCmp,
                         WorkListM m PyCmp)
@@ -56,11 +57,11 @@ type PyCmp = Key (IntraT Identity) PyBdy
 type PyRes = Val (IntraT Identity) PyRef  
 
 intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
-intra cmp = cache @(IntraT (IntraAnalysisT PyCmp m)) cmp evalBdy
-                & runAlloc (const . allocPtr)
-                & runIntraAnalysis cmp 
-                
-
+intra cmp = runIntraAnalysis cmp m 
+    where m = do t <- justOrBot <$> Analysis.Monad.get @PyCmp @() cmp 
+                 cache @(IntraT (IntraAnalysisT PyCmp m)) cmp evalBdy
+                    & runAlloc (const . allocPtr)
+                    & runWithTaint t
 inter :: forall m obj . AnalysisM m obj => PyPrg -> m () 
 inter prg = do init                                 -- initialize Python infrastructure
                add ((Main prg, initialEnv), ())     -- add the main component to the worklist
@@ -71,6 +72,7 @@ analyze prg = (rsto, osto)
     where ((_,osto),rsto) = inter prg
                                 & runWithStore @(Map ObjAdr obj) @ObjAdr
                                 & runWithMapping @PyCmp
+                                & runWithMapping' @PyCmp @()
                                 & runWithDependencyTracking @PyCmp @ObjAdr
                                 & runWithDependencyTracking @PyCmp @PyCmp
                                 & runWithComponentTracking @PyCmp
@@ -84,7 +86,8 @@ analyzeREPL :: forall obj . PyDomain obj PyRef
 analyzeREPL read display = 
     void $ (init >> repl) 
             & runWithStore @(Map ObjAdr obj) @ObjAdr
-            & runWithMapping @PyCmp
+            & runWithMapping' @PyCmp @PyRes 
+            & runWithMapping' @PyCmp @()
             & runWithDependencyTracking @PyCmp @ObjAdr
             & runWithDependencyTracking @PyCmp @PyCmp
             & runWithComponentTracking @PyCmp
@@ -93,7 +96,7 @@ analyzeREPL read display =
                               let cmp = ((Main prg, initialEnv), ())
                               add cmp 
                               iterateWL intra 
-                              res <- justOrBot <$> Analysis.Monad.get cmp 
+                              res <- justOrBot <$> Analysis.Monad.get @PyCmp @PyRes cmp 
                               traverse (mapM lookupAdr . Set.toList . addrs >=> liftIO . display . joins) res
 
 ---

@@ -52,6 +52,7 @@ library
       Analysis.Monad.Span
       Analysis.Monad.Stack
       Analysis.Monad.Store
+      Analysis.Monad.Taint
       Analysis.Monad.WorkList
       Analysis.Python
       Analysis.Python.Common
