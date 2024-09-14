@@ -17,17 +17,16 @@ import Control.Monad.Join
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Analysis.Python.Common
-import Analysis.Monad
+import Analysis.Monad hiding (call)
 import Domain.Python.Syntax hiding (Continue, Break, Return)
 import Domain.Python.World
 import Analysis.Python.Escape
-import qualified Analysis.Monad.ComponentTracking as M
 
 import Prelude hiding (lookup, exp, break)
-import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import Control.Monad.AbstractM (AbstractM)
 import Control.Monad ((>=>))
 import Domain.Python.Objects.Class (PyObj(..))
+import Analysis.Monad.Call (CallM(..))
 
 --
 -- The Python monad 
@@ -81,10 +80,8 @@ pyStore loc = fmap injectAdr . pyAlloc loc
 instance (vlu ~ PyRef, 
           PyDomain obj vlu,
           MonadJoin m,
-          MonadCache m,
-          MapM (Key m PyBdy) (Val m vlu) m,
-          ComponentTrackingM m (Key m PyBdy),
           MonadEscape m,
+          CallM PyBdy PyRef m, 
           PyEscape (Esc m) vlu,
           Domain (Esc m) PyError,
           Domain (Esc m) DomainError,
@@ -94,7 +91,7 @@ instance (vlu ~ PyRef,
           StoreM m ObjAdr obj)
           =>
           PyM m obj vlu where
-  pyCall = M.call 
+  pyCall = call 
   pyAlloc = store 
   pyDeref f = deref f . addrs 
   pyDeref_ f = deref f . addrs 

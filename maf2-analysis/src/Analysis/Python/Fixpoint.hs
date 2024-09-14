@@ -24,11 +24,13 @@ import qualified Data.Set as Set
 import Data.Map (Map)
 import Prelude hiding (init, read)
 import Control.Monad.Reader
-import Control.Monad.Identity
 import Control.Monad.Escape
 import Data.Function ((&))
 import Analysis.Python.Escape
 import Analysis.Monad.Stack
+import Analysis.Monad.Call
+import qualified Control.Monad.Join as MJoin
+import Control.Monad.Identity
 
 ---
 --- Python analysis fixpoint algorithm
@@ -44,10 +46,12 @@ type IntraT m = MonadStack '[
                     TaintT ()
                 ] m 
 
-type AnalysisM m obj = (PyDomain obj PyRef, 
+type IntraT' m = IntraT (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in IntraT type synonym
+
+type AnalysisM m obj = (PyDomain obj PyRef,
                         StoreM m ObjAdr obj,
                         MapM PyCmp PyRes m,
-                        MapM PyCmpTaint () m, 
+                        MapM PyCmpTaint () m,
                         ComponentTrackingM m PyCmp,
                         DependencyTrackingM m PyCmp ObjAdr,
                         DependencyTrackingM m PyCmp PyCmp,
@@ -63,9 +67,16 @@ type PyRes = Val (IntraT Identity) PyRef
 intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
 intra cmp = runIntraAnalysis cmp m 
     where m = do t <- justOrBot <$> Analysis.Monad.get (PyCmpTaint cmp)
-                 cache @(IntraT (IntraAnalysisT PyCmp m)) cmp evalBdy
+                 cache cmp (\bdy -> evalBdy bdy & runCallT callFix)
                     & runAlloc (const . allocPtr)
                     & runWithTaint t
+          callFix :: PyBdy -> IntraT' m PyRef
+          callFix bdy = do k <- key bdy
+                           spawn k
+                           Analysis.Monad.put (PyCmpTaint k) () 
+                           r <- cached k
+                           maybe MJoin.mzero return r
+
 inter :: forall m obj . AnalysisM m obj => PyPrg -> m () 
 inter prg = do init                                 -- initialize Python infrastructure
                add ((Main prg, initialEnv), ())     -- add the main component to the worklist
