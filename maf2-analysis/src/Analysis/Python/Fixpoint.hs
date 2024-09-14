@@ -38,12 +38,10 @@ import Control.Monad.Identity
 
 type IntraT m = MonadStack '[
                     MayEscapeT (Set (PyEsc PyRef)),
-                    AllocT PyLoc () ObjAdr,
                     EnvT PyEnv,
                     CtxT (),
                     JoinT,
-                    CacheT,
-                    TaintT ()
+                    CacheT
                 ] m 
 
 type IntraT' m = IntraT (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in IntraT type synonym
@@ -67,9 +65,7 @@ type PyRes = Val (IntraT Identity) PyRef
 intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
 intra cmp = runIntraAnalysis cmp m 
     where m = do t <- justOrBot <$> Analysis.Monad.get (PyCmpTaint cmp)
-                 cache cmp (\bdy -> evalBdy bdy & runCallT callFix)
-                    & runAlloc (const . allocPtr)
-                    & runWithTaint t
+                 cache cmp $ runCallT callFix . runAlloc (const . allocPtr) . runWithTaint t . evalBdy
           callFix :: PyBdy -> IntraT' m PyRef
           callFix bdy = do k <- key bdy
                            spawn k
