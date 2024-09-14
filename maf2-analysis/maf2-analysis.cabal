@@ -39,6 +39,7 @@ library
       Analysis.Monad.Allocation
       Analysis.Monad.Assertion
       Analysis.Monad.Cache
+      Analysis.Monad.Call
       Analysis.Monad.ComponentTracking
       Analysis.Monad.Context
       Analysis.Monad.DependencyTracking

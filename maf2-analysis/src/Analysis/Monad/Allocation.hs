@@ -35,7 +35,7 @@ type Allocator from ctx to = from -> ctx -> to
 
 -- Allocator that turns a function into an allocator of the suiteable type
 newtype AllocT from ctx to m a = AllocT { _runAllocT :: ReaderT (Allocator from ctx to) m a }
-    deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoin, MonadLayer, MonadTrans)
+    deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoin, MonadLayer, MonadTransControl, MonadTrans)
 
 instance (MonadCache m) => MonadCache (AllocT from ctx to m) where
    type Key (AllocT from ctx to m) k = Key m k 

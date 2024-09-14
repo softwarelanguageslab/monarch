@@ -22,7 +22,8 @@ import Data.Functor ((<&>))
 import Control.Monad.Identity (IdentityT (..))
 import Lattice.Split (SplitLattice)
 import Lattice.ConstantPropagationLattice (CP)
-
+import Control.Monad.Reader (ReaderT (runReaderT, ReaderT))
+ 
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
    type Esc m
@@ -148,6 +149,11 @@ instance (MonadEscape m) => MonadEscape (IdentityT m) where
    type Esc (IdentityT m) = Esc m 
    throw = IdentityT . throw 
    catch ma f = IdentityT $ runIdentityT ma `catch` (runIdentityT . f)
+
+instance (MonadEscape m, Monad m) => MonadEscape (ReaderT r m) where
+   type Esc (ReaderT r m) = Esc m
+   throw = lift . throw
+   catch ma f = ReaderT $ \r -> runReaderT ma r `catch` (flip runReaderT r . f)
 
 instance MonadEscape Maybe where 
    type Esc Maybe = ()
