@@ -7,7 +7,7 @@ import qualified Domain.Scheme.Actors.CP as CP
 import Data.Map (Map)
 import Data.TypeLevel.HMap ((::->))
 import Domain.Contract.Behavior
-import Analysis.Monad
+import Analysis.Monad hiding (spawn)
 import qualified Analysis.Contracts.Semantics as Sem
 import Lattice
 import Control.Monad.Identity
