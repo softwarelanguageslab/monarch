@@ -64,6 +64,9 @@ library
       Domain.Core.StringDomain
       Domain.Core.StringDomain.Class
       Domain.Core.StringDomain.ConstantPropagation
+      Domain.Core.TaintDomain
+      Domain.Core.TaintDomain.Class
+      Domain.Core.TaintDomain.Simple
       Domain.Core.VectorDomain
       Domain.Core.VectorDomain.Class
       Domain.Core.VectorDomain.PIVector

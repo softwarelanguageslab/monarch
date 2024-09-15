@@ -7,6 +7,7 @@ module Domain.Core (
     module Domain.Core.PairDomain,
     module Domain.Core.SeqDomain, 
     module Domain.Core.StringDomain,
+    module Domain.Core.TaintDomain,
     module Domain.Core.VectorDomain 
 ) where 
 
@@ -18,5 +19,6 @@ import Domain.Core.NumberDomain
 import Domain.Core.PairDomain
 import qualified Domain.Core.SeqDomain 
 import Domain.Core.StringDomain
+import qualified Domain.Core.TaintDomain 
 import Domain.Core.VectorDomain 
 
