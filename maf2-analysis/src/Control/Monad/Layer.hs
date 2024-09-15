@@ -49,9 +49,3 @@ instance (Joinable e) => MonadLayer (MayEscapeT e) where
 instance MonadLayer ListT where
    upperM = lift
    lowerM f m = ListT $ f (uncons m)
-
-
---instance {-# OVERLAPPABLE #-} (MonadEscape m, MonadLayer t) => MonadEscape (t m) where
-    --type Esc (t m) = Esc m 
-    --escape = upperM escape
---    catch ma hdl = lowerM (`catch` hdl) ma

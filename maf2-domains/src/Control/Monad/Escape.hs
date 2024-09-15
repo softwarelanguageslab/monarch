@@ -7,6 +7,7 @@ module Control.Monad.Escape (
    escape, 
    orElse, 
    try,
+   catchOn
 ) where
 
 import Lattice.Class hiding (Bottom)
@@ -19,12 +20,18 @@ import Control.Monad.Trans
 import Control.Monad.Lift.Class (MonadTransControl(..))
 import Data.Functor ((<&>))
 import Control.Monad.Identity (IdentityT (..))
-
+import Lattice.Split (SplitLattice)
+import Lattice.ConstantPropagationLattice (CP)
+import Control.Monad.Reader (ReaderT (runReaderT, ReaderT))
+ 
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
    type Esc m
    throw :: (BottomLattice a) => Esc m -> m a 
    catch :: (BottomLattice a, Joinable a) => m a -> (Esc m -> m a) -> m a
+
+catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Lattice a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
+catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw 
 
 escape :: (MonadEscape m, Domain (Esc m) e, BottomLattice a) => e -> m a 
 escape = throw . inject 
@@ -142,6 +149,11 @@ instance (MonadEscape m) => MonadEscape (IdentityT m) where
    type Esc (IdentityT m) = Esc m 
    throw = IdentityT . throw 
    catch ma f = IdentityT $ runIdentityT ma `catch` (runIdentityT . f)
+
+instance (MonadEscape m, Monad m) => MonadEscape (ReaderT r m) where
+   type Esc (ReaderT r m) = Esc m
+   throw = lift . throw
+   catch ma f = ReaderT $ \r -> runReaderT ma r `catch` (flip runReaderT r . f)
 
 instance MonadEscape Maybe where 
    type Esc Maybe = ()

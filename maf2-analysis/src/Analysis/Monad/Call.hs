@@ -1,42 +1,42 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Analysis.Monad.Call (
-  CallM(..),
-  CallBottomT,
-  runCallBottomT,  
-) where
 
-import Lattice 
+module Analysis.Monad.Call where
 
-import Control.Monad.Trans
-import Control.Monad.Layer 
+import Control.Monad.Trans.Reader (ReaderT(..))
+import Control.Monad.Reader (MonadReader(..))
+import Control.Monad.Layer
+import Control.Monad.Escape (MonadEscape(..))
+
 import Control.Monad.Join 
 
-import Control.Monad.Identity
-
---- !!! TODO: This is Scheme-specific due to using `Exp` !!!
-import Syntax.Scheme.AST
-
 ---
---- The CallM typeclass
+--- CallM 
 ---
 
-class (Monad m) => CallM m env v where         
-   call :: (Exp, env) -> m v
+class Monad m => CallM k v m | m -> k v where
+    call :: k -> m v 
 
-instance (Monad (t m), CallM m env v, MonadLayer t) => CallM (t m) env v where
-   call = upperM . call
-      
 ---
---- The CallBottomT monad transformer 
+--- CallT 
 ---
 
--- | Mock instance that ignores the call and always returns bottom.
-newtype CallBottomT v m a = CallBottomT { _getCallBottomT :: IdentityT m a }
-                        deriving (Applicative, Functor, Monad, MonadJoin, MonadLayer, MonadTrans)
+newtype CallT k v f m a = CallT { _runCallT :: ReaderT (k -> f v) m a }
+    deriving (Functor, Applicative, Monad, MonadReader (k -> f v), MonadTrans, MonadLayer, MonadJoin)
 
-instance {-# OVERLAPPING #-} (Monad m, BottomLattice v) => CallM (CallBottomT v m) env v where
-   call _ = CallBottomT $ return bottom
+instance {-# OVERLAPPING #-} (Monad m) => CallM k v (CallT k v m m) where
+    call k = CallT $ ReaderT $ \f -> f k 
 
-runCallBottomT :: CallBottomT v m a -> m a
-runCallBottomT (CallBottomT ma) = runIdentityT ma
+instance (CallM k v m, MonadLayer t) => CallM k v (t m) where
+    call = upperM . call 
+
+runCallT :: (k -> m v) -> CallT k v m m a -> m a
+runCallT f (CallT m) = runReaderT m f 
+
+-- MonadEscape instance
+
+instance (Monad m, MonadEscape m) => MonadEscape (CallT k v f m) where
+    type Esc (CallT k v f m) = Esc m
+    throw = upperM . throw 
+    catch (CallT mr) f = CallT $ ReaderT $ \r -> runReaderT mr r `catch` (flip runReaderT r . _runCallT . f)
+

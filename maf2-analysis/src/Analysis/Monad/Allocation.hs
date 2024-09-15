@@ -17,6 +17,7 @@ import Control.Monad.Layer
 import Analysis.Monad.Cache
 import Data.TypeLevel.AssocList
 import Data.Kind (Type)
+import Control.Monad.Escape (MonadEscape(..))
 
 ------------------------------------------------------------
 --- The AllocM typeclass
@@ -34,8 +35,8 @@ class (Monad m) => AllocM m from adr where
 type Allocator from ctx to = from -> ctx -> to
 
 -- Allocator that turns a function into an allocator of the suiteable type
-newtype AllocT from ctx to m a = AllocT { _runAllocT :: ReaderT (Allocator from ctx to) m a }
-    deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoin, MonadLayer, MonadTrans)
+newtype AllocT from ctx to m a = AllocT { runAllocT_ :: ReaderT (Allocator from ctx to) m a }
+    deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoin, MonadLayer, MonadTransControl, MonadTrans)
 
 instance (MonadCache m) => MonadCache (AllocT from ctx to m) where
    type Key (AllocT from ctx to m) k = Key m k 
@@ -45,6 +46,11 @@ instance (MonadCache m) => MonadCache (AllocT from ctx to m) where
    val = lift . val 
    run f k = AllocT $ ReaderT $ \alloc -> run (runAlloc alloc . f) k
 
+instance (Monad m, MonadEscape m) => MonadEscape (AllocT from ctx to m) where
+   type Esc (AllocT from ctx to m) = Esc m
+   throw = upperM . throw 
+   catch (AllocT m) f = AllocT $ ReaderT $ \alloc -> runReaderT m alloc `catch` (flip runReaderT alloc . runAllocT_ . f)
+
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
    alloc loc = do
       ctx <- AllocT $ lift getCtx
@@ -53,6 +59,8 @@ instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to
 
 instance (AllocM m from to, MonadLayer l) => AllocM (l m) from to where
    alloc = upperM . alloc @m @from @to
+
+
 
 runAlloc :: forall from ctx to m a . Allocator from ctx to -> AllocT from ctx to m a -> m a
 runAlloc allocator (AllocT m) = runReaderT m allocator

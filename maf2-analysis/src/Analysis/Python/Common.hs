@@ -3,12 +3,14 @@
 {-# LANGUAGE ConstraintKinds #-}
 
 module Analysis.Python.Common (
+  PyRef,
   ObjAdr(..), 
   allocPtr,
   allocCst,
   PyVal(..), 
   ObjAddrSet,
   constant, 
+  addrs,
   PyEnv, 
   PyClo(..),
   PyDomain,
@@ -24,6 +26,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set 
 import Domain.Python.Objects
 import Domain.Core.SeqDomain (CPList)
+import Lattice.Tainted (Tainted)
+import Lattice.Tainted (Tainted(..))
 
 --
 -- Addresses
@@ -50,8 +54,7 @@ instance Show ObjAdr where
 --
 
 class (Show v, Ord v, SplitLattice v) => PyVal v where
-  injectAdr   :: ObjAdr -> v
-  addrs       :: v -> Set ObjAdr 
+  injectAdr :: ObjAdr -> v
 
 constant :: PyVal v => PyConstant -> v
 constant = injectAdr . allocCst  
@@ -62,13 +65,27 @@ newtype ObjAddrSet = ObjAddrSet (Set ObjAdr)
   deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
 
 instance Show ObjAddrSet where
-  show = show . Set.toList . addrs 
+  show (ObjAddrSet s) = show (Set.toList s)
 
 instance PyVal ObjAddrSet where
   injectAdr = ObjAddrSet . Set.singleton
-  addrs (ObjAddrSet s) = s 
+
+-- tainted PyVal
+
+type PyRef = Tainted () ObjAddrSet
+
+addrs :: PyRef -> Set ObjAdr
+addrs (Tainted (ObjAddrSet s) _) = s 
+
+instance (PyVal v) => PyVal (Tainted () v) where
+  injectAdr a = Tainted (injectAdr a) ()
+
+-- environments
 
 type PyEnv = Map String ObjAdr 
+
+-- closures 
+
 data PyClo = PyClo PyLoc [PyPar] PyStm [String] PyEnv
   deriving (Eq, Ord)
 

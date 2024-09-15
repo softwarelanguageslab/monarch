@@ -52,6 +52,7 @@ library
       Analysis.Monad.Span
       Analysis.Monad.Stack
       Analysis.Monad.Store
+      Analysis.Monad.Taint
       Analysis.Monad.WorkList
       Analysis.Python
       Analysis.Python.Common
@@ -63,6 +64,7 @@ library
       Analysis.Python.Semantics
       Analysis.Scheme
       Analysis.Scheme.Actors.Components
+      Analysis.Scheme.Call
       Analysis.Scheme.Monad
       Analysis.Scheme.Prelude
       Analysis.Scheme.Primitives

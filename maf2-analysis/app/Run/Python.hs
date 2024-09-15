@@ -35,7 +35,7 @@ printOSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k
                     & filter (\case (PrmAdr _, _) -> False ; _ -> True)
          indent = maximum (map (length . show . fst) adrs) + 5
 
-printRSto :: PyVal v => Map (PyCmp v) (MayEscape (Set (PyEsc v)) v) -> String
+printRSto :: Map PyCmp (MayEscape (Set (PyEsc PyRef)) PyRef) -> String
 printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showRes v)) cmps
    where cmps = Map.toList m
          showRes (Escape e) = "[!!: "++show e++"]"
@@ -75,6 +75,6 @@ runFile fileName =
       putStrLn "\n"
 
 main :: Options -> IO ()
-main (Options fileName) = runFile fileName
+main (Options fileName) = runFile fileName 
 
 

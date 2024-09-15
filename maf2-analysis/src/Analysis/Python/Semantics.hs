@@ -23,11 +23,12 @@ import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Prelude hiding (break, exp, lookup)
+import Prelude hiding (break, exp, lookup, True, False)
 import Data.Bifunctor (Bifunctor(bimap))
 import Data.Functor (($>))
 import Domain.Core ( BoolDomain(boolTop, true, false) )
 import Analysis.Environment (extends)
+import Data.Function ((&))
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -75,7 +76,7 @@ execRai :: PyM pyM obj vlu => PyExp -> pyM ()
 execRai = eval >=> pyRaise
 
 execTry :: forall pyM obj vlu . PyM pyM obj vlu => PyStm -> [(PyExp, PyStm)] -> pyM ()
-execTry bdy hds = exec bdy `pyCatchExc` checkHandlers hds 
+execTry bdy hds = exec bdy `pyCatchExc` checkHandlers hds
    where
          checkHandlers :: [(PyExp, PyStm)] -> vlu -> pyM ()
          checkHandlers [] exc = pyRaise exc
@@ -86,8 +87,8 @@ execTry bdy hds = exec bdy `pyCatchExc` checkHandlers hds
 
 execAss :: forall pyM obj vlu . PyM pyM obj vlu => PyLhs -> PyExp -> pyM ()
 execAss lhs rhs = eval rhs >>= assignTo lhs
-   where 
-         assignTo :: PyLhs -> vlu -> pyM () 
+   where
+         assignTo :: PyLhs -> vlu -> pyM ()
          assignTo (IdePat ide) vlu     = do (frm, nam) <- frame ide
                                             pyAssignAt nam vlu frm
          assignTo (Field e nam _) vlu  = eval e >>= pyAssign (ideName nam) vlu
@@ -95,7 +96,7 @@ execAss lhs rhs = eval rhs >>= assignTo lhs
          assignTo (TuplePat _ _) vlu   = todo "tuple assignment"
 
 execIff :: forall pyM obj vlu . PyM pyM obj vlu => [(PyExp, PyStm)] -> PyStm -> pyM ()
-execIff [] els = exec els 
+execIff [] els = exec els
 execIff ((prd, bdy):rst) els = pyIf_ (eval prd)
                                      (exec bdy)
                                      (execIff rst els)
@@ -138,16 +139,18 @@ evalVar var = do (adr, nam) <- frame var
 
 evalLit :: forall pyM obj vlu . PyM pyM obj vlu => PyLit -> pyM vlu
 evalLit (Syntax.None _)    = return $ constant None
-evalLit (Bool bln loc)     = pyStore loc (from' @BlnPrm bln)
+evalLit (Bool bln loc)
+   | bln                   = return $ constant True 
+   | otherwise             = return $ constant False 
 evalLit (Integer int loc)  = pyStore loc (from' @IntPrm int)
 evalLit (Real rea loc)     = pyStore loc (from' @ReaPrm rea)
 evalLit (String str loc)   = pyStore loc (from' @StrPrm str)
 evalLit (Tuple eps loc)    = pyStore loc . from @TupPrm . SeqDomain.fromList =<< mapM eval eps
 evalLit (List exs loc)     = pyStore loc . from @LstPrm . SeqDomain.fromList =<< mapM eval exs
-evalLit (Dict bds loc)     = buildDct [] =<< mapM (\(kex,vex) -> (,) <$> eval kex <*> eval vex) bds   
+evalLit (Dict bds loc)     = buildDct [] =<< mapM (\(kex,vex) -> (,) <$> eval kex <*> eval vex) bds
    --pyStore loc . from @DctPrm . DctDomain.from =<< mapM evalBnd bds
-   where 
-         buildDct :: [(CP String, vlu)] -> [(vlu, vlu)] -> pyM vlu 
+   where
+         buildDct :: [(CP String, vlu)] -> [(vlu, vlu)] -> pyM vlu
          buildDct acc [] = pyStore loc $ from @DctPrm (DctDomain.from acc)
          buildDct acc ((kv,vv):r) = pyDeref (\_ ko -> do str <- at @StrPrm ko
                                                          buildDct ((str,vv):acc) r) kv
@@ -162,11 +165,15 @@ evalCll opr pos kwa loc = do fun <- eval opr
 
 call :: PyM pyM obj vlu => PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> vlu -> pyM vlu
 call loc pos kwa = pyDeref (\adr obj ->
-   condsCP [(return (obj `isType` BoundType), callBnd loc pos kwa (get @BndPrm obj)),
-            (return (obj `isType` CloType),   callClo loc pos kwa (get @CloPrm obj)),
-            (return (obj `isType` PrimType),  callPrm loc pos     (get @PrmPrm obj)),
-            (return (obj `isType` TypeType),  callTyp loc pos kwa (injectAdr adr))]    --TODO: metaclasses...
-{- else -} (pyError NotCallable))
+   pyIf (obj `isType` BoundType)
+        (callBnd loc pos kwa (get @BndPrm obj))
+        (pyIf (obj `isType` CloType)
+              (callClo loc pos kwa (get @CloPrm obj))
+              (pyIf (obj `isType` PrimType)
+                    (callPrm loc pos (get @PrmPrm obj))
+                    (pyIf (obj `isType` TypeType)
+                          (callTyp loc pos kwa (injectAdr adr))  --TODO: metaclasses...
+               {- else -} (pyError NotCallable)))))
 
 callTyp :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> vlu -> pyM vlu
 callTyp loc pos kwa typ = do ref <- pyStore loc obj
@@ -208,12 +215,8 @@ parNam (VarKeyword _ _) = todo "varkeyword parameters"
 
 -- TODO: move this elsewhere
 -- TODO: improve implementation?
-isType :: PyDomain obj vlu => obj -> PyType -> CP Bool
-isType obj typ
-   | Set.null cls = bottom
-   | Set.size cls == 1 && adr `elem` cls = true
-   | adr `notElem` cls = false
-   | otherwise = boolTop
+isType :: PyM pyM obj vlu => obj -> PyType -> pyM vlu
+isType obj typ = 
+      pyDeref (\a _ -> return . constant $ if a == adr then True else False)
+              (getAttr (attrStr ClassAttr) obj)
    where adr = allocCst $ TypeObject typ
-         cls = addrs $ getAttr (attrStr ClassAttr) obj
-

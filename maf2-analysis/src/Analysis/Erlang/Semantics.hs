@@ -1,6 +1,6 @@
 module Analysis.Erlang.Semantics where
 
-import Analysis.Monad hiding (CallM(..))
+import Analysis.Monad hiding (CallM(..), call)
 import Analysis.Erlang.Monad
 import Syntax.Erlang
 import Domain.Erlang.Class
