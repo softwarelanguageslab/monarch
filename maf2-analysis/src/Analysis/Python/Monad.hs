@@ -105,10 +105,10 @@ instance (vlu ~ PyRef,
           PyM m obj vlu where
   pyCall = call 
   pyAlloc = store 
-  pyDeref f (Tainted s t) = deref f (addrs s)  
-  pyDeref_ f (Tainted s t) = deref f (addrs s) 
-  pyAssignAt k v = updateWith (setAttr k v) (setAttrWeak k v)
-  pyAssign k v (Tainted s t) = mjoinMap (pyAssignAt k v) (addrs s) 
+  pyDeref f (Tainted s t) = withTaint t $ taint =<< deref f (addrs s)
+  pyDeref_ f (Tainted s t) = withTaint t $ deref f (addrs s) 
+  pyAssignAt k v a = taint v >>= \v' -> updateWith (setAttr k v') (setAttrWeak k v') a
+  pyAssign k v (Tainted s _) = mjoinMap (pyAssignAt k v) (addrs s) 
   pyUpdate = updateAdr
   pyBreak = escape (Break @vlu)
   pyContinue = escape (Continue @vlu) 

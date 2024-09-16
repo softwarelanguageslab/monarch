@@ -14,7 +14,7 @@ import Text.Printf (printf)
 import Control.Monad.DomainError
 import Analysis.Python.Escape (PyEsc)
 import Data.Set (Set)
-import Analysis.Python.Monad (PyBdy(..))
+import Analysis.Python.Monad 
 import Language.Python.Common (annot)
 import Domain.Python.Syntax 
 import Data.IORef 

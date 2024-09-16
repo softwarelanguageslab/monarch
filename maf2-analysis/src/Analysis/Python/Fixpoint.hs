@@ -78,7 +78,7 @@ intra cmp = runIntraAnalysis cmp m
           callFix :: PyBdy -> IntraT' m PyRef
           callFix bdy = do k <- key bdy
                            spawn k
-                           Analysis.Monad.put (PyCmpTaint k) =<< taint 
+                           Analysis.Monad.put (PyCmpTaint k) =<< currentTaint 
                            r <- cached k
                            maybe MJoin.mzero return r
 
