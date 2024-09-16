@@ -27,6 +27,7 @@ import Control.Monad.AbstractM (AbstractM)
 import Control.Monad ((>=>))
 import Domain.Python.Objects.Class (PyObj(..))
 import Analysis.Monad.Call (CallM(..))
+import Domain.Core.TaintDomain
 
 --
 -- The Python monad 
@@ -79,6 +80,7 @@ pyStore loc = fmap injectAdr . pyAlloc loc
 
 instance (vlu ~ PyRef, 
           PyDomain obj vlu,
+          TaintM SimpleTaint m, 
           MonadJoin m,
           MonadEscape m,
           CallM PyBdy PyRef m, 

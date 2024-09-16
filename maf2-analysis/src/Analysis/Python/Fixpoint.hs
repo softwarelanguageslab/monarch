@@ -31,17 +31,25 @@ import Analysis.Monad.Stack
 import Analysis.Monad.Call
 import qualified Control.Monad.Join as MJoin
 import Control.Monad.Identity
+import Domain.Core.TaintDomain
+import qualified Domain.Core.TaintDomain as Taint 
+
+import Data.Maybe
 
 ---
 --- Python analysis fixpoint algorithm
 ---
 
+type Taint = SimpleTaint 
+
 type IntraT m = MonadStack '[
                     MayEscapeT (Set (PyEsc PyRef)),
+                    AllocT PyLoc () ObjAdr, 
                     EnvT PyEnv,
                     CtxT (),
                     JoinT,
-                    CacheT
+                    CacheT,
+                    TaintT Taint 
                 ] m 
 
 type IntraT' m = IntraT (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in IntraT type synonym
@@ -49,7 +57,7 @@ type IntraT' m = IntraT (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in
 type AnalysisM m obj = (PyDomain obj PyRef,
                         StoreM m ObjAdr obj,
                         MapM PyCmp PyRes m,
-                        MapM PyCmpTaint () m,
+                        MapM PyCmpTaint Taint m,
                         ComponentTrackingM m PyCmp,
                         DependencyTrackingM m PyCmp ObjAdr,
                         DependencyTrackingM m PyCmp PyCmp,
@@ -64,18 +72,22 @@ type PyRes = Val (IntraT Identity) PyRef
 
 intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
 intra cmp = runIntraAnalysis cmp m 
-    where m = do t <- justOrBot <$> Analysis.Monad.get (PyCmpTaint cmp)
-                 cache cmp $ runCallT callFix . runAlloc (const . allocPtr) . runWithTaint t . evalBdy
+    where m = do t <- fromJust <$> Analysis.Monad.get (PyCmpTaint cmp)
+                 cache cmp (runCallT callFix . evalBdy)
+                    & runAlloc (const . allocPtr)
+                    & runWithTaint t 
           callFix :: PyBdy -> IntraT' m PyRef
           callFix bdy = do k <- key bdy
                            spawn k
-                           Analysis.Monad.put (PyCmpTaint k) () 
+                           Analysis.Monad.put (PyCmpTaint k) =<< taint 
                            r <- cached k
                            maybe MJoin.mzero return r
 
 inter :: forall m obj . AnalysisM m obj => PyPrg -> m () 
 inter prg = do init                                 -- initialize Python infrastructure
-               add ((Main prg, initialEnv), ())     -- add the main component to the worklist
+               let cmp = ((Main prg, initialEnv), ())
+               add cmp                              -- add the main component to the worklist
+               Analysis.Monad.put (PyCmpTaint cmp) Taint.empty 
                iterateWL intra                      -- start the analysis 
 
 analyze :: forall obj . PyDomain obj PyRef => PyPrg -> (Map PyCmp PyRes, Map ObjAdr obj)
