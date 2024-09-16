@@ -9,6 +9,8 @@ module Analysis.Python.Monad (
   pyDeref2',
   pyDeref3',
   pyStore,
+  PyRef,
+  Taint, 
 ) where
 
 import Lattice
@@ -28,6 +30,7 @@ import Control.Monad ((>=>))
 import Domain.Python.Objects.Class (PyObj(..))
 import Analysis.Monad.Call (CallM(..))
 import Domain.Core.TaintDomain
+import Lattice.Tainted (Tainted(..))
 
 --
 -- The Python monad 
@@ -78,6 +81,13 @@ pyDeref3' f a1 a2 a3 = pyDeref2' (\o1 o2 -> pyDeref' (f o1 o2) a3) a1 a2
 pyStore :: PyM m obj vlu => PyLoc -> obj -> m vlu
 pyStore loc = fmap injectAdr . pyAlloc loc
 
+
+
+-- Taint analysis instance 
+
+type Taint = SimpleTaint 
+type PyRef = Tainted Taint ObjAddrSet
+
 instance (vlu ~ PyRef, 
           PyDomain obj vlu,
           TaintM SimpleTaint m, 
@@ -95,10 +105,10 @@ instance (vlu ~ PyRef,
           PyM m obj vlu where
   pyCall = call 
   pyAlloc = store 
-  pyDeref f = deref f . addrs 
-  pyDeref_ f = deref f . addrs 
+  pyDeref f (Tainted s t) = deref f (addrs s)  
+  pyDeref_ f (Tainted s t) = deref f (addrs s) 
   pyAssignAt k v = updateWith (setAttr k v) (setAttrWeak k v)
-  pyAssign k v = mjoinMap (pyAssignAt k v) . addrs 
+  pyAssign k v (Tainted s t) = mjoinMap (pyAssignAt k v) (addrs s) 
   pyUpdate = updateAdr
   pyBreak = escape (Break @vlu)
   pyContinue = escape (Continue @vlu) 

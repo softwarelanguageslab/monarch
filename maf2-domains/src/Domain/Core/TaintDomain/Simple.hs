@@ -18,6 +18,9 @@ instance PartialOrder SimpleTaint where
     leq MaybeTainted MaybeTainted = True 
     leq MaybeTainted _ = False 
 
+instance BottomLattice SimpleTaint where
+    bottom = Untainted 
+
 instance TaintDomain SimpleTaint where 
     empty = Untainted
     addTaints = join 

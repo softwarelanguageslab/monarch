@@ -35,12 +35,11 @@ import Domain.Core.TaintDomain
 import qualified Domain.Core.TaintDomain as Taint 
 
 import Data.Maybe
+import Lattice.Tainted (Tainted(..))
 
 ---
 --- Python analysis fixpoint algorithm
 ---
-
-type Taint = SimpleTaint 
 
 type IntraT m = MonadStack '[
                     MayEscapeT (Set (PyEsc PyRef)),
@@ -122,7 +121,7 @@ analyzeREPL read display =
                               add cmp 
                               iterateWL intra 
                               res <- justOrBot <$> Analysis.Monad.get @PyCmp @PyRes cmp 
-                              traverse (mapM lookupAdr . Set.toList . addrs >=> liftIO . display . joins) res
+                              traverse ((\(Tainted s _) -> mapM lookupAdr (Set.toList (addrs s))) >=> liftIO . display . joins) res
 
 ---
 --- CP instantiation

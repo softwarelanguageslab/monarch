@@ -3,7 +3,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 
 module Analysis.Python.Common (
-  PyRef,
   ObjAdr(..), 
   allocPtr,
   allocCst,
@@ -26,8 +25,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set 
 import Domain.Python.Objects
 import Domain.Core.SeqDomain (CPList)
-import Lattice.Tainted (Tainted)
 import Lattice.Tainted (Tainted(..))
+import Domain.Core.TaintDomain
 
 --
 -- Addresses
@@ -61,7 +60,7 @@ constant = injectAdr . allocCst
 
 -- simple PyVal 
 
-newtype ObjAddrSet = ObjAddrSet (Set ObjAdr)
+newtype ObjAddrSet = ObjAddrSet { addrs :: Set ObjAdr }
   deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
 
 instance Show ObjAddrSet where
@@ -72,13 +71,8 @@ instance PyVal ObjAddrSet where
 
 -- tainted PyVal
 
-type PyRef = Tainted () ObjAddrSet
-
-addrs :: PyRef -> Set ObjAdr
-addrs (Tainted (ObjAddrSet s) _) = s 
-
-instance (PyVal v) => PyVal (Tainted () v) where
-  injectAdr a = Tainted (injectAdr a) ()
+instance (PyVal v, TaintDomain t, Ord t, Show t) => PyVal (Tainted t v) where
+  injectAdr a = Tainted (injectAdr a) empty
 
 -- environments
 
