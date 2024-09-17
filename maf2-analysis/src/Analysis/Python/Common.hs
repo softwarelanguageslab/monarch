@@ -71,8 +71,8 @@ instance PyVal ObjAddrSet where
 
 -- tainted PyVal
 
-instance (PyVal v, TaintDomain t, Ord t, Show t) => PyVal (Tainted t v) where
-  injectAdr a = Tainted (injectAdr a) empty
+instance (PyVal v, TaintDomain t, Ord t) => PyVal (Tainted t v) where
+  injectAdr = pure . injectAdr
 
 -- environments
 

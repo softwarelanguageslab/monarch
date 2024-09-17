@@ -9,7 +9,7 @@ import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.Escape
 import Control.Monad.Join
 import Domain.Core.TaintDomain.Class (TaintDomain(..))
-import Lattice.Tainted (Tainted(..))
+import Lattice.Tainted (Tainted(..), taintWith)
 
 ------------------------------------------------------------
 --- The TaintM typeclass
@@ -20,8 +20,8 @@ class (Monad m, TaintDomain t) => TaintM t m where
    withTaint    :: t -> m a -> m a 
 
 taint :: TaintM t m => Tainted t v -> m (Tainted t v)
-taint (Tainted v t) = do t' <- currentTaint
-                         return $ Tainted v (t `addTaints` t') 
+taint tv = do t' <- currentTaint
+              return $ tv >>= taintWith t'
 
 ------------------------------------------------------------
 --- TaintT instance

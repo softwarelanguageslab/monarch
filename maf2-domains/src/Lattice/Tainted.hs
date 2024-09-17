@@ -1,9 +1,27 @@
-module Lattice.Tainted where 
+module Lattice.Tainted (Tainted(..), taintWith, ) where 
 
 import Lattice.Class
+import Domain.Core.TaintDomain.Class
 
 data Tainted t a = Tainted a t
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord)
+
+taintWith :: t -> a -> Tainted t a
+taintWith = flip Tainted 
+
+instance Functor (Tainted t) where
+    fmap f (Tainted a t) = Tainted (f a) t
+instance TaintDomain t => Applicative (Tainted t) where
+    pure = taintWith empty 
+    (Tainted f t1) <*> (Tainted a t2) = Tainted (f a) (t1 `addTaints` t2)  
+instance TaintDomain t => Monad (Tainted t) where
+    return = pure
+    (Tainted a t1) >>= f = let (Tainted b t2) = f a in Tainted b (t1 `addTaints` t2)
+
+instance (Eq t, TaintDomain t, Show a) => Show (Tainted t a) where
+    show (Tainted v t)
+        | t == empty = show v
+        | otherwise = "\ESC[35m" ++ show v ++ "\ESC[0m"    
 
 instance (BottomLattice a, BottomLattice t) => BottomLattice (Tainted t a) where
     bottom = Tainted bottom bottom
