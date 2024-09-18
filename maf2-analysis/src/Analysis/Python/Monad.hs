@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Analysis.Python.Monad (
   PyBdy(..),
@@ -68,6 +69,8 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   pyLookupEnv  :: String -> m ObjAdr
   -- store -- 
   pyLookupSto  :: ObjAdr -> m obj
+  -- extra primitives -- 
+  applyXPrim   :: XPyPrim -> PyLoc -> [vlu] -> m vlu
 
 pyDeref' :: forall m obj vlu . PyM m obj vlu => (obj -> m vlu) -> vlu -> m vlu
 pyDeref' = pyDeref . const
@@ -122,3 +125,6 @@ instance (vlu ~ PyRef,
   pyWithEnv = withEnv . const 
   pyLookupEnv = lookupEnv
   pyLookupSto = lookupAdr
+  applyXPrim ObjectTaint _ = \case
+                              [a] -> withTaint MaybeTainted (addTaint a)
+                              _   -> pyError ArityError

@@ -37,7 +37,7 @@ type instance Apply (AbsJoinLattice obj) k = Lattice (Abs obj k)
 class (
     Lattice obj,
     ForAll PyPrmKey (AbsJoinLattice obj),
-    Abs obj PrmPrm ~ Set PyPrim, 
+    Abs obj PrmPrm ~ Set (Either PyPrim XPyPrim), 
     Abs obj CloPrm ~ Set (Clo obj),
     Abs obj BndPrm ~ Map (Adr obj) (Ref obj),   -- TODO: this can be generalised  
     SeqDomain     (Abs obj LstPrm),

@@ -44,7 +44,7 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
     ReaPrm ::-> Assoc ReaKey m,
     BlnPrm ::-> Assoc BlnKey m,
     StrPrm ::-> CP String, 
-    PrmPrm ::-> Set PyPrim,
+    PrmPrm ::-> Set (Either PyPrim XPyPrim),
     CloPrm ::-> Set (Assoc CloKey m),
     BndPrm ::-> Map (Assoc AdrKey m) (Assoc VluKey m),  -- alternative, but less precise: (PyVal, PyVal)
     TupPrm ::-> CPList (Assoc VluKey m),                -- TODO: could use a more optimised representation (e.g., CPVector)

@@ -91,6 +91,10 @@ methods ExceptionType     = []
 methods StopIterationExceptionType = [] 
 methods ListIteratorType  = [(NextAttr, ListIteratorNext)]
 
+extraMethods :: PyType -> [(PyAttr, XPyPrim)]
+extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
+extraMethods _ = [] 
+
 -- | Built-in primitives in Python
 data PyPrim     = 
                 -- integer primitives
@@ -131,6 +135,10 @@ data PyPrim     =
                 | ObjectInit
   deriving (Eq, Ord, Enum, Bounded, Show)
 
+-- | Special add-on primitives
+data XPyPrim = ObjectTaint 
+  deriving (Eq, Ord, Enum, Bounded, Show)
+
 -- | Built-in attributes in Python
 data PyAttr = ClassAttr 
             | AddAttr 
@@ -161,6 +169,7 @@ data PyAttr = ClassAttr
             | LenAttr 
             | IterAttr
             | NextAttr 
+            | TaintAttr
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -193,24 +202,27 @@ attrStr InitAttr      = "__init__"
 attrStr LenAttr       = "__len__"
 attrStr IterAttr      = "__iter__"
 attrStr NextAttr      = "__next__"
+attrStr TaintAttr     = "__taint__"
 
 -- | Built-in objects in Python 
 data PyConstant = None
                 | True
                 | False
                 | GlobalFrame 
-                | TypeObject PyType 
-                | TypeName   PyType 
-                | TypeMRO    PyType 
-                | PrimObject PyPrim 
+                | TypeObject  PyType 
+                | TypeName    PyType 
+                | TypeMRO     PyType 
+                | PrimObject  PyPrim 
+                | XPrimObject XPyPrim
   deriving (Eq, Ord, Show)
 
 instance Finite PyConstant where
   all = [None, True, False, GlobalFrame] 
-        ++ map TypeObject all 
-        ++ map TypeName   all 
-        ++ map TypeMRO    all
-        ++ map PrimObject all
+        ++ map TypeObject  all 
+        ++ map TypeName    all 
+        ++ map TypeMRO     all
+        ++ map PrimObject  all
+        ++ map XPrimObject all 
 
 -- | Built-in primitive fields in Python
 data PyPrmKey = IntPrm

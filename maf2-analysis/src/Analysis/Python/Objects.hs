@@ -73,22 +73,24 @@ initialCst = [("type",          TypeObject TypeType),
               ("StopIteration", TypeObject StopIterationExceptionType)]
 
 injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
-injectPyConstant True             = from' @BlnPrm Prelude.True
-injectPyConstant False            = from' @BlnPrm Prelude.False
-injectPyConstant None             = new' NoneType
-injectPyConstant GlobalFrame      = setAttrs initialBds $ new' FrameType
+injectPyConstant True              = from' @BlnPrm Prelude.True
+injectPyConstant False             = from' @BlnPrm Prelude.False
+injectPyConstant None              = new' NoneType
+injectPyConstant GlobalFrame       = setAttrs initialBds $ new' FrameType
   where initialBds = map (second constant) initialCst
-injectPyConstant (TypeName typ)   = from' @StrPrm (name typ)
-injectPyConstant (PrimObject prm) = from' @PrmPrm prm
-injectPyConstant (TypeMRO typ)    = from  @TupPrm (SeqDomain.fromList $ map typeVal mro)
+injectPyConstant (TypeName typ)    = from' @StrPrm (name typ)
+injectPyConstant (PrimObject prm)  = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left prm)
+injectPyConstant (XPrimObject prm) = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Right prm)
+injectPyConstant (TypeMRO typ)     = from  @TupPrm (SeqDomain.fromList $ map typeVal mro)
   where mro = case typ of
                 ObjectType  -> [ObjectType]
                 StopIterationExceptionType -> [StopIterationExceptionType, ExceptionType, ObjectType]
                 _           -> [typ, ObjectType]
 injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new' TypeType
-  where typeAttrs   = [(NameAttr, TypeName typ), (MROAttr, TypeMRO typ)]
-        methodAttrs = map (second PrimObject) (methods typ)
-        allAttrs    = map (bimap attrStr constant) (typeAttrs ++ methodAttrs)
+  where typeAttrs        = [(NameAttr, TypeName typ), (MROAttr, TypeMRO typ)]
+        methodAttrs      = map (second PrimObject) (methods typ)
+        extraMethodAttrs = map (second XPrimObject) (extraMethods typ)
+        allAttrs         = map (bimap attrStr constant) (typeAttrs ++ methodAttrs ++ extraMethodAttrs)
 
 isBindableObj :: (BoolDomain b, PyObj obj) => obj -> b
 isBindableObj = liftA2 Domain.or (has @PrmPrm) (has @CloPrm)

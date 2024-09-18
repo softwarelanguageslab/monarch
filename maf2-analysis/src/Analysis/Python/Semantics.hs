@@ -182,9 +182,10 @@ callTyp loc pos kwa typ = do ref <- pyStore loc obj
                              return ref
    where obj = new typ
 
-callPrm :: PyM pyM obj vlu => PyLoc -> [vlu] -> Set PyPrim -> pyM vlu
+callPrm :: PyM pyM obj vlu => PyLoc -> [vlu] -> Set (Either PyPrim XPyPrim) -> pyM vlu
 callPrm pos ags = mjoinMap apply
- where apply prm = applyPrim prm pos ags
+ where apply (Left prm)  = applyPrim prm pos ags
+       apply (Right prm) = applyXPrim prm pos ags  
 
 callBnd :: PyM pyM obj vlu => PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Map ObjAdr vlu -> pyM vlu
 callBnd loc pos kwa = mjoinMap apply . Map.toList
