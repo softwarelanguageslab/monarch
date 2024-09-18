@@ -1,13 +1,13 @@
-MAF2
+Monarch
 =====
 
 
 ## Goal
 
-MAF2 is the successor of [MAF](https://github.com/softwarelanguageslab/maf) a framework for experimenting with modular static analyses that are based on abstract interpretation. 
+Monarch is the successor of [MAF](https://github.com/softwarelanguageslab/maf) a framework for experimenting with modular static analyses that are based on abstract interpretation. 
 This iteration of the framework focusses on monadic implementations of the so-called "Abstracting Definitional Interpreters" (Darais et al., 2017) technique to static analysis.
 
-The previous version of MAF focussed on static analyses developed according to the ModX technique.
+MAF focussed on static analyses developed according to the ModX technique.
 While this current iteration of the framwork still includes an implementation of the algorithms used 
 in this ModX technique, its analyses are not structured in this way. Rather, ModX is viewed as an intelligent worklist algorithm provided as a parameter to the analysis' implementation.
 
