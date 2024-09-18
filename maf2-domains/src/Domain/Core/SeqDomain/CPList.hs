@@ -98,6 +98,13 @@ instance Lattice v => SeqDomain (CPList v) where
   length (CPList _ len _) = Constant len
   length (TopList _)      = Top 
 
+  -- not necessary but more efficient than the default implementation using slice
+  tail :: AbstractM m => CPList v -> m (CPList v)
+  tail BotList              = return BotList 
+  tail (CPList (_:t) len _) = return $ CPList t (len-1) (joins t)
+  tail (CPList{})           = escape IndexOutOfBounds -- tail of empty list
+  tail l@(TopList _)        = return l `mjoin` escape IndexOutOfBounds
+
   insert :: CP Integer -> v -> CPList v -> CPList v
   insert Bottom _ _ = BotList
   insert _ v _ 
