@@ -1,6 +1,4 @@
-Monarch
-=====
-
+![Monarch](logo.png)
 
 ## Goal
 
