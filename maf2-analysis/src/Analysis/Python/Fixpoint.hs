@@ -36,6 +36,7 @@ import qualified Domain.Core.TaintDomain as Taint
 
 import Data.Maybe
 import Lattice.Tainted (Tainted(..))
+import qualified Debug.Trace as Debug
 
 ---
 --- Python analysis fixpoint algorithm
@@ -119,6 +120,7 @@ analyzeREPL read display =
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
                               let cmp = ((Main prg, initialEnv), ())
                               add cmp 
+                              Analysis.Monad.put (PyCmpTaint cmp) Taint.empty
                               iterateWL intra 
                               res <- justOrBot <$> Analysis.Monad.get @PyCmp @PyRes cmp 
                               traverse ((\(Tainted s _) -> mapM lookupAdr (Set.toList (addrs s))) >=> liftIO . display . joins) res
