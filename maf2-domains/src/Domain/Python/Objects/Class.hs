@@ -3,6 +3,7 @@
 
 module Domain.Python.Objects.Class (
     PyObj(..), 
+    atPrm,
     at,
     has,
     get,
@@ -99,13 +100,16 @@ set :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => Abs obj k -> obj -> 
 set = setPrm (sing @k)
 
 -- | Convenience function to retrieve a primitive field from a Python object, throwing an error if not present
-at :: forall (k :: PyPrmKey) obj m . (AbstractM m, PyObj obj, SingI k) => obj -> m (Abs obj k)
-at obj = withC_ @(AbsJoinLattice obj) getField s 
-  where s = sing @k 
+atPrm :: forall (k :: PyPrmKey) obj m . (AbstractM m, PyObj obj) => Sing k -> obj -> m (Abs obj k)
+atPrm s obj = withC_ @(AbsJoinLattice obj) getField s 
+  where 
         getField :: Lattice (Abs obj k) => m (Abs obj k)
         getField = condCP (return $ hasPrm s obj)
                           (return $ getPrm s obj)
                           (escape WrongType) 
+
+at :: forall (k :: PyPrmKey) obj m . (AbstractM m, PyObj obj, SingI k) => obj -> m (Abs obj k)
+at = atPrm (sing @k)
 
 modify :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => (Abs obj k -> Abs obj k) -> obj -> obj
 modify f obj = set @k (f $ get @k obj) obj 
