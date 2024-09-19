@@ -50,6 +50,8 @@ data PyTag = FrmTag
            | ForBln
            | ItrCll
            | NxtCll
+           | ItrIdx
+           | ItrLst 
    deriving (Eq, Ord, Show, Bounded, Enum)
 
 instance Show PyLoc where

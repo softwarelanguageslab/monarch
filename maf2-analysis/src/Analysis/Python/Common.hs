@@ -95,7 +95,6 @@ type PyDomain obj vlu = (PyVal vlu,
                          Ref obj ~ vlu,
                          Adr obj ~ ObjAdr,
                          Clo obj ~ PyClo, 
-                         Abs obj LsiPrm ~ CPList vlu,
                          Abs obj LstPrm ~ CPList vlu, 
                          Abs obj TupPrm ~ CPList vlu,
                          Abs obj StrPrm ~ CP String)

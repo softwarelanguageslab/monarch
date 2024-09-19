@@ -1,6 +1,10 @@
 def main():
     n = 42
+    r = 100
     t = n.__taint__()
-    return t+1
-
+    if t == 42:
+        r = 0
+    else:
+        r = 1
+    return r
 main()

@@ -27,6 +27,7 @@ import Control.Monad ( liftM2, (>=>) )
 import qualified Control.Monad as Monad
 import Data.Singletons.TH
 import Data.Functor (($>))
+import Control.Monad.Escape (MonadEscape(..), orElse)
 
 ---
 --- Primitives implementation
@@ -81,21 +82,24 @@ applyPrim ListSetItem   = prim3 $ \_ a1 a2 vlu ->
                                         let obj' = set @LstPrm lst' obj
                                         pyUpdate adr obj'
 applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyStore loc $ from @IntPrm (SeqDomain.length l)
-applyPrim ListIter      = prim1' @LstPrm $ \loc l -> pyStore loc $ from @LsiPrm l
+applyPrim ListIter      = prim1 $ \loc l -> do n <- pyStore (tagAs ItrIdx loc) $ from' @IntPrm (0 :: Integer)
+                                               let obj = new'' ListIteratorType [(attrStr ListAttr, l), (attrStr IndexAttr, n)]
+                                               pyStore (tagAs ItrLst loc) obj
 -- list iterator primitives
 applyPrim ListIteratorNext = prim1 $ pyDeref . next 
-        where
+           where
               next :: PyLoc -> ObjAdr -> obj -> pyM vlu
-              next loc adr obj = do lst         <- at @LsiPrm obj
-                                    (val, lst') <- case lst of --TODO: add tail operation to SeqDomain?
-                                        SeqDomain.BotList           -> mzero
-                                        SeqDomain.CPList [] _ _     -> stopIteration loc
-                                        SeqDomain.CPList (e:es) n _ -> return (e, SeqDomain.CPList es (n-1) (joins es))
-                                        SeqDomain.TopList v         -> return (v, lst) `mjoin` stopIteration loc
-                                    let obj' = set @LsiPrm lst' obj
-                                    pyUpdate adr obj'
-                                    return val
-              stopIteration :: Lattice a => PyLoc -> pyM a
+              next loc adr obj = do let lst = getAttr (attrStr ListAttr) obj
+                                    let idx = getAttr (attrStr IndexAttr) obj
+                                    advance loc adr lst idx `orElse` stopIteration loc
+              advance :: PyLoc -> ObjAdr -> vlu -> vlu -> pyM vlu
+              advance loc adr = pyDeref2'' @LstPrm @IntPrm $ 
+                                        \l i -> do v <- SeqDomain.ref i l
+                                                   n <- Domain.inc i 
+                                                   idx <- pyStore loc $ from @IntPrm n 
+                                                   pyAssignAt (attrStr IndexAttr) idx adr
+                                                   return v  
+              stopIteration :: PyLoc -> pyM vlu
               stopIteration loc = pyRaise =<< pyStore loc (new' StopIterationExceptionType)
 -- type primitives
 applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr) nam typ

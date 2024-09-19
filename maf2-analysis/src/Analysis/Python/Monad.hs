@@ -2,12 +2,15 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Analysis.Python.Monad (
   PyBdy(..),
   PyM(..),
   pyDeref',
+  pyDeref'',
   pyDeref2',
+  pyDeref2'',
   pyDeref3',
   pyStore,
   PyRef,
@@ -21,17 +24,18 @@ import Control.Monad.DomainError
 import Control.Monad.Escape
 import Analysis.Python.Common
 import Analysis.Monad hiding (call)
-import Domain.Python.Syntax hiding (Continue, Break, Return)
+import Domain.Python.Syntax hiding (Continue, Break, Return, None)
 import Domain.Python.World
 import Analysis.Python.Escape
 
 import Prelude hiding (lookup, exp, break)
 import Control.Monad.AbstractM (AbstractM)
-import Control.Monad ((>=>))
-import Domain.Python.Objects.Class (PyObj(..))
+import Control.Monad ((>=>), (<=<))
+import Domain.Python.Objects.Class (PyObj(..), at)
 import Analysis.Monad.Call (CallM(..))
 import Domain.Core.TaintDomain
 import Lattice.Tainted (Tainted(..))
+import Data.Singletons (SingI)
 
 --
 -- The Python monad 
@@ -75,8 +79,16 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
 pyDeref' :: forall m obj vlu . PyM m obj vlu => (obj -> m vlu) -> vlu -> m vlu
 pyDeref' = pyDeref . const
 
+pyDeref'' :: forall k m obj vlu . (PyM m obj vlu, SingI k) => (Abs obj k -> m vlu) -> vlu -> m vlu 
+pyDeref'' f = pyDeref' (f <=< at @k)
+
 pyDeref2' :: forall m obj vlu . PyM m obj vlu => (obj -> obj -> m vlu) -> vlu -> vlu -> m vlu
-pyDeref2' f a1 a2 = pyDeref' (\o1 -> pyDeref' (f o1) a2) a1 
+pyDeref2' f a1 a2 = pyDeref' (\o1 -> pyDeref' (f o1) a2) a1
+
+pyDeref2'' :: forall k1 k2 m obj vlu . (PyM m obj vlu, SingI k1, SingI k2) => (Abs obj k1 -> Abs obj k2 -> m vlu) -> vlu -> vlu -> m vlu
+pyDeref2'' f = pyDeref2' $ \o1 o2 -> do v1 <- at @k1 o1 
+                                        v2 <- at @k2 o2 
+                                        f v1 v2 
 
 pyDeref3' :: forall m obj vlu . PyM m obj vlu => (obj -> obj -> obj -> m vlu) -> vlu -> vlu -> vlu -> m vlu
 pyDeref3' f a1 a2 a3 = pyDeref2' (\o1 o2 -> pyDeref' (f o1 o2) a3) a1 a2

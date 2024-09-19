@@ -67,6 +67,9 @@ typeVal = constant . TypeObject
 new' :: PyDomain obj vlu => PyType -> obj
 new' = new . typeVal
 
+new'' :: PyDomain obj vlu => PyType -> [(String, Ref obj)] -> obj 
+new'' typ attrs = setAttrs attrs $ new' typ 
+
 initialCst :: [(String, PyConstant)]
 initialCst = [("type",          TypeObject TypeType),
               ("Exception",     TypeObject ExceptionType),
@@ -76,8 +79,7 @@ injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
 injectPyConstant True              = from' @BlnPrm Prelude.True
 injectPyConstant False             = from' @BlnPrm Prelude.False
 injectPyConstant None              = new' NoneType
-injectPyConstant GlobalFrame       = setAttrs initialBds $ new' FrameType
-  where initialBds = map (second constant) initialCst
+injectPyConstant GlobalFrame       = new'' FrameType $ map (second constant) initialCst
 injectPyConstant (TypeName typ)    = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm)  = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left prm)
 injectPyConstant (XPrimObject prm) = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Right prm)

@@ -170,6 +170,8 @@ data PyAttr = ClassAttr
             | IterAttr
             | NextAttr 
             | TaintAttr
+            | ListAttr 
+            | IndexAttr
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -203,6 +205,8 @@ attrStr LenAttr       = "__len__"
 attrStr IterAttr      = "__iter__"
 attrStr NextAttr      = "__next__"
 attrStr TaintAttr     = "__taint__"
+attrStr ListAttr      = "__list__"
+attrStr IndexAttr     = "__index__"
 
 -- | Built-in objects in Python 
 data PyConstant = None
@@ -234,7 +238,6 @@ data PyPrmKey = IntPrm
               | BndPrm
               | TupPrm
               | LstPrm
-              | LsiPrm 
               | DctPrm
   deriving (Eq, Ord, Show)
 
@@ -250,7 +253,6 @@ classFor SCloPrm = CloType
 classFor SBndPrm = BoundType
 classFor STupPrm = TupleType
 classFor SLstPrm = ListType 
-classFor SLsiPrm = ListIteratorType
 classFor SDctPrm = DictionaryType
 
 -- | Built-in Python errors
