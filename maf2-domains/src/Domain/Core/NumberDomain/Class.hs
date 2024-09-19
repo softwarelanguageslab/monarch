@@ -30,6 +30,8 @@ class (Lattice n, Bool.BoolDomain (Boo n)) => NumberDomain n where
 class (Domain i Integer, NumberDomain i) => IntDomain i where
    type Str i :: Type
    type Rea i :: Type
+   inc :: AbstractM m => i -> m i
+   inc = plus (inject @_ @Integer 1)
    toReal :: AbstractM m => i -> m (Rea i)
    toString :: AbstractM m => i -> m (Str i )
    quotient :: AbstractM m => i -> i -> m i
