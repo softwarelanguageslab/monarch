@@ -61,28 +61,13 @@ applyPrim FloatLe       = prim2'' $ floatBinop @BlnPrm Domain.le
 applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
-applyPrim DictSetItem   = prim3 $ \_ a1 a2 vlu ->
-                                     pyDeref' (\o2 -> do key <- at @StrPrm o2
-                                                         none $ pyDeref_ (updateDct key vlu) a1) a2
-   where
-        updateDct :: Abs obj StrPrm -> vlu -> ObjAdr -> obj -> pyM ()
-        updateDct key vlu adr obj = do dct <- at @DctPrm obj
-                                       let dct' = Domain.updateWeak key vlu dct
-                                       let obj' = set @DctPrm dct' obj
-                                       pyUpdate adr obj'
+applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm @_ @_ @_ SDctPrm (updateDct k) v a1) a2 
+   where updateDct key vlu = return . Domain.updateWeak key vlu  
 -- list primitives
 applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref
-applyPrim ListSetItem   = prim3 $ \_ a1 a2 vlu -> 
-                                        pyDeref' (\o2 -> do idx <- at @IntPrm o2
-                                                            none $ pyDeref_ (updateLst idx vlu) a1) a2 
-   where
-         updateLst :: Abs obj IntPrm -> vlu -> ObjAdr -> obj -> pyM ()
-         updateLst idx vlu adr obj = do lst  <- at @LstPrm obj
-                                        lst' <- SeqDomain.setWeak idx vlu lst    -- TODO: only weak updates until updateWith supports monadic updates ...
-                                        let obj' = set @LstPrm lst' obj
-                                        pyUpdate adr obj'
+applyPrim ListSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @IntPrm (\i -> none $ pyAssignInPrm @_ @_ @_ SLstPrm (SeqDomain.setWeak i) v a1) a2 
 applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyStore loc $ from @IntPrm (SeqDomain.length l)
-applyPrim ListIter      = prim1 $ \loc l -> do n <- pyStore (tagAs ItrIdx loc) $ from' @IntPrm (0 :: Integer)
+applyPrim ListIter      = prim1 $ \loc l -> do n <- pyStore (tagAs ItrIdx loc) $ from' @IntPrm @_ @Integer 0
                                                let obj = new'' ListIteratorType [(attrStr ListAttr, l), (attrStr IndexAttr, n)]
                                                pyStore (tagAs ItrLst loc) obj
 -- list iterator primitives

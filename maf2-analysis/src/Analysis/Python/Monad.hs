@@ -31,11 +31,12 @@ import Analysis.Python.Escape
 import Prelude hiding (lookup, exp, break)
 import Control.Monad.AbstractM (AbstractM)
 import Control.Monad ((>=>), (<=<))
-import Domain.Python.Objects.Class (PyObj(..), at)
+import Domain.Python.Objects.Class (PyObj(..), at, set, atPrm)
 import Analysis.Monad.Call (CallM(..))
 import Domain.Core.TaintDomain
 import Lattice.Tainted (Tainted(..))
-import Data.Singletons (SingI)
+import Data.Singletons (SingI, Sing)
+import Data.Kind (Type)
 
 --
 -- The Python monad 
@@ -57,7 +58,7 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   pyAssignAt   :: String -> vlu -> ObjAdr -> m ()
   pyAssign     :: String -> vlu -> vlu -> m ()
   pyAssign k v = pyDeref_ $ \a _ -> pyAssignAt k v a
-  pyUpdate     :: ObjAdr -> obj -> m ()
+  pyAssignInPrm :: Sing k -> (vlu -> Abs obj k -> m (Abs obj k)) -> vlu -> vlu -> m () 
   -- control flow -- 
   pyBreak      :: m ()
   pyContinue   :: m ()
@@ -124,7 +125,11 @@ instance (vlu ~ PyRef,
   pyDeref_ f = unwrapTainted_ (deref f . addrs)
   pyAssignAt k v a = addTaint v >>= \v' -> updateWith (setAttr k v') (setAttrWeak k v') a
   pyAssign k v = unwrapTainted_ (mjoinMap (pyAssignAt k v) . addrs) --- !!! important
-  pyUpdate = updateAdr
+  pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do v' <- addTaint v 
+                                                  old <- atPrm s obj
+                                                  upd <- f v' old
+                                                  let obj' = setPrm s upd obj
+                                                  updateAdr adr obj'
   pyBreak = escape (Break @vlu)
   pyContinue = escape (Continue @vlu) 
   pyReturn = escape . Return 
