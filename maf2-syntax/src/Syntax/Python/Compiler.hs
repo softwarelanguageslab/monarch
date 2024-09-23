@@ -50,6 +50,8 @@ data PyTag = FrmTag
            | ForBln
            | ItrCll
            | NxtCll
+           | NxtIdx
+           | NxtExc 
            | ItrIdx
            | ItrLst 
    deriving (Eq, Ord, Show, Bounded, Enum)
