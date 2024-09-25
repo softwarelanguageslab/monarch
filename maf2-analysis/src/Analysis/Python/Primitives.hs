@@ -81,11 +81,11 @@ applyPrim ListIteratorNext = prim1 $ pyDeref . next
               advance loc adr = pyDeref2'' @LstPrm @IntPrm $ 
                                         \l i -> do v <- SeqDomain.ref i l
                                                    n <- Domain.inc i 
-                                                   idx <- pyStore loc $ from @IntPrm n 
+                                                   idx <- pyStore (tagAs NxtIdx loc) $ from @IntPrm n 
                                                    pyAssignAt (attrStr IndexAttr) idx adr
                                                    return v  
               stopIteration :: PyLoc -> pyM vlu
-              stopIteration loc = pyRaise =<< pyStore loc (new' StopIterationExceptionType)
+              stopIteration loc = pyRaise =<< pyStore (tagAs NxtExc loc) (new' StopIterationExceptionType)
 -- type primitives
 applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr) nam typ
                                                       mro <- computeMRO loc typ sup

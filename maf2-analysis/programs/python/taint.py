@@ -1,10 +1,7 @@
 def main():
-    n = 42
-    r = 100
-    t = n.__taint__()
-    if t == 42:
-        r = 0
-    else:
-        r = 1
-    return r
+    lst = [1,2,3]
+    len = 0 
+    for i in lst:
+        len += 1
+    return len
 main()
