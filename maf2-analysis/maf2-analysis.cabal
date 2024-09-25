@@ -78,7 +78,6 @@ library
       Control.Fixpoint.WorkList
       Control.Monad.Cond
       Control.Monad.Layer
-      Control.Monad.ListT
       Control.Monad.State.IntPool
       Control.Monad.State.SVar
       Data.Print
