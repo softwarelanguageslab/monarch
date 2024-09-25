@@ -43,7 +43,7 @@ import qualified Debug.Trace as Debug
 ---
 
 type IntraT m = MonadStack '[
-                    MayEscapeT (Set (PyEsc PyRef)),
+                    MayEscapeTaintedT SimpleTaint (Set (PyEsc PyRef)),
                     AllocT PyLoc () ObjAdr, 
                     EnvT PyEnv,
                     CtxT (),
@@ -131,5 +131,5 @@ analyzeREPL read display =
 
 type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp (MayEscape (Set (PyEsc PyRef)) PyRef), Map ObjAdr PyDomainCP)
+analyzeCP :: PyPrg -> (Map PyCmp (MayEscape PyRet PyRef), Map ObjAdr PyDomainCP)
 analyzeCP = analyze @PyDomainCP

@@ -49,7 +49,7 @@ instance {-# OVERLAPPING #-} (Monad m, Ord cmp) => ComponentTrackingM (Component
     spawn = State.modify . Set.insert
     components = State.get
 
-instance (ComponentTrackingM m cmp, MonadLayer t) => ComponentTrackingM (t m) cmp where
+instance (ComponentTrackingM m cmp, Monad (t m), MonadLayer t) => ComponentTrackingM (t m) cmp where
     spawn = upperM . spawn
     components = upperM components
 

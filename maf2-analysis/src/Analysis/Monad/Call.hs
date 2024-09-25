@@ -27,7 +27,7 @@ newtype CallT k v f m a = CallT { _runCallT :: ReaderT (k -> f v) m a }
 instance {-# OVERLAPPING #-} (Monad m) => CallM k v (CallT k v m m) where
     call k = CallT $ ReaderT $ \f -> f k 
 
-instance (CallM k v m, MonadLayer t) => CallM k v (t m) where
+instance (CallM k v m, Monad (t m), MonadLayer t) => CallM k v (t m) where
     call = upperM . call 
 
 runCallT :: (k -> m v) -> CallT k v m m a -> m a

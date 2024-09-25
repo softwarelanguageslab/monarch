@@ -42,7 +42,7 @@ instance {-# OVERLAPPING #-} (Monad m, Ord dep, Ord cmp) => DependencyTrackingM 
     register d = modify . Map.insertWith Set.union d . Set.singleton
     dependent d = gets (fromMaybe Set.empty . Map.lookup d)
 
-instance (DependencyTrackingM m cmp dep, MonadLayer t) => DependencyTrackingM (t m) cmp dep where
+instance (DependencyTrackingM m cmp dep, Monad (t m), MonadLayer t) => DependencyTrackingM (t m) cmp dep where
     register d = upperM . register d
     dependent = upperM . dependent
 

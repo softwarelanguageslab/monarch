@@ -36,7 +36,7 @@ instance {-# OVERLAPPING #-} (Monad m, Ord k) => MapM k v (MapT k v m) where
     get = State.gets . Map.lookup 
     put k = State.modify . Map.insert k 
 
-instance (MapM k v m, MonadLayer t) => MapM k v (t m) where
+instance (MapM k v m, Monad (t m), MonadLayer t) => MapM k v (t m) where
     get = upperM . get
     put k = upperM . put k 
 

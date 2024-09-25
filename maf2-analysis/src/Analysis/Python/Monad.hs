@@ -14,6 +14,7 @@ module Analysis.Python.Monad (
   pyDeref3',
   pyStore,
   PyRef,
+  PyRet,
   Taint, 
 ) where
 
@@ -37,6 +38,7 @@ import Domain.Core.TaintDomain
 import Lattice.Tainted (Tainted(..))
 import Data.Singletons (SingI, Sing)
 import Data.Kind (Type)
+import Data.Set (Set)
 
 --
 -- The Python monad 
@@ -103,6 +105,7 @@ pyStore loc = fmap injectAdr . pyAlloc loc
 
 type Taint = SimpleTaint 
 type PyRef = Tainted Taint ObjAddrSet
+type PyRet = Tainted Taint (Set (PyEsc PyRef))
 
 instance (vlu ~ PyRef, 
           PyDomain obj vlu,

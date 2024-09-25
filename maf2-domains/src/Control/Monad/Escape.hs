@@ -2,8 +2,9 @@
 
 module Control.Monad.Escape (
    MonadEscape(..), 
-   MayEscape(Escape, Value, MayBoth), 
+   MayEscape(Bottom, Escape, Value, MayBoth), 
    MayEscapeT(..),
+   addError,
    escape, 
    orElse, 
    try,

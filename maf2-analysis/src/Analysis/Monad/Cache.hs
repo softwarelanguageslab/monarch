@@ -23,6 +23,8 @@ import Control.Monad.Trans.Maybe
 import Analysis.Monad.Map
 import ListT
 import Data.Kind (Type)
+import Analysis.Monad.Taint (MayEscapeTaintedT (..), TaintM)
+import Lattice.Tainted (Tainted)
 
 ---
 --- MonadCache typeclass
@@ -79,6 +81,14 @@ instance (Joinable e, MonadCache m) => MonadCache (MayEscapeT e m) where
     key = lift . key
     val = MayEscapeT . val
     run f = run (runMayEscape . f)
+
+instance (TaintM t m, Joinable e, MonadCache m) => MonadCache (MayEscapeTaintedT t e m) where
+    type Key (MayEscapeTaintedT t e m) k = Key m k
+    type Val (MayEscapeTaintedT t e m) v = Val m (MayEscape (Tainted t e) v)
+    type Base (MayEscapeTaintedT t e m) = Base m
+    key = lift . key 
+    val = MayEscapeTaintedT . val 
+    run f = run (runMayEscapeTainted . f)
 
 instance MonadCache m => MonadCache (ReaderT r m) where
     type Key (ReaderT r m) k = Key m (k, r)

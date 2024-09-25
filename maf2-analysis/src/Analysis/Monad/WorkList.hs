@@ -42,7 +42,7 @@ instance {-# OVERLAPPING #-} (Monad m, WorkList w cmp) => WorkListM (WorkListT w
     pop = gets (fromMaybe (error "worklist is too empty") . WL.pop) >>= \(cmp, rst) -> put rst $> cmp
     add = modify . WL.add
 
-instance (MonadLayer t, WorkListM m cmp) => WorkListM (t m) cmp where
+instance (MonadLayer t, Monad (t m), WorkListM m cmp) => WorkListM (t m) cmp where
     done = upperM done
     pop = upperM pop
     add = upperM . add
