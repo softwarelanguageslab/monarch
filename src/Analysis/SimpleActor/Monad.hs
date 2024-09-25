@@ -23,7 +23,7 @@ module Analysis.SimpleActor.Monad
   )
 where
 
-import Analysis.Monad hiding (EvalM)
+import Analysis.Monad hiding (EvalM, spawn)
 import Analysis.Actors.Mailbox
 import Analysis.Scheme.Prelude
   ( ActorDomain(..),
@@ -119,6 +119,7 @@ instance
 instance 
  {-# OVERLAPPABLE #-} 
  (MonadLayer t , 
+   Monad (t m),
   MonadMeta m) => 
  MonadMeta (t m) where  
    
@@ -128,7 +129,8 @@ instance
 
 instance 
  {-# OVERLAPPABLE #-}
- (MonadLayer t, 
+ (MonadLayer t,
+  Monad (t m),
   MonadDynamic α m) 
  => MonadDynamic α (t m) where   
 

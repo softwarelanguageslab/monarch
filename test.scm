@@ -27,9 +27,12 @@
 ; 
 ;   (begin (foo 5)
 ;          (foo 5)))
-(letrec
-  ((f (lambda (y) (dyn x))))
-   (parametrize 
-     ((x 5))
-
-     (f 3)))
+;(letrec
+;  ((f (lambda (y) (dyn x))))
+;   (parametrize 
+;     ((x 5))
+;
+;     (f 3)))
+(if (bool-top)
+    10 
+    20)

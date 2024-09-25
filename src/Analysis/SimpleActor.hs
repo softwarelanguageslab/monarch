@@ -1,4 +1,4 @@
-module Analysis.SimpleActor where
+module Analysis.SimpleActor(ActorCmp, analyze) where
 
 import Analysis.SimpleActor.Monad
 import Analysis.SimpleActor.Semantics
@@ -11,8 +11,8 @@ import Analysis.Monad hiding (eval)
 import Syntax.AST
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Scheme.Prelude (CPActorValue)
-import Analysis.Monad.ComponentTracking (ComponentTrackingM, runWithComponentTracking)
 import Analysis.Monad.Fix
+import Analysis.Monad.Join
 import Control.Monad.Escape
 import qualified Analysis.Scheme.Primitives as P
 import Data.Set (Set)
@@ -21,6 +21,7 @@ import Prelude hiding (exp)
 import Domain.Scheme.Store 
 import Domain.Scheme.Class (PaiDom, VecDom, StrDom)
 import qualified Data.Map as Map
+import Data.Kind (Type, Constraint)
 
 ------------------------------------------------------------
 -- Shortcuts
@@ -34,6 +35,10 @@ type ActorCmp = Key (IntraT Identity) Exp
 type ActorRes = Val (IntraT Identity) ActorVlu
 type ActorMai = Map ActorRef (Set ActorVlu)
 type ActorSto = Map (EnvAdr K) ActorVlu
+
+type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Constraint where
+      DependsOn m cmp '[] = ()
+      DependsOn m cmp (adr : ads) = (DependencyTrackingM m cmp adr, DependsOn m cmp ads) 
 
 ------------------------------------------------------------
 -- Monad
@@ -50,7 +55,8 @@ type IntraT m = MonadStack '[
                CtxT K,
                MetaT, 
                ActorLocalT ActorVlu,
-               JoinT,
+               NonDetT,
+               -- JoinT
                CacheT
             ] m
 
@@ -59,12 +65,7 @@ type MonadInter m =
       ( MapM ActorCmp ActorRes m,
         WorkListM m ActorCmp,
         ComponentTrackingM m ActorCmp,
-        DependencyTrackingM m ActorCmp ActorCmp,
-        DependencyTrackingM m ActorCmp (EnvAdr K),
-        DependencyTrackingM m ActorCmp (Pid Exp K),
-        DependencyTrackingM m ActorCmp (PaiAdrE Exp K),
-        DependencyTrackingM m ActorCmp (VecAdrE Exp K),
-        DependencyTrackingM m ActorCmp (StrAdrE Exp K),
+        DependsOn m ActorCmp '[ ActorCmp , EnvAdr K, Pid Exp K, PaiAdrE Exp K, VecAdrE Exp K, StrAdrE Exp K ], 
         StoreM m (EnvAdr K) ActorVlu,
         StoreM m (PaiAdrE Exp K) (PaiDom ActorVlu),
         StoreM m (VecAdrE Exp K) (VecDom ActorVlu),
@@ -75,7 +76,8 @@ type MonadInter m =
 -- Analysis
 ------------------------------------------------------------
 
-intra :: forall m . MonadInter m => ActorCmp -> m ()
+intra :: forall m . MonadInter m
+ => ActorCmp -> m ()
 intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (eval @ActorVlu) cmp
           & runAlloc @Ide @K @(EnvAdr K) EnvAdr
           & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr

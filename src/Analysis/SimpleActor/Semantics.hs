@@ -71,6 +71,9 @@ eval' rec (Letrec bds e2 _) = do
    mapM_ (uncurry writeAdr) (zip ads vs)
    withExtendedEnv bds' (eval' rec e2)
 eval' rec (Parametrize bds e2 _) = do
+   -- TODO: restore previous dynamic 
+   -- environment after body of `parametrize`
+   -- has completed.
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (eval' rec . snd) bds
