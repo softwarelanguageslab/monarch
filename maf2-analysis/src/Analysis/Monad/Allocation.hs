@@ -15,8 +15,6 @@ import Control.Monad.Reader hiding (mzero)
 import Control.Monad.Join (MonadJoin(..))
 import Control.Monad.Layer
 import Analysis.Monad.Cache
-import Data.TypeLevel.AssocList
-import Data.Kind (Type)
 import Control.Monad.Escape (MonadEscape(..))
 
 ------------------------------------------------------------
