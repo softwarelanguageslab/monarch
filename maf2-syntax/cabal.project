@@ -1,8 +1,8 @@
 with-compiler: ghc-9.4.8
-index-state: 2024-09-17T22:59:16Z
 
 packages:
 	./
+        ../thirdparty/language-python/language-python/
 
 allow-older: *
 allow-newer: *
