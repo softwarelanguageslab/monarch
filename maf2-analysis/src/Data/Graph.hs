@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Data.Graph where
+module Data.Graph (Graph(..), SimpleGraph) where
+
 import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Set as Set 
