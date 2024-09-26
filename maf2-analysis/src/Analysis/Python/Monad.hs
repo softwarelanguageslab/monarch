@@ -119,6 +119,7 @@ instance (vlu ~ PyRef,
           SplitLattice (Esc m),
           EnvM m ObjAdr PyEnv,
           AllocM m PyLoc ObjAdr,
+          GraphM String String m,
           StoreM m ObjAdr obj)
           =>
           PyM m obj vlu where

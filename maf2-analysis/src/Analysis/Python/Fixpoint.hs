@@ -37,6 +37,7 @@ import qualified Domain.Core.TaintDomain as Taint
 import Data.Maybe
 import Lattice.Tainted (Tainted(..))
 import qualified Debug.Trace as Debug
+import Data.Graph
 
 ---
 --- Python analysis fixpoint algorithm
@@ -62,6 +63,7 @@ type AnalysisM m obj = (PyDomain obj PyRef,
                         DependencyTrackingM m PyCmp ObjAdr,
                         DependencyTrackingM m PyCmp PyCmp,
                         DependencyTrackingM m PyCmp PyCmpTaint,
+                        GraphM String String m,
                         WorkListM m PyCmp)
 
 newtype PyCmpTaint = PyCmpTaint PyCmp
@@ -92,16 +94,17 @@ inter prg = do init                                 -- initialize Python infrast
 
 analyze :: forall obj . PyDomain obj PyRef => PyPrg -> (Map PyCmp PyRes, Map ObjAdr obj)
 analyze prg = (rsto, osto)
-    where ((_,osto),rsto) = inter prg
-                                & runWithStore @(Map ObjAdr obj) @ObjAdr
-                                & runWithMapping @PyCmp
-                                & runWithMapping' @PyCmpTaint
-                                & runWithDependencyTracking @PyCmp @ObjAdr
-                                & runWithDependencyTracking @PyCmp @PyCmp
-                                & runWithDependencyTracking @PyCmp @PyCmpTaint 
-                                & runWithComponentTracking @PyCmp
-                                & runWithWorkList @(Set PyCmp)
-                                & runIdentity
+    where (((_, graph),osto),rsto) = inter prg
+                                        & runWithGraph @(SimpleGraph String String)
+                                        & runWithStore @(Map ObjAdr obj) @ObjAdr
+                                        & runWithMapping @PyCmp
+                                        & runWithMapping' @PyCmpTaint
+                                        & runWithDependencyTracking @PyCmp @ObjAdr
+                                        & runWithDependencyTracking @PyCmp @PyCmp
+                                        & runWithDependencyTracking @PyCmp @PyCmpTaint 
+                                        & runWithComponentTracking @PyCmp
+                                        & runWithWorkList @(Set PyCmp)
+                                        & runIdentity
 
 analyzeREPL :: forall obj . PyDomain obj PyRef
     => IO PyPrg         -- a read function
@@ -117,6 +120,7 @@ analyzeREPL read display =
             & runWithDependencyTracking @PyCmp @PyCmpTaint 
             & runWithComponentTracking @PyCmp
             & runWithWorkList @(Set PyCmp)
+            & runWithGraph @(SimpleGraph String String)
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
                               let cmp = ((Main prg, initialEnv), ())
                               add cmp 
