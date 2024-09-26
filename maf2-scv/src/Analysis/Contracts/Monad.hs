@@ -89,6 +89,6 @@ instance Monad m => MonadMonitoredContext c (CP Bool) (MonitoredContextT c m) wh
   withContractMonitor c = local (const (c, inject True))
   monitoredBy = ask
 
-instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMonitoredContext c b m) => MonadMonitoredContext c b (t m) where
+instance {-# OVERLAPPABLE #-} (Monad m, Monad (t m), MonadLayer t, MonadMonitoredContext c b m) => MonadMonitoredContext c b (t m) where
    withContractMonitor c = lowerM (withContractMonitor c)
    monitoredBy = upperM monitoredBy

@@ -84,7 +84,7 @@ class LocalStoreM m a v where
    -- the key is present in the given.
    integrateSto :: Map a v -> m ()
 
-instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, LocalStoreM m a v) => LocalStoreM (t m) a v where
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, Monad m, LocalStoreM m a v) => LocalStoreM (t m) a v where
    getSto = upperM getSto
    putSto = upperM . putSto
 
@@ -121,7 +121,7 @@ instance {-# OVERLAPPING #-} (MonadJoin m, SymbolicValue v) => MonadPathConditio
    extendPc pc'     = modify $ Set.map (Conjunction (Atomic $ symbolic pc'))
    getPc = get
 
-instance (MonadPathCondition m v, MonadLayer t) => MonadPathCondition (t m) v where
+instance (MonadPathCondition m v, Monad (t m), MonadLayer t) => MonadPathCondition (t m) v where
    extendPc = upperM . extendPc
    getPc    = upperM getPc
 
