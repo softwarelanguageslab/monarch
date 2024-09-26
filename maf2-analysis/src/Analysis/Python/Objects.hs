@@ -39,15 +39,6 @@ import Control.Monad.AbstractM (AbstractM)
 import Lattice ( join, eql, CP )
 import Lattice.Class (Lattice)
 
--- | Convenience function to construct a Python object immediately from primitive abstract value
-from :: forall (k :: PyPrmKey) obj vlu . (PyDomain obj vlu, SingI k) => Abs obj k -> obj
-from v = set @k v (new cls)
-  where cls = constant $ TypeObject $ classFor $ sing @k
-
--- | Convenience function to construct a Python object immediately from primitive concrete value
-from' :: forall (k :: PyPrmKey) obj v vlu . (PyDomain obj vlu, Domain (Abs obj k) v, SingI k) => v -> obj
-from' = from @k . Domain.inject
-
 --
 -- Python constants 
 --
@@ -61,19 +52,11 @@ init = mapM_ initConstant (all :: [PyConstant])
 initConstant :: (StoreM m ObjAdr obj, PyDomain obj vlu) => PyConstant -> m ()
 initConstant c = writeAdr (allocCst c) (injectPyConstant c)
 
-typeVal :: PyVal vlu => PyType -> vlu
-typeVal = constant . TypeObject
-
-new' :: PyDomain obj vlu => PyType -> obj
-new' = new . typeVal
-
-new'' :: PyDomain obj vlu => PyType -> [(String, Ref obj)] -> obj 
-new'' typ attrs = setAttrs attrs $ new' typ 
-
 initialCst :: [(String, PyConstant)]
-initialCst = [("type",          TypeObject TypeType),
-              ("Exception",     TypeObject ExceptionType),
-              ("StopIteration", TypeObject StopIterationExceptionType)]
+initialCst = [("type",           TypeObject TypeType),
+              ("Exception",      TypeObject ExceptionType),
+              ("StopIteration",  TypeObject StopIterationExceptionType),
+              ("Database",       TypeObject DatabaseType)]
 
 injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
 injectPyConstant True              = from' @BlnPrm Prelude.True

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Analysis.Python.Common (
   ObjAdr(..), 
@@ -13,6 +14,11 @@ module Analysis.Python.Common (
   PyEnv, 
   PyClo(..),
   PyDomain,
+  typeVal,
+  new',
+  new'',
+  from,
+  from',
 ) where
 
 import Lattice hiding (empty)
@@ -27,6 +33,9 @@ import Domain.Python.Objects
 import Domain.Core.SeqDomain (CPList)
 import Lattice.Tainted (Tainted(..))
 import Domain.Core.TaintDomain
+import Data.Singletons (SingI, sing)
+import Domain.Class (Domain)
+import qualified Domain.Class as Domain
 
 --
 -- Addresses
@@ -97,4 +106,25 @@ type PyDomain obj vlu = (PyVal vlu,
                          Clo obj ~ PyClo, 
                          Abs obj LstPrm ~ CPList vlu, 
                          Abs obj TupPrm ~ CPList vlu,
-                         Abs obj StrPrm ~ CP String)
+                         Abs obj StrPrm ~ CP String,
+                         Abs obj DfrPrm ~ ())
+
+
+
+typeVal :: PyVal vlu => PyType -> vlu
+typeVal = constant . TypeObject
+
+new' :: PyDomain obj vlu => PyType -> obj
+new' = new . typeVal
+
+new'' :: PyDomain obj vlu => PyType -> [(String, Ref obj)] -> obj 
+new'' typ attrs = setAttrs attrs $ new' typ 
+
+-- | Convenience function to construct a Python object immediately from primitive abstract value
+from :: forall (k :: PyPrmKey) obj vlu . (PyDomain obj vlu, SingI k) => Abs obj k -> obj
+from v = set @k v (new cls)
+  where cls = constant $ TypeObject $ classFor $ sing @k
+
+-- | Convenience function to construct a Python object immediately from primitive concrete value
+from' :: forall (k :: PyPrmKey) obj v vlu . (PyDomain obj vlu, Domain (Abs obj k) v, SingI k) => v -> obj
+from' = from @k . Domain.inject

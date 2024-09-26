@@ -128,9 +128,9 @@ compileStmt (Assign [Subscript e i a1] r a2) = pure $ flip (StmtExp ()) a2 $ Cal
                                                                                   [compileExp i, compileExp r]
                                                                                   []
                                                                                   a2
-compileStmt (Assign to expr _)               = Assg () <$> compileLhs to <*> return (compileExp expr)
+compileStmt (Assign to expr _)            = Assg () <$> compileLhs to <*> return (compileExp expr)
 compileStmt (AugmentedAssign to op exp a) = compileStmt (Assign [to] (BinaryOp (translateOp op) to exp a) a)
-compileStmt (Decorated decs def _)        = todo "eval decorated function"
+compileStmt (Decorated decs def _)        = compileStmt def -- TODO: don't ignore the decorator? 
 compileStmt (AST.Return expr a)           = pure $ Return () (fmap compileExp expr) a
 compileStmt (AST.Raise rexp a)            = pure $ Raise  () (compileRaiseExp rexp) a
 compileStmt (AST.Try bdy hds [] [] a)     = compileTry bdy hds a

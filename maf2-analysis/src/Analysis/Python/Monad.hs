@@ -39,6 +39,8 @@ import Lattice.Tainted (Tainted(..))
 import Data.Singletons (SingI, Sing)
 import Data.Kind (Type)
 import Data.Set (Set, singleton)
+import Data.Functor (($>))
+import qualified Debug.Trace as Debug
 
 --
 -- The Python monad 
@@ -103,7 +105,12 @@ pyStore loc = fmap injectAdr . pyAlloc loc
 
 -- Taint analysis instance 
 
-type Taint = Set String  
+instance Ord a => Semigroup (CP a) where
+  (<>) = join
+instance Ord a => Monoid (CP a) where
+  mempty = bottom 
+
+type Taint = CP String  
 type PyRef = Tainted Taint ObjAddrSet
 type PyRet = Tainted Taint (Set (PyEsc PyRef))
 
@@ -119,7 +126,7 @@ instance (vlu ~ PyRef,
           SplitLattice (Esc m),
           EnvM m ObjAdr PyEnv,
           AllocM m PyLoc ObjAdr,
-          GraphM String String m,
+          GraphM (CP String) (CP String) m,
           StoreM m ObjAdr obj)
           =>
           PyM m obj vlu where
@@ -147,5 +154,11 @@ instance (vlu ~ PyRef,
   pyLookupEnv = lookupEnv
   pyLookupSto = lookupAdr
   applyXPrim ObjectTaint _ = \case
-                              [a] -> withTaint (singleton "boe") (addTaint a)
-                              _   -> pyError ArityError
+                                [a] -> withTaint (Constant "boe") (addTaint a)
+                                _   -> pyError ArityError
+  applyXPrim DatabaseRead loc = \case
+                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint nam $ addTaint =<< pyStore loc (from' @DfrPrm ())) str
+                                  _        -> pyError ArityError    
+  applyXPrim DatabaseWrite _ = \case
+                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\_ nam -> currentTaint >>= \t -> addEdge t nam (Constant "boe") $> constant None) df str 
+                                  _            -> pyError ArityError  

@@ -27,6 +27,8 @@ data PyType = NoneType
             | ListType 
             | ListIteratorType
             | FrameType 
+            | DatabaseType 
+            | DataFrameType 
   deriving (Eq, Ord, Enum, Bounded, Show) 
 
 -- | The name of a built-in Python type 
@@ -48,6 +50,8 @@ name ObjectType       = "object"
 name TypeType         = "type"
 name ExceptionType    = "Exception"
 name StopIterationExceptionType = "StopIteration"
+name DatabaseType     = "Database"
+name DataFrameType    = "DataFrame"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -90,9 +94,13 @@ methods TypeType          = [(InitAttr, TypeInit)]
 methods ExceptionType     = []
 methods StopIterationExceptionType = [] 
 methods ListIteratorType  = [(NextAttr, ListIteratorNext)]
+methods DatabaseType      = []
+methods DataFrameType     = [] 
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
+extraMethods DatabaseType = [(ReadAttr, DatabaseRead),
+                             (WriteAttr, DatabaseWrite)]
 extraMethods _ = [] 
 
 -- | Built-in primitives in Python
@@ -137,6 +145,8 @@ data PyPrim     =
 
 -- | Special add-on primitives
 data XPyPrim = ObjectTaint 
+             | DatabaseRead 
+             | DatabaseWrite
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 -- | Built-in attributes in Python
@@ -172,6 +182,8 @@ data PyAttr = ClassAttr
             | TaintAttr
             | ListAttr 
             | IndexAttr
+            | ReadAttr 
+            | WriteAttr 
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -207,6 +219,8 @@ attrStr NextAttr      = "__next__"
 attrStr TaintAttr     = "__taint__"
 attrStr ListAttr      = "__list__"
 attrStr IndexAttr     = "__index__"
+attrStr ReadAttr      = "read"
+attrStr WriteAttr     = "write"
 
 -- | Built-in objects in Python 
 data PyConstant = None
@@ -239,6 +253,7 @@ data PyPrmKey = IntPrm
               | TupPrm
               | LstPrm
               | DctPrm
+              | DfrPrm 
   deriving (Eq, Ord, Show)
 
 genHKeys ''PyPrmKey
@@ -254,6 +269,7 @@ classFor SBndPrm = BoundType
 classFor STupPrm = TupleType
 classFor SLstPrm = ListType 
 classFor SDctPrm = DictionaryType
+classFor SDfrPrm = DataFrameType
 
 -- | Built-in Python errors
 data PyError = AttributeNotFound
