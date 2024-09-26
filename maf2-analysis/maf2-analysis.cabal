@@ -46,6 +46,7 @@ library
       Analysis.Monad.Environment
       Analysis.Monad.Eval
       Analysis.Monad.Fix
+      Analysis.Monad.Graph
       Analysis.Monad.IntraAnalysis
       Analysis.Monad.Join
       Analysis.Monad.Map
@@ -80,6 +81,7 @@ library
       Control.Monad.Layer
       Control.Monad.State.IntPool
       Control.Monad.State.SVar
+      Data.Graph
       Data.Print
       Interpreter.Actors
       Interpreter.Scheme
