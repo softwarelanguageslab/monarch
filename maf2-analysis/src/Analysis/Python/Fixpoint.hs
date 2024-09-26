@@ -16,6 +16,7 @@ import Analysis.Python.Monad
 import Analysis.Python.Objects
 import Analysis.Monad hiding (eval, call)
 import Analysis.Monad.ComponentTracking hiding (has)
+import Domain.Core.TaintDomain.Set 
 
 import Domain.Python.Syntax
 
@@ -43,7 +44,7 @@ import qualified Debug.Trace as Debug
 ---
 
 type IntraT m = MonadStack '[
-                    MayEscapeTaintedT SimpleTaint (Set (PyEsc PyRef)),
+                    MayEscapeTaintedT Taint (Set (PyEsc PyRef)),
                     AllocT PyLoc () ObjAdr, 
                     EnvT PyEnv,
                     CtxT (),

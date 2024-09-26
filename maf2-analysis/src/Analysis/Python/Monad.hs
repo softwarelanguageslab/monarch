@@ -38,7 +38,7 @@ import Domain.Core.TaintDomain
 import Lattice.Tainted (Tainted(..))
 import Data.Singletons (SingI, Sing)
 import Data.Kind (Type)
-import Data.Set (Set)
+import Data.Set (Set, singleton)
 
 --
 -- The Python monad 
@@ -103,13 +103,13 @@ pyStore loc = fmap injectAdr . pyAlloc loc
 
 -- Taint analysis instance 
 
-type Taint = SimpleTaint 
+type Taint = Set String  
 type PyRef = Tainted Taint ObjAddrSet
 type PyRet = Tainted Taint (Set (PyEsc PyRef))
 
 instance (vlu ~ PyRef, 
           PyDomain obj vlu,
-          TaintM SimpleTaint m, 
+          TaintM Taint m, 
           MonadJoin m,
           MonadEscape m,
           CallM PyBdy PyRef m, 
@@ -146,5 +146,5 @@ instance (vlu ~ PyRef,
   pyLookupEnv = lookupEnv
   pyLookupSto = lookupAdr
   applyXPrim ObjectTaint _ = \case
-                              [a] -> withTaint MaybeTainted (addTaint a)
+                              [a] -> withTaint (singleton "boe") (addTaint a)
                               _   -> pyError ArityError
