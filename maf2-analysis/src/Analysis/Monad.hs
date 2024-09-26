@@ -13,6 +13,7 @@ module Analysis.Monad(
    module Analysis.Monad.DependencyTracking, 
    module Analysis.Monad.Environment,
    module Analysis.Monad.Eval,
+   module Analysis.Monad.Graph,
    module Analysis.Monad.IntraAnalysis, 
    module Analysis.Monad.Join,
    module Analysis.Monad.Map,
@@ -30,6 +31,7 @@ import Analysis.Monad.Context
 import Analysis.Monad.DependencyTracking
 import Analysis.Monad.Environment
 import Analysis.Monad.Eval
+import Analysis.Monad.Graph
 import Analysis.Monad.IntraAnalysis
 import Analysis.Monad.Join
 import Analysis.Monad.Map 
