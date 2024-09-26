@@ -41,21 +41,19 @@ import qualified Domain.Class as Domain
 -- Addresses
 --
 
-data ObjAdr = PtrAdr PyLoc
-            | FrmAdr PyLoc 
+data ObjAdr = PtrAdr PyLoc [PyLoc]
             | PrmAdr PyConstant
   deriving (Eq, Ord)
 
-allocPtr :: PyLoc -> ObjAdr
+allocPtr :: PyLoc -> [PyLoc] -> ObjAdr 
 allocPtr = PtrAdr
 
-allocCst :: PyConstant -> ObjAdr
+allocCst :: PyConstant -> ObjAdr 
 allocCst = PrmAdr 
 
 instance Show ObjAdr where 
-  show (PtrAdr s) = "[" ++ show s ++ "]" 
-  show (PrmAdr c) = "[" ++ show c ++ "]"
-  show (FrmAdr c) = "[frame at " ++ show c ++ "]"
+  show (PtrAdr s _) = "["           ++ show s ++ "]" 
+  show (PrmAdr c)   = "["           ++ show c ++ "]"
 
 --
 -- Values 
@@ -108,8 +106,6 @@ type PyDomain obj vlu = (PyVal vlu,
                          Abs obj TupPrm ~ CPList vlu,
                          Abs obj StrPrm ~ CP String,
                          Abs obj DfrPrm ~ ())
-
-
 
 typeVal :: PyVal vlu => PyType -> vlu
 typeVal = constant . TypeObject

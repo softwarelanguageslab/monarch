@@ -53,8 +53,8 @@ data PyBdy = Main PyPrg
   deriving (Eq, Ord, Show)
 
 class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
-  -- components -- 
-  pyCall       :: PyBdy -> m vlu
+  -- components -- >
+  pyCall       :: PyLoc -> PyBdy -> m vlu
   -- objects and values --
   pyAlloc      :: PyLoc -> obj -> m ObjAdr
   pyDeref      :: (ObjAdr -> obj -> m vlu) -> vlu -> m vlu 
@@ -119,7 +119,7 @@ instance (vlu ~ PyRef,
           TaintM Taint m, 
           MonadJoin m,
           MonadEscape m,
-          CallM PyBdy PyRef m, 
+          CallM (PyLoc, PyBdy) PyRef m, 
           PyEscape (Esc m) vlu,
           Domain (Esc m) PyError,
           Domain (Esc m) DomainError,
@@ -130,7 +130,7 @@ instance (vlu ~ PyRef,
           StoreM m ObjAdr obj)
           =>
           PyM m obj vlu where
-  pyCall = call 
+  pyCall = curry call 
   pyAlloc = store 
   pyDeref f = unwrapTainted (deref f . addrs)
   pyDeref_ f = unwrapTainted_ (deref f . addrs)

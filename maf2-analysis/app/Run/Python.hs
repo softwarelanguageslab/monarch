@@ -43,8 +43,8 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
          showRes (MayBoth v e) = "[!!: "++show e++"]" ++ show v 
          showRes _ = "⊥"
          showCmp ((Main _, _), _) = "<main>"
-         showCmp ((LoopBdy loc _ _, _), _) = "<loop " ++ show loc ++ ">"
-         showCmp ((FuncBdy loc _, _), _) = "<func " ++ show loc ++ ">"
+         showCmp ((LoopBdy loc _ _, _), ctx) = "<loop " ++ show loc ++ " with context " ++ show ctx ++ ">"
+         showCmp ((FuncBdy loc _, _), ctx) = "<func " ++ show loc ++ " with context " ++ show ctx ++ ">"
          indent = maximum (map (length . showCmp . fst) cmps) + 5
 
 runREPL :: IO ()

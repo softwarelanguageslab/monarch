@@ -45,9 +45,9 @@ import Data.Graph
 
 type IntraT m = MonadStack '[
                     MayEscapeTaintedT Taint (Set (PyEsc PyRef)),
-                    AllocT PyLoc () ObjAdr, 
+                    AllocT PyLoc [PyLoc] ObjAdr, 
                     EnvT PyEnv,
-                    CtxT (),
+                    CtxT [PyLoc],
                     JoinT,
                     CacheT,
                     TaintT Taint 
@@ -72,22 +72,27 @@ newtype PyCmpTaint = PyCmpTaint PyCmp
 type PyCmp = Key (IntraT Identity) PyBdy
 type PyRes = Val (IntraT Identity) PyRef  
 
+-- TODO: parameterize this
+k :: Int
+k = 10
+
 intra :: forall m obj . AnalysisM m obj => PyCmp -> m ()
 intra cmp = runIntraAnalysis cmp m 
     where m = do t <- fromJust <$> Analysis.Monad.get (PyCmpTaint cmp)
-                 cache cmp (runCallT callFix . evalBdy)
-                    & runAlloc (const . allocPtr)
+                 cache cmp (runCallT (uncurry callFix) . evalBdy)
+                    & runAlloc allocPtr
                     & runWithTaint t 
-          callFix :: PyBdy -> IntraT' m PyRef
-          callFix bdy = do k <- key bdy
-                           spawn k
-                           Analysis.Monad.put (PyCmpTaint k) =<< currentTaint 
-                           r <- cached k
-                           maybe MJoin.mzero return r
+          callFix :: PyLoc -> PyBdy -> IntraT' m PyRef
+          callFix loc bdy = withCtx (take k . (loc:)) $ 
+                                do cmp' <- key bdy
+                                   spawn cmp'
+                                   Analysis.Monad.put (PyCmpTaint cmp') =<< currentTaint 
+                                   r <- cached cmp'
+                                   maybe MJoin.mzero return r
 
 inter :: forall m obj . AnalysisM m obj => PyPrg -> m () 
 inter prg = do init                                 -- initialize Python infrastructure
-               let cmp = ((Main prg, initialEnv), ())
+               let cmp = ((Main prg, initialEnv), [])
                add cmp                              -- add the main component to the worklist
                Analysis.Monad.put (PyCmpTaint cmp) mempty 
                iterateWL intra                      -- start the analysis 
@@ -122,7 +127,7 @@ analyzeREPL read display =
             & runWithWorkList @(Set PyCmp)
             & runWithGraph @(SimpleGraph (CP String) (CP String))
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
-                              let cmp = ((Main prg, initialEnv), ())
+                              let cmp = ((Main prg, initialEnv), [])
                               add cmp 
                               Analysis.Monad.put (PyCmpTaint cmp) mempty
                               iterateWL intra 

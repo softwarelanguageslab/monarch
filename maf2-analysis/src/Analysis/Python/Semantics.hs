@@ -38,11 +38,11 @@ todo = error . ("[TODO] NYI: " ++)
 -- | Evaluate a Python component
 evalBdy :: PyM m obj vlu => PyBdy -> m vlu
 evalBdy (Main prg) = pyReturnable (exec (programStmt prg) $> constant None)
-evalBdy loop@(LoopBdy _ cnd bdy) = pyIf (eval cnd)
-                                        (pyCatchLoop (exec bdy >> pyCall loop)
-                                                     (return $ constant None) -- break
-                                                     (pyCall loop))           -- continue
-                                        (return $ constant None)
+evalBdy loop@(LoopBdy loc cnd bdy) = pyIf (eval cnd)
+                                          (pyCatchLoop (exec bdy >> pyCall loc loop)
+                                                       (return $ constant None)  -- break
+                                                       (pyCall loc loop))        -- continue
+                                          (return $ constant None)
 evalBdy (FuncBdy _ bdy) = pyReturnable (exec bdy $> constant None)
 
 globalFrame :: ObjAdr
@@ -115,7 +115,7 @@ execCnt :: PyM pyM obj vlu => pyM ()
 execCnt = pyContinue
 
 execWhi :: forall pyM obj vlu . PyM pyM obj vlu => PyExp -> PyStm -> PyLoc -> pyM ()
-execWhi cnd bdy loc = void $ pyCall (LoopBdy loc cnd bdy)
+execWhi cnd bdy loc = void $ pyCall loc (LoopBdy loc cnd bdy)
 
 eval :: PyM pyM obj vlu => PyExp -> pyM vlu
 eval (Lam prs bdy loc lcl)  = evalLam prs bdy loc lcl
@@ -192,7 +192,7 @@ callBnd loc pos kwa = mjoinMap apply . Map.toList
   where apply (rcv, fns) = call loc (injectAdr rcv : pos) kwa fns
 
 callClo :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Set PyClo -> pyM vlu
-callClo _ pos kwa = mjoinMap apply
+callClo l pos kwa = mjoinMap apply
  where
       apply :: PyClo -> pyM vlu
       apply (PyClo loc prs bdy lcl env) =
@@ -206,7 +206,7 @@ callClo _ pos kwa = mjoinMap apply
             then do mapM_ (\(par, arg) -> pyAssignAt (parNam par) arg frm) (zip prs pos) -- bind positional args 
                     mapM_ (\(kyw, arg) -> pyAssignAt (ideName kyw) arg frm) kwa          -- bind keyword args
                     let bindings = map (,frm) lcl
-                    pyWithEnv (extends bindings env) $ pyCall (FuncBdy loc bdy)
+                    pyWithEnv (extends bindings env) $ pyCall l (FuncBdy loc bdy)
             else pyError ArityError
 
 parNam :: PyPar -> String
