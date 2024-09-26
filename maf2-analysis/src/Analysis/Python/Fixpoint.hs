@@ -16,7 +16,6 @@ import Analysis.Python.Monad
 import Analysis.Python.Objects
 import Analysis.Monad hiding (eval, call)
 import Analysis.Monad.ComponentTracking hiding (has)
-import Domain.Core.TaintDomain.Set 
 
 import Domain.Python.Syntax
 
@@ -88,7 +87,7 @@ inter :: forall m obj . AnalysisM m obj => PyPrg -> m ()
 inter prg = do init                                 -- initialize Python infrastructure
                let cmp = ((Main prg, initialEnv), ())
                add cmp                              -- add the main component to the worklist
-               Analysis.Monad.put (PyCmpTaint cmp) Taint.empty 
+               Analysis.Monad.put (PyCmpTaint cmp) mempty 
                iterateWL intra                      -- start the analysis 
 
 analyze :: forall obj . PyDomain obj PyRef => PyPrg -> (Map PyCmp PyRes, Map ObjAdr obj)
@@ -121,7 +120,7 @@ analyzeREPL read display =
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
                               let cmp = ((Main prg, initialEnv), ())
                               add cmp 
-                              Analysis.Monad.put (PyCmpTaint cmp) Taint.empty
+                              Analysis.Monad.put (PyCmpTaint cmp) mempty
                               iterateWL intra 
                               res <- justOrBot <$> Analysis.Monad.get @PyCmp @PyRes cmp 
                               traverse ((\(Tainted s _) -> mapM lookupAdr (Set.toList (addrs s))) >=> liftIO . display . joins) res

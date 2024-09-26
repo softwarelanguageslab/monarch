@@ -21,7 +21,7 @@ instance PartialOrder SimpleTaint where
 instance BottomLattice SimpleTaint where
     bottom = Untainted 
 
-instance TaintDomain SimpleTaint where 
-    empty = Untainted
-    addTaints = join 
-
+instance Semigroup SimpleTaint where 
+    (<>) = join
+instance Monoid SimpleTaint where
+    mempty = Untainted
