@@ -16,7 +16,7 @@ class Graph g v e | g -> v e where
     addEdge   :: v -> v -> e -> g -> g
     edges     :: g -> [(v,v,e)]
     edges g = foldMap (\v -> map (addFrom v) (outgoing v g)) (vertices g)  
-        where addFrom v1 (v2, e) = (v1, v2, e)
+        where addFrom from (to, e) = (from, to, e)
     vertices  :: g -> [v]
     outgoing  :: v -> g -> [(v,e)]
 
