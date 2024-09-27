@@ -28,7 +28,8 @@ data PyType = NoneType
             | ListIteratorType
             | FrameType 
             | DatabaseType 
-            | DataFrameType 
+            | DataFrameType
+            | SeriesType  
   deriving (Eq, Ord, Enum, Bounded, Show) 
 
 -- | The name of a built-in Python type 
@@ -52,6 +53,7 @@ name ExceptionType    = "Exception"
 name StopIterationExceptionType = "StopIteration"
 name DatabaseType     = "Database"
 name DataFrameType    = "DataFrame"
+name SeriesType       = "Series"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -98,6 +100,7 @@ methods DatabaseType      = []
 methods DataFrameType     = [(EmptyAttr,  DataFrameEmpty),
                              (RenameAttr, DataFrameRename),
                              (DropNAAttr, DataFrameDropNA)]
+methods SeriesType        = [] 
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
