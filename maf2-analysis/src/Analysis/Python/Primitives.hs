@@ -60,6 +60,8 @@ applyPrim FloatLt       = prim2'' $ floatBinop @BlnPrm Domain.lt
 applyPrim FloatGt       = prim2'' $ floatBinop @BlnPrm Domain.gt
 applyPrim FloatLe       = prim2'' $ floatBinop @BlnPrm Domain.le
 applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
+-- string primitives
+applyPrim StringAppend  = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc . from @StrPrm =<< Domain.append s1 s2
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
 applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (updateDct k) v a1) a2 

@@ -79,7 +79,7 @@ methods FloatType = [(AddAttr,      FloatAdd),
                      (GeAttr,       FloatGe)] 
 methods NoneType          = []
 methods BoolType          = []
-methods StringType        = []
+methods StringType        = [(AddAttr, StringAppend)]
 methods TupleType         = [] 
 methods PrimType          = []
 methods BoundType         = []
@@ -142,6 +142,8 @@ data PyPrim     =
                 | ListSetItem
                 | ListLength
                 | ListIter 
+                -- string primitives
+                | StringAppend 
                 -- list iterator primitives
                 | ListIteratorNext 
                 -- type primitives
