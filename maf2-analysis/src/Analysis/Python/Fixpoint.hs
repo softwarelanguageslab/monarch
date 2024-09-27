@@ -83,12 +83,11 @@ intra cmp = runIntraAnalysis cmp m
                     & runAlloc allocPtr
                     & runWithTaint t 
           callFix :: PyLoc -> PyBdy -> IntraT' m PyRef
-          callFix loc bdy = withCtx (take k . (loc:)) $ 
-                                do cmp' <- key bdy
-                                   spawn cmp'
-                                   Analysis.Monad.put (PyCmpTaint cmp') =<< currentTaint 
-                                   r <- cached cmp'
-                                   maybe MJoin.mzero return r
+          callFix loc bdy = do cmp' <- key bdy
+                               spawn cmp'
+                               Analysis.Monad.put (PyCmpTaint cmp') =<< currentTaint 
+                               r <- cached cmp'
+                               maybe MJoin.mzero return r
 
 inter :: forall m obj . AnalysisM m obj => PyPrg -> m () 
 inter prg = do init                                 -- initialize Python infrastructure

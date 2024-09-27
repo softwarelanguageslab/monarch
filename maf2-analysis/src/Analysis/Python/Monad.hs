@@ -78,6 +78,8 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   pyLookupEnv  :: String -> m ObjAdr
   -- store -- 
   pyLookupSto  :: ObjAdr -> m obj
+  -- context -- 
+  pyWithCtx    :: PyLoc -> m a -> m a
   -- extra primitives -- 
   applyXPrim   :: XPyPrim -> PyLoc -> [vlu] -> m vlu
 
@@ -110,6 +112,11 @@ instance Ord a => Semigroup (CP a) where
 instance Ord a => Monoid (CP a) where
   mempty = bottom 
 
+-- kcfa k
+-- TODO: parameterize this
+k :: Int 
+k = 1
+
 type Taint = CP String  
 type PyRef = Tainted Taint ObjAddrSet
 type PyRet = Tainted Taint (Set (PyEsc PyRef))
@@ -117,6 +124,7 @@ type PyRet = Tainted Taint (Set (PyEsc PyRef))
 instance (vlu ~ PyRef, 
           PyDomain obj vlu,
           TaintM Taint m, 
+          CtxM m [PyLoc],
           MonadJoin m,
           MonadEscape m,
           CallM (PyLoc, PyBdy) PyRef m, 
@@ -153,6 +161,7 @@ instance (vlu ~ PyRef,
   pyWithEnv = withEnv . const 
   pyLookupEnv = lookupEnv
   pyLookupSto = lookupAdr
+  pyWithCtx loc = withCtx (take k . (loc:)) 
   applyXPrim ObjectTaint _ = \case
                                 [a] -> withTaint (Constant "boe") (addTaint a)
                                 _   -> pyError ArityError

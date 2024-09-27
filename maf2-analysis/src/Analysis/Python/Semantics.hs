@@ -196,18 +196,19 @@ callClo l pos kwa = mjoinMap apply
  where
       apply :: PyClo -> pyM vlu
       apply (PyClo loc prs bdy lcl env) =
-         do frm <- pyAlloc (tagAs FrmTag loc) (new' FrameType)
-            let ari = length prs
-            let psn = length pos
-            let kps = drop psn prs
-            let akw = Set.fromList $ map (ideName . fst) kwa
-            let pkw = Set.fromList $ map parNam kps
-            if psn <= ari && akw == pkw
-            then do mapM_ (\(par, arg) -> pyAssignAt (parNam par) arg frm) (zip prs pos) -- bind positional args 
-                    mapM_ (\(kyw, arg) -> pyAssignAt (ideName kyw) arg frm) kwa          -- bind keyword args
-                    let bindings = map (,frm) lcl
-                    pyWithEnv (extends bindings env) $ pyCall l (FuncBdy loc bdy)
-            else pyError ArityError
+         pyWithCtx l $
+            do frm <- pyAlloc (tagAs FrmTag loc) (new' FrameType)
+               let ari = length prs
+               let psn = length pos
+               let kps = drop psn prs
+               let akw = Set.fromList $ map (ideName . fst) kwa
+               let pkw = Set.fromList $ map parNam kps
+               if psn <= ari && akw == pkw
+               then do mapM_ (\(par, arg) -> pyAssignAt (parNam par) arg frm) (zip prs pos) -- bind positional args 
+                       mapM_ (\(kyw, arg) -> pyAssignAt (ideName kyw) arg frm) kwa          -- bind keyword args
+                       let bindings = map (,frm) lcl
+                       pyWithEnv (extends bindings env) $ pyCall l (FuncBdy loc bdy)
+               else pyError ArityError
 
 parNam :: PyPar -> String
 parNam (Prm ide _) = ideName (lexIde ide)
