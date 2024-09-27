@@ -53,10 +53,7 @@ initConstant :: (StoreM m ObjAdr obj, PyDomain obj vlu) => PyConstant -> m ()
 initConstant c = writeAdr (allocCst c) (injectPyConstant c)
 
 initialCst :: [(String, PyConstant)]
-initialCst = [("type",           TypeObject TypeType),
-              ("Exception",      TypeObject ExceptionType),
-              ("StopIteration",  TypeObject StopIterationExceptionType),
-              ("Database",       TypeObject DatabaseType)]
+initialCst = map (\typ -> (name typ, TypeObject typ)) (all :: [PyType])
 
 injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
 injectPyConstant True              = from' @BlnPrm Prelude.True
