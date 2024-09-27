@@ -97,10 +97,12 @@ methods ExceptionType     = []
 methods StopIterationExceptionType = [] 
 methods ListIteratorType  = [(NextAttr, ListIteratorNext)]
 methods DatabaseType      = []
-methods DataFrameType     = [(EmptyAttr,  DataFrameEmpty),
+methods DataFrameType     = [(GetItemAttr, DataFrameGetItem),
+                             (SetItemAttr, DataFrameSetItem),
+                             (EmptyAttr,  DataFrameEmpty),
                              (RenameAttr, DataFrameRename),
                              (DropNAAttr, DataFrameDropNA)]
-methods SeriesType        = [] 
+methods SeriesType        = [(AsTypeAttr, SeriesAsType)]
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
@@ -150,6 +152,10 @@ data PyPrim     =
                 | DataFrameEmpty
                 | DataFrameRename
                 | DataFrameDropNA
+                | DataFrameGetItem
+                | DataFrameSetItem 
+                -- series primitives
+                | SeriesAsType 
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 -- | Special add-on primitives
@@ -196,6 +202,7 @@ data PyAttr = ClassAttr
             | EmptyAttr
             | RenameAttr 
             | DropNAAttr
+            | AsTypeAttr 
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -236,6 +243,7 @@ attrStr WriteAttr     = "write"
 attrStr EmptyAttr     = "empty"
 attrStr RenameAttr    = "rename"
 attrStr DropNAAttr    = "dropna"
+attrStr AsTypeAttr    = "astype"
 
 -- | Built-in objects in Python 
 data PyConstant = None
@@ -269,6 +277,7 @@ data PyPrmKey = IntPrm
               | LstPrm
               | DctPrm
               | DfrPrm 
+              | SrsPrm 
   deriving (Eq, Ord, Show)
 
 genHKeys ''PyPrmKey
@@ -285,6 +294,7 @@ classFor STupPrm = TupleType
 classFor SLstPrm = ListType 
 classFor SDctPrm = DictionaryType
 classFor SDfrPrm = DataFrameType
+classFor SSrsPrm = SeriesType
 
 -- | Built-in Python errors
 data PyError = AttributeNotFound

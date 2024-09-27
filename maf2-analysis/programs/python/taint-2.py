@@ -11,6 +11,6 @@ def main():
     except: 
         pass
     z = 1
-    return z    # y should be tainted, z should not
+    return (y, z)    # y should be tainted, z should not
 
 main()

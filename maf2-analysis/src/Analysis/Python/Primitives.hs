@@ -62,11 +62,11 @@ applyPrim FloatLe       = prim2'' $ floatBinop @BlnPrm Domain.le
 applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
-applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm @_ @_ @_ SDctPrm (updateDct k) v a1) a2 
+applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (updateDct k) v a1) a2 
    where updateDct key vlu = return . Domain.updateWeak key vlu  
 -- list primitives
 applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref
-applyPrim ListSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @IntPrm (\i -> none $ pyAssignInPrm @_ @_ @_ SLstPrm (SeqDomain.setWeak i) v a1) a2 
+applyPrim ListSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @IntPrm (\i -> none $ pyAssignInPrm SLstPrm (SeqDomain.setWeak i) v a1) a2 
 applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyStore loc $ from @IntPrm (SeqDomain.length l)
 applyPrim ListIter      = prim1 $ \loc l -> do n <- pyStore (tagAs ItrIdx loc) $ from' @IntPrm @_ @Integer 0
                                                let obj = new'' ListIteratorType [(attrStr ListAttr, l), (attrStr IndexAttr, n)]
@@ -94,10 +94,14 @@ applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr
                                                       return $ constant None
 -- object primitives
 applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
--- database primitives
-applyPrim DataFrameEmpty  = prim1 $ \loc df   -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @BlnPrm boolTop)) df    
-applyPrim DataFrameRename = prim2 $ \loc df _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm ())) df 
-applyPrim DataFrameDropNA = prim1 $ \loc df   -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm ())) df 
+-- DataFrame primitives
+applyPrim DataFrameGetItem = prim2' @DfrPrm @StrPrm $ \loc _ _ -> pyStore loc (from @SrsPrm ())
+applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref'' @StrPrm (\_ -> none $ pyAssignInPrm SDfrPrm (const return) a3 a1) a2
+applyPrim DataFrameEmpty  = prim1' @DfrPrm $ \loc _ -> pyStore loc (from @BlnPrm boolTop)  
+applyPrim DataFrameRename = prim2' @DfrPrm @DctPrm $ \loc df _ -> pyStore loc (from @DfrPrm df)
+applyPrim DataFrameDropNA = prim1' @DfrPrm $ \loc df -> pyStore loc (from @DfrPrm df) 
+-- Series primitives
+applyPrim SeriesAsType    = prim2 $ \_ self _ -> return self  
 
 --
 -- Primitive helpers 

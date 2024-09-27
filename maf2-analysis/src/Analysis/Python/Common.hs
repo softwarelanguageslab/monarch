@@ -105,7 +105,8 @@ type PyDomain obj vlu = (PyVal vlu,
                          Abs obj LstPrm ~ CPList vlu, 
                          Abs obj TupPrm ~ CPList vlu,
                          Abs obj StrPrm ~ CP String,
-                         Abs obj DfrPrm ~ ())
+                         Abs obj DfrPrm ~ (),
+                         Abs obj SrsPrm ~ ())
 
 typeVal :: PyVal vlu => PyType -> vlu
 typeVal = constant . TypeObject
