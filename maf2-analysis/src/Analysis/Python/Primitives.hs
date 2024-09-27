@@ -28,6 +28,7 @@ import qualified Control.Monad as Monad
 import Data.Singletons.TH
 import Data.Functor (($>))
 import Control.Monad.Escape (MonadEscape(..), orElse)
+import Domain (BoolDomain(..))
 
 ---
 --- Primitives implementation
@@ -93,6 +94,10 @@ applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr
                                                       return $ constant None
 -- object primitives
 applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
+-- database primitives
+applyPrim DataFrameEmpty  = prim1 $ \loc df   -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @BlnPrm boolTop)) df    
+applyPrim DataFrameRename = prim2 $ \loc df _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm ())) df 
+applyPrim DataFrameDropNA = prim1 $ \loc df   -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm ())) df 
 
 --
 -- Primitive helpers 

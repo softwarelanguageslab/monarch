@@ -95,7 +95,9 @@ methods ExceptionType     = []
 methods StopIterationExceptionType = [] 
 methods ListIteratorType  = [(NextAttr, ListIteratorNext)]
 methods DatabaseType      = []
-methods DataFrameType     = [] 
+methods DataFrameType     = [(EmptyAttr,  DataFrameEmpty),
+                             (RenameAttr, DataFrameRename),
+                             (DropNAAttr, DataFrameDropNA)]
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
@@ -141,6 +143,10 @@ data PyPrim     =
                 | TypeInit  
                 -- object primitives
                 | ObjectInit
+                -- dataframe primitives
+                | DataFrameEmpty
+                | DataFrameRename
+                | DataFrameDropNA
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 -- | Special add-on primitives
@@ -184,6 +190,9 @@ data PyAttr = ClassAttr
             | IndexAttr
             | ReadAttr 
             | WriteAttr 
+            | EmptyAttr
+            | RenameAttr 
+            | DropNAAttr
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -221,6 +230,9 @@ attrStr ListAttr      = "__list__"
 attrStr IndexAttr     = "__index__"
 attrStr ReadAttr      = "read"
 attrStr WriteAttr     = "write"
+attrStr EmptyAttr     = "empty"
+attrStr RenameAttr    = "rename"
+attrStr DropNAAttr    = "dropna"
 
 -- | Built-in objects in Python 
 data PyConstant = None

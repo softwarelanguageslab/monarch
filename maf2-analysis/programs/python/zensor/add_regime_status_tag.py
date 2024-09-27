@@ -25,6 +25,12 @@ class InfluxDatabase(Database):
         self.db = db
         self.writer = writer 
 
+def apply_average(df, meas_tags, avg_freq):
+    return df #stub implementation
+
+def get_and_add_operational_status(df):
+    return df #stub implementation
+
 rc_raw = InfluxDatabase(writer=False,
                         db="21016_MOW_raw")
 
@@ -103,54 +109,29 @@ def process_data(meas_name):
     read_client     = meas_config[meas_name]["read_client"]
     apply_average   = meas_config[meas_name]["apply_avg"]
     add_clause      = meas_config[meas_name]["additional_clause"]
-    
-    locations = ['upstream', 'downstream']
-    sides = ['left','right']
 
     df = read_client.read(meas_name)
-    return df 
-        
-#         for location in locations:
-#             for side in sides:
-
-#                 if add_clause :
-#                     clause = add_clause + (" AND location = '%s'  AND side = '%s' " % (location,side))
-#                 else:
-#                     clause = ("location = '%s'  AND side = '%s' " % (location,side))
+    if df.empty:
+        return 
                 
-#                 # Load the input data
-#                 df = read_client.query_measurement_iterative(
-#                     measurement=meas_name,
-#                     start_date=start,
-#                     end_date=end,
-#                     additional_clause = clause,
-#                     fields_to_query= [meas_field]+meas_tags
-#                 )
+    df = df.rename({meas_field: "value"})
 
-#                 if df.empty:
-#                     logger.info("No {0} data available for this period. Continuing for next door.".format(meas_name))
-#                     continue
-                
-#                 df = df.rename(columns={meas_field: "value"})
-
-#                 # Apply averageing if needed
-#                 if apply_average:
-#                     avg_freq = meas_config[meas_name]["avg_freq"]
-#                     df_av = apply_average(df, meas_tags, avg_freq)
-#                     if df_av.empty: 
-#                         logger.info("Couldn't calculate the average.")
-#                         return 0
-#                 else:
-#                     df_av = df
+    # Apply averageing if needed
+    if apply_average:
+        avg_freq = meas_config[meas_name]["avg_freq"]
+        df_av = apply_average(df, meas_tags, avg_freq)
+        if df_av.empty: 
+            return 0
+    else:
+        df_av = df
 
 
-#                 # Combine with the operational status
-#                 df_combined = get_and_add_operational_status(df_av)
-#                 if df_combined.empty:
-#                     logger.info("Couldn't combine operational status data.")
-#                     return 0
-#                 df_combined["value"] = df_combined["value"].astype(float)
-#                 df_combined = df_combined.dropna().rename(columns={"value": meas_field})
+    # Combine with the operational status
+    df_combined = get_and_add_operational_status(df_av)
+    if df_combined.empty:
+        return 0
+    df_combined["value"] = df_combined["value"].astype(float)
+    df_combined = df_combined.dropna().rename({"value": meas_field})
                 
 #                 # Prepare the tags for writing to the database
 #                 tags = {
@@ -175,7 +156,15 @@ def process_data(meas_name):
 
 def main():    
     # Process blocks per given time step
-    #process_data("displacement")
-    return rc_derived.read("boe")
+    return process_data("displacement")
+    #return rc_derived.read("boe")
 
+    
+
+
+
+
+
+
+    
 main()
