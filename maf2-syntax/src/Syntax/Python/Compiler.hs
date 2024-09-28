@@ -51,9 +51,9 @@ data PyTag = FrmTag
            | ItrCll
            | NxtCll
            | NxtIdx
-           | NxtExc 
+           | NxtExc
            | ItrIdx
-           | ItrLst 
+           | ItrLst
    deriving (Eq, Ord, Show, Bounded, Enum)
 
 instance Show PyLoc where
@@ -89,7 +89,7 @@ parse nam = parseFile nam >=> (\ex -> runLexical <$> evalStateT (runReaderT (com
 type SimplifyM m a = (MonadReader (Maybe (Ide a)) m, MonadState Int m)
 
 gensym :: SimplifyM m a => m String
-gensym = do n <- get 
+gensym = do n <- get
             put (n+1)
             return ("$var" ++ show n)
 
@@ -119,7 +119,7 @@ compileStmt (AST.Conditional grds els a)  = Conditional () <$> mapM (\(exp, st) 
 compileStmt (StmtExpr e a)                = pure (StmtExp () (compileExp e) a)
 compileStmt (Import items _)              = error "import not supported"
 compileStmt (FromImport items _ _)        = error "import not supported"
-compileStmt (For vrs gen bdy els a)       = compileFor vrs gen bdy els a 
+compileStmt (For vrs gen bdy els a)       = compileFor vrs gen bdy els a
 compileStmt (Class nam ags bdy a)         = do
    assignment <- assign (Ide nam) (compileClassInstance a (ident_string nam) ags)
    ltt <- thunkify a <$> compileClassBdy (Ide nam) bdy
@@ -175,9 +175,9 @@ compileFor [AST.Var nam _] gen bdy [] a   = do var <- gensym
                                                let ide = Ide (Ident var a)
                                                ass1 <- assign ide       (Call (Read (compileExp gen) (Ide (Ident "__iter__" a)) (tagAs ForItr a)) [] [] (tagAs ItrCll a))
                                                ass2 <- assign (Ide nam) (Call (Read (Var ide)        (Ide (Ident "__next__" a)) (tagAs ForNxt a)) [] [] (tagAs NxtCll a))
-                                               let nxt = Try () ass2 [(Var (Ide (Ident "StopIteration" a)), Break () a)] a 
-                                               bdy' <- makeSeq . (nxt:) . (:[]) <$> compileSequence bdy 
-                                               let whi = Loop () (Literal (Bool True (tagAs ForBln a))) bdy' a 
+                                               let nxt = Try () ass2 [(Var (Ide (Ident "StopIteration" a)), Break () a)] a
+                                               bdy' <- makeSeq . (nxt:) . (:[]) <$> compileSequence bdy
+                                               let whi = Loop () (Literal (Bool True (tagAs ForBln a))) bdy' a
                                                return $ makeSeq [ass1, whi]
 compileFor _ _ _ _ _                      = todo "unsupported for form"
 
@@ -206,7 +206,7 @@ compileExp (Imaginary {})      = todo "eval imaginary numbers"
 compileExp (AST.Bool b a)      = Literal (Bool b a)
 compileExp (Ellipsis _)        = todo "nothing"
 compileExp (ByteStrings _ _)   = todo "eval bytestrings"
-compileExp (Strings ss a)      = Literal (String (concat ss) a)
+compileExp (Strings ss a)      = Literal $ String (concatMap (init . tail) ss) a
 -- compound expressions
 compileExp c@(AST.Call fun arg a)     = compileCall fun arg a -- Call (compileExp fun) (map compileArg arg) a
 compileExp (Subscript e i a)          = Call (Read (compileExp e) (Ide (Ident "__getitem__" a)) a) [compileExp i] [] a
@@ -227,10 +227,10 @@ compileExp (BinaryOp op left right a) = binaryToCall op left right a
 compileExp (UnaryOp op arg _)         = todo "eval unary op"
 compileExp (Dot rcv atr a)            = Read (compileExp rcv) (Ide atr) a
 compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ compileExp bdy) annot) annot () -- note: [] is because of no local variables
-compileExp (AST.Tuple exs a)          = Literal $ Tuple (map compileExp exs) a 
+compileExp (AST.Tuple exs a)          = Literal $ Tuple (map compileExp exs) a
 compileExp (LongInt {})               = todo "longInt"
-compileExp (Float f _ a)              = Literal $ Real f a 
-compileExp (AST.None a)               = Literal $ None a 
+compileExp (Float f _ a)              = Literal $ Real f a
+compileExp (AST.None a)               = Literal $ None a
 compileExp (UnicodeStrings {})        = todo "unicodeStrings"
 compileExp (StringConversion {})      = todo "stringConversion"
 --compileExp ex = error "unsupported expression"-- ++ show (pretty ex))
@@ -492,9 +492,9 @@ lexicalLit (Integer i a) = return $ Integer i a
 lexicalLit (Real r a)    = return $ Real r a
 lexicalLit (String i a)  = return $ String i a
 lexicalLit (Tuple es a)  = Tuple <$> mapM lexicalExp es <*> pure a
-lexicalLit (List es a)   = List  <$> mapM lexicalExp es <*> pure a 
+lexicalLit (List es a)   = List  <$> mapM lexicalExp es <*> pure a
 lexicalLit (Dict bds a)  = Dict  <$> mapM (\(k,v) -> (,) <$> lexicalExp k <*> lexicalExp v) bds <*> pure a
-lexicalLit (None a)      = return $ None a 
+lexicalLit (None a)      = return $ None a
 
 lexicalLhs :: (LexicalM m a) => Lhs a AfterSimplification -> m (Lhs a AfterLexicalAddressing)
 lexicalLhs (Field e x a) = Field <$> lexicalExp e <*> pure x <*> pure a
