@@ -115,7 +115,7 @@ instance Ord a => Monoid (CP a) where
 -- kcfa k
 -- TODO: parameterize this
 k :: Int 
-k = 1
+k = 4
 
 type Taint = CP String  
 type PyRef = Tainted Taint ObjAddrSet
@@ -134,7 +134,7 @@ instance (vlu ~ PyRef,
           SplitLattice (Esc m),
           EnvM m ObjAdr PyEnv,
           AllocM m PyLoc ObjAdr,
-          GraphM (CP String) (CP String) m,
+          GraphM (CP String) () m,
           StoreM m ObjAdr obj)
           =>
           PyM m obj vlu where
@@ -169,5 +169,5 @@ instance (vlu ~ PyRef,
                                   [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint nam $ addTaint =<< pyStore loc (from' @DfrPrm ())) str
                                   _        -> pyError ArityError    
   applyXPrim DatabaseWrite _ = \case
-                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\_ nam -> currentTaint >>= \t -> addEdge t nam (Constant "boe") $> constant None) df str 
+                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\_ nam -> currentTaint >>= \t -> addEdge t nam () $> constant None) df str 
                                   _            -> pyError ArityError  

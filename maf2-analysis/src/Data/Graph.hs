@@ -39,3 +39,7 @@ instance (Ord v, Ord e) => Graph (SimpleGraph v e) v e where
     addEdge from to label = add (Set.singleton (to, label)) from 
     vertices = Map.keys . adj 
     outgoing v = Set.toList . fromMaybe Set.empty . Map.lookup v . adj
+
+
+instance (Show v, Show e) => Show (SimpleGraph v e) where
+    show = show . adj  

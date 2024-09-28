@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PackageImports #-}
 
 module Run.Python(main, Options, options) where
 
@@ -21,6 +22,8 @@ import Data.IORef
 import System.IO 
 import Data.Function ((&))
 import Control.Monad.Escape (MayEscape(..))
+import "maf2-analysis" Data.Graph (edges)
+import Lattice 
 
 newtype Options = Options String 
    deriving Show
@@ -65,16 +68,33 @@ runFile :: String -> IO ()
 runFile fileName = 
    do program <- readFile fileName
       let Just parsed = parse "testje" program
-      let (rsto, osto) = analyzeCP parsed 
-      --putStrLn "\nPROGRAM:\n"
-      --putStrLn (prettyString parsed)
+      let (rsto, osto, graph) = analyzeCP parsed 
+      putStrLn "\nPROGRAM:\n"
+      putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
       putStrLn (printRSto rsto)
-      --putStrLn "\nOBJECT STORE RESULTS:\n"
-      --putStrLn (printOSto osto)
+      putStrLn "\nOBJECT STORE RESULTS:\n"
+      putStrLn (printOSto osto)
+      putStrLn "\nDEPENDENCY GRAPH:\n"
       putStrLn "\n"
 
+generateGraph :: [String] -> IO () 
+generateGraph files =
+   do putStrLn "digraph ECOPIPE {"
+      mapM_ generateGraphForFile files 
+      putStrLn "}"
+   where generateGraphForFile file = do program <- readFile file
+                                        let Just parsed = parse "testje" program
+                                        let (_, _, graph) = analyzeCP parsed 
+                                        printGraph file graph
+         printGraph file graph = mapM_ (putStrLn . showEdge file) (edges graph)
+         showEdge file (from, to, ()) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show (shortFileName file) ++ " ];"
+         showNode (Constant name) = name
+         showNode Top = "⊤"
+         showNode _ = "⊥"
+         shortFileName = reverse . takeWhile (/='/') . reverse 
+
 main :: Options -> IO ()
-main (Options fileName) = runFile fileName 
+main (Options fileName) = runFile fileName -- generateGraph ["programs/python/zensor/add_regime_status_tag.py"]
 
 

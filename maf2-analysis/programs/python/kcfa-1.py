@@ -1,5 +1,6 @@
 def id(x):
-    return x
+    v = x 
+    return v
 
 def main():
     a = id(1)

@@ -52,8 +52,8 @@ allocCst :: PyConstant -> ObjAdr
 allocCst = PrmAdr 
 
 instance Show ObjAdr where 
-  show (PtrAdr s _) = "["           ++ show s ++ "]" 
-  show (PrmAdr c)   = "["           ++ show c ++ "]"
+  show (PtrAdr s c) = "[" ++ show s ++ " with context " ++ show c ++ "]" 
+  show (PrmAdr c)   = "[" ++ show c ++ "]"
 
 --
 -- Values 

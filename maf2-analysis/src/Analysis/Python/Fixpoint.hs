@@ -63,7 +63,7 @@ type AnalysisM m obj = (PyDomain obj PyRef,
                         DependencyTrackingM m PyCmp ObjAdr,
                         DependencyTrackingM m PyCmp PyCmp,
                         DependencyTrackingM m PyCmp PyCmpTaint,
-                        GraphM (CP String) (CP String) m,
+                        GraphM (CP String) () m,
                         WorkListM m PyCmp)
 
 newtype PyCmpTaint = PyCmpTaint PyCmp
@@ -96,10 +96,10 @@ inter prg = do init                                 -- initialize Python infrast
                Analysis.Monad.put (PyCmpTaint cmp) mempty 
                iterateWL intra                      -- start the analysis 
 
-analyze :: forall obj . PyDomain obj PyRef => PyPrg -> (Map PyCmp PyRes, Map ObjAdr obj)
-analyze prg = (rsto, osto)
+analyze :: forall obj . PyDomain obj PyRef => PyPrg -> (Map PyCmp PyRes, Map ObjAdr obj, SimpleGraph (CP String) ())
+analyze prg = (rsto, osto, graph)
     where (((_, graph),osto),rsto) = inter prg
-                                        & runWithGraph @(SimpleGraph (CP String) (CP String))
+                                        & runWithGraph @(SimpleGraph (CP String) ())
                                         & runWithStore @(Map ObjAdr obj) @ObjAdr
                                         & runWithMapping @PyCmp
                                         & runWithMapping' @PyCmpTaint
@@ -124,7 +124,7 @@ analyzeREPL read display =
             & runWithDependencyTracking @PyCmp @PyCmpTaint 
             & runWithComponentTracking @PyCmp
             & runWithWorkList @(Set PyCmp)
-            & runWithGraph @(SimpleGraph (CP String) (CP String))
+            & runWithGraph @(SimpleGraph (CP String) ())
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
                               let cmp = ((Main prg, initialEnv), [])
                               add cmp 
@@ -139,5 +139,5 @@ analyzeREPL read display =
 
 type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp (MayEscape PyRet PyRef), Map ObjAdr PyDomainCP)
+analyzeCP :: PyPrg -> (Map PyCmp (MayEscape PyRet PyRef), Map ObjAdr PyDomainCP, SimpleGraph (CP String) ())
 analyzeCP = analyze @PyDomainCP
