@@ -38,11 +38,11 @@ todo = error . ("[TODO] NYI: " ++)
 -- | Evaluate a Python component
 evalBdy :: PyM m obj vlu => PyBdy -> m vlu
 evalBdy (Main prg) = pyReturnable (exec (programStmt prg) $> constant None)
-evalBdy loop@(LoopBdy loc cnd bdy) = pyIf (eval cnd)
-                                          (pyCatchLoop (exec bdy >> pyCall loc loop)
-                                                       (return $ constant None)  -- break
-                                                       (pyCall loc loop))        -- continue
-                                          (return $ constant None)
+evalBdy (LoopBdy loc cnd bdy) = pyIf (eval cnd)
+                                     (pyCatchLoop (exec bdy >> evalWhi cnd bdy loc)
+                                                  (return $ constant None)  -- break
+                                                  (evalWhi cnd bdy loc))    -- continue
+                                     (return $ constant None)
 evalBdy (FuncBdy _ bdy) = pyReturnable (exec bdy $> constant None)
 
 globalFrame :: ObjAdr
@@ -115,7 +115,10 @@ execCnt :: PyM pyM obj vlu => pyM ()
 execCnt = pyContinue
 
 execWhi :: forall pyM obj vlu . PyM pyM obj vlu => PyExp -> PyStm -> PyLoc -> pyM ()
-execWhi cnd bdy loc = void $ pyCall loc (LoopBdy loc cnd bdy)
+execWhi cnd bdy loc = void $ evalWhi cnd bdy loc
+
+evalWhi :: forall pyM obj vlu . PyM pyM obj vlu => PyExp -> PyStm -> PyLoc -> pyM vlu
+evalWhi cnd bdy loc = pyWithCtx loc $ pyCall loc (LoopBdy loc cnd bdy)
 
 eval :: PyM pyM obj vlu => PyExp -> pyM vlu
 eval (Lam prs bdy loc lcl)  = evalLam prs bdy loc lcl

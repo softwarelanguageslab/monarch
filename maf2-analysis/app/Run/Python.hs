@@ -95,6 +95,6 @@ generateGraph files =
          shortFileName = reverse . takeWhile (/='/') . reverse 
 
 main :: Options -> IO ()
-main (Options fileName) = runFile fileName -- generateGraph ["programs/python/zensor/add_regime_status_tag.py"]
+main (Options fileName) = generateGraph ["programs/python/zensor/add_regime_status_tag.py"]
 
 

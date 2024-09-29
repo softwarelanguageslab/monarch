@@ -115,7 +115,7 @@ instance Ord a => Monoid (CP a) where
 -- kcfa k
 -- TODO: parameterize this
 k :: Int 
-k = 4
+k = 10
 
 type Taint = CP String  
 type PyRef = Tainted Taint ObjAddrSet
