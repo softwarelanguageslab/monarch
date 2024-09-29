@@ -75,35 +75,46 @@ spanningTagged _ _ = error "spanning not supported for tagged locations"
 -- From String to AST
 -------------------------------------------------------------------------------
 
+evalWriterT :: Monad m => WriterT w m a -> m a 
+evalWriterT m = fst <$> runWriterT m
+
 -- | Parse a Python file to an AST
 parse :: String  -- ^ filename
       -> String  -- ^ contents
       -> Maybe (Program PyLoc AfterLexicalAddressing)
-parse nam = parseFile nam >=> (\ex -> runLexical <$> evalStateT (runReaderT (compile $ untagged <$> ex) Nothing) 0)
+parse nam = parseFile nam >=> (\ex -> runLexical <$> evalStateT (evalWriterT (runReaderT (compile $ untagged <$> ex) Nothing)) 0)
 
 -------------------------------------------------------------------------------
 -- Simplification phase
 -------------------------------------------------------------------------------
 
 -- | Simplification phase monad
-type SimplifyM m a = (MonadReader (Maybe (Ide a)) m, MonadState Int m)
+type SimplifyM m a = (MonadReader (Maybe (Ide a)) m, MonadState Int m, MonadWriter [Ide a] m)
 
 gensym :: SimplifyM m a => m String
 gensym = do n <- get
             put (n+1)
             return ("$var" ++ show n)
 
+capture :: SimplifyM m PyLoc => m a -> m (a, [Ide PyLoc])
+capture = censor (const []) . listen 
+
+-- TODO: assumes this is only used by compileClassBdy? So integrate it there 
 thunkify :: a -> Stmt a AfterSimplification -> Stmt a AfterSimplification
-thunkify a bdy = StmtExp () (Call (Lam [] bdy a ()) [] [] a) a
+thunkify a bdy = StmtExp () (Call (Lam [] bdy a []) [] [] a) a
+
+compileLam :: SimplifyM m PyLoc => [Parameter PyLoc] -> Suite PyLoc -> PyLoc -> m (Exp PyLoc AfterSimplification)
+compileLam prs bdy a = do (bdy', ids) <- capture $ local (const Nothing) (compileSequence bdy)
+                          return $ Lam (compilePrs prs) bdy' a ids
 
 -- | Generate a (potentially namespaced) lhs pattern
-namespacedLhs :: SimplifyM m a => Ide a -> m (Lhs a AfterSimplification)
-namespacedLhs nam = asks lhs
-   where lhs (Just v) = IdePat (NamespacedIde nam v)
-         lhs Nothing  = IdePat nam
+namespacedLhs :: SimplifyM m PyLoc => Ide PyLoc -> m (Lhs PyLoc AfterSimplification)
+namespacedLhs nam = ask >>= lhs
+   where lhs (Just v) = return $ IdePat (NamespacedIde nam v)
+         lhs Nothing  = tell [nam] >> return (IdePat nam)
 
 -- | Generate an assignment
-assign :: SimplifyM m a => Ide a -> Exp a AfterSimplification -> m (Stmt a AfterSimplification)
+assign :: SimplifyM m PyLoc => Ide PyLoc -> Exp PyLoc AfterSimplification -> m (Stmt PyLoc AfterSimplification)
 assign nam e = namespacedLhs nam <&> flip (Assg ()) e
 
 -- | Compile Python programs into the reduced Python syntax
@@ -112,7 +123,7 @@ compile (Module stmts) = Program . makeSeq <$> mapM compileStmt stmts
 
 -- | Compile a statement in the Python reduced syntax
 compileStmt :: SimplifyM m PyLoc => Statement PyLoc -> m (Stmt PyLoc AfterSimplification)
-compileStmt (Fun nam ags _ bdy a)         = assign (Ide nam) =<< compileFun ags bdy a
+compileStmt (Fun nam ags _ bdy a)         = assign (Ide nam) =<< compileLam ags bdy a
 compileStmt (While cnd bdy els a)         = Loop () (compileExp cnd) <$> compileSequence bdy <*> pure a
 compileStmt (AsyncFun def _)              = error "not supported AsyncFun"
 compileStmt (AST.Conditional grds els a)  = Conditional () <$> mapM (\(exp, st) -> fmap (compileExp exp,) (compileSequence st)) grds <*> compileSequence els <*> pure a
@@ -164,10 +175,6 @@ compileTry bdy hds loc = Try () <$> compileSequence bdy <*> mapM compileHandler 
 -- | Compiles a sequence without introducing a block
 compileSequence :: SimplifyM m PyLoc => Suite PyLoc -> m (Stmt PyLoc AfterSimplification)
 compileSequence es = makeSeq <$> mapM compileStmt es
-
--- | Compiles a block (something that has a different lexical scope)
-compileFun :: SimplifyM m PyLoc => [Parameter PyLoc] -> Suite PyLoc -> PyLoc -> m (Exp PyLoc AfterSimplification)
-compileFun prs bdy a = Lam (compilePrs prs) <$> local (const Nothing) (compileSequence bdy) <*> pure a <*> pure ()
 
 -- | Compiles a for statement to a loop
 compileFor :: SimplifyM m PyLoc => [Expr PyLoc] -> Expr PyLoc -> Suite PyLoc -> Suite PyLoc -> PyLoc -> m (Stmt PyLoc AfterSimplification)
@@ -226,7 +233,7 @@ compileExp (CondExpr tru cnd fls _)   = todo "eval conditional expression"
 compileExp (BinaryOp op left right a) = binaryToCall op left right a
 compileExp (UnaryOp op arg _)         = todo "eval unary op"
 compileExp (Dot rcv atr a)            = Read (compileExp rcv) (Ide atr) a
-compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ compileExp bdy) annot) annot () -- note: [] is because of no local variables
+compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ compileExp bdy) annot) annot [] -- note: [] is because of no local variables
 compileExp (AST.Tuple exs a)          = Literal $ Tuple (map compileExp exs) a
 compileExp (LongInt {})               = todo "longInt"
 compileExp (Float f _ a)              = Literal $ Real f a
@@ -276,7 +283,7 @@ compileClassInstance a nam ags =
 
 -- | Compiles a class body
 compileClassBdy :: SimplifyM m PyLoc => Ide PyLoc -> Suite PyLoc -> m (Stmt PyLoc AfterSimplification)
-compileClassBdy nam bdy = makeSeq <$> mapM (local (const $ Just nam) . compileStmt) bdy
+compileClassBdy nam = local (const $ Just nam) . compileSequence
 
 -- | Compiles the left-hand-side of an assignment
 compileLhs :: SimplifyM m PyLoc => [Expr PyLoc] -> m (Lhs PyLoc AfterSimplification)
@@ -392,7 +399,7 @@ getLocals = gets (Map.keys . Map.filter (== LocalScope) . vars)
 
 -- | Enters a new scope by resetting all global and nonlocal variables
 -- and creating a new frame with the given bindigs to execute the given computation in
-enterScope :: (LexicalM m a) => [(String, IdeLex a)] -> m b -> m (b, [String])
+enterScope :: (LexicalM m a) => [(String, IdeLex a)] -> m b -> m b
 enterScope bds m = do
    -- first snapshot the current set of globals, nonlocals and locals
    snapshot <- get
@@ -401,10 +408,9 @@ enterScope bds m = do
    -- run the computation in the extended environment
    v <- local (extendedEnv bds) m
    -- reset to the snapshot, but keep the fresh
-   l <- getLocals
    modify (\s' -> snapshot { fresh = fresh s' })
    -- return the value of the computation
-   return (v, l)
+   return v
 
 addVar :: LexicalM m a => VarScope -> String -> m ()
 addVar scp nam = modify (\s -> s { vars = Map.insertWith checkSame nam scp (vars s) })
@@ -468,12 +474,14 @@ lookupLexIde ide = condM [
 -- | Run the lexical addresser on the given expression
 lexicalExp :: forall m a . (LexicalM m a) => Exp a AfterSimplification -> m (Exp a AfterLexicalAddressing)
 lexicalExp (Var ide) = either (\(e, x) -> Read (Var e) x (annot (getIdeIdent $ lexIde e))) Var <$> lookupLexIde ide
-lexicalExp (Lam prs stmt a ()) = do
+lexicalExp (Lam prs stmt a ass) = do
+      lcs <- filterM (\ide -> let nam = ideName ide in not <$> liftA2 (||) (isNonLocal nam) (isGlobal nam)) ass 
       genPars <- mapM (overPar genIde) prs
-      let parIdes = map parIde genPars
-      let parNames = map (ideName . parIde) prs
-      (bdy, lcs) <- enterScope (zip parNames parIdes) $ lexicalStmt stmt
-      return $ Lam genPars bdy a lcs
+      genLcls <- mapM genIde lcs
+      let nams = map (ideName . parIde) prs ++ map ideName lcs   
+      let ides  = map parIde genPars ++ genLcls  
+      bdy <- enterScope (zip nams ides) $ lexicalStmt stmt
+      return $ Lam genPars bdy a (map (ideName . lexIde) ides) 
    where overPar :: (Ide a -> m (IdeLex a)) -> Par a AfterSimplification -> m (Par a AfterLexicalAddressing)
          overPar f (Prm ide a)        = Prm <$> f ide <*> pure a
          overPar f (VarArg ide a)     = VarArg <$> f ide <*> pure a
@@ -500,10 +508,4 @@ lexicalLhs :: (LexicalM m a) => Lhs a AfterSimplification -> m (Lhs a AfterLexic
 lexicalLhs (Field e x a) = Field <$> lexicalExp e <*> pure x <*> pure a
 lexicalLhs (ListPat ps a ) = ListPat <$> mapM lexicalLhs ps <*> pure a
 lexicalLhs (TuplePat ps a) = TuplePat <$> mapM lexicalLhs ps <*> pure a
-lexicalLhs (IdePat x)      = do
-      -- first check whether the variable is already a local or a global => register as local if not 
-      unlessM (liftA2 (||) (isGlobal nam) (isNonLocal nam)) $ addLocal nam
-      -- lookup the variable and paste it into the pattern
-      either (\(e, x) -> Field (Var e) x (annot $ getIdeIdent x)) IdePat <$> lookupLexIde x
-   where nam = ideName x
-
+lexicalLhs (IdePat x) = either (\(e, x) -> Field (Var e) x (annot $ getIdeIdent x)) IdePat <$> lookupLexIde x
