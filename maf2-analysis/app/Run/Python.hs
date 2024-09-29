@@ -50,31 +50,31 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
          showCmp ((FuncBdy loc _, _), ctx) = "<func " ++ show loc ++ " with context " ++ show ctx ++ ">"
          indent = maximum (map (length . showCmp . fst) cmps) + 5
 
-runREPL :: IO ()
-runREPL = do count <- newIORef 0 
-             analyzeREPL @PyDomainCP (read count) print 
-      where read count = do cur <- readIORef count
-                            writeIORef count (cur + 1)
-                            prompt cur
-            prompt cur = do putStr ">>> "
-                            hFlush stdout
-                            txt <- getLine 
-                            case parse ("REPL:" ++ show cur) txt of  
-                              Just parsed -> return parsed
-                              Nothing     -> putStrLn "Invalid program" >> prompt cur 
+-- runREPL :: IO ()
+-- runREPL = do count <- newIORef 0 
+--              analyzeREPL @PyDomainCP (read count) print 
+--       where read count = do cur <- readIORef count
+--                             writeIORef count (cur + 1)
+--                             prompt cur
+--             prompt cur = do putStr ">>> "
+--                             hFlush stdout
+--                             txt <- getLine 
+--                             case parse ("REPL:" ++ show cur) txt of  
+--                               Just parsed -> return parsed
+--                               Nothing     -> putStrLn "Invalid program" >> prompt cur 
 
 
 runFile :: String -> IO () 
 runFile fileName = 
    do program <- readFile fileName
       let Just parsed = parse "testje" program
-      let (rsto, osto, graph) = analyzeCP parsed 
+      let (rsto, graph) = analyzeCP parsed 
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
       putStrLn (printRSto rsto)
-      putStrLn "\nOBJECT STORE RESULTS:\n"
-      putStrLn (printOSto osto)
+      --putStrLn "\nOBJECT STORE RESULTS:\n"
+      --putStrLn (printOSto osto)
       putStrLn "\nDEPENDENCY GRAPH:\n"
       putStrLn "\n"
 
@@ -85,7 +85,7 @@ generateGraph files =
       putStrLn "}"
    where generateGraphForFile file = do program <- readFile file
                                         let Just parsed = parse "testje" program
-                                        let (_, _, graph) = analyzeCP parsed 
+                                        let (_, graph) = analyzeCP parsed 
                                         printGraph file graph
          printGraph file graph = mapM_ (putStrLn . showEdge file) (edges graph)
          showEdge file (from, to, ()) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show (shortFileName file) ++ " ];"

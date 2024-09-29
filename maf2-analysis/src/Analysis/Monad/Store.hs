@@ -4,11 +4,11 @@
 
 module Analysis.Monad.Store (
     StoreM(..),
+    StoreM'(..),
     StoreT(..),
     StoreT',
     StackStoreT,
     runStoreT,
-    runStoreT'',
     runWithStore,
     runStoreT',
     lookups,
@@ -61,6 +61,12 @@ class (Monad m, Lattice v) => StoreM a v m | m a -> v where
 
    {-# MINIMAL lookupAdr, writeAdr, (updateAdr | updateWith) #-}
 
+instance (Monad (t m), StoreM adr v m, MonadLayer t) => StoreM adr v (t m) where
+   writeAdr adr =  upperM . writeAdr adr
+   updateAdr adr =  upperM . updateAdr adr
+   lookupAdr  =  upperM . lookupAdr
+   updateWith fs fw = upperM . updateWith fs fw
+
 updateAndCheck :: StoreM a v m => a -> (a -> m ()) -> m Bool
 updateAndCheck a f = do old <- lookupAdr a
                         f a
@@ -94,6 +100,18 @@ deref' = mjoins . map lookupAdr . Set.toList
 store :: (AllocM m from adr, StoreM adr v m) => from -> v -> m adr
 store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 
+---
+--- StoreM' typeclass
+---
+
+-- like StoreM, but also allows retrieving the current store
+class (Store s a v, StoreM a v m) => StoreM' s a v m | m -> s a v where
+   currentStore :: m s 
+   putStore     :: s -> m ()
+
+instance (Monad (t m), MonadLayer t, StoreM' s adr v m) => StoreM' s adr v (t m) where
+   currentStore = upperM currentStore
+   putStore = upperM . putStore 
 
 ---
 --- StoreT monad transformer 
@@ -108,17 +126,12 @@ instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM a v (StoreT s a v 
    updateWith fs fw adr = modify (Store.updateStoWith fs fw adr)
    lookupAdr = gets . Store.lookupSto
 
-instance (Monad (t m), StoreM adr v m, MonadLayer t) => StoreM adr v (t m) where
-   writeAdr adr =  upperM . writeAdr adr
-   updateAdr adr =  upperM . updateAdr adr
-   lookupAdr  =  upperM . lookupAdr
-   updateWith fs fw = upperM . updateWith fs fw
+instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM' s a v (StoreT s a v m) where
+   currentStore = get 
+   putStore = put 
 
 runStoreT :: forall s adr vlu m a . s -> StoreT s adr vlu m a -> m (a, s)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
-
-runStoreT'' :: forall adr vlu m a . Map adr vlu -> StoreT (Map adr vlu) adr vlu m a -> m (a, Map adr vlu)
-runStoreT'' initialSto = flip runStateT initialSto . getStoreT
 
 runWithStore :: forall s adr vlu m a . Store s adr vlu => StoreT s adr vlu m a -> m (a, s)
 runWithStore = runStoreT Store.emptySto

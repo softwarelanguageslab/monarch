@@ -40,6 +40,7 @@ instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM m cmp k, Wor
     => MapM k v (IntraAnalysisT cmp m) where
         get k = currentCmp >>= upperM . register k >> upperM (get k)
         put k v = whenM (upperM $ put' k v) (upperM $ trigger k)
+        joinWith k v = whenM (upperM $ joinWith' k v) (upperM $ trigger k)
 
 -- | Convenience function for retrieving the component current being analyzed
 currentCmp :: Monad m => IntraAnalysisT cmp m cmp
