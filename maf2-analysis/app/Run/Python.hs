@@ -24,6 +24,7 @@ import Data.Function ((&))
 import Control.Monad.Escape (MayEscape(..))
 import "maf2-analysis" Data.Graph (edges)
 import Lattice 
+import Analysis.Store (CountingMap, store)
 
 newtype Options = Options String 
    deriving Show
@@ -32,9 +33,9 @@ options :: Parser Options
 options = Options <$> 
    strOption (long "filename" <> short 'f' <> help "Name of the file to parse")
 
-printOSto :: Show obj => Map ObjAdr obj -> String
-printOSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs
-   where adrs   = Map.toList m
+printOSto :: Show obj => CountingMap ObjAdr obj -> String
+printOSto s = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs
+   where adrs   = Map.toList (store s)
                     & filter (\case (PrmAdr _, _) -> False ; _ -> True)
          indent = maximum (map (length . show . fst) adrs) + 5
 
@@ -68,13 +69,13 @@ runFile :: String -> IO ()
 runFile fileName = 
    do program <- readFile fileName
       let Just parsed = parse "testje" program
-      let (rsto, graph) = analyzeCP parsed 
+      let (rsto, osto, graph) = analyzeCP parsed 
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
       putStrLn (printRSto rsto)
-      --putStrLn "\nOBJECT STORE RESULTS:\n"
-      --putStrLn (printOSto osto)
+      putStrLn "\nOBJECT STORE RESULTS:\n"
+      putStrLn (printOSto osto)
       putStrLn "\nDEPENDENCY GRAPH:\n"
       putStrLn "\n"
 
@@ -85,7 +86,7 @@ generateGraph files =
       putStrLn "}"
    where generateGraphForFile file = do program <- readFile file
                                         let Just parsed = parse "testje" program
-                                        let (_, graph) = analyzeCP parsed 
+                                        let (_, _, graph) = analyzeCP parsed 
                                         printGraph file graph
          printGraph file graph = mapM_ (putStrLn . showEdge file) (edges graph)
          showEdge file (from, to, ()) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show (shortFileName file) ++ " ];"

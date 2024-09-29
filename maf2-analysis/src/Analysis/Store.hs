@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances, AllowAmbiguousTypes, FlexibleContexts, UndecidableInstances #-}
-module Analysis.Store(Store(..), CountingMap, restrictSto) where
+module Analysis.Store(Store(..), CountingMap, store, restrictSto) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -76,7 +76,7 @@ instance (Lattice v, Ord a) => Store (CountingMap a v) a v where
       where extend Nothing            = Just (v, CountOne)
             extend (Just (v', count)) = Just (v' `join` v, inc count)
    updateStoWith fs fw a = CountingMap . Map.alter update a . store 
-      where update Nothing              = error "updating an empty address"
+      where update Nothing              = error "updating an unbound address"
             update (Just (v, CountOne)) = Just (fs v, CountOne)
             update (Just (v, count))    = Just (fw v, count)
 
