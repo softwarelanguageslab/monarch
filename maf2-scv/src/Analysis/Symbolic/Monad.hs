@@ -148,7 +148,7 @@ newtype SymbolicStoreT adr v m a = SymbolicStoreT (StateT (SymbolicStore adr v) 
 -- | The contents of a symbolic store.
 type SymbolicStore adr v = Map adr v
 
-instance {-# OVERLAPPING #-} (Ord adr, SymbolicValue v, MonadIntegerPool m, StoreM m adr v, v' ~ Symbolic v) => StoreM (SymbolicStoreT adr v' m) adr v where
+instance {-# OVERLAPPING #-} (Ord adr, SymbolicValue v, MonadIntegerPool m, StoreM adr v m, v' ~ Symbolic v) => StoreM adr v (SymbolicStoreT adr v' m) where
    updateAdr adr v = do
       -- update the local version
       modify (Map.insertWith join adr (symbolicValue v))

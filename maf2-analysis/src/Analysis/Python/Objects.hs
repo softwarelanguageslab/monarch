@@ -46,10 +46,10 @@ import Lattice.Class (Lattice)
 initialEnv :: Map String ObjAdr
 initialEnv = Map.empty
 
-init :: (PyDomain obj vlu, StoreM m ObjAdr obj) => m ()
+init :: (PyDomain obj vlu, StoreM ObjAdr obj m) => m ()
 init = mapM_ initConstant (all :: [PyConstant])
 
-initConstant :: (StoreM m ObjAdr obj, PyDomain obj vlu) => PyConstant -> m ()
+initConstant :: (StoreM ObjAdr obj m, PyDomain obj vlu) => PyConstant -> m ()
 initConstant c = writeAdr (allocCst c) (injectPyConstant c)
 
 initialCst :: [(String, PyConstant)]

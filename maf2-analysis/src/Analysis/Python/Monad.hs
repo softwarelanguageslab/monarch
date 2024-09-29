@@ -135,7 +135,7 @@ instance (vlu ~ PyRef,
           EnvM m ObjAdr PyEnv,
           AllocM m PyLoc ObjAdr,
           GraphM (CP String) () m,
-          StoreM m ObjAdr obj)
+          StoreM ObjAdr obj m)
           =>
           PyM m obj vlu where
   pyCall = curry call 

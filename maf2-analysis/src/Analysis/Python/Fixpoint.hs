@@ -56,7 +56,7 @@ type IntraT m = MonadStack '[
 type IntraT' m = IntraT (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in IntraT type synonym
 
 type AnalysisM m obj = (PyDomain obj PyRef,
-                        StoreM m ObjAdr obj,
+                        StoreM ObjAdr obj m,
                         MapM PyCmp PyRes m,
                         MapM PyCmpTaint Taint m,
                         ComponentTrackingM m PyCmp,

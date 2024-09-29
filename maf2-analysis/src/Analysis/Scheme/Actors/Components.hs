@@ -31,7 +31,7 @@ instance
   {-# OVERLAPPING #-}
   ( EffectSVarM m (Component k),
     CtxM m k,
-    StoreM m (Component k) v, -- return values
+    StoreM (Component k) v m, -- return values
     ActorLocalM m (Pid Exp k) msg mb,
     AllocM m CExp k,
     EnvM m (EnvAdr k) (Env k)

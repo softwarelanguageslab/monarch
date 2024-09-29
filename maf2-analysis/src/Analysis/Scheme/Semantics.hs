@@ -75,7 +75,7 @@ evalLetrecStar bds bdy = do
       Monad.eval bdy
    where evalBinding adr (_, exp) = do 
             vlu <- Monad.eval exp
-            writeAdr @_ @_ @v adr vlu
+            writeAdr @_ @v adr vlu
             return vlu
 
 evalApp :: (SchemeDomain v, SchemeM m v) => Exp -> Exp -> [Exp] -> m v

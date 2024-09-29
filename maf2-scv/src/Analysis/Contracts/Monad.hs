@@ -55,9 +55,9 @@ class (BoolDomain b, Monad m) => MonadMonitoredContext c b m | m -> c b where
 
 type ContractM m v msg mb =
    (  -- Specialised stores
-      StoreM m (MAdr v) (MessageContract v),
-      StoreM m (FAdr v) (Flat v),
-      StoreM m (OAdr v) (Moα v),
+      StoreM (MAdr v) (MessageContract v) m,
+      StoreM (FAdr v) (Flat v) m,
+      StoreM (OAdr v) (Moα v) m,
       -- Specialized allocations
       AllocM m Exp (MAdr v),
       AllocM m Exp (FAdr v),

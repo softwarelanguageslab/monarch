@@ -33,11 +33,11 @@ import Domain.Contract.Message (ContractMessageDomain(..))
 
 -- | Get all message contracts from the given behavior contract 
 -- matching the given predicate
-matchingContractsOn :: (BehaviorContract c, Ord v, StoreM storeM (MAdr c) (MessageContract v)) => (forall b . BoolDomain b => MessageContract v -> b) -> c -> storeM (Set (MessageContract v))
+matchingContractsOn :: (BehaviorContract c, Ord v, StoreM (MAdr c) (MessageContract v) storeM) => (forall b . BoolDomain b => MessageContract v -> b) -> c -> storeM (Set (MessageContract v))
 matchingContractsOn f v =
    Set.fromList . filter (isTrue @(CP Bool) . f) <$> mapM lookupAdr (Set.toList $ behaviorMessageContracts v)
 -- | Get all message contracts from the given behavior contract that matches the given tag
-matchingContracts :: (BehaviorContract c,  Ord v, StoreM storeM (MAdr c) (MessageContract v), EqualLattice v) => v -> c -> storeM (Set (MessageContract v))
+matchingContracts :: (BehaviorContract c,  Ord v, StoreM (MAdr c) (MessageContract v) storeM, EqualLattice v) => v -> c -> storeM (Set (MessageContract v))
 matchingContracts t = matchingContractsOn (eql t . MC.tag)
 
 -- | Checks the message against the contract in the 

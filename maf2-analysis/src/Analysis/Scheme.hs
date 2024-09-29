@@ -109,9 +109,9 @@ newtype CallT v ctx m a = CallT (IdentityT m a) deriving (Monad, Functor, Applic
 -- and reads the return value from the store.
 instance {-# OVERLAPPING #-} (
           CtxM m ctx,
-          StoreM m (EnvAdr ctx) v,
+          StoreM (EnvAdr ctx) v m,
           EnvM m (EnvAdr ctx) (Env ctx),
-          StoreM m (Component v ctx) v,
+          StoreM (Component v ctx) v m,
           EffectSVarM m (Component v ctx),
           SchemeAnalysisConstraints (EnvAdr ctx) v ctx
          ) => CallM (CallT v ctx m) (Env ctx) v where
@@ -161,7 +161,7 @@ initialState = do
 -- | Evaluates the given expression in the appropriate monad and writes its result to the store
 -- on the return address
 
-evalRet :: forall v ctx m . (EvalM m v Exp, StoreM m (Component v ctx) v, EqualLattice v) => Component v ctx -> Exp -> m ()
+evalRet :: forall v ctx m . (EvalM m v Exp, StoreM (Component v ctx) v m) => Component v ctx -> Exp -> m ()
 evalRet cmp = eval >=> writeAdr cmp
 
 -- | Analyses the given program into an analysis

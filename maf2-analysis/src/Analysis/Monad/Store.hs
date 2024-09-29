@@ -47,7 +47,7 @@ import Data.Kind
 --- StoreM typeclass
 ---
 
-class (Monad m, Lattice v) => StoreM m a v | m a -> v where
+class (Monad m, Lattice v) => StoreM a v m | m a -> v where
    -- | Write to a newly allocated address
    writeAdr  :: a -> v -> m ()
    -- | Update an existing address
@@ -61,22 +61,22 @@ class (Monad m, Lattice v) => StoreM m a v | m a -> v where
 
    {-# MINIMAL lookupAdr, writeAdr, (updateAdr | updateWith) #-}
 
-updateAndCheck :: StoreM m a v => a -> (a -> m ()) -> m Bool
+updateAndCheck :: StoreM a v m => a -> (a -> m ()) -> m Bool
 updateAndCheck a f = do old <- lookupAdr a
                         f a
                         new <- lookupAdr a
                         return (old /= new)
 
 -- | Convenience function: writes to an address `a` and checks if the value in the store at `a` has changed
-writeAdr' :: StoreM m a v => a -> v -> m Bool
+writeAdr' :: StoreM a v m => a -> v -> m Bool
 writeAdr' a v = updateAndCheck a (`writeAdr` v)
 
 -- | Convenience function: updates an address `a` and checks if the value in the store at `a` has changed
-updateAdr' :: StoreM m a v => a -> v -> m Bool
+updateAdr' :: StoreM a v m => a -> v -> m Bool
 updateAdr' a v = updateAndCheck a (`updateAdr` v)
 
 -- | Convenience function: updates an address `a` and checks if the value in the store at `a` has changed
-updateWith' :: StoreM m a v => {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> m Bool
+updateWith' :: StoreM a v m => {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> m Bool
 updateWith' fs fw a = updateAndCheck a (updateWith fs fw)
 
 -- | Lookup
@@ -84,14 +84,14 @@ lookups :: (Lattice a, MonadJoin m) => (adr -> m v) -> (adr -> v -> m a) -> Set 
 lookups look f = mjoinMap (\adr -> look adr >>= f adr)
 
 -- | Deref 
-deref :: (StoreM m a v, MonadJoin m, Lattice r) => (a -> v -> m r) -> Set a -> m r
+deref :: (StoreM a v m, MonadJoin m, Lattice r) => (a -> v -> m r) -> Set a -> m r
 deref = lookups lookupAdr
 
-deref' :: (StoreM m a v, MonadJoin m) => Set a -> m v
+deref' :: (StoreM a v m, MonadJoin m) => Set a -> m v
 deref' = mjoins . map lookupAdr . Set.toList
 
 -- | Store the given value in the store using the an address allocator on the monadic stack.
-store :: (AllocM m from adr, StoreM m adr v) => from -> v -> m adr
+store :: (AllocM m from adr, StoreM adr v m) => from -> v -> m adr
 store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 
 
@@ -102,13 +102,13 @@ store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 newtype StoreT s adr vlu m a = StoreT { getStoreT :: StateT s m a }
    deriving (Applicative, Functor, Monad, MonadJoin, MonadState s, MonadLayer, MonadTrans, MonadTransControl, MonadCache)
 
-instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM (StoreT s a v m) a v where
+instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM a v (StoreT s a v m) where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    updateWith fs fw adr = modify (Store.updateStoWith fs fw adr)
    lookupAdr = gets . Store.lookupSto
 
-instance (Monad (t m), StoreM m adr v, MonadLayer t) => StoreM (t m) adr v where
+instance (Monad (t m), StoreM adr v m, MonadLayer t) => StoreM adr v (t m) where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
    lookupAdr  =  upperM . lookupAdr
@@ -133,7 +133,7 @@ runWithStore = runStoreT Store.emptySto
 newtype StoreT' adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
                               deriving (Applicative, Functor, Monad, MonadJoin, MonadState (Map adr (SVar v)), MonadLayer, MonadTrans)
 
-instance {-# OVERLAPPING #-} (SVar.MonadStateVar m, Lattice v, Ord adr) => StoreM (StoreT' adr v m) adr v where
+instance {-# OVERLAPPING #-} (SVar.MonadStateVar m, Lattice v, Ord adr) => StoreM adr v (StoreT' adr v m) where
    writeAdr adr vlu =
       gets (Map.lookup adr) >>=
          maybe (SVar.new vlu >>= (\var -> modify (Map.insert adr var) >> void (SVar.modify (const (Just vlu)) var)))

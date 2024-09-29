@@ -29,8 +29,8 @@ instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp
                         (upperM $ spawn cmp >> add cmp)
     components = upperM components
 
-instance {-# OVERLAPPING #-} (StoreM m a v, DependencyTrackingM m cmp a, WorkListM m cmp)
-        => StoreM (IntraAnalysisT cmp m) a v where
+instance {-# OVERLAPPING #-} (StoreM a v m, DependencyTrackingM m cmp a, WorkListM m cmp)
+        => StoreM a v (IntraAnalysisT cmp m) where
     lookupAdr a = currentCmp >>= upperM . register a >> upperM (lookupAdr a)
     writeAdr a v = whenM (upperM $ writeAdr' a v) (upperM $ trigger a)
     updateAdr a v = whenM (upperM $ updateAdr' a v) (upperM $ trigger a)

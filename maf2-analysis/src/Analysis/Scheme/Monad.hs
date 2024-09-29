@@ -31,10 +31,10 @@ type SchemeDomainM e v m = (
    Boo v    ~ v,
    EqualLattice v,
    -- Store interactions
-   StoreM m (PAdr v) (PaiDom v),
-   StoreM m (Adr v)  (VarDom v),
-   StoreM m (VAdr v) (VecDom v),
-   StoreM m (SAdr v) (StrDom v),
+   StoreM (PAdr v) (PaiDom v) m,
+   StoreM (Adr v)  (VarDom v) m,
+   StoreM (VAdr v) (VecDom v) m,
+   StoreM (SAdr v) (StrDom v) m,
    -- Allocation
    AllocM m Ide (Adr v),   -- variable allocation
    AllocM m e (PAdr v),    -- pair allocation

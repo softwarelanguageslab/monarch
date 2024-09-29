@@ -65,7 +65,7 @@ import Control.Monad.Join (MonadJoin)
 
 -- | Set of pre-conditions holding for functions in 
 -- propagation strategies.
-type PropagationM m a v retAdr = (LocalStoreM m a (Symbolic v), StoreM m retAdr (PC, SymSto a v), MonadPathCondition m v)
+type PropagationM m a v retAdr = (LocalStoreM m a (Symbolic v), StoreM retAdr (PC, SymSto a v) m, MonadPathCondition m v)
 
 -- | Our propagation strategies are based on several hooks that are
 -- called in key places during the analysis.
@@ -114,15 +114,15 @@ newtype SymRet cmp = SymRet cmp
 instance
   {-# OVERLAPPING #-}
   ( Monad m,
-    StoreM m cmp v,
+    StoreM cmp v m,
     SymbolicValue v,
     PropagationStrategy s vadr v ctx,
     MonadPathCondition m v,
     LocalStoreM m vadr (Symbolic v),
-    StoreM m cmp v,
-    StoreM m (SymRet cmp) (PC, SymSto vadr v)
+    StoreM cmp v m,
+    StoreM (SymRet cmp) (PC, SymSto vadr v) m
   ) =>
-  StoreM (PropagationT s vadr v cmp m) cmp v
+  StoreM cmp v (PropagationT s vadr v cmp m)
   where
   lookupAdr cmp = do
     uncurry (callReturn @s @vadr @v) =<< lookupAdr (SymRet cmp)
