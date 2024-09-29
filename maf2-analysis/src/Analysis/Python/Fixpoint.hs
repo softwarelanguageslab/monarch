@@ -38,12 +38,13 @@ import Data.Maybe
 import Lattice.Tainted (Tainted(..))
 import qualified Debug.Trace as Debug
 import Data.Graph
+import Analysis.Store (CountingMap)
 
 ---
 --- Python analysis fixpoint algorithm
 ---
 
-type Store obj = Map ObjAdr obj
+type Store obj = CountingMap ObjAdr obj
 
 type IntraT obj m  = MonadStack '[
                         MayEscapeTaintedT Taint (Set (PyEsc PyRef)),
