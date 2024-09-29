@@ -36,6 +36,7 @@ import Domain.Core.TaintDomain
 import Data.Singletons (SingI, sing)
 import Domain.Class (Domain)
 import qualified Domain.Class as Domain
+import Domain (CPDictionary)
 
 --
 -- Addresses
@@ -105,6 +106,7 @@ type PyDomain obj vlu = (PyVal vlu,
                          Abs obj LstPrm ~ CPList vlu, 
                          Abs obj TupPrm ~ CPList vlu,
                          Abs obj StrPrm ~ CP String,
+                         Abs obj DctPrm ~ CPDictionary String vlu, 
                          Abs obj DfrPrm ~ (),
                          Abs obj SrsPrm ~ ())
 

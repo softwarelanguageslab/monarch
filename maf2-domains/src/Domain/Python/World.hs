@@ -90,7 +90,8 @@ methods ListType          = [(GetItemAttr, ListGetItem),
                              (IterAttr,    ListIter)]
 methods FrameType         = []
 methods DictionaryType    = [(GetItemAttr, DictGetItem),
-                             (SetItemAttr, DictSetItem)]
+                             (SetItemAttr, DictSetItem),
+                             (KeysAttr,    DictKeys)]
 methods ObjectType        = [(InitAttr, ObjectInit)]
 methods TypeType          = [(InitAttr, TypeInit)]
 methods ExceptionType     = []
@@ -137,6 +138,7 @@ data PyPrim     =
                 -- dict primitives
                 | DictGetItem 
                 | DictSetItem
+                | DictKeys 
                 -- list primitives
                 | ListGetItem
                 | ListSetItem
@@ -205,6 +207,7 @@ data PyAttr = ClassAttr
             | RenameAttr 
             | DropNAAttr
             | AsTypeAttr 
+            | KeysAttr 
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -246,6 +249,7 @@ attrStr EmptyAttr     = "empty"
 attrStr RenameAttr    = "rename"
 attrStr DropNAAttr    = "dropna"
 attrStr AsTypeAttr    = "astype"
+attrStr KeysAttr      = "keys"
 
 -- | Built-in objects in Python 
 data PyConstant = None

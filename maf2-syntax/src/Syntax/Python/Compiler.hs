@@ -54,7 +54,8 @@ data PyTag = FrmTag
            | NxtExc
            | ItrIdx
            | ItrLst
-   deriving (Eq, Ord, Show, Bounded, Enum)
+           | DctKey String
+   deriving (Eq, Ord, Show)
 
 instance Show PyLoc where
    show (PyLoc s t) = locStr ++ tagStr

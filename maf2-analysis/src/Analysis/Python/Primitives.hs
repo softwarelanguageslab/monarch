@@ -6,6 +6,7 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Analysis.Python.Primitives (applyPrim) where
 
@@ -29,6 +30,8 @@ import Data.Singletons.TH
 import Data.Functor (($>))
 import Control.Monad.Escape (MonadEscape(..), orElse)
 import Domain (BoolDomain(..))
+import qualified Data.Set as Set
+import qualified Data.Map as Map 
 
 ---
 --- Primitives implementation
@@ -66,6 +69,15 @@ applyPrim StringAppend  = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc . f
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
 applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (updateDct k) v a1) a2 
    where updateDct key vlu = return . Domain.updateWeak key vlu  
+applyPrim DictKeys      = prim1' @DctPrm $ \loc -> \case 
+                                                        Domain.BotDict          -> mzero
+                                                        Domain.CPDict kys dct _ -> if Set.size kys == Map.size dct
+                                                                                   then do sts <- mapM (\str -> pyStore (tagAs (DctKey str) loc) $ from' @StrPrm str) (Map.keys dct)
+                                                                                           pyStore loc $ from @LstPrm $ SeqDomain.fromList sts 
+                                                                                   else do str <- pyStore loc $ from @StrPrm (joins $ map Constant $ Map.keys dct)
+                                                                                           pyStore loc $ from @LstPrm (SeqDomain.TopList str)
+                                                        Domain.TopDict _ _  -> do str <- pyStore loc $ from @StrPrm Top --TODO improve precision (don't reuse loc)
+                                                                                  pyStore loc $ from @LstPrm (SeqDomain.TopList str)
 -- list primitives
 applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref
 applyPrim ListSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @IntPrm (\i -> none $ pyAssignInPrm SLstPrm (SeqDomain.setWeak i) v a1) a2 
