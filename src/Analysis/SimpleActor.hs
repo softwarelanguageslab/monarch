@@ -13,7 +13,6 @@ import Syntax.AST
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Scheme.Prelude (CPActorValue)
 import Analysis.Monad.Fix
-import Analysis.Monad.Join
 import Control.Monad.Escape
 import qualified Analysis.Scheme.Primitives as P
 import Data.Set (Set)
@@ -134,4 +133,3 @@ analyze exp =
             & runWithWorkList @[_]
             & runIdentity
       in ((((), sto), mb), mapping)
-

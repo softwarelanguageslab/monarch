@@ -19,8 +19,8 @@ compile ex@(Atom "lambda" _ ::: args ::: e ::: (SNil _)) =
    Lam <$> smapM compileParam args <*> compile e <*> pureSpan ex
 compile e@(Atom "lambda" _ ::: _) =
    throwError $ "invalid syntax for lambda " ++ show e
-compile ex@(Atom "spawn" _ ::: e ::: SNil _) = Spawn <$> compile e <*> pureSpan ex
-compile e@(Atom "spawn" _ ::: _) =
+compile ex@(Atom "spawn^" _ ::: e ::: SNil _) = Spawn <$> compile e <*> pureSpan ex
+compile e@(Atom "spawn^" _ ::: _) =
    throwError $ "invalid syntax for spawn " ++ show e
 compile ex@(Atom "letrec" _ ::: bds ::: e2 ::: SNil _) =
    Letrec <$> smapM compileBdn bds <*> compile e2 <*> pureSpan ex
@@ -35,9 +35,9 @@ compile e@(Atom "pair" _ ::: _) =
    throwError $ "invalid syntax for pair " ++ show e
 compile ex@(Atom "receive" _ ::: pats ::: SNil _) =
    Receive <$> compilePats pats <*> pureSpan ex
-compile ex@(Atom "send" _ ::: receiver ::: payload ::: SNil _) =
+compile ex@(Atom "send^" _ ::: receiver ::: payload ::: SNil _) =
    Send <$> compile receiver <*> compile payload <*> pureSpan ex
-compile e@(Atom "send" _ ::: _) =
+compile e@(Atom "send^" _ ::: _) =
    throwError $ "invalid syntax for send " ++ show e
 compile em@(Atom "meta" _ ::: e ::: SNil _) = 
    Meta <$> compile e <*> pure (spanOf em)
@@ -55,9 +55,7 @@ compile e@(Atom "if" _ ::: _) =
    throwError $ "invalid syntax for if " ++ show e
 compile ex@(Atom "begin" _ ::: exs) =
    Begin <$> smapM compile exs <*> pureSpan ex
-compile ex@(Atom "self" _ ::: SNil _) = pure $ Self (spanOf ex)
-compile e@(Atom "self" _ ::: _) =
-   throwError $ "invalid syntax for self " ++ show e
+compile ex@(Atom "self^" _) = pure $ Self (spanOf ex)
 compile (Atom "quote" span' ::: s ::: SNil _) = compile (Quo s span')
 compile ex@(Atom "blame" _ ::: party ::: _) = Blame <$> compile party <*> pureSpan ex
 compile ex@(Atom "parametrize" _ ::: bds ::: bdy ::: SNil _) = 

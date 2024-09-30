@@ -78,7 +78,7 @@ eval' rec (Parametrize bds e2 _) = do
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (eval' rec . snd) bds
    mapM_ (uncurry writeAdr) (zip ads vs)
-   withExtendedDynamic bds' (eval' rec e2)
+   trace ("[**] parametrize: " ++ show bds') $ withExtendedDynamic bds' (eval' rec e2)
 eval' rec (Begin exs _) =
    last <$> mapM (eval' rec) exs
 eval' rec e@(Pair e1 e2 _) =

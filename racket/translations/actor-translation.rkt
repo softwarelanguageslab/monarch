@@ -9,8 +9,10 @@
   (match e
    [(quasiquote (behavior ,ags ,handlers))
     `(lambda ,ags 
-       (receive 
-         ,(map translate-handler handlers)))]
+       (parametrize 
+         ((self (lambda (m) (send^ self^ m))))
+          (receive 
+            ,(map translate-handler handlers))))]
    [(quasiquote (behavior ,@es))
     (invalid-syntax "behavior" e)]
    [(quasiquote (become ,b ,@ags))
@@ -18,13 +20,17 @@
    [(quasiquote (become ,@es))
     (invalid-syntax "become" e)]
    [(quasiquote (send ,rcv  ,tag ,@payload))
-    `(send ,(translate rcv) ,(uncurry (cons `(quote ,tag) (translate payload))))]
+    `(,(translate rcv) ,(uncurry (cons `(quote ,tag) (translate payload))))]
    [(quasiquote (send ,@es))
     (invalid-syntax "send" e)]
    [(quasiquote (spawn ,beh ,@ags))
-    `(spawn (,beh ,@ags))]
+    `(lambda (msg) 
+       (letrec ((act (spawn^ (,beh ,@ags))))
+         (send^ act msg)))]
    [(quasiquote (spawn ,@es))
     (invalid-syntax "spawn" e)]
+   [(quasiquote self)
+    '(dyn self)]
    [(quasiquote (,es ...))
      `(,@(map translate es))]
    [x x]))

@@ -20,7 +20,6 @@
 ;; not always directly appear in contract 
 ;; monitors before program reduction.
 
-
 (define (translate-aux e) 
   (match e
     [(quasiquote (flat ,e))
