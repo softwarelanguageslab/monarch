@@ -23,7 +23,7 @@ import System.IO
 import Data.Function ((&))
 import Control.Monad.Escape (MayEscape(..))
 import "maf2-analysis" Data.Graph (edges)
-import Lattice 
+import Lattice hiding (Value)
 import Analysis.Store (CountingMap, store)
 
 newtype Options = Options String 
@@ -82,6 +82,8 @@ runFile fileName =
 generateGraph :: [String] -> IO () 
 generateGraph files =
    do putStrLn "digraph ECOPIPE {"
+      putStrLn "\trankdir=\"LR\";"
+      putStrLn "graph [overlap = true, fontname = Helvetica];"
       mapM_ generateGraphForFile files 
       putStrLn "}"
    where generateGraphForFile file = do program <- readFile file
@@ -96,6 +98,12 @@ generateGraph files =
          shortFileName = reverse . takeWhile (/='/') . reverse 
 
 main :: Options -> IO ()
-main (Options fileName) = generateGraph ["programs/python/zensor/add_regime_status_tag.py"]
+main (Options fileName) = generateGraph [
+                              "programs/python/zensor/add_regime_status_tag.py",
+                              "programs/python/zensor/strain_resample.py",
+                              "programs/python/zensor/bolt_str_stats_per_movement.py",
+                              "programs/python/zensor/str_stats_per_movement.py",
+                              "programs/python/zensor/displacement_corrected_for_inclination.py"
+                           ]
 
 

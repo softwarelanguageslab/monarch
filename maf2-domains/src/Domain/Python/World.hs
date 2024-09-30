@@ -102,8 +102,11 @@ methods DataFrameType     = [(GetItemAttr, DataFrameGetItem),
                              (SetItemAttr, DataFrameSetItem),
                              (EmptyAttr,  DataFrameEmpty),
                              (RenameAttr, DataFrameRename),
-                             (DropNAAttr, DataFrameDropNA)]
-methods SeriesType        = [(AsTypeAttr, SeriesAsType)]
+                             (DropNAAttr, DataFrameDropNA),
+                             (AppendAttr, DataFrameAppend),
+                             (FromSeriesAttr, DataFrameFromSeries)]
+methods SeriesType        = [(AsTypeAttr, SeriesAsType),
+                             (MergeAttr,  SeriesMerge)]
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
@@ -158,8 +161,11 @@ data PyPrim     =
                 | DataFrameDropNA
                 | DataFrameGetItem
                 | DataFrameSetItem 
+                | DataFrameAppend 
+                | DataFrameFromSeries
                 -- series primitives
                 | SeriesAsType 
+                | SeriesMerge
   deriving (Eq, Ord, Enum, Bounded, Show)
 
 -- | Special add-on primitives
@@ -208,6 +214,9 @@ data PyAttr = ClassAttr
             | DropNAAttr
             | AsTypeAttr 
             | KeysAttr 
+            | AppendAttr 
+            | MergeAttr
+            | FromSeriesAttr
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -250,6 +259,9 @@ attrStr RenameAttr    = "rename"
 attrStr DropNAAttr    = "dropna"
 attrStr AsTypeAttr    = "astype"
 attrStr KeysAttr      = "keys"
+attrStr AppendAttr    = "append"
+attrStr MergeAttr     = "merge"
+attrStr FromSeriesAttr = "from_series"
 
 -- | Built-in objects in Python 
 data PyConstant = None

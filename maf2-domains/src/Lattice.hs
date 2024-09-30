@@ -26,7 +26,7 @@ import Lattice.MaybeLattice
 import Lattice.ProductLattice
 import Lattice.ReversePowerSetLattice
 import Lattice.SetLattice
-import Lattice.TopLiftedLattice
+import Lattice.TopLiftedLattice hiding (Top)
 import Lattice.UnitLattice
 import Lattice.Identity
 import Lattice.Equal

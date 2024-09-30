@@ -1,6 +1,6 @@
 -- | Lifts an infinite domain such that a widening 
 -- operator is implemented that widens to `Top.
-module Lattice.TopLiftedLattice(TopLifted) where
+module Lattice.TopLiftedLattice(TopLifted(..)) where
 
 import Lattice.Class
 import Lattice.Split 

@@ -74,19 +74,15 @@ type AnalysisM m obj = (PyDomain obj PyRef,
                         WorkListM m PyCmp)
 
 newtype PyCmpTaint = PyCmpTaint PyCmp
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show)
 newtype PyCmpStoreIn = PyCmpStoreIn PyCmp
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show)
 newtype PyCmpStoreOut = PyCmpStoreOut PyCmp
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show)
 
 
 type PyCmp = Key (IntraT () Identity) PyBdy
 type PyRes = Val (IntraT () Identity) PyRef  
-
--- TODO: parameterize this
-k :: Int
-k = 10
 
 intra :: forall obj m . AnalysisM m obj => PyCmp -> m ()
 intra cmp = runIntraAnalysis cmp m
@@ -97,7 +93,6 @@ intra cmp = runIntraAnalysis cmp m
                                 & runWithTaint t 
                                 & runStoreT s 
                  Analysis.Monad.put (PyCmpStoreOut cmp) s'
-                 return ()
           callFix :: PyLoc -> PyBdy -> IntraT' obj m PyRef
           callFix _ bdy = do cmp' <- key bdy
                              Analysis.Monad.joinWith (PyCmpTaint cmp')   =<< currentTaint 

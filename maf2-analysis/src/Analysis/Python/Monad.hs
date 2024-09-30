@@ -32,15 +32,15 @@ import Analysis.Python.Escape
 import Prelude hiding (lookup, exp, break)
 import Control.Monad.AbstractM (AbstractM)
 import Control.Monad ((>=>), (<=<))
-import Domain.Python.Objects.Class (PyObj(..), at, set, atPrm)
+import Domain.Python.Objects.Class (PyObj(..), at, atPrm)
 import Analysis.Monad.Call (CallM(..))
-import Domain.Core.TaintDomain
 import Lattice.Tainted (Tainted(..))
 import Data.Singletons (SingI, Sing)
-import Data.Kind (Type)
-import Data.Set (Set, singleton)
+import Data.Set (Set)
 import Data.Functor (($>))
-import qualified Debug.Trace as Debug
+import qualified Data.Set as Set 
+import qualified Lattice.TopLiftedLattice as TopLattice
+import Text.Printf (printf)
 
 --
 -- The Python monad 
@@ -50,7 +50,12 @@ import qualified Debug.Trace as Debug
 data PyBdy = Main PyPrg
            | FuncBdy PyLoc PyStm
            | LoopBdy PyLoc PyExp PyStm
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show PyBdy where
+  show (Main _) = "<main>"
+  show (FuncBdy loc _) = printf "<func at %s>" (show loc)
+  show (LoopBdy loc _ _) = printf "<loop at %s>" (show loc)
 
 class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   -- components -- >
@@ -107,17 +112,17 @@ pyStore loc = fmap injectAdr . pyAlloc loc
 
 -- Taint analysis instance 
 
-instance Ord a => Semigroup (CP a) where
+instance Ord a => Semigroup (TopLifted (Set a)) where
   (<>) = join
-instance Ord a => Monoid (CP a) where
+instance Ord a => Monoid (TopLifted (Set a)) where
   mempty = bottom 
 
 -- kcfa k
 -- TODO: parameterize this
 k :: Int 
-k = 10
+k = 1
 
-type Taint = CP String  
+type Taint = TopLifted (Set String)
 type PyRef = Tainted Taint ObjAddrSet
 type PyRet = Tainted Taint (Set (PyEsc PyRef))
 
@@ -163,11 +168,16 @@ instance (vlu ~ PyRef,
   pyLookupSto = lookupAdr
   pyWithCtx loc = withCtx (take k . (loc:)) 
   applyXPrim ObjectTaint _ = \case
-                                [a] -> withTaint (Constant "boe") (addTaint a)
+                                [a] -> withTaint @Taint TopLattice.Top (addTaint a)
                                 _   -> pyError ArityError
   applyXPrim DatabaseRead loc = \case
-                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint nam $ addTaint =<< pyStore loc (from' @DfrPrm ())) str
-                                  _        -> pyError ArityError    
+                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm ())) str
+                                  _        -> pyError ArityError
+                                  where toTaint Lattice.Bottom         = TopLattice.Value Set.empty
+                                        toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
+                                        toTaint Lattice.Top            = TopLattice.Top 
   applyXPrim DatabaseWrite _ = \case
-                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\_ nam -> currentTaint >>= \t -> addEdge t nam () $> constant None) df str 
+                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\_ nam -> currentTaint @Taint >>= \t -> addEdges nam t $> constant None) df str 
                                   _            -> pyError ArityError  
+                                  where addEdges to TopLattice.Top = addEdge Lattice.Top to () 
+                                        addEdges to (TopLattice.Value s) = mapM_ (\from -> addEdge (Lattice.Constant from) to ()) (Set.toList s) 
