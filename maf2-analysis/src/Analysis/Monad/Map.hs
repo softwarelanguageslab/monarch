@@ -1,7 +1,15 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Analysis.Monad.Map where
+module Analysis.Monad.Map (
+    MapM(..),
+    MapT, 
+    getOrBot,
+    put',
+    joinWith',
+    runWithMapping,
+    runWithMapping'
+) where
 
 import Control.Monad.Trans
 import Control.Monad.Layer
@@ -36,7 +44,7 @@ put' k v = do old <- get k
               put k v
               return (old /= Just v)
 
-joinWith' :: (Eq v, Lattice v, MapM k v m) => k -> v -> m Bool
+joinWith' :: (Lattice v, MapM k v m) => k -> v -> m Bool
 joinWith' k v = do old <- getOrBot k
                    joinWith k v
                    return (not $ subsumes old v)

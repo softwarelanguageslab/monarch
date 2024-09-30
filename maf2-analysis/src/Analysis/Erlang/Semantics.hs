@@ -1,6 +1,11 @@
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
 module Analysis.Erlang.Semantics where
 
-import Analysis.Monad hiding (CallM(..), call)
+import Analysis.Monad.Allocation ( AllocM(alloc) )
+import Analysis.Monad.Environment
+    ( EnvM(withEnv, getEnv, lookupEnv) )
+import Analysis.Monad.Store ( StoreM(lookupAdr, writeAdr) )
 import Analysis.Erlang.Monad
 import Syntax.Erlang
 import Domain.Erlang.Class
@@ -50,5 +55,5 @@ evalClauses [] = escape MatchError
 
 
 -- | (Try to) evaluate a single clause
-evalClause :: ErlangM m v mb => Clause -> m v
+evalClause :: Clause -> m v
 evalClause = undefined

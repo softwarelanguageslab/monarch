@@ -27,6 +27,11 @@ instance (PartialOrder v) => PartialOrder (TopLifted v) where
 instance TopLattice (TopLifted v) where 
    top = Top
 
+instance Lattice a => Semigroup (TopLifted a) where
+  (<>) = join
+instance Lattice a => Monoid (TopLifted a) where
+  mempty = bottom 
+
 instance (SplitLattice v, Ord v) => SplitLattice (TopLifted v) where
    split (Value v) = Set.map Value (split v) 
    split Top = Set.singleton Top 

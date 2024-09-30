@@ -8,13 +8,15 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE LambdaCase #-}
 
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+
 module Analysis.Python.Primitives (applyPrim) where
 
 import Domain.Python.World
 import Domain.Python.Objects
 
 import Lattice
-import Domain (NumberDomain)
+import Domain ( NumberDomain, BoolDomain(..) )
 import qualified Domain.Core.SeqDomain as SeqDomain
 import qualified Domain
 import Domain.Python.Syntax hiding (Dict, None)
@@ -28,10 +30,9 @@ import Control.Monad ( liftM2, (>=>) )
 import qualified Control.Monad as Monad
 import Data.Singletons.TH
 import Data.Functor (($>))
-import Control.Monad.Escape (MonadEscape(..), orElse)
-import Domain (BoolDomain(..))
+import Control.Monad.Escape (orElse)
 import qualified Data.Set as Set
-import qualified Data.Map as Map 
+import qualified Data.Map as Map
 
 ---
 --- Primitives implementation
@@ -67,38 +68,38 @@ applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
 applyPrim StringAppend  = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc . from @StrPrm =<< Domain.append s1 s2
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
-applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (updateDct k) v a1) a2 
-   where updateDct key vlu = return . Domain.updateWeak key vlu  
-applyPrim DictKeys      = prim1' @DctPrm $ \loc -> \case 
+applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (updateDct k) v a1) a2
+   where updateDct key vlu = return . Domain.updateWeak key vlu
+applyPrim DictKeys      = prim1' @DctPrm $ \loc -> \case
                                                         Domain.BotDict          -> mzero
                                                         Domain.CPDict kys dct _ -> if Set.size kys == Map.size dct
                                                                                    then do sts <- mapM (\str -> pyStore (tagAs (DctKey str) loc) $ from' @StrPrm str) (Map.keys dct)
-                                                                                           pyStore loc $ from @LstPrm $ SeqDomain.fromList sts 
+                                                                                           pyStore loc $ from @LstPrm $ SeqDomain.fromList sts
                                                                                    else do str <- pyStore loc $ from @StrPrm (joins $ map Constant $ Map.keys dct)
                                                                                            pyStore loc $ from @LstPrm (SeqDomain.TopList str)
                                                         Domain.TopDict _ _  -> do str <- pyStore loc $ from @StrPrm Top --TODO improve precision (don't reuse loc)
                                                                                   pyStore loc $ from @LstPrm (SeqDomain.TopList str)
 -- list primitives
 applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref
-applyPrim ListSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @IntPrm (\i -> none $ pyAssignInPrm SLstPrm (SeqDomain.setWeak i) v a1) a2 
+applyPrim ListSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @IntPrm (\i -> none $ pyAssignInPrm SLstPrm (SeqDomain.setWeak i) v a1) a2
 applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyStore loc $ from @IntPrm (SeqDomain.length l)
 applyPrim ListIter      = prim1 $ \loc l -> do n <- pyStore (tagAs ItrIdx loc) $ from' @IntPrm @_ @Integer 0
                                                let obj = new'' ListIteratorType [(attrStr ListAttr, l), (attrStr IndexAttr, n)]
                                                pyStore (tagAs ItrLst loc) obj
 -- list iterator primitives
-applyPrim ListIteratorNext = prim1 $ pyDeref . next 
+applyPrim ListIteratorNext = prim1 $ pyDeref . next
            where
               next :: PyLoc -> ObjAdr -> obj -> pyM vlu
               next loc adr obj = do let lst = getAttr (attrStr ListAttr) obj
                                     let idx = getAttr (attrStr IndexAttr) obj
                                     advance loc adr lst idx `orElse` stopIteration loc
               advance :: PyLoc -> ObjAdr -> vlu -> vlu -> pyM vlu
-              advance loc adr = pyDeref2'' @LstPrm @IntPrm $ 
+              advance loc adr = pyDeref2'' @LstPrm @IntPrm $
                                         \l i -> do v <- SeqDomain.ref i l
-                                                   n <- Domain.inc i 
-                                                   idx <- pyStore (tagAs NxtIdx loc) $ from @IntPrm n 
+                                                   n <- Domain.inc i
+                                                   idx <- pyStore (tagAs NxtIdx loc) $ from @IntPrm n
                                                    pyAssignAt (attrStr IndexAttr) idx adr
-                                                   return v  
+                                                   return v
               stopIteration :: PyLoc -> pyM vlu
               stopIteration loc = pyRaise =<< pyStore (tagAs NxtExc loc) (new' StopIterationExceptionType)
 -- type primitives
@@ -111,21 +112,21 @@ applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
 -- DataFrame primitives
 applyPrim DataFrameGetItem = prim2' @DfrPrm @StrPrm $ \loc _ _ -> pyStore loc (from @SrsPrm ())
 applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref'' @StrPrm (\_ -> none $ pyAssignInPrm SDfrPrm (const return) a3 a1) a2
-applyPrim DataFrameEmpty   = prim1' @DfrPrm $ \loc _ -> pyStore loc (from @BlnPrm boolTop)  
+applyPrim DataFrameEmpty   = prim1' @DfrPrm $ \loc _ -> pyStore loc (from @BlnPrm boolTop)
 applyPrim DataFrameRename  = prim2' @DfrPrm @DctPrm $ \loc df _ -> pyStore loc (from @DfrPrm df)
-applyPrim DataFrameDropNA  = prim1' @DfrPrm $ \loc df -> pyStore loc (from @DfrPrm df) 
+applyPrim DataFrameDropNA  = prim1' @DfrPrm $ \loc df -> pyStore loc (from @DfrPrm df)
 applyPrim DataFrameAppend  = prim2' @DfrPrm @DfrPrm $ \loc _ _ -> pyStore loc (from @DfrPrm ())
 applyPrim DataFrameFromSeries = prim1' @SrsPrm $ \loc _ -> pyStore loc (from @DfrPrm ())
 -- Series primitives
-applyPrim SeriesAsType    = prim2 $ \_ self _ -> return self  
-applyPrim SeriesMerge     = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1   
+applyPrim SeriesAsType    = prim2 $ \_ self _ -> return self
+applyPrim SeriesMerge     = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1
 
 --
 -- Primitive helpers 
 --
 
 none :: forall pyM obj vlu a . PyM pyM obj vlu => pyM a -> pyM vlu
-none = ($> constant None) 
+none = ($> constant None)
 
 prim0 :: forall pyM obj vlu . PyM pyM obj vlu
         => (PyLoc -> pyM vlu)            -- ^ the primitive function

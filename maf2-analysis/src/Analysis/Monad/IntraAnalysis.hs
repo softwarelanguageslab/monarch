@@ -10,13 +10,11 @@ import Analysis.Monad.ComponentTracking
 import Analysis.Monad.WorkList
 import Control.Monad.Reader
 import Control.Monad.Layer
-import Control.Monad.Lift
 import Control.Monad.Join
 import Analysis.Monad.DependencyTracking
 import Analysis.Monad.Store
 import Control.Monad.Cond
 import Analysis.Monad.Map
-import qualified Debug.Trace as Debug 
 
 ---
 --- IntraAnalysis monad layer 
@@ -37,7 +35,7 @@ instance {-# OVERLAPPING #-} (StoreM a v m, DependencyTrackingM m cmp a, WorkLis
     updateAdr a v = whenM (upperM $ updateAdr' a v) (upperM $ trigger a)
     updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger a)
 
-instance {-# OVERLAPPING #-} (MapM k v m, Eq v, Show k, DependencyTrackingM m cmp k, WorkListM m cmp)
+instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM m cmp k, WorkListM m cmp)
     => MapM k v (IntraAnalysisT cmp m) where
         get k = currentCmp >>= upperM . register k >> upperM (get k)
         put k v = whenM (upperM $ put' k v) (upperM $ trigger k)

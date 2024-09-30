@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Analysis.Context where
 
@@ -8,7 +9,6 @@ import Analysis.Monad (AllocM(..))
 import Analysis.Monad.Context
 import Control.Monad.Identity (IdentityT, runIdentityT)
 import Control.Monad.Layer
-import Control.Monad.Trans.Class
 
 ------------------------------------------------------------
 -- m-cfa

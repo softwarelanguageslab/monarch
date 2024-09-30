@@ -1,7 +1,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Analysis.Monad.Call where
+module Analysis.Monad.Call (
+    CallM(..),
+    CallT(..),
+    runCallT
+) where
 
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.Reader (MonadReader(..))

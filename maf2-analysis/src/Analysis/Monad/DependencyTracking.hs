@@ -15,7 +15,6 @@ import qualified Data.Map as Map
 import Analysis.Monad.WorkList
 import Control.Monad.State
 import Control.Monad.Layer
-import Control.Monad.Lift
 import Data.Maybe (fromMaybe)
 
 

@@ -24,11 +24,8 @@ import Data.Set (Set)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Prelude hiding (break, exp, lookup, True, False)
-import Data.Bifunctor (Bifunctor(bimap))
 import Data.Functor (($>))
-import Domain.Core ( BoolDomain(boolTop, true, false) )
 import Analysis.Environment (extends)
-import Data.Function ((&))
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a

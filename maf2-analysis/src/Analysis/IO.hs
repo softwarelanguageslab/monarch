@@ -2,7 +2,17 @@
 -- | This module provides several implementations of an IO model
 -- that can be used to provide an abstraction for IO operations in any 
 -- support programming language.
-module Analysis.IO(IOModel(..), IOVal(..), OutputIO(..), IOHandle(..), StatusIO, DirectionIO, emptyOutputIO) where
+module Analysis.IO(
+   IOModel(..),
+   IOVal(..), 
+   OutputIO(..), 
+   IOHandle(..), 
+   StatusIO, 
+   DirectionIO, 
+   emptyOutputIO, 
+   ConcreteStatusIO(..), 
+   ConcreteDirectionIO(..)
+) where
 
 import Lattice hiding (Top)
 

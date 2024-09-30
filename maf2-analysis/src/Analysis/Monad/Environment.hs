@@ -12,7 +12,6 @@ import Analysis.Environment
 import Control.Monad.Reader
 import Control.Monad.Join
 import Control.Monad.Layer
-import Control.Monad.Lift
 import Analysis.Monad.Cache (MonadCache)
 
 ---
@@ -50,7 +49,7 @@ instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m)
    getEnv = ask
    withEnv = local
 
-instance forall env adr t m . (Environment env adr, Monad m, Monad (t m), MonadLayer t, EnvM m adr env) => EnvM (t m) adr env where
+instance forall env adr t m . (Environment env adr, Monad (t m), MonadLayer t, EnvM m adr env) => EnvM (t m) adr env where
    lookupEnv = upperM . lookupEnv
    withExtendedEnv bds = lowerM (withExtendedEnv bds)
    getEnv = upperM getEnv

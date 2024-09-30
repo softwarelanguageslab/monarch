@@ -1,5 +1,7 @@
 {-# LANGUAGE UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
 module Analysis.Scheme where
 
 import Prelude hiding (iterate, exp, lookup)
@@ -7,7 +9,7 @@ import Prelude hiding (iterate, exp, lookup)
 import Analysis.Scheme.Primitives
 import qualified Analysis.Scheme.Semantics as Semantics
 import Analysis.Scheme.Monad (SchemeM)
-import Analysis.Monad hiding (getEnv, spawn)
+import Analysis.Monad hiding (getEnv, spawn, run)
 
 import Control.Monad.Trans.Class
 import Control.Monad.Join

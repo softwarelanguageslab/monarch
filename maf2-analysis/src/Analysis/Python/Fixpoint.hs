@@ -3,8 +3,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 module Analysis.Python.Fixpoint where
 
@@ -15,15 +14,12 @@ import Analysis.Python.Semantics hiding (call)
 import Analysis.Python.Monad
 import Analysis.Python.Objects
 import Analysis.Monad hiding (eval, call)
-import Analysis.Monad.ComponentTracking hiding (has)
 
 import Domain.Python.Syntax
 
 import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Map (Map)
 import Prelude hiding (init, read)
-import Control.Monad.Reader
 import Control.Monad.Escape
 import Data.Function ((&))
 import Analysis.Python.Escape
@@ -31,12 +27,8 @@ import Analysis.Monad.Stack
 import Analysis.Monad.Call
 import qualified Control.Monad.Join as MJoin
 import Control.Monad.Identity
-import Domain.Core.TaintDomain
-import qualified Domain.Core.TaintDomain as Taint 
 
 import Data.Maybe
-import Lattice.Tainted (Tainted(..))
-import qualified Debug.Trace as Debug
 import Data.Graph
 import Analysis.Store (CountingMap)
 

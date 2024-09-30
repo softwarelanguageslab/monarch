@@ -1,38 +1,26 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# HLINT ignore "Use <&>" #-}
+
 module Analysis.Actors where
 
-
-import Analysis.Scheme.Primitives
-import Analysis.Actors.Mailbox
 import Analysis.Actors.Monad
 import Analysis.Scheme.Actors.Components
 import qualified Analysis.Actors.Semantics as Actors
 import Analysis.Monad
 import Analysis.Scheme.Store
-import Analysis.Scheme hiding (runCallT, Component(..), Env, CallT, EvalT(..), State, runEvalT, RetAdr)
-import qualified Control.Fixpoint.EffectDriven as EF
-import Control.Monad (void, foldM)
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Control.Monad.Join
 import Control.Monad.Layer
 import qualified Control.Monad.State.SVar as SVar
-import Data.Function ((&))
-import Data.Functor.Identity
 import Data.Map (Map)
-import qualified Data.Map as Map
 import Data.Set (Set)
-import qualified Data.Set as Set
-import Domain.Scheme.Actors.Class hiding (Pid)
 import Domain.Scheme.Store
 import Syntax.Scheme.AST
-import Data.Functor ((<&>))
 import qualified Domain.Scheme.Actors.CP as CP
-import Control.Monad.Trans.Class
-import Domain (Address)
 
 ------------------------------------------------------------
 -- Domain
@@ -90,7 +78,7 @@ type State = (SSto Ctx V, Map (Component Ctx) (SVar.SVar V), Map Pid (SVar.SVar 
 ------------------------------------------------------------
 
 analyze :: Exp -> (DSto Ctx V, Map (Component Ctx) V)
-analyze e = undefined -- let ((sto, retSto, _), state) = (EF.setup initialState >>= EF.iterate intra)
+analyze _ = undefined -- let ((sto, retSto, _), state) = (EF.setup initialState >>= EF.iterate intra)
             --         & EF.runEffectT @[_] (Main e)
             --         & runIdentity
             -- in (unifyStore sto state, SVar.unify retSto state)

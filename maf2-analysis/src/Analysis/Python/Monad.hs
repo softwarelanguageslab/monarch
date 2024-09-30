@@ -112,15 +112,10 @@ pyStore loc = fmap injectAdr . pyAlloc loc
 
 -- Taint analysis instance 
 
-instance Ord a => Semigroup (TopLifted (Set a)) where
-  (<>) = join
-instance Ord a => Monoid (TopLifted (Set a)) where
-  mempty = bottom 
-
 -- kcfa k
 -- TODO: parameterize this
-k :: Int 
-k = 1
+kcfa :: Int 
+kcfa = 1
 
 type Taint = TopLifted (Set String)
 type PyRef = Tainted Taint ObjAddrSet
@@ -166,7 +161,7 @@ instance (vlu ~ PyRef,
   pyWithEnv = withEnv . const 
   pyLookupEnv = lookupEnv
   pyLookupSto = lookupAdr
-  pyWithCtx loc = withCtx (take k . (loc:)) 
+  pyWithCtx loc = withCtx (take kcfa . (loc:)) 
   applyXPrim ObjectTaint _ = \case
                                 [a] -> withTaint @Taint TopLattice.Top (addTaint a)
                                 _   -> pyError ArityError
@@ -180,4 +175,4 @@ instance (vlu ~ PyRef,
                                   [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\_ nam -> currentTaint @Taint >>= \t -> addEdges nam t $> constant None) df str 
                                   _            -> pyError ArityError  
                                   where addEdges to TopLattice.Top = addEdge Lattice.Top to () 
-                                        addEdges to (TopLattice.Value s) = mapM_ (\from -> addEdge (Lattice.Constant from) to ()) (Set.toList s) 
+                                        addEdges to (TopLattice.Value s) = mapM_ (\source -> addEdge (Lattice.Constant source) to ()) (Set.toList s) 

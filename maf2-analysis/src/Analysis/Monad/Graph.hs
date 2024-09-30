@@ -1,7 +1,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Analysis.Monad.Graph where
+module Analysis.Monad.Graph (
+    GraphM(..), 
+    GraphT, 
+    runWithGraph
+) where
 
 import Control.Monad.Trans
 import Control.Monad.Layer

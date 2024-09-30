@@ -7,7 +7,6 @@ import Analysis.Monad
 import Syntax.Erlang
 import Domain.Erlang.Class
 import Control.Monad.AbstractM
-import Control.Monad.DomainError
 import Control.Monad.Escape
 import Domain (Domain)
 

@@ -16,10 +16,8 @@ import Control.Monad.Layer
 import ListT
 
 import Control.Monad.Identity
-import Control.Monad.Trans
 import Control.Applicative
 import Analysis.Monad.Cache
-import Data.Set
 
 --
 -- JoinT

@@ -30,7 +30,7 @@ eval (Rcv hdls _) = do
 
 eval e@(Beh {}) = getEnv <&> curry beh e
 eval e@(Mir {}) = getEnv <&> curry beh e
-eval e@(Sel _)  = aref <$> self
+eval (Sel _)    = aref <$> self
 eval (Ter _)    = return bottom -- no behavior in the abstract
 eval e = Base.eval e
 

@@ -40,7 +40,6 @@ import Control.Monad.Lift
 import Control.Monad.Layer
 import Analysis.Store (Store)
 import Data.TypeLevel.AssocList
-import Data.TypeLevel.HMap (HMap)
 import Data.Kind
 
 ---
@@ -172,13 +171,13 @@ type family StackStoreT stores m where
 -- | Construct a type for a stack of stores from the given mapping
 type family FromMap stores m :: Type -> Type where
    FromMap '[] m =  m
-   FromMap (kadr ::-> (Map adr v) ': r) m = StoreT (Map adr v) adr v (FromMap r m)
+   FromMap (kadr ::-> Map adr v ': r) m = StoreT (Map adr v) adr v (FromMap r m)
 
-class WithStores mp mp' m where
-   type FirstAdr mp' :: Type 
-   type FirstVal mp' :: Type
-   type Next mp'     :: Type -> Type
-   withStores :: HMap mp -> StoreT (Map (FirstAdr mp') (FirstVal mp')) (FirstAdr mp') (FirstVal mp') (Next mp') a -> Next mp' a
+--class WithStores mp mp' m where
+--   type FirstAdr mp' :: Type 
+--   type FirstVal mp' :: Type
+--   type Next mp'     :: Type -> Type
+--   withStores :: HMap mp -> StoreT (Map (FirstAdr mp') (FirstVal mp')) (FirstAdr mp') (FirstVal mp') (Next mp') a -> Next mp' a
 
 -- instance WithStores mp '[kadr ::-> (Map adr v)] m where  
 --    type FirstAdr mp' 

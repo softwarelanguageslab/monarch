@@ -9,7 +9,6 @@ module Analysis.Monad.Context (
 
 import Control.Monad.Reader hiding (mzero)
 import Control.Monad.Layer
-import Control.Monad.Lift
 import Control.Monad.Join 
 import Analysis.Monad.Cache (MonadCache)
 

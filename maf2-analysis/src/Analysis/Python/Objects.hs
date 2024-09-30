@@ -20,8 +20,7 @@ import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
 import Control.Monad.Escape ( orElse )
-import Domain ( Domain, BoolDomain, BoolDomain(..) )
-import qualified Domain
+import Domain ( BoolDomain, BoolDomain(..) )
 import Domain.Python.Objects
 import Domain.Python.World
 import Data.Finite
@@ -29,15 +28,12 @@ import Data.Finite
 import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import qualified Prelude
 import qualified Data.Map as Map
-import Data.Singletons (SingI(..))
-import Control.Monad ((<=<), (>=>))
+import Control.Monad ((>=>))
 import Data.Bifunctor
 import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad hiding (has)
 import Data.Map (Map)
-import Control.Monad.AbstractM (AbstractM)
 import Lattice ( join, eql, CP )
-import Lattice.Class (Lattice)
 
 --
 -- Python constants 

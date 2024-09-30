@@ -1,4 +1,6 @@
 {-# LANGUAGE UndecidableInstances, FlexibleContexts, FlexibleInstances, RankNTypes, QuantifiedConstraints #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Control.Monad.Layer(MonadLayer(..), module Control.Monad.Lift) where
 
 import Control.Monad.State  hiding (mzero)
