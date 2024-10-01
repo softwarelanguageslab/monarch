@@ -25,8 +25,8 @@ eval (Iff cnd csq alt _)  =
 eval e = Contracts.eval e
 
 evalApp :: SymbolicM m v => Exp -> Exp -> [Exp] -> m v
-evalApp app op opr =
-   uncurry (applyFun app) =<< liftA2 (,) (Monad.eval op) (mapM Monad.eval opr)
+evalApp app op opr = undefined
+   -- uncurry (applyFun app) =<< liftA2 (,) (Monad.eval op) (mapM Monad.eval opr)
 
 applyFun :: SymbolicM m v => Exp -> v -> [v] -> m v
-applyFun app op ags = ap op ags <$> Scheme.applyFun app op ags
+applyFun app op ags = undefined -- ap op ags <$> Scheme.applyFun app op ags
