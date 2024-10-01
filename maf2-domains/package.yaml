@@ -21,15 +21,13 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - containers
-- unordered-containers
 - mtl
 - layers-mtl
 - transformers
 - data-default
 - extra
+- vector
 - maf2-syntax
-- hashable
-- vector 
 - singletons
 - singletons-th
 - template-haskell

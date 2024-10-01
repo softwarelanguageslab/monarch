@@ -145,7 +145,6 @@ library
     , containers
     , data-default
     , extra
-    , hashable
     , language-python
     , layers-mtl
     , maf2-syntax
@@ -154,7 +153,6 @@ library
     , singletons-th
     , template-haskell
     , transformers
-    , unordered-containers
     , vector
   default-language: Haskell2010
 
@@ -197,7 +195,6 @@ test-suite maf2-domains-test
     , containers
     , data-default
     , extra
-    , hashable
     , hspec
     , hspec-contrib
     , language-python
@@ -209,6 +206,5 @@ test-suite maf2-domains-test
     , singletons-th
     , template-haskell
     , transformers
-    , unordered-containers
     , vector
   default-language: Haskell2010
