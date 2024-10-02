@@ -87,10 +87,10 @@ type MonadInter m =
         WorkListM m ActorCmp,
         ComponentTrackingM m ActorCmp,
         DependsOn m ActorCmp '[ ActorCmp , EnvAdr K, Pid Exp K, PaiAdrE Exp K, VecAdrE Exp K, StrAdrE Exp K ], 
-        StoreM m (EnvAdr K) ActorVlu,
-        StoreM m (PaiAdrE Exp K) (PaiDom ActorVlu),
-        StoreM m (VecAdrE Exp K) (VecDom ActorVlu),
-        StoreM m (StrAdrE Exp K) (StrDom ActorVlu),
+        StoreM (EnvAdr K) ActorVlu m,
+        StoreM (PaiAdrE Exp K) (PaiDom ActorVlu) m,
+        StoreM (VecAdrE Exp K) (VecDom ActorVlu) m,
+        StoreM (StrAdrE Exp K) (StrDom ActorVlu) m,
         MonadMailbox ActorVlu m )
 
 ------------------------------------------------------------

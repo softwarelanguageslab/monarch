@@ -155,7 +155,7 @@ type EvalM v m =
   ( MonadJoin m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
-    StoreM m (Adr v) v,
+    StoreM (Adr v) v m,
     MonadActor v m,
     MonadEscape m,
     MonadFixpoint m Exp v,

@@ -78,7 +78,7 @@ eval' rec (Parametrize bds e2 _) = do
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (eval' rec . snd) bds
    mapM_ (uncurry writeAdr) (zip ads vs)
-   trace ("[**] parametrize: " ++ show bds') $ withExtendedDynamic bds' (eval' rec e2)
+   withExtendedDynamic bds' (eval' rec e2)
 eval' rec (Begin exs _) =
    last <$> mapM (eval' rec) exs
 eval' rec e@(Pair e1 e2 _) =
@@ -101,7 +101,7 @@ trySend ref p =
           (escape InvalidArgument)
 
 apply :: EvalM v m => (Exp -> m v) -> Exp -> v -> [v] -> m v
-apply rec e v vs = traceShow e $ condsCP
+apply rec e v vs = condsCP
    [(pure $ isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (pure $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
@@ -136,7 +136,7 @@ matchList f ((pat, e):pats) value =
 -- | Match a pattern against a value
 match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
-match (ValuePat lit) v = trace ("l: " ++ show lit ++ " v: " ++ show v ++ " lv: " ++ show (injectLit @v lit)) $
+match (ValuePat lit) v = -- trace ("l: " ++ show lit ++ " v: " ++ show v ++ " lv: " ++ show (injectLit @v lit)) $
    condCP (return $ eql (injectLit lit) v) (return Map.empty) (escape MatchError)
 match (PairPat pat1 pat2) v =
       condCP (pure $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
