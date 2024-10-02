@@ -26,7 +26,6 @@ dependencies:
 - hashable
 - HUnit
 - containers
-- unordered-containers
 - data-default
 - mtl >= 2.2 && <2.3
 - transformers
@@ -35,7 +34,6 @@ dependencies:
 - language-python
 - vector
 - optparse-applicative
-- IfElse
 - maf2-domains
 - maf2-syntax
 - hashmap
