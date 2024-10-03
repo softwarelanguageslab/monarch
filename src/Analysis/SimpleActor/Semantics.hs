@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Move brackets to avoid $" #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Analysis.SimpleActor.Semantics where
 
@@ -25,14 +26,14 @@ import Analysis.Monad.Store
 
 import Analysis.Monad.Fix
 
-import Debug.Trace
 import Analysis.Actors.Monad (stoPai)
 import Domain.Core.PairDomain (cons, car ,cdr)
 import Control.Applicative (liftA2)
-import Analysis.Scheme.Primitives (primitive, Prim(..))
+import Analysis.Scheme.Primitives (Prim(..), primitivesByName)
 import Domain (Domain(inject))
 import Analysis.Environment (Environment(..))
 import Analysis.Monad.Context (CtxM(..))
+import Data.Maybe
 
 ------------------------------------------------------------
 -- Evaluation
@@ -90,7 +91,7 @@ eval' _ (DynVar (Ide x _)) =
 eval' _ (Self _) = aref <$> getSelf @v
 eval' rec (Blame e _) =
    eval' rec e >>= escape . BlameError . show
-eval' rec (Meta e _) = 
+eval' rec (Meta e _) =
    withMetaSet (withCtx (spanOf e:) (eval' rec e))
 eval' _ e = error $  "unsupported expression: " ++ show e
 
@@ -113,8 +114,8 @@ applyClosure e (Lam prs bdy _, env) rec vs = do
    ifMetaSet (withCtx (spanOf e:)) $ withEnv (const env) (withExtendedEnv bds (rec bdy))
 applyClosure _ _ _ _ = error "invalid closure"
 applyPrimitive :: forall v m . EvalM v m => String -> Exp -> [v] -> m v
-applyPrimitive nam =
-   runPrimitive (primitive @v nam)
+applyPrimitive =
+   runPrimitive . fromJust . lookupPrimitive
 
 type Mapping v = Map Ide v
 
@@ -154,6 +155,38 @@ injectLit (Num n) = inject n
 -- Primitives
 ------------------------------------------------------------
 
-runPrimitive :: EvalM v m => Prim v -> Exp -> [v] -> m v
-runPrimitive (Prim _ f) = ($) f
+data Primitive v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim v)
 
+newtype SimpleActorPrim v = SimpleActorPrim (forall m . EvalM v m => [v] -> m v)
+
+aprim0 :: (forall m . EvalM v m => m v) -> SimpleActorPrim v
+aprim0 f = SimpleActorPrim $ const f
+
+aprim1 :: (forall m . EvalM v m => v -> m v) -> SimpleActorPrim v
+aprim1 f = SimpleActorPrim $ \case [v] -> f v
+                                   vs -> escape $ ArityMismatch 1 (length vs)
+
+-- | Primitives specific to the simple actor language
+actorPrimitives :: Map String (Primitive v)
+actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
+   ("wait-until-all-finished", aprim0 $ return nil ),
+   ("print", aprim1 $ const $ return nil) ]
+
+-- | Scheme primitives
+schemePrimitives :: Map String (Primitive v)
+schemePrimitives = SchemePrimitive <$> primitivesByName
+
+-- | The names of all primitives
+allPrimitives :: [String]
+allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives
+
+-- | Lookup a primitive starting from the actor primitives
+lookupPrimitive :: String -> Maybe (Primitive v) 
+lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
+
+runPrimitive :: EvalM v m => Primitive v -> Exp -> [v] -> m v
+runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
+runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = const f
+
+untilJust :: [a -> Maybe b] -> a -> Maybe b
+untilJust fs a = foldl (`maybe` Just) Nothing (fmap ($ a) fs)

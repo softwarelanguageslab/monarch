@@ -5,6 +5,7 @@ import Data.List (intercalate)
 import Text.Printf
 import Syntax.Span
 import Syntax.Ide
+import Control.Monad (when)
 
 -- | An expression
 data Exp = Lam [Ide] Exp Span
@@ -17,6 +18,7 @@ data Exp = Lam [Ide] Exp Span
          | Parametrize [Binding] Exp Span
          | Blame Exp Span
          | Receive [(Pat, Exp)] Span
+         | Match [(Pat, Exp)] Span
          | Send Exp Exp Span
          | Literal Lit Span
          | Ite  Exp Exp Exp Span
@@ -66,22 +68,24 @@ instance SpanOf Exp where
                (DynVar (Ide _ s)) -> s
                (Begin _ s) -> s
                (Meta _ s) -> s
+               (Match _ s) -> s
 
 
 instance Show Exp where
    show = \case 
             (Lam x e _) -> printf "(lam (%s) %s)" (intercalate "," (map show x)) (show e)
             (App e1 es _) -> printf "(%s %s)" (show e1) (unwords (map show es))
-            (Spawn e1 _) -> printf "(spawn %s)" (show e1)
+            (Spawn e1 _) -> printf "(spawn^ %s)" (show e1)
             (Letrec bds es _) -> printf "(letrec (%s) %s)" (show bds) (show es)
             (Terminate _) -> "(terminate)"
-            (Self _) -> "(self)"
+            (Self _) -> "self^"
             (Pair e1 e2 _) -> printf "(cons %s %s)" (show e1) (show e2)
             (Parametrize bds bdy _) -> 
                printf "(parametrize (%s) %s)" (show bds) (show bdy)
             (Blame lbl _) -> printf "(blame %s)" (show lbl)
             (Receive pats _) -> printf "(receive %s)" (show pats)
-            (Send e1 e2 _) -> printf "(send %s %s)" (show e1) (show e2)
+            (Match pats _) -> printf "(match %s)" (show pats)
+            (Send e1 e2 _) -> printf "(send^ %s %s)" (show e1) (show e2)
             (Literal l _) -> show l
             (Ite e1 e2 e3 _) -> printf "(if %s %s %s)" (show e1) (show e2) (show e3)
             (Var x) -> show x

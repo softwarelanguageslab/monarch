@@ -107,7 +107,7 @@ intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (eval @ActorVlu) cmp
           & runIntraAnalysis cmp
 
 initialEnv :: Env K
-initialEnv = P.initialEnv PrmAdr
+initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
 
 inter :: MonadInter m => Exp -> m ()
 inter exp = add (((((exp, initialEnv), Map.empty), []), False), Pid exp []) >> iterateWL intra

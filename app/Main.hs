@@ -16,6 +16,7 @@ import Syntax.AST hiding (filename)
 import Control.Monad ((>=>))
 import Interpreter hiding (PrmAdr)
 import GHC.Base (join)
+import Debug.Trace
 
 
 ------------------------------------------------------------
@@ -62,7 +63,7 @@ printLoc (((((e, _), _), _), _), _) = let (Span filename line col) = spanOf e in
 ------------------------------------------------------------
 
 loadFile :: String -> IO Exp
-loadFile = readFile >=> translate >=> return . either (error . ("error while parsing: " ++)) id . parseFromString
+loadFile = readFile >=> translate >=> return . either (error . ("error while parsing: " ++)) traceShowId . parseFromString
 
 
 analyzeCmd :: InputOptions -> IO ()

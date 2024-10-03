@@ -57,7 +57,7 @@ import Domain.Scheme.Actors.Class (Pid(..))
 ------------------------------------------------------------
 
 -- TODO: BlameErorr should contain label not a string!
-data Error = MatchError | InvalidArgument | BlameError String
+data Error = MatchError | InvalidArgument | BlameError String | ArityMismatch Int Int
   deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------
