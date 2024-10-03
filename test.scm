@@ -1,15 +1,3 @@
-; Higher-level λα
-;(letrec 
-; ((beh (behavior (x)
-;         ((inc () 
-;               ;(print x)
-;               (send self inc)
-;               (become beh (+ x 1)))))))
-;
-; (begin
-;   (send (spawn beh 0) inc)))
-;   ; (wait-until-all-finished)))
-
 (behavior/c 
   (message/c 'inc (number?/c) any-recipient unconstrained/c))
 

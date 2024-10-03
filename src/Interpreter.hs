@@ -208,10 +208,11 @@ eval (Parametrize bds e _) = do
    vs <- mapM (withExtendedDynamic bds' . eval . snd) bds
    mapM_ (uncurry store) (zip ads vs)
    withExtendedDynamic bds' (eval e)
+eval (Meta e _) = eval e
 eval (Blame k _) = do 
    v <- eval k
    error $ "blaming" ++ show v
-eval _ = error "unsupported expression"
+eval e = error $ "unsupported expression" ++ show e
 
 trySend :: EvalM m => Value m -> Value m -> m ()
 trySend (ActorValue ref) p = send ref p
@@ -274,6 +275,8 @@ allPrimitives = Map.fromList [
       ("send^", Prim $ \[recv, payload] -> trySend recv payload >> return ValueNil),
       ("*", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1*n2))),
       ("+", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1+n2))),
+      ("=", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Boolean $ n1 == n2))),
+      ("not", Prim $ \[LiteralValue (Boolean b)] -> return (LiteralValue (Boolean $ not b))),
       ("nonzero?", prim1 $ \(LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n /= 0))),
       ("positive?", prim1 $ \(LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n > 0)))
    ]
