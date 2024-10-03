@@ -261,6 +261,7 @@ allPrimitives = Map.fromList [
       ("inc", prim1 $ \(LiteralValue (Num n)) -> return (LiteralValue (Num (n+1)))),
       ("wait-until-all-finished", Prim $ const waitUntilAllFinished >=> const (return ValueNil)),
       ("*", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1*n2))),
+      ("+", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1+n2))),
       ("nonzero?", prim1 $ \(LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n /= 0))),
       ("positive?", prim1 $ \(LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n > 0)))
    ]
