@@ -18,7 +18,7 @@ data Exp = Lam [Ide] Exp Span
          | Parametrize [Binding] Exp Span
          | Blame Exp Span
          | Receive [(Pat, Exp)] Span
-         | Match [(Pat, Exp)] Span
+         | Match Exp [(Pat, Exp)] Span
          | Literal Lit Span
          | Ite  Exp Exp Exp Span
          | Var Ide
@@ -66,7 +66,7 @@ instance SpanOf Exp where
                (DynVar (Ide _ s)) -> s
                (Begin _ s) -> s
                (Meta _ s) -> s
-               (Match _ s) -> s
+               (Match _ _ s) -> s
 
 
 instance Show Exp where
@@ -82,7 +82,7 @@ instance Show Exp where
                printf "(parametrize (%s) %s)" (show bds) (show bdy)
             (Blame lbl _) -> printf "(blame %s)" (show lbl)
             (Receive pats _) -> printf "(receive %s)" (show pats)
-            (Match pats _) -> printf "(match %s)" (show pats)
+            (Match v pats _) -> printf "(match %s %s)" (show v) (show pats)
             (Literal l _) -> show l
             (Ite e1 e2 e3 _) -> printf "(if %s %s %s)" (show e1) (show e2) (show e3)
             (Var x) -> show x

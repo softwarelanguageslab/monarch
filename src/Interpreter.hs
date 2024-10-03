@@ -177,16 +177,21 @@ eval (Ite e1 e2 e3 _) = do
    cnd <- eval e1
    case cnd of
       LiteralValue (Boolean b) -> if b then eval e2 else eval e3
-      _ -> error "condition should be boolean"
+      _ -> liftIO (putStrLn "condition should be boolean") >> error "condition should be boolean"
 eval (Spawn e _) =
    ActorValue <$> spawnActor (`withSelf` (void $ eval e))
 eval (Terminate _) =
    myThreadId >>= killThread >> return bottom
 eval (Receive pats _) =
-   receive (\v ->
-      let (env', e) = fromMaybe (error "no match found") (matchList pats v)
-      in do
-         allocMapping env' >>= flip withMergedEnvironment (eval e))
+   receive (\v -> do
+      (env', e) <- maybe (liftIO (putStrLn "no match found") >> error "no match found") return (matchList pats v)
+      allocMapping env' >>= flip withMergedEnvironment (eval e))
+eval (Match e pats _) = do 
+   v <- eval e
+   let (env', matchExp) = fromMaybe (error "no match found") (matchList pats v)
+   -- TODO: there is some overlap with `receive` see if this can 
+   -- be abstracted further
+   allocMapping env' >>= flip withMergedEnvironment (eval matchExp)
 eval (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
@@ -211,12 +216,17 @@ eval (Parametrize bds e _) = do
 eval (Meta e _) = eval e
 eval (Blame k _) = do 
    v <- eval k
-   error $ "blaming" ++ show v
-eval e = error $ "unsupported expression" ++ show e
+   liftIO $ putStrLn $ "blaming" ++ show v
+   error "blame error"
+eval e = do 
+   liftIO $ putStrLn $ "unsupported expression" ++ show e
+   error $ "unsupported expression" ++ show e
 
 trySend :: EvalM m => Value m -> Value m -> m ()
 trySend (ActorValue ref) p = send ref p
-trySend _ _ = error "receiver is not an actor reference"
+trySend _ _ = do
+   liftIO $ putStrLn "receiver is not an actor reference"
+   error "receiver is not an actor reference"
 
 apply :: EvalM m => Value m -> [Value m] -> m (Value m)
 apply (ClosureValue (Lam prs e _) env) vs = do
@@ -226,7 +236,9 @@ apply (ClosureValue (Lam prs e _) env) vs = do
    withEnv env (withExtendedEnv' bds (eval e))
 apply (PrmValue nam) vs =
    runPrimitive (fromJust $ Map.lookup nam allPrimitives) vs
-apply _ _ = error "not a closure or primitive"
+apply v _ = do
+   liftIO $ putStrLn $ "not a closure or primitive: " ++ show v
+   error $ "not a closure or primitive: " ++ show v
 
 type Mapping m = Map Ide (Value m)
 

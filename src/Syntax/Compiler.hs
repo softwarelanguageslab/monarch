@@ -35,6 +35,10 @@ compile e@(Atom "pair" _ ::: _) =
    throwError $ "invalid syntax for pair " ++ show e
 compile ex@(Atom "receive" _ ::: pats ::: SNil _) =
    Receive <$> compilePats pats <*> pureSpan ex
+compile ex@(Atom "match" _ ::: on ::: pats ::: SNil _) =
+   Match <$> compile on <*> compilePats pats <*> pureSpan ex
+compile ex@(Atom "match" _ ::: _) =
+   throwError $ "invalid syntax for 'match' " ++ show ex
 compile em@(Atom "meta" _ ::: e ::: SNil _) = 
    Meta <$> compile e <*> pure (spanOf em)
 compile (Atom "dyn" _ ::: Atom dyn s ::: SNil _) = 

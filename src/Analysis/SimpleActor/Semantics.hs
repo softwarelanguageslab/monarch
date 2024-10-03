@@ -34,6 +34,7 @@ import Domain (Domain(inject))
 import Analysis.Environment (Environment(..))
 import Analysis.Monad.Context (CtxM(..))
 import Data.Maybe
+import Data.Function (on)
 
 ------------------------------------------------------------
 -- Evaluation
@@ -60,6 +61,11 @@ eval' rec (Receive pats _) = do
          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
          pats
    where withEnv' e = withEnv (const e)
+eval' rec (Match e pats _) = do 
+   val <- eval e
+   matchList (\matchedExp -> allocMapping >=> (`withEnv'` eval' rec matchedExp))
+             pats val
+   where withEnv' ρ = withEnv (const ρ)
 eval' rec (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
@@ -67,9 +73,6 @@ eval' rec (Letrec bds e2 _) = do
    mapM_ (uncurry writeAdr) (zip ads vs)
    withExtendedEnv bds' (eval' rec e2)
 eval' rec (Parametrize bds e2 _) = do
-   -- TODO: restore previous dynamic 
-   -- environment after body of `parametrize`
-   -- has completed.
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (eval' rec . snd) bds
