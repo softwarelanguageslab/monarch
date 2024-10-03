@@ -116,7 +116,7 @@ analyze :: Exp -> ((((), ActorSto), ActorMai), Map ActorCmp (Unlist ActorRes))
 analyze exp =
       let (((((((), sto), _), _), _), mb), mapping) =
               inter exp
-            & runStoreT @ActorSto @(EnvAdr K) @ActorVlu (P.initialSto initialEnv)
+            & runStoreT @ActorSto @(EnvAdr K) @ActorVlu (initialSto allPrimitives PrmAdr)
             & runWithStore @(Map (PaiAdrE Exp K) (PaiDom ActorVlu))
             & runWithStore @(Map (StrAdrE Exp K) (StrDom ActorVlu))
             & runWithStore @(Map (VecAdrE Exp K) (VecDom ActorVlu))

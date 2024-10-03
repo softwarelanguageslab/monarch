@@ -34,6 +34,7 @@ import Domain (Domain(inject))
 import Analysis.Environment (Environment(..))
 import Analysis.Monad.Context (CtxM(..))
 import Data.Maybe
+import Domain.Scheme.Store (EnvAdr)
 
 ------------------------------------------------------------
 -- Evaluation
@@ -181,7 +182,7 @@ allPrimitives :: [String]
 allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives
 
 -- | Lookup a primitive starting from the actor primitives
-lookupPrimitive :: String -> Maybe (Primitive v) 
+lookupPrimitive :: String -> Maybe (Primitive v)
 lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
 
 runPrimitive :: EvalM v m => Primitive v -> Exp -> [v] -> m v
@@ -190,3 +191,7 @@ runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = const f
 
 untilJust :: [a -> Maybe b] -> a -> Maybe b
 untilJust fs a = foldl (`maybe` Just) Nothing (fmap ($ a) fs)
+
+-- | Compute a store containing the set of primitives
+initialSto :: (SchemeDomain v) => [String] -> (String -> Adr v) ->  Map (Adr v) v
+initialSto prms allocPrm = Map.fromList $ fmap (\nam -> (allocPrm nam, prim nam)) prms
