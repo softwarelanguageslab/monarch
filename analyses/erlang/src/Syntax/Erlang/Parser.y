@@ -26,7 +26,7 @@
 {
 module Syntax.Erlang.Parser where
 
-import qualified Syntax.Erlang.Tokens (Token(..)) as Tok
+import qualified Syntax.Erlang.Tokens as Tok
 }
 
 -- Expect 0.
@@ -474,3 +474,9 @@ nil : '[' ']' { Tok.Nil (Tok.spanOf $1) }
 -- timeout ->
 --     'after' anno_expression '->' anno_expression : {'$2','$4'}.
 -- 
+
+{
+happyError :: [Tok.Token] -> a 
+happyError = error . show
+}
+-- vim: syntax=haskell

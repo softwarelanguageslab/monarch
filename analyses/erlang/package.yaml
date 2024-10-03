@@ -8,6 +8,7 @@ library:
   - containers
   - extra
   - mtl
+  - array
   build-tools:
   - alex 
   - happy

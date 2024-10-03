@@ -11,7 +11,6 @@ build-type:     Simple
 library
   exposed-modules:
       Syntax.Erlang.AST
-      Syntax.Erlang.Lexer
       Syntax.Erlang.Parser
       Syntax.Erlang.Tokens
   hs-source-dirs:
@@ -20,7 +19,8 @@ library
       alex
     , happy
   build-depends:
-      base >=4.17 && <5
+      array
+    , base >=4.17 && <5
     , containers
     , extra
     , mtl
