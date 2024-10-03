@@ -15,7 +15,7 @@ in this ModX technique, its analyses are not structured in this way. Rather, Mod
 
 The framework can be used in a standalone mode by interacting with it through a command line interface.  This command line interface currently offers some basic analyses for Scheme and some utilities for testing parsing of Python programs. This CLI is offered by the `maf2-analysis` package, and can be executed by running `cabal run` in this package.
 
-Alternatively, the repository can be used as a set of libraries. This usage is illustrated by [this](https://github.com/bramvdbogaerde/maf2-lambda) repository, which implements a simple analysis for the extended lambda calculus. It also contains a suitable _stack_ configuration to load our set of libraries from this repository through Github's infrastructure. 
+Alternatively, the repository can be used as a set of libraries. This usage is illustrated by [this](examples/maf2-lambda/) package, which implements a simple analysis for the extended lambda calculus. It also contains a suitable _cabal_ configuration to load our set of libraries from this repository through Github's infrastructure. 
 
 ## Structure
 
