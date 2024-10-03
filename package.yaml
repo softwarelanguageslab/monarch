@@ -76,6 +76,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - containers
+    - optparse-applicative
     - interpreter
     - maf2-syntax
     - maf2-domains

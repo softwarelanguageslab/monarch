@@ -7,21 +7,20 @@ cabal-version: 2.2
 name:           interpreter
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/interpreter#readme>
-homepage:       https://github.com/githubuser/interpreter#readme
-bug-reports:    https://github.com/githubuser/interpreter/issues
+homepage:       https://github.com/bramvdbogaerde/simplecc#readme
+bug-reports:    https://github.com/bramvdbogaerde/simplecc/issues
 author:         Author name here
-maintainer:     example@example.com
-copyright:      2024 Author name here
+maintainer:     bram@vdb.space
+copyright:      2024 Bram Vandenbogaerde
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
-    CHANGELOG.md
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/interpreter
+  location: https://github.com/bramvdbogaerde/simplecc
 
 library
   exposed-modules:
@@ -112,6 +111,7 @@ executable interpreter-exe
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
+    , optparse-applicative
   default-language: Haskell2010
 
 test-suite interpreter-test
