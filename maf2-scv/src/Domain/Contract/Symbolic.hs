@@ -15,9 +15,10 @@ import Prelude hiding (length)
 import Domain.Scheme.Derived.Pair (mkLeft, leftValue)
 
 import Control.Monad
+import qualified Syntax.Scheme as Scheme
 
 
-type V k       = PairedSymbolic (CPContractValue k) (PaiAdr k) (VecAdr k) (StrAdr k) (EnvAdr k)
+type V k       = PairedSymbolic (CPContractValue k) Scheme.Exp (PaiAdr k) (VecAdr k) (StrAdr k) (EnvAdr k)
 
 type instance VarDom (V k) = V k
 type instance PaiDom (V k) = SimplePair (V k)

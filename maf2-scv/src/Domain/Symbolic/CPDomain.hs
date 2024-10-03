@@ -16,7 +16,7 @@ import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, a
 
 -- TODO: pass down the context as well
 type CPSymbolicValue pai vec str var k = 
-   PairedSymbolic (CPActorValue var pai vec str k S.Exp) pai vec str var
+   PairedSymbolic (CPActorValue var pai vec str k S.Exp) S.Exp pai vec str var
 
 type instance VarDom (CPSymbolicValue pai vec str var k) = CPSymbolicValue pai vec str var k
 type instance PaiDom (CPSymbolicValue pai vec str var k) = SimplePair (CPSymbolicValue pai vec str var k)

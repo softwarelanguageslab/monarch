@@ -25,6 +25,10 @@ import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Layer (MonadLayer)
 import Lattice.Class (Joinable, joins, BottomLattice)
 import qualified Data.List as List
+import Domain.Core.VectorDomain.Class
+import Domain.Scheme.Derived.Pair
+import Domain.Symbolic.Paired
+import Domain.SimpleActor
 
 ------------------------------------------------------------
 -- Shortcuts
@@ -32,8 +36,8 @@ import qualified Data.List as List
 
 type K = [Span]
 type ActorRef = Pid Exp K
+type ActorVlu = ActorValue K
 type ActorEnv = Map String (EnvAdr K)
-type ActorVlu = CPActorValue EnvAdr (PaiAdrE Exp) (VecAdrE Exp) (StrAdrE Exp) K Exp
 type ActorCmp = Key (IntraT Identity) Exp
 type ActorRes = Val (IntraT Identity) ActorVlu
 type ActorMai = Map ActorRef (Set ActorVlu)

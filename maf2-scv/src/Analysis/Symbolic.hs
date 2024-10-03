@@ -96,9 +96,6 @@ runSymbolicEvalT (SymbolicEvalT m) = m
 -- Symbolic Pid representation
 ------------------------------------------------------------
 
-instance SymbolicARef (Pid Exp ctx) where
-   identity EntryPid   = Symbolic.Literal $ Symbolic.Actor Nothing
-   identity (Pid e _)  = Symbolic.Literal $ Symbolic.Actor (Just $ spanOf e)
 
 
 ------------------------------------------------------------
