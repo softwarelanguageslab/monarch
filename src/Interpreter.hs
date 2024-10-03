@@ -106,11 +106,19 @@ withExtendedEnv adr val = withExtendedEnv' [(adr, val)]
 withMergedEnvironment :: EvalM m => Env -> m a -> m a
 withMergedEnvironment env' = local (over environment (`Map.union` env'))
 
+withExtendedDynamic :: EvalM m => [(String, Adr)] -> m a -> m a
+withExtendedDynamic kv = local (over parameters (flip (foldl (flip (uncurry Map.insert))) kv))
+
+
 withEnv :: EvalM m => Env -> m a -> m a
 withEnv env = local (over environment (const env))
 
 lookupEnv :: EvalM m => String -> m Adr
 lookupEnv nam = asks (fromMaybe (error $ nam ++ " not found") . Map.lookup nam .  view environment)
+
+lookupDynamic :: EvalM m => String -> m Adr
+lookupDynamic nam = asks (fromMaybe (error $ nam ++ " not found") . Map.lookup nam .  view parameters)
+
 
 -- Store
 
@@ -191,7 +199,15 @@ eval (Pair e1 e2 _) =
    PairValue <$> eval e1 <*> eval e2
 eval (Var (Ide x _)) =
    lookupEnv x >>= deref
+eval (DynVar (Ide x _)) = 
+   lookupDynamic x >>= deref
 eval (Self _) = ActorValue <$> getSelf
+eval (Parametrize bds e _) = do
+   ads <- mapM (alloc . fst) bds
+   let bds' = zip (map (name . fst) bds) ads
+   vs <- mapM (withExtendedDynamic bds' . eval . snd) bds
+   mapM_ (uncurry store) (zip ads vs)
+   withExtendedDynamic bds' (eval e)
 eval (Blame k _) = do 
    v <- eval k
    error $ "blaming" ++ show v
