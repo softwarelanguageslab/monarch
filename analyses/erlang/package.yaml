@@ -1,0 +1,13 @@
+name: erlang-analyzer
+spec-version: 0.36.0
+
+library:
+  source-dirs: src
+  dependencies:
+  - base >= 4.17 && < 5
+  - containers
+  - extra
+  - mtl
+  build-tools:
+  - alex 
+  - happy
