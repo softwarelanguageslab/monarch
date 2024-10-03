@@ -1,13 +1,16 @@
-(behavior/c 
-  (message/c 'inc (number?/c) any-recipient unconstrained/c))
-
-;; Higher-level contract language
-; (if #f (blame 'server) 'nil)
-; (letrec 
-;   ((foo (mon server client (-> (flat nonzero?) (flat nonzero?)) (lambda (x) (* x x)))))
-; 
-;   (begin (foo 5)
-;          (foo 5)))
+(letrec
+  ((inc/c (behavior/c (message/c 'inc () any-recipient unconstrained/c))))
+  (letrec 
+    ((beh (behavior (x)
+            ((inc () 
+                  (print x)
+                  (send self inc)
+                  (become beh (+ x 1)))))))
+    (letrec 
+      ((inc-actor (mon client server inc/c (spawn beh 0))))
+      (begin
+         (send inc-actor inc)
+         (wait-until-all-finished)))))
 
 ;; Experiments with the `parametrize` special form
 ;(letrec

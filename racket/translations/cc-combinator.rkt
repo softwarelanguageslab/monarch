@@ -1,5 +1,10 @@
 #lang racket
 
+;; Translation from SimpleActor with λα/c contracts 
+;; to SimpleActor. It is expected  that `actor-translation`
+;; is run first, so that the input does not contain
+;; constructs from the λα language.
+
 (provide translate)
 (require "../utils.rkt")
 
@@ -63,12 +68,20 @@
            (j (gensym "j"))
            (v (gensym "v")))
 
-     `(lambda (,k ,j)    ;; blame labels
-        (lambda (,a)    ;; actor reference
-           (lambda (,v) ;; message intercept
-             (letrec
-               ((,message (match ,v ,(map (translate-message/c k j) messages))))
-               (,a ,message))))))]))
+     `(lambda (,k ,j ,a)    ;; blame labels and actor reference
+        (lambda (,v) ;; message intercept
+          (letrec
+            ((,message (match ,v ,(map (translate-message/c k j) messages))))
+            (,a ,message)))))]))
+
+(define (enhanced-receive-patterns pats)
+  (define (enhance-pattern pat) 
+    (match pat 
+      [(quasiquote (,message ,bdy))
+         (let ((κ (gensym "κ")))
+          `(,(uncurry (append (list ''enhanced κ) (list message))) ,bdy))]))
+
+  (map enhance-pattern pats))
 
 ;; "Contract-combinators" translation to
 ;; regular λ-calculus.
@@ -93,6 +106,8 @@
      (instrument-meta `(,(translate-aux κ) (quote ,j) (quote ,k) ,(translate-aux v)))]
     [(quasiquote (behavior/c ,@messages))
      (translate-behavior/c e)]
+    [(quasiquote (receive ,pats))
+     `(receive ,(append pats (enhanced-receive-patterns pats)))]
     [(quasiquote (,es ...))
      `(,@(map translate-aux es))]
     [x x]))
@@ -101,6 +116,7 @@
   `(letrec 
      ((any? (lambda (v) #t))
       (meta (lambda (v) v))
+      (unconstrained/c #f) ;; todo
       (nonzero? (lambda (v) (not (= v 0)))))
      ,e))
 
