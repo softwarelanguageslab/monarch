@@ -1,0 +1,94 @@
+name:                interpreter
+version:             0.1.0.0
+github:              "bramvdbogaerde/simplecc"
+license:             BSD-3-Clause
+author:              "Author name here"
+maintainer:          "bram@vdb.space"
+copyright:           "2024 Bram Vandenbogaerde"
+
+extra-source-files:
+- README.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/interpreter#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+default-extensions:
+  - ConstraintKinds
+  - TypeFamilies
+  - MultiParamTypeClasses
+  - FlexibleContexts
+  - FlexibleInstances
+  - DataKinds
+  - TypeOperators
+  - GeneralizedNewtypeDeriving
+  - TemplateHaskell
+  - StandaloneKindSignatures
+  - EmptyCase
+  - GADTs
+  - TypeApplications
+  - TupleSections
+  - RankNTypes
+  - ScopedTypeVariables
+  - FunctionalDependencies
+  - StandaloneDeriving
+  
+library:
+  source-dirs: src
+  dependencies:
+    - containers 
+    - mtl
+    - maf2-syntax
+    - maf2-domains
+    - maf2-analysis
+    - lens
+    - concurrency
+    - exceptions
+    - process
+    - layers-mtl
+
+executables:
+  interpreter-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - containers
+    - optparse-applicative
+    - interpreter
+    - maf2-syntax
+    - maf2-domains
+    - maf2-analysis
+
+tests:
+  interpreter-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - interpreter
