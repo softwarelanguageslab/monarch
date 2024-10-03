@@ -13,7 +13,6 @@ author:         Author name here
 maintainer:     bram@vdb.space
 copyright:      2024 Bram Vandenbogaerde
 license:        BSD-3-Clause
-license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
@@ -71,6 +70,7 @@ library
     , lens
     , maf2-analysis
     , maf2-domains
+    , maf2-scv
     , maf2-syntax
     , mtl
     , process
