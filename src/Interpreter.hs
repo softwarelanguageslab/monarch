@@ -179,11 +179,6 @@ eval (Receive pats _) =
       let (env', e) = fromMaybe (error "no match found") (matchList pats v)
       in do
          allocMapping env' >>= flip withMergedEnvironment (eval e))
-eval (Send e1 e2 _) = do
-   receiver <- eval e1
-   payload  <- eval e2
-   trySend receiver payload
-   return ValueNil
 eval (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
@@ -260,6 +255,7 @@ allPrimitives = Map.fromList [
       ("print", prim1 $ liftIO . print >=> const (return ValueNil)) ,
       ("inc", prim1 $ \(LiteralValue (Num n)) -> return (LiteralValue (Num (n+1)))),
       ("wait-until-all-finished", Prim $ const waitUntilAllFinished >=> const (return ValueNil)),
+      ("send^", Prim $ \[recv, payload] -> trySend recv payload >> return ValueNil),
       ("*", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1*n2))),
       ("+", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1+n2))),
       ("nonzero?", prim1 $ \(LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n /= 0))),

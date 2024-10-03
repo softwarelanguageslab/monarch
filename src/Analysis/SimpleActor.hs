@@ -14,7 +14,6 @@ import Analysis.Monad.Stack (MonadStack)
 import Analysis.Scheme.Prelude (CPActorValue)
 import Analysis.Monad.Fix
 import Control.Monad.Escape
-import qualified Analysis.Scheme.Primitives as P
 import Data.Set (Set)
 import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)

@@ -34,7 +34,6 @@ import Domain (Domain(inject))
 import Analysis.Environment (Environment(..))
 import Analysis.Monad.Context (CtxM(..))
 import Data.Maybe
-import Domain.Scheme.Store (EnvAdr)
 
 ------------------------------------------------------------
 -- Evaluation
@@ -61,11 +60,6 @@ eval' rec (Receive pats _) = do
          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
          pats
    where withEnv' e = withEnv (const e)
-eval' rec (Send e1 e2 _) = do
-   receiver <- eval' rec e1
-   payload  <- eval' rec e2
-   trySend receiver payload
-   return nil
 eval' rec (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
@@ -160,17 +154,25 @@ data Primitive v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorP
 
 newtype SimpleActorPrim v = SimpleActorPrim (forall m . EvalM v m => [v] -> m v)
 
+-- | A nullary primitive
 aprim0 :: (forall m . EvalM v m => m v) -> SimpleActorPrim v
 aprim0 f = SimpleActorPrim $ const f
 
+-- | A primitive on one argument
 aprim1 :: (forall m . EvalM v m => v -> m v) -> SimpleActorPrim v
 aprim1 f = SimpleActorPrim $ \case [v] -> f v
                                    vs -> escape $ ArityMismatch 1 (length vs)
+
+-- | A primitive on two arguments
+aprim2 :: (forall m . EvalM v m => v -> v -> m v) -> SimpleActorPrim v 
+aprim2 f = SimpleActorPrim $ \case [v1, v2] -> f v1 v2
+                                   vs -> escape $ ArityMismatch 2 (length vs)
 
 -- | Primitives specific to the simple actor language
 actorPrimitives :: Map String (Primitive v)
 actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("wait-until-all-finished", aprim0 $ return nil ),
+   ("send^" , aprim2 $ \rcv msg -> trySend rcv msg >> return nil),
    ("print", aprim1 $ const $ return nil) ]
 
 -- | Scheme primitives
@@ -189,6 +191,8 @@ runPrimitive :: EvalM v m => Primitive v -> Exp -> [v] -> m v
 runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
 runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = const f
 
+-- | Run the functions given as a list in the first argument on the 
+-- second argument until an output is found that is @Just@.
 untilJust :: [a -> Maybe b] -> a -> Maybe b
 untilJust fs a = foldl (`maybe` Just) Nothing (fmap ($ a) fs)
 

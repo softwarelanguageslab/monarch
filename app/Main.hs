@@ -63,7 +63,7 @@ printLoc (((((e, _), _), _), _), _) = let (Span filename line col) = spanOf e in
 ------------------------------------------------------------
 
 loadFile :: String -> IO Exp
-loadFile = readFile >=> translate >=> return . either (error . ("error while parsing: " ++)) traceShowId . parseFromString
+loadFile = readFile >=> translate >=> return . either (error . ("error while parsing: " ++)) traceShowId . parseFromString . traceShowId
 
 
 analyzeCmd :: InputOptions -> IO ()

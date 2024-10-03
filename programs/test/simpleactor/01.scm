@@ -1,4 +1,6 @@
-;; Translations should be idempotent
+;; Example of a SimpleActor program. 
+;; 
+;; It also demonstrates that translations are idempotent.
 (letrec 
  ((beh (lambda (x) 
         (receive 

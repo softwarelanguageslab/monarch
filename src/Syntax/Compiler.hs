@@ -35,10 +35,6 @@ compile e@(Atom "pair" _ ::: _) =
    throwError $ "invalid syntax for pair " ++ show e
 compile ex@(Atom "receive" _ ::: pats ::: SNil _) =
    Receive <$> compilePats pats <*> pureSpan ex
-compile ex@(Atom "send^" _ ::: receiver ::: payload ::: SNil _) =
-   Send <$> compile receiver <*> compile payload <*> pureSpan ex
-compile e@(Atom "send^" _ ::: _) =
-   throwError $ "invalid syntax for send " ++ show e
 compile em@(Atom "meta" _ ::: e ::: SNil _) = 
    Meta <$> compile e <*> pure (spanOf em)
 compile (Atom "dyn" _ ::: Atom dyn s ::: SNil _) = 

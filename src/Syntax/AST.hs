@@ -19,7 +19,6 @@ data Exp = Lam [Ide] Exp Span
          | Blame Exp Span
          | Receive [(Pat, Exp)] Span
          | Match [(Pat, Exp)] Span
-         | Send Exp Exp Span
          | Literal Lit Span
          | Ite  Exp Exp Exp Span
          | Var Ide
@@ -61,7 +60,6 @@ instance SpanOf Exp where
                (Parametrize _ _ s) -> s
                (Blame _ s) -> s
                (Receive _ s) -> s
-               (Send _ _ s) -> s
                (Literal _ s) -> s
                (Ite _ _ _ s) -> s
                (Var (Ide _ s)) ->  s
@@ -85,7 +83,6 @@ instance Show Exp where
             (Blame lbl _) -> printf "(blame %s)" (show lbl)
             (Receive pats _) -> printf "(receive %s)" (show pats)
             (Match pats _) -> printf "(match %s)" (show pats)
-            (Send e1 e2 _) -> printf "(send^ %s %s)" (show e1) (show e2)
             (Literal l _) -> show l
             (Ite e1 e2 e3 _) -> printf "(if %s %s %s)" (show e1) (show e2) (show e3)
             (Var x) -> show x
