@@ -2,6 +2,8 @@
 
 (provide translate)
 
+(require "../utils.rkt")
+
 (define (invalid-syntax for e)
   (error (format "invalid syntax for ~a at ~a" for e)))
 
@@ -35,10 +37,6 @@
      `(,@(map translate es))]
    [x x]))
 
-(define (uncurry ags)
-  (cond
-    ((null? (cdr ags)) (car ags))
-    ((pair? ags) `(pair ,(car ags) ,(uncurry (cdr ags))))))
 
 (define (translate-handler e)
   (match e 
@@ -54,3 +52,17 @@
                     (actor (spawn counter)))
 
                    (send actor inc 1)))))
+
+
+#|
+(define inc/c (behavior/c 
+                (message/c 'inc
+                           (list)
+                           any-recipient
+                           unconstrained/c)))
+
+(define inc/c (lambda (k j) 
+                (lambda (m)
+                  (match m 
+                    (pair 'inc v)  
+|#

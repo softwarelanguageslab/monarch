@@ -1,6 +1,7 @@
 #lang racket
 
 (provide translate)
+(require "../utils.rkt")
 
 ;; Indicates whether to compile meta annotations in the 
 ;; output
@@ -11,6 +12,63 @@
   (if (*is-meta*)
    `(meta ,e)
    e))
+
+;; Created an "enhanced" message 
+;; by prepending the message tag 
+;; with "enhanced".
+(define (enhanced-message msg κ) 
+  ;; TODO: use a different tag 
+  ;; than "enhanced" since this 
+  ;; might clash with user-level
+  ;; programs, or enforce 
+  ;; that "enhance" is a protected
+  ;; tag and cannot be used.
+  (uncurry (list '(quote enhanced) κ msg)))
+
+;; Translate a meta level 
+;; message to base level assertions.
+;;
+;; This is similar to the translation
+;; for higher order contracts in 
+;; the sequential contract setting 
+;; but creates an enhanced message
+;; if a communication contract is 
+;; used.
+(define (translate-message/c k j) 
+    (lambda (exp)
+        (match exp
+          [(quasiquote (message/c ,tag ,payload ,recipient ,communication))
+           (let* ((ps   (map (lambda ags (gensym "x")) payload))
+                  (nmsg (map (lambda (κ arg) `((,κ ,k ,j) ,arg)) payload ps)))
+
+           `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) communication)))])))
+
+;; Translate a behavior contract to 
+;; a base-level construct.
+;;
+;; The meta construct is translated to 
+;; a lambda accepting a set of blame labels, 
+;; and a message. This message is then transformed
+;; to a contracted message if applicable. 
+;;
+;; If a message is received that does not 
+;; match any expected tag the appropriate
+;; blame message is generated.
+(define (translate-behavior/c exp) 
+  (match exp
+    [(quasiquote (behavior/c ,@messages))
+     (let ((message (gensym "message"))
+           (a (gensym "a"))
+           (k (gensym "k"))
+           (j (gensym "j"))
+           (v (gensym "v")))
+
+     `(lambda (,k ,j)    ;; blame labels
+        (lambda (,a)    ;; actor reference
+           (lambda (,v) ;; message intercept
+             (letrec
+               ((,message (match ,v ,(map (translate-message/c k j) messages))))
+               (,a ,message))))))]))
 
 ;; "Contract-combinators" translation to
 ;; regular λ-calculus.
@@ -33,6 +91,8 @@
               ,(instrument-meta `(,(translate-aux κ2) ,j ,k (,f ,(instrument-meta `(,(translate-aux κ1) ,k ,j ,v)))))))))]
     [(quasiquote (mon ,j ,k ,κ ,v))
      (instrument-meta `(,(translate-aux κ) (quote ,j) (quote ,k) ,(translate-aux v)))]
+    [(quasiquote (behavior/c ,@messages))
+     (translate-behavior/c e)]
     [(quasiquote (,es ...))
      `(,@(map translate-aux es))]
     [x x]))
