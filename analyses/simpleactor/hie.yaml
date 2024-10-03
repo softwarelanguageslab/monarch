@@ -1,0 +1,10 @@
+cradle:
+  cabal:
+    - path: "./src"
+      component: "lib:interpreter"
+
+    - path: "./app/Main.hs"
+      component: "interpreter:exe:interpreter-exe"
+
+    - path: "./test"
+      component: "interpreter:test:interpreter-test"
