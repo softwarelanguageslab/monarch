@@ -34,7 +34,6 @@ import Domain (Domain(inject))
 import Analysis.Environment (Environment(..))
 import Analysis.Monad.Context (CtxM(..))
 import Data.Maybe
-import Data.Function (on)
 
 ------------------------------------------------------------
 -- Evaluation
