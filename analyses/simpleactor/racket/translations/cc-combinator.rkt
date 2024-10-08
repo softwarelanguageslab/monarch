@@ -118,28 +118,28 @@
        (letrec 
          ((r (lambda (,trace)
                 (receive 
-                  ('finish
-                   ;; for precision, unroll the message contracts
-                   ;; and ask `member` whether the trace contains 
-                   ;; the expected message
-                   (begin ,@(map (check-member trace j) contracts)))
-                   ((pair ,rcv ,message)
-                    ,(case tpy
-                       ((ensures/c) 
-                        ;; TODO: we match the message against our contracts
-                        ;; first, if the message is already "enhanced"
-                        ;; the enhanced parts are skipped to uncover
-                        ;; the actual message tag which is similar
-                        ;; to the stacking rules in Vandenbogaerde et al. (2024).
-                        ;;
-                        ;; "skip-enhanced" is a function preluded to the 
-                        ;; transformed program (see @preluded@).
-                        `(match ,message
-                            ,(map (translate-aux message 'r rcv trace j)
-                                  contracts)))
-                       (else κ)))))))
+                  (('finish
+                    ;; for precision, unroll the message contracts
+                    ;; and ask `member` whether the trace contains 
+                    ;; the expected message
+                    (begin ,@(map (check-member trace j) contracts)))
+                    ((pair ,rcv ,message)
+                     ,(case tpy
+                        ((ensures/c) 
+                         ;; TODO: we match the message against our contracts
+                         ;; first, if the message is already "enhanced"
+                         ;; the enhanced parts are skipped to uncover
+                         ;; the actual message tag which is similar
+                         ;; to the stacking rules in Vandenbogaerde et al. (2024).
+                         ;;
+                         ;; "skip-enhanced" is a function preluded to the 
+                         ;; transformed program (see @preluded@).
+                         `(match ,message
+                             ,(map (translate-aux message 'r rcv trace j)
+                                   contracts)))
+                        (else κ))))))))
 
-         (spawn (r '()))))))
+         (spawn (r (list)))))))
                
 
 ;; Translate a behavior contract to 
@@ -206,24 +206,6 @@
   (map enhance-pattern pats))
 
 
-;; Create a monotolically increasing reference 
-;; cell as a process in the system.
-;;
-;; This is used for keeping track of 
-;; message traces in communication contracts.
-(define (create-ref-cell initial-value)
-  `(letrec 
-     ((ref-cell-beh (lambda (value)
-                      (receive 
-                        ((pair 'set new-value) (ref-cell-beh new-value))
-                        ((pair 'add extra-value)
-                         (ref-cell-beh (pair extra-value value)))
-                        ((pair 'get sender) (begin 
-                                              (send sender value)
-                                              (ref-cell-beh value)))))))
-     (spawn (ref-cell-beh ,initial-value))))
-
-
 ;; "Contract-combinators" translation to
 ;; regular λ-calculus.
 ;;
@@ -233,6 +215,13 @@
 ;; monitors before program reduction.
 (define (translate-aux e) 
   (match e
+    [(quasiquote (letrec ,bds ,@bdy))
+     (let ((names (map car bds))
+           (exps  (map cadr bds)))
+       `(letrec ,(map (lambda (name bnd) `(,name ,(translate-aux bnd)))
+                      names
+                      exps)
+          (begin ,@(map translate-aux bdy))))]
     [(quasiquote (flat ,e))
      (let ((j (gensym)) (k (gensym)) (v (gensym)))
         (instrument-meta `(lambda (,j ,k ,v) (if (,e ,v) ,v (blame ,j (quote ,e))))))] 

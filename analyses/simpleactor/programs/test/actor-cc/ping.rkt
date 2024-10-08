@@ -1,11 +1,13 @@
 (letrec
   ((ping-behavior (behavior ()
                     ((ping (sender) 
-                        (send sender 'pong) 
+                        (print "ping")
+                        (send sender pong) 
                         (become ping-behavior)))))
    (pong-behavior (behavior ()
                    ((pong (sender)
-                        (send sender 'ping)
+                        (print "pong")
+                        (send sender ping)
                         (become pong-behavior)))))
    (ping/c (lambda () 
               (behavior/c 
@@ -18,5 +20,5 @@
 
   (letrec ((ping (spawn (mon client server (ping/c) ping-behavior)))
            (pong (spawn pong-behavior)))
-
-    (send ping 'ping pong)))
+    (send ping ping pong)
+    (wait-until-all-finished)))
