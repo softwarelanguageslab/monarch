@@ -5,7 +5,6 @@ import Data.List (intercalate)
 import Text.Printf
 import Syntax.Span
 import Syntax.Ide
-import Control.Monad (when)
 
 -- | An expression
 data Exp = Lam [Ide] Exp Span
@@ -71,21 +70,21 @@ instance SpanOf Exp where
 
 instance Show Exp where
    show = \case 
-            (Lam x e _) -> printf "(lam (%s) %s)" (intercalate "," (map show x)) (show e)
-            (App e1 es _) -> printf "(%s %s)" (show e1) (unwords (map show es))
-            (Spawn e1 _) -> printf "(spawn^ %s)" (show e1)
+            (Lam x e _)       -> printf "(lam (%s) %s)" (intercalate "," (map show x)) (show e)
+            (App e1 es _)     -> printf "(%s %s)" (show e1) (unwords (map show es))
+            (Spawn e1 _)      -> printf "(spawn^ %s)" (show e1)
             (Letrec bds es _) -> printf "(letrec (%s) %s)" (show bds) (show es)
-            (Terminate _) -> "(terminate)"
-            (Self _) -> "self^"
-            (Pair e1 e2 _) -> printf "(cons %s %s)" (show e1) (show e2)
+            (Terminate _)     -> "(terminate)"
+            (Self _)          -> "self^"
+            (Pair e1 e2 _)    -> printf "(cons %s %s)" (show e1) (show e2)
             (Parametrize bds bdy _) -> 
                printf "(parametrize (%s) %s)" (show bds) (show bdy)
-            (Blame lbl _) -> printf "(blame %s)" (show lbl)
-            (Receive pats _) -> printf "(receive %s)" (show pats)
-            (Match v pats _) -> printf "(match %s %s)" (show v) (show pats)
-            (Literal l _) -> show l
-            (Ite e1 e2 e3 _) -> printf "(if %s %s %s)" (show e1) (show e2) (show e3)
-            (Var x) -> show x
-            (DynVar x) -> "(dyn " ++ show x ++ ")"
-            (Begin es _) -> printf "(begin %s)" (unwords (map show es))
-            (Meta e _) -> printf "(meta %s)" (show e)
+            (Blame lbl _)     -> printf "(blame %s)" (show lbl)
+            (Receive pats _)  -> printf "(receive %s)" (show pats)
+            (Match v pats _)  -> printf "(match %s %s)" (show v) (show pats)
+            (Literal l _)     -> show l
+            (Ite e1 e2 e3 _)  -> printf "(if %s %s %s)" (show e1) (show e2) (show e3)
+            (Var x)           -> show x
+            (DynVar x)        -> "(dyn " ++ show x ++ ")"
+            (Begin es _)      -> printf "(begin %s)" (unwords (map show es))
+            (Meta e _)        -> printf "(meta %s)" (show e)

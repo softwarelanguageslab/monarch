@@ -21,14 +21,14 @@
 ;; Created an "enhanced" message 
 ;; by prepending the message tag 
 ;; with "enhanced".
-(define (enhanced-message msg κ) 
+(define (enhanced-message msg κ j) 
   ;; TODO: use a different tag 
   ;; than "enhanced" since this 
   ;; might clash with user-level
   ;; programs, or enforce 
   ;; that "enhance" is a protected
   ;; tag and cannot be used.
-  (uncurry (list '(quote enhanced) κ msg)))
+  (uncurry (list '(quote enhanced) κ j msg)))
 
 ;; Translate a meta level 
 ;; message to base level assertions.
@@ -46,7 +46,85 @@
            (let* ((ps   (map (lambda ags (gensym "x")) payload))
                   (nmsg (map (lambda (κ arg) `((,κ ,k ,j) ,arg)) payload ps)))
 
-           `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) communication)))])))
+           `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) communication j)))])))
+
+;; Translate a communication contract to
+;; a equivalent SimpleActor construct.
+;;
+;; The translation proceeds as follows. 
+;; First the message contracts within the communication
+;; contract are translated to equivalent constructs
+;; in the SimpleActor language. Next, depending on the 
+;; type of communication contract used, the contract
+;; is translated to a stateful actor that keeps track
+;; of message traces (in case of an ensures/c) or 
+;; prohibits messages from being sent (in case of an only/c contracts)
+(define (translate-communication/c κ)
+  ;; same as @translate-message/c@ but adds the tag 
+  ;; of the message to the reference cell for keeping 
+  ;; tracking of message traces.
+  (define (translate-aux message behavior rcv current-value)
+    (lambda (contract)
+       (let*
+         ((tag (car contract))
+          (translated     (translate-message/c contract))
+          (pattern        (car translated))
+          (enhanced-msg   (cdr translated)))
+
+         `(,pattern  (begin (send^ ,rcv ,enhanced-msg)
+                            (,behavior (pair ,tag ,current-value)))))))
+
+        
+         
+  ;; Communication contracts are always structured 
+  ;; as a list tagged with the type of communication
+  ;; contract used, hence the `car` indicates the 
+  ;; type of communication contract and the `cdr`
+  ;; its contents. Similar to Vandenbogaerde et al. 
+  ;; each type of communication contract expects
+  ;; a list of message contracts.
+  (let* ((tpy (car κ))
+         ;; the blame labels that are going to be used 
+         ;; as variables since they can be passed 
+         ;; dynamically since the communication contracts
+         ;; are values that can flow through the program.
+         (k   (gensym "k"))
+         (j   (gensym "j"))
+         (τ   (gensym "tag"))
+         (message   (gensym "message"))
+         (rcv       (gensym "rcv"))
+         (trace     (gensym "trace"))
+         (contracts (cdr κ)))
+
+    ;; Communication contracts only accept a single blame label.
+    `(lambda (,j)
+       ;; every communication contract acts
+       ;; a "sending" process that incercepts
+       ;; message sends from the `send` construct
+       ;; in the λα language. Thus, the communication
+       ;; contract is translated to a function that accepts
+       ;; a message and checks whether the contract
+       ;; holds for that message.
+       (letrec 
+         ((r (lambda (,trace)
+                (receive 
+                  ((pair ,rcv ,message)
+                    ,(case tpy
+                       ((ensures/c) 
+                        ;; TODO: we match the message against our contracts
+                        ;; first, if the message is already "enhanced"
+                        ;; the enhanced parts are skipped to uncover
+                        ;; the actual message tag which is similar
+                        ;; to the stacking rules in Vandenbogaerde et al. (2024).
+                        ;;
+                        ;; "skip-enhanced" is a function preluded to the 
+                        ;; transformed program (see @preluded@).
+                        `(match ,message
+                            ,(map (translate-aux message 'r rcv trace)
+                                  contracts)))))))))
+
+         (spawn (r))))))
+               
 
 ;; Translate a behavior contract to 
 ;; a base-level construct.
@@ -74,14 +152,61 @@
             ((,message (match ,v ,(map (translate-message/c k j) messages))))
             (,a ,message)))))]))
 
+;; Enhances patterns in the `receive` construct
+;; with patterns with the enhanced counter-parts 
+;; of those messages.
+;;
+;; The "enhancing" process entails adding support
+;; for messages tagged with "enhanced" and then 
+;; inserting the appropriate monitoring code 
+;; in its handler.
 (define (enhanced-receive-patterns pats)
   (define (enhance-pattern pat) 
     (match pat 
       [(quasiquote (,message ,bdy))
-         (let ((κ (gensym "κ")))
-          `(,(uncurry (append (list ''enhanced κ) (list message))) ,bdy))]))
+         (let ((κ (gensym "k"))
+               (κc (gensym "kc"))
+               (rcv (gensym "rcv"))
+               (msg (gensym "msg"))
+               (j  (gensym "j"))
+               (old-send (gensym "old-send"))
+               (k  (gensym "k")))
+          `(,(uncurry (append (list ''enhanced κ j) (list message))) 
+             ;; TODO: we assume that there is only one instrumented 
+             ;; send^ but it is possible that enhanced messages get 
+             ;; nested meaning that multiple communication contracts
+             ;; can be active at the same time. But in practice
+             ;; more than one can be active due to wrapped actor
+             ;; references, so we will need do dynamically add 
+             ;; calls to `parametrize` using some kind of CPS.
+             (letrec 
+               ((,κc (,κ ,j))
+                (,old-send send^))
+                (parametrize 
+                  ((send^ (lambda (,rcv ,msg) (,old-send ,κc (pair ,rcv ,msg)))))
+                  (begin ,bdy
+                         (,old-send ,κc 'finish))))))]))
 
   (map enhance-pattern pats))
+
+
+;; Create a monotolically increasing reference 
+;; cell as a process in the system.
+;;
+;; This is used for keeping track of 
+;; message traces in communication contracts.
+(define (create-ref-cell initial-value)
+  `(letrec 
+     ((ref-cell-beh (lambda (value)
+                      (receive 
+                        ((pair 'set new-value) (ref-cell-beh new-value))
+                        ((pair 'add extra-value)
+                         (ref-cell-beh (pair extra-value value)))
+                        ((pair 'get sender) (begin 
+                                              (send sender value)
+                                              (ref-cell-beh value)))))))
+     (spawn (ref-cell-beh ,initial-value))))
+
 
 ;; "Contract-combinators" translation to
 ;; regular λ-calculus.
@@ -90,7 +215,6 @@
 ;; is that contracts are also values and do 
 ;; not always directly appear in contract 
 ;; monitors before program reduction.
-
 (define (translate-aux e) 
   (match e
     [(quasiquote (flat ,e))

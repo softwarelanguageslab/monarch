@@ -21,5 +21,5 @@
 ;;
 
 (pretty-display (cc:translate 
-           #:meta #t
+           #:meta #f
            (ac:translate (read))))

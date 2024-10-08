@@ -1,12 +1,15 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
-module Syntax.Compiler where
+-- | Compiles S-expression syntax to a SimpleActor AST
+module Syntax.Compiler(compile, parseFromString) where
 
 import Syntax.Scheme.Parser
 import qualified Syntax.Scheme.Parser as SExp
-import Control.Monad.Error
+import Control.Monad.Except
 import Syntax.AST
 import Syntax.Span (SpanOf)
+
+type MonadCompile m = (MonadError String m)
 
 pureSpan :: (Applicative m, SpanOf e) => e -> m Span
 pureSpan = pure . spanOf
@@ -14,7 +17,7 @@ pureSpan = pure . spanOf
 parseFromString :: String -> Either String Exp
 parseFromString = fmap head . parseSexp >=> compile
 
-compile :: MonadError String m => SExp -> m Exp
+compile :: MonadCompile m => SExp -> m Exp
 compile ex@(Atom "lambda" _ ::: args ::: e ::: (SNil _)) =
    Lam <$> smapM compileParam args <*> compile e <*> pureSpan ex
 compile e@(Atom "lambda" _ ::: _) =

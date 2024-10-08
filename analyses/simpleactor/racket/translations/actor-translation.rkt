@@ -26,9 +26,9 @@
    [(quasiquote (send ,@es))
     (invalid-syntax "send" e)]
    [(quasiquote (spawn ,beh ,@ags))
-    `(lambda (msg) 
-       (letrec ((act (spawn^ (,beh ,@ags))))
-         (send^ act msg)))]
+    `(letrec ((act (spawn^ (,beh ,@ags))))
+      (lambda (msg) 
+          (send^ act msg)))]
    [(quasiquote (spawn ,@es))
     (invalid-syntax "spawn" e)]
    [(quasiquote self)
