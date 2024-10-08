@@ -29,11 +29,9 @@
 
 ;; Actor contract language
 ;; 
-(letrec 
-  ((inc/c (behavior/c (message/c 'inc (number?) unspecified-recipient unconstrained/c)))
-   (inc-behavior (behavior (x) ((inc () (become inc-behavior (+ x 1))))))
-   (inc-actor (mon server client inc/c (spawn inc-behavior 0))))
-
-  (send inc-actor inc))
-
-
+;(letrec 
+;  ((inc/c (behavior/c (message/c 'inc (number?) unspecified-recipient unconstrained/c)))
+;   (inc-behavior (behavior (x) ((inc () (become inc-behavior (+ x 1))))))
+;   (inc-actor (mon server client inc/c (spawn inc-behavior 0))))
+;
+;  (send inc-actor inc))

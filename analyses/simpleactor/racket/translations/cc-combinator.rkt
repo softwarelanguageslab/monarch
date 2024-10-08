@@ -46,7 +46,7 @@
            (let* ((ps   (map (lambda ags (gensym "x")) payload))
                   (nmsg (map (lambda (κ arg) `((,κ ,k ,j) ,arg)) payload ps)))
 
-           `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) communication j)))])))
+           `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) (translate-communication/c communication) j)))])))
 
 ;; Translate a communication contract to
 ;; a equivalent SimpleActor construct.
@@ -60,21 +60,31 @@
 ;; of message traces (in case of an ensures/c) or 
 ;; prohibits messages from being sent (in case of an only/c contracts)
 (define (translate-communication/c κ)
+  (if (symbol? κ)
+      κ
+      (translate-communication/c-aux κ)))
+
+(define (translate-communication/c-aux κ)
   ;; same as @translate-message/c@ but adds the tag 
   ;; of the message to the reference cell for keeping 
   ;; tracking of message traces.
-  (define (translate-aux message behavior rcv current-value)
+  (define (translate-aux message behavior rcv current-value j)
     (lambda (contract)
        (let*
          ((tag (car contract))
-          (translated     (translate-message/c contract))
+          (translated     ((translate-message/c j j) contract))
           (pattern        (car translated))
           (enhanced-msg   (cdr translated)))
 
          `(,pattern  (begin (send^ ,rcv ,enhanced-msg)
                             (,behavior (pair ,tag ,current-value)))))))
 
-        
+
+  (define (check-member trace j)
+    (lambda (contract)
+       `(if (member ,(cadr contract) ,trace)
+            #t 
+            (blame ,j))))
          
   ;; Communication contracts are always structured 
   ;; as a list tagged with the type of communication
@@ -96,7 +106,7 @@
          (trace     (gensym "trace"))
          (contracts (cdr κ)))
 
-    ;; Communication contracts only accept a single blame label.
+     ;; Communication contracts only accept a single blame label.
     `(lambda (,j)
        ;; every communication contract acts
        ;; a "sending" process that incercepts
@@ -108,7 +118,12 @@
        (letrec 
          ((r (lambda (,trace)
                 (receive 
-                  ((pair ,rcv ,message)
+                  ('finish
+                   ;; for precision, unroll the message contracts
+                   ;; and ask `member` whether the trace contains 
+                   ;; the expected message
+                   (begin ,@(map (check-member trace j) contracts)))
+                   ((pair ,rcv ,message)
                     ,(case tpy
                        ((ensures/c) 
                         ;; TODO: we match the message against our contracts
@@ -120,10 +135,11 @@
                         ;; "skip-enhanced" is a function preluded to the 
                         ;; transformed program (see @preluded@).
                         `(match ,message
-                            ,(map (translate-aux message 'r rcv trace)
-                                  contracts)))))))))
+                            ,(map (translate-aux message 'r rcv trace j)
+                                  contracts)))
+                       (else κ)))))))
 
-         (spawn (r))))))
+         (spawn (r '()))))))
                
 
 ;; Translate a behavior contract to 
