@@ -254,7 +254,7 @@
      ((any? (lambda (v) #t))
       (meta (lambda (v) v))
       (member (lambda (v lst)
-                (begin (print lst)
+                (begin 
                    (match lst
                      ((() #f)
                       ((pair v1 vs)

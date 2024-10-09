@@ -19,8 +19,10 @@ parseFromString :: String -> Either String Exp
 parseFromString = fmap head . parseSexp >=> compile
 
 compile :: MonadCompile m => SExp -> m Exp
-compile ex@(Atom "lambda" _ ::: args ::: e ::: (SNil _)) =
-   Lam <$> smapM compileParam args <*> compile (traceShow ex e) <*> pureSpan ex
+compile ex@(Atom "lambda" _ ::: args ::: es) =
+   Lam <$> smapM compileParam args
+       <*> (Begin <$> smapM compile es <*> pureSpan ex)
+       <*> pureSpan ex
 compile e@(Atom "lambda" _ ::: _) =
    throwError $ "invalid syntax for lambda " ++ show e
 compile ex@(Atom "spawn^" _ ::: e ::: SNil _) = Spawn <$> compile e <*> pureSpan ex
@@ -43,11 +45,11 @@ compile ex@(Atom "match" _ ::: on ::: pats ::: SNil _) =
    Match <$> compile on <*> compilePats pats <*> pureSpan ex
 compile ex@(Atom "match" _ ::: _) =
    throwError $ "invalid syntax for 'match' " ++ show ex
-compile em@(Atom "meta" _ ::: e ::: SNil _) = 
+compile em@(Atom "meta" _ ::: e ::: SNil _) =
    Meta <$> compile e <*> pure (spanOf em)
-compile (Atom "dyn" _ ::: Atom dyn s ::: SNil _) = 
+compile (Atom "dyn" _ ::: Atom dyn s ::: SNil _) =
    return $ DynVar $ Ide dyn s
-compile e@(Atom "dyn" _ ::: _) = 
+compile e@(Atom "dyn" _ ::: _) =
    throwError $ "invalid syntax for dyn " ++ show e
 compile ex@(SExp.Num n _) =
    return $ Literal (Syntax.AST.Num n) (spanOf ex)
@@ -62,7 +64,7 @@ compile ex@(Atom "begin" _ ::: exs) =
 compile ex@(Atom "self^" _) = pure $ Self (spanOf ex)
 compile (Atom "quote" span' ::: s ::: SNil _) = compile (Quo s span')
 compile ex@(Atom "blame" _ ::: party ::: _) = Blame <$> compile party <*> pureSpan ex
-compile ex@(Atom "parametrize" _ ::: bds ::: bdy ::: SNil _) = 
+compile ex@(Atom "parametrize" _ ::: bds ::: bdy ::: SNil _) =
    Parametrize <$> smapM compileBdn bds <*> compile bdy <*> pureSpan ex
 compile e@(Atom "blame" _ ::: _) =
    throwError $ "invalid syntax for blame " ++ show e

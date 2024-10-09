@@ -11,7 +11,6 @@ import Data.Functor.Identity
 import Analysis.Monad hiding (eval)
 import Syntax.AST
 import Analysis.Monad.Stack (MonadStack)
-import Analysis.Scheme.Prelude (CPActorValue)
 import Analysis.Monad.Fix
 import Control.Monad.Escape
 import Data.Set (Set)
@@ -25,9 +24,6 @@ import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Layer (MonadLayer)
 import Lattice.Class (Joinable, joins, BottomLattice)
 import qualified Data.List as List
-import Domain.Core.VectorDomain.Class
-import Domain.Scheme.Derived.Pair
-import Domain.Symbolic.Paired
 import Domain.SimpleActor
 
 ------------------------------------------------------------
@@ -60,9 +56,10 @@ type family Unlist (as :: Type) :: Type where
 newtype JoinToResultMap k v m a = JoinToResultMap (MapT k v m a) 
                             deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer)
 
-instance {-# OVERLAPPING #-} (Monad m, Ord k, BottomLattice v, Joinable v) => MapM k [v] (JoinToResultMap k v m) where 
+instance {-# OVERLAPPING #-} (Monad m, Show v, Ord k, BottomLattice v, Joinable v) => MapM k [v] (JoinToResultMap k v m) where 
    get = JoinToResultMap . fmap (fmap List.singleton) . get 
-   put k = JoinToResultMap . put k . joins
+   -- put k = JoinToResultMap . put k . joins
+   put k v = JoinToResultMap $ put k $ joins v
 
 -- | Run the @JoinToResultMap@
 runWithJoinToMap :: forall k s v m a . (s ~ [v]) => JoinToResultMap k v m a -> m (a, Map k v)
@@ -79,8 +76,8 @@ type IntraT m = MonadStack '[
                CtxT K,
                MetaT, 
                ActorLocalT ActorVlu,
-               NonDetT,
-               -- JoinT
+               -- NonDetT,
+               JoinT,
                CacheT
             ] m
 
@@ -115,7 +112,7 @@ initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
 inter :: MonadInter m => Exp -> m ()
 inter exp = add (((((exp, initialEnv), Map.empty), []), False), Pid exp []) >> iterateWL intra
 
-analyze :: Exp -> ((((), ActorSto), ActorMai), Map ActorCmp (Unlist ActorRes))
+analyze :: Exp -> ((((), ActorSto), ActorMai), Map ActorCmp (ActorRes))
 analyze exp =
       let (((((((), sto), _), _), _), mb), mapping) =
               inter exp
@@ -124,8 +121,8 @@ analyze exp =
             & runWithStore @(Map (StrAdrE Exp K) (StrDom ActorVlu))
             & runWithStore @(Map (VecAdrE Exp K) (VecDom ActorVlu))
             & runWithMailboxT @ActorVlu
-            -- & runWithMapping @ActorCmp @ActorRes
-            & runWithJoinToMap @ActorCmp @ActorRes
+            & runWithMapping @ActorCmp @ActorRes
+            -- & runWithJoinToMap @ActorCmp @ActorRes
             & runWithComponentTracking @ActorCmp
             & runWithDependencyTracking @ActorCmp @ActorCmp
             & runWithDependencyTracking @ActorCmp @(EnvAdr K)

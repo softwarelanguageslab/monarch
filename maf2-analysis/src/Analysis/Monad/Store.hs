@@ -41,12 +41,14 @@ import Control.Monad.Layer
 import Analysis.Store (Store)
 import Data.TypeLevel.AssocList
 import Data.Kind
+import Debug.Trace
+import Domain (Address)
 
 ---
 --- StoreM typeclass
 ---
 
-class (Monad m, Lattice v) => StoreM a v m | m a -> v where
+class (Monad m, Lattice v, Address a) => StoreM a v m | m a -> v where
    -- | Write to a newly allocated address
    writeAdr  :: a -> v -> m ()
    -- | Update an existing address
@@ -119,13 +121,13 @@ instance (Monad (t m), MonadLayer t, StoreM' s adr v m) => StoreM' s adr v (t m)
 newtype StoreT s adr vlu m a = StoreT { getStoreT :: StateT s m a }
    deriving (Applicative, Functor, Monad, MonadJoin, MonadState s, MonadLayer, MonadTrans, MonadTransControl, MonadCache)
 
-instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM a v (StoreT s a v m) where
+instance {-# OVERLAPPING #-} (Monad m, Store s a v, Address a) => StoreM a v (StoreT s a v m) where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    updateWith fs fw adr = modify (Store.updateStoWith fs fw adr)
    lookupAdr = gets . Store.lookupSto
 
-instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM' s a v (StoreT s a v m) where
+instance {-# OVERLAPPING #-} (Monad m, Address a, Store s a v) => StoreM' s a v (StoreT s a v m) where
    currentStore = get 
    putStore = put 
 
@@ -145,7 +147,7 @@ runWithStore = runStoreT Store.emptySto
 newtype StoreT' adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
                               deriving (Applicative, Functor, Monad, MonadJoin, MonadState (Map adr (SVar v)), MonadLayer, MonadTrans)
 
-instance {-# OVERLAPPING #-} (SVar.MonadStateVar m, Lattice v, Ord adr) => StoreM adr v (StoreT' adr v m) where
+instance {-# OVERLAPPING #-} (SVar.MonadStateVar m, Address adr, Lattice v, Ord adr) => StoreM adr v (StoreT' adr v m) where
    writeAdr adr vlu =
       gets (Map.lookup adr) >>=
          maybe (SVar.new vlu >>= (\var -> modify (Map.insert adr var) >> void (SVar.modify (const (Just vlu)) var)))

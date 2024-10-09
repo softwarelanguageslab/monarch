@@ -6,7 +6,6 @@ import qualified Data.Map as Map
 import Lattice
 
 import Data.Set (Set)
-import Data.Kind (FUN)
 
 -- | A generic store typeclass
 class (Lattice v) => Store s a v | s -> a v where

@@ -8,6 +8,8 @@ import Lattice.Split
 import Domain.Class 
 
 import qualified Data.Set as Set 
+import Lattice.Equal (EqualLattice, eql)
+import Domain.Core.BoolDomain.Class (true)
 
 -- | Joinable for Unit
 instance Joinable () where
@@ -16,6 +18,8 @@ instance Joinable () where
 instance Meetable () where 
    meet _ _ = ()
 
+instance EqualLattice () where   
+   eql _ _ = true
 
 -- | A singleton set has a smallest element (itself)
 instance BottomLattice () where   
