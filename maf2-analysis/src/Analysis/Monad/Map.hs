@@ -42,7 +42,8 @@ getOrBot = fmap justOrBot . get
 put' :: (Eq v, MapM k v m) => k -> v -> m Bool
 put' k v = do old <- get k
               put k v
-              return (old /= Just v)
+              new <- get k
+              return (old /= new)
 
 joinWith' :: (Lattice v, MapM k v m) => k -> v -> m Bool
 joinWith' k v = do old <- getOrBot k
