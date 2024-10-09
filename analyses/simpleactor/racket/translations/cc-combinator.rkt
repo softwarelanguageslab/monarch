@@ -215,13 +215,13 @@
 ;; monitors before program reduction.
 (define (translate-aux e) 
   (match e
-    [(quasiquote (letrec ,bds ,@bdy))
-     (let ((names (map car bds))
-           (exps  (map cadr bds)))
-       `(letrec ,(map (lambda (name bnd) `(,name ,(translate-aux bnd)))
-                      names
-                      exps)
-          (begin ,@(map translate-aux bdy))))]
+    ;[(quasiquote (letrec ,bds ,@bdy))
+    ; (let ((names (map car bds))
+    ;       (exps  (map cadr bds)))
+    ;   `(letrec ,(map (lambda (name bnd) `(,name ,(translate-aux bnd)))
+    ;                  names
+    ;                  exps)
+    ;      (begin ,@(map translate-aux bdy))))]
     [(quasiquote (flat ,e))
      (let ((j (gensym)) (k (gensym)) (v (gensym)))
         (instrument-meta `(lambda (,j ,k ,v) (if (,e ,v) ,v (blame ,j (quote ,e))))))] 

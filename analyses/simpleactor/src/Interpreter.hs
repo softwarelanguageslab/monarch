@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell, GADTs, AllowAmbiguousTypes, StandaloneDeriving, DerivingVia, KindSignatures, GeneralizedNewtypeDeriving, UndecidableInstances, RankNTypes #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Move brackets to avoid $" #-}
+{-# LANGUAGE LambdaCase #-}
 module Interpreter where
 
 import Syntax.AST
@@ -8,13 +9,15 @@ import Control.Monad.Reader
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Monad.State
-import Control.Concurrent.Classy
+import Control.Concurrent.Classy hiding (catch)
 import Control.Monad.Extra
 import Control.Monad.Catch
 import Control.Lens hiding (Context)
 import Data.Maybe
 import Data.Kind
 import Data.Bifunctor
+import Control.Exception hiding (catch)
+import Debug.Trace (traceShowId, trace)
 
 -- | A concrete environment
 type Env = Map String Adr
@@ -86,6 +89,9 @@ type EvalM m = (
 -- Auxilary functions
 ------------------------------------------------------------
 
+printError :: MonadIO m => String -> m a
+printError errMsg = liftIO (putStrLn errMsg) >> error errMsg
+
 bottom :: a
 bottom = bottom
 
@@ -114,10 +120,10 @@ withEnv :: EvalM m => Env -> m a -> m a
 withEnv env = local (over environment (const env))
 
 lookupEnv :: EvalM m => String -> m Adr
-lookupEnv nam = asks (fromMaybe (error $ nam ++ " not found") . Map.lookup nam .  view environment)
+lookupEnv nam = join $ asks (maybe (printError $ nam ++ " not found") return . Map.lookup nam .  view environment)
 
 lookupDynamic :: EvalM m => String -> m Adr
-lookupDynamic nam = asks (fromMaybe (error $ nam ++ " not found") . Map.lookup nam .  view parameters)
+lookupDynamic nam = join $ asks (maybe (printError $ nam ++ " not found") return . Map.lookup nam .  view parameters)
 
 
 -- Store
@@ -132,7 +138,7 @@ store adr val =
 
 deref :: EvalM m => Adr ->  m (Value m)
 deref adr =
-   getsM (fmap (fromJust . Map.lookup adr) . readIORef  . currStore)
+   join $ getsM (fmap (maybe (printError $ "deref failed of " ++ show adr) return . Map.lookup adr) . readIORef  . currStore)
 
 -- Actor
 
@@ -149,7 +155,7 @@ spawnActor :: EvalM m => (ARef m -> m ()) -> m (ARef m)
 spawnActor f = do
    ref <- ARef <$> newChan <*> newPid
    finishSignal <- newEmptyMVar
-   getsM (void . modifyRef (finishSignal:) . finishSignals)
+   getsM (flip atomicModifyIORef (\signals -> (finishSignal:signals, ())) . finishSignals)
    void $ forkFinally (f ref) (const $ putMVar finishSignal ())
    return ref
 
@@ -167,78 +173,80 @@ waitUntilAllFinished = getsM (readIORef . finishSignals) >>= mapM_ takeMVar
 ------------------------------------------------------------
 
 eval :: EvalM m => Exp -> m (Value m)
-eval lam@(Lam {}) = ClosureValue lam <$> getEnv
-eval (Literal lit _) = return (LiteralValue lit)
-eval (App e1 es _) = do
+eval e = eval' (trace ("e :: " ++  show e) e)
+
+eval' :: EvalM m => Exp -> m (Value m)
+eval' lam@(Lam {}) = ClosureValue lam <$> getEnv
+eval' (Literal lit _) = return (LiteralValue lit)
+eval' app@(App e1 es _) = do
    v1 <- eval e1
    v2 <- mapM eval es
-   apply v1 v2
-eval (Ite e1 e2 e3 _) = do
+   apply app v1 v2
+eval' (Ite e1 e2 e3 _) = do
    cnd <- eval e1
    case cnd of
       LiteralValue (Boolean b) -> if b then eval e2 else eval e3
-      _ -> liftIO (putStrLn "condition should be boolean") >> error "condition should be boolean"
-eval (Spawn e _) =
+      _ -> printError "condition should be boolean"
+eval' (Spawn e _) =
    ActorValue <$> spawnActor (`withSelf` (void $ eval e))
-eval (Terminate _) =
+eval' (Terminate _) =
    myThreadId >>= killThread >> return bottom
-eval (Receive pats _) =
+eval' (Receive pats _) =
    receive (\v -> do
-      (env', e) <- maybe (liftIO (putStrLn "no match found") >> error "no match found") return (matchList pats v)
+      (env', e) <- maybe (printError "no match found") return (matchList pats v)
       allocMapping env' >>= flip withMergedEnvironment (eval e))
-eval (Match e pats _) = do 
+eval' (Match e pats _) = do
    v <- eval e
-   let (env', matchExp) = fromMaybe (error "no match found") (matchList pats v)
+   (env', matchExp) <- maybe (printError "no match found") return (matchList pats v)
    -- TODO: there is some overlap with `receive` see if this can 
    -- be abstracted further
    allocMapping env' >>= flip withMergedEnvironment (eval matchExp)
-eval (Letrec bds e2 _) = do
+eval' (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (withExtendedEnv' bds' . eval . snd) bds
    mapM_ (uncurry store) (zip ads vs)
    withExtendedEnv' bds' (eval e2)
-eval (Begin exs _) =
+eval' (Begin exs _) =
    last <$> mapM eval exs
-eval (Pair e1 e2 _) =
+eval' (Pair e1 e2 _) =
    PairValue <$> eval e1 <*> eval e2
-eval (Var (Ide x _)) =
+eval' (Var (Ide x _)) =
    lookupEnv x >>= deref
-eval (DynVar (Ide x _)) = 
+eval' (DynVar (Ide x _)) =
    lookupDynamic x >>= deref
-eval (Self _) = ActorValue <$> getSelf
-eval (Parametrize bds e _) = do
+eval' (Self _) = ActorValue <$> getSelf
+eval' (Parametrize bds e _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (withExtendedDynamic bds' . eval . snd) bds
    mapM_ (uncurry store) (zip ads vs)
    withExtendedDynamic bds' (eval e)
-eval (Meta e _) = eval e
-eval (Blame k _) = do 
+eval' (Meta e _) = eval e
+eval' (Blame k _) = do
    v <- eval k
-   liftIO $ putStrLn $ "blaming" ++ show v
-   error "blame error"
-eval e = do 
+   printError $ "blame error" ++ show v
+eval' e = do
    liftIO $ putStrLn $ "unsupported expression" ++ show e
    error $ "unsupported expression" ++ show e
 
 trySend :: EvalM m => Value m -> Value m -> m ()
 trySend (ActorValue ref) p = send ref p
-trySend _ _ = do
-   liftIO $ putStrLn "receiver is not an actor reference"
-   error "receiver is not an actor reference"
+trySend _ _ = printError "receiver is not an actor reference"
 
-apply :: EvalM m => Value m -> [Value m] -> m (Value m)
-apply (ClosureValue (Lam prs e _) env) vs = do
+apply :: EvalM m => Exp -> Value m -> [Value m] -> m (Value m)
+apply app (ClosureValue lam@(Lam prs e _) env) vs = do
+   when (length prs /= length vs) $ 
+      printError ("argument mismatch: expected " ++ show (length prs) ++ " but got " ++ show (length vs) ++ " at " ++ show app ++ " for " ++ show lam)
+
    ads <- mapM alloc prs
    let bds = zip (map name prs) ads
    mapM_ (uncurry store) (zip ads vs)
    withEnv env (withExtendedEnv' bds (eval e))
-apply (PrmValue nam) vs =
+apply _ (PrmValue nam) vs =
    runPrimitive (fromJust $ Map.lookup nam allPrimitives) vs
-apply v _ = do
-   liftIO $ putStrLn $ "not a closure or primitive: " ++ show v
-   error $ "not a closure or primitive: " ++ show v
+apply _  v _ =
+   printError $ "not a closure or primitive: " ++ show v
 
 type Mapping m = Map Ide (Value m)
 
@@ -263,7 +271,7 @@ match (ValuePat val) (LiteralValue val')
 match (PairPat pat1 pat2) (PairValue v1 v2) = do
       m1 <- match pat1 v1
       m2 <- match pat2 v2
-      return $ Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
+      return $ Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error $ traceShowId "cannot map same variable to different values")
                                 m1 m2
 match _ _ = Nothing
 
@@ -273,24 +281,38 @@ match _ _ = Nothing
 
 newtype Prim = Prim (forall m . EvalM m => [Value m] -> m (Value m))
 
+prim :: (forall m . EvalM m => [Value m] -> m (Value m)) -> Prim
+prim f = Prim $ \args -> f args
+
 prim1 :: (forall m . EvalM m => Value m -> m (Value m)) -> Prim
-prim1 f = Prim match
+prim1 f = prim match
    where match :: forall m . EvalM m => [Value m] -> m (Value m)
          match [v] = f v
-         match vs  = error $ "expected 1 argument, got " ++ show (length vs) ++ " arguments"
+         match vs  = printError ("expected 1 argument, got " ++ show (length vs) ++ " arguments")
 
 allPrimitives :: Map String Prim
 allPrimitives = Map.fromList [
       ("print", prim1 $ liftIO . print >=> const (return ValueNil)) ,
-      ("inc", prim1 $ \(LiteralValue (Num n)) -> return (LiteralValue (Num (n+1)))),
-      ("wait-until-all-finished", Prim $ const waitUntilAllFinished >=> const (return ValueNil)),
-      ("send^", Prim $ \[recv, payload] -> trySend recv payload >> return ValueNil),
-      ("*", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1*n2))),
-      ("+", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1+n2))),
-      ("=", Prim $ \[LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Boolean $ n1 == n2))),
-      ("not", Prim $ \[LiteralValue (Boolean b)] -> return (LiteralValue (Boolean $ not b))),
-      ("nonzero?", prim1 $ \(LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n /= 0))),
-      ("positive?", prim1 $ \(LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n > 0)))
+      ("list",  prim $ \case [] -> return ValueNil
+                             l -> printError $ "invalid number of arguments, given " ++ show (length l) ++ " expected 0"),
+      ("inc", prim1 $ \case
+                  (LiteralValue (Num n)) -> return (LiteralValue (Num (n+1)))
+                  _ -> printError "invalid argument to inc"),
+      ("wait-until-all-finished", prim $ const waitUntilAllFinished >=> const (return ValueNil)),
+      ("send^", prim $ \case [recv, payload] -> trySend recv payload >> return ValueNil
+                             _               -> printError "invalid argument to send^"),
+      ("*", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1*n2))
+                         _ -> printError "invalid argument to *"),
+      ("+", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1+n2))
+                         _ -> printError "invalid arguments to +"),
+      ("=", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Boolean $ n1 == n2))
+                         _ -> printError "invalid arguments to ="),
+      ("not", prim $ \case [LiteralValue (Boolean b)] -> return (LiteralValue (Boolean $ not b))
+                           _ -> printError "invalid argument to not"),
+      ("nonzero?", prim1 $ \case (LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n /= 0))
+                                 _ -> printError "invalid argument to nonzero?"),
+      ("positive?", prim1 $ \case (LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n > 0))
+                                  _ -> printError "invalid argument to positive?")
    ]
 
 runPrimitive :: EvalM m => Prim -> [Value m] -> m (Value m)
@@ -301,6 +323,7 @@ initialEnv = Map.mapWithKey (const . PrmAdr) allPrimitives
 
 storePrimitives :: EvalM m => m ()
 storePrimitives = mapM_ (uncurry store . first PrmAdr) (Map.toList $ Map.mapWithKey (const . PrmValue) allPrimitives)
+
 
 ------------------------------------------------------------
 -- Execution

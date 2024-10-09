@@ -8,6 +8,7 @@ import qualified Syntax.Scheme.Parser as SExp
 import Control.Monad.Except
 import Syntax.AST
 import Syntax.Span (SpanOf)
+import Debug.Trace (traceShow)
 
 type MonadCompile m = (MonadError String m)
 
@@ -19,7 +20,7 @@ parseFromString = fmap head . parseSexp >=> compile
 
 compile :: MonadCompile m => SExp -> m Exp
 compile ex@(Atom "lambda" _ ::: args ::: e ::: (SNil _)) =
-   Lam <$> smapM compileParam args <*> compile e <*> pureSpan ex
+   Lam <$> smapM compileParam args <*> compile (traceShow ex e) <*> pureSpan ex
 compile e@(Atom "lambda" _ ::: _) =
    throwError $ "invalid syntax for lambda " ++ show e
 compile ex@(Atom "spawn^" _ ::: e ::: SNil _) = Spawn <$> compile e <*> pureSpan ex
