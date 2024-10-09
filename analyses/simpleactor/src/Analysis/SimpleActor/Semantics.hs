@@ -147,6 +147,7 @@ injectLit :: SchemeDomain v => Lit -> v
 injectLit (Boolean b) = inject b
 injectLit (Symbol s) = symbol s
 injectLit (Num n) = inject n
+injectLit Nil     = nil
 
 ------------------------------------------------------------
 -- Primitives
@@ -175,6 +176,7 @@ actorPrimitives :: Map String (Primitive v)
 actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("wait-until-all-finished", aprim0 $ return nil ),
    ("send^" , aprim2 $ \rcv msg -> trySend rcv msg >> return nil),
+   ("list", aprim0 $ return nil),
    ("print", aprim1 $ const $ return nil) ]
 
 -- | Scheme primitives
