@@ -139,7 +139,7 @@
                                    contracts)))
                         (else κ))))))))
 
-         (spawn (r (list)))))))
+         (spawn^ (r (list)))))))
                
 
 ;; Translate a behavior contract to 
@@ -160,12 +160,13 @@
            (a (gensym "a"))
            (k (gensym "k"))
            (j (gensym "j"))
-           (v (gensym "v")))
+           (v (gensym "v"))
+           (x (gensym "x")))
 
      `(lambda (,k ,j ,a)    ;; blame labels and actor reference
         (lambda (,v) ;; message intercept
           (letrec
-            ((,message (match ,v ,(map (translate-message/c k j) messages))))
+            ((,message (match ,v ,(append (map (translate-message/c k j) messages) (list `(,x (blame ,k)))))))
             (,a ,message)))))]))
 
 ;; Enhances patterns in the `receive` construct
@@ -200,11 +201,18 @@
                 (,old-send send^))
                 (parametrize 
                   ((send^ (lambda (,rcv ,msg) (,old-send ,κc (pair ,rcv ,msg)))))
-                  (begin ,bdy
-                         (,old-send ,κc 'finish))))))]))
+                  ,(before-last bdy
+                                `(,old-send ,κc 'finish))))))]))
 
   (map enhance-pattern pats))
 
+
+(define (before-last lst item)
+  (cond 
+    ((null? lst) (list item))
+    ((null? (cdr lst)) (cons item (list (car lst))))
+    (else (cons (car lst) (before-last (cdr lst) item)))))
+      
 
 ;; "Contract-combinators" translation to
 ;; regular λ-calculus.
@@ -245,7 +253,14 @@
   `(letrec 
      ((any? (lambda (v) #t))
       (meta (lambda (v) v))
+      (member (lambda (v lst)
+                (begin (print lst)
+                   (match lst
+                     ((() #f)
+                      ((pair v1 vs)
+                        (if (eq? v v1) #t (member v vs))))))))
       (unconstrained/c #f) ;; todo
+      (actor? (lambda (k j) (lambda (v) v)))
       (nonzero? (lambda (v) (not (= v 0)))))
      ,e))
 

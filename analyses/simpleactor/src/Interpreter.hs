@@ -18,6 +18,7 @@ import Data.Kind
 import Data.Bifunctor
 import Control.Exception hiding (catch)
 import Debug.Trace (traceShowId, trace)
+import Syntax.Span (spanOf)
 
 -- | A concrete environment
 type Env = Map String Adr
@@ -46,9 +47,19 @@ data Value m =
    | ClosureValue Exp Env
    | PrmValue String
    | ActorValue (ARef m)
-   | ValueNil
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord)
 
+instance Show (Value m) where 
+   show = \case   
+            LiteralValue l -> show l 
+            PairValue a b  -> "(" ++ show a ++ " " ++ show b ++ ")"
+            ClosureValue expr _ -> "<procedure at " ++ show (line (spanOf expr)) ++ ":" ++ show (column (spanOf expr)) ++ ">"
+            ActorValue ref -> show ref
+            PrmValue nam -> "<#primitive:" ++ show nam ++ ">"
+
+
+nil :: Value m 
+nil = LiteralValue Nil
 
 -- | Actor system state
 data SystemState m = SystemState {
@@ -173,7 +184,7 @@ waitUntilAllFinished = getsM (readIORef . finishSignals) >>= mapM_ takeMVar
 ------------------------------------------------------------
 
 eval :: EvalM m => Exp -> m (Value m)
-eval e = eval' (trace ("e :: " ++  show e) e)
+eval = eval' --  eval' (trace ("e :: " ++  show e) e)
 
 eval' :: EvalM m => Exp -> m (Value m)
 eval' lam@(Lam {}) = ClosureValue lam <$> getEnv
@@ -193,10 +204,12 @@ eval' (Terminate _) =
    myThreadId >>= killThread >> return bottom
 eval' (Receive pats _) =
    receive (\v -> do
-      (env', e) <- maybe (printError "no match found") return (matchList pats v)
+      liftIO (putStrLn $ "received value: " ++ show v)
+      (env', e) <- maybe (printError $ "no match found for " ++ show v ++ " at " ++ show pats) return (matchList pats v)
       allocMapping env' >>= flip withMergedEnvironment (eval e))
 eval' (Match e pats _) = do
    v <- eval e
+   liftIO (putStrLn $ "matching on value: " ++ show v)
    (env', matchExp) <- maybe (printError "no match found") return (matchList pats v)
    -- TODO: there is some overlap with `receive` see if this can 
    -- be abstracted further
@@ -292,14 +305,14 @@ prim1 f = prim match
 
 allPrimitives :: Map String Prim
 allPrimitives = Map.fromList [
-      ("print", prim1 $ liftIO . print >=> const (return ValueNil)) ,
-      ("list",  prim $ \case [] -> return ValueNil
+      ("print", prim1 $ liftIO . print >=> const (return nil)) ,
+      ("list",  prim $ \case [] -> return nil
                              l -> printError $ "invalid number of arguments, given " ++ show (length l) ++ " expected 0"),
       ("inc", prim1 $ \case
                   (LiteralValue (Num n)) -> return (LiteralValue (Num (n+1)))
                   _ -> printError "invalid argument to inc"),
-      ("wait-until-all-finished", prim $ const waitUntilAllFinished >=> const (return ValueNil)),
-      ("send^", prim $ \case [recv, payload] -> trySend recv payload >> return ValueNil
+      ("wait-until-all-finished", prim $ const waitUntilAllFinished >=> const (return nil)),
+      ("send^", prim $ \case [recv, payload] -> trySend recv payload >> return nil
                              _               -> printError "invalid argument to send^"),
       ("*", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1*n2))
                          _ -> printError "invalid argument to *"),

@@ -11,10 +11,12 @@
   (match e
    [(quasiquote (behavior ,ags ,handlers))
     `(lambda ,ags 
-       (parametrize 
-         ((self (lambda (m) (send^ self^ m))))
-          (receive 
-            ,(map translate-handler handlers))))]
+       (letrec
+         ((real-self self^))
+         (parametrize 
+            ((self (lambda (m) (send^ real-self m))))
+             (receive 
+               ,(map translate-handler handlers)))))]
    [(quasiquote (behavior ,@es))
     (invalid-syntax "behavior" e)]
    [(quasiquote (become ,b ,@ags))

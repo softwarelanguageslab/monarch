@@ -27,12 +27,13 @@ data Exp = Lam [Ide] Exp Span
          deriving (Eq, Ord)
 
 -- | Literals are expressions that evaluate to themselves
-data Lit = Num Integer | Boolean Bool | Symbol String deriving (Eq, Ord)
+data Lit = Num Integer | Boolean Bool | Symbol String | Nil deriving (Eq, Ord)
 
 instance Show Lit where 
    show (Num n) = show n
    show (Boolean b) = show b 
    show (Symbol s) = show s
+   show Nil = "'()"
    
 
 -- | Pattern language

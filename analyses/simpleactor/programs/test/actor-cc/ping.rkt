@@ -1,17 +1,17 @@
 (letrec
   ((ping-behavior (behavior ()
                     ((ping (sender) 
-                        (print "ping")
-                        ;(send sender pong) 
+                        (print 'ping)
+                        ;(send sender pong self) 
                         (become ping-behavior)))))
    (pong-behavior (behavior ()
                    ((pong (sender)
-                        (print "pong")
-                        (send sender ping)
+                        (print 'pong)
+                        (send sender ping self)
                         (become pong-behavior)))))
    (ping/c (lambda () 
               (behavior/c 
-                  (message/c 'ping () 
+                  (message/c 'ping (actor?) 
                              unspecified-recipient
                              (ensures/c (message/c 'pong 
                                                    ()

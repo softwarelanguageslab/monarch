@@ -103,6 +103,7 @@ compilePat (Atom "pair" _ ::: pat1 ::: pat2 ::: SNil _) =
 compilePat ex@(Atom x _) = return (IdePat (Ide x (spanOf ex)))
 compilePat (SExp.Num n _) = return (ValuePat $ Syntax.AST.Num n)
 compilePat (SExp.Bln b _) = return (ValuePat $ Syntax.AST.Boolean b)
+compilePat (SExp.SNil _) = return (ValuePat Syntax.AST.Nil)
 compilePat (Quo (Atom s _) _) = return (ValuePat $ Syntax.AST.Symbol s)
 compilePat (Atom "quote" _ ::: Atom s _ ::: SNil _) = return (ValuePat $ Syntax.AST.Symbol s)
 compilePat e = throwError $ "invalid pattern " ++ show e
