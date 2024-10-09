@@ -135,7 +135,7 @@ matchList :: EvalM v m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
 matchList _ [] _ = escape MatchError
 matchList f ((pat, e):pats) value =
    -- TODO: don't rethrow the error, use `catchOn` for this
-   (match pat value >>= f e) `catch` (mjoin (matchList f pats value) . throw)
+   (match pat value >>= f e) `catchOn` (isMatchError, const $ matchList f pats value) 
 
 -- | Match a pattern against a value
 match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)

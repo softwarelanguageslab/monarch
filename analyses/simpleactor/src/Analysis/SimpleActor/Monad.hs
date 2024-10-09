@@ -19,7 +19,8 @@ module Analysis.SimpleActor.Monad
     Error (..),
     ActorError,
     MetaT, 
-    DynamicBindingT
+    DynamicBindingT,
+    isMatchError
   )
 where
 
@@ -51,6 +52,8 @@ import Data.Kind (Type)
 import Domain (SchemeDomain(Env))
 import Lattice.Equal (EqualLattice)
 import Domain.Scheme.Actors.Class (Pid(..))
+import Domain.Core.BoolDomain.Class (BoolDomain (true, false, boolTop))
+import Lattice.Split (SplitLattice)
 
 ------------------------------------------------------------
 -- Errors
@@ -59,6 +62,16 @@ import Domain.Scheme.Actors.Class (Pid(..))
 -- TODO: BlameErorr should contain label not a string!
 data Error = MatchError | InvalidArgument | BlameError String | ArityMismatch Int Int
   deriving (Eq, Ord, Show)
+
+class (SplitLattice e) => SimpleActorErrorDomain e where 
+   isMatchError :: BoolDomain b => e -> b
+instance SimpleActorErrorDomain (Set ActorError) where  
+   isMatchError es   
+      | Set.size es == 0 = bottom
+      | Set.size es == 1 && Set.member (ActorError MatchError) es = true 
+      | not (Set.member (ActorError MatchError) es) = false
+      | otherwise = boolTop
+      
 
 ------------------------------------------------------------
 -- Monad typeclasses
@@ -162,6 +175,7 @@ type EvalM v m =
     CtxM m [Span],
     Domain (Esc m) DomainError,
     Domain (Esc m) Error,
+    SimpleActorErrorDomain (Esc m),
     SchemeDomainM Exp v m,
     ActorDomain v,
     EqualLattice v,
