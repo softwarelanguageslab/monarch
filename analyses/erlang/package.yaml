@@ -9,6 +9,7 @@ library:
   - extra
   - mtl
   - array
+  - megaparsec
   build-tools:
   - alex 
   - happy

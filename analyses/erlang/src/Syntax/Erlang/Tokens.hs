@@ -54,5 +54,12 @@ data Token = LPar { srcSpan :: !SrcSpan }
            | Var  { varName :: !String,
                     srcSpan :: !SrcSpan }
            | Nil  { srcSpan :: !SrcSpan }
+           -- | Special error-token used to 
+           -- signal that the input string 
+           -- could not be tokenized at 
+           -- the given position.
+           | Error { srcSpan :: !SrcSpan, 
+                     lexeme  :: !String,
+                     reason  :: !String }
            deriving (Eq, Ord, Show)
 
