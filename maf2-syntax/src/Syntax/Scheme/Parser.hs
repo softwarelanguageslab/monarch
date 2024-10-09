@@ -81,7 +81,7 @@ instance Show SExp where
    show (Cha c _) = "#\\" ++ [c]
    show (Atom s _) = s
    show p@(Pai {}) = printf "(%s)" $ showPai p
-   show (SNil _) = "'()"
+   show (SNil _) = "()"
    show (Quo e _) = printf "'%s" (show e)
    show (Str s _) = show s
    show (Qua e _) = printf "`%s" (show e)
