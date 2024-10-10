@@ -20,10 +20,6 @@ import Domain.Scheme.Store
 import Domain.Scheme.Class (PaiDom, VecDom, StrDom)
 import qualified Data.Map as Map
 import Data.Kind (Type, Constraint)
-import Control.Monad.Trans (MonadTrans)
-import Control.Monad.Layer (MonadLayer)
-import Lattice.Class (Joinable, joins, BottomLattice)
-import qualified Data.List as List
 import Domain.SimpleActor
 
 ------------------------------------------------------------
@@ -50,20 +46,6 @@ type family Unlist (as :: Type) :: Type where
 ------------------------------------------------------------
 -- Monad
 ------------------------------------------------------------
-
--- Join elements of a list of elements before 
--- writing them to the result mapping as a singleton list of joined elements.
-newtype JoinToResultMap k v m a = JoinToResultMap (MapT k v m a) 
-                            deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer)
-
-instance {-# OVERLAPPING #-} (Monad m, Show v, Ord k, BottomLattice v, Joinable v) => MapM k [v] (JoinToResultMap k v m) where 
-   get = JoinToResultMap . fmap (fmap List.singleton) . get 
-   -- put k = JoinToResultMap . put k . joins
-   put k v = JoinToResultMap $ put k $ joins v
-
--- | Run the @JoinToResultMap@
-runWithJoinToMap :: forall k s v m a . (s ~ [v]) => JoinToResultMap k v m a -> m (a, Map k v)
-runWithJoinToMap (JoinToResultMap m) = runWithMapping m
 
 type IntraT m = MonadStack '[
                MayEscapeT (Set ActorError),

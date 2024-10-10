@@ -21,6 +21,7 @@ module Analysis.Monad(
    module Analysis.Monad.Store, 
    module Analysis.Monad.Taint,
    module Analysis.Monad.WorkList, 
+   module Analysis.Monad.JoinMap,
 ) where
 
 import Analysis.Monad.Allocation
@@ -39,3 +40,4 @@ import Analysis.Monad.Span
 import Analysis.Monad.Store 
 import Analysis.Monad.Taint
 import Analysis.Monad.WorkList 
+import Analysis.Monad.JoinMap
