@@ -1,7 +1,14 @@
 -- | Core Erlang tokens, derived from https://github.com/erlang/otp/blob/master/lib/compiler/src/
-module Syntax.Erlang.Tokens(Token(..), spanOf) where
+module Syntax.Erlang.Tokens(Token(..), SrcSpan(..), spanOf) where
 
-data SrcSpan = SrcSpan () deriving (Eq, Ord, Show)
+-- | Source location information about the tokens in 
+-- the program.
+data SrcSpan = SrcSpan { 
+               startLine :: Int, 
+               startCol  :: Int, 
+               endLine   :: Int, 
+               endCol    :: Int
+             } deriving (Eq, Ord, Show)
 spanOf :: Token -> SrcSpan
 spanOf = srcSpan
 
@@ -59,7 +66,6 @@ data Token = LPar { srcSpan :: !SrcSpan }
            -- could not be tokenized at 
            -- the given position.
            | Error { srcSpan :: !SrcSpan, 
-                     lexeme  :: !String,
                      reason  :: !String }
            deriving (Eq, Ord, Show)
 
