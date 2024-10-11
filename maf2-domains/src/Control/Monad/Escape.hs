@@ -13,7 +13,7 @@ module Control.Monad.Escape (
    fromValue
 ) where
 
-import Lattice.Class hiding (Bottom)
+import Lattice.Class
 import Domain.Class 
 
 import Control.Monad.Join
@@ -31,19 +31,19 @@ import Lattice.BottomLiftedLattice (BottomLifted)
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
    type Esc m
-   throw :: (BottomLattice a) => Esc m -> m a 
-   catch :: (BottomLattice a, Joinable a) => m a -> (Esc m -> m a) -> m a
+   throw :: Esc m -> m a 
+   catch :: (Joinable a) => m a -> (Esc m -> m a) -> m a
 
 catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Lattice a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
 catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw 
 
-escape :: (MonadEscape m, Domain (Esc m) e, BottomLattice a) => e -> m a 
+escape :: (MonadEscape m, Domain (Esc m) e) => e -> m a 
 escape = throw . inject 
 
-orElse :: (MonadEscape m, BottomLattice a, Joinable a) => m a -> m a -> m a
+orElse :: (MonadEscape m, Joinable a) => m a -> m a -> m a
 orElse a = catch a . const  
 
-try :: (MonadEscape m, BottomLattice a, Joinable a) => [m a] -> m a -> m a
+try :: (MonadEscape m, Joinable a) => [m a] -> m a -> m a
 try = flip $ foldr orElse 
 
 voidl :: forall a m . Functor m => m (BottomLifted a) -> m ()
