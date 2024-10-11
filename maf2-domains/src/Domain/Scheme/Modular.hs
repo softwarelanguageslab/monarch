@@ -26,6 +26,7 @@ module Domain.Scheme.Modular(
 ) where
 
 import Lattice
+import qualified Lattice.BottomLiftedLattice as BottomLifted
 import Domain.Class
 import Domain.Core
 import Domain.Scheme.Class
@@ -52,6 +53,7 @@ import Data.List (intercalate)
 import Text.Printf (printf)
 import Lattice.CSetLattice (CSet (CSet))
 import qualified Lattice.CSetLattice as CSet
+import Lattice.BottomLiftedLattice (BottomLifted)
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -159,7 +161,6 @@ newtype SchemeVal (m :: [SchemeConfKey :-> Type]) = SchemeVal { getSchemeVal :: 
 type IsSchemeValue m =
    (ForAll SchemeKey (AtKey1 Eq (Values m)),
     ForAll SchemeKey (AtKey1 PartialOrder (Values m)),
-    ForAll SchemeKey (AtKey1 BottomLattice (Values m)),
     ForAll SchemeKey (AtKey1 Joinable (Values m)),
     -- expected subdomains
     KeyIs1 RealDomain (Values m) RealKey,
@@ -187,7 +188,7 @@ deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m)), 
 ------------------------------------------------------------
 
 deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Joinable (Values m))) => Joinable (SchemeVal m)
-deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 BottomLattice (Values m))) => BottomLattice (SchemeVal m)
+deriving instance (HMapKey (Values m)) => BottomLattice (SchemeVal m)
 
 -- Show instance
 -- TODO: this should be valid for any HMap, maybe make it the default implementation?
@@ -213,14 +214,13 @@ instance (IsSchemeValue m, ForAll SchemeKey (AtKey1 EqualLattice (Values m))) =>
 
 -- | Returns the value at CharKey from the SchemeValue
 -- or escapes with `WrongType` for any other key.
-chars' :: forall m mp . (IsSchemeValue mp, AbstractM m) => SchemeVal mp -> m (Assoc CharKey (Values mp))
-chars' v = mjoins $ HMap.mapList select (getSchemeVal v)
-   where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values mp) -> m (Assoc CharKey (Values mp))
-         select SCharKey c = return c
-         select _ _ = escape WrongType
+chars' :: forall mp m a . (BottomLattice a, IsSchemeValue mp, AbstractM m) => (Assoc CharKey (Values mp) -> m a) -> SchemeVal mp -> m a
+chars' f  = maybe (escape WrongType) f . HMap.get @CharKey . getSchemeVal
 
+chars :: forall mp a . (IsSchemeValue mp) => SchemeVal mp -> Maybe (Assoc CharKey (Values mp))
+chars = HMap.get @CharKey . getSchemeVal
 
-injectChar :: Assoc CharKey (Values m) -> SchemeVal m
+injectChar :: (Assoc CharKey (Values m)) -> SchemeVal m
 injectChar = SchemeVal . HMap.singleton @CharKey
 
 injectInt :: Assoc IntKey (Values m) -> SchemeVal m
@@ -278,15 +278,16 @@ instance (IsSchemeValue m) => BoolDomain (SchemeVal m) where
 instance (IsSchemeValue m, IntC (Assoc CharKey (Values m)) ~ Assoc IntKey (Values m)) => CharDomain (SchemeVal m) where
    type IntC (SchemeVal m) = (SchemeVal m)
 
-   downcase  = chars' >=> downcase >=> (return . injectChar)
-   upcase    = chars' >=> upcase   >=> (return . injectChar)
-   charToInt = chars' >=> charToInt >=> (return . injectInt)
-   isLower   = chars' >=> isLower
-   isUpper   = chars' >=> isUpper
-   charEq a b = M.join $ liftA2 charEq (chars' a) (chars' b)
-   charLt a b = M.join $ liftA2 charLt (chars' a) (chars' b)
-   charEqCI a b = M.join $ liftA2 charEqCI (chars' a) (chars' b)
-   charLtCI a b = M.join $ liftA2 charLtCI (chars' a) (chars' b)
+   downcase  = chars' (downcase >=> (return . injectChar))
+   upcase    = chars' ( upcase   >=> (return . injectChar))
+   charToInt = chars' (charToInt >=> (return . injectInt))
+   isLower   = chars' isLower
+   isUpper   = chars' isUpper
+   charEq   a b = fromMaybe (escape WrongType) $ liftA2 charEq (chars a) (chars b)
+   charLt   a b = fromMaybe (escape WrongType) $ liftA2 charLt (chars a) (chars b)
+   charEqCI a b = fromMaybe (escape WrongType) $ liftA2 charEqCI (chars a) (chars b)
+   charLtCI a b = fromMaybe (escape WrongType) $ liftA2 charLtCI (chars a) (chars b)
+
 
 ------------------------------------------------------------
 -- Number domain

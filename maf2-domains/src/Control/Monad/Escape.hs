@@ -7,6 +7,7 @@ module Control.Monad.Escape (
    addError,
    escape, 
    orElse, 
+   voidl,
    try,
    catchOn,
    fromValue
@@ -17,7 +18,7 @@ import Domain.Class
 
 import Control.Monad.Join
 import Data.Kind (Type)
-import Control.Monad (ap)
+import Control.Monad (ap, void)
 import Control.Monad.Trans
 import Control.Monad.Lift.Class (MonadTransControl(..))
 import Data.Functor ((<&>))
@@ -25,6 +26,7 @@ import Control.Monad.Identity (IdentityT (..))
 import Lattice.Split (SplitLattice)
 import Lattice.ConstantPropagationLattice (CP)
 import Control.Monad.Reader (ReaderT (runReaderT, ReaderT))
+import Lattice.BottomLiftedLattice (BottomLifted)
  
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
@@ -43,6 +45,9 @@ orElse a = catch a . const
 
 try :: (MonadEscape m, BottomLattice a, Joinable a) => [m a] -> m a -> m a
 try = flip $ foldr orElse 
+
+voidl :: forall a m . Functor m => m (BottomLifted a) -> m ()
+voidl = void @_ @(BottomLifted  a)
 
 ------------------------------------------------------------
 --- MayEscape

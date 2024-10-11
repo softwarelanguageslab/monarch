@@ -62,7 +62,7 @@ instance Applicative CP where
     _ <*> _ = Top
 
 -- | Convert from a CP lattice to another abstract domain
-fromCP :: (TopLattice a, Domain a c) => CP c -> a
+fromCP :: (TopLattice a, BottomLattice a, Domain a c) => CP c -> a
 fromCP Bottom       = bottom
 fromCP (Constant c) = inject c
 fromCP Top          = top

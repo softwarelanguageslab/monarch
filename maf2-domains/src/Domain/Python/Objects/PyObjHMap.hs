@@ -26,6 +26,8 @@ import Data.Singletons (fromSing)
 import Lattice.ReversePowerSetLattice as RSet 
 import Data.Function ((&))
 import Data.List (intercalate)
+import Lattice.BottomLiftedLattice (BottomLifted)
+import Lattice.TopLattice (Top)
 
 --
 -- Configuring the abstractions 
@@ -50,8 +52,8 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
     TupPrm ::-> CPList (Assoc VluKey m),                -- TODO: could use a more optimised representation (e.g., CPVector)
     LstPrm ::-> CPList (Assoc VluKey m),
     DctPrm ::-> CPDictionary String (Assoc VluKey m),
-    DfrPrm ::-> (),
-    SrsPrm ::-> ()
+    DfrPrm ::-> BottomLifted Top,
+    SrsPrm ::-> BottomLifted Top
   ]
 
 --
@@ -62,7 +64,6 @@ data PyObjHMap (m :: [PyAbsKey :-> Type]) = PyObjHMap { dct :: CPDictionary Stri
                                                         prm :: HMapAbs (PyPrm m) }
 
 type AllJoin m = (ForAll PyPrmKey (AtKey1 Joinable (PyPrm m)),
-                  ForAll PyPrmKey (AtKey1 BottomLattice (PyPrm m)),
                   ForAll PyPrmKey (AtKey1 PartialOrder (PyPrm m)),
                   ForAll PyPrmKey (AtKey1 Eq (PyPrm m)))
 type AllAbs m = (AllJoin m,
@@ -78,7 +79,7 @@ type AllAbs m = (AllJoin m,
 deriving instance (Lattice (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Eq       (PyPrm m))) => Eq       (PyObjHMap m)
 instance          (Lattice (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Joinable (PyPrm m))) => Joinable (PyObjHMap m) where
   join (PyObjHMap d1 p1) (PyObjHMap d2 p2) = PyObjHMap (join d1 d2) (join p1 p2)
-instance (AllJoin m) => BottomLattice (PyObjHMap m) where
+instance BottomLattice (PyObjHMap m) where
   bottom = PyObjHMap bottom bottom
 
 instance (Show (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Show (PyPrm m))) => Show (PyObjHMap m) where

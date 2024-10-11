@@ -41,6 +41,8 @@ import Data.Functor (($>))
 import qualified Data.Set as Set 
 import qualified Lattice.TopLiftedLattice as TopLattice
 import Text.Printf (printf)
+import Control.Monad (void)
+import Lattice.BottomLiftedLattice (BottomLifted)
 
 --
 -- The Python monad 
@@ -149,7 +151,7 @@ instance (vlu ~ PyRef,
                                                   upd <- f v' old
                                                   let obj' = setPrm s upd obj
                                                   updateAdr adr obj'
-  pyBreak = escape (Break @vlu)
+  pyBreak = voidl $ escape (Break @vlu)
   pyContinue = escape (Continue @vlu) 
   pyReturn = escape . Return 
   pyError = escape

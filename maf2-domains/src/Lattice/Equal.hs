@@ -10,10 +10,10 @@ import Lattice.Class
 ------------------------------------------------------------
 
 class EqualLattice v where 
-   eql :: BoolDomain b => v -> v -> b
+   eql :: (BottomLattice b, BoolDomain b) => v -> v -> b
    {-# MINIMAL eql #-}
 
-is  :: (EqualLattice v, BoolDomain b, Domain v c) => v -> c -> b
+is  :: (EqualLattice v, BottomLattice b, BoolDomain b, Domain v c) => v -> c -> b
 is v = eql v . inject 
 
 instance {-# OVERLAPPABLE #-} (BottomLattice a, Eq a, Meetable a) => EqualLattice a where   

@@ -9,6 +9,8 @@ module Control.Monad.Join (
    condsCP,
    mjoinMap, 
    mjoins, 
+   mjoins1', 
+   mjoins1,
    msplit, 
    msplitOn,
    msplitOnCP
@@ -53,6 +55,14 @@ condsCP = conds
 
 mjoinMap :: (MonadJoin m, Foldable t, Joinable b, BottomLattice b) => (a -> m b) -> t a -> m b 
 mjoinMap f = foldr (mjoin . f) mzero
+
+-- | Same as @mjoin@ but uses the given element as its neutral
+mjoins1' :: (MonadJoin m, Foldable t, Joinable v) => v -> t (m v) -> m v 
+mjoins1' = foldr mjoin . return
+
+-- | Same as @mjoin@ but assumes there is at least one element in the foldable
+mjoins1 :: (MonadJoin m, Foldable t, Joinable v) => t (m v) -> m v
+mjoins1 = foldr1 mjoin 
 
 mjoins :: (MonadJoin m, Foldable t, Joinable v, BottomLattice v) => t (m v) -> m v
 mjoins = foldr mjoin mzero

@@ -21,10 +21,6 @@ instance Meetable () where
 instance EqualLattice () where   
    eql _ _ = true
 
--- | A singleton set has a smallest element (itself)
-instance BottomLattice () where   
-   bottom = ()
-
 -- | A singleton set (the unit) is partially ordered since `leq` is 
 -- reflexive.
 instance PartialOrder () where
