@@ -32,7 +32,7 @@ class MonadEscape m where
    throw :: Esc m -> m a 
    catch :: (Joinable a) => m a -> (Esc m -> m a) -> m a
 
-catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Lattice a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
+catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Joinable a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
 catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw 
 
 escape :: (MonadEscape m, Domain (Esc m) e) => e -> m a 

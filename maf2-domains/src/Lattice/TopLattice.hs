@@ -26,4 +26,3 @@ instance TopLattice Top where
 
 instance Domain Top a where 
    inject = const Top
-instance BottomLattice Top

@@ -76,7 +76,7 @@ mjoins = foldr mjoin mzero
 msplit :: (MonadJoin m, Joinable v, SplitLattice a) => (a -> m v) -> a -> m v
 msplit f = mjoinMap f . split
 
-msplitOn :: (MonadJoin m, BoolDomain b, Lattice v, Lattice a, SplitLattice a) => (a -> m b) -> (a -> m v) -> (a -> m v) -> a -> m v
+msplitOn :: (MonadJoin m, BoolDomain b, Joinable v, Lattice a, SplitLattice a) => (a -> m b) -> (a -> m v) -> (a -> m v) -> a -> m v
 msplitOn p ft ff vs = do (t, f) <- splitOnM p vs
                          protectBot ft t `mjoin` protectBot ff f
    where protectBot f v 
