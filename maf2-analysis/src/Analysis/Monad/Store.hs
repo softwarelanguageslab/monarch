@@ -62,7 +62,7 @@ class (Monad m, Lattice v, Address a) => StoreM a v m | m a -> v where
 
    {-# MINIMAL lookupAdr, writeAdr, (updateAdr | updateWith) #-}
 
-instance (Monad (t m), StoreM adr v m, MonadLayer t) => StoreM adr v (t m) where
+instance {-# OVERLAPPABLE #-} (Monad (t m), StoreM adr v m, MonadLayer t) => StoreM adr v (t m) where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
    lookupAdr  =  upperM . lookupAdr
