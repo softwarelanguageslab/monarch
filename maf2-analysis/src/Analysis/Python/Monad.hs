@@ -75,7 +75,7 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   pyReturn     :: vlu -> m ()
   pyError      :: Lattice a => PyError -> m a
   pyRaise      :: (Joinable a, PartialOrder a) => vlu -> m a
-  pyCatchExc   :: (Lattice a) => m a -> (vlu -> m a) -> m a
+  pyCatchExc   :: (Joinable a) => m a -> (vlu -> m a) -> m a
   pyCatchLoop  :: m vlu -> m vlu -> m vlu -> m vlu
   pyReturnable :: m vlu -> m vlu
   -- environment -- 
