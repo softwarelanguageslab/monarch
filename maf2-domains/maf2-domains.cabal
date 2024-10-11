@@ -95,6 +95,7 @@ library
       Domain.Scheme.Modular
       Domain.Scheme.Store
       Lattice
+      Lattice.BottomLiftedLattice
       Lattice.Class
       Lattice.ConstantPropagationLattice
       Lattice.CSetLattice
