@@ -41,8 +41,7 @@ import Data.Functor (($>))
 import qualified Data.Set as Set 
 import qualified Lattice.TopLiftedLattice as TopLattice
 import Text.Printf (printf)
-import Control.Monad (void)
-import Lattice.BottomLiftedLattice (BottomLifted)
+import Lattice.TopLattice()
 
 --
 -- The Python monad 

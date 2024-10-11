@@ -55,7 +55,7 @@ instance MonadTrans JoinT where
 instance MonadLayer JoinT where
    upperM = lift
    lowerM f m = JoinT $ f (runJoinT' m)
-instance (MonadCache m, BottomLattice (Val m v)) => MonadCache (JoinT m) where
+instance (MonadCache m) => MonadCache (JoinT m) where
    type Key (JoinT m) k = Key m k
    type Val (JoinT m) v = Val m (BottomLifted v)
    type Base (JoinT m) = Base m
