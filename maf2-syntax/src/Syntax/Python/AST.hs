@@ -233,11 +233,11 @@ ideName _i = error "invalid ide"
 
 class Monad m => PrettyPrintM m where
    newline :: m ()
-   idented :: m a -> m a
+   indented :: m a -> m a
    out :: String -> m ()
 
 instance (Monad m, MonadReader Int m, MonadWriter [String] m) => PrettyPrintM m where
-   idented m = local (+1) (newline >> m)
+   indented m = local (+1) (newline >> m)
    out s = tell [s]
    newline = do
       out "\n"
@@ -259,22 +259,22 @@ instance Pretty (Stmt a AfterLexicalAddressing) where
       out "loop ("
       pretty e
       out "): "
-      idented (pretty stmt)
+      indented (pretty stmt)
    pretty (Break _ _) = out "break"
    pretty (Continue _ _) = out "continue"
    pretty (NonLocal v _ _) = absurd v
    pretty (Global v _ _) = absurd v
    pretty (Conditional _ grds els _) = do
-      sequence_ (intersperse newline $ map (\(grd, stmt) -> out "if " >> pretty grd >> out ":" >> idented (pretty stmt)) grds)
+      sequence_ (intersperse newline $ map (\(grd, stmt) -> out "if " >> pretty grd >> out ":" >> indented (pretty stmt)) grds)
       newline
       out "else:"
-      idented (pretty els)
+      indented (pretty els)
    pretty (Raise _ expr _) = out "raise " >> pretty expr
    pretty (Try _ bdy hds _) = do
       out "try:"
-      idented (pretty bdy)
+      indented (pretty bdy)
       newline
-      mapM_ (\(expr, body) -> out "except " >> pretty expr >> out ":" >> idented (pretty body)) hds
+      mapM_ (\(expr, body) -> out "except " >> pretty expr >> out ":" >> indented (pretty body)) hds
    pretty (StmtExp _ e _) = pretty e
 
 instance Pretty (Exp a AfterLexicalAddressing) where
@@ -282,7 +282,7 @@ instance Pretty (Exp a AfterLexicalAddressing) where
       out "λ ("
       sequence_ (intersperse (out ",") (map pretty prs))
       out "): "
-      idented (pretty stmt)
+      indented (pretty stmt)
    pretty (Var x) = pretty x
    pretty (Read e x _) =
       pretty e >> out "." >> pretty x
