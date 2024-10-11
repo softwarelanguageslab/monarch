@@ -38,13 +38,11 @@ import Control.Monad.State (MonadState, StateT(..), gets, put, runStateT, modify
 import Control.Monad.Reader (MonadReader, ReaderT(..), ask, runReaderT)
 import Control.Monad (void)
 import Control.Monad.Identity (IdentityT, runIdentityT)
-import Control.Monad.Trans
 import Data.Maybe (fromMaybe)
 import Analysis.Monad.IntraAnalysis
 import Control.Monad.Cond (ifM)
 import Analysis.Monad.DependencyTracking (DependencyTrackingM, trigger, register)
 import Analysis.Monad.WorkList (WorkListM)
-import Lattice.Class (BottomLattice)
 import Domain.Scheme.Actors.Message
 
 type ActorEvalM m v msg mb = 
@@ -126,8 +124,7 @@ instance MonadLayer (ActorT mb ref msg) where
    lowerM f (ActorT m) = ActorT $ lowerM (lowerM f) m 
 
 
-instance (Joinable mb, BottomLattice mb, MonadJoin m) => MonadJoin (ActorT mb ref msg m) where
-   mzero = ActorT mzero
+instance (Joinable mb, BottomLattice mb, MonadJoin m) => MonadJoinable (ActorT mb ref msg m) where
    mjoin (ActorT ma) (ActorT mb) = ActorT $ mjoin ma mb
 
 instance {-# OVERLAPPING #-} (MonadJoin m, Mailbox mb msg) => ActorLocalM (ActorT mb ref msg m) ref msg mb where
@@ -220,7 +217,7 @@ instance (DependencyTrackingM m cmp ref, WorkListM m cmp, ActorGlobalM m ref msg
 
 -- | Instance of ActorBehaviorM that ignores becomes and actor spawns
 newtype NoSpawnT v m a = NoSpawnT (IdentityT m a)
-                       deriving (Monad, Applicative, Functor, MonadLayer, MonadTrans, MonadJoin)
+                       deriving (Monad, Applicative, Functor, MonadLayer, MonadTrans, MonadJoinable)
 
 instance (Monad m) => ActorBehaviorM (NoSpawnT v m) v where
    spawn  = return . const bottom
@@ -234,7 +231,7 @@ runNoSpawnT (NoSpawnT m) = runIdentityT m
 
 -- | Instance of ActorGlobalM that ignores "send"
 newtype NoSendT ref msg mb m a = NoSendT (IdentityT m a) 
-                           deriving (Monad, Applicative, Functor, MonadLayer, MonadTrans, MonadJoin)
+                           deriving (Monad, Applicative, Functor, MonadLayer, MonadTrans, MonadJoinable)
 
 instance (Monad m, Mailbox mb msg) => ActorGlobalM (NoSendT ref msg mb m) ref msg mb where 
    send = const . const (return False)

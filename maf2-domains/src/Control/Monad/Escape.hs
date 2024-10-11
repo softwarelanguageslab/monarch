@@ -7,7 +7,6 @@ module Control.Monad.Escape (
    addError,
    escape, 
    orElse, 
-   voidl,
    try,
    catchOn,
    fromValue
@@ -18,7 +17,7 @@ import Domain.Class
 
 import Control.Monad.Join
 import Data.Kind (Type)
-import Control.Monad (ap, void)
+import Control.Monad (ap)
 import Control.Monad.Trans
 import Control.Monad.Lift.Class (MonadTransControl(..))
 import Data.Functor ((<&>))
@@ -26,7 +25,6 @@ import Control.Monad.Identity (IdentityT (..))
 import Lattice.Split (SplitLattice)
 import Lattice.ConstantPropagationLattice (CP)
 import Control.Monad.Reader (ReaderT (runReaderT, ReaderT))
-import Lattice.BottomLiftedLattice (BottomLifted)
  
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
@@ -45,9 +43,6 @@ orElse a = catch a . const
 
 try :: (MonadEscape m, Joinable a) => [m a] -> m a -> m a
 try = flip $ foldr orElse 
-
-voidl :: forall a m . Functor m => m (BottomLifted a) -> m ()
-voidl = void @_ @(BottomLifted  a)
 
 ------------------------------------------------------------
 --- MayEscape
@@ -131,9 +126,11 @@ instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT e m) where
             handle suc@(Value _) = return suc
             handle (MayBoth v e) = handle (Value v) `mjoin` handle (Escape e)
 
-instance (Eq e, Joinable e, MonadJoin m) => MonadJoin (MayEscapeT e m) where
-    mzero = MayEscapeT mzero
+instance (Eq e, Joinable e, MonadJoinable m) => MonadJoinable (MayEscapeT e m) where
     mjoin (MayEscapeT ma) (MayEscapeT mb) = MayEscapeT (mjoin ma mb)
+
+instance (Joinable e, MonadBottom m) => MonadBottom (MayEscapeT e m) where 
+    mzero = MayEscapeT mzero
 
 instance MonadTrans (MayEscapeT e) where  
    lift = MayEscapeT . fmap Value

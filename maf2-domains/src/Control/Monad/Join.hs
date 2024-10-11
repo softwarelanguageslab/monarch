@@ -2,7 +2,9 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Control.Monad.Join (
-   MonadJoin(..), 
+   MonadJoin,
+   MonadJoinable(..),
+   MonadBottom(..),
    cond, 
    conds, 
    condCP, 
@@ -32,28 +34,32 @@ import Control.Applicative (liftA2)
 import Data.Functor.Identity
 
 -- | Non-deterministic computations that can be joined together into a single computation
-class (Monad m) => MonadJoin m where
+class (Monad m) => MonadJoinable m where
    mjoin :: Joinable v => m v -> m v -> m v
-   mzero :: BottomLattice a => m a
    (<||>) :: Joinable v => m v -> m v -> m v
    a <||> b = mjoin a b
    infix 0 <||>
 
-cond :: (BoolDomain b, MonadJoin m, Joinable v, BottomLattice v) => m b -> m v -> m v -> m v
+class (Monad m) => MonadBottom m where    
+   mzero :: m a 
+
+type MonadJoin m = (MonadJoinable m, MonadBottom m)
+
+cond :: (BoolDomain b, MonadJoin m, Joinable v) => m b -> m v -> m v -> m v
 cond cnd csq alt = mjoin t f
    where t = cnd >>= (\b -> if isTrue b then csq else mzero)
          f = cnd >>= (\b -> if isFalse b then alt else mzero)
 
-conds :: (BoolDomain b, MonadJoin m, Joinable v, BottomLattice v) => [(m b, m v)] -> m v -> m v
+conds :: (BoolDomain b, MonadJoin m, Joinable v) => [(m b, m v)] -> m v -> m v
 conds clauses els = foldr (uncurry cond) els clauses 
 
-condCP :: (MonadJoin m, Joinable v, BottomLattice v) => m (CP Bool) -> m v -> m v -> m v
+condCP :: (MonadJoin m, Joinable v) => m (CP Bool) -> m v -> m v -> m v
 condCP = cond 
 
-condsCP :: (MonadJoin m, Joinable v, BottomLattice v) => [(m (CP Bool), m v)] -> m v -> m v
+condsCP :: (MonadJoin m, Joinable v) => [(m (CP Bool), m v)] -> m v -> m v
 condsCP = conds
 
-mjoinMap :: (MonadJoin m, Foldable t, Joinable b, BottomLattice b) => (a -> m b) -> t a -> m b 
+mjoinMap :: (MonadJoin m, Foldable t, Joinable b) => (a -> m b) -> t a -> m b 
 mjoinMap f = foldr (mjoin . f) mzero
 
 -- | Same as @mjoin@ but uses the given element as its neutral
@@ -64,10 +70,10 @@ mjoins1' = foldr mjoin . return
 mjoins1 :: (MonadJoin m, Foldable t, Joinable v) => t (m v) -> m v
 mjoins1 = foldr1 mjoin 
 
-mjoins :: (MonadJoin m, Foldable t, Joinable v, BottomLattice v) => t (m v) -> m v
+mjoins :: (MonadJoin m, Foldable t, Joinable v) => t (m v) -> m v
 mjoins = foldr mjoin mzero
 
-msplit :: (MonadJoin m, Joinable v,  BottomLattice v, SplitLattice a) => (a -> m v) -> a -> m v
+msplit :: (MonadJoin m, Joinable v, SplitLattice a) => (a -> m v) -> a -> m v
 msplit f = mjoinMap f . split
 
 msplitOn :: (MonadJoin m, BoolDomain b, Lattice v, Lattice a, SplitLattice a) => (a -> m b) -> (a -> m v) -> (a -> m v) -> a -> m v
@@ -84,33 +90,43 @@ msplitOnCP = msplitOn
 
 -- Some instances for convenience
 
-instance (MonadJoin m) => MonadJoin (ReaderT r m) where
+instance (MonadJoinable m) => MonadJoinable (ReaderT r m) where
    mjoin ma mb = ReaderT $ \r -> mjoin (runReaderT ma r) (runReaderT mb r)
-   mzero = lift Control.Monad.Join.mzero
 
-instance (MonadJoin m, Joinable w, BottomLattice w, Monoid w) => MonadJoin (WriterT w m) where
+instance (MonadBottom m) => MonadBottom (ReaderT r m) where 
+   mzero = ReaderT $ const mzero
+
+instance (MonadJoinable m, Joinable w, BottomLattice w, Monoid w) => MonadJoinable (WriterT w m) where
    mjoin (WriterT ma) (WriterT mb) = WriterT (mjoin ma mb)
-   mzero = lift mzero
 
-instance (MonadJoin m, Joinable s, BottomLattice s) => MonadJoin (StateT s m) where
+instance (Monoid w, MonadBottom m) => MonadBottom (WriterT w m) where 
+   mzero = WriterT mzero
+
+instance (MonadJoinable m, Joinable s, BottomLattice s) => MonadJoinable (StateT s m) where
    mjoin ma mb = StateT (\st -> mjoin (runStateT ma st) (runStateT mb st))
-   mzero = lift mzero
 
-instance (MonadJoin m) => MonadJoin (MaybeT m) where
+instance (MonadBottom m) => MonadBottom (StateT r m) where 
+   mzero = StateT $ const mzero
+
+instance (MonadJoinable m) => MonadJoinable (MaybeT m) where
    mjoin ma mb = MaybeT $ mjoin (runMaybeT ma) (runMaybeT mb)
+
+instance (MonadBottom m) => MonadBottom (MaybeT m) where 
    mzero = MaybeT mzero
 
-instance MonadJoin Maybe where
+instance MonadJoinable Maybe where
    mjoin (Just a) (Just b) = Just (join a b)
    mjoin (Just a) Nothing  = Just a
    mjoin Nothing  (Just b) = Just b
    mjoin _ _ = Nothing 
+   
+instance MonadBottom Maybe where
    mzero = Nothing
 
-instance MonadJoin Identity where
+instance MonadJoinable Identity where
    mjoin = liftA2 join
-   mzero = pure bottom
 
-instance (MonadJoin m) => MonadJoin (IdentityT m) where
+instance (MonadJoinable m) => MonadJoinable (IdentityT m) where
    mjoin (IdentityT ma) (IdentityT mb) = IdentityT $ mjoin ma mb
+instance (MonadBottom m) => MonadBottom (IdentityT m) where 
    mzero = IdentityT mzero

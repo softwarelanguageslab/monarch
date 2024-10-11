@@ -8,6 +8,7 @@
 module Analysis.Python.Fixpoint where
 
 import Lattice
+import Lattice.BottomLiftedLattice (lowerBottom)
 import Analysis.Python.Common
 import Domain.Python.Objects as PyObj  
 import Analysis.Python.Semantics hiding (call)
@@ -19,6 +20,7 @@ import Domain.Python.Syntax
 
 import Data.Set (Set)
 import Data.Map (Map)
+import qualified Data.Map as Map
 import Prelude hiding (init, read)
 import Control.Monad.Escape
 import Data.Function ((&))
@@ -153,4 +155,4 @@ analyze prg = (rsto, osto, graph)
 type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
 
 analyzeCP :: PyPrg -> (Map PyCmp (MayEscape PyRet PyRef), Store PyDomainCP, SimpleGraph (CP String) ())
-analyzeCP = analyze @PyDomainCP
+analyzeCP prg = let (res, sto, graph) = analyze @PyDomainCP prg in (Map.map lowerBottom res, sto, graph)

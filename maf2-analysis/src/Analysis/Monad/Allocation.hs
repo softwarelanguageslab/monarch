@@ -12,7 +12,7 @@ module Analysis.Monad.Allocation (
 import Analysis.Monad.Context
 
 import Control.Monad.Reader hiding (mzero)
-import Control.Monad.Join (MonadJoin(..))
+import Control.Monad.Join (MonadJoinable(..))
 import Control.Monad.Layer
 import Analysis.Monad.Cache
 import Control.Monad.Escape (MonadEscape(..))
@@ -34,7 +34,7 @@ type Allocator from ctx to = from -> ctx -> to
 
 -- Allocator that turns a function into an allocator of the suiteable type
 newtype AllocT from ctx to m a = AllocT { runAllocT_ :: ReaderT (Allocator from ctx to) m a }
-    deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoin, MonadLayer, MonadTransControl, MonadTrans)
+    deriving (MonadReader (Allocator from ctx to), Monad, Applicative, Functor, MonadJoinable, MonadLayer, MonadTransControl, MonadTrans)
 
 instance (MonadCache m) => MonadCache (AllocT from ctx to m) where
    type Key (AllocT from ctx to m) k = Key m k 

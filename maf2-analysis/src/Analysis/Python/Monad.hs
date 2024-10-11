@@ -75,8 +75,8 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   pyContinue   :: m ()
   pyReturn     :: vlu -> m ()
   pyError      :: Lattice a => PyError -> m a
-  pyRaise      :: Lattice a => vlu -> m a
-  pyCatchExc   :: Lattice a => m a -> (vlu -> m a) -> m a
+  pyRaise      :: (Joinable a, PartialOrder a) => vlu -> m a
+  pyCatchExc   :: (Lattice a) => m a -> (vlu -> m a) -> m a
   pyCatchLoop  :: m vlu -> m vlu -> m vlu -> m vlu
   pyReturnable :: m vlu -> m vlu
   -- environment -- 
@@ -133,6 +133,7 @@ instance (vlu ~ PyRef,
           PyEscape (Esc m) vlu,
           Domain (Esc m) PyError,
           Domain (Esc m) DomainError,
+          BottomLattice (Esc m),
           SplitLattice (Esc m),
           EnvM m ObjAdr PyEnv,
           AllocM m PyLoc ObjAdr,
@@ -151,7 +152,7 @@ instance (vlu ~ PyRef,
                                                   upd <- f v' old
                                                   let obj' = setPrm s upd obj
                                                   updateAdr adr obj'
-  pyBreak = voidl $ escape (Break @vlu)
+  pyBreak = escape (Break @vlu)
   pyContinue = escape (Continue @vlu) 
   pyReturn = escape . Return 
   pyError = escape

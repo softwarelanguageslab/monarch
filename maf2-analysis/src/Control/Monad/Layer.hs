@@ -12,6 +12,7 @@ import Control.Monad.Lift
 import Lattice.Class
 import ListT
 import Control.Monad.Escape
+import Control.Monad.Join (MonadBottom(..))
 
 class (MonadTrans t) => MonadLayer t where
 
@@ -22,6 +23,10 @@ class (MonadTrans t) => MonadLayer t where
 
 instance {-# OVERLAPPABLE #-} (MonadIO m, Monad (t m), MonadLayer t) => MonadIO (t m) where
    liftIO = upperM . liftIO
+
+-- | Implements `MonadBottom` for convenience
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadBottom m, MonadLayer t) => MonadBottom (t m) where 
+   mzero = upperM mzero
 
 -- | StateT instance
 instance MonadLayer (StateT s) where
@@ -51,3 +56,4 @@ instance (Joinable e) => MonadLayer (MayEscapeT e) where
 instance MonadLayer ListT where
    upperM = lift
    lowerM f m = ListT $ f (uncons m)
+

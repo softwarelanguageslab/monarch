@@ -22,7 +22,7 @@ import Debug.Trace
 ---
 
 newtype IntraAnalysisT cmp m a = IntraAnalysisT (ReaderT cmp m a)
-    deriving (Functor, Applicative, Monad, MonadReader cmp, MonadTrans, MonadLayer, MonadTransControl, MonadJoin)
+    deriving (Functor, Applicative, Monad, MonadReader cmp, MonadTrans, MonadLayer, MonadTransControl, MonadJoinable)
 
 instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp) => ComponentTrackingM (IntraAnalysisT cmp m) cmp where
     spawn cmp = unlessM (upperM $ has cmp)
