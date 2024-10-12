@@ -1,3 +1,5 @@
+-- TODO: this uses the old (now defunct) style of analysis
+-- instantiation this should be updated
 {-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 module Analysis.Symbolic where
 
@@ -57,93 +59,94 @@ import Prelude hiding (exp, iterate)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Tuple.Extra
-
--- Propagation of path conditions and symbolic stores 
--- accross component boundaries
-import Analysis.Symbolic.Monad.Propagation
-
-import Debug.Trace
-import Analysis.Symbolic.Monad.Propagation (PropagationStrategy(initialSSto))
-import Analysis.Context (emptyMcfaContext)
-
-------------------------------------------------------------
--- Evaluation function
-------------------------------------------------------------
-
-newtype SymbolicEvalT v m a = SymbolicEvalT { getSymbolicEvalT :: m a } deriving (Applicative, Functor, Monad, MonadJoin)
-
-instance MonadTrans (SymbolicEvalT v) where
-   lift = SymbolicEvalT
-instance MonadLayer (SymbolicEvalT v) where
-   upperM = SymbolicEvalT
-   lowerM f (SymbolicEvalT m) = SymbolicEvalT (f m)
-
-instance (ContractM (SymbolicEvalT v m) v msg mb, SymbolicM (SymbolicEvalT v m) v) => EvalM (SymbolicEvalT v m) v Exp where
-   eval = Symbolic.eval
-
--- TODO: this is rather ugly right now but needed
--- since we cannot derive MonadEscape yet if it 
--- is not on top of the layers (see Control.Monad.Layer)
-instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (SymbolicEvalT v m) where
-   type Esc (SymbolicEvalT v m) = Set Error
-   throw = upperM . throw
-   catch (SymbolicEvalT m) hdl = SymbolicEvalT $ catch @_ m (getSymbolicEvalT . hdl)
-
-runSymbolicEvalT :: SymbolicEvalT v m a -> m a
-runSymbolicEvalT (SymbolicEvalT m) = m
-
-------------------------------------------------------------
--- Aliases for convenience
-------------------------------------------------------------
-
+import Analysis.Scheme (analysisEnv)
+--
+---- Propagation of path conditions and symbolic stores 
+---- accross component boundaries
+--import Analysis.Symbolic.Monad.Propagation
+--
+--import Debug.Trace
+--import Analysis.Symbolic.Monad.Propagation (PropagationStrategy(initialSSto))
+--import Analysis.Context (emptyMcfaContext)
+--
+--------------------------------------------------------------
+---- Evaluation function
+--------------------------------------------------------------
+--
+--newtype SymbolicEvalT v m a = SymbolicEvalT { getSymbolicEvalT :: m a } deriving (Applicative, Functor, Monad, MonadJoin)
+--
+--instance MonadTrans (SymbolicEvalT v) where
+--   lift = SymbolicEvalT
+--instance MonadLayer (SymbolicEvalT v) where
+--   upperM = SymbolicEvalT
+--   lowerM f (SymbolicEvalT m) = SymbolicEvalT (f m)
+--
+--instance (ContractM (SymbolicEvalT v m) v msg mb, SymbolicM (SymbolicEvalT v m) v) => EvalM (SymbolicEvalT v m) v Exp where
+--   eval = Symbolic.eval
+--
+---- TODO: this is rather ugly right now but needed
+---- since we cannot derive MonadEscape yet if it 
+---- is not on top of the layers (see Control.Monad.Layer)
+--instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (SymbolicEvalT v m) where
+--   type Esc (SymbolicEvalT v m) = Set Error
+--   throw = upperM . throw
+--   catch (SymbolicEvalT m) hdl = SymbolicEvalT $ catch @_ m (getSymbolicEvalT . hdl)
+--
+--runSymbolicEvalT :: SymbolicEvalT v m a -> m a
+--runSymbolicEvalT (SymbolicEvalT m) = m
+--
+--------------------------------------------------------------
+---- Aliases for convenience
+--------------------------------------------------------------
+--
 type K = MCFA Exp
 type Vlu k = V k
 type Sto k = SSto k (Vlu k)
-type RetSto k = Map (Component k) (SVar.SVar (Vlu k))
-
--- | Alias for messages
-type Msg k = ()
-
--- | Alias for the mailbox
-type MB k = Set (Msg k)
-
--- | State of all mailboxes
-type Mailboxes k = Map (Pid Exp k) (SVar.SVar (MB k))
-
-------------------------------------------------------------
--- Analysis
-------------------------------------------------------------
-
-data Stores k = Stores { vsto :: Sto k, rsto ::  RetSto k, csto :: ContractStore' SVar k (Vlu k) }
-
-type State k = (Stores k, Mailboxes k)
-stores :: State k -> Stores k
-stores = fst
-
-
--- | Inter analysis monad
-type InterM m k = (
-         FormulaSolver m,
-         EffectSVarM m (Component k),
-         SVar.MonadStateVar m)
-
--- | Convenience constraints for working with propagation strategies
-type Propagation s k  = (PropagationStrategy s (EnvAdr k) (Vlu k) k)
-
--- | Result of intra-analysis
-type IntraResult k = ([MayEscape (Set Error) (Vlu k)], State k)
-
--- | Simple intra-analysis
-intra :: forall m s k . (InterM m k, Propagation s k)
-      => Exp
-      -> Component k
-      -> k
-      -> Pid Exp k
-      -> Env k
-      -> State k
-      -> m (IntraResult k)
-intra e cmp ctx pid env (Stores store retStore contractStore, mbs) = undefined
-         --(mailbox, mbs') <- firstM SVar.read =<< Map.Extra.lookupInsertDefaultF (SVar.depend empty) pid mbs
+-- type RetSto k = Map (Component k) (SVar.SVar (Vlu k))
+--
+---- | Alias for messages
+--type Msg k = ()
+--
+---- | Alias for the mailbox
+--type MB k = Set (Msg k)
+--
+---- | State of all mailboxes
+--type Mailboxes k = Map (Pid Exp k) (SVar.SVar (MB k))
+--
+--------------------------------------------------------------
+---- Analysis
+--------------------------------------------------------------
+--
+--data Stores k = Stores { vsto :: Sto k, rsto ::  RetSto k, csto :: ContractStore' SVar k (Vlu k) }
+--
+--type State k = (Stores k, Mailboxes k)
+--stores :: State k -> Stores k
+--stores = fst
+--
+--
+---- | Inter analysis monad
+--type InterM m k = (
+--         FormulaSolver m,
+--         EffectSVarM m (Component k),
+--         SVar.MonadStateVar m)
+--
+---- | Convenience constraints for working with propagation strategies
+--type Propagation s k  = (PropagationStrategy s (EnvAdr k) (Vlu k) k)
+--
+---- | Result of intra-analysis
+--type IntraResult k = ([MayEscape (Set Error) (Vlu k)], State k)
+--
+---- | Simple intra-analysis
+--intra :: forall m s k . (InterM m k, Propagation s k)
+--      => Exp
+--      -> Component k
+--      -> k
+--      -> Pid Exp k
+--      -> Env k
+--      -> State k
+--      -> m (IntraResult k)
+--intra e cmp ctx pid env (Stores store retStore contractStore, mbs) = undefined
+--         --(mailbox, mbs') <- firstM SVar.read =<< Map.Extra.lookupInsertDefaultF (SVar.depend empty) pid mbs
          --fmap result $ setupSMT >> Symbolic.eval e >>= (\v -> writeAdr cmp v >> return v)
          --                                     & runSymbolicEvalT
          --                                     & runMayEscape @(Set Error)

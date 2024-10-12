@@ -61,7 +61,7 @@ import Lattice.Class
 import Symbolic.AST (PC)
 import Syntax.Scheme
 import Analysis.Scheme.Actors.Components
-import Control.Monad.Join (MonadJoin)
+import Control.Monad.Join (MonadJoin, MonadJoinable(..))
 
 -- | Set of pre-conditions holding for functions in 
 -- propagation strategies.
@@ -97,14 +97,14 @@ class (SymbolicValue v, Show ctx, Ord ctx) => PropagationStrategy (s :: Type) a 
 -- the functions of the propagation strategy to integrate path
 -- conditions and symbolic stores with key parts of the analysis.
 newtype PropagationT (s :: Type) vadr vlu cmp m a = PropagationT (IdentityT m a)
-  deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer, MonadJoin)
+  deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer, MonadJoinable)
 
-instance {-# OVERLAPPING #-} (PropagationM m vadr vlu (SymRet cmp), CtxM m ctx, PropagationStrategy s vadr vlu ctx, SymbolicValue vlu) => AllocM (PropagationT s vadr vlu cmp m) CExp ctx where
-  alloc (CExp expr) = do
-   pc  <- getPc
-   sto <- getSto
-   ctx <- getCtx @_ @ctx
-   return (callContext @s @vadr @vlu expr pc sto ctx)
+--instance {-# OVERLAPPING #-} (PropagationM m vadr vlu (SymRet cmp), CtxM m ctx, PropagationStrategy s vadr vlu ctx, SymbolicValue vlu) => AllocM (PropagationT s vadr vlu cmp m) CExp ctx where
+--  alloc (CExp expr) = do
+--   pc  <- getPc
+--   sto <- getSto
+--   ctx <- getCtx @_ @ctx
+--   return (callContext @s @vadr @vlu expr pc sto ctx)
 
 -- | Return address where symbolic store and path condition can be allocated
 newtype SymRet cmp = SymRet cmp
