@@ -25,6 +25,7 @@ import Control.Monad.Identity (IdentityT (..))
 import Lattice.Split (SplitLattice)
 import Lattice.ConstantPropagationLattice (CP)
 import Control.Monad.Reader (ReaderT (runReaderT, ReaderT))
+import Debug.Trace (traceShow)
  
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
@@ -33,7 +34,7 @@ class MonadEscape m where
    catch :: (Joinable a) => m a -> (Esc m -> m a) -> m a
 
 catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Joinable a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
-catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw 
+catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw
 
 escape :: (MonadEscape m, Domain (Esc m) e) => e -> m a 
 escape = throw . inject 

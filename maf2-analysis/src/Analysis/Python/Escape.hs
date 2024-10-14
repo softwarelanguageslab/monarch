@@ -13,6 +13,7 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad.Join
 import Lattice
+import Debug.Trace
 
 ---
 --- The PyEscape class
@@ -41,7 +42,7 @@ instance Ord vlu => Domain (Set (PyEsc vlu)) DomainError where
 instance Ord vlu => Domain (Set (PyEsc vlu)) PyError where
     inject = const Set.empty -- ignore Python-specific domain errors
 
-instance (Ord vlu, Show vlu, Joinable vlu, BottomLattice vlu) => PyEscape (Set (PyEsc vlu)) vlu where
+instance (Ord vlu, Show vlu, Joinable vlu) => PyEscape (Set (PyEsc vlu)) vlu where
     isReturn = joinMap $ \case Return _ -> true
                                _        -> false
     isContinue = joinMap $ \case Continue -> true

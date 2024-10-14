@@ -25,6 +25,7 @@ import Control.Monad.Escape (MayEscape(..))
 import "maf2-analysis" Data.Graph (edges)
 import Lattice hiding (Value)
 import Analysis.Store (CountingMap, store)
+import Analysis.Python.Fixpoint (analyzeCP)
 
 newtype Options = Options String 
    deriving Show
@@ -98,7 +99,12 @@ generateGraph files =
          shortFileName = reverse . takeWhile (/='/') . reverse 
 
 main :: Options -> IO ()
-main (Options fileName) = generateGraph [
+main (Options fileName) = runFile fileName
+
+
+
+rommel :: Options -> IO () 
+rommel _  = generateGraph [
                               "programs/python/zensor/add_regime_status_tag.py",
                               "programs/python/zensor/strain_resample.py",
                               "programs/python/zensor/bolt_str_stats_per_movement.py",
