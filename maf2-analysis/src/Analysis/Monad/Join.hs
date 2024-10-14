@@ -36,8 +36,8 @@ newtype JoinT m a = JoinT { runJoinT' :: m (BottomLifted a) }
 
 -- The 'crux' of the transformer
 instance (Monad m) => MonadJoinable (JoinT m) where
-   mjoin = liftA2 join
-instance (Monad m) => MonadBottom (JoinT m) where   
+   mjoin (JoinT ma) = JoinT . liftA2 join ma . runJoinT'
+instance (Monad m) => MonadBottom (JoinT m) where
    mzero = JoinT $ return Bottom
 
 -- Standard monad implementations
@@ -81,7 +81,7 @@ newtype NonDetT m a = NonDetT (ListT m a)
 
 instance (Monad m) => MonadJoinable (NonDetT m) where
    mjoin (NonDetT ma) (NonDetT mb) = NonDetT $ ma `mplus` mb
-instance (Monad m) => MonadBottom (NonDetT m) where   
+instance (Monad m) => MonadBottom (NonDetT m) where
    mzero = NonDetT C.mzero
 
 runNonDetT :: Monad m => NonDetT m a -> m [a]

@@ -165,7 +165,7 @@ spawn e f = do
 
 -- | Evaluation monad
 type EvalM v m =
-  ( MonadJoin m,
+  ( MonadJoinable m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
     StoreM (Adr v) v m,
@@ -175,6 +175,7 @@ type EvalM v m =
     CtxM m [Span],
     Domain (Esc m) DomainError,
     Domain (Esc m) Error,
+    BottomLattice (Esc m),
     SimpleActorErrorDomain (Esc m),
     SchemeDomainM Exp v m,
     ActorDomain v,
@@ -198,7 +199,7 @@ type EvalM v m =
 newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT (Map (ARef v) mb) m a}
   deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadCache)
 
-deriving instance (ref ~ ARef v, Ord ref, MonadJoin m, Mailbox mb v, Joinable mb) => MonadJoin (GlobalMailboxT v mb m)
+deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinable mb) => MonadJoinable (GlobalMailboxT v mb m)
 
 instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadMailbox v (GlobalMailboxT v mb m) where
   send ref v = GlobalMailboxT $ modify (Map.insertWith (const . enqueue v) ref (enqueue v empty))
@@ -215,7 +216,7 @@ runWithMailboxT (GlobalMailboxT ma) = runStateT ma Map.empty
 
 -- | Actor-local semantics
 newtype ActorLocalT v m a = ActorLocalT {runActorLocalT' :: ReaderT (ARef v) m a}
-  deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoin, MonadCache)
+  deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadCache)
 
 instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
   getSelf = ActorLocalT ask
@@ -225,7 +226,7 @@ instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
 
 -- | Meta-flag monad
 newtype MetaT m a = MetaT (ReaderT Bool m a) 
-                  deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoin, MonadReader Bool, MonadCache)
+                  deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadReader Bool, MonadCache)
 
 instance (Monad m) => MonadMeta (MetaT m) where
    isMeta = ask
@@ -237,7 +238,7 @@ ifMetaSet f ma = isMeta >>= (\b -> if b then f ma else ma)
 
 -- | Dynamic binding monad
 newtype DynamicBindingT v m a = DynamicBindingT (ReaderT (Map String (Adr v)) m a)
-                              deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoin, MonadCache)
+                              deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadCache)
 
 instance (Monad m, α ~ Adr v) => MonadDynamic α (DynamicBindingT v m) where  
    lookupDynamic vr = DynamicBindingT $ asks (fromJust . Map.lookup vr)
