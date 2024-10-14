@@ -27,6 +27,9 @@
 module Syntax.Erlang.Parser where
 
 import qualified Syntax.Erlang.Tokens as Tok
+import Syntax.Erlang.AST
+import Syntax.Span
+import Syntax.Ide
 }
 
 -- Expect 0.
@@ -110,109 +113,106 @@ import qualified Syntax.Erlang.Tokens as Tok
    'receive'    { Tok.Recv {} }
    'after'      { Tok.Afte {} }
 -- Literal tokens (provided by the tokeniser):
-   char         { Tok.Char $$ _ }
-   integer      { Tok.Int  $$ _ }
-   float        { Tok.Floa $$ _ }
-   atom         { Tok.Atom $$ _ }
-   string       { Tok.Str  $$ _ }
-   var          { Tok.Var  $$ _ }  
+   char         { Tok.Char {} }
+   integer      { Tok.Int  {} }
+   float        { Tok.Floa {} }
+   atomT        { Tok.Atom {} }
+   string       { Tok.Str  {} }
+   var          { Tok.Var  {}   }  
+   eof          { Tok.EOF       }
 
 %%
 
+atom : atomT { Atom (Tok.atomName $1) (spanOf $1) }
+
 -- Literal tokens NOT provided by the tokenise:
 
-nil : '[' ']' { Tok.Nil (Tok.spanOf $1) } 
+nil : '[' ']' { Tok.Nil (Tok.srcSpan $1) } 
 
 -- Grammar
 -- HERE
 module_definition :
     'module' atom module_export module_attribute module_defs 'end' 
-        { Module $2 $3 $4 $5 }
-module_definition ->
-    '(' 'module' atom module_export module_attribute module_defs 'end'
-	'-|' annotation ')' {
-            
+        { Constr (Module $2 $3 $4 $5) }
+module_definition :
+    '(' 'module' atom module_export module_attribute module_defs 'end' '-|' annotation ')' {
+            Ann (Module $3 $4 $5 $6) $9
         }
-        #c_module{anno='$9',name=#c_literal{val=tok_val('$3')},exports='$4',
-		  attrs='$5',defs='$6'}.
 
-module_export -> '[' ']' : [].
-module_export -> '[' exported_names ']' : '$2'.
+module_export : '[' ']' { [] }
+module_export : '[' exported_names ']' { $2 }
 
-exported_names -> exported_name ',' exported_names { $1 : $3 }
-exported_names -> exported_name { [ $1 ] }
+exported_names : exported_name ',' exported_names { $1 : $3 }
+exported_names : exported_name { [ $1 ] }
 
-exported_name -> anno_function_name : '$1'.
+exported_name : anno_function_name { $1 }
 -- 
--- module_attribute -> 'attributes' '[' ']' : [].
--- module_attribute -> 'attributes' '[' attribute_list ']' : '$3'.
+module_attribute : 'attributes' '[' ']' { [] }
+module_attribute : 'attributes' '[' attribute_list ']' { $3 }
 -- 
--- attribute_list -> attribute ',' attribute_list : ['$1' | '$3'].
--- attribute_list -> attribute : ['$1'].
+attribute_list : attribute ',' attribute_list { $1 : $3 }
+attribute_list : attribute  { [ $1 ] }
 -- 
--- attribute -> anno_atom '=' anno_literal :
--- 	{'$1','$3'}.
+attribute : anno_atom '=' anno_constant { Attribute $1 $3 (spanning $1 $3) }
 -- 
--- anno_atom -> atom :
---          cerl:c_atom(tok_val('$1')).
--- anno_atom -> '(' atom '-|' annotation ')' :
---          cerl:ann_c_atom('$4', tok_val('$2')).
+anno_atom : atom { Constr $1 }
+anno_atom : '(' atom '-|' annotation ')' { Ann $2 $4 }
 -- 
--- anno_literal -> literal : '$1'.
--- anno_literal -> '(' literal '-|' annotation ')' : cerl:set_ann('$2', '$4').
+anno_literal : literal { Constr $1 }
+anno_literal : '(' literal '-|' annotation ')' { Ann $2 $4 }
 -- 
--- module_defs -> function_definitions : '$1'.
+module_defs : function_definitions { $1 }
 -- 
--- annotation -> '[' ']' : [].
--- annotation -> '[' constants ']' : '$2'.
+annotation : '[' ']' { Annotation [] (spanning $1 $2) }
+annotation : '[' constants ']' { Annotation $2 (spanning $1 $3) }
 -- 
--- function_definitions ->
---     function_definition function_definitions : ['$1' | '$2'].
--- function_definitions ->
---     '$empty' : [].
+function_definitions :
+    function_definition function_definitions { $1 : $2 }
+function_definitions : eof { [] }
 -- 
--- function_definition ->
---     anno_function_name '=' anno_fun :
--- 	{'$1','$3'}.
+function_definition :
+    anno_function_name '=' anno_fun { FunDef $1 $3 (spanning $1 $3) }
 -- 
--- anno_fun -> '(' fun_expr '-|' annotation ')' :
--- 	cerl:set_ann('$2', '$4').
--- anno_fun -> fun_expr : '$1'.
+anno_fun : '(' fun_expr '-|' annotation ')' { Ann $2 $4 }
+anno_fun : fun_expr { Constr $1 }
 -- 
--- -- Constant terms for annotations and attributes.
--- --  These are represented by straight unabstract Erlang.
+-- Constant terms for annotations and attributes.
+--  These are represented by straight unabstract Erlang.
+--
+anno_constant : constant { Constr $1 }
+anno_constant : '(' constant '-|' annotation ')' { Ann $2 $4 }
+
+constant : atomic_constant { $1 }
+constant : tuple_constant  { $1 }
+constant : cons_constant   { $1 }
 -- 
--- constant -> atomic_constant : '$1'.
--- constant -> tuple_constant : '$1'.
--- constant -> cons_constant : '$1'.
+constants : constant ',' constants { $1 : $3 }
+constants : constant { [$1] }
 -- 
--- constants -> constant ',' constants : ['$1' | '$3'].
--- constants -> constant : ['$1'].
+atomic_constant : char   { CharLit (Tok.charVal $1) (spanOf $1) }
+atomic_constant : integer { IntegerLit (Tok.intVal $1) (spanOf $1) }
+atomic_constant : float { FloatLit (Tok.floatVal $1) (spanOf $1) }
+atomic_constant : atom { AtomLit $1 (spanOf $1) }
+atomic_constant : string { StringLit (Tok.strVal $1) (spanOf $1) }
+atomic_constant : nil { NilLit (spanOf $1) }
 -- 
--- atomic_constant -> char : tok_val('$1').
--- atomic_constant -> integer : tok_val('$1').
--- atomic_constant -> float : tok_val('$1').
--- atomic_constant -> atom : tok_val('$1').
--- atomic_constant -> string : tok_val('$1').
--- atomic_constant -> nil : [].
+tuple_constant : '{' '}' { TupleLit [] (spanning $1 $2) }
+tuple_constant : '{' constants '}' { TupleLit $2 (spanning $1 $3) }
 -- 
--- tuple_constant -> '{' '}' : {}.
--- tuple_constant -> '{' constants '}' : list_to_tuple('$2').
+cons_constant : '[' constant tail_constant { ConsLit $2 $3 (spanning $1 $3) }
+
+tail_constant : ']' { NilLit (spanOf $1) }
+tail_constant : '|' constant ']' { $2 }
+tail_constant : ',' constant tail_constant { ConsLit $2 $3 (spanning $1 $3) }
 -- 
--- cons_constant -> '[' constant tail_constant : ['$2'|'$3'].
--- 
--- tail_constant -> ']' : [].
--- tail_constant -> '|' constant ']' : '$2'.
--- tail_constant -> ',' constant tail_constant : ['$2'|'$3'].
--- 
--- -- Patterns
--- --  We have to be a little sneaky here as we would like to be able to
--- --  do:
--- --  V = {a}
--- --  ( V = {a} -| <anno> )
--- --  ( V -| <anno> ) = {a}
--- --  V = ( {a} -| <anno> )
--- --  ( ( V -| <anno> ) = ( {a} -| <anno> ) -| <anno> )
+-- Patterns
+--  We have to be a little sneaky here as we would like to be able to
+--  do:
+--  V = {a}
+--  ( V = {a} -| <anno> )
+--  ( V -| <anno> ) = {a}
+--  V = ( {a} -| <anno> )
+--  ( ( V -| <anno> ) = ( {a} -| <anno> ) -| <anno> )
 -- 
 -- anno_pattern -> '(' other_pattern '-|' annotation ')' :
 -- 	cerl:set_ann('$2', '$4').
@@ -278,31 +278,29 @@ exported_name -> anno_function_name : '$1'.
 -- 			     "expected 4 arguments in binary segment")
 -- 	end.
 -- 
--- variable -> var : #c_var{name=tok_val('$1')}.
+variable : var { Ide (Tok.varName $1) (spanOf $1) }
 -- 
--- anno_variables -> anno_variable ',' anno_variables : ['$1' | '$3'].
--- anno_variables -> anno_variable : ['$1'].
+anno_variables : anno_variable ',' anno_variables { $1 : $3 }
+anno_variables : anno_variable { [$1] }
 -- 
--- anno_variable -> variable : '$1'.
--- anno_variable -> '(' variable '-|' annotation ')' :
--- 	cerl:set_ann('$2', '$4').
+anno_variable : variable { Constr $1 }
+anno_variable : '(' variable '-|' annotation ')' { Ann $2 $4 }
 -- 
 -- -- Expressions
 -- --  Must split expressions into two levels as nested value expressions
 -- --  are illegal.
 -- 
--- anno_expression -> expression : '$1'.
--- anno_expression -> '(' expression '-|' annotation ')' :
--- 	cerl:set_ann('$2', '$4').
+anno_expression : expression { Constr $1 }
+anno_expression : '(' expression '-|' annotation ')' { Ann $2 $4 }
 -- 
--- anno_expressions -> anno_expression ',' anno_expressions : ['$1' | '$3'].
--- anno_expressions -> anno_expression : ['$1'].
+anno_expressions : anno_expression ',' anno_expressions { $1 : $3 }
+anno_expressions : anno_expression { [$1] }
 -- 
--- expression -> '<' '>' : #c_values{es=[]}.
--- expression -> '<' anno_expressions '>' : #c_values{es='$2'}.
--- expression -> single_expression : '$1'.
+expression : '<' '>' { ValuesExpr [] (spanning $1 $2) }
+expression : '<' anno_expressions '>' { ValuesExpr $2 (spanning $1 $3) }
+expression : single_expression { $1 }
 -- 
--- single_expression -> atomic_literal : '$1'.
+single_expression : atomic_constant { LitExpr $1 (spanOf $1)  }
 -- single_expression -> tuple : '$1'.
 -- single_expression -> cons : '$1'.
 -- single_expression -> binary : '$1'.
@@ -322,6 +320,9 @@ exported_name -> anno_function_name : '$1'.
 -- single_expression -> catch_expr : '$1'.
 -- single_expression -> map_expr : '$1'.
 -- 
+literal : constant { LitExpr $1 (spanOf $1) }
+-- XX: Literal is the same a constant?
+
 -- literal -> atomic_literal : '$1'.
 -- literal -> tuple_literal : '$1'.
 -- literal -> cons_literal : '$1'.
@@ -397,12 +398,10 @@ exported_name -> anno_function_name : '$1'.
 -- 			     "expected 4 arguments in binary segment")
 -- 	end.
 -- 
--- function_name -> atom '/' integer :
--- 	#c_var{name={tok_val('$1'),tok_val('$3')}}.
+function_name : atom '/' integer { Function $1 (Tok.intVal $3) (spanning $1 $3) }
 -- 
--- anno_function_name -> function_name : '$1'.
--- anno_function_name -> '(' function_name '-|' annotation ')' :
---  	cerl:set_ann('$2', '$4').
+anno_function_name : function_name { Constr $1 }
+anno_function_name : '(' function_name '-|' annotation ')' { Ann $2 $4 }
 -- 
 -- let_vars -> anno_variable : ['$1'].
 -- let_vars -> '<' '>' : [].
@@ -411,10 +410,8 @@ exported_name -> anno_function_name : '$1'.
 -- sequence -> 'do' anno_expression anno_expression :
 -- 	#c_seq{arg='$2',body='$3'}.
 -- 
--- fun_expr -> 'fun' '(' ')' '->' anno_expression :
--- 	#c_fun{vars=[],body='$5'}.
--- fun_expr -> 'fun' '(' anno_variables ')' '->' anno_expression :
--- 	#c_fun{vars='$3',body='$6'}.
+fun_expr : 'fun' '(' ')' '->' anno_expression { FunExpr [] $5 (spanning $1 $5) }
+fun_expr : 'fun' '(' anno_variables ')' '->' anno_expression { FunExpr $3 $6 (spanning $1 $6) }
 -- 
 -- let_expr -> 'let' let_vars '=' anno_expression 'in' anno_expression :
 -- 	#c_let{vars='$2',arg='$4',body='$6'}.

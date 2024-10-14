@@ -1,16 +1,32 @@
+{-# LANGUAGE RecordWildCards #-}
 -- | Core Erlang tokens, derived from https://github.com/erlang/otp/blob/master/lib/compiler/src/
-module Syntax.Erlang.Tokens(Token(..), SrcSpan(..), spanOf) where
+module Syntax.Erlang.Tokens(Token(..), SrcSpan(..)) where
+
+import Syntax.Span
 
 -- | Source location information about the tokens in 
 -- the program.
 data SrcSpan = SrcSpan { 
-               startLine :: Int, 
-               startCol  :: Int, 
-               endLine   :: Int, 
-               endCol    :: Int
+               filename  :: !String,
+               startLine :: !Int, 
+               startCol  :: !Int, 
+               endLine   :: !Int, 
+               endCol    :: !Int
              } deriving (Eq, Ord, Show)
-spanOf :: Token -> SrcSpan
-spanOf = srcSpan
+
+instance SpanOf Token where
+   spanOf tok = getSpan (srcSpan tok)
+      where getSpan SrcSpan { .. } = Span {
+            filename = filename, 
+            startPosition = Position {
+               line = startLine,
+               column = startCol
+            },
+            endPosition = Position {
+               line = endLine, 
+               column = endCol
+            }
+         }
 
 data Token = LPar { srcSpan :: !SrcSpan }
            | RPar { srcSpan :: !SrcSpan }
@@ -61,11 +77,8 @@ data Token = LPar { srcSpan :: !SrcSpan }
            | Var  { varName :: !String,
                     srcSpan :: !SrcSpan }
            | Nil  { srcSpan :: !SrcSpan }
-           -- | Special error-token used to 
-           -- signal that the input string 
-           -- could not be tokenized at 
-           -- the given position.
-           | Error { srcSpan :: !SrcSpan, 
-                     reason  :: !String }
+           -- To signal an EOF
+           | EOF
            deriving (Eq, Ord, Show)
+
 

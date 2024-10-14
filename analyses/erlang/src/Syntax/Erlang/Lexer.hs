@@ -12,15 +12,15 @@ import Data.Either
 -- Utility functions
 ------------------------------------------------------------
 
-statePosition :: SourcePos -> (Int, Int) 
-statePosition positionInfo  = (unPos $ sourceLine positionInfo, unPos $ sourceColumn positionInfo)
+statePosition :: SourcePos -> (String, Int, Int) 
+statePosition positionInfo  = (sourceName positionInfo, unPos $ sourceLine positionInfo, unPos $ sourceColumn positionInfo)
 
 withSpan :: Parser (SrcSpan -> a) -> Parser a
 withSpan m = do
-   (line, col) <- fmap statePosition getSourcePos
+   (name, line, col) <- fmap statePosition getSourcePos
    result <- m 
-   (line', col') <- fmap statePosition getSourcePos 
-   return (result (SrcSpan line col line' col'))
+   (_, line', col') <- fmap statePosition getSourcePos 
+   return (result (SrcSpan name line col line' col'))
    
 
 ------------------------------------------------------------
@@ -151,13 +151,18 @@ token =  lexeme (  keyword
                <|> atom
                <|> variable)
 
+-- | Adds an EOF token to the end of the stream in a lazy manner
+addEOF :: [Token] -> [Token]
+addEOF [] = [EOF]
+addEOF (a:as) = a : (addEOF as)
+
 -- | Run the lexer on the input string
 tokenize :: String -> String -> Either (ParseErrorBundle String Error) [Token]
-tokenize = runParser (do 
+tokenize filename = (addEOF <$>) . runParser (do 
    -- many spaceConsumer 
    tokens <- many token  
    eof
-   return tokens)
+   return tokens) filename
 
 tokenize' :: String -> [Token]
 tokenize' = fromRight (error "could not parse") . tokenize "<input>" 

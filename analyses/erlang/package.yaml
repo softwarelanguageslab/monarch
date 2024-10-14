@@ -10,6 +10,7 @@ library:
   - mtl
   - array
   - megaparsec
+  - maf2-syntax
   build-tools:
   - alex 
   - happy
