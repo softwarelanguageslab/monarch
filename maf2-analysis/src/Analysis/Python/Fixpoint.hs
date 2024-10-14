@@ -154,5 +154,5 @@ analyze prg = (rsto, osto, graph)
 
 type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp (MayEscape PyRet PyRef), Store PyDomainCP, SimpleGraph (CP String) ())
-analyzeCP prg = let (res, sto, graph) = analyze @PyDomainCP prg in (Map.map lowerBottom res, sto, graph)
+analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) ())
+analyzeCP = analyze @PyDomainCP

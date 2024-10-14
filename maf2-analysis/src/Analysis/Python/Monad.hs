@@ -116,7 +116,7 @@ pyStore loc = fmap injectAdr . pyAlloc loc
 -- kcfa k
 -- TODO: parameterize this
 kcfa :: Int 
-kcfa = 1
+kcfa = 10
 
 type Taint = TopLifted (Set String)
 type PyRef = Tainted Taint ObjAddrSet

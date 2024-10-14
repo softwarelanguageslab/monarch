@@ -83,7 +83,6 @@ instance (TaintM t m, Joinable e) => Applicative (MayEscapeTaintedT t e m) where
 instance (TaintM t m, Joinable e) => Monad (MayEscapeTaintedT t e m) where
     return = pure
     MayEscapeTaintedT m >>= f = MayEscapeTaintedT $ m >>= \case
-                                    Bottom                      -> return Bottom
                                     Escape te                   -> return (Escape te)
                                     Value v                     -> runMayEscapeTainted (f v)
                                     MayBoth v te@(Tainted _ t)  -> withTaint t (runMayEscapeTainted $ f v) <&> addError te
@@ -92,8 +91,7 @@ instance (TaintM t m, MonadJoin m, Joinable e) => MonadEscape (MayEscapeTaintedT
    type Esc (MayEscapeTaintedT t e m) = e
    throw e = MayEscapeTaintedT $ Escape . Tainted e <$> currentTaint
    catch (MayEscapeTaintedT m) hdl = MayEscapeTaintedT $ m >>= handle
-      where handle Bottom                   = return Bottom
-            handle (Escape (Tainted e t))   = withTaint t $ runMayEscapeTainted (hdl e)
+      where handle (Escape (Tainted e t))   = withTaint t $ runMayEscapeTainted (hdl e)
             handle suc@(Value _)            = return suc
             handle (MayBoth v e)            = handle (Value v) `mjoin` handle (Escape e)
 
