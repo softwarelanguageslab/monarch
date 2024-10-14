@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
-module Lattice.BottomLiftedLattice(BottomLifted(..), lowerBottom) where
+module Lattice.BottomLiftedLattice(BottomLifted(..), lowerBottom, toMaybe) where
 
 import Lattice.Class
 import Lattice.Equal (EqualLattice(eql))
@@ -40,3 +40,7 @@ instance (Domain a b) => Domain (BottomLifted a) b where
 lowerBottom :: (BottomLattice a) => BottomLifted a -> a 
 lowerBottom Bottom = bottom 
 lowerBottom (Value v) = v
+
+toMaybe :: BottomLifted a -> Maybe a 
+toMaybe Bottom = Nothing
+toMaybe (Value v) = Just v 

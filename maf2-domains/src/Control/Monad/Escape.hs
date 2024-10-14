@@ -2,7 +2,7 @@
 
 module Control.Monad.Escape (
    MonadEscape(..), 
-   MayEscape(Bottom, Escape, Value, MayBoth), 
+   MayEscape(..), 
    MayEscapeT(..),
    addError,
    escape, 
@@ -49,8 +49,7 @@ try = flip $ foldr orElse
 --- MayEscape
 ------------------------------------------------------------
 
-data MayEscape e v = Bottom 
-                   | Escape e 
+data MayEscape e v = Escape e 
                    | Value v
                    | MayBoth v e
    deriving (Eq, Ord, Functor, Show)
@@ -59,31 +58,26 @@ data MayEscape e v = Bottom
 -- return the default if there is only an error 
 -- and no value.
 fromValue :: a -> MayEscape e a -> a 
+fromValue v (Escape _) = v 
 fromValue _ (Value v) = v 
 fromValue _ (MayBoth v _) = v 
-fromValue v _ = v 
 
 instance Foldable (MayEscape e) where 
-   foldMap _ Bottom = mempty
    foldMap _ (Escape _) = mempty
    foldMap f (Value v) = f v
    foldMap f (MayBoth v _) = f v 
 
 instance Traversable (MayEscape e) where
-   traverse _ Bottom        = pure Bottom
    traverse _ (Escape e)    = pure (Escape e)  
    traverse f (Value v)     = Value <$> f v
    traverse f (MayBoth v e) = flip MayBoth e <$> f v   
 
 addError :: Joinable e => e -> MayEscape e a -> MayEscape e a
-addError e Bottom          = Escape e 
 addError e1 (Escape e2)    = Escape (e1 `join` e2)
 addError e (Value v)       = MayBoth v e
 addError e1 (MayBoth v e2) = MayBoth v (e1 `join` e2) 
 
 instance (Joinable e, Joinable a) => Joinable (MayEscape e a) where
-   join Bottom mf                         = mf
-   join mf Bottom                         = mf
    join (Escape e1) (Escape e2)           = Escape (e1 `join` e2)
    join (Escape e) (Value v)              = MayBoth v e
    join (Escape e1) (MayBoth v e2)        = MayBoth v (e1 `join` e2)
@@ -93,9 +87,6 @@ instance (Joinable e, Joinable a) => Joinable (MayEscape e a) where
    join (MayBoth v e1) (Escape e2)        = MayBoth v (e1 `join` e2)
    join (MayBoth v1 e) (Value v2)         = MayBoth (v1 `join` v2) e
    join (MayBoth v1 e1) (MayBoth v2 e2)   = MayBoth (v1 `join` v2) (e1 `join` e2)
-
-instance BottomLattice (MayEscape e a) where
-   bottom = Bottom
 
 ------------------------------------------------------------
 --- MayEscapeT
@@ -113,7 +104,6 @@ instance (Monad m, Joinable e) => Applicative (MayEscapeT e m) where
 instance (Monad m, Joinable e) => Monad (MayEscapeT e m) where
    return = pure
    MayEscapeT m >>= f = MayEscapeT $ m >>= \case 
-                                             Bottom      -> return Bottom
                                              Escape e    -> return $ Escape e
                                              Value v     -> runMayEscape (f v) 
                                              MayBoth v e -> runMayEscape (f v) <&> addError e
@@ -122,8 +112,7 @@ instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT e m) where
    type Esc (MayEscapeT e m) = e 
    throw = MayEscapeT . return . Escape
    catch (MayEscapeT m) hdl = MayEscapeT $ m >>= handle
-      where handle Bottom        = return Bottom
-            handle (Escape e)    = runMayEscape (hdl e)
+      where handle (Escape e)    = runMayEscape (hdl e)
             handle suc@(Value _) = return suc
             handle (MayBoth v e) = handle (Value v) `mjoin` handle (Escape e)
 
