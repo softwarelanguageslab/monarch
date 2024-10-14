@@ -84,9 +84,8 @@ instance Lattice v => SeqDomain (CPList v) where
     where lst' = updateAt (fromInteger idx) (`join` v) lst
   setWeak idx v lst = set idx v lst             -- otherwise, same implementation as set
 
-  length :: CPList v -> CP Integer
-  length (CPList _ len _) = Constant len
-  length (TopList _)      = Top 
+  length (CPList _ len _) = return $ Constant len
+  length (TopList _)      = return $ Top 
 
   -- not necessary but more efficient than the default implementation using slice
   tail :: AbstractM m => CPList v -> m (CPList v)
