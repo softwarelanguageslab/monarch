@@ -76,6 +76,18 @@ to `cabal` are required. For instance, to run the Python analysis on the
 cabal run . -- python -f programs/python/Counter.py
 ```
 
+## Resource Requirements
+
+We tested the artifact on a machine with the following specifications:
+
+* Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+* 16GiB RAM 
+* Minimum of 5GiB of disk space required
+
+On this machine, it takes approximately 30 minutes to build the 
+entire Docker image. Running the analysis takes a few seconds 
+depending on the program being analyzed.
+
 ## Using the Framework
 
 In this section we detail how the framework is structure and how an analysis 
@@ -86,7 +98,7 @@ can be constructed from its building blocks.
 The framework is structured into multiple packages according to their responsibilities:
 
 * `maf2-syntax` provides parsers and data structures (such as AST definitions) for the languages 
-supported by our framework. Currently it includes support for Scheme, Python and Erlang.
+supported by our framework. Currently it includes support for Scheme, Python.
 * `maf2-domains` provides the basic building blocks and their combinators for constructing 
 abstract domains to be used by a static analysis. 
 * `maf2-analysis` provides the building blocks for expressing program semantics and 
@@ -377,16 +389,43 @@ OBJECT STORE RESULTS:
 
 ```
 
-The analysis first prints a simplification of the input program.
-Then, it prints the result of each component, and finally 
-it prints all memory addresses with their associated values. 
 
-In the example program above, each memory address is represented 
-by its allocation site. For example, the instance of `DoubleCounter`
-created at line 16, has the address of `[16:11]`.
+The output of the analysis consists of three parts. 
+First, a simplified version of the program is shown, depicting 
+what the analysis uses as its input. 
+The second part depicts the result for each component (i.e., function call)
+in the program. The final part depicts a *store* which lists all abstact memory addresses 
+and their corresponding values.
 
-The result of the program is stored at component `<func 15:1>`, 
-which is a set of pointers pointing to the different 
-values of the counter. This result has multiple values 
-because of imprecision introduced by the flow-insensitive configuration
-of the analysis.
+The analysis uses the *allocation site* as the abstraction for memory addresses. 
+Thus, an address such as `[12:1]` represents an address of a memory chunck 
+allocated at line 12, column 5.
+
+The component `<func 15:1>` corresponds to results of a function call to `f`. 
+The result is a set of pointers `[[5:9],[7:9],[13:9],[16:25]]` to the possible 
+return values of `f`. We can find these addresses in the store. At `[5:9]` 
+for example, we can indeed see that the address is bound to a top integer value. 
+The other pointers are similar.
+
+### Executing the Scheme Analysis
+
+To execute the Scheme analysis, the following command can be used:
+
+```
+docker run -it monarch scheme -f maf2-analysis/programs/R5RS/various/fact.scm
+```
+
+This command runs the Scheme analysis on the `fact.scm` input program which computes the factorial of 5.
+Its output is similar to the Python analysis, but does not show the results per component (i.e., function call).
+
+```
+ EnvAdr fact:1:10 [] | CloKey -> ...
+    EnvAdr n:1:15 [] | IntKey -> Top
+```
+
+In this case, two addresses are allocated, an address for the factorial function itself, 
+and one for its argument. The analysis derives that the argument of the factorial function 
+has an integer type.
+
+Note that the analysis is implemented for a subset of Scheme, meaning that not all features 
+in the benchmark programs are available.
