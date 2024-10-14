@@ -125,23 +125,24 @@ nil : '[' ']' { Tok.Nil (Tok.spanOf $1) }
 
 -- Grammar
 -- HERE
--- module_definition :
---     'module' atom module_export module_attribute module_defs 'end' :
--- 	#c_module{name=#c_literal{val=tok_val('$2')},exports='$3',
--- 		  attrs='$4',defs='$5'}.
--- module_definition ->
---     '(' 'module' atom module_export module_attribute module_defs 'end'
--- 	'-|' annotation ')' :
---         #c_module{anno='$9',name=#c_literal{val=tok_val('$3')},exports='$4',
--- 		  attrs='$5',defs='$6'}.
--- 
--- module_export -> '[' ']' : [].
--- module_export -> '[' exported_names ']' : '$2'.
--- 
--- exported_names -> exported_name ',' exported_names : ['$1' | '$3'].
--- exported_names -> exported_name : ['$1'].
--- 
--- exported_name -> anno_function_name : '$1'.
+module_definition :
+    'module' atom module_export module_attribute module_defs 'end' 
+        { Module $2 $3 $4 $5 }
+module_definition ->
+    '(' 'module' atom module_export module_attribute module_defs 'end'
+	'-|' annotation ')' {
+            
+        }
+        #c_module{anno='$9',name=#c_literal{val=tok_val('$3')},exports='$4',
+		  attrs='$5',defs='$6'}.
+
+module_export -> '[' ']' : [].
+module_export -> '[' exported_names ']' : '$2'.
+
+exported_names -> exported_name ',' exported_names { $1 : $3 }
+exported_names -> exported_name { [ $1 ] }
+
+exported_name -> anno_function_name : '$1'.
 -- 
 -- module_attribute -> 'attributes' '[' ']' : [].
 -- module_attribute -> 'attributes' '[' attribute_list ']' : '$3'.
@@ -401,7 +402,7 @@ nil : '[' ']' { Tok.Nil (Tok.spanOf $1) }
 -- 
 -- anno_function_name -> function_name : '$1'.
 -- anno_function_name -> '(' function_name '-|' annotation ')' :
--- 	cerl:set_ann('$2', '$4').
+--  	cerl:set_ann('$2', '$4').
 -- 
 -- let_vars -> anno_variable : ['$1'].
 -- let_vars -> '<' '>' : [].
