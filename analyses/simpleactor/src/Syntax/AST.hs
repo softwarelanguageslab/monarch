@@ -2,9 +2,12 @@
 module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..)) where
 
 import Data.List (intercalate)
+import qualified Data.Set as Set
+import Data.Set (Set)
 import Text.Printf
 import Syntax.Span
 import Syntax.Ide
+import Syntax.FV
 
 -- | An expression
 data Exp = Lam [Ide] Exp Span
@@ -29,12 +32,11 @@ data Exp = Lam [Ide] Exp Span
 -- | Literals are expressions that evaluate to themselves
 data Lit = Num Integer | Boolean Bool | Symbol String | Nil deriving (Eq, Ord)
 
-instance Show Lit where 
+instance Show Lit where
    show (Num n) = show n
-   show (Boolean b) = show b 
+   show (Boolean b) = show b
    show (Symbol s) = show s
    show Nil = "'()"
-   
 
 -- | Pattern language
 data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show)
@@ -53,7 +55,7 @@ instance SpanOf Exp where
                (Lam _ _ s) -> s
                (App _ _ s) -> s
                (Spawn _ s) -> s
-               (Letrec _ _ s) -> s 
+               (Letrec _ _ s) -> s
                (Terminate s) -> s
                (Self s) -> s
                (Pair _ _ s) -> s
@@ -70,7 +72,7 @@ instance SpanOf Exp where
 
 
 instance Show Exp where
-   show = \case 
+   show = \case
             (Lam x e _)       -> printf "(lam (%s) %s)" (intercalate "," (map show x)) (show e)
             (App e1 es _)     -> printf "(%s %s)" (show e1) (unwords (map show es))
             (Spawn e1 _)      -> printf "(spawn^ %s)" (show e1)
@@ -78,7 +80,7 @@ instance Show Exp where
             (Terminate _)     -> "(terminate)"
             (Self _)          -> "self^"
             (Pair e1 e2 _)    -> printf "(cons %s %s)" (show e1) (show e2)
-            (Parametrize bds bdy _) -> 
+            (Parametrize bds bdy _) ->
                printf "(parametrize (%s) %s)" (show bds) (show bdy)
             (Blame lbl _)     -> printf "(blame %s)" (show lbl)
             (Receive pats _)  -> printf "(receive %s)" (show pats)
@@ -89,3 +91,32 @@ instance Show Exp where
             (DynVar x)        -> "(dyn " ++ show x ++ ")"
             (Begin es _)      -> printf "(begin %s)" (unwords (map show es))
             (Meta e _)        -> printf "(meta %s)" (show e)
+
+
+variables :: Pat -> Set String 
+variables (PairPat e1 e2) = Set.union (variables e1) (variables e2) 
+variables (IdePat x)      = Set.singleton $ name x
+variables (ValuePat _)    = Set.empty
+
+instance FreeVariables (Pat, Exp) where    
+   fv (pat, expr) = Set.difference (fv expr) (variables pat)
+
+instance FreeVariables Exp where
+   fv (Lam xs e _)  = Set.difference (fv e) (Set.fromList (map name xs))
+   fv (App e1 es _) = Set.unions $ fv e1 : map fv es
+   fv (Spawn e1 _)  = fv e1
+   fv (Letrec bds es _) =
+      Set.difference (fv es) (Set.fromList (map (name . fst) bds))
+   fv Terminate {}      = Set.empty 
+   fv Self {}           = Set.empty
+   fv (Pair e1 e2 _)    = Set.unions [fv e1, fv e2] 
+   fv (Parametrize _ bdy _) = fv bdy
+   fv Blame {}          = Set.empty
+   fv (Receive pats _)  = Set.unions (map fv pats)
+   fv (Match v pats _)  = Set.unions $ fv v : map fv pats
+   fv (Literal _ _)     = Set.empty
+   fv (Ite e1 e2 e3 _)  = Set.unions [fv e1, fv e2, fv e3]
+   fv (Var x)           = Set.singleton (name x)
+   fv (DynVar _)        = Set.empty
+   fv (Begin es _)      = Set.unions (map fv es)
+   fv (Meta e _)        = fv e

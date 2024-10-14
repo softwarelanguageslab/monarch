@@ -45,6 +45,8 @@ library:
   exposed-modules:
     - Syntax 
     - Syntax.Ide
+    - Syntax.Span 
+    - Syntax.FV
     - Syntax.Python
     - Syntax.Python.AST
     - Syntax.Scheme
@@ -52,7 +54,6 @@ library:
     - Syntax.Scheme.Undefiner
     - Syntax.Scheme.Actor
     - Syntax.Scheme.Parser
-    - Syntax.Span
     - Syntax.Erlang
     - Syntax.Erlang.Parser
     - Syntax.Erlang.Compiler

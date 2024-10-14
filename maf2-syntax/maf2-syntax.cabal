@@ -13,7 +13,7 @@ author:         Software Languages Lab - VUB
 maintainer:     example@example.com
 copyright:      2023 Author name here
 license:        BSD-3-Clause
-build-type:     Custom
+build-type:     Simple
 extra-source-files:
     preludes/actor.scm
 
@@ -21,15 +21,12 @@ source-repository head
   type: git
   location: https://github.com/softwarelanguageslab/maf2-syntax
 
-custom-setup
-  setup-depends:
-      Cabal
-    , base >=4.17 && <5
-
 library
   exposed-modules:
       Syntax
       Syntax.Ide
+      Syntax.Span
+      Syntax.FV
       Syntax.Python
       Syntax.Python.AST
       Syntax.Scheme
@@ -37,7 +34,6 @@ library
       Syntax.Scheme.Undefiner
       Syntax.Scheme.Actor
       Syntax.Scheme.Parser
-      Syntax.Span
       Syntax.Erlang
       Syntax.Erlang.Parser
       Syntax.Erlang.Compiler

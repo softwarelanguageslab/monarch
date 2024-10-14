@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards #-}
 module Main (main) where
 
 import Syntax.Compiler
@@ -56,7 +57,7 @@ printSto printKey keepKey m  =
          indent = maximum (map (length . printKey . fst) adrs) + 5
 
 printLoc :: ActorCmp -> String
-printLoc (((((e, _), _), _), _), _) = let (Span filename line col) = spanOf e in show line ++ ":" ++ show col ++ "@" ++ filename
+printLoc (((((e, _), _), _), _), _) = let (Span filename Position { .. } _) = spanOf e in show line ++ ":" ++ show column ++ "@" ++ filename
 
 ------------------------------------------------------------
 -- Entrypoints
