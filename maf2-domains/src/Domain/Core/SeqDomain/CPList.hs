@@ -13,6 +13,10 @@ data CPList v = CPList [v] Integer v   -- representing a list of a certain known
               | TopList v              -- representing any list (summarized by the join of all its elements)
   deriving (Eq, Ord, Show)
 
+-- TODO: remove
+instance BottomLattice (CPList v) where   
+   bottom = undefined
+
 -- some helpers
 
 updateAt :: Int -> (v -> v) -> [v] -> [v]

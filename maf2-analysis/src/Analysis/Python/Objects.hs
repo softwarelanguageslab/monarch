@@ -28,7 +28,7 @@ import Data.Finite
 import Prelude hiding (lookup, exp, True, False, seq, length, all)
 import qualified Prelude
 import qualified Data.Map as Map
-import Control.Monad ((>=>))
+import Control.Monad ((>=>), (<=<))
 import Data.Bifunctor
 import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad hiding (has)
@@ -93,7 +93,6 @@ lookupAttrInClass loc attr self cls =
 lookupAttrMRO :: PyM pyM obj vlu => String -> vlu -> pyM vlu
 lookupAttrMRO attr =
    pyDeref' $ atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm >=> \case
-                                                                      BotList       -> pyError InvalidMRO
                                                                       CPList l _ _  -> lookupMRO l
                                                                       TopList v     -> lookupLocal v `orElse` pyError AttributeNotFound)
      where lookupLocal = pyDeref' (atAttr attr)
@@ -102,9 +101,8 @@ lookupAttrMRO attr =
 computeMRO :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> vlu -> vlu -> pyM vlu
 computeMRO loc cls = pyDeref' $ at @TupPrm
                                   >=> \case
-                                        BotList           -> pyError InvalidMRO
                                         CPList [] _ _     -> pyStore loc $ from @TupPrm $ SeqDomain.fromList [cls, typeVal ObjectType]  -- no parent given (implicitly extends object)
-                                        CPList [par] _ _  -> getMRO par (pyStore loc . from @TupPrm . SeqDomain.insertFront cls)        -- single parent
+                                        CPList [par] _ _  -> getMRO par (pyStore loc <=< return . from @TupPrm <=< SeqDomain.insertFront cls)        -- single parent
                                         _                 -> error "multiple inheritance is not yet supported"                          -- multiple parents
   where
       getMRO :: vlu -> (Abs obj TupPrm -> pyM vlu) -> pyM vlu
@@ -141,7 +139,6 @@ clsEq cls1 cls2 = getClassName cls1
 -- TODO: move to Domain package
 
 anyCPList :: PyM pyM obj vlu => (vlu -> pyM vlu) -> SeqDomain.CPList vlu -> pyM vlu
-anyCPList _ SeqDomain.BotList = mzero
 anyCPList p (SeqDomain.CPList l _ _) = go l
    where go []     = return $ constant False
          go (x:xs) = pyIf (p x)

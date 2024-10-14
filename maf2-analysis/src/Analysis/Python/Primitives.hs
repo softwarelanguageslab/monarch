@@ -83,7 +83,7 @@ applyPrim DictKeys      = prim1' @DctPrm $ \loc -> \case
 -- list primitives
 applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref
 applyPrim ListSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @IntPrm (\i -> none $ pyAssignInPrm SLstPrm (SeqDomain.setWeak i) v a1) a2
-applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyStore loc $ from @IntPrm (SeqDomain.length l)
+applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyStore loc . from @IntPrm =<< SeqDomain.length l
 applyPrim ListIter      = prim1 $ \loc l -> do n <- pyStore (tagAs ItrIdx loc) $ from' @IntPrm @_ @Integer 0
                                                let obj = new'' ListIteratorType [(attrStr ListAttr, l), (attrStr IndexAttr, n)]
                                                pyStore (tagAs ItrLst loc) obj
