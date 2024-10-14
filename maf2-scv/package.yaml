@@ -10,6 +10,7 @@ extra-source-files:
 - README.md
 - CHANGELOG.md
 - programs/test/**/*.scm
+- smt/prelude.scm
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package

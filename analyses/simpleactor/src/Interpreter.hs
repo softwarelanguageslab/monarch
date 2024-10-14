@@ -16,9 +16,8 @@ import Control.Lens hiding (Context)
 import Data.Maybe
 import Data.Kind
 import Data.Bifunctor
-import Control.Exception hiding (catch)
 import Debug.Trace (traceShowId, trace)
-import Syntax.Span (spanOf)
+import Syntax.Span (spanOf, Span(..), Position(..))
 
 -- | A concrete environment
 type Env = Map String Adr
@@ -53,7 +52,7 @@ instance Show (Value m) where
    show = \case   
             LiteralValue l -> show l 
             PairValue a b  -> "(" ++ show a ++ " " ++ show b ++ ")"
-            ClosureValue expr _ -> "<procedure at " ++ show (line (spanOf expr)) ++ ":" ++ show (column (spanOf expr)) ++ ">"
+            ClosureValue expr _ -> "<procedure at " ++ show (line (startPosition (spanOf expr))) ++ ":" ++ show (column (startPosition (spanOf expr))) ++ ">"
             ActorValue ref -> show ref
             PrmValue nam -> "<#primitive:" ++ show nam ++ ">"
 

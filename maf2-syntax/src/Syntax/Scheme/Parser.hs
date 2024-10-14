@@ -16,8 +16,14 @@ import Data.Functor.Identity (Identity)
 fromSourcePos :: SourcePos -> Span
 fromSourcePos pos = Span {
    filename = sourceName pos,
-   line = sourceLine pos,
-   column = sourceColumn pos
+   startPosition = Position {
+      line = sourceLine pos,
+      column = sourceColumn pos
+   }, 
+   endPosition = Position {
+      line = sourceLine pos,
+      column = sourceColumn pos
+   }
 }
 
 -- | Runs the given parser and provides the source location of the parsed expression to it

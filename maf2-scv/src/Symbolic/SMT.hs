@@ -5,7 +5,7 @@ import Text.Printf
 import Symbolic.AST
 import Data.FileEmbed
 import Data.List
-import Syntax.Span (Span(..))
+import Syntax.Span (Span(..), Position(..))
 import Solver
 
 --------------------------------------------------
@@ -30,7 +30,7 @@ translateAtomic (Literal (Sym s)) =
 translateAtomic (Literal Beh) = "(VBeh)"
 translateAtomic (Literal Mon) = "(VMon)"
 translateAtomic (Literal (Actor (Just span)))  =
-   printf "(KnownSpan %s %s)" (show (line span)) (show (column span))
+   printf "(KnownSpan %s %s)" (show (line (startPosition span))) (show (column (startPosition span)))
 translateAtomic (Literal (Actor _)) =
    printf "(UnknownSpan)"
 translateAtomic (IsTrue prop) =
