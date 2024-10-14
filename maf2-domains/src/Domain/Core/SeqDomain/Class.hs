@@ -9,7 +9,7 @@ import Prelude hiding (length)
 import Data.Kind 
 
 -- | A typeclass for a domain representing linear sequences (e.g., tuples, lists, vectors, ...)
-class (Lattice v, IntDomain (Idx v), Lattice (Vlu v)) => SeqDomain v where
+class (Joinable v, PartialOrder v, IntDomain (Idx v), Lattice (Vlu v)) => SeqDomain v where
   type Vlu v :: Type
   type Idx v :: Type
   empty :: v
@@ -24,9 +24,9 @@ class (Lattice v, IntDomain (Idx v), Lattice (Vlu v)) => SeqDomain v where
   setWeak :: AbstractM m => Idx v -> Vlu v -> v -> m v
   setWeak idx vlu lst = join lst <$> set idx vlu lst 
   length :: v -> Idx v
-  insert :: Idx v -> Vlu v -> v -> v 
-  insertFront :: Vlu v -> v -> v
+  insert :: AbstractM m => Idx v -> Vlu v -> v -> m v 
+  insertFront :: AbstractM m => Vlu v -> v -> m v
   insertFront = insert (inject @_ @Integer 0) 
-  insertRear :: Vlu v -> v -> v 
+  insertRear :: AbstractM m => Vlu v -> v -> m v 
   insertRear v s = insert (length s) v s
   slice :: AbstractM m => Idx v -> Idx v -> v -> m v

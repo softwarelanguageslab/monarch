@@ -9,8 +9,7 @@ import Control.Monad.Join
 import Domain.Core.NumberDomain.ConstantPropagation ()
 
 -- | A simple abstraction (preserving precision for lists with a known length)
-data CPList v = BotList                -- representing no lists
-              | CPList [v] Integer v   -- representing a list of a certain known length
+data CPList v = CPList [v] Integer v   -- representing a list of a certain known length
               | TopList v              -- representing any list (summarized by the join of all its elements)
   deriving (Eq, Ord, Show)
 
@@ -33,17 +32,12 @@ sliceBetween :: Int -> Int -> [v] -> [v]
 sliceBetween from to = take (to - from) . drop from
 
 instance (Joinable v) => Joinable (CPList v) where
-  join BotList v = v
-  join v BotList = v 
   join (CPList lst1 len1 vlu1) (CPList lst2 len2 vlu2)
     | len1 == len2 = CPList (zipWith join lst1 lst2) len1 (vlu1 `join` vlu2)
     | otherwise = TopList (vlu1 `join` vlu2)
   join (CPList _ _ vlu1) (TopList vlu2) = TopList (vlu1 `join` vlu2)
   join (TopList vlu1) (CPList _ _ vlu2) = TopList (vlu1 `join` vlu2) 
   join (TopList vlu1) (TopList vlu2)    = TopList (vlu1 `join` vlu2)
-
-instance BottomLattice (CPList v) where
-  bottom = BotList
 
 instance Lattice v => SeqDomain (CPList v) where
 
@@ -54,8 +48,7 @@ instance Lattice v => SeqDomain (CPList v) where
   fromList lst = CPList lst (toInteger $ Prelude.length lst) (joins lst) 
 
   ref :: AbstractM m => CP Integer -> CPList v -> m v 
-  ref Bottom          _       = return bottom  
-  ref _               BotList = return bottom 
+  ref Bottom          _       = mzero
   ref (Constant idx)  (CPList lst len _)
     | 0 <= idx && idx < len = return (lst !! fromInteger idx)
     | otherwise             = escape IndexOutOfBounds
@@ -66,10 +59,9 @@ instance Lattice v => SeqDomain (CPList v) where
   ref Top             (TopList vlu)     = return vlu `mjoin` escape IndexOutOfBounds
 
   set :: AbstractM m => CP Integer -> v -> CPList v -> m (CPList v)
-  set Bottom _ _ = return BotList
+  set Bottom _ _ = mzero
   set _ v _      
-    | v == bottom = return BotList
-  set _ _ BotList = return BotList 
+    | v == bottom = mzero
   set (Constant idx) v (CPList lst len _)
     | 0 <= idx && idx < len = return (CPList lst' len vlu') 
     | otherwise = escape IndexOutOfBounds 
@@ -86,7 +78,6 @@ instance Lattice v => SeqDomain (CPList v) where
   setWeak Bottom _ l = return l
   setWeak _ v l     
     | v == bottom = return l
-  setWeak _ _ BotList = return BotList 
   setWeak (Constant idx) v (CPList lst len vlu) -- optimized implementation possible here
     | 0 <= idx && idx < len = return $ CPList lst' len (vlu `join` v)
     | otherwise = escape IndexOutOfBounds
@@ -94,31 +85,26 @@ instance Lattice v => SeqDomain (CPList v) where
   setWeak idx v lst = set idx v lst             -- otherwise, same implementation as set
 
   length :: CPList v -> CP Integer
-  length BotList          = Bottom
   length (CPList _ len _) = Constant len
   length (TopList _)      = Top 
 
   -- not necessary but more efficient than the default implementation using slice
   tail :: AbstractM m => CPList v -> m (CPList v)
-  tail BotList              = return BotList 
   tail (CPList (_:t) len _) = return $ CPList t (len-1) (joins t)
   tail (CPList{})           = escape IndexOutOfBounds -- tail of empty list
   tail l@(TopList _)        = return l `mjoin` escape IndexOutOfBounds
 
-  insert :: CP Integer -> v -> CPList v -> CPList v
-  insert Bottom _ _ = BotList
+  insert Bottom _ _  = mzero
   insert _ v _ 
-    | v == bottom    = BotList
-  insert _ _ BotList = BotList   
-  insert (Constant idx) v (CPList lst len vlu) = CPList lst' (len + 1) (vlu `join` v) 
+    | v == bottom    = mzero
+  insert (Constant idx) v (CPList lst len vlu) = return $ CPList lst' (len + 1) (vlu `join` v) 
     where lst' = insertAt (fromInteger idx) v lst 
-  insert Top v (CPList lst len vlu) = CPList (insertAnyWhere v lst) len (vlu `join` v)
-  insert _   v (TopList vlu)    = TopList (vlu `join` v)
+  insert Top v (CPList lst len vlu) = return $ CPList (insertAnyWhere v lst) len (vlu `join` v)
+  insert _   v (TopList vlu)    = return $ TopList (vlu `join` v)
 
   slice :: AbstractM m => CP Integer -> CP Integer -> CPList v -> m (CPList v)
-  slice Bottom _ _  = return BotList
-  slice _ Bottom _  = return BotList
-  slice _ _ BotList = return BotList 
+  slice Bottom _ _  = mzero
+  slice _ Bottom _  = mzero
   slice (Constant from) (Constant to) (CPList lst len _)
     | 0 <= from && from <= to && to < len = return $ CPList lst' (to - from) (joins lst')
     | otherwise = escape IndexOutOfBounds 
