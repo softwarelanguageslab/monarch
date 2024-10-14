@@ -20,7 +20,8 @@ module Analysis.SimpleActor.Monad
     ActorError,
     MetaT, 
     DynamicBindingT,
-    isMatchError
+    isMatchError,
+    Cmp(..)
   )
 where
 
@@ -54,6 +55,19 @@ import Lattice.Equal (EqualLattice)
 import Domain.Scheme.Actors.Class (Pid(..))
 import Domain.Core.BoolDomain.Class (BoolDomain (true, false, boolTop))
 import Lattice.Split (SplitLattice)
+import Syntax.Span (SpanOf(..))
+
+------------------------------------------------------------
+-- 'Components'
+------------------------------------------------------------
+
+data Cmp = FuncBdy  Exp  -- ^ a function call component contains a lambda   
+         | ActorExp Exp  -- ^ a newly spawned actor
+      deriving (Show, Eq, Ord)
+
+instance SpanOf Cmp where  
+   spanOf (FuncBdy e) = spanOf e 
+   spanOf (ActorExp e) = spanOf e
 
 ------------------------------------------------------------
 -- Errors
@@ -171,7 +185,7 @@ type EvalM v m =
     StoreM (Adr v) v m,
     MonadActor v m,
     MonadEscape m,
-    MonadFixpoint m Exp v,
+    MonadFixpoint m Cmp v,
     CtxM m [Span],
     Domain (Esc m) DomainError,
     Domain (Esc m) Error,

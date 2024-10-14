@@ -30,7 +30,7 @@ type K = [Span]
 type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K
 type ActorEnv = Map String (EnvAdr K)
-type ActorCmp = Key (IntraT Identity) Exp
+type ActorCmp = Key (IntraT Identity) Cmp
 type ActorRes = Val (IntraT Identity) ActorVlu
 type ActorMai = Map ActorRef (Set ActorVlu)
 type ActorSto = Map (EnvAdr K) ActorVlu
@@ -92,7 +92,7 @@ initialEnv :: Env K
 initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
 
 inter :: MonadInter m => Exp -> m ()
-inter exp = add (((((exp, initialEnv), Map.empty), []), False), Pid exp []) >> iterateWL intra
+inter exp = lfp intra (((((ActorExp exp, initialEnv), Map.empty), []), False), Pid exp [])
 
 analyze :: Exp -> ((((), ActorSto), ActorMai), Map ActorCmp (ActorRes))
 analyze exp =

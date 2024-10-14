@@ -44,10 +44,13 @@ import Lattice.Class (bottom)
 showIfBot :: EvalM v m => String -> v -> m v
 showIfBot s v = (if v == bottom then trace s else id) (return v)
 
-eval :: forall v m . EvalM v m => Exp -> m v
-eval = fix eval'
+eval :: forall v m . EvalM v m => Cmp -> m v
+eval = fix evalCmp
+   where evalCmp recur (FuncBdy (Lam _ bdy _)) = eval' recur bdy
+         evalCmp recur (ActorExp e) = eval' recur e
+         evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
-eval' :: forall v m . EvalM v m => (Exp -> m v) -> Exp -> m v
+eval' :: forall v m . EvalM v m => (Cmp -> m v) -> Exp -> m v
 eval' _ lam@(Lam {}) = injectClo . (lam,) <$> getEnv
 eval' _ (Literal lit _) = return (injectLit lit)
 eval' rec e@(App e1 es _) = do
@@ -56,7 +59,7 @@ eval' rec e@(App e1 es _) = do
    apply rec e v1 v2
 eval' rec (Ite e1 e2 e3 _) = cond (eval' rec e1) (eval' rec e2) (eval' rec e3)
 eval' rec s@(Spawn e _) =
-   aref <$> spawn @v s (const $ rec e)
+   aref <$> spawn @v s (const $ rec (ActorExp e))
 eval' _ (Terminate _) = terminate $> nil
 eval' rec (Receive pats _) = do
    self <- getSelf
@@ -66,7 +69,7 @@ eval' rec (Receive pats _) = do
          pats
    where withEnv' e = withEnv (const e)
 eval' rec (Match e pats _) = do
-   val <- eval e
+   val <- eval' rec e
    matchList (\matchedExp -> allocMapping >=> (`withEnv'` eval' rec matchedExp))
              pats val
    where withEnv' ρ = withEnv (const ρ)
@@ -103,17 +106,18 @@ trySend ref p =
           (mjoinMap (`send` p) (arefs' ref))
           (escape InvalidArgument)
 
-apply :: EvalM v m => (Exp -> m v) -> Exp -> v -> [v] -> m v
+apply :: EvalM v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
 apply rec e v vs = condsCP
    [(pure $ isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (pure $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
-applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Exp -> m v) -> [v] -> m v
-applyClosure e (Lam prs bdy _, env) rec vs = do
+applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
+applyClosure e (lam@(Lam prs _ _), env) rec vs = do
    ads <- mapM alloc prs
    let bds = zip (map name prs) ads
    mapM_ (uncurry writeAdr) (zip ads vs)
-   ifMetaSet (withCtx (spanOf e:)) $ withEnv (const env) (withExtendedEnv bds (rec bdy))
+   ifMetaSet (withCtx (spanOf e:)) $
+      withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 applyPrimitive :: forall v m . EvalM v m => String -> Exp -> [v] -> m v
 applyPrimitive =
