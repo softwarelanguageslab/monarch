@@ -32,6 +32,7 @@ import Analysis.Monad.Fix (runFixT, lfp)
 import Analysis.Monad hiding (eval)
 import qualified  Analysis.Scheme.Primitives as P
 import Debug.Trace (traceShow)
+import Lattice.Class (BottomLattice)
 
 -----------------------------------------
 -- Shorthands

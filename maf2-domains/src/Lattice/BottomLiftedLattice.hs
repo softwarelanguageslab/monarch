@@ -1,10 +1,12 @@
-module Lattice.BottomLiftedLattice(BottomLifted(..)) where
+{-# LANGUAGE DeriveFunctor #-}
+module Lattice.BottomLiftedLattice(BottomLifted(..), lowerBottom) where
 
 import Lattice.Class
 import Lattice.Equal (EqualLattice(eql))
+import Domain.Class (Domain(..))
 
 data BottomLifted a = Bottom | Value a
-                    deriving (Eq, Ord, Show)
+                    deriving (Eq, Ord, Show, Functor)
 
 instance (Joinable a) => Joinable (BottomLifted a) where  
    join Bottom a = a 
@@ -31,3 +33,10 @@ instance (PartialOrder a) => PartialOrder (BottomLifted a) where
 
 instance (TopLattice a) => TopLattice (BottomLifted a) where 
    top = Value top
+
+instance (Domain a b) => Domain (BottomLifted a) b where
+   inject = Value . inject
+
+lowerBottom :: (BottomLattice a) => BottomLifted a -> a 
+lowerBottom Bottom = bottom 
+lowerBottom (Value v) = v

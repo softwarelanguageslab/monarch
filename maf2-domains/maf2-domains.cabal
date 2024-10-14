@@ -111,6 +111,7 @@ library
       Lattice.SetLattice
       Lattice.Split
       Lattice.Tainted
+      Lattice.TopLattice
       Lattice.TopLiftedLattice
       Lattice.UnitLattice
   other-modules:

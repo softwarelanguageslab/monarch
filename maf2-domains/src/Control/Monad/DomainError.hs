@@ -4,8 +4,6 @@
 -- in the implementation of our abstract domains.
 module Control.Monad.DomainError(DomainError(..)) where
 
-import Control.Monad.Escape
-
 import Domain.Class
 
 import Lattice.UnitLattice()

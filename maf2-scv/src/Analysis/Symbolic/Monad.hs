@@ -113,8 +113,7 @@ freshIdent v = fresh <&> (`var` v)
 newtype FormulaT v m a = FormulaT { runFormulaT' :: StateT PC m a }
                            deriving (Monad, Applicative, Functor, MonadState PC, MonadLayer, MonadTrans)
 
-instance (MonadJoin m) => MonadJoin (FormulaT v m) where
-   mzero = FormulaT mzero
+instance (MonadJoinable m) => MonadJoinable (FormulaT v m) where
    mjoin (FormulaT ma) (FormulaT mb) = FormulaT $ mjoin ma mb
 
 instance {-# OVERLAPPING #-} (MonadJoin m, SymbolicValue v) => MonadPathCondition (FormulaT v m) v where
@@ -143,7 +142,7 @@ runFormulaT = flip runStateT (Set.singleton Empty) . runFormulaT'
 -- into components through contexts and returned through special return values)
 -- while the value store is usually global.
 newtype SymbolicStoreT adr v m a = SymbolicStoreT (StateT (SymbolicStore adr v) m a)
-                                 deriving (Applicative, Monad, Functor, MonadState (SymbolicStore adr v), MonadLayer, MonadTrans, MonadJoin)
+                                 deriving (Applicative, Monad, Functor, MonadState (SymbolicStore adr v), MonadLayer, MonadTrans, MonadJoinable)
 
 -- | The contents of a symbolic store.
 type SymbolicStore adr v = Map adr v

@@ -33,7 +33,7 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad.State hiding (mzero, join)
-import Control.Monad.Join (MonadJoin(..), mjoinMap, mjoins)
+import Control.Monad.Join (MonadJoin(..), mjoinMap, mjoins, MonadJoinable)
 import Analysis.Monad.Cache
 import Control.Monad.Lift
 
@@ -87,11 +87,11 @@ updateWith' :: StoreM a v m => {- strong update -} (v -> v) -> {- weak update -}
 updateWith' fs fw a = updateAndCheck a (updateWith fs fw)
 
 -- | Lookup
-lookups :: (Lattice a, MonadJoin m) => (adr -> m v) -> (adr -> v -> m a) -> Set adr -> m a
+lookups :: (Joinable a, MonadJoin m) => (adr -> m v) -> (adr -> v -> m a) -> Set adr -> m a
 lookups look f = mjoinMap (\adr -> look adr >>= f adr)
 
 -- | Deref 
-deref :: (StoreM a v m, MonadJoin m, Lattice r) => (a -> v -> m r) -> Set a -> m r
+deref :: (StoreM a v m, MonadJoin m, Joinable r) => (a -> v -> m r) -> Set a -> m r
 deref = lookups lookupAdr
 
 deref' :: (StoreM a v m, MonadJoin m) => Set a -> m v
@@ -119,7 +119,7 @@ instance (Monad (t m), MonadLayer t, StoreM' s adr v m) => StoreM' s adr v (t m)
 --- 
 
 newtype StoreT s adr vlu m a = StoreT { getStoreT :: StateT s m a }
-   deriving (Applicative, Functor, Monad, MonadJoin, MonadState s, MonadLayer, MonadTrans, MonadTransControl, MonadCache)
+   deriving (Applicative, Functor, Monad, MonadJoinable, MonadState s, MonadLayer, MonadTrans, MonadTransControl, MonadCache)
 
 instance {-# OVERLAPPING #-} (Monad m, Store s a v, Address a) => StoreM a v (StoreT s a v m) where
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
@@ -145,7 +145,7 @@ runWithStore = runStoreT Store.emptySto
 
 -- TODO[medium]: deprecate and remove the SVar implementation
 newtype StoreT' adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
-                              deriving (Applicative, Functor, Monad, MonadJoin, MonadState (Map adr (SVar v)), MonadLayer, MonadTrans)
+                              deriving (Applicative, Functor, Monad, MonadJoinable, MonadState (Map adr (SVar v)), MonadLayer, MonadTrans)
 
 instance {-# OVERLAPPING #-} (SVar.MonadStateVar m, Address adr, Lattice v, Ord adr) => StoreM adr v (StoreT' adr v m) where
    writeAdr adr vlu =

@@ -18,7 +18,7 @@ instance BoolDomain (CP Bool) where
    boolTop = Top
 
 -- | Convert from (CP Bool) to another boolean domain
-bool :: BoolDomain b => CP Bool -> b
+bool :: (BottomLattice b, BoolDomain b) => CP Bool -> b
 bool Bottom = bottom
 bool (Constant b) = inject b
 bool Top = boolTop 

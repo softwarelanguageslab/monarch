@@ -8,7 +8,7 @@ import Analysis.Monad.ComponentTracking (ComponentTrackingM, call)
 import Analysis.Monad.Map (MapM (..))
 import Control.Monad.Escape (MonadEscape (..))
 import Control.Monad.Identity (IdentityT (IdentityT))
-import Control.Monad.Join (MonadJoin)
+import Control.Monad.Join (MonadJoinable, MonadJoin)
 import Control.Monad.Layer (MonadLayer, MonadTrans)
 import Lattice.Class
 import Analysis.Monad.WorkList (WorkListM(..), iterateWL)
@@ -27,7 +27,7 @@ class MonadFixpoint m b c | m -> b c where
 
 -- |  ModX fixpoint monad transformer
 newtype FixT b c m a = FixT {runFixT' :: IdentityT m a}
-  deriving (MonadCache, MonadTrans, MonadLayer, Monad, Applicative, Functor, MonadJoin, MonadEscape)
+  deriving (MonadCache, MonadTrans, MonadLayer, Monad, Applicative, Functor, MonadJoinable, MonadEscape)
 
 runFixT :: forall m b c. (MonadCache m, MapM (Key m b) (Val m c) (Base m)) => (b -> FixT b c m c) -> Key m b -> Base m ()
 runFixT f kb = cache @(FixT b c m) @b kb f

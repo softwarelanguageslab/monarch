@@ -41,7 +41,7 @@ class (Monad m, Environment env adr) => EnvM m adr env | m -> env, m -> adr wher
 ---
 
 newtype EnvT env m a = EnvT (ReaderT env m a)
-   deriving (MonadReader env, MonadJoin, Monad, Applicative, MonadLayer, MonadTrans, Functor, MonadCache, MonadTransControl)
+   deriving (MonadReader env, MonadJoinable, Monad, Applicative, MonadLayer, MonadTrans, Functor, MonadCache, MonadTransControl)
 
 instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m) adr env where
    lookupEnv nam = asks (Analysis.Environment.lookup nam)

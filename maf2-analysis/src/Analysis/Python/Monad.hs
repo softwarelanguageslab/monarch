@@ -41,6 +41,7 @@ import Data.Functor (($>))
 import qualified Data.Set as Set 
 import qualified Lattice.TopLiftedLattice as TopLattice
 import Text.Printf (printf)
+import Lattice.TopLattice()
 
 --
 -- The Python monad 
@@ -73,8 +74,8 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   pyContinue   :: m ()
   pyReturn     :: vlu -> m ()
   pyError      :: Lattice a => PyError -> m a
-  pyRaise      :: Lattice a => vlu -> m a
-  pyCatchExc   :: Lattice a => m a -> (vlu -> m a) -> m a
+  pyRaise      :: (Joinable a, PartialOrder a) => vlu -> m a
+  pyCatchExc   :: (Joinable a) => m a -> (vlu -> m a) -> m a
   pyCatchLoop  :: m vlu -> m vlu -> m vlu -> m vlu
   pyReturnable :: m vlu -> m vlu
   -- environment -- 
@@ -131,6 +132,7 @@ instance (vlu ~ PyRef,
           PyEscape (Esc m) vlu,
           Domain (Esc m) PyError,
           Domain (Esc m) DomainError,
+          BottomLattice (Esc m),
           SplitLattice (Esc m),
           EnvM m ObjAdr PyEnv,
           AllocM m PyLoc ObjAdr,

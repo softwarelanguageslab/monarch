@@ -30,7 +30,7 @@ class CtxM m ctx | m -> ctx where
 ---
 
 newtype CtxT ctx m a = CtxT (ReaderT ctx m a)
-   deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor, MonadJoin, MonadCache, MonadTransControl)
+   deriving (MonadReader ctx, Monad, Applicative, MonadLayer, MonadTrans, Functor, MonadJoinable, MonadCache, MonadTransControl)
 
 instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask

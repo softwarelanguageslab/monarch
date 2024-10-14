@@ -53,7 +53,7 @@ unwrapTainted_ f (Tainted v t) = withTaint t (f v)
 ------------------------------------------------------------
 
 newtype TaintT t m a = TaintT (ReaderT t m a)
-   deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadJoin, MonadReader t)
+   deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadJoinable, MonadReader t)
 
 instance {-# OVERLAPPING #-} (Monad m, TaintDomain t) => TaintM t (TaintT t m) where
     currentTaint = ask
@@ -97,8 +97,7 @@ instance (TaintM t m, MonadJoin m, Joinable e) => MonadEscape (MayEscapeTaintedT
             handle suc@(Value _)            = return suc
             handle (MayBoth v e)            = handle (Value v) `mjoin` handle (Escape e)
 
-instance (Eq e, Joinable e, MonadJoin m, TaintM t m) => MonadJoin (MayEscapeTaintedT t e m) where
-    mzero = MayEscapeTaintedT mzero
+instance (Eq e, Joinable e, MonadJoin m, TaintM t m) => MonadJoinable (MayEscapeTaintedT t e m) where
     mjoin (MayEscapeTaintedT ma) (MayEscapeTaintedT mb) = MayEscapeTaintedT (mjoin ma mb)
 
 instance MonadTrans (MayEscapeTaintedT t e) where

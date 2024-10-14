@@ -69,7 +69,7 @@ type MB  = Set Msg
 ------------------------------------------------------------
 
 newtype EvalT m a = EvalT { getEvalT :: IdentityT m a }
-                  deriving (Monad, Applicative, Functor, MonadTrans, MonadJoin, MonadLayer)
+                  deriving (Monad, Applicative, Functor, MonadTrans, MonadJoinable, MonadLayer)
 
 
 instance (Esc m ~ Set Error, ContractM (EvalT m) V Msg MB) => EvalM (EvalT m) V Exp where
@@ -90,7 +90,7 @@ instance (Monad m, MonadEscape m, Esc m ~ Set Error) => MonadEscape (EvalT m) wh
 -- SpawnT
 ------------------------------------------------------------
 
-newtype SpawnT m a = SpawnT (IdentityT m a) deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer, MonadJoin)
+newtype SpawnT m a = SpawnT (IdentityT m a) deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer, MonadJoinable)
 
 -- TODO: this is just a test to see whether the implementation
 -- works without actually using the fixpoint

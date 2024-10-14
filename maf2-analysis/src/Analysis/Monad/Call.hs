@@ -26,7 +26,7 @@ class Monad m => CallM k v m | m -> k v where
 ---
 
 newtype CallT k v f m a = CallT { _runCallT :: ReaderT (k -> f v) m a }
-    deriving (Functor, Applicative, Monad, MonadReader (k -> f v), MonadTrans, MonadLayer, MonadJoin)
+    deriving (Functor, Applicative, Monad, MonadReader (k -> f v), MonadTrans, MonadLayer, MonadJoinable)
 
 instance {-# OVERLAPPING #-} (Monad m) => CallM k v (CallT k v m m) where
     call k = CallT $ ReaderT $ \f -> f k 

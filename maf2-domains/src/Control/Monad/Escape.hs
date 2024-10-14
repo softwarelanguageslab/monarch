@@ -32,7 +32,7 @@ class MonadEscape m where
    throw :: Esc m -> m a 
    catch :: (Joinable a) => m a -> (Esc m -> m a) -> m a
 
-catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Lattice a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
+catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Joinable a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
 catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw 
 
 escape :: (MonadEscape m, Domain (Esc m) e) => e -> m a 
@@ -126,9 +126,11 @@ instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT e m) where
             handle suc@(Value _) = return suc
             handle (MayBoth v e) = handle (Value v) `mjoin` handle (Escape e)
 
-instance (Eq e, Joinable e, MonadJoin m) => MonadJoin (MayEscapeT e m) where
-    mzero = MayEscapeT mzero
+instance (Eq e, Joinable e, MonadJoinable m) => MonadJoinable (MayEscapeT e m) where
     mjoin (MayEscapeT ma) (MayEscapeT mb) = MayEscapeT (mjoin ma mb)
+
+instance (Joinable e, MonadBottom m) => MonadBottom (MayEscapeT e m) where 
+    mzero = MayEscapeT mzero
 
 instance MonadTrans (MayEscapeT e) where  
    lift = MayEscapeT . fmap Value

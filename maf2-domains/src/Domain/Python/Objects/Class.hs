@@ -33,7 +33,7 @@ import Data.Map (Map)
 import Control.Monad ((>=>))
 
 data AbsJoinLattice obj :: k ~> Constraint
-type instance Apply (AbsJoinLattice obj) k = Lattice (Abs obj k)
+type instance Apply (AbsJoinLattice obj) k = (PartialOrder (Abs obj k), Joinable (Abs obj k), BottomLattice (Abs obj k), Eq (Abs obj k))
 
 class (
     Lattice obj,

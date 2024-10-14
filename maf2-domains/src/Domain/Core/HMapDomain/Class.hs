@@ -13,7 +13,7 @@ import Data.Kind (Type)
 import Data.Singletons
 
 -- | An abstract representation of an HMap
-class (Lattice v) => HMapDomain v (m :: [k:->Type]) | v -> m where
+class (Joinable v, PartialOrder v) => HMapDomain v (m :: [k:->Type]) | v -> m where
     empty :: v
     member :: forall (kt :: k) b . (BoolDomain b) => Sing kt -> v -> b
     lookup :: forall kt . Sing kt -> v -> Maybe (Assoc kt m) 

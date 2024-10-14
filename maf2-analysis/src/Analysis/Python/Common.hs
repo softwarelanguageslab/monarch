@@ -21,7 +21,7 @@ module Analysis.Python.Common (
   from',
 ) where
 
-import Lattice hiding (empty)
+import Lattice hiding (empty, Top)
 import Domain.Python.World
 import Domain.Python.Syntax 
 
@@ -37,6 +37,8 @@ import Data.Singletons (SingI, sing)
 import Domain.Class (Domain)
 import qualified Domain.Class as Domain
 import Domain (CPDictionary)
+import Lattice.BottomLiftedLattice (BottomLifted)
+import Lattice.TopLattice
 
 --
 -- Addresses
@@ -107,8 +109,8 @@ type PyDomain obj vlu = (PyVal vlu,
                          Abs obj TupPrm ~ CPList vlu,
                          Abs obj StrPrm ~ CP String,
                          Abs obj DctPrm ~ CPDictionary String vlu, 
-                         Abs obj DfrPrm ~ (),
-                         Abs obj SrsPrm ~ ())
+                         Abs obj DfrPrm ~ BottomLifted Top,
+                         Abs obj SrsPrm ~ BottomLifted Top)
 
 typeVal :: PyVal vlu => PyType -> vlu
 typeVal = constant . TypeObject
