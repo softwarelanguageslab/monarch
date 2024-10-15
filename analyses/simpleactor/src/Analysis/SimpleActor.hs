@@ -12,6 +12,7 @@ import Analysis.Monad hiding (eval)
 import Syntax.AST
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Monad.Fix
+import Analysis.Symbolic.Monad.SymbolicStore
 import Control.Monad.Escape
 import Data.Set (Set)
 import Domain.Scheme.Actors (Pid(..))
@@ -81,7 +82,7 @@ type MonadInter m =
 
 intra :: forall m . MonadInter m
  => ActorCmp -> m ()
-intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (eval @ActorVlu) cmp
+intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (runAroundT symbolicStore . eval @ActorVlu) cmp
           & runAlloc @Ide @K @(EnvAdr K) EnvAdr
           & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
           & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
