@@ -110,7 +110,7 @@ class Monad m => StoreM' s a v m | m -> s a v where
    currentStore :: m s 
    putStore     :: s -> m ()
 
-instance (Monad (t m), MonadLayer t, StoreM' s adr v m) => StoreM' s adr v (t m) where
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, StoreM' s adr v m) => StoreM' s adr v (t m) where
    currentStore = upperM currentStore
    putStore = upperM . putStore 
 

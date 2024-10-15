@@ -1,14 +1,13 @@
 module Domain.Symbolic.Class(SymbolicValue(..)) where
 
 import Symbolic.AST
-import Domain.Scheme
 import Data.Kind
 import Lattice (Joinable)
 
 -- | SymbolicValue to capture
 -- changes to the symbolic representation 
 -- of a particular value.
-class (Joinable (Symbolic v), SchemeValue v) => SymbolicValue v where
+class (Joinable (Symbolic v)) => SymbolicValue v where
    -- | All symbolic values have a purely symbolic 
    -- symbolic part and an abstract part, 
    -- this function teases out the purely symbolic 

@@ -29,7 +29,7 @@ class (Monad m) => MonadPathCondition m v | m -> v where
    integrate :: PC -> m ()
 
 -- | Choose between the two branches non-deterministically
-choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, BottomLattice b, Joinable b) => m v -> m b -> m b -> m b
+choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, BoolDomain v, FormulaSolver m, BottomLattice b, Joinable b) => m v -> m b -> m b -> m b
 choice mv mcsq malt = mjoin t f
    where t = mv >>= checkTrue
          f = mv >>= checkFalse
@@ -61,7 +61,7 @@ choice mv mcsq malt = mjoin t f
             | otherwise = mzero
 
 -- | Same as `conds` but keeps track of path conditions
-choices :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, Joinable b, BottomLattice b)
+choices :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, BoolDomain v, FormulaSolver m, Joinable b, BottomLattice b)
         => [(m v, m b)] -> m b -> m b
 choices clauses els =
    foldr (uncurry choice) els clauses
@@ -91,6 +91,7 @@ instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, Monad m, LocalStoreM m
 type SymbolicM m v = (SchemeM m v,
                       -- Domain
                       SymbolicValue v,
+                      SchemeValue v,
                       ActorDomain v,
                       -- Symbolic execution
                       MonadPathCondition m v,
