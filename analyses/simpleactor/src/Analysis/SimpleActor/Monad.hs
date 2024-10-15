@@ -50,12 +50,13 @@ import qualified Lattice.Class as L
 import Syntax.AST
 import Analysis.Monad.Fix (MonadFixpoint)
 import Data.Kind (Type)
-import Domain (SchemeDomain(Env))
+import Domain (SchemeDomain(Env), NumberDomain (eq))
 import Lattice.Equal (EqualLattice)
 import Domain.Scheme.Actors.Class (Pid(..))
 import Domain.Core.BoolDomain.Class (BoolDomain (true, false, boolTop))
 import Lattice.Split (SplitLattice)
 import Syntax.Span (SpanOf(..))
+import Syntax.FV
 
 ------------------------------------------------------------
 -- 'Components'
@@ -68,6 +69,10 @@ data Cmp = FuncBdy  Exp  -- ^ a function call component contains a lambda
 instance SpanOf Cmp where  
    spanOf (FuncBdy e) = spanOf e 
    spanOf (ActorExp e) = spanOf e
+
+instance FreeVariables Cmp where 
+   fv (FuncBdy e) = fv e
+   fv (ActorExp e) = fv e
 
 ------------------------------------------------------------
 -- Errors
