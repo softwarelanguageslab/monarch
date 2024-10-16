@@ -10,6 +10,7 @@ module Lattice.Class (
    justOrBot, 
    overlap,
    joins,
+   joins1,
    joinMap 
 ) where
 
@@ -39,6 +40,10 @@ class PartialOrder v where
 
 joins :: (Joinable v, BottomLattice v, Foldable t) => t v -> v
 joins = foldr join bottom
+
+joins1 :: (Joinable v, Foldable t) => t v -> v
+joins1 = foldr1 join 
+
 -- | Like foldMap, folding all mapped values using a join
 joinMap :: (Joinable v, BottomLattice v, Foldable t) => (a -> v) -> t a -> v  
 joinMap f = foldr (join . f) bottom 
