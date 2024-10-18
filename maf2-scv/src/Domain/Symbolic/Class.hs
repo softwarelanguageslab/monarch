@@ -1,8 +1,16 @@
-module Domain.Symbolic.Class(SymbolicValue(..)) where
+module Domain.Symbolic.Class(SymbolicValue(..), SymbolicVar(..)) where
 
 import Symbolic.AST
 import Data.Kind
 import Lattice (Joinable)
+
+-- | Just like @Show@ but represents 
+-- representations of variables that can be converted to SMT values
+class SymbolicVar var where 
+   varName :: var -> String
+
+instance SymbolicVar Int where   
+   varName = show
 
 -- | SymbolicValue to capture
 -- changes to the symbolic representation 
@@ -18,6 +26,7 @@ class (Joinable (Symbolic v)) => SymbolicValue v where
    type Abstract v :: Type
    -- | Combine the abstract part with the symbolic part
    combine :: Abstract v -> Symbolic v -> v
+
    -- 
    abstractValue :: v -> Abstract v
    symbolicValue :: v -> Symbolic v
@@ -35,6 +44,6 @@ class (Joinable (Symbolic v)) => SymbolicValue v where
    symbolic    :: v -> Proposition
    -- | Attaches a fresh identifier 
    -- to the given value
-   var :: Int -> v -> v
+   var :: SymbolicVar var => var -> v -> v
    -- | Remove the symbolic part from the value
    unsymbolic :: v -> v

@@ -4,7 +4,6 @@
 module Domain.Symbolic.Paired where
 
 import Lattice (EqualLattice(..))
-import qualified Syntax.Scheme as Scheme (Exp)
 import Domain
 import Control.Monad.Join
 import Data.Map (Map)
@@ -281,7 +280,7 @@ instance (SchemeValue (PairedSymbolic v exp pai vec str var)) => SymbolicValue (
       SchemePairedValue (l, SymbolicVal $ IsFalse r)
    symbolic (SchemePairedValue (_, SymbolicVal r)) = r
    var idx vlu =
-      SchemePairedValue (leftValue vlu, SymbolicVal $ Variable ("x" ++ show idx))
+      SchemePairedValue (leftValue vlu, SymbolicVal $ Variable (varName idx))
    unsymbolic (SchemePairedValue (v, _)) = 
       SchemePairedValue (v, SymbolicVal Fresh)
 
