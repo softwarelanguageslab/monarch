@@ -48,6 +48,7 @@ import Lattice (BottomLattice (bottom))
 import Lattice.Class (Joinable)
 import qualified Lattice.Class as L
 import Syntax.AST
+import qualified Syntax.Ide as Ide
 import Analysis.Monad.Fix (MonadFixpoint)
 import Data.Kind (Type)
 import Domain (SchemeDomain(Env), NumberDomain (eq))
@@ -71,7 +72,8 @@ instance SpanOf Cmp where
    spanOf (ActorExp e) = spanOf e
 
 instance FreeVariables Cmp where 
-   fv (FuncBdy e) = fv e
+   fv (FuncBdy (Lam xs e _)) = Set.union (Set.fromList (map Ide.name xs)) (fv e)
+   fv (FuncBdy _) = error "imposible value"
    fv (ActorExp e) = fv e
 
 ------------------------------------------------------------

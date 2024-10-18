@@ -84,7 +84,7 @@ type MonadInter m =
 
 intra :: forall m . MonadInter m
  => ActorCmp -> m ()
-intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (runAroundT symbolicStore . eval @ActorVlu) cmp
+intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (symbolicStore (eval @ActorVlu)) cmp
           & runAlloc @Ide @K @(EnvAdr K) EnvAdr
           & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
           & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
