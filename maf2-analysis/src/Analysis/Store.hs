@@ -8,9 +8,9 @@ import Lattice
 import Data.Set (Set)
 
 -- | A generic store typeclass
-class (Lattice v) => Store s a v | s -> a v where
+class Joinable v => Store s a v | s -> a v where
    emptySto  :: s
-   lookupSto :: a -> s -> v
+   lookupSto :: a -> s -> Maybe v
    extendSto :: a -> v -> s -> s
    extendsSto :: [(a,v)] -> s -> s 
    extendsSto = flip $ foldr (uncurry extendSto)
@@ -19,17 +19,17 @@ class (Lattice v) => Store s a v | s -> a v where
    updateSto :: a -> v -> s -> s
    updateSto adr v = updateStoWith (const v) (`join` v) adr 
    updateStoWith :: {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> s -> s
-   updateStoWith fs _ adr s = let v' = fs (lookupSto adr s) in updateSto adr v' s
-   {-# MINIMAL emptySto, lookupSto, extendSto, (updateSto | updateStoWith) #-}
+   --updateStoWith fs _ adr s = let v' = fs (lookupSto adr s) in updateSto adr v' s
+   {-# MINIMAL emptySto, lookupSto, extendSto, updateStoWith #-}
 
 
 -- | Simple map-based instance of the store with weak updates
-instance (Lattice v, Ord a) => Store (Map a v) a v where
+instance (Joinable v, Ord a) => Store (Map a v) a v where
    emptySto = Map.empty
-   lookupSto = Map.findWithDefault bottom
-   extendSto adr vlu = Map.alter (Just . join vlu . justOrBot) adr
+   lookupSto = Map.lookup
+   extendSto adr vlu = Map.alter (Just . maybe vlu (join vlu)) adr
    -- a simple store only supports weak updates
-   updateStoWith _ fw = Map.alter (Just . fw . justOrBot)
+   updateStoWith _ fw = Map.alter (Just . maybe (error "updating at a non-existent address") fw)
 
 
 -- | Restrict the store to the given addresses only
@@ -68,9 +68,9 @@ instance PartialOrder AbstractCount where
 newtype CountingMap a v = CountingMap { store :: Map a (v, AbstractCount) }
    deriving (Eq, Ord, Joinable, BottomLattice)
 
-instance (Lattice v, Ord a) => Store (CountingMap a v) a v where
+instance (Joinable v, Ord a) => Store (CountingMap a v) a v where
    emptySto = CountingMap Map.empty
-   lookupSto a = justOrBot . fmap fst . Map.lookup a . store 
+   lookupSto a = fmap fst . Map.lookup a . store 
    extendSto a v = CountingMap . Map.alter extend a . store
       where extend Nothing            = Just (v, CountOne)
             extend (Just (v', count)) = Just (v' `join` v, inc count)
