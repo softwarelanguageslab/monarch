@@ -13,14 +13,14 @@ import Data.Kind (Type)
 import Data.Singletons
 
 -- | An abstract representation of an HMap
-class (Joinable v, PartialOrder v) => HMapDomain v (m :: [k:->Type]) | v -> m where
+class (Joinable v, PartialOrder v) => HMapDomain v (m :: k ~> Type) | v -> m where
     empty :: v
     member :: forall (kt :: k) b . (BoolDomain b) => Sing kt -> v -> b
-    lookup :: forall kt . Sing kt -> v -> Maybe (Assoc kt m) 
-    insert :: forall kt . Sing kt -> Assoc kt m -> v -> v 
-    singleton :: forall kt . Sing kt -> Assoc kt m -> v  
+    lookup :: forall kt . Sing kt -> v -> Maybe (m @@ kt) 
+    insert :: forall kt . Sing kt -> m @@ kt -> v -> v 
+    singleton :: forall kt . Sing kt -> m @@ kt -> v  
     singleton k v = insert k v empty 
-    from :: [BindingFrom m] -> v
+    from :: [Sigma k m] -> v
     from = Prelude.foldr (\(s :&: v) -> insert s v) empty
 
 
