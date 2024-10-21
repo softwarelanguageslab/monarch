@@ -6,7 +6,6 @@ import Symbolic.SMT
 import Syntax.Scheme
 import qualified Syntax.Scheme.Actor as Actor
 
-import Data.Maybe (fromJust, fromMaybe)
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.List ( intercalate )
@@ -20,12 +19,12 @@ import Domain.Contract.Symbolic
 import System.Environment
 import Data.Either.Extra (fromEither)
 
-exampleFormula :: Formula
+exampleFormula :: (Formula String)
 exampleFormula = Conjunction
-     (Atomic $ IsTrue (Predicate "string?/v" [Variable "x0"]))
-     (Atomic $ IsFalse (Predicate "string?/v" [Variable "x0"]))
+     (Atomic $ IsTrue (Predicate "string?/v" [Function "x0"]))
+     (Atomic $ IsFalse (Predicate "string?/v" [Function "x0"]))
 
-runMain :: FormulaSolver m => m SolverResult
+runMain :: FormulaSolver String m => m SolverResult
 runMain = do
    setup prelude
    loop (10000 :: Int)

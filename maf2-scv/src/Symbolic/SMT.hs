@@ -17,8 +17,9 @@ prelude = $(embedStringFile "./smt/prelude.scm")
 
 -- | Translate the given proposition into 
 -- an SMTLib formula
-translateAtomic :: Proposition -> String
-translateAtomic (Variable nam) = nam
+translateAtomic :: ShowableVariable i => Proposition i -> String
+translateAtomic (Variable vrr) = varName vrr
+translateAtomic (Function nam) = nam
 translateAtomic (Literal (Num n)) =
    printf "(VInteger %s)" (show n)
 translateAtomic (Literal (Str s)) =
@@ -56,7 +57,7 @@ translateAtomic e = error $ "pattern " ++ show e ++ "not matched"
 
 -- | Translate a formula to a string compatible
 -- with the SMTLib format.
-translate :: Formula -> String
+translate :: ShowableVariable i => Formula i -> String
 translate (Conjunction f1 f2) =
    printf "(and %s %s)" (translate f1) (translate f2)
 translate (Disjunction f1 f2) =
@@ -79,5 +80,5 @@ parseResult _ = Unknown
 ------------------------------------------------------------
 
 -- | Setup the prelude in a solver monad
-setupSMT :: FormulaSolver m => m ()
+setupSMT :: FormulaSolver i m => m ()
 setupSMT = setup prelude

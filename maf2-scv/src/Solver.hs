@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Solver(runCachedSolver, CachedSolver, FormulaSolver(..)) where
+module Solver(runCachedSolver, CachedSolver, FormulaSolver(..), ShowableVariable(..)) where
 
 import Symbolic.AST
 
@@ -8,7 +8,23 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import Control.Monad.Layer
 
-class Monad m => FormulaSolver m where 
+
+-- | Constrains the representation of variables
+-- saying that they should be able to be converted 
+-- to a string representation. This is needed 
+-- for the conversion to an SMTlib format to 
+-- succeed.
+class Show i => ShowableVariable i where   
+   varName :: i -> String
+
+-- | Trivial instance of @SchemeVariable@ for integers
+instance ShowableVariable Int where 
+   varName = show
+
+instance ShowableVariable String where 
+   varName = id
+
+class (ShowableVariable i, Monad m) => FormulaSolver i m | m -> i where
    -- | Initialize the solver and sets a checkpoint
    -- after the code passed as part of the setup.
    --
@@ -19,19 +35,19 @@ class Monad m => FormulaSolver m where
    -- | Solve the given SMTLib script. Returns whether
    -- there is some model for the given assertions in the SMTLib 
    -- script by outputting SMTLib compatible output.
-   solve :: Formula -> m SolverResult
+   solve :: Formula i -> m SolverResult
    -- | Returns true whenever the formula is feasible (sat or unknown)
-   isFeasible :: Formula -> m Bool
-   isFeasible formula = do 
+   isFeasible :: Formula i -> m Bool
+   isFeasible formula = do
       result <- solve formula
       return (isSat result || isUnknown result)
    -- | Returns true whenever the formula is certainly feasible
-   isCertainlyFeasible :: Formula -> m Bool
-   isCertainlyFeasible formula = 
+   isCertainlyFeasible :: Formula i -> m Bool
+   isCertainlyFeasible formula =
       fmap isSat (solve formula)
    -- | Returns true whenever the formule is certainly unfeasible
-   isCertainlyUnfeasible :: Formula -> m Bool
-   isCertainlyUnfeasible formula = 
+   isCertainlyUnfeasible :: Formula i -> m Bool
+   isCertainlyUnfeasible formula =
       fmap isUnsat (solve formula)
 
 --------------------------------------------------
@@ -39,36 +55,36 @@ class Monad m => FormulaSolver m where
 --------------------------------------------------
 
 -- | A cache for already solved SMT formulae
-newtype SolverState    = SolverState { getCache :: Map Formula SolverResult }
+newtype SolverState i = SolverState { getCache :: Map (Formula i) SolverResult }
 
 -- | Construct the initial contents of the cache
-initialState :: SolverState
+initialState :: SolverState i
 initialState = SolverState {
       getCache = Map.empty
    }
 
 -- | The solver monad
-newtype CachedSolver m a = CachedSolver { getSolver ::  StateT SolverState m a }
-                     deriving (Applicative, Functor, Monad, MonadTrans, MonadState SolverState)
+newtype CachedSolver i m a = CachedSolver { getSolver ::  StateT (SolverState i) m a }
+                     deriving (Applicative, Functor, Monad, MonadTrans, MonadState (SolverState i))
 
 -- | Lookup the given value in the cache
-lookupCache :: Monad m => Formula -> CachedSolver m (Maybe SolverResult)
+lookupCache :: (Ord i, Monad m) => Formula i -> CachedSolver i m (Maybe SolverResult)
 lookupCache formula = gets (Map.lookup formula . getCache)
 
 -- | Put the given result in the cache
-putCache :: forall m . Monad m => Formula -> SolverResult -> CachedSolver m SolverResult
+putCache :: forall m i . (Ord i, Monad m) => Formula i -> SolverResult -> CachedSolver i m SolverResult
 putCache formula solution =
    modify (SolverState . Map.insert formula solution . getCache) >> return solution
 
 -- | Run the solver monad
-runCachedSolver :: Monad m => CachedSolver m a -> m a
+runCachedSolver :: Monad m => CachedSolver i m a -> m a
 runCachedSolver = flip evalStateT initialState . getSolver
 
 --------------------------------------------------
 -- Cached Solving
 --------------------------------------------------
 
-instance {-# OVERLAPPING #-} (FormulaSolver m) => FormulaSolver (CachedSolver m) where 
+instance {-# OVERLAPPING #-} (Ord i, FormulaSolver i m) => FormulaSolver i (CachedSolver i m) where
    -- setup is simply forwarded to the underlying solver
    setup = CachedSolver . lift . setup
    -- to solve a formula it is first searched for in the 
@@ -82,7 +98,7 @@ instance {-# OVERLAPPING #-} (FormulaSolver m) => FormulaSolver (CachedSolver m)
 -- Layering
 ------------------------------------------------------------
 
-instance (Monad m, Monad (t m), MonadLayer t, FormulaSolver m) => FormulaSolver (t m) where  
+instance (Monad (t m), MonadLayer t, FormulaSolver i m) => FormulaSolver i (t m) where
    setup = upperM . setup
    solve = upperM . solve
 

@@ -14,8 +14,7 @@ import Domain.Core.StringDomain
 import Syntax.AST
 
 type ActorValue k = PairedSymbolic 
-   (CPActorValue EnvAdr (PaiAdrE Exp) (VecAdrE Exp) (StrAdrE Exp) k Exp)
-   Exp (PaiAdrE Exp k) (VecAdrE Exp k) (StrAdrE Exp k) (EnvAdr k)
+   (CPActorValue EnvAdr (PaiAdrE Exp) (VecAdrE Exp) (StrAdrE Exp) k Exp)  Exp k Int
 
 type instance VarDom (ActorValue k) = ActorValue k
 type instance VecDom (ActorValue k) = PIVector (ActorValue k) (ActorValue k)

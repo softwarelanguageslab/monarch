@@ -29,7 +29,7 @@ instance (v' ~ Symbolic v, Monad m) => StoreM' (Map adr v') adr v (SymbolicStore
    putStore = SymbolicStoreT . StoreT . put 
 
 -- | Store, writing through an underlying global store
-instance (SymbolicValue v, Lattice (Symbolic v), Show (Symbolic v), StoreM adr v m) => StoreM adr v (SymbolicStoreT adr v m) where
+instance (SymbolicValue v i, Lattice (Symbolic v), Show (Symbolic v), StoreM adr v m) => StoreM adr v (SymbolicStoreT adr v m) where
   lookupAdr adr = do
       v  <- underlying (lookupAdr adr)
       v' <- upperM (lookupAdr adr)
@@ -55,7 +55,7 @@ instance (SymbolicValue v, Lattice (Symbolic v), Show (Symbolic v), StoreM adr v
 --
 -- This hampers the precision though, since symbolic representations are not 
 -- carried over from function calls.
-symbolicStore :: forall v e m adr . (SymbolicValue v, EnvM m adr (Map String adr), StoreM' (Map adr (Symbolic v)) adr v m, FreeVariables e, BottomLattice v, Ord adr) => Kleisli m e v -> Kleisli m e v
+symbolicStore :: forall v e m adr i . (SymbolicValue v Int, EnvM m adr (Map String adr), StoreM' (Map adr (Symbolic v)) adr v m, FreeVariables e, BottomLattice v, Ord adr) => Kleisli m e v -> Kleisli m e v
 symbolicStore f e = do  
    let fvs = Set.toList (fv e)
    ads <- mapM lookupEnv fvs

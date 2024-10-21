@@ -40,16 +40,17 @@ data Literal
 --
 -- All variables for our propositions are universivelly
 -- quantified.
-data Proposition
-  = Variable !String
+data Proposition i
+  = Variable !i      -- ^ a symbolic variable represent by @i@
+  | Function !String -- ^ a built-in SMTlib function
   | Literal !Literal
   | -- | assertion that the proposition's truth value is "true"
-    IsTrue !Proposition
+    IsTrue !(Proposition i)
   | -- | assertion that the proposition's trught value is "false
-    IsFalse !Proposition
+    IsFalse !(Proposition i)
   | -- | an atomic predicate
-    Predicate !String ![Proposition]
-  | Application !Proposition ![Proposition]
+    Predicate !String ![Proposition i]
+  | Application !(Proposition i) ![Proposition i]
   -- | A statement that is always true
   | Tautology
    -- | Generate an unquantified fresh variable
@@ -61,24 +62,24 @@ data Proposition
 
 -- | Inductively defined formulae, these include
 -- conjunction, disjunction negation and atomic formulas.
-data Formula
-  = Conjunction !Formula !Formula
-  | Disjunction !Formula !Formula
-  | Implies !Formula !Formula
-  | Negation !Formula
-  | Atomic !Proposition
+data Formula i
+  = Conjunction !(Formula i) !(Formula i)
+  | Disjunction !(Formula i) !(Formula i)
+  | Implies !(Formula i) !(Formula i)
+  | Negation !(Formula i)
+  | Atomic !(Proposition i)
   | Empty
   deriving (Eq, Ord, Show)
 
 -- | The path condition is an unordered conjunction of formulas
-type PC = Set Formula
+type PC i = Set (Formula i)
 
 -- | Select all variables in the formula
-class SelectVariable v where
-  variables :: v -> [String]
+class SelectVariable v i |  v -> i where
+  variables :: v -> [i]
 
 -- | Variables can be selected from formulas
-instance SelectVariable Formula where
+instance SelectVariable (Formula i) i where
   variables (Conjunction f1 f2) = variables f1 ++ variables f2
   variables (Disjunction f1 f2) = variables f1 ++ variables f2
   variables (Negation f) = variables f
@@ -87,7 +88,7 @@ instance SelectVariable Formula where
   variables Empty = []
 
 -- | Variables can be selected from propositions
-instance SelectVariable Proposition where
+instance SelectVariable (Proposition i) i where
   variables (Variable nam) = pure nam
   variables (IsTrue prop) = variables prop
   variables (IsFalse prop) = variables prop
@@ -97,6 +98,7 @@ instance SelectVariable Proposition where
   variables Fresh = []
   variables Bottom = []
   variables (Application p1 p2) = variables p1 ++ mconcat (map variables p2)
+  variables (Function _) = []
 
 -- |  The result of solving an SMT formula.
 data SolverResult
