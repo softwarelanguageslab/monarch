@@ -1,5 +1,5 @@
 -- | The Z3 solver
-module Solver.Z3(Z3Solver, Z3Handle, terminateZ3Solver, runZ3Solver)  where
+module Solver.Z3(Z3Solver, runZ3Solver)  where
 
 import System.Process
 import System.IO
@@ -7,12 +7,8 @@ import Text.Printf
 import Control.Monad.State hiding (mzero)
 import Data.Maybe
 
-import Control.Monad.Layer
 import Solver
-import Symbolic.AST
 import Symbolic.SMT
-import Control.Monad.Join
-import Debug.Trace
 
 data Z3SolverState = Z3SolverState {
    -- | Cached setup-code
@@ -31,21 +27,14 @@ data Z3SolverState = Z3SolverState {
 -- the state monad.
 spawnZ3 :: String -- ^ setup SMTLib code
         -> IO Z3SolverState
-spawnZ3 setupCode = do
+spawnZ3 setupCode' = do
    (Just hin, Just hout, _, handle) <- createProcess (proc "z3" ["-in"]) { std_in = CreatePipe, std_out = CreatePipe, std_err = Inherit }
    return Z3SolverState {
-      setupCode = setupCode,
+      setupCode = setupCode',
       inputHandle = hin,
       outputHandle = hout,
       processHandle = handle
    }
-
--- | Opaque type to represent the running Z3 process
-newtype Z3Handle = Z3Handle { getZ3Handle :: ProcessHandle }
-
--- | Termoinate the solver using the Z3 handle
-terminateZ3Solver :: Z3Handle -> IO ()
-terminateZ3Solver = terminateProcess . getZ3Handle
 
 
 -- | A monad in which the Z3 solver can be executed.
@@ -112,30 +101,30 @@ restoreCheckpoint =
 runZ3Solver :: Z3Solver i a -> IO a
 runZ3Solver (Z3Solver m) = evalStateT m Nothing
 
-instance {-# OVERLAPPING #-} (ShowableVariable i) => FormulaSolver i (Z3Solver i) where
-   setup setupCode = do
+-- TODO: ShowableVariable is no longer used remove
+instance {-# OVERLAPPING #-} (Ord i) => FormulaSolver i (Z3Solver i) where
+   setup setupCode' = do
       spawned <- gets isJust
       -- if there is already an active instance of Z3 
       -- terminate it and spawn a new one.
       when spawned terminateZ3
       -- spawn the new instance
-      Z3Solver (lift $ spawnZ3 setupCode) >>= (put . Just)
+      Z3Solver (lift $ spawnZ3 setupCode') >>= (put . Just)
       -- evaluate the setup script
-      _ <- eval setupCode
+      _ <- eval setupCode'
       -- store this as a checkpoint to return to in the 
       -- beginning of a solve script
       checkpoint
 
    solve script   = do
       restoreCheckpoint
-      Z3Solver $ liftIO (putStrLn $ "solving " ++ show script)
       -- Declare all variables as constants
-      let names = variables script
+      let (translatedScript, names) = translate script
       -- evaluate the mall in the solver
-      mapM_ ((eval . printf "(declare-const %s V)") . varName) names
+      mapM_ (eval . printf "(declare-const %s V)" ) names
       -- Evaluate all the assertions, and ignore any errors
-      _ <- eval (printf "(assert %s)" (translate script))
+      _ <- eval (printf "(assert %s)" translatedScript)
       -- Check whether the model is satisfiable
       result <- parseResult <$> eval "(check-sat)"
-      Z3Solver $ liftIO (putStrLn $ "solved script " ++ translate script ++ " with result " ++ show result)
+      Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)
       return result

@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Solver(runCachedSolver, CachedSolver, FormulaSolver(..), ShowableVariable(..)) where
+module Solver(runCachedSolver, CachedSolver, FormulaSolver(..)) where
 
 import Symbolic.AST
 
@@ -9,22 +9,7 @@ import Control.Monad.State
 import Control.Monad.Layer
 
 
--- | Constrains the representation of variables
--- saying that they should be able to be converted 
--- to a string representation. This is needed 
--- for the conversion to an SMTlib format to 
--- succeed.
-class Show i => ShowableVariable i where   
-   varName :: i -> String
-
--- | Trivial instance of @SchemeVariable@ for integers
-instance ShowableVariable Int where 
-   varName = show
-
-instance ShowableVariable String where 
-   varName = id
-
-class (ShowableVariable i, Monad m) => FormulaSolver i m | m -> i where
+class (Monad m) => FormulaSolver i m | m -> i where
    -- | Initialize the solver and sets a checkpoint
    -- after the code passed as part of the setup.
    --
