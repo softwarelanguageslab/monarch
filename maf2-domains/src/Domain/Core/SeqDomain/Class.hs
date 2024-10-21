@@ -10,7 +10,7 @@ import qualified Control.Monad as M
 import Data.Kind
 
 -- | A typeclass for a domain representing linear sequences (e.g., tuples, lists, vectors, ...)
-class (Joinable v, PartialOrder v, IntDomain (Idx v), Lattice (Vlu v)) => SeqDomain v where
+class (Joinable v, PartialOrder v, IntDomain (Idx v)) => SeqDomain v where
   type Vlu v :: Type
   type Idx v :: Type
   empty :: v

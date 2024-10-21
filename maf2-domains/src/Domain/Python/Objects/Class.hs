@@ -1,16 +1,17 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Domain.Python.Objects.Class (
     PyObj(..), 
-    atPrm,
-    at,
+    Abs,
     has,
     get,
     set,
     setAttrs,
+    at,
     atAttr,
-    modify,
+    PyMapping,
 ) where
 
 import Lattice
@@ -20,23 +21,40 @@ import Domain.Python.World
 import Domain.Core.SeqDomain (SeqDomain)
 import qualified Domain.Core.SeqDomain as SeqDomain 
 
-import Control.Monad.Join
-import Control.Monad.Escape
 import Control.Monad.AbstractM (AbstractM)
-import Control.Monad.DomainError (DomainError(..))
 import Data.TypeLevel.HMap hiding (set, get)
 
 import Data.Singletons
 import Data.Kind 
 import Data.Set (Set)
 import Data.Map (Map)
-import Control.Monad ((>=>))
+import Data.Function ((&))
+import Data.Maybe (fromJust)
+
+type Abs obj k = Assoc k (PyPrmMap obj)
 
 data AbsJoinLattice obj :: k ~> Constraint
-type instance Apply (AbsJoinLattice obj) k = (PartialOrder (Abs obj k), Joinable (Abs obj k), BottomLattice (Abs obj k), Eq (Abs obj k))
+type instance Apply (AbsJoinLattice obj) k = (PartialOrder (Abs obj k), Joinable (Abs obj k), Eq (Abs obj k))
+
+-- TODO: this can be shorter
+type PyMapping obj = '[
+                        IntPrm ::-> Abs obj IntPrm,
+                        ReaPrm ::-> Abs obj ReaPrm,
+                        BlnPrm ::-> Abs obj BlnPrm,
+                        StrPrm ::-> Abs obj StrPrm,
+                        PrmPrm ::-> Abs obj PrmPrm,
+                        CloPrm ::-> Abs obj CloPrm,
+                        BndPrm ::-> Abs obj BndPrm,
+                        TupPrm ::-> Abs obj TupPrm,
+                        LstPrm ::-> Abs obj LstPrm,
+                        DctPrm ::-> Abs obj DctPrm,
+                        DfrPrm ::-> Abs obj DfrPrm, 
+                        SrsPrm ::-> Abs obj SrsPrm
+                      ]
 
 class (
-    Lattice obj,
+    Eq obj,
+    Joinable obj,
     ForAll PyPrmKey (AbsJoinLattice obj),
     Abs obj PrmPrm ~ Set (Either PyPrim XPyPrim), 
     Abs obj CloPrm ~ Set (Clo obj),
@@ -64,52 +82,46 @@ class (
     type Adr obj :: Type    -- ... Python addresses
     type Clo obj :: Type    -- ... Python closures
     -- object creation (with a given class)
-    new :: Ref obj -> obj 
+    emptyObj :: obj 
+    new :: [(String, Ref obj)] -> [BindingFrom (PyPrmMap obj)] -> obj 
+    new attrs prms = emptyObj  
+                        & setAttrs attrs
+                        & setPrms prms 
     -- an object should contain "primitive fields" ...
-    type Abs obj (k :: PyPrmKey) :: Type
+    type PyPrmMap obj :: [PyPrmKey :-> Type]
     hasPrm :: forall (k :: PyPrmKey) b . BoolDomain b => Sing k -> obj -> b  
-    getPrm :: forall k . Sing k -> obj -> Abs obj k
-    setPrm :: forall k . Sing k -> Abs obj k -> obj -> obj 
+    getPrm :: forall k m . AbstractM m => Sing k -> obj -> m (Abs obj k)
+    setPrm :: Sing k -> Abs obj k -> obj -> obj 
     -- ... and user-defined keyts/attributes
     hasAttr :: BoolDomain b => String -> obj -> b
-    getAttr :: String -> obj -> Ref obj  
+    getAttr :: AbstractM m => String -> obj -> m (Ref obj) 
     setAttr :: String -> Ref obj -> obj -> obj
     setAttrWeak :: String -> Ref obj -> obj -> obj 
-    setAttrWeak k v o = o `join` setAttr k v o 
+    setAttrWeak k v o = join o $ setAttr k v o 
 
--- | Convenience function to check and retrieve a certain attribute
-atAttr :: (AbstractM m, PyObj obj) => String -> obj -> m (Ref obj) 
-atAttr attr obj = condCP (return $ hasAttr attr obj)
-                         (return $ getAttr attr obj)
-                         (escape KeyNotFound)
-
--- | Convenience function to set multiple attributes
+-- | Convenience function to set multiple attributes/primitives
 setAttrs :: PyObj obj => [(String, Ref obj)] -> obj -> obj
-setAttrs attrs obj = Prelude.foldr (uncurry setAttr) obj attrs 
+setAttrs = flip $ Prelude.foldr (uncurry setAttr)
+
+setPrms :: PyObj obj => [BindingFrom (PyPrmMap obj)] -> obj -> obj 
+setPrms = flip $ Prelude.foldr (\(k :&: v) -> setPrm k v)
 
 -- | Shorter alternative (using SingI) for hasPrm
 has :: forall (k :: PyPrmKey) b obj . (PyObj obj, BoolDomain b, SingI k) => obj -> b
 has = hasPrm (sing @k)
 
 -- | Shorter alternative (using SingI) for getPrm
-get :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => obj -> Abs obj k
+get :: forall (k :: PyPrmKey) m obj . (PyObj obj, AbstractM m, SingI k) => obj -> m (Abs obj k)
 get = getPrm (sing @k)
+
+at :: forall k obj . (PyObj obj, SingI k) => obj -> Abs obj k
+at obj = fromJust $ get @k obj 
+
+atAttr :: PyObj obj => String -> obj -> Ref obj 
+atAttr a obj = fromJust $ getAttr a obj 
 
 -- | Shorter alternative (using SingI) for setPrm
 set :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => Abs obj k -> obj -> obj
 set = setPrm (sing @k)
 
--- | Convenience function to retrieve a primitive field from a Python object, throwing an error if not present
-atPrm :: forall (k :: PyPrmKey) obj m . (AbstractM m, PyObj obj) => Sing k -> obj -> m (Abs obj k)
-atPrm s obj = withC_ @(AbsJoinLattice obj) getField s 
-  where 
-        getField :: Lattice (Abs obj k) => m (Abs obj k)
-        getField = condCP (return $ hasPrm s obj)
-                          (return $ getPrm s obj)
-                          (escape WrongType) 
 
-at :: forall (k :: PyPrmKey) obj m . (AbstractM m, PyObj obj, SingI k) => obj -> m (Abs obj k)
-at = atPrm (sing @k)
-
-modify :: forall (k :: PyPrmKey) obj . (PyObj obj, SingI k) => (Abs obj k -> Abs obj k) -> obj -> obj
-modify f obj = set @k (f $ get @k obj) obj 

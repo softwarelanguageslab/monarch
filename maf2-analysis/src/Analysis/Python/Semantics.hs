@@ -7,6 +7,7 @@ module Analysis.Python.Semantics where
 
 import Domain.Python.Objects
 import Domain.Python.World
+import qualified Domain.Python.World as Py
 import Domain.Python.Syntax hiding (None)
 import qualified Domain.Python.Syntax as Syntax
 import Analysis.Python.Objects
@@ -135,7 +136,7 @@ evalLam prs bdy loc lcl = do env <- pyGetEnv
 evalVar :: PyM pyM obj vlu => PyIde -> pyM vlu
 evalVar var = do (adr, nam) <- frame var
                  frm        <- pyLookupSto adr
-                 return $ getAttr nam frm
+                 getAttr nam frm
 
 evalLit :: forall pyM obj vlu . PyM pyM obj vlu => PyLit -> pyM vlu
 evalLit (Syntax.None _)    = return $ constant None
@@ -151,8 +152,8 @@ evalLit (Dict bds loc)     = buildDct [] =<< mapM (\(kex,vex) -> (,) <$> eval ke
    --pyStore loc . from @DctPrm . DctDomain.from =<< mapM evalBnd bds
    where
          buildDct :: [(CP String, vlu)] -> [(vlu, vlu)] -> pyM vlu
-         buildDct acc [] = pyStore loc $ from @DctPrm (DctDomain.from acc)
-         buildDct acc ((kv,vv):r) = pyDeref (\_ ko -> do str <- at @StrPrm ko
+         buildDct acc [] = DctDomain.from acc >>= \dct -> pyStore loc (from @DctPrm dct)
+         buildDct acc ((kv,vv):r) = pyDeref (\_ ko -> do str <- get @StrPrm ko
                                                          buildDct ((str,vv):acc) r) kv
 
 -- | Applies a procedure
@@ -166,11 +167,11 @@ evalCll opr pos kwa loc = do fun <- eval opr
 call :: PyM pyM obj vlu => PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> vlu -> pyM vlu
 call loc pos kwa = pyDeref (\adr obj ->
    pyIf (obj `isType` BoundType)
-        (callBnd loc pos kwa (get @BndPrm obj))
+        (callBnd loc pos kwa (at @BndPrm obj))
         (pyIf (obj `isType` CloType)
-              (callClo loc pos kwa (get @CloPrm obj))
+              (callClo loc pos kwa (at @CloPrm obj))
               (pyIf (obj `isType` PrimType)
-                    (callPrm loc pos (get @PrmPrm obj))
+                    (callPrm loc pos (at @PrmPrm obj))
                     (pyIf (obj `isType` TypeType)
                           (callTyp loc pos kwa (injectAdr adr))  --TODO: metaclasses...
                {- else -} (pyError NotCallable)))))
@@ -180,7 +181,7 @@ callTyp loc pos kwa typ = do ref <- pyStore loc obj
                              mtd <- lookupAttr (tagAs IniBnd loc) (attrStr InitAttr) ref
                              _   <- call (tagAs IniCll loc) pos kwa mtd    -- do the __init__ call (and ignore its result)
                              return ref
-   where obj = new typ
+   where obj = new'' typ [] [] 
 
 callPrm :: PyM pyM obj vlu => PyLoc -> [vlu] -> Set (Either PyPrim XPyPrim) -> pyM vlu
 callPrm pos ags = mjoinMap apply
@@ -197,7 +198,7 @@ callClo l pos kwa = mjoinMap apply
       apply :: PyClo -> pyM vlu
       apply (PyClo loc prs bdy lcl env) =
          pyWithCtx l $
-            do frm <- pyAlloc (tagAs FrmTag loc) (new' FrameType)
+            do frm <- pyAlloc (tagAs FrmTag loc) (new' FrameType [] [])
                let ari = length prs
                let psn = length pos
                let kps = drop psn prs
@@ -219,6 +220,6 @@ parNam (VarKeyword _ _) = todo "varkeyword parameters"
 -- TODO: improve implementation?
 isType :: PyM pyM obj vlu => obj -> PyType -> pyM vlu
 isType obj typ = 
-      pyDeref (\a _ -> return . constant $ if a == adr then True else False)
-              (getAttr (attrStr ClassAttr) obj)
-   where adr = allocCst $ TypeObject typ
+   getAttr (attrStr ClassAttr) obj >>= 
+      pyDeref (\a _ -> return . constant $ if a == adr then Py.True else Py.False)
+   where adr = allocCst (TypeObject typ)

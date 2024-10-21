@@ -21,13 +21,14 @@ import qualified Data.Set as Set
 import Data.Map (Map)
 import qualified Data.Map as Map 
 import Data.Kind 
-import Data.Maybe
 import Data.Singletons (fromSing)
 import Lattice.ReversePowerSetLattice as RSet 
 import Data.Function ((&))
 import Data.List (intercalate)
 import Lattice.BottomLiftedLattice (BottomLifted)
 import Lattice.TopLattice (Top)
+import Control.Monad.Join (MonadBottom(..))
+import qualified Domain.Core.DictionaryDomain.CPDict as CPDict
 
 --
 -- Configuring the abstractions 
@@ -67,7 +68,9 @@ type AllJoin m = (ForAll PyPrmKey (AtKey1 Joinable (PyPrm m)),
                   ForAll PyPrmKey (AtKey1 PartialOrder (PyPrm m)),
                   ForAll PyPrmKey (AtKey1 Eq (PyPrm m)))
 type AllAbs m = (AllJoin m,
-                 Lattice (Assoc VluKey m),
+                 Eq           (Assoc VluKey m),
+                 PartialOrder (Assoc VluKey m),
+                 Joinable     (Assoc VluKey m),
                  BoolDomain   (Assoc BlnKey m),
                  IntDomain    (Assoc IntKey m),
                  Domain.Rea   (Assoc IntKey m) ~ Assoc ReaKey m,
@@ -76,14 +79,11 @@ type AllAbs m = (AllJoin m,
                  RealDomain   (Assoc ReaKey m),
                  Domain.Boo   (Assoc ReaKey m) ~ Assoc BlnKey m)
 
-deriving instance (Lattice (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Eq       (PyPrm m))) => Eq       (PyObjHMap m)
-instance          (Lattice (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Joinable (PyPrm m))) => Joinable (PyObjHMap m) where
+deriving instance (Eq       (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Eq       (PyPrm m))) => Eq       (PyObjHMap m)
+instance          (Joinable (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Joinable (PyPrm m))) => Joinable (PyObjHMap m) where
   join (PyObjHMap d1 p1) (PyObjHMap d2 p2) = PyObjHMap (join d1 d2) (join p1 p2)
-instance BottomLattice (PyObjHMap m) where
-  bottom = PyObjHMap bottom bottom
 
 instance (Show (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Show (PyPrm m))) => Show (PyObjHMap m) where
-  show (PyObjHMap BotDict _) = "⊥"
   show (PyObjHMap _ (HMapAbs (_, RPBottom))) = "⊥"
   show (PyObjHMap (TopDict _ _) _) = error "this should not happen" -- because we only use Constant CP keys
   show (PyObjHMap (CPDict objKys objMap _) (HMapAbs (prmMap, prmKys))) = str 
@@ -120,19 +120,18 @@ instance (Ord (Assoc CloKey m), Ord (Assoc AdrKey m), Assoc IntKey m ~ CP Intege
     type Adr (PyObjHMap m) = Assoc AdrKey m
     type Clo (PyObjHMap m) = Assoc CloKey m 
     -- creation
-    new cls = PyObjHMap dct prm
-        where dct = Domain.from [(Constant (attrStr ClassAttr), cls)]
-              prm = HMapDomain.empty 
+    emptyObj = PyObjHMap Domain.empty HMapDomain.empty 
+    new attrs prims = PyObjHMap (CPDict.fromList attrs) (HMapDomain.from prims) -- not really needed ... 
     -- primitives
-    type Abs (PyObjHMap m) k = Assoc k (PyPrm m)
+    type PyPrmMap (PyObjHMap m) = PyPrm m
     hasPrm k = HMapDomain.member k . prm 
-    getPrm k = fromJust . HMapDomain.lookup k . prm 
+    getPrm k = maybe mzero return . HMapDomain.lookup k . prm 
     setPrm k v (PyObjHMap dct prm) = PyObjHMap dct $ HMapDomain.insert k v prm 
     -- attributes
-    hasAttr k = Domain.contains (Constant k) . dct
+    hasAttr k = Domain.containsKey k . dct
     getAttr k = Domain.lookup (Constant k) . dct 
-    setAttr k v (PyObjHMap dct prm) = PyObjHMap (Domain.update (Constant k) v dct) prm 
-    setAttrWeak k v (PyObjHMap dct prm) = PyObjHMap (Domain.updateWeak (Constant k) v dct) prm 
+    setAttr k v (PyObjHMap dct prm) = PyObjHMap (Domain.updateAt k v dct) prm 
+    setAttrWeak k v (PyObjHMap dct prm) = PyObjHMap (Domain.updateAtWeak k v dct) prm 
 
 --
 -- A common instantiation

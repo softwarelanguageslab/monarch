@@ -22,6 +22,7 @@ import Control.Monad.Join
 import Control.Monad.Escape ( orElse )
 import Domain ( BoolDomain, BoolDomain(..) )
 import Domain.Python.Objects
+import qualified Domain.Python.Objects as PyObj
 import Domain.Python.World
 import Data.Finite
 
@@ -54,8 +55,8 @@ initialCst = map (\typ -> (name typ, TypeObject typ)) (all :: [PyType])
 injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
 injectPyConstant True              = from' @BlnPrm Prelude.True
 injectPyConstant False             = from' @BlnPrm Prelude.False
-injectPyConstant None              = new' NoneType
-injectPyConstant GlobalFrame       = new'' FrameType $ map (second constant) initialCst
+injectPyConstant None              = new' NoneType [] [] 
+injectPyConstant GlobalFrame       = new' FrameType (map (second constant) initialCst) [] 
 injectPyConstant (TypeName typ)    = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm)  = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left prm)
 injectPyConstant (XPrimObject prm) = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Right prm)
@@ -64,7 +65,7 @@ injectPyConstant (TypeMRO typ)     = from  @TupPrm (SeqDomain.fromList $ map typ
                 ObjectType  -> [ObjectType]
                 StopIterationExceptionType -> [StopIterationExceptionType, ExceptionType, ObjectType]
                 _           -> [typ, ObjectType]
-injectPyConstant (TypeObject typ) = setAttrs allAttrs $ new' TypeType
+injectPyConstant (TypeObject typ) = new' TypeType allAttrs []
   where typeAttrs        = [(NameAttr, TypeName typ), (MROAttr, TypeMRO typ)]
         methodAttrs      = map (second PrimObject) (methods typ)
         extraMethodAttrs = map (second XPrimObject) (extraMethods typ)
@@ -77,9 +78,9 @@ lookupAttr :: PyM pyM obj vlu => PyLoc -> String -> vlu -> pyM vlu
 lookupAttr loc attr =
   pyDeref $ \adr obj ->
               condCP  (return $ hasAttr attr obj)
-                      (return $ getAttr attr obj)
+                      (return $ atAttr attr obj)
                       -- if not found locally => look in the class
-                      (do cls <- atAttr (attrStr ClassAttr) obj
+                      (do cls <- getAttr (attrStr ClassAttr) obj
                           lookupAttrInClass loc attr adr cls)
 
 lookupAttrInClass :: PyM pyM obj vlu => PyLoc -> String -> ObjAdr -> Ref obj -> pyM vlu
@@ -92,21 +93,21 @@ lookupAttrInClass loc attr self cls =
 
 lookupAttrMRO :: PyM pyM obj vlu => String -> vlu -> pyM vlu
 lookupAttrMRO attr =
-   pyDeref' $ atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm >=> \case
+   pyDeref' $ getAttr (attrStr MROAttr) >=> pyDeref' (PyObj.get @TupPrm >=> \case
                                                                       CPList l _ _  -> lookupMRO l
                                                                       TopList v     -> lookupLocal v `orElse` pyError AttributeNotFound)
-     where lookupLocal = pyDeref' (atAttr attr)
+     where lookupLocal = pyDeref' (getAttr attr)
            lookupMRO   = foldr (orElse . lookupLocal) (pyError AttributeNotFound)
 
 computeMRO :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> vlu -> vlu -> pyM vlu
-computeMRO loc cls = pyDeref' $ at @TupPrm
+computeMRO loc cls = pyDeref' $ PyObj.get @TupPrm
                                   >=> \case
                                         CPList [] _ _     -> pyStore loc $ from @TupPrm $ SeqDomain.fromList [cls, typeVal ObjectType]  -- no parent given (implicitly extends object)
                                         CPList [par] _ _  -> getMRO par (pyStore loc <=< return . from @TupPrm <=< SeqDomain.insertFront cls)        -- single parent
                                         _                 -> error "multiple inheritance is not yet supported"                          -- multiple parents
   where
       getMRO :: vlu -> (Abs obj TupPrm -> pyM vlu) -> pyM vlu
-      getMRO v k = pyDeref' (atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm >=> k)) v
+      getMRO v k = pyDeref' (getAttr (attrStr MROAttr) >=> pyDeref' (PyObj.get @TupPrm >=> k)) v
 
 -- --
 
@@ -119,10 +120,10 @@ computeMRO loc cls = pyDeref' $ at @TupPrm
 -- --
 
 isInstanceOf :: PyM pyM obj vlu => vlu -> vlu -> pyM vlu
-isInstanceOf = pyDeref2' (\obj cls -> atAttr (attrStr ClassAttr) obj >>= pyDeref' (inMRO cls))
+isInstanceOf = pyDeref2' (\obj cls -> getAttr (attrStr ClassAttr) obj >>= pyDeref' (inMRO cls))
 
 inMRO :: PyM pyM obj vlu => obj -> obj -> pyM vlu
-inMRO cls = atAttr (attrStr MROAttr) >=> pyDeref' (at @TupPrm >=> anyCPList (pyDeref' $ clsEq cls))
+inMRO cls = getAttr (attrStr MROAttr) >=> pyDeref' (PyObj.get @TupPrm >=> anyCPList (pyDeref' $ clsEq cls))
 
 -- TODO: this assumes that class name equality implies class equality! (not necessarily true in Python...)
 clsEq :: forall pyM obj vlu . PyM pyM obj vlu => obj -> obj -> pyM vlu
@@ -133,7 +134,7 @@ clsEq cls1 cls2 = getClassName cls1
                                                            (constant False)
    where
       getClassName :: obj -> (Abs obj StrPrm -> pyM vlu) -> pyM vlu
-      getClassName cls k = atAttr (attrStr NameAttr) cls >>= pyDeref' (at @StrPrm >=> k)
+      getClassName cls k = getAttr (attrStr NameAttr) cls >>= pyDeref' (PyObj.get @StrPrm >=> k)
 
 
 -- TODO: move to Domain package
@@ -149,8 +150,8 @@ anyCPList p (SeqDomain.TopList v) = join (constant True) <$> p v
 -- varia
 
 pyIf :: PyM m obj vlu => m vlu -> m vlu -> m vlu -> m vlu
-pyIf prd csq alt = prd >>= pyDeref' (\obj -> cond (at @BlnPrm obj) csq alt)
+pyIf prd csq alt = prd >>= pyDeref' (\obj -> cond (PyObj.get @BlnPrm obj) csq alt)
 
 
 pyIf_ :: PyM m obj vlu => m vlu -> m () -> m () -> m ()
-pyIf_ prd csq alt = prd >>= pyDeref_ (\_ obj -> cond (at @BlnPrm obj) csq alt)
+pyIf_ prd csq alt = prd >>= pyDeref_ (\_ obj -> cond (PyObj.get @BlnPrm obj) csq alt)
