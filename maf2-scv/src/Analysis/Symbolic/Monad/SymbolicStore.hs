@@ -55,10 +55,10 @@ instance (SymbolicValue v i, Lattice (Symbolic v), Show (Symbolic v), StoreM adr
 --
 -- This hampers the precision though, since symbolic representations are not 
 -- carried over from function calls.
-symbolicStore :: forall v e m adr i . (SymbolicValue v Int, EnvM m adr (Map String adr), StoreM' (Map adr (Symbolic v)) adr v m, FreeVariables e, BottomLattice v, Ord adr) => Kleisli m e v -> Kleisli m e v
+symbolicStore :: forall v e m adr . (SymbolicValue v adr, EnvM m adr (Map String adr), StoreM' (Map adr (Symbolic v)) adr v m, FreeVariables e, BottomLattice v) => Kleisli m e v -> Kleisli m e v
 symbolicStore f e = do  
    let fvs = Set.toList (fv e)
    ads <- mapM lookupEnv fvs
    -- generate symbolic variables for each 
-   putStore $ Map.fromList $ zip ads (map (symbolicValue . flip var (bottom @v)) [0..length fvs])
+   putStore $ Map.fromList $ zip ads (map (symbolicValue . flip var (bottom @v)) ads)
    f e
