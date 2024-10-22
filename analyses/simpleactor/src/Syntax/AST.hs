@@ -73,7 +73,7 @@ instance SpanOf Exp where
 
 instance Show Exp where
    show = \case
-            (Lam x e _)       -> printf "(lam (%s) %s)" (intercalate "," (map show x)) (show e)
+            (Lam x e _)       -> printf "(lam (%s) %s)" (intercalate " " (map name x)) (show e)
             (App e1 es _)     -> printf "(%s %s)" (show e1) (unwords (map show es))
             (Spawn e1 _)      -> printf "(spawn^ %s)" (show e1)
             (Letrec bds es _) -> printf "(letrec (%s) %s)" (show bds) (show es)
@@ -87,7 +87,7 @@ instance Show Exp where
             (Match v pats _)  -> printf "(match %s %s)" (show v) (show pats)
             (Literal l _)     -> show l
             (Ite e1 e2 e3 _)  -> printf "(if %s %s %s)" (show e1) (show e2) (show e3)
-            (Var x)           -> show x
+            (Var x)           -> name x
             (DynVar x)        -> "(dyn " ++ show x ++ ")"
             (Begin es _)      -> printf "(begin %s)" (unwords (map show es))
             (Meta e _)        -> printf "(meta %s)" (show e)

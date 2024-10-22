@@ -16,6 +16,7 @@ where
 
 import Syntax.Scheme (Span)
 import Data.Set (Set)
+import Data.List (intercalate)
 
 -- | A literal as they appear in a source program
 data Literal
@@ -32,7 +33,20 @@ data Literal
   | Nil
   | Unsp
   | Actor !(Maybe Span)
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show Literal where  
+   show (Num n) = show n 
+   show (Rea d) = show d
+   show (Str s) = show s 
+   show (Boo b) = show b 
+   show (Cha c) = show c 
+   show (Sym s) = s
+   show Beh = "beh"
+   show Mon = "mon" 
+   show Nil = "()"
+   show Unsp = "#u"
+   show (Actor _) = "α"
 
 -- | A proposition consists of an
 -- application of a primitive predicate,
@@ -58,7 +72,20 @@ data Proposition i
    -- | Representation of the bottom value, nothing can be derived from this and a
    -- all assertions fail
   | Bottom
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+-- | Make proposition showable
+instance (Show i) => Show (Proposition i) where 
+   show (Variable i)  = show i 
+   show (Function f)  = f
+   show (Literal lit) = show lit
+   show (IsTrue p)    = "true?/v(" ++ show p ++ ")"
+   show (IsFalse p)   = "false?/v(" ++ show p ++ ")"
+   show Fresh         = "fresh"
+   show Tautology     = "true"
+   show Bottom        = "⊥"
+   show (Predicate nam p) = nam ++ "(" ++ intercalate "," (map show p) ++")"
+   show (Application p1 p2) = show p1 ++ "(" ++ intercalate "," (map show p2) ++ ")#"
 
 -- | Inductively defined formulae, these include
 -- conjunction, disjunction negation and atomic formulas.
@@ -69,10 +96,19 @@ data Formula i
   | Negation !(Formula i)
   | Atomic !(Proposition i)
   | Empty
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
 
--- | The path condition is an unordered conjunction of formulas
+-- | The path condition is an unordered disjunction of formulas
 type PC i = Set (Formula i)
+
+-- | Make formulas showable
+instance (Show i) => Show (Formula i) where  
+   show (Conjunction f1 f2) = show f1 ++ "/\\" ++ show f2 
+   show (Disjunction f1 f2) = show f1 ++ "\\/" ++ show f2 
+   show (Implies f1 f2) = show f1 ++ "=>" ++ show f2
+   show (Negation f1) = "¬" ++ show f1 
+   show (Atomic p) = "(" ++ show p ++ ")"
+   show Empty = "ϵ"
 
 -- | Select all variables in the formula
 class SelectVariable v i |  v -> i where
@@ -99,6 +135,7 @@ instance SelectVariable (Proposition i) i where
   variables Bottom = []
   variables (Application p1 p2) = variables p1 ++ mconcat (map variables p2)
   variables (Function _) = []
+
 
 -- |  The result of solving an SMT formula.
 data SolverResult

@@ -22,7 +22,10 @@ import Domain.Scheme.Store (EnvAdr, PaiAdrE, StrAdrE, VecAdrE)
 --------------------------------------------------
 
 newtype SymbolicVal (exp :: Type) (k :: Type) (i :: Type) = SymbolicVal { proposition :: Proposition i  } 
-                    deriving (Eq, Ord, Show)
+                    deriving (Eq, Ord)
+
+instance Show i => Show (SymbolicVal exp k i) where  
+   show = show . proposition
 
 --------------------------------------------------
 -- Lattice instances

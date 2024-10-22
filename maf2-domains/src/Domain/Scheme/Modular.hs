@@ -192,9 +192,11 @@ deriving instance (HMapKey (Values m)) => BottomLattice (SchemeVal m)
 
 -- Show instance
 -- TODO: this should be valid for any HMap, maybe make it the default implementation?
-instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
+instance (ForAll SchemeKey (AtKey1 Show (Values m)), Show (Assoc ExpConf m)) => Show (SchemeVal m) where
    show (SchemeVal hm) = intercalate "," $ map showElement $ HMap.toList hm
       where showElement :: BindingFrom (Values m) -> String
+            showElement (SCloKey :&: clos') = 
+               show $ Set.map (show . fst) clos'
             showElement (key :&: value) =
                printf "%s ↦ %s" (show $ fromSing key) (withC_ @(AtKey1 Show (Values m)) (show value) key)
 
