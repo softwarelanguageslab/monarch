@@ -200,6 +200,7 @@ test-suite maf2-domains-test
     , extra
     , hspec
     , hspec-contrib
+    , hspec-core
     , language-python
     , layers-mtl
     , maf2-domains

@@ -85,5 +85,6 @@ tests:
     - QuickCheck >= 2.14.2
     - hspec 
     - hspec-contrib
+    - hspec-core
     - HUnit
 

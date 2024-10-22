@@ -45,6 +45,8 @@ class (Monad m) => MonadJoinable m where
 class (Monad m) => MonadBottom m where    
    mzero :: m a 
 
+-- | If value is @Bottom@ results in  @mzero@ computation,
+-- otherwise in a computation returning the wrapped value.
 fromBL :: MonadBottom m => BottomLifted a -> m a
 fromBL Bottom    = mzero 
 fromBL (Value v) = return v 
