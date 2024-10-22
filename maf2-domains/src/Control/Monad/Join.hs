@@ -15,7 +15,8 @@ module Control.Monad.Join (
    mjoins1,
    msplit, 
    msplitOn,
-   msplitOnCP
+   msplitOnCP,
+   fromBL,
 ) where
 
 import Lattice.Class
@@ -32,6 +33,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
 import Control.Applicative (liftA2)
 import Data.Functor.Identity
+import Lattice.BottomLiftedLattice (BottomLifted(..))
 
 -- | Non-deterministic computations that can be joined together into a single computation
 class (Monad m) => MonadJoinable m where
@@ -42,6 +44,10 @@ class (Monad m) => MonadJoinable m where
 
 class (Monad m) => MonadBottom m where    
    mzero :: m a 
+
+fromBL :: MonadBottom m => BottomLifted a -> m a
+fromBL Bottom    = mzero 
+fromBL (Value v) = return v 
 
 type MonadJoin m = (MonadJoinable m, MonadBottom m)
 

@@ -13,7 +13,13 @@ import Lattice.Equal (EqualLattice(eql))
 import Domain.Class (Domain(..))
 
 data BottomLifted a = Bottom | Value a
-                    deriving (Eq, Ord, Show, Functor)
+   deriving (Eq, Ord, Show, Functor)
+
+instance Applicative BottomLifted where
+   pure = Value
+   Bottom <*> _ = Bottom 
+   _ <*> Bottom = Bottom
+   (Value f) <*> (Value a) = Value (f a)
 
 instance (Joinable a) => Joinable (BottomLifted a) where  
    join Bottom a = a 

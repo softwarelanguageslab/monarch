@@ -74,7 +74,7 @@ applyPrim DictKeys      = prim1' @DctPrm $ \loc -> \case
                                                         Domain.CPDict kys dct _ -> if Set.size kys == Map.size dct
                                                                                    then do sts <- mapM (\str -> pyStore (tagAs (DctKey str) loc) $ from' @StrPrm str) (Map.keys dct)
                                                                                            pyStore loc $ from @LstPrm $ SeqDomain.fromList sts
-                                                                                   else do str <- pyStore loc $ from @StrPrm (joins $ map Constant $ Map.keys dct)
+                                                                                   else do str <- pyStore loc $ from @StrPrm (joins1 $ map Constant $ Map.keys dct)     -- we know its not empty, because if |dct| == 0, then |kys| == 0 too 
                                                                                            pyStore loc $ from @LstPrm (SeqDomain.TopList str)
                                                         Domain.TopDict _ _  -> do str <- pyStore loc $ from @StrPrm Top --TODO improve precision (don't reuse loc)
                                                                                   pyStore loc $ from @LstPrm (SeqDomain.TopList str)

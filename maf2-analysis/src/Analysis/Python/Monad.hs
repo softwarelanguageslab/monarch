@@ -170,8 +170,7 @@ instance (vlu ~ PyRef,
   applyXPrim DatabaseRead loc = \case
                                   [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm ())) str
                                   _        -> pyError ArityError
-                                  where toTaint Lattice.Bottom         = TopLattice.Value Set.empty
-                                        toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
+                                  where toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
                                         toTaint Lattice.Top            = TopLattice.Top 
   applyXPrim DatabaseWrite _ = \case
                                   [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\_ nam -> currentTaint @Taint >>= \t -> addEdges nam t $> constant None) df str 

@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+
 module Lattice.Equal(EqualLattice(..), is) where
 
 import Domain.Core.BoolDomain.Class
@@ -18,6 +19,6 @@ is v = eql v . inject
 
 instance {-# OVERLAPPABLE #-} (BottomLattice a, Eq a, Meetable a) => EqualLattice a where   
    eql a b 
-      | a == bottom || b == bottom = bottom
+      | a == bottom || b == bottom = bottom
       | a `meet` b == bottom = inject False
       | otherwise = boolTop

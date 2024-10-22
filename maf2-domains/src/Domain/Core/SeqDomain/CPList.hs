@@ -5,7 +5,7 @@ import Domain.Core.SeqDomain.Class
 import Control.Monad.AbstractM
 import Control.Monad.DomainError
 import Control.Monad.Escape hiding (Bottom)
-import Control.Monad.Join
+import Control.Monad.Join hiding (fromBL)
 import Domain.Core.NumberDomain.ConstantPropagation ()
 import Lattice.BottomLiftedLattice (BottomLifted, joinsBL, fromBL, joinWithBL)
 import qualified Lattice.BottomLiftedLattice as BL
@@ -61,7 +61,6 @@ instance (Eq v, Joinable v) => SeqDomain (CPList v) where
   fromList lst = CPList lst (toInteger $ Prelude.length lst) (joinsBL lst) 
 
   ref :: AbstractM m => CP Integer -> CPList v -> m v 
-  ref Bottom          _       = mzero
   ref (Constant idx)  (CPList lst len _)
     | 0 <= idx && idx < len = return (lst !! fromInteger idx)
     | otherwise             = escape IndexOutOfBounds
@@ -73,7 +72,6 @@ instance (Eq v, Joinable v) => SeqDomain (CPList v) where
   ref Top             (TopList vlu)               = return vlu `mjoin` escape IndexOutOfBounds
 
   setWeak :: AbstractM m => CP Integer -> v -> CPList v -> m (CPList v)
-  setWeak Bottom _ _ = mzero
   setWeak (Constant idx) v (CPList lst len vlu) -- optimized implementation possible here
     | 0 <= idx && idx < len = return $ CPList lst' len (vlu `join` BL.Value v)
     | otherwise = escape IndexOutOfBounds
@@ -105,15 +103,12 @@ instance (Eq v, Joinable v) => SeqDomain (CPList v) where
   tail (CPList (_:t) len _) = return $ CPList t (len-1) (joinsBL t)
   tail l@(TopList _)        = return l `mjoin` escape IndexOutOfBounds
 
-  insert Bottom _ _  = mzero
   insert (Constant idx) v (CPList lst len vlu) = return $ CPList lst' (len + 1) (vlu `join` BL.Value v) 
     where lst' = insertAt (fromInteger idx) v lst 
   insert Top v (CPList lst len vlu) = return $ CPList (insertAnyWhere v lst) (len + 1) (vlu `join` BL.Value v)
   insert _   v (TopList vlu)        = return $ TopList (vlu `join` v)
 
   slice :: AbstractM m => CP Integer -> CP Integer -> CPList v -> m (CPList v)
-  slice Bottom _ _  = mzero
-  slice _ Bottom _  = mzero
   slice _ _ (CPList _ _ BL.Bottom) = escape IndexOutOfBounds 
   slice (Constant from) (Constant to) (CPList lst len _)
     | 0 <= from && from <= to && to <= len = return $ CPList lst' (to - from) (joinsBL lst') 

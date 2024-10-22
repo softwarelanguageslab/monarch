@@ -147,7 +147,7 @@ type Values m = '[
    ComKey  ::-> Assoc ComConf m
    ]
 
-hasType :: (BoolDomain b) => SchemeKey -> SchemeVal m -> b
+hasType :: (BoolDomain b, BottomLattice b) => SchemeKey -> SchemeVal m -> b
 hasType k = containsType k . getSchemeVal
 
 -- | A Scheme value is an HMap that consists of a mapping
@@ -188,7 +188,7 @@ deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m)), 
 ------------------------------------------------------------
 
 deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Joinable (Values m))) => Joinable (SchemeVal m)
-deriving instance (HMapKey (Values m)) => BottomLattice (SchemeVal m)
+deriving instance BottomLattice (SchemeVal m)
 
 -- Show instance
 -- TODO: this should be valid for any HMap, maybe make it the default implementation?
@@ -205,7 +205,7 @@ instance (IsSchemeValue m, ForAll SchemeKey (AtKey1 EqualLattice (Values m))) =>
       | HMap.isSingleton (getSchemeVal a) && HMap.isSingleton (getSchemeVal b) =
          joins $ HMap.mapList (HMap.withC @(AtKey1 EqualLattice (Values m)) check) (getSchemeVal a)
       | otherwise = boolTop
-     where check ::  forall (kt :: SchemeKey) b . (BoolDomain b, EqualLattice (Assoc kt (Values m))) => Sing kt -> Assoc kt (Values m) -> b
+     where check ::  forall (kt :: SchemeKey) b . (BoolDomain b, BottomLattice b, EqualLattice (Assoc kt (Values m))) => Sing kt -> Assoc kt (Values m) -> b
            check Sing v = maybe (inject False) (eql v) (HMap.get @kt (getSchemeVal b))
 
 ------------------------------------------------------------
@@ -214,13 +214,13 @@ instance (IsSchemeValue m, ForAll SchemeKey (AtKey1 EqualLattice (Values m))) =>
 
 -- | Returns the value at CharKey from the SchemeValue
 -- or escapes with `WrongType` for any other key.
-chars' :: forall mp m a . (BottomLattice a, IsSchemeValue mp, AbstractM m) => (Assoc CharKey (Values mp) -> m a) -> SchemeVal mp -> m a
+chars' :: forall mp m a . (AbstractM m) => (Assoc CharKey (Values mp) -> m a) -> SchemeVal mp -> m a
 chars' f  = maybe (escape WrongType) f . HMap.get @CharKey . getSchemeVal
 
-chars :: forall mp a . (IsSchemeValue mp) => SchemeVal mp -> Maybe (Assoc CharKey (Values mp))
+chars :: forall mp . SchemeVal mp -> Maybe (Assoc CharKey (Values mp))
 chars = HMap.get @CharKey . getSchemeVal
 
-injectChar :: (Assoc CharKey (Values m)) -> SchemeVal m
+injectChar :: Assoc CharKey (Values m) -> SchemeVal m
 injectChar = SchemeVal . HMap.singleton @CharKey
 
 injectInt :: Assoc IntKey (Values m) -> SchemeVal m
@@ -354,7 +354,7 @@ instance (IsSchemeValue m) => NumberDomain (SchemeVal m) where
 -- Integer domain
 ------------------------------------------------------------
 
-typeErrorOp :: Lattice a => AbstractM m => b -> c -> m a
+typeErrorOp :: AbstractM m => b -> c -> m a
 typeErrorOp _ = const $ escape WrongType
 
 

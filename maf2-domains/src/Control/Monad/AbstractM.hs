@@ -12,7 +12,7 @@ type AbstractM m = (MonadJoin m, MonadEscape m, Domain (Esc m) DomainError)
 
 -- | Raises error using `raiseError` if the given value is not in the domain
 -- or returns () if it has not
-domain :: (AbstractM m, BoolDomain b, Joinable a, BottomLattice a) => b -> DomainError -> m a
+domain :: (AbstractM m, BoolDomain b) => b -> DomainError -> m a
 domain b err
    | isTrue b = escape err
    | otherwise = mzero

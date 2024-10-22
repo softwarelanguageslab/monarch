@@ -129,9 +129,9 @@ inMRO cls = getAttr (attrStr MROAttr) >=> pyDeref' (PyObj.get @TupPrm >=> anyCPL
 clsEq :: forall pyM obj vlu . PyM pyM obj vlu => obj -> obj -> pyM vlu
 clsEq cls1 cls2 = getClassName cls1
                       $ \nam1 -> getClassName cls2
-                        $ \nam2 -> return $ iff @(CP Bool) (eql nam1 nam2)
-                                                           (constant True)
-                                                           (constant False)
+                        $ \nam2 -> condCP (fromBL $ eql nam1 nam2)
+                                          (return $ constant True)
+                                          (return $ constant False)
    where
       getClassName :: obj -> (Abs obj StrPrm -> pyM vlu) -> pyM vlu
       getClassName cls k = getAttr (attrStr NameAttr) cls >>= pyDeref' (PyObj.get @StrPrm >=> k)

@@ -38,6 +38,7 @@ library
       Domain.Class
       Domain.Core
       Domain.Core.BoolDomain
+      Domain.Core.BoolDomain.BottomLifted
       Domain.Core.BoolDomain.Class
       Domain.Core.BoolDomain.ConstantPropagation
       Domain.Core.CharDomain

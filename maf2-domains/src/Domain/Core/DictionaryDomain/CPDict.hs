@@ -74,7 +74,6 @@ instance CPDict k v => DictionaryDomain (CPDictionary k v) where
    empty = CPDict Set.empty Map.empty BL.Bottom 
 
    lookup :: AbstractM m => CP k -> CPDictionary k v -> m v
-   lookup Bottom _ = mzero  
    lookup _ (CPDict _ _ BL.Bottom) = escape KeyNotFound 
    lookup (Constant key) (CPDict kys dct _)
       | Set.member key kys = return (dct ! key)
@@ -89,13 +88,11 @@ instance CPDict k v => DictionaryDomain (CPDictionary k v) where
    lookup Top (TopDict _ vlu) = return vlu `mjoin` escape KeyNotFound                                                                      -- imprecise dict: take the top value 
 
    update :: AbstractM m => CP k -> v -> CPDictionary k v -> m (CPDictionary k v)
-   update Bottom _ _ = mzero                          -- update preserves bottom
    update (Constant key) vlu dct = return $ updateAt key vlu dct
    update Top vlu (CPDict kys _ joi) = return $ TopDict kys (joinWithBL joi vlu)
    update Top vlu (TopDict kys joi)  = return $ TopDict kys (joi `join` vlu)
    
    updateWeak :: AbstractM m => CP k -> v -> CPDictionary k v -> m (CPDictionary k v)
-   updateWeak Bottom _ _ = mzero                     
    updateWeak (Constant key) vlu dct = return $ updateAtWeak key vlu dct
    updateWeak Top vlu (CPDict kys _ joi) = return $ TopDict kys (joinWithBL joi vlu)
    updateWeak Top vlu (TopDict kys joi)  = return $ TopDict kys (joi `join` vlu)

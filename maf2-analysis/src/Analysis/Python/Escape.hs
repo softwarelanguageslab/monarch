@@ -26,11 +26,11 @@ data PyEsc vlu = Return vlu
   deriving (Eq, Ord, Show)
 
 class (Domain esc (PyEsc vlu), Show esc) => PyEscape esc vlu | esc -> vlu where
-    isReturn     :: BoolDomain b => esc -> b  -- TODO: this one is actuallly not needed if we have `getReturn`?
-    isBreak      :: BoolDomain b => esc -> b
-    isContinue   :: BoolDomain b => esc -> b
+    isReturn     :: (MonadJoin m, BoolDomain b) => esc -> m b  -- TODO: this one is actuallly not needed if we have `getReturn`?
+    isBreak      :: (MonadJoin m, BoolDomain b) => esc -> m b
+    isContinue   :: (MonadJoin m, BoolDomain b) => esc -> m b
     getReturn    :: MonadJoin m  => esc -> m vlu
-    isException  :: BoolDomain b => esc -> b
+    isException  :: (MonadJoin m, BoolDomain b) => esc -> m b
     getException :: MonadJoin m  => esc -> m vlu
 
 ---
@@ -43,15 +43,15 @@ instance Ord vlu => Domain (Set (PyEsc vlu)) PyError where
     inject = const Set.empty -- ignore Python-specific domain errors
 
 instance (Ord vlu, Show vlu, Joinable vlu) => PyEscape (Set (PyEsc vlu)) vlu where
-    isReturn = joinMap $ \case Return _ -> true
-                               _        -> false
-    isContinue = joinMap $ \case Continue -> true
-                                 _        -> false
-    isBreak = joinMap $ \case Break -> true
-                              _     -> false
+    isReturn = mjoinMap $ \case Return _ -> return true
+                                _        -> return false
+    isContinue = mjoinMap $ \case Continue -> return true
+                                  _        -> return false
+    isBreak = mjoinMap $ \case Break -> return true
+                               _     -> return false
     getReturn = mjoinMap $ \case Return v -> return v
                                  _        -> mzero
     getException = mjoinMap $ \case Exception e -> return e
                                     _           -> mzero
-    isException = joinMap $ \case Exception _ -> true
-                                  _           -> false
+    isException = mjoinMap $ \case Exception _ -> return true
+                                   _           -> return false
