@@ -1,19 +1,19 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
-module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), LocalStoreM(..), SymbolicValue, FormulaT, runFormulaT, runWithFormulaT, choice, choices) where
+module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), SymbolicValue, FormulaT, runFormulaT, runWithFormulaT, choice, choices) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
-import Analysis.Scheme.Monad (SchemeM)
 import Control.Monad.Layer
 import Control.Monad.Join
 import Control.Monad.State.IntPool
-import Control.Monad.State (StateT(..), MonadState, modify, get, (>=>), runStateT)
+import Control.Monad.State (StateT(..), MonadState (put), modify, get, (>=>), runStateT)
 import Domain
 import Domain.Symbolic
+import qualified Domain.Symbolic.Path as Path
 import Lattice (Joinable(..))
-import Data.Map (Map)
 
 import qualified Data.Set as Set
+import Control.Monad (zipWithM)
 
 -- | Monad that keeps track of a path condition
 class (Monad m) => MonadPathCondition i m v | m -> v i where
@@ -69,31 +69,14 @@ ifFeasible ma = do
    pcs <- fmap Set.toList getPc
    mjoins (map (isFeasible >=> (\b -> if b then ma else mzero)) pcs)
 
--- | Access the current store or replace it entirely
-class LocalStoreM m a v where
-   -- | Get a map representation of the current store contents
-   getSto :: m (Map a v)
-   -- | Replace the current store by a store with the given contents
-   putSto  :: Map a v -> m ()
-   -- | Integrate the given local store with the current one 
-   -- by replacing the keys in the current with the given if 
-   -- the key is present in the given.
-   integrateSto :: Map a v -> m ()
 
-instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, LocalStoreM m a v) => LocalStoreM (t m) a v where
-   getSto = upperM getSto
-   putSto = upperM . putSto
-
-type SymbolicM i m v = (SchemeM m v,
-                      -- Domain
-                      SymbolicValue v i,
-                      SchemeValue v,
-                      ActorDomain v,
-                      -- Symbolic execution
-                      MonadPathCondition i m v,
-                      MonadIntegerPool m,
-                      -- Solving
-                      FormulaSolver i m)
+type SymbolicM i m v = (-- Domain
+                        SymbolicValue v i,
+                        -- Symbolic execution
+                        MonadPathCondition i m v,
+                        MonadIntegerPool m,
+                        -- Solving
+                        FormulaSolver i m)
 
 --------------------------------------------------------------------------
 -- Instances
@@ -104,18 +87,17 @@ type SymbolicM i m v = (SchemeM m v,
 -- | The FormulaT monad keeps track of the path condition 
 -- and implements the `MonadPathCondition` monad.
 newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
-                           deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans)
+                           deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable)
 
-instance (MonadJoinable m, Ord i) => MonadJoinable (FormulaT i v m) where
-   mjoin (FormulaT ma) (FormulaT mb) = FormulaT $ mjoin ma mb
-
-instance {-# OVERLAPPING #-} (MonadJoin m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
+instance {-# OVERLAPPING #-} (MonadJoin m, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
    extendPc pc'     = modify $ Set.map (Conjunction (Atomic $ symbolic pc'))
    getPc = get
+   integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList
 
 instance (MonadPathCondition i m v, Monad (t m), MonadLayer t) => MonadPathCondition i (t m) v where
-   extendPc = upperM . extendPc
-   getPc    = upperM getPc
+   extendPc  = upperM . extendPc
+   getPc     = upperM getPc
+   integrate = upperM . integrate
 
 
 -- | Run FormulaT with  the given initial set of path conditions.

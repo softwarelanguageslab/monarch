@@ -8,7 +8,7 @@
 -- whereas in this case external calls to specialized
 -- solvers are needed for checking entailment 
 -- and satisfiability.
-module Domain.Symbolic.Path(Atom(..), NormalFormFormula(..), leq, subsumes, join, formula2nf, nf2formula) where
+module Domain.Symbolic.Path(Atom(..), NormalFormFormula(..), leq, subsumes, joinNF, join, formula2nf, nf2formula) where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -100,8 +100,8 @@ subsumes = flip leq
 --
 -- let r = join p q for path constraints p and q 
 -- such that p \/ q |= r
-join :: Ord i => FormulaSolver i m => NormalFormFormula i -> NormalFormFormula i -> m (NormalFormFormula i)
-join p q = fmap fromAtoms r
+joinNF :: Ord i => FormulaSolver i m => NormalFormFormula i -> NormalFormFormula i -> m (NormalFormFormula i)
+joinNF p q = fmap fromAtoms r
    where as = Set.union (atoms p) (atoms q)
          c  = Formula.Disjunction (nf2formula p) (nf2formula q)
          r  = foldM (\s a -> ifM (leq c (nf2formula (fromAtoms (Set.insert a s))))
@@ -110,5 +110,7 @@ join p q = fmap fromAtoms r
                     Set.empty
                     as
 
-
-
+-- | Joins two formulas together by converting them to normal form 
+-- and joining them using @joinNF@.
+join :: (Ord i, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m (Formula.Formula i) 
+join p1 p2 = nf2formula <$> joinNF (formula2nf p1) (formula2nf p2)
