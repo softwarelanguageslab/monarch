@@ -40,7 +40,7 @@ class (Ord (MAdr c)) => BehaviorContract c where
   behaviorContract :: [MAdr c] -> c
 
   -- | Checks whether the given value is a bheavior contract
-  isBehaviorContract :: (BoolDomain b) => c -> b
+  isBehaviorContract :: (BottomLattice b, BoolDomain b) => c -> b
 
   -- | Return the set of pointers to message contracts in this behavior contract
   behaviorMessageContracts :: c -> Set (MAdr c)
@@ -57,7 +57,7 @@ instance (Show ptr) => Show (UnorderedBehaviorContract ptr) where
 instance (Ord ptr) => BehaviorContract (UnorderedBehaviorContract ptr) where
   type MAdr (UnorderedBehaviorContract ptr) = ptr
   behaviorContract = UnorderedBehaviorContract . Set.fromList
-  isBehaviorContract v
+  isBehaviorContract v 
     | v == bottom = bottom
     | otherwise = inject True -- trivially true
   behaviorMessageContracts = getMessageContracts

@@ -47,12 +47,12 @@ class (SchemeDomain v, CommunicationContract v, BehaviorContract v) => ContractD
   messageContracts :: v -> Set (MAdr v)
 
   -- | Check if the given value is a message contract
-  isMessageContract :: (BoolDomain b) => v -> b
+  isMessageContract :: (BottomLattice b, BoolDomain b) => v -> b
 
   --
 
   -- | Check if the value is flat contract 
-  isFlat :: (BoolDomain b) => v -> b
+  isFlat :: (BoolDomain b, BottomLattice b) => v -> b
   -- | Returns the set of flat contracts
   flats :: v -> Set (FAdr v)
   -- | Inserts a pointer to a flat contract in the abstract domain
@@ -69,7 +69,7 @@ class (SchemeDomain v, CommunicationContract v, BehaviorContract v) => ContractD
   αmons :: v -> Set (OAdr v)
 
   -- | Checks if the given value is a pointer to a contract monitor
-  isαmon :: BoolDomain b => v -> b
+  isαmon :: (BottomLattice b, BoolDomain b) => v -> b
 
 ------------------------------------------------------------
 -- Instance for ModularSchemeValue

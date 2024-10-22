@@ -138,12 +138,12 @@ instance Eq i => CharDomain (SymbolicVal exp k i) where
    downcase  (SymbolicVal c) = return $ SymbolicVal $ Predicate "downcase/v" [c]
    upcase    (SymbolicVal c) = return $ SymbolicVal $ Predicate "upcase/v"   [c]
    charToInt (SymbolicVal c) = return $ SymbolicVal $ Predicate "as-int/v"   [c]
-   isLower   (SymbolicVal _) = return bottom
-   isUpper   (SymbolicVal _) = return bottom
-   charEq _ _                = return bottom
-   charLt _ _                = return bottom
-   charEqCI _ _              = return bottom
-   charLtCI _ _              = return bottom
+   isLower   (SymbolicVal _) = mzero 
+   isUpper   (SymbolicVal _) = mzero
+   charEq _ _                = mzero
+   charLt _ _                = mzero
+   charEqCI _ _              = mzero
+   charLtCI _ _              = mzero
 
 
 ------------------------------------------------------------
