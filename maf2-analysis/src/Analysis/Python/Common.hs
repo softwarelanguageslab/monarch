@@ -39,6 +39,8 @@ import qualified Domain.Class as Domain
 import Domain (CPDictionary)
 import Lattice.BottomLiftedLattice (BottomLifted)
 import Lattice.TopLattice
+import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)), Assoc)
+import Data.TypeLevel.AssocList (LookupIn)
 
 --
 -- Addresses
@@ -62,11 +64,14 @@ instance Show ObjAdr where
 -- Values 
 --
 
-class (Show v, Ord v, SplitLattice v) => PyVal v where
+class (Show v, Ord v, Lattice v, SplitLattice v) => PyVal v where
   injectAdr :: ObjAdr -> v
 
 constant :: PyVal v => PyConstant -> v
 constant = injectAdr . allocCst  
+
+typeVal :: PyVal vlu => PyType -> vlu
+typeVal = constant . TypeObject
 
 -- simple PyVal 
 
@@ -81,7 +86,7 @@ instance PyVal ObjAddrSet where
 
 -- tainted PyVal
 
-instance (PyVal v, TaintDomain t, Ord t) => PyVal (Tainted t v) where
+instance (PyVal v, TaintDomain t, Lattice t, Ord t) => PyVal (Tainted t v) where
   injectAdr = pure . injectAdr
 
 -- environments
@@ -112,19 +117,16 @@ type PyDomain obj vlu = (PyVal vlu,
                          Abs obj DfrPrm ~ BottomLifted Top,
                          Abs obj SrsPrm ~ BottomLifted Top)
 
-typeVal :: PyVal vlu => PyType -> vlu
-typeVal = constant . TypeObject
+new'' :: PyDomain obj vlu => vlu -> [(String, vlu)] -> [BindingFrom (PyPrmMap obj)] -> obj
+new'' cls attrs = new $ (attrStr ClassAttr, cls):attrs 
 
-new' :: PyDomain obj vlu => PyType -> obj
-new' = new . typeVal
-
-new'' :: PyDomain obj vlu => PyType -> [(String, Ref obj)] -> obj 
-new'' typ attrs = setAttrs attrs $ new' typ 
+new' :: PyDomain obj vlu => PyType -> [(String, vlu)] -> [BindingFrom (PyPrmMap obj)] -> obj
+new' = new'' . typeVal
 
 -- | Convenience function to construct a Python object immediately from primitive abstract value
 from :: forall (k :: PyPrmKey) obj vlu . (PyDomain obj vlu, SingI k) => Abs obj k -> obj
-from v = set @k v (new cls)
-  where cls = constant $ TypeObject $ classFor $ sing @k
+from v = new' cls [] [sing @k :&: v]
+  where cls = classFor (sing @k)
 
 -- | Convenience function to construct a Python object immediately from primitive concrete value
 from' :: forall (k :: PyPrmKey) obj v vlu . (PyDomain obj vlu, Domain (Abs obj k) v, SingI k) => v -> obj

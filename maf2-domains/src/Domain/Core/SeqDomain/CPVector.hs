@@ -37,7 +37,6 @@ instance Lattice v => SeqDomain (CPVector v) where
   fromList lst = CPVec (Vec.fromList lst) (joins lst)
 
   ref :: AbstractM m => CP Integer -> CPVector v -> m v 
-  ref Bottom          _             = mzero
   ref (Constant idx)  (CPVec vec _)
     | 0 <= idx && idx < toInteger (Vec.length vec) = return (vec ! fromInteger idx)
     | otherwise                                    = escape IndexOutOfBounds

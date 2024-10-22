@@ -5,17 +5,15 @@ import Domain.Core.SeqDomain.Class
 import Control.Monad.AbstractM
 import Control.Monad.DomainError
 import Control.Monad.Escape hiding (Bottom)
-import Control.Monad.Join
+import Control.Monad.Join hiding (fromBL)
 import Domain.Core.NumberDomain.ConstantPropagation ()
+import Lattice.BottomLiftedLattice (BottomLifted, joinsBL, fromBL, joinWithBL)
+import qualified Lattice.BottomLiftedLattice as BL
 
 -- | A simple abstraction (preserving precision for lists with a known length)
-data CPList v = CPList [v] Integer v   -- representing a list of a certain known length
-              | TopList v              -- representing any list (summarized by the join of all its elements)
+data CPList v = CPList [v] Integer (BottomLifted v)   -- representing a list of a certain known length
+              | TopList v                             -- representing any list (summarized by the join of all its elements)
   deriving (Eq, Ord, Show)
-
--- TODO: remove
-instance BottomLattice (CPList v) where   
-   bottom = undefined
 
 -- some helpers
 
@@ -29,8 +27,18 @@ insertAt _ v []     = [v]
 insertAt 0 v xs     = v : xs
 insertAt n v (x:xs) = x : insertAt (n-1) v xs 
 
-insertAnyWhere :: (BottomLattice v, Joinable v) => v -> [v] -> [v]
-insertAnyWhere v vs = join v <$> zipWith join (bottom : vs) (vs ++ [bottom])
+insertAnyWhere :: Joinable v => v -> [v] -> [v]
+insertAnyWhere v [] = [v] 
+insertAnyWhere v vs = join v <$> zipWith joinMaybe (Nothing : vs') (vs' ++ [Nothing])
+  where vs' = map Just vs 
+        joinMaybe Nothing  Nothing  = error "this will not happen" -- (due to first case of insertAnywhere)
+        joinMaybe Nothing  (Just b) = b
+        joinMaybe (Just a) Nothing  = a
+        joinMaybe (Just a) (Just b) = join a b
+
+anySublistOf :: Joinable v => [v] -> CPList v 
+anySublistOf [] = CPList [] 0 BL.Bottom
+anySublistOf l  = TopList (joins1 l)
 
 sliceBetween :: Int -> Int -> [v] -> [v]
 sliceBetween from to = take (to - from) . drop from
@@ -38,89 +46,83 @@ sliceBetween from to = take (to - from) . drop from
 instance (Joinable v) => Joinable (CPList v) where
   join (CPList lst1 len1 vlu1) (CPList lst2 len2 vlu2)
     | len1 == len2 = CPList (zipWith join lst1 lst2) len1 (vlu1 `join` vlu2)
-    | otherwise = TopList (vlu1 `join` vlu2)
-  join (CPList _ _ vlu1) (TopList vlu2) = TopList (vlu1 `join` vlu2)
-  join (TopList vlu1) (CPList _ _ vlu2) = TopList (vlu1 `join` vlu2) 
+    | otherwise    = TopList (fromBL $ vlu1 `join` vlu2)  -- guaranteed to be non-bottom because lengths are different
+                                                          -- hence one of both lengths is guaranteed to be > 0
+  join (CPList _ _ vlu1) (TopList vlu2) = TopList (joinWithBL vlu1 vlu2)
+  join (TopList vlu1) (CPList _ _ vlu2) = TopList (joinWithBL vlu2 vlu1) 
   join (TopList vlu1) (TopList vlu2)    = TopList (vlu1 `join` vlu2)
 
-instance Lattice v => SeqDomain (CPList v) where
+instance (Eq v, Joinable v) => SeqDomain (CPList v) where
 
   type Vlu (CPList v) = v 
   type Idx (CPList v) = CP Integer 
 
   fromList :: [v] -> CPList v 
-  fromList lst = CPList lst (toInteger $ Prelude.length lst) (joins lst) 
+  fromList lst = CPList lst (toInteger $ Prelude.length lst) (joinsBL lst) 
 
   ref :: AbstractM m => CP Integer -> CPList v -> m v 
-  ref Bottom          _       = mzero
   ref (Constant idx)  (CPList lst len _)
     | 0 <= idx && idx < len = return (lst !! fromInteger idx)
     | otherwise             = escape IndexOutOfBounds
   ref (Constant idx)  (TopList vlu)
     | idx < 0   = escape IndexOutOfBounds
     | otherwise = return vlu `mjoin` escape IndexOutOfBounds
-  ref Top             (CPList _ _ vlu)  = return vlu `mjoin` escape IndexOutOfBounds
-  ref Top             (TopList vlu)     = return vlu `mjoin` escape IndexOutOfBounds
+  ref Top             (CPList _ _ BL.Bottom)      = escape IndexOutOfBounds
+  ref Top             (CPList _ _ (BL.Value vlu)) = return vlu `mjoin` escape IndexOutOfBounds
+  ref Top             (TopList vlu)               = return vlu `mjoin` escape IndexOutOfBounds
+
+  setWeak :: AbstractM m => CP Integer -> v -> CPList v -> m (CPList v)
+  setWeak (Constant idx) v (CPList lst len vlu) -- optimized implementation possible here
+    | 0 <= idx && idx < len = return $ CPList lst' len (vlu `join` BL.Value v)
+    | otherwise = escape IndexOutOfBounds
+    where lst' = updateAt (fromInteger idx) (`join` v) lst
+  setWeak (Constant idx) v (TopList vlu)
+    | idx < 0   = escape IndexOutOfBounds
+    | otherwise = return (TopList $ vlu `join` v) `mjoin` escape IndexOutOfBounds
+  setWeak Top _ (CPList _ _ BL.Bottom) = escape IndexOutOfBounds                                 
+  setWeak Top v (CPList lst len (BL.Value vlu)) = return updated `mjoin` escape IndexOutOfBounds  
+    where updated = CPList (map (`join` v) lst) len (BL.Value $ vlu `join` v)  -- less precise alternative: TopList (vlu `join` v)
+  setWeak Top v (TopList vlu) = return (TopList $ vlu `join` v) `mjoin` escape IndexOutOfBounds
 
   set :: AbstractM m => CP Integer -> v -> CPList v -> m (CPList v)
-  set Bottom _ _ = mzero
-  set _ v _      
-    | v == bottom = mzero
-  set (Constant idx) v (CPList lst len _)
+  set (Constant idx) v (CPList lst len _)                                       -- optimised (strong) update possible when index and length are constant 
     | 0 <= idx && idx < len = return (CPList lst' len vlu') 
     | otherwise = escape IndexOutOfBounds 
     where lst' = updateAt (fromInteger idx) (const v) lst
-          vlu' = joins lst' 
-  set (Constant idx) v (TopList vlu)
-    | idx < 0   = escape IndexOutOfBounds
-    | otherwise = return (TopList $ vlu `join` v) `mjoin` escape IndexOutOfBounds
-  set Top v (CPList lst len vlu) = return updated `mjoin` escape IndexOutOfBounds
-    where updated = CPList (map (`join` v) lst) len (vlu `join` v)  -- alternative: TopList (vlu `join` v)
-  set Top v (TopList vlu) = return (TopList $ vlu `join` v) `mjoin` escape IndexOutOfBounds
+          vlu' = joinsBL lst' 
+  set Top v (CPList [_] _ _) = return updated `mjoin` escape IndexOutOfBounds   -- optimised (strong) update possible when only one element in the list
+    where updated = CPList [v] 1 (BL.Value v)
+  set idx vlu lst = setWeak idx vlu lst                                         -- in all other cases: perform a weak update
 
-  setWeak :: AbstractM m => CP Integer -> v -> CPList v -> m (CPList v)
-  setWeak Bottom _ l = return l
-  setWeak _ v l     
-    | v == bottom = return l
-  setWeak (Constant idx) v (CPList lst len vlu) -- optimized implementation possible here
-    | 0 <= idx && idx < len = return $ CPList lst' len (vlu `join` v)
-    | otherwise = escape IndexOutOfBounds
-    where lst' = updateAt (fromInteger idx) (`join` v) lst
-  setWeak idx v lst = set idx v lst             -- otherwise, same implementation as set
-
-  length (CPList _ len _) = return $ Constant len
-  length (TopList _)      = return $ Top 
+  length (CPList _ len _) = return (Constant len)
+  length (TopList _)      = return Top 
 
   -- not necessary but more efficient than the default implementation using slice
   tail :: AbstractM m => CPList v -> m (CPList v)
-  tail (CPList (_:t) len _) = return $ CPList t (len-1) (joins t)
-  tail (CPList{})           = escape IndexOutOfBounds -- tail of empty list
+  tail (CPList [] _ _)      = escape IndexOutOfBounds
+  tail (CPList (_:t) len _) = return $ CPList t (len-1) (joinsBL t)
   tail l@(TopList _)        = return l `mjoin` escape IndexOutOfBounds
 
-  insert Bottom _ _  = mzero
-  insert _ v _ 
-    | v == bottom    = mzero
-  insert (Constant idx) v (CPList lst len vlu) = return $ CPList lst' (len + 1) (vlu `join` v) 
+  insert (Constant idx) v (CPList lst len vlu) = return $ CPList lst' (len + 1) (vlu `join` BL.Value v) 
     where lst' = insertAt (fromInteger idx) v lst 
-  insert Top v (CPList lst len vlu) = return $ CPList (insertAnyWhere v lst) len (vlu `join` v)
-  insert _   v (TopList vlu)    = return $ TopList (vlu `join` v)
+  insert Top v (CPList lst len vlu) = return $ CPList (insertAnyWhere v lst) (len + 1) (vlu `join` BL.Value v)
+  insert _   v (TopList vlu)        = return $ TopList (vlu `join` v)
 
   slice :: AbstractM m => CP Integer -> CP Integer -> CPList v -> m (CPList v)
-  slice Bottom _ _  = mzero
-  slice _ Bottom _  = mzero
+  slice _ _ (CPList _ _ BL.Bottom) = escape IndexOutOfBounds 
   slice (Constant from) (Constant to) (CPList lst len _)
-    | 0 <= from && from <= to && to < len = return $ CPList lst' (to - from) (joins lst')
-    | otherwise = escape IndexOutOfBounds 
+    | 0 <= from && from <= to && to <= len = return $ CPList lst' (to - from) (joinsBL lst') 
+    | otherwise = escape IndexOutOfBounds
     where lst' = sliceBetween (fromInteger from) (fromInteger to) lst
   slice (Constant from) Top (CPList lst len _)
-    | 0 <= from && from < len = return (TopList $ joins lst') `mjoin` escape IndexOutOfBounds
+    | 0 <= from && from <= len = return (anySublistOf lst') `mjoin` escape IndexOutOfBounds
     | otherwise = escape IndexOutOfBounds
     where lst' = drop (fromInteger from) lst
   slice Top (Constant to) (CPList lst len _)
-    | 0 <= to && to < len = return (TopList $ joins lst') `mjoin` escape IndexOutOfBounds 
+    | 0 <= to && to <= len = return (anySublistOf lst') `mjoin` escape IndexOutOfBounds 
     | otherwise = escape IndexOutOfBounds
     where lst' = take (fromInteger len - fromInteger to) lst
-  slice Top Top (CPList _ _ vlu) = return (TopList vlu) `mjoin` escape IndexOutOfBounds 
+  slice Top Top (CPList _ _ (BL.Value vlu)) = return (TopList vlu) `mjoin` escape IndexOutOfBounds 
   slice (Constant from) (Constant to) l@(TopList _)
     | 0 <= from && from <= to = return l `mjoin` escape IndexOutOfBounds
     | otherwise = escape IndexOutOfBounds 

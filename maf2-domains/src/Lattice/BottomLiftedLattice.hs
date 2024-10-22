@@ -1,12 +1,25 @@
 {-# LANGUAGE DeriveFunctor #-}
-module Lattice.BottomLiftedLattice(BottomLifted(..), lowerBottom, toMaybe) where
+module Lattice.BottomLiftedLattice(
+   BottomLifted(..), 
+   lowerBottom, 
+   toMaybe,
+   joinsBL,
+   joinWithBL,
+   fromBL,
+) where
 
 import Lattice.Class
 import Lattice.Equal (EqualLattice(eql))
 import Domain.Class (Domain(..))
 
 data BottomLifted a = Bottom | Value a
-                    deriving (Eq, Ord, Show, Functor)
+   deriving (Eq, Ord, Show, Functor)
+
+instance Applicative BottomLifted where
+   pure = Value
+   Bottom <*> _ = Bottom 
+   _ <*> Bottom = Bottom
+   (Value f) <*> (Value a) = Value (f a)
 
 instance (Joinable a) => Joinable (BottomLifted a) where  
    join Bottom a = a 
@@ -44,3 +57,14 @@ lowerBottom (Value v) = v
 toMaybe :: BottomLifted a -> Maybe a 
 toMaybe Bottom = Nothing
 toMaybe (Value v) = Just v 
+
+joinsBL :: Joinable a => [a] -> BottomLifted a
+joinsBL = joinMap Value
+
+fromBL :: BottomLifted a -> a
+fromBL Bottom    = error "this should not happen"
+fromBL (Value v) = v  
+
+joinWithBL :: Joinable a => BottomLifted a -> a -> a
+joinWithBL Bottom    a = a
+joinWithBL (Value v) a = join v a  

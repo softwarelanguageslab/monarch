@@ -12,6 +12,7 @@ import Domain (Domain)
 
 import Data.Kind
 import Data.Map (Map)
+import Lattice (BottomLattice)
 
 type BasicEnv adr = Map String adr
 type Clo adr = (BasicEnv adr, [Clause])
@@ -39,6 +40,7 @@ class ErlangErrorDomain e where
 
 
 type ErlangM m v mb = (
+   BottomLattice v,
    -- Base monads
    AbstractM m,
    EnvM m (Adr m) (BasicEnv (Adr m)),

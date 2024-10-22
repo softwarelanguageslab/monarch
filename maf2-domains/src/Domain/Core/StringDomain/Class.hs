@@ -6,7 +6,7 @@ import Control.Monad.AbstractM
 
 import Data.Kind 
 
-class (BottomLattice s, Domain s String) => StringDomain s where
+class (Joinable s, Domain s String) => StringDomain s where
    type IntS s :: Type
    type ChaS s :: Type
    type BooS s :: Type

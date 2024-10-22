@@ -23,7 +23,7 @@ instance (BottomLattice i, BottomLattice c) => BottomLattice (PIVector i c) wher
    -- subsumes (PIVector i1 c1) (PIVector i2 c2) =
    --    subsumes i1 i2 && subsumes c1 c2
 
-instance (IntDomain i, Lattice c) => VectorDomain (PIVector i c) where
+instance (IntDomain i, Eq c, Joinable c) => VectorDomain (PIVector i c) where
    type VContent (PIVector i c) = c
    type VIndex   (PIVector i c) = i
 

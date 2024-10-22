@@ -24,15 +24,14 @@ import Control.Monad.Join
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Analysis.Python.Common
-import Analysis.Monad hiding (call)
+import Analysis.Monad hiding (call, get)
 import Domain.Python.Syntax hiding (Continue, Break, Return, None)
 import Domain.Python.World
 import Analysis.Python.Escape
 
 import Prelude hiding (lookup, exp, break)
 import Control.Monad.AbstractM (AbstractM)
-import Control.Monad ((>=>), (<=<))
-import Domain.Python.Objects.Class (PyObj(..), at, atPrm)
+import Control.Monad ((>=>), (<=<)) 
 import Analysis.Monad.Call (CallM(..))
 import Lattice.Tainted (Tainted(..))
 import Data.Singletons (SingI, Sing)
@@ -42,6 +41,7 @@ import qualified Data.Set as Set
 import qualified Lattice.TopLiftedLattice as TopLattice
 import Text.Printf (printf)
 import Lattice.TopLattice()
+import Domain.Python.Objects.Class 
 
 --
 -- The Python monad 
@@ -93,14 +93,14 @@ pyDeref' :: forall m obj vlu . PyM m obj vlu => (obj -> m vlu) -> vlu -> m vlu
 pyDeref' = pyDeref . const
 
 pyDeref'' :: forall k m obj vlu . (PyM m obj vlu, SingI k) => (Abs obj k -> m vlu) -> vlu -> m vlu 
-pyDeref'' f = pyDeref' (f <=< at @k)
+pyDeref'' f = pyDeref' (f <=< get @k)
 
 pyDeref2' :: forall m obj vlu . PyM m obj vlu => (obj -> obj -> m vlu) -> vlu -> vlu -> m vlu
 pyDeref2' f a1 a2 = pyDeref' (\o1 -> pyDeref' (f o1) a2) a1
 
 pyDeref2'' :: forall k1 k2 m obj vlu . (PyM m obj vlu, SingI k1, SingI k2) => (Abs obj k1 -> Abs obj k2 -> m vlu) -> vlu -> vlu -> m vlu
-pyDeref2'' f = pyDeref2' $ \o1 o2 -> do v1 <- at @k1 o1 
-                                        v2 <- at @k2 o2 
+pyDeref2'' f = pyDeref2' $ \o1 o2 -> do v1 <- get @k1 o1 
+                                        v2 <- get @k2 o2 
                                         f v1 v2 
 
 pyDeref3' :: forall m obj vlu . PyM m obj vlu => (obj -> obj -> obj -> m vlu) -> vlu -> vlu -> vlu -> m vlu
@@ -147,7 +147,7 @@ instance (vlu ~ PyRef,
   pyAssignAt k v a = addTaint v >>= \v' -> updateWith (setAttr k v') (setAttrWeak k v') a
   pyAssign k v = unwrapTainted_ (mjoinMap (pyAssignAt k v) . addrs) --- !!! important
   pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do v' <- addTaint v 
-                                                  old <- atPrm s obj
+                                                  old <- getPrm s obj
                                                   upd <- f v' old
                                                   let obj' = setPrm s upd obj
                                                   updateAdr adr obj'
@@ -170,8 +170,7 @@ instance (vlu ~ PyRef,
   applyXPrim DatabaseRead loc = \case
                                   [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm ())) str
                                   _        -> pyError ArityError
-                                  where toTaint Lattice.Bottom         = TopLattice.Value Set.empty
-                                        toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
+                                  where toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
                                         toTaint Lattice.Top            = TopLattice.Top 
   applyXPrim DatabaseWrite _ = \case
                                   [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\_ nam -> currentTaint @Taint >>= \t -> addEdges nam t $> constant None) df str 
