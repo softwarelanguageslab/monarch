@@ -1,14 +1,14 @@
 module Domain.Symbolic.Class(SymbolicValue(..)) where
 
 import Symbolic.AST
-import Domain.Scheme
 import Data.Kind
 import Lattice (Joinable)
+
 
 -- | SymbolicValue to capture
 -- changes to the symbolic representation 
 -- of a particular value.
-class (Joinable (Symbolic v), SchemeValue v) => SymbolicValue v where
+class (Joinable (Symbolic v), Ord i) => SymbolicValue v i | v -> i where
    -- | All symbolic values have a purely symbolic 
    -- symbolic part and an abstract part, 
    -- this function teases out the purely symbolic 
@@ -19,6 +19,7 @@ class (Joinable (Symbolic v), SchemeValue v) => SymbolicValue v where
    type Abstract v :: Type
    -- | Combine the abstract part with the symbolic part
    combine :: Abstract v -> Symbolic v -> v
+
    -- 
    abstractValue :: v -> Abstract v
    symbolicValue :: v -> Symbolic v
@@ -33,9 +34,9 @@ class (Joinable (Symbolic v), SchemeValue v) => SymbolicValue v where
    -- as a symbolic expression
    assertFalse :: v -> v
    -- | Extract a symbolic value from the value
-   symbolic    :: v -> Proposition
+   symbolic    :: v -> Proposition i
    -- | Attaches a fresh identifier 
    -- to the given value
-   var :: Int -> v -> v
+   var :: i -> v -> v
    -- | Remove the symbolic part from the value
    unsymbolic :: v -> v

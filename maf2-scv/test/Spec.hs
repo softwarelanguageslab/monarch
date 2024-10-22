@@ -28,7 +28,7 @@ runAnalysisAndTest :: (Res -> Sto -> IO a) -> String -> IO a
 runAnalysisAndTest f =
    readFile >=> (either error return . parseString') >=> simpleAnalysis >=> uncurry f
 
-withSolver :: Z3Solver a -> IO a
+withSolver :: Z3Solver String a -> IO a
 withSolver ma = runZ3Solver (setup SMT.prelude >> ma)
 
 formulaJoinTests :: Spec

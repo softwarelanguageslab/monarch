@@ -35,7 +35,7 @@ instance (CallM k v m, Monad (t m), MonadLayer t) => CallM k v (t m) where
     call = upperM . call 
 
 runCallT :: (k -> m v) -> CallT k v m m a -> m a
-runCallT f (CallT m) = runReaderT m f 
+runCallT f (CallT m) = runReaderT m f
 
 -- MonadEscape instance
 

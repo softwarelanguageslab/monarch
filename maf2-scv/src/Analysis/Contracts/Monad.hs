@@ -63,7 +63,7 @@ type ContractM m v msg mb =
       AllocM m Exp (FAdr v),
       AllocM m Exp (OAdr v),
       -- Symbolic execution
-      SymbolicM m v,
+      SymbolicM Int m v,
       -- Domains
       Domain (Esc m) Error,
       ContractDomain v,
@@ -89,6 +89,6 @@ instance Monad m => MonadMonitoredContext c (CP Bool) (MonitoredContextT c m) wh
   withContractMonitor c = local (const (c, inject True))
   monitoredBy = ask
 
-instance {-# OVERLAPPABLE #-} (Monad m, Monad (t m), MonadLayer t, MonadMonitoredContext c b m) => MonadMonitoredContext c b (t m) where
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, MonadMonitoredContext c b m) => MonadMonitoredContext c b (t m) where
    withContractMonitor c = lowerM (withContractMonitor c)
    monitoredBy = upperM monitoredBy

@@ -4,7 +4,6 @@
 module Domain.Symbolic.Paired where
 
 import Lattice (EqualLattice(..))
-import qualified Syntax.Scheme as Scheme (Exp)
 import Domain
 import Control.Monad.Join
 import Data.Map (Map)
@@ -16,38 +15,40 @@ import Domain.Contract (ContractDomain(..))
 import Domain.Contract.Communication
 import Lattice.Class
 import Data.Kind
+import Domain.Scheme.Store (EnvAdr, PaiAdrE, StrAdrE, VecAdrE)
 
 --------------------------------------------------
 -- Declaration
 --------------------------------------------------
 
-newtype SymbolicVal (exp :: Type) (ptr :: k1) (sptr :: k2) (vptr :: k3) (pptr :: k4) = SymbolicVal { proposition :: Proposition } deriving (Eq, Ord, Show)
+newtype SymbolicVal (exp :: Type) (k :: Type) (i :: Type) = SymbolicVal { proposition :: Proposition i  } 
+                    deriving (Eq, Ord, Show)
 
 --------------------------------------------------
 -- Lattice instances
 --------------------------------------------------
 
-instance Joinable (SymbolicVal exp ptr sptr vptr pptr) where
+instance Joinable (SymbolicVal exp k i) where
    join (SymbolicVal Bottom) (SymbolicVal p2) = SymbolicVal p2
    join (SymbolicVal p1) (SymbolicVal Bottom) = SymbolicVal p1
    join (SymbolicVal p1) (SymbolicVal p2) = SymbolicVal Fresh -- TODO: maybe "Choice"? 
 
-instance BottomLattice (SymbolicVal exp ptr sptr vptr pptr) where
+instance BottomLattice (SymbolicVal exp k n) where
    bottom = SymbolicVal Bottom
 
-instance PartialOrder (SymbolicVal exp ptr sptr vptr pptr) where
+instance (Eq i) => PartialOrder (SymbolicVal exp k i) where
    subsumes _ (SymbolicVal Bottom) = True
    subsumes (SymbolicVal p1) (SymbolicVal p2) = p1 == p2
 
-instance Meetable (SymbolicVal exp ptr sptr vptr pptr) where 
+instance Meetable (SymbolicVal exp k i) where 
    meet = error "TODO: meet is not implemented"
 
 ------------------------------------------------------------
 -- NumberDomain instance
 ------------------------------------------------------------
 
-instance NumberDomain (SymbolicVal exp ptr sptr vptr pptr) where
-   type Boo (SymbolicVal exp ptr sptr vptr pptr) = (SymbolicVal exp ptr sptr vptr pptr)
+instance (Eq i) => NumberDomain (SymbolicVal exp k i) where
+   type Boo (SymbolicVal exp k i) = (SymbolicVal exp k i)
    isZero (SymbolicVal n) = return $ SymbolicVal $ Predicate "zero?/v" [n]
    random _ = return $ SymbolicVal Fresh
    plus (SymbolicVal n1) (SymbolicVal n2) =
@@ -68,17 +69,17 @@ instance NumberDomain (SymbolicVal exp ptr sptr vptr pptr) where
 -- IntDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicVal exp ptr sptr vptr pptr) Integer where
+instance Eq i => Domain (SymbolicVal exp k i) Integer where
    inject = SymbolicVal . Literal . Num
 
-instance IntDomain (SymbolicVal exp ptr sptr vptr pptr) where
-   type Str (SymbolicVal exp ptr sptr vptr pptr) = ()
+instance Eq i => IntDomain (SymbolicVal exp k i) where
+   type Str (SymbolicVal exp k i) = ()
    -- TODO: Str SymbolicVal is problematic here since it needs to refer 
    -- to something that actually implements the string domain, perhaps
    --  it is best to move toString into the string domain? Although
    --  this creates an unnecesary dependency from the string domain
    --  to the numeric domains.
-   type Rea (SymbolicVal exp ptr sptr vptr pptr) = SymbolicVal exp ptr sptr vptr pptr
+   type Rea (SymbolicVal exp k i) = SymbolicVal exp k i
    toReal (SymbolicVal n1) = return $ SymbolicVal $ Predicate "as-real/v" [n1]
    toString = undefined
    quotient (SymbolicVal n1) (SymbolicVal n2) =
@@ -93,11 +94,11 @@ instance IntDomain (SymbolicVal exp ptr sptr vptr pptr) where
 -- RealDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicVal exp ptr sptr vptr pptr) Double where
+instance Eq i => Domain (SymbolicVal exp k i) Double where
    inject n = SymbolicVal $ Literal (Rea n)
 
-instance RealDomain (SymbolicVal exp ptr sptr vptr pptr) where
-   type IntR (SymbolicVal exp ptr sptr vptr pptr) = SymbolicVal exp ptr sptr vptr pptr
+instance Eq i => RealDomain (SymbolicVal exp k i) where
+   type IntR (SymbolicVal exp k i) = SymbolicVal exp k i
    toInt (SymbolicVal n1)   = return $ SymbolicVal $ Predicate "as-int/v"   [n1]
    ceiling (SymbolicVal n1) = return $ SymbolicVal $ Predicate "ceiling/v"  [n1]
    floor (SymbolicVal n1)   = return $ SymbolicVal $ Predicate "floor/v"    [n1]
@@ -115,10 +116,10 @@ instance RealDomain (SymbolicVal exp ptr sptr vptr pptr) where
 -- BoolDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicVal exp ptr sptr vptr pptr) Bool where
+instance Eq i => Domain (SymbolicVal exp k i) Bool where
    inject n = SymbolicVal $ Literal (Boo n)
 
-instance BoolDomain (SymbolicVal exp ptr sptr vptr pptr) where
+instance Eq i => BoolDomain (SymbolicVal exp k i) where
    isTrue  = const False -- unknown status of whether it is fale or true, so neither is
    isFalse = const False
    not (SymbolicVal v) = SymbolicVal $ Predicate "not/v" [v]
@@ -129,11 +130,11 @@ instance BoolDomain (SymbolicVal exp ptr sptr vptr pptr) where
 -- CharDomain instance
 ------------------------------------------------------------
 
-instance Domain (SymbolicVal exp ptr sptr vptr pptr) Char where
+instance Eq i => Domain (SymbolicVal exp k i) Char where
    inject c = SymbolicVal $ Literal (Cha c)
 
-instance CharDomain (SymbolicVal exp ptr sptr vptr pptr) where
-   type IntC (SymbolicVal exp ptr sptr vptr pptr) = SymbolicVal exp ptr sptr vptr pptr
+instance Eq i => CharDomain (SymbolicVal exp k i) where
+   type IntC (SymbolicVal exp k i) = SymbolicVal exp k i
    downcase  (SymbolicVal c) = return $ SymbolicVal $ Predicate "downcase/v" [c]
    upcase    (SymbolicVal c) = return $ SymbolicVal $ Predicate "upcase/v"   [c]
    charToInt (SymbolicVal c) = return $ SymbolicVal $ Predicate "as-int/v"   [c]
@@ -149,17 +150,14 @@ instance CharDomain (SymbolicVal exp ptr sptr vptr pptr) where
 -- SchemeDomain instance
 ------------------------------------------------------------
 
-instance (Address ptr,
-          Address sptr,
-          Address vptr,
-          Address pptr) => SchemeDomain (SymbolicVal exp ptr sptr vptr pptr) where
-   type Adr (SymbolicVal  exp ptr sptr vptr pptr)  = ptr
-   type PAdr (SymbolicVal exp ptr sptr vptr pptr) = pptr
-   type SAdr (SymbolicVal exp ptr sptr vptr pptr) = sptr
-   type VAdr (SymbolicVal exp ptr sptr vptr pptr) = vptr
+instance (Ord exp, Ord k, Show exp, Show k, Eq i) => SchemeDomain (SymbolicVal exp k i) where
+   type Adr  (SymbolicVal exp k i) = EnvAdr k
+   type PAdr (SymbolicVal exp k i) = PaiAdrE exp k
+   type SAdr (SymbolicVal exp k i) = StrAdrE exp k
+   type VAdr (SymbolicVal exp k i) = VecAdrE exp k
 
-   type Exp (SymbolicVal exp ptr sptr vptr pptr)  = exp
-   type Env (SymbolicVal exp ptr sptr vptr pptr)  = Map String ptr
+   type Exp (SymbolicVal exp k i)  = exp
+   type Env (SymbolicVal exp k i)  = Map String (EnvAdr k)
 
    pptr      = const bottom
    vptr      = const bottom
@@ -171,7 +169,7 @@ instance (Address ptr,
    clos      = const bottom
    nil       = SymbolicVal $ Literal Nil
    unsp      = SymbolicVal $ Literal Unsp
-   prim      = SymbolicVal . Variable . (++"/v")
+   prim      = SymbolicVal . Function . (++"/v")
    prims     = const bottom
    withProc  = const . const mzero
    isInteger = const $ inject False
@@ -195,7 +193,7 @@ instance (Address ptr,
 -- | Constraints that have to be satisfied for 
 class SymbolicARef a where 
    -- | Compute the symbolic identity of the given value
-   identity :: a -> Proposition
+   identity :: a -> Proposition i
 
 instance (SpanOf exp) => SymbolicARef (Pid exp ctx) where
    identity EntryPid   = Literal $ Actor Nothing
@@ -204,8 +202,8 @@ instance (SpanOf exp) => SymbolicARef (Pid exp ctx) where
 -- | An instance of the actor domain is defined for symbolic
 -- values is defined if the actor reference used in the underlying 
 -- Scheme domain supports representing its identity as a proposition
-instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v exp pai vec str var)) => ActorDomain (PairedSymbolic v exp pai vec str var) where
-   type ARef (PairedSymbolic v exp pai vec str var) = (ARef v)
+instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v exp k i)) => ActorDomain (PairedSymbolic v exp k i) where
+   type ARef (PairedSymbolic v exp k i) = (ARef v)
    
    aref ref' = SchemePairedValue (aref ref', SymbolicVal $ identity ref')
    arefs f   = arefs f . leftValue 
@@ -223,8 +221,8 @@ instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v ex
 -- Contract domain
 ------------------------------------------------------------
 
-instance (BehaviorContract v, SchemeValue v) => BehaviorContract (PairedSymbolic v exp pai vec str var) where 
-   type MAdr (PairedSymbolic v exp pai vec str var) = MAdr v
+instance (BehaviorContract v, SchemeValue v) => BehaviorContract (PairedSymbolic v exp k i) where 
+   type MAdr (PairedSymbolic v exp k i) = MAdr v
 
    behaviorContract contracts =
       SchemePairedValue (behaviorContract @_ contracts, bottom)
@@ -232,16 +230,16 @@ instance (BehaviorContract v, SchemeValue v) => BehaviorContract (PairedSymbolic
    isBehaviorContract = isBehaviorContract @_ . leftValue
    behaviorMessageContracts = behaviorMessageContracts . leftValue
 
-instance (CommunicationContract v) => CommunicationContract (PairedSymbolic v exp pai vec str var) where 
-   type MCAdr (PairedSymbolic v exp pai vec str var) = MCAdr v
+instance (CommunicationContract v) => CommunicationContract (PairedSymbolic v exp k i) where 
+   type MCAdr (PairedSymbolic v exp k i) = MCAdr v
    isCommunicationContract = 
       isCommunicationContract . leftValue
    ensuresContract adrs = SchemePairedValue (ensuresContract adrs, bottom)
    ensureMessageContracts = ensureMessageContracts . leftValue
 
-instance (SchemeValue (PairedSymbolic v exp pai vec str var), SchemeValue v, ContractDomain v) => ContractDomain (PairedSymbolic v exp pai vec str var) where
-   type FAdr (PairedSymbolic v exp pai vec str var) = FAdr v
-   type OAdr (PairedSymbolic v exp pai vec str var) = OAdr v
+instance (SchemeValue (PairedSymbolic v exp k i), SchemeValue v, ContractDomain v) => ContractDomain (PairedSymbolic v exp k i) where
+   type FAdr (PairedSymbolic v exp k i) = FAdr v
+   type OAdr (PairedSymbolic v exp k i) = OAdr v
 
    -- TODO: do we need to represent the message contract 
    -- symbolically? Probably not...
@@ -265,9 +263,9 @@ instance (SchemeValue (PairedSymbolic v exp pai vec str var), SchemeValue v, Con
 -- Symbolic value
 ------------------------------------------------------------
 
-instance (SchemeValue (PairedSymbolic v exp pai vec str var)) => SymbolicValue (PairedSymbolic v exp pai vec str var) where
-   type Abstract (PairedSymbolic v exp pai vec str var) = v 
-   type Symbolic (PairedSymbolic v exp pai vec str var) = SymbolicVal exp var str vec pai
+instance (SchemeValue (PairedSymbolic v exp k i), Ord i) => SymbolicValue (PairedSymbolic v exp k i) i where
+   type Abstract (PairedSymbolic v exp k i) = v 
+   type Symbolic (PairedSymbolic v exp k i) = SymbolicVal exp k i
 
    combine         = curry SchemePairedValue
    abstractValue   = leftValue
@@ -281,7 +279,7 @@ instance (SchemeValue (PairedSymbolic v exp pai vec str var)) => SymbolicValue (
       SchemePairedValue (l, SymbolicVal $ IsFalse r)
    symbolic (SchemePairedValue (_, SymbolicVal r)) = r
    var idx vlu =
-      SchemePairedValue (leftValue vlu, SymbolicVal $ Variable ("x" ++ show idx))
+      SchemePairedValue (leftValue vlu, SymbolicVal $ Variable idx)
    unsymbolic (SchemePairedValue (v, _)) = 
       SchemePairedValue (v, SymbolicVal Fresh)
 
@@ -289,7 +287,7 @@ instance (SchemeValue (PairedSymbolic v exp pai vec str var)) => SymbolicValue (
 -- Equality
 ------------------------------------------------------------
 
-instance (EqualLattice v) => EqualLattice (PairedSymbolic v exp pai vec str var) where 
+instance (EqualLattice v) => EqualLattice (PairedSymbolic v exp k i) where 
    -- TODO: we might want to introduce a symbolic constraint here,
    -- but we cannot do this currently since a generic 'b' is expected
    -- that satisfies BoolDomain
@@ -301,4 +299,4 @@ instance (EqualLattice v) => EqualLattice (PairedSymbolic v exp pai vec str var)
 -- Pairing with other Scheme value
 ------------------------------------------------------------
 
-type PairedSymbolic v exp pai vec str var = SchemePairedValue v (SymbolicVal exp var str vec pai)
+type PairedSymbolic v exp k i = SchemePairedValue v (SymbolicVal exp k i)

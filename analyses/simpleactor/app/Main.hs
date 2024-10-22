@@ -17,8 +17,6 @@ import Syntax.AST hiding (filename)
 import Control.Monad ((>=>))
 import Interpreter hiding (PrmAdr)
 import GHC.Base (join)
-import Debug.Trace
-
 
 ------------------------------------------------------------
 -- Command-line arguments

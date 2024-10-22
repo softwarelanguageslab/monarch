@@ -36,7 +36,6 @@ library
       Analysis.Contracts.Store
       Analysis.Symbolic
       Analysis.Symbolic.Monad
-      Analysis.Symbolic.Monad.Propagation
       Analysis.Symbolic.Monad.SymbolicStore
       Analysis.Symbolic.Semantics
       Analysis.Traces

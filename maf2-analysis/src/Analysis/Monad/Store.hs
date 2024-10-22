@@ -106,12 +106,12 @@ store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 --- StoreM' typeclass
 ---
 
--- like StoreM, but also allows retrieving the current store
-class (Store s a v, StoreM a v m) => StoreM' s a v m | m -> s a v where
+-- | Like StoreM, but also allows retrieving the current store
+class Monad m => StoreM' s a v m | m -> s a v where
    currentStore :: m s 
    putStore     :: s -> m ()
 
-instance (Monad (t m), MonadLayer t, StoreM' s adr v m) => StoreM' s adr v (t m) where
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, StoreM' s adr v m) => StoreM' s adr v (t m) where
    currentStore = upperM currentStore
    putStore = upperM . putStore 
 

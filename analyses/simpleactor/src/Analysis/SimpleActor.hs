@@ -12,6 +12,7 @@ import Analysis.Monad hiding (eval)
 import Syntax.AST
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Monad.Fix
+import Analysis.Symbolic.Monad.SymbolicStore
 import Control.Monad.Escape
 import Data.Set (Set)
 import Domain.Scheme.Actors (Pid(..))
@@ -60,7 +61,9 @@ type IntraT m = MonadStack '[
                ActorLocalT ActorVlu,
                -- NonDetT,
                JoinT,
-               CacheT
+               CacheT,
+               -- Symbolic execution
+               SymbolicStoreT (EnvAdr K) ActorVlu
             ] m
 
 -- TODO: group some constraint into a constraint alias for ModX
@@ -81,11 +84,12 @@ type MonadInter m =
 
 intra :: forall m . MonadInter m
  => ActorCmp -> m ()
-intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (eval @ActorVlu) cmp
+intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (symbolicStore (eval @ActorVlu)) cmp
           & runAlloc @Ide @K @(EnvAdr K) EnvAdr
           & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
           & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
           & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
+          & runWithSymbolicStore 
           & runIntraAnalysis cmp
 
 initialEnv :: Env K

@@ -112,12 +112,15 @@ apply rec e v vs = condsCP
     (pure $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
 applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
-applyClosure e (lam@(Lam prs _ _), env) rec vs = do
-   ads <- mapM alloc prs
-   let bds = zip (map name prs) ads
-   mapM_ (uncurry writeAdr) (zip ads vs)
-   ifMetaSet (withCtx (spanOf e:)) $
-      withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
+applyClosure e (lam@(Lam prs _ _), env) rec vs = 
+   if length prs /= length vs then 
+      error "invalid number of arguments"
+   else do
+      ads <- mapM alloc prs
+      let bds = zip (map name prs) ads
+      mapM_ (uncurry writeAdr) (zip ads vs)
+      ifMetaSet (withCtx (spanOf e:)) $
+         withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 applyPrimitive :: forall v m . EvalM v m => String -> Exp -> [v] -> m v
 applyPrimitive =
