@@ -4,7 +4,6 @@ module Symbolic.SMT(prelude, translate, parseResult, SolverResult(..), setupSMT)
 import Text.Printf
 import Symbolic.AST
 import Data.FileEmbed
-import Data.List
 import Syntax.Span (Span(..), Position(..))
 import Solver
 import Control.Monad.Reader
@@ -26,7 +25,7 @@ symVar k = asks (fromJust . Map.lookup k)
 --------------------------------------------------
 
 prelude :: String
-prelude = undefined -- $(embedStringFile "./smt/prelude.scm")
+prelude = $(makeRelativeToProject"./smt/prelude.scm" >>= embedStringFile)
 
 -- | Translate the given proposition into 
 -- an SMTLib formula
