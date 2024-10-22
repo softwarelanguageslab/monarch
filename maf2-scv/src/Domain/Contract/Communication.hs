@@ -15,7 +15,7 @@ class CommunicationContract v where
    type MCAdr v :: Type
 
    -- | Checks if the given value is a communication contract
-   isCommunicationContract :: BoolDomain b => v -> b
+   isCommunicationContract :: (BottomLattice b, BoolDomain b) => v -> b
 
    -- | Constructs an abstraction of the "ensures" communication contract from 
    -- a list of message contracts
