@@ -108,8 +108,8 @@ trySend ref p =
 
 apply :: EvalM v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
 apply rec e v vs = condsCP
-   [(pure $ isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
-    (pure $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
+   [(fromBL $  isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
+    (fromBL $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
 applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e (lam@(Lam prs _ _), env) rec vs = 
@@ -142,15 +142,15 @@ matchList :: EvalM v m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
 matchList _ [] _ = escape MatchError
 matchList f ((pat, e):pats) value =
    -- TODO: don't rethrow the error, use `catchOn` for this
-   (match pat value >>= f e) `catchOn` (isMatchError, const $ matchList f pats value) 
+   (match pat value >>= f e) `catchOn` (fromBL . isMatchError, const $ matchList f pats value) 
 
 -- | Match a pattern against a value
 match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
 match (ValuePat lit) v = -- trace ("l: " ++ show lit ++ " v: " ++ show v ++ " lv: " ++ show (injectLit @v lit)) $
-   condCP (return $ eql (injectLit lit) v) (return Map.empty) (escape MatchError)
+   condCP (fromBL $ eql (injectLit lit) v) (return Map.empty) (escape MatchError)
 match (PairPat pat1 pat2) v =
-      condCP (pure $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
+      condCP (fromBL $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
    where matchPair vp =
             Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
                       <$> match pat1 (car vp)

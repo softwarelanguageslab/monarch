@@ -85,7 +85,7 @@ data Error = MatchError | InvalidArgument | BlameError String | ArityMismatch In
   deriving (Eq, Ord, Show)
 
 class (SplitLattice e) => SimpleActorErrorDomain e where 
-   isMatchError :: BoolDomain b => e -> b
+   isMatchError :: (BottomLattice b, BoolDomain b) => e -> b
 instance SimpleActorErrorDomain (Set ActorError) where  
    isMatchError es   
       | Set.size es == 0 = bottom
