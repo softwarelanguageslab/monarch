@@ -14,6 +14,7 @@ import Lattice (Joinable(..))
 
 import qualified Data.Set as Set
 import Control.Monad (zipWithM)
+import Analysis.Monad (MonadCache)
 
 -- | Monad that keeps track of a path condition
 class (Monad m) => MonadPathCondition i m v | m -> v i where
@@ -87,7 +88,7 @@ type SymbolicM i m v = (-- Domain
 -- | The FormulaT monad keeps track of the path condition 
 -- and implements the `MonadPathCondition` monad.
 newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
-                           deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable)
+                           deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable, MonadCache)
 
 instance {-# OVERLAPPING #-} (MonadJoin m, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
    extendPc pc'     = modify $ Set.map (Conjunction (Atomic $ symbolic pc'))
