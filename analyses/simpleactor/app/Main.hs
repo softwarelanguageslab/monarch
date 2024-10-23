@@ -62,7 +62,7 @@ printLoc (((((e, _), _), _), _), _) = let (Span filename Position { .. } _) = sp
 ------------------------------------------------------------
 
 loadFile :: String -> IO Exp
-loadFile = readFile >=> translate >=> return . either (error . ("error while parsing: " ++)) id . parseFromString 
+loadFile = readFile >=> {- translate >=> -} return . either (error . ("error while parsing: " ++)) id . parseFromString 
 
 
 analyzeCmd :: InputOptions -> IO ()

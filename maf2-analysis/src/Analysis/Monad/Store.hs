@@ -33,7 +33,6 @@ import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad.State hiding (mzero, join)
-import Control.Monad.Join (MonadJoin(..), mjoinMap, mjoins, MonadJoinable)
 import Analysis.Monad.Cache
 import Control.Monad.Lift
 
@@ -41,10 +40,10 @@ import Control.Monad.Layer
 import Analysis.Store (Store)
 import Data.TypeLevel.AssocList
 import Data.Kind
-import Debug.Trace
 import Domain (Address)
 import Control.Monad.Join
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe, isJust)
+import Control.Monad.Cond (ifM)
 
 ---
 --- StoreM typeclass
@@ -58,22 +57,28 @@ class (Monad m, Joinable v, Address a) => StoreM a v m | m a -> v where
    updateAdr adr v = updateWith (const v) (`join` v) adr
    -- | Update an existing address using either a strong or weak update function
    updateWith :: {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> m ()
-   -- | Lookup the value at the given address, returns bottom if the address does not exist
+   -- | Lookup the value at the given address, returns an error if the address does not exist
    lookupAdr :: a -> m v
+   -- | Checks whether an address already exists in the store
+   hasAdr :: a -> m Bool
 
-   {-# MINIMAL lookupAdr, writeAdr, updateWith #-}
+   {-# MINIMAL lookupAdr, writeAdr, updateWith, hasAdr #-}
 
 instance {-# OVERLAPPABLE #-} (Monad (t m), StoreM adr v m, MonadLayer t) => StoreM adr v (t m) where
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
    lookupAdr  =  upperM . lookupAdr
    updateWith fs fw = upperM . updateWith fs fw
+   hasAdr = upperM . hasAdr
 
 updateAndCheck :: (Eq v, StoreM a v m) => a -> (a -> m ()) -> m Bool
-updateAndCheck a f = do old <- lookupAdr a
-                        f a
-                        new <- lookupAdr a
-                        return (old /= new)
+updateAndCheck a f = do ifM (hasAdr a) 
+                            (do old <- lookupAdr a
+                                f a
+                                new <- lookupAdr a
+                                return (old /= new))
+                            (f a >> return True)
+
 
 -- | Convenience function: writes to an address `a` and checks if the value in the store at `a` has changed
 writeAdr' :: (Eq v, StoreM a v m) => a -> v -> m Bool
@@ -126,9 +131,10 @@ instance {-# OVERLAPPING #-} (Monad m, Store s a v, Address a) => StoreM a v (St
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    updateWith fs fw adr = modify (Store.updateStoWith fs fw adr)
-   lookupAdr adr = gets (fromJust . Store.lookupSto adr)
+   lookupAdr adr = gets (fromMaybe (error $ "Address " ++ show adr ++ " not found") . Store.lookupSto adr)
+   hasAdr adr = gets (isJust . Store.lookupSto adr)
 
-instance {-# OVERLAPPING #-} (Monad m, Address a, Store s a v) => StoreM' s a v (StoreT s a v m) where
+instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM' s a v (StoreT s a v m) where
    currentStore = get 
    putStore = put 
 
