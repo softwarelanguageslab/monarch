@@ -3,7 +3,7 @@
 
 module Analysis.Monad.Map (
     MapM(..),
-    MapT, 
+    MapT,
     getOrBot,
     put',
     joinWith',
@@ -21,6 +21,8 @@ import qualified Data.Map as Map
 import Control.Monad.Trans.State (runStateT)
 import Lattice
     ( BottomLattice, Joinable(..), Lattice, justOrBot, PartialOrder(..) )
+import Control.Monad.Join (fromBL)
+import Lattice.BottomLiftedLattice (BottomLifted(Value, Bottom))
 
 --
 -- MapM typeclass
@@ -29,7 +31,7 @@ import Lattice
 class Monad m => MapM k v m | m k -> v where
     get :: k -> m (Maybe v)
     put :: k -> v -> m ()
-    joinWith :: Lattice v => k -> v -> m ()
+    joinWith :: Joinable v => k -> v -> m ()
 
 instance (MapM k v m, Monad (t m), MonadLayer t) => MapM k v (t m) where
     get = upperM . get
@@ -45,11 +47,10 @@ put' k v = do old <- get k
               new <- get k
               return (old /= new)
 
-joinWith' :: (Lattice v, MapM k v m) => k -> v -> m Bool
-joinWith' k v = do old <- getOrBot k
+joinWith' :: (Joinable v, PartialOrder v, MapM k v m) => k -> v -> m Bool
+joinWith' k v = do old <- fmap (maybe Bottom Value) (get k)
                    joinWith k v
-                   return (not $ subsumes old v)
-
+                   return (not $ subsumes old (Value v))
 --
 -- MapT monad transformer 
 --
