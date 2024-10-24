@@ -24,7 +24,7 @@
 -- for the users of this domain.
 module Domain.Scheme.Derived.Pair(SchemePairedValue(..), leftValue, rightValue, mkLeft, mkRight) where
 
-import Prelude hiding (or, div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not)
+import Prelude hiding (and, or, div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not)
 
 import Lattice 
 import Domain.Core
@@ -149,6 +149,10 @@ instance (BoolDomain l, BoolDomain r) => BoolDomain (SchemePairedValue l r) wher
    isTrue (SchemePairedValue (l, r))  = isTrue l || isTrue r
    isFalse (SchemePairedValue (l, r)) = isFalse l || isFalse r
    not (SchemePairedValue (l, r))     = pairedValue (not l) (not r)
+   or (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) = 
+      pairedValue (or l1 l2) (or r1 r2)
+   and (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) = 
+      pairedValue (and l1 l2) (and r1 r2)
    boolTop                            = pairedValue boolTop boolTop
 
 ------------------------------------------------------------

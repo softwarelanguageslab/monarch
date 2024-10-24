@@ -55,20 +55,20 @@ printSto printKey keepKey m  =
          indent = maximum (map (length . printKey . fst) adrs) + 5
 
 printLoc :: ActorCmp -> String
-printLoc (((((e, _), _), _), _), _) = let (Span filename Position { .. } _) = spanOf e in show line ++ ":" ++ show column ++ "@" ++ filename
+printLoc ((((((e, _), _), _), _), _), _) = let (Span filename Position { .. } _) = spanOf e in show line ++ ":" ++ show column ++ "@" ++ filename
 
 ------------------------------------------------------------
 -- Entrypoints
 ------------------------------------------------------------
 
 loadFile :: String -> IO Exp
-loadFile = readFile >=> {- translate >=> -} return . either (error . ("error while parsing: " ++)) id . parseFromString 
+loadFile = readFile >=> translate >=> return . either (error . ("error while parsing: " ++)) id . parseFromString 
 
 
 analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename  }) = do 
    ast <- loadFile filename
-   let ((((), sto), mbs), res) = analyze ast
+   ((((), sto), mbs), res) <- analyze ast
    putStrLn $ printSto show (\case { (PrmAdr _) -> False ; _ -> True }) sto
    putStrLn "====="
    putStrLn $ printSto printLoc (const True) res

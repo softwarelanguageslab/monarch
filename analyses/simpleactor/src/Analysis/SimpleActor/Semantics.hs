@@ -36,6 +36,16 @@ import Analysis.Monad.Context (CtxM(..))
 import Data.Maybe
 import Debug.Trace
 import Lattice.Class (bottom)
+-- TODO: we are replacing the @cond@ operation 
+-- here in order to track conditions symbolically, 
+-- this limits the applicability of the semantics 
+-- to one with symbolic constraints. We should 
+-- remove this and make the @cond@ more general.
+import Analysis.Symbolic.Monad (choice, choices)
+-- | Same problem here, we really want to use @eql@
+-- but we cannot do that since a generic boolean 
+-- is required for its implementation.
+import Domain.Symbolic (equal)
 
 ------------------------------------------------------------
 -- Evaluation
@@ -57,7 +67,8 @@ eval' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
    v2 <- mapM (eval' rec) es
    apply rec e v1 v2
-eval' rec (Ite e1 e2 e3 _) = cond (eval' rec e1) (eval' rec e2) (eval' rec e3)
+eval' rec (Ite e1 e2 e3 _) = 
+   choice (eval' rec e1) (eval' rec e2) (eval' rec e3)
 eval' rec s@(Spawn e _) =
    aref <$> spawn @v s (const $ rec (ActorExp e))
 eval' _ (Terminate _) = terminate $> nil
@@ -102,12 +113,12 @@ eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v m => v -> v -> m ()
 trySend ref p =
-   cond   (pure $ isActorRef ref)
-          (mjoinMap (`send` p) (arefs' ref))
-          (escape InvalidArgument)
+   choice   (pure $ isActorRef ref)
+           (mjoinMap (`send` p) (arefs' ref))
+           (escape InvalidArgument)
 
 apply :: EvalM v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
-apply rec e v vs = condsCP
+apply rec e v vs = choices
    [(fromBL $  isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (fromBL $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
@@ -147,10 +158,10 @@ matchList f ((pat, e):pats) value =
 -- | Match a pattern against a value
 match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
-match (ValuePat lit) v = -- trace ("l: " ++ show lit ++ " v: " ++ show v ++ " lv: " ++ show (injectLit @v lit)) $
-   condCP (fromBL $ eql (injectLit lit) v) (return Map.empty) (escape MatchError)
+match (ValuePat lit) v = 
+   choice (return $ equal (injectLit lit) v) (return Map.empty) (escape MatchError)
 match (PairPat pat1 pat2) v =
-      condCP (fromBL $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
+   choice (return $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
    where matchPair vp =
             Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
                       <$> match pat1 (car vp)

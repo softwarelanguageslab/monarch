@@ -40,3 +40,6 @@ class (Joinable (Symbolic v), Ord i) => SymbolicValue v i | v -> i where
    var :: i -> v -> v
    -- | Remove the symbolic part from the value
    unsymbolic :: v -> v
+   -- | Equality between two symbolic values
+   -- resulting in another symbolic value
+   equal :: v -> v -> v

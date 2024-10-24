@@ -44,20 +44,21 @@ import Data.Maybe (fromMaybe, fromJust)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain.Class
-import Lattice (BottomLattice (bottom))
+import Lattice (BottomLattice (bottom), CP)
 import Lattice.Class (Joinable)
 import qualified Lattice.Class as L
 import Syntax.AST
 import qualified Syntax.Ide as Ide
 import Analysis.Monad.Fix (MonadFixpoint)
 import Data.Kind (Type)
-import Domain (SchemeDomain(Env), NumberDomain (eq))
+import Domain (SchemeDomain(Env))
 import Lattice.Equal (EqualLattice)
 import Domain.Scheme.Actors.Class (Pid(..))
 import Domain.Core.BoolDomain.Class (BoolDomain (true, false, boolTop))
 import Lattice.Split (SplitLattice)
 import Syntax.Span (SpanOf(..))
 import Syntax.FV
+import Analysis.Symbolic.Monad (SymbolicM)
 
 ------------------------------------------------------------
 -- 'Components'
@@ -201,7 +202,8 @@ type EvalM v m =
     SchemeDomainM Exp v m,
     ActorDomain v,
     EqualLattice v,
-    Show v
+    Show v,
+    SymbolicM (Adr v) m v
   )
 
 ------------------------------------------------------------

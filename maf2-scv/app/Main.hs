@@ -11,13 +11,10 @@ import Data.Map (Map)
 import Data.List ( intercalate )
 import Text.Printf
 import qualified Analysis.Symbolic as Symbolic
-import qualified Analysis.Contracts as Contracts
 import Analysis.Scheme.Store (values)
 import Domain.Scheme.Store (EnvAdr(..))
-import Domain.Contract.Symbolic
 
 import System.Environment
-import Data.Either.Extra (fromEither)
 
 exampleFormula :: (Formula String)
 exampleFormula = Conjunction

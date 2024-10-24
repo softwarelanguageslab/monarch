@@ -5,7 +5,7 @@ module Control.Monad.Join (
    MonadJoin,
    MonadJoinable(..),
    MonadBottom(..),
-   cond, 
+   cond,
    conds, 
    condCP, 
    condsCP,
@@ -45,6 +45,10 @@ class (Monad m) => MonadJoinable m where
 class (Monad m) => MonadBottom m where    
    mzero :: m a 
 
+cond :: (MonadJoin m, BoolDomain b, Joinable v) => m b -> m v -> m v -> m v 
+cond cnd csq alt = mjoin t f
+   where t = cnd >>= (\b -> if isTrue b then csq else mzero)
+         f = cnd >>= (\b -> if isFalse b then alt else mzero)
 -- | If value is @Bottom@ results in  @mzero@ computation,
 -- otherwise in a computation returning the wrapped value.
 fromBL :: MonadBottom m => BottomLifted a -> m a
@@ -52,11 +56,6 @@ fromBL Bottom    = mzero
 fromBL (Value v) = return v 
 
 type MonadJoin m = (MonadJoinable m, MonadBottom m)
-
-cond :: (BoolDomain b, MonadJoin m, Joinable v) => m b -> m v -> m v -> m v
-cond cnd csq alt = mjoin t f
-   where t = cnd >>= (\b -> if isTrue b then csq else mzero)
-         f = cnd >>= (\b -> if isFalse b then alt else mzero)
 
 conds :: (BoolDomain b, MonadJoin m, Joinable v) => [(m b, m v)] -> m v -> m v
 conds clauses els = foldr (uncurry cond) els clauses 

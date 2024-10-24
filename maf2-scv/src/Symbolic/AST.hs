@@ -10,6 +10,7 @@ module Symbolic.AST
     isSat,
     isUnsat,
     isUnknown,
+    emptyPC,
     PC,
   )
 where
@@ -17,6 +18,7 @@ where
 import Syntax.Scheme (Span)
 import Data.Set (Set)
 import Data.List (intercalate)
+import qualified Data.Set as Set
 
 -- | A literal as they appear in a source program
 data Literal
@@ -57,13 +59,13 @@ instance Show Literal where
 data Proposition i
   = Variable !i      -- ^ a symbolic variable represent by @i@
   | Function !String -- ^ a built-in SMTlib function
-  | Literal !Literal
+  | Literal  !Literal
   | -- | assertion that the proposition's truth value is "true"
-    IsTrue !(Proposition i)
-  | -- | assertion that the proposition's trught value is "false
-    IsFalse !(Proposition i)
+    IsTrue   !(Proposition i)
+  | -- | assertion that the proposition's truth value is "false
+    IsFalse  !(Proposition i)
   | -- | an atomic predicate
-    Predicate !String ![Proposition i]
+    Predicate   !String ![Proposition i]
   | Application !(Proposition i) ![Proposition i]
   -- | A statement that is always true
   | Tautology
@@ -101,10 +103,13 @@ data Formula i
 -- | The path condition is an unordered disjunction of formulas
 type PC i = Set (Formula i)
 
+emptyPC :: PC i 
+emptyPC = Set.singleton Empty
+
 -- | Make formulas showable
 instance (Show i) => Show (Formula i) where  
-   show (Conjunction f1 f2) = show f1 ++ "/\\" ++ show f2 
-   show (Disjunction f1 f2) = show f1 ++ "\\/" ++ show f2 
+   show (Conjunction f1 f2) = show f1 ++ " /\\ " ++ show f2 
+   show (Disjunction f1 f2) = show f1 ++ " \\/ " ++ show f2 
    show (Implies f1 f2) = show f1 ++ "=>" ++ show f2
    show (Negation f1) = "¬" ++ show f1 
    show (Atomic p) = "(" ++ show p ++ ")"

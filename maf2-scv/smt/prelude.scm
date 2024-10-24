@@ -34,6 +34,21 @@
 (define-fun number?/v ((n V)) V 
             (VBool (or (is-VReal n) (is-VInteger n))))
 
+(define-fun or?/v ((a V) (b V))
+            (ite (true?/v a)
+                 a
+                 (ite (true?/v b)
+                      b
+                      (VBool false))))
+
+(define-fun and?/v ((a V) (b V))
+            (ite (true?/v a)
+                 (ite (true?/v b)
+                      b
+                      (VBool false))
+                 (VBool false)))
+
+
 (define-fun real?/v ((n V)) V
             ; where we expect a real, we also accept an integer
             (VBool (or (is-VInteger n) (is-VReal n))))
@@ -139,6 +154,10 @@
                            (ite (and (is-VReal a) (is-VReal b))
                                 (VBool (>= (unwrap-VReal a) (unwrap-VReal b)))
                                 VError)))))
+
+;; TODO: implement equality for the other datatypes
+(define-fun equal?/v ((a V) (b V)) V 
+            (=/v a b))
 
 
 (define-fun not/v ((a V)) V

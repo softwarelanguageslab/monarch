@@ -26,7 +26,6 @@ module Domain.Scheme.Modular(
 ) where
 
 import Lattice
-import qualified Lattice.BottomLiftedLattice as BottomLifted
 import Domain.Class
 import Domain.Core
 import Domain.Scheme.Class
@@ -41,7 +40,6 @@ import Control.Applicative (Applicative(liftA2))
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad ((>=>))
-import qualified Control.Monad as M
 
 import Data.Kind
 import Data.Singletons
@@ -53,7 +51,8 @@ import Data.List (intercalate)
 import Text.Printf (printf)
 import Lattice.CSetLattice (CSet (CSet))
 import qualified Lattice.CSetLattice as CSet
-import Lattice.BottomLiftedLattice (BottomLifted)
+import Data.Functor.Identity (Identity(..))
+import Control.Monad.Trans.Maybe
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -265,7 +264,9 @@ instance (IsSchemeValue m) => BoolDomain (SchemeVal m) where
             falsish _ _ = False
             ors :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const Bool) kt (Values m) -> Bool -> Bool
             ors _ = HMap.withFacts @(Const Bool) @kt @(Values m) (||)
-
+   
+   or a b = justOrBot $ cond (pure a) (pure a) (pure b)
+   and a b = justOrBot $ cond (pure a) (cond (pure b) (pure b) (pure false)) (pure false)
    boolTop = SchemeVal $ HMap.singleton @BoolKey boolTop
    not v = join t f
       where t = if isTrue  v then inject False else bottom

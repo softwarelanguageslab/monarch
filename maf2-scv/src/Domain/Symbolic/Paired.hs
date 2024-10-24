@@ -126,6 +126,8 @@ instance Eq i => BoolDomain (SymbolicVal exp k i) where
    isTrue  = const False -- unknown status of whether it is fale or true, so neither is
    isFalse = const False
    not (SymbolicVal v) = SymbolicVal $ Predicate "not/v" [v]
+   or  (SymbolicVal a) (SymbolicVal b)  = SymbolicVal $ Predicate "or?/v" [a, b]
+   and (SymbolicVal a) (SymbolicVal b) = SymbolicVal $ Predicate "and?/v"  [a, b]
    boolTop = SymbolicVal Fresh
 
 
@@ -266,7 +268,7 @@ instance (SchemeValue (PairedSymbolic v exp k i), SchemeValue v, ContractDomain 
 -- Symbolic value
 ------------------------------------------------------------
 
-instance (SchemeValue (PairedSymbolic v exp k i), Ord i) => SymbolicValue (PairedSymbolic v exp k i) i where
+instance (EqualLattice v, BottomLattice v, BoolDomain v, SchemeValue (PairedSymbolic v exp k i), Ord i) => SymbolicValue (PairedSymbolic v exp k i) i where
    type Abstract (PairedSymbolic v exp k i) = v 
    type Symbolic (PairedSymbolic v exp k i) = SymbolicVal exp k i
 
@@ -283,6 +285,8 @@ instance (SchemeValue (PairedSymbolic v exp k i), Ord i) => SymbolicValue (Paire
    symbolic (SchemePairedValue (_, SymbolicVal r)) = r
    var idx vlu =
       SchemePairedValue (leftValue vlu, SymbolicVal $ Variable idx)
+   equal a b = 
+      SchemePairedValue (eql (leftValue a) (leftValue b), SymbolicVal (Predicate "equal?/v" [proposition $ rightValue a, proposition $ rightValue b]))
    unsymbolic (SchemePairedValue (v, _)) = 
       SchemePairedValue (v, SymbolicVal Fresh)
 

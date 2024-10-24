@@ -15,6 +15,7 @@ import Lattice (Joinable(..))
 import qualified Data.Set as Set
 import Control.Monad (zipWithM)
 import Analysis.Monad (MonadCache)
+import Debug.Trace (trace, traceShow)
 
 -- | Monad that keeps track of a path condition
 class (Monad m) => MonadPathCondition i m v | m -> v i where
@@ -75,7 +76,6 @@ type SymbolicM i m v = (-- Domain
                         SymbolicValue v i,
                         -- Symbolic execution
                         MonadPathCondition i m v,
-                        MonadIntegerPool m,
                         -- Solving
                         FormulaSolver i m)
 
@@ -90,10 +90,11 @@ type SymbolicM i m v = (-- Domain
 newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
                            deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable, MonadCache)
 
-instance {-# OVERLAPPING #-} (MonadJoin m, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
-   extendPc pc'     = modify $ Set.map (Conjunction (Atomic $ symbolic pc'))
+instance {-# OVERLAPPING #-} (MonadJoin m, Show i, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
+   extendPc pc'     = traceShow (symbolic pc') $ modify $ Set.map (Conjunction (Atomic $ symbolic pc'))
    getPc = get
    integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList
+
 
 instance (MonadPathCondition i m v, Monad (t m), MonadLayer t) => MonadPathCondition i (t m) v where
    extendPc  = upperM . extendPc
