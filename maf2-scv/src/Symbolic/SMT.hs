@@ -10,22 +10,43 @@ import Control.Monad.Reader
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
+import Debug.Trace
+import qualified Data.Set as Set
+import Control.Monad.RWS (MonadWriter)
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Control.Monad.State
+import Control.Monad.Trans.Writer (runWriter)
 
 --------------------------------------------------
 -- Translation monad
 --------------------------------------------------
 
-type TranslateM i m = (MonadReader (Map i String) m, Ord i)
+type TranslateM i m =
+   (MonadReader (Map i String) m,
+    MonadState (Set String) m, Ord i)
 
+
+-- | Lookup the assignment of the given variable 
+-- to a symbolic variable
 symVar :: TranslateM i m => i -> m String
 symVar k = asks (fromJust . Map.lookup k)
+
+-- | Generate a fresh identifier
+fresh :: TranslateM i m => m String
+fresh = do
+   siz <- gets Set.size
+   let vrr = "y" ++ show siz
+   modify (Set.insert vrr)
+   return vrr
+
 
 --------------------------------------------------
 -- Translation
 --------------------------------------------------
 
 prelude :: String
-prelude = $(makeRelativeToProject"./smt/prelude.scm" >>= embedStringFile)
+prelude = $(makeRelativeToProject "./smt/prelude.scm" >>= embedStringFile)
 
 -- | Translate the given proposition into 
 -- an SMTLib formula
@@ -60,7 +81,7 @@ translateAtomic (Application f1 f2) =
    printf "(%s %s)" <$> translateAtomic f1 <*> (unwords <$> mapM translateAtomic f2)
 translateAtomic Bottom = return "(VError)"
 translateAtomic Tautology = return "true"
-translateAtomic Fresh = return "fresh"
+translateAtomic Fresh = fresh
 -- translateAtomic (Choice a b) = 
 --    -- we currently do not have good support for joins 
 --    -- in the symbolic representation, hence we simply return a fresh 
@@ -70,10 +91,10 @@ translateAtomic Fresh = return "fresh"
 -- | Translate a formula to a string compatible
 -- with the SMTLib format.
 translate' :: TranslateM i m => Formula i -> m String
-translate' (Conjunction f1 f2) =
-   printf "(and %s %s)" <$> translate' f1 <*> translate' f2
-translate' (Disjunction f1 f2) =
-   printf "(or %s %s)" <$> translate' f1 <*> translate' f2
+translate' (Conjunction fs) =
+   printf "(and %s)". unwords  <$> mapM translate' (Set.toList fs)
+translate' (Disjunction fs) =
+   printf "(or %s)" . unwords <$> mapM translate' (Set.toList fs)
 translate' (Negation f1) =
    printf "(not %s)" <$> translate' f1
 translate' (Atomic prop) =
@@ -82,10 +103,11 @@ translate' (Implies f1 f2) =
    printf "(=> %s %s)" <$> translate' f1 <*> translate' f2
 translate' Empty = return "true"
 
-translate :: Ord i => Formula i -> (String, Map i String)
-translate formula = (runReader (translate' formula) syms, syms)
-   where vars = variables formula
+translate :: (Show i, Ord i) => Formula i -> (String, Map i String, Set String)
+translate formula = (t, syms, freshs)
+   where vars = traceShowId $ Set.toList $ variables formula
          syms = Map.fromList (zip vars (map (("x" ++) . show) [0..length vars]))
+         (t, freshs) = runState (runReaderT (translate' formula) syms) Set.empty
 
 parseResult :: String -> SolverResult
 parseResult "sat" = Sat

@@ -4,6 +4,8 @@
 module Symbolic.AST
   ( SolverResult (..),
     Formula (..),
+    disjunction,
+    conjunction,
     Proposition (..),
     Literal (..),
     SelectVariable (..),
@@ -92,13 +94,26 @@ instance (Show i) => Show (Proposition i) where
 -- | Inductively defined formulae, these include
 -- conjunction, disjunction negation and atomic formulas.
 data Formula i
-  = Conjunction !(Formula i) !(Formula i)
-  | Disjunction !(Formula i) !(Formula i)
+  = Conjunction !(Set (Formula i))
+  | Disjunction !(Set (Formula i))
   | Implies !(Formula i) !(Formula i)
   | Negation !(Formula i)
   | Atomic !(Proposition i)
   | Empty
   deriving (Eq, Ord)
+
+
+-- | Create a conjunction of two formulas
+conjunction :: Ord i => Formula i -> Formula i -> Formula i 
+conjunction (Conjunction f1) (Conjunction f2) = Conjunction $ Set.union f1 f2
+conjunction f1 (Conjunction f2) = Conjunction $ Set.union (Set.singleton f1) f2
+conjunction f1 f2 = Conjunction $ Set.fromList [f1, f2]
+
+-- | Create a disjunction of two formulas
+disjunction :: Ord i => Formula i -> Formula i -> Formula i 
+disjunction (Disjunction f1) (Disjunction f2) = Disjunction $ Set.union f1 f2
+disjunction f1 (Disjunction f2) = Disjunction $ Set.union (Set.singleton f1) f2
+disjunction f1 f2 = Disjunction $ Set.fromList [f1, f2]
 
 -- | The path condition is an unordered disjunction of formulas
 type PC i = Set (Formula i)
@@ -108,8 +123,8 @@ emptyPC = Set.singleton Empty
 
 -- | Make formulas showable
 instance (Show i) => Show (Formula i) where  
-   show (Conjunction f1 f2) = show f1 ++ " /\\ " ++ show f2 
-   show (Disjunction f1 f2) = show f1 ++ " \\/ " ++ show f2 
+   show (Conjunction fs) = intercalate " /\\ " (map show (Set.toList fs))
+   show (Disjunction fs) = intercalate " \\/" (map show (Set.toList fs))
    show (Implies f1 f2) = show f1 ++ "=>" ++ show f2
    show (Negation f1) = "¬" ++ show f1 
    show (Atomic p) = "(" ++ show p ++ ")"
@@ -117,29 +132,29 @@ instance (Show i) => Show (Formula i) where
 
 -- | Select all variables in the formula
 class SelectVariable v i |  v -> i where
-  variables :: v -> [i]
+  variables :: v -> Set i
 
 -- | Variables can be selected from formulas
-instance SelectVariable (Formula i) i where
-  variables (Conjunction f1 f2) = variables f1 ++ variables f2
-  variables (Disjunction f1 f2) = variables f1 ++ variables f2
+instance Ord i => SelectVariable (Formula i) i where
+  variables (Conjunction fs) = Set.unions (Set.map variables fs)
+  variables (Disjunction fs) = Set.unions (Set.map variables fs)
   variables (Negation f) = variables f
-  variables (Implies f1 f2) = variables f1 ++ variables f2
+  variables (Implies f1 f2) = variables f1 `Set.union` variables f2
   variables (Atomic prop) = variables prop
-  variables Empty = []
+  variables Empty = Set.empty
 
 -- | Variables can be selected from propositions
-instance SelectVariable (Proposition i) i where
-  variables (Variable nam) = pure nam
+instance (Ord i) => SelectVariable (Proposition i) i where
+  variables (Variable nam) = Set.singleton nam
   variables (IsTrue prop) = variables prop
   variables (IsFalse prop) = variables prop
   variables (Predicate _ props) = mconcat (map variables props)
-  variables (Literal _) = []
-  variables Tautology = []
-  variables Fresh = []
-  variables Bottom = []
-  variables (Application p1 p2) = variables p1 ++ mconcat (map variables p2)
-  variables (Function _) = []
+  variables (Literal _) = Set.empty
+  variables Tautology = Set.empty
+  variables Fresh = Set.empty
+  variables Bottom = Set.empty
+  variables (Application p1 p2) = variables p1 `Set.union` mconcat (map variables p2)
+  variables (Function _) = Set.empty
 
 
 -- |  The result of solving an SMT formula.
@@ -160,3 +175,5 @@ isUnsat _ = False
 isUnknown :: SolverResult -> Bool
 isUnknown Unknown = True
 isUnknown _ = False
+
+

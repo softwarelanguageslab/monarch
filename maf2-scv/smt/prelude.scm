@@ -34,21 +34,6 @@
 (define-fun number?/v ((n V)) V 
             (VBool (or (is-VReal n) (is-VInteger n))))
 
-(define-fun or?/v ((a V) (b V))
-            (ite (true?/v a)
-                 a
-                 (ite (true?/v b)
-                      b
-                      (VBool false))))
-
-(define-fun and?/v ((a V) (b V))
-            (ite (true?/v a)
-                 (ite (true?/v b)
-                      b
-                      (VBool false))
-                 (VBool false)))
-
-
 (define-fun real?/v ((n V)) V
             ; where we expect a real, we also accept an integer
             (VBool (or (is-VInteger n) (is-VReal n))))
@@ -167,3 +152,18 @@
             (ite (is-VBool n) (unwrap-bool n) false))
 (define-fun false?/v ((b V)) Bool
             (ite (is-VBool b) (not (unwrap-bool b)) false))
+
+(define-fun or?/v ((a V) (b V)) V
+            (ite (true?/v a)
+                 a
+                 (ite (true?/v b)
+                      b
+                      (VBool false))))
+
+(define-fun and?/v ((a V) (b V)) V
+            (ite (true?/v a)
+                 (ite (true?/v b)
+                      b
+                      (VBool false))
+                 (VBool false)))
+

@@ -23,9 +23,10 @@ import qualified Data.Map as Map
 import Data.Kind (Type, Constraint)
 import Domain.SimpleActor
 import Analysis.Symbolic.Monad (FormulaT)
-import Solver.Z3 (runZ3Solver)
+import Solver.Z3 (runZ3Solver, runZ3SolverWithSetup)
 import Solver
 import Symbolic.AST ( emptyPC )
+import qualified Symbolic.SMT as SMT
 
 ------------------------------------------------------------
 -- Shortcuts
@@ -66,9 +67,9 @@ type IntraT m = MonadStack '[
                FormulaT (EnvAdr K) ActorVlu,
                NonDetT,
                -- JoinT,
-               CacheT,
+               CacheT
                -- Symbolic execution
-               SymbolicStoreT (EnvAdr K) ActorVlu
+               -- SymbolicStoreT (EnvAdr K) ActorVlu
             ] m
 
 -- TODO: group some constraint into a constraint alias for ModX
@@ -90,12 +91,12 @@ type MonadInter m =
 
 intra :: forall m . MonadInter m
  => ActorCmp -> m ()
-intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (symbolicStore (eval @ActorVlu)) cmp
+intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) ((eval @ActorVlu)) cmp
           & runAlloc @Ide @K @(EnvAdr K) EnvAdr
           & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
           & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
           & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
-          & runWithSymbolicStore
+          -- & runWithSymbolicStore
           & runIntraAnalysis cmp
 
 initialEnv :: Env K
@@ -123,5 +124,5 @@ analyze exp = do
             & runWithDependencyTracking @ActorCmp @(StrAdrE Exp K)
             & runWithDependencyTracking @ActorCmp @ActorRef
             & runWithWorkList @[_]
-            & runZ3Solver
+            & runZ3SolverWithSetup SMT.prelude
       return ((((), sto), mb), mapping)

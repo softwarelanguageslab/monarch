@@ -50,10 +50,10 @@ atom2formula (Atom a) = Formula.Atomic a
 atom2formula (Negation a) = Formula.Negation (Formula.Atomic a)
 
 -- | Translate a formula in normal form to a regular formula
-nf2formula :: NormalFormFormula i -> Formula.Formula i
+nf2formula :: Ord i => NormalFormFormula i -> Formula.Formula i
 nf2formula (Conjunction a Empty) = atom2formula a
 nf2formula (Conjunction a nf) =
-   Formula.Conjunction (atom2formula a) (nf2formula nf)
+   Formula.conjunction (atom2formula a) (nf2formula nf)
 nf2formula Empty = Formula.Empty
 
 -- | Translate a regular formula to normal form. 
@@ -75,13 +75,13 @@ formula2nf (Formula.Atomic a) =
 formula2nf Formula.Empty = Empty
 formula2nf (Formula.Negation (Formula.Atomic a)) =
    singleton (Negation a)
-formula2nf (Formula.Conjunction f1 f2) =
-   merge (formula2nf f1) (formula2nf f2)
+formula2nf (Formula.Conjunction fs) =
+   foldr1 merge (map formula2nf (Set.toList fs))
 formula2nf (Formula.Negation _) =
    error "negations can only occur at the atom level"
 formula2nf (Formula.Implies _ _) =
    error "implications cannot be translated into the normal form"
-formula2nf (Formula.Disjunction _ _) =
+formula2nf (Formula.Disjunction _) =
    error "disjunctions cannot be translated into the normal form"
 
 -- | Is the second formula entailed by the first formula, if so, the second 
@@ -103,7 +103,7 @@ subsumes = flip leq
 joinNF :: Ord i => FormulaSolver i m => NormalFormFormula i -> NormalFormFormula i -> m (NormalFormFormula i)
 joinNF p q = fmap fromAtoms r
    where as = Set.union (atoms p) (atoms q)
-         c  = Formula.Disjunction (nf2formula p) (nf2formula q)
+         c  = Formula.disjunction (nf2formula p) (nf2formula q)
          r  = foldM (\s a -> ifM (leq c (nf2formula (fromAtoms (Set.insert a s))))
                                  (return $ Set.insert a s)
                                  (return s))

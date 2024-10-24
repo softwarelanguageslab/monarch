@@ -1,5 +1,5 @@
 -- | The Z3 solver
-module Solver.Z3(Z3Solver, runZ3Solver)  where
+module Solver.Z3(Z3Solver, runZ3Solver, runZ3SolverWithSetup)  where
 
 import System.Process
 import System.IO
@@ -44,7 +44,7 @@ spawnZ3 setupCode' = do
 --
 -- Where the handle to become inactive (due to the process being killed)
 -- the Z3 process is spawned again and its setup code reevaluted.
-newtype Z3Solver i a = Z3Solver (StateT (Maybe Z3SolverState) IO a)
+newtype Z3Solver i a = Z3Solver  { getZ3Solver :: StateT (Maybe Z3SolverState) IO a }
                         deriving (Applicative, Functor, Monad, MonadState (Maybe Z3SolverState))
 
 -- | Terminate the current instance of the solver
@@ -101,8 +101,11 @@ restoreCheckpoint =
 runZ3Solver :: Z3Solver i a -> IO a
 runZ3Solver (Z3Solver m) = evalStateT m Nothing
 
+runZ3SolverWithSetup :: Show i => Ord i => String -> Z3Solver i a -> IO a
+runZ3SolverWithSetup setupCode' m = evalStateT (getZ3Solver $ setup setupCode' >> m) Nothing
+
 -- TODO: ShowableVariable is no longer used remove
-instance {-# OVERLAPPING #-} (Ord i) => FormulaSolver i (Z3Solver i) where
+instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) where
    setup setupCode' = do
       spawned <- gets isJust
       -- if there is already an active instance of Z3 
@@ -119,9 +122,10 @@ instance {-# OVERLAPPING #-} (Ord i) => FormulaSolver i (Z3Solver i) where
    solve script   = do
       restoreCheckpoint
       -- Declare all variables as constants
-      let (translatedScript, names) = translate script
+      let (translatedScript, names, freshs) = translate script
       -- evaluate the mall in the solver
       mapM_ (eval . printf "(declare-const %s V)" ) names
+      mapM_ (eval . printf "(declare-const %s V)" ) freshs
       -- Evaluate all the assertions, and ignore any errors
       _ <- eval (printf "(assert %s)" translatedScript)
       -- Check whether the model is satisfiable

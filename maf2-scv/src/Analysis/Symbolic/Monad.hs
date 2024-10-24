@@ -15,7 +15,7 @@ import Lattice (Joinable(..))
 import qualified Data.Set as Set
 import Control.Monad (zipWithM)
 import Analysis.Monad (MonadCache)
-import Debug.Trace (trace, traceShow)
+import Debug.Trace (traceShow)
 
 -- | Monad that keeps track of a path condition
 class (Monad m) => MonadPathCondition i m v | m -> v i where
@@ -51,11 +51,11 @@ choice mv mcsq malt = mjoin t f
          --  executed.
          checkTrue v
             | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
-            | isTrue  v = extendPc (assertTrue v)  >> ifFeasible mcsq
+            | isTrue  v = extendPc (assertTrue v) >> ifFeasible mcsq
             | otherwise = mzero
          checkFalse v
             | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
-            | isFalse v = extendPc (assertFalse v)  >> ifFeasible malt
+            | isFalse v = extendPc (assertFalse v) >> ifFeasible malt
             | otherwise = mzero
 
 -- | Same as `conds` but keeps track of path conditions
@@ -91,7 +91,7 @@ newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
                            deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable, MonadCache)
 
 instance {-# OVERLAPPING #-} (MonadJoin m, Show i, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
-   extendPc pc'     = traceShow (symbolic pc') $ modify $ Set.map (Conjunction (Atomic $ symbolic pc'))
+   extendPc pc'     = traceShow (symbolic pc') $ modify $ Set.map (conjunction (Atomic $ symbolic pc'))
    getPc = get
    integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList
 
