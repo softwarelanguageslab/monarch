@@ -4,5 +4,5 @@
                1
                (* x (fac (- x 1)))))))
 
-  (fac 5))
+  (fac (fresh (random 42))))
 

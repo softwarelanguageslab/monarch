@@ -51,8 +51,6 @@ import Data.List (intercalate)
 import Text.Printf (printf)
 import Lattice.CSetLattice (CSet (CSet))
 import qualified Lattice.CSetLattice as CSet
-import Data.Functor.Identity (Identity(..))
-import Control.Monad.Trans.Maybe
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -345,6 +343,7 @@ instance (IsSchemeValue m) => NumberDomain (SchemeVal m) where
       where select :: forall (kt :: SchemeKey) schemeM . (AbstractM schemeM) => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
             select SIntKey v = SchemeVal <$> HMap.singleton @IntKey <$> random v
             select SRealKey v = SchemeVal <$> HMap.singleton @RealKey <$> random v
+            select _ _ = escape WrongType
    plus  = coerceNum plus plus
    minus = coerceNum minus minus
    times = coerceNum times times

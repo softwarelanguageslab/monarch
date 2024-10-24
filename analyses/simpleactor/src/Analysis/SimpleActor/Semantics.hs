@@ -45,7 +45,7 @@ import Analysis.Symbolic.Monad (choice, choices)
 -- | Same problem here, we really want to use @eql@
 -- but we cannot do that since a generic boolean 
 -- is required for its implementation.
-import Domain.Symbolic (equal)
+import Domain.Symbolic (equal, var)
 
 ------------------------------------------------------------
 -- Evaluation
@@ -67,7 +67,7 @@ eval' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
    v2 <- mapM (eval' rec) es
    apply rec e v1 v2
-eval' rec (Ite e1 e2 e3 _) = 
+eval' rec (Ite e1 e2 e3 _) =
    choice (eval' rec e1) (eval' rec e2) (eval' rec e3)
 eval' rec s@(Spawn e _) =
    aref <$> spawn @v s (const $ rec (ActorExp e))
@@ -123,8 +123,8 @@ apply rec e v vs = choices
     (fromBL $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
 applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
-applyClosure e (lam@(Lam prs _ _), env) rec vs = 
-   if length prs /= length vs then 
+applyClosure e (lam@(Lam prs _ _), env) rec vs =
+   if length prs /= length vs then
       error "invalid number of arguments"
    else do
       ads <- mapM alloc prs
@@ -153,12 +153,12 @@ matchList :: EvalM v m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
 matchList _ [] _ = escape MatchError
 matchList f ((pat, e):pats) value =
    -- TODO: don't rethrow the error, use `catchOn` for this
-   (match pat value >>= f e) `catchOn` (fromBL . isMatchError, const $ matchList f pats value) 
+   (match pat value >>= f e) `catchOn` (fromBL . isMatchError, const $ matchList f pats value)
 
 -- | Match a pattern against a value
 match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
-match (ValuePat lit) v = 
+match (ValuePat lit) v =
    choice (return $ equal (injectLit lit) v) (return Map.empty) (escape MatchError)
 match (PairPat pat1 pat2) v =
    choice (return $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
@@ -179,29 +179,31 @@ injectLit Nil         = nil
 
 data Primitive v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim v)
 
-newtype SimpleActorPrim v = SimpleActorPrim (forall m . EvalM v m => [v] -> m v)
+newtype SimpleActorPrim v = SimpleActorPrim (forall m . EvalM v m => [v] -> Exp -> m v)
 
 -- | A nullary primitive
-aprim0 :: (forall m . EvalM v m => m v) -> SimpleActorPrim v
+aprim0 :: (forall m . EvalM v m => Exp -> m v) -> SimpleActorPrim v
 aprim0 f = SimpleActorPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall m . EvalM v m => v -> m v) -> SimpleActorPrim v
-aprim1 f = SimpleActorPrim $ \case [v] -> f v
-                                   vs -> escape $ ArityMismatch 1 (length vs)
+aprim1 :: (forall m . EvalM v m => v -> Exp -> m v) -> SimpleActorPrim v
+aprim1 f = SimpleActorPrim $  \case [v] -> f v
+                                    vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall m . EvalM v m => v -> v -> m v) -> SimpleActorPrim v
+aprim2 :: (forall m . EvalM v m => v -> v -> Exp -> m v) -> SimpleActorPrim v
 aprim2 f = SimpleActorPrim $ \case [v1, v2] -> f v1 v2
-                                   vs -> escape $ ArityMismatch 2 (length vs)
+                                   vs -> const $ escape $ ArityMismatch 2 (length vs)
 
 -- | Primitives specific to the simple actor language
 actorPrimitives :: Map String (Primitive v)
 actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
-   ("wait-until-all-finished", aprim0 $ return nil ),
-   ("send^" , aprim2 $ \rcv msg -> trySend rcv msg >> return nil),
-   ("list", aprim0 $ return nil),
-   ("print", aprim1 $ const $ return nil) ]
+   ("wait-until-all-finished", aprim0 $ const $ return nil ),
+   ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
+   ("list", aprim0 $ const $ return nil),
+   -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
+   ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ; return $ var adr v }),
+   ("print", aprim1 $ const $ const $ return nil) ]
 
 -- | Scheme primitives
 schemePrimitives :: Map String (Primitive v)
@@ -217,7 +219,7 @@ lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` sche
 
 runPrimitive :: EvalM v m => Primitive v -> Exp -> [v] -> m v
 runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
-runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = const f
+runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = flip f
 
 -- | Run the functions given as a list in the first argument on the 
 -- second argument until an output is found that is @Just@.

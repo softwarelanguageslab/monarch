@@ -124,5 +124,6 @@ analyze exp = do
             & runWithDependencyTracking @ActorCmp @(StrAdrE Exp K)
             & runWithDependencyTracking @ActorCmp @ActorRef
             & runWithWorkList @[_]
+            & runCachedSolver
             & runZ3SolverWithSetup SMT.prelude
       return ((((), sto), mb), mapping)
