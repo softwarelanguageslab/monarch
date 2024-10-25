@@ -5,7 +5,7 @@
 ;; results in the undesirable property that the constraint
 ;; must be valid for all concrete addresses represented 
 ;; by that abstract address, instead, we want to say
-;; that there should exist a concrete address 
+;; that there should **exist** a concrete address 
 ;; for which the constraint holds.
 ;;
 (letrec
