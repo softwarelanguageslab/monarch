@@ -25,9 +25,9 @@ runMain :: FormulaSolver String m => m SolverResult
 runMain = do
    setup prelude
    loop (10000 :: Int)
-   where loop 1 = solve exampleFormula
+   where loop 1 = solve Map.empty exampleFormula
          loop n = do
-            _ <- solve exampleFormula
+            _ <- solve Map.empty exampleFormula
             loop (n-1)
 
 printSto :: Show k => Map (EnvAdr k) (Symbolic.Vlu k) -> String

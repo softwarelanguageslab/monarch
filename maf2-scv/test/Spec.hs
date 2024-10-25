@@ -2,7 +2,7 @@ import Test.Hspec
 import Control.Monad
 
 import Analysis.Symbolic (K, Vlu, simpleAnalysis)
-import Analysis.Scheme.Prelude (DSto)
+import Analysis.Scheme.Prelude (DSto, AbstractCountM(..))
 import Syntax.Scheme
 
 -- Imports that are needed in the environment 
@@ -13,16 +13,28 @@ import Solver
 import qualified Symbolic.AST as F
 import qualified Symbolic.SMT as SMT
 import qualified Domain.Symbolic.Path as P
+import Control.Monad.Layer
+import Control.Monad.Identity (IdentityT (runIdentityT))
+import qualified Data.Map as Map
 
 type Sto = DSto K (Vlu K)
 type Res = Vlu K
+
+newtype EmptyCountT i m a = EmptyCountT (IdentityT m a) 
+                        deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer)
+
+runEmptyCountT :: EmptyCountT i m a -> m a
+runEmptyCountT (EmptyCountT m) = runIdentityT m
+
+instance (Monad m) => AbstractCountM i (EmptyCountT i m) where 
+   count = return Map.empty
 
 runAnalysisAndTest :: (Res -> Sto -> IO a) -> String -> IO a
 runAnalysisAndTest f =
    readFile >=> (either error return . parseString') >=> simpleAnalysis >=> uncurry f
 
-withSolver :: Z3Solver String a -> IO a
-withSolver ma = runZ3Solver (setup SMT.prelude >> ma)
+withSolver :: EmptyCountT i (Z3Solver String) a -> IO a
+withSolver ma = runZ3Solver $ runEmptyCountT (setup SMT.prelude >> ma)
 
 formulaJoinTests :: Spec
 formulaJoinTests =
