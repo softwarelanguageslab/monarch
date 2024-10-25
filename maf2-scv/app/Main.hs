@@ -17,7 +17,7 @@ import Domain.Scheme.Store (EnvAdr(..))
 import System.Environment
 
 exampleFormula :: (Formula String)
-exampleFormula = Conjunction
+exampleFormula = conjunction
      (Atomic $ IsTrue (Predicate "string?/v" [Function "x0"]))
      (Atomic $ IsFalse (Predicate "string?/v" [Function "x0"]))
 

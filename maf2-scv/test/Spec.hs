@@ -1,8 +1,5 @@
 import Test.Hspec
-import Test.Hspec.Core.Spec
-import TH
 import Control.Monad
-import Domain
 
 import Analysis.Symbolic (K, Vlu, simpleAnalysis)
 import Analysis.Scheme.Prelude (DSto)
@@ -10,10 +7,6 @@ import Syntax.Scheme
 
 -- Imports that are needed in the environment 
 -- for running the tests
-import Domain.Scheme.Modular
-import Lattice.ConstantPropagationLattice (CP)
-import Domain.Scheme.Derived.Pair
-import Domain.Symbolic.Class
 
 import Solver.Z3
 import Solver
@@ -37,7 +30,7 @@ formulaJoinTests =
       it "should keep common constraints across paths" $
          let c1 = F.Atomic (F.IsTrue (F.Predicate "number?/v" [F.Variable "x0"]))
              c2 = F.Atomic (F.IsFalse (F.Predicate "real?/v" [F.Variable "x0"]))
-             c3 = F.Conjunction c1 c2
+             c3 = F.conjunction c1 c2
          in do
             result <- withSolver $ P.joinNF (P.formula2nf c1) (P.formula2nf c3)
             result `shouldBe` P.Conjunction (P.Atom (F.IsTrue (F.Predicate "number?/v" [F.Variable "x0"]))) P.Empty
