@@ -1,0 +1,17 @@
+solved script (and (true?/v (=/v x0 (VInteger 0))) (true?/v (or?/v (VBool true) (VBool false))) (false?/v (=/v x0 (VInteger 0))) (false?/v (or?/v (VBool false) (VBool false))) true) with result Unsat
+solved script (and (true?/v (or?/v (VBool true) (VBool false))) (false?/v (=/v x0 (VInteger 0))) (false?/v (or?/v (VBool false) (VBool false))) true) with result Sat
+solved script (and (true?/v (=/v x0 (VInteger 0))) (true?/v (or?/v (VBool true) (VBool false))) (false?/v (or?/v (VBool false) (VBool false))) true) with result Sat
+solved script (and (true?/v (or?/v (VBool true) (VBool false))) (false?/v (=/v x0 (VInteger 0))) (false?/v (or?/v (VBool false) (VBool false))) true) with result Sat
+             EnvAdr actor?:10:10 [] | (fromList ["(lam (k j) (begin (lam (v) (begin v))))"], fresh)
+                EnvAdr any?:1:10 [] | (fromList ["(lam (v) (begin True))"], fresh)
+                EnvAdr fac:12:12 [] | (fromList ["(lam (x) (begin (if (= x 0) 1 (* x (fac (- x 1))))))"], fresh)
+              EnvAdr member:3:10 [] | (fromList ["(lam (v lst) (begin (begin (match lst [(ValuePat '(),False),(PairPat (IdePat v1:8:32) (IdePat vs:8:35),(if (eq? v v1) True (member v vs)))]))))"], fresh)
+                EnvAdr meta:2:10 [] | (fromList ["(lam (v) (begin v))"], fresh)
+           EnvAdr nonzero?:11:10 [] | (fromList ["(lam (v) (begin (not (= v 0))))"], fresh)
+     EnvAdr unconstrained/c:9:10 [] | (BoolKey ↦ Constant False, fresh)
+                  EnvAdr x:12:26 [] | (IntKey ↦ Top, fresh)
+=====
+     12:17@SExpParser | (Value (IntKey ↦ Constant 1, 1),fromList [(true?/v(=/v(EnvAdr x:12:26 [],0))) /\ (true?/v(or?/v(True,False))) /\ (false?/v(or?/v(False,False))) /\ ϵ])
+       1:1@SExpParser | (Value (IntKey ↦ Constant 1, 1),fromList [(true?/v(=/v(EnvAdr x:12:26 [],0))) /\ (true?/v(or?/v(True,False))) /\ (false?/v(or?/v(False,False))) /\ ϵ])
+=====
+

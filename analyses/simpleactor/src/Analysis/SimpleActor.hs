@@ -12,7 +12,6 @@ import Analysis.Monad hiding (eval)
 import Syntax.AST
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Monad.Fix
-import Analysis.Symbolic.Monad.SymbolicStore
 import Control.Monad.Escape
 import Data.Set (Set)
 import Domain.Scheme.Actors (Pid(..))
@@ -23,7 +22,7 @@ import qualified Data.Map as Map
 import Data.Kind (Type, Constraint)
 import Domain.SimpleActor
 import Analysis.Symbolic.Monad (FormulaT)
-import Solver.Z3 (runZ3Solver, runZ3SolverWithSetup)
+import Solver.Z3 (runZ3SolverWithSetup)
 import Solver
 import Symbolic.AST ( emptyPC )
 import qualified Symbolic.SMT as SMT
@@ -91,7 +90,7 @@ type MonadInter m =
 
 intra :: forall m . MonadInter m
  => ActorCmp -> m ()
-intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) ((eval @ActorVlu)) cmp
+intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (eval @ActorVlu) cmp
           & runAlloc @Ide @K @(EnvAdr K) EnvAdr
           & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
           & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
