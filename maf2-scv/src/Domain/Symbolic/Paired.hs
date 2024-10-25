@@ -31,10 +31,12 @@ instance Show i => Show (SymbolicVal exp k i) where
 -- Lattice instances
 --------------------------------------------------
 
-instance Joinable (SymbolicVal exp k i) where
+instance (Eq i) => Joinable (SymbolicVal exp k i) where
    join (SymbolicVal Bottom) (SymbolicVal p2) = SymbolicVal p2
    join (SymbolicVal p1) (SymbolicVal Bottom) = SymbolicVal p1
-   join (SymbolicVal p1) (SymbolicVal p2) = SymbolicVal Fresh -- TODO: maybe "Choice"? 
+   join (SymbolicVal p1) (SymbolicVal p2) 
+      | p1 == p2 = SymbolicVal p1 
+      | otherwise = SymbolicVal Fresh 
 
 instance BottomLattice (SymbolicVal exp k n) where
    bottom = SymbolicVal Bottom

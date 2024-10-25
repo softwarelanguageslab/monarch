@@ -14,7 +14,7 @@ import Lattice (Joinable(..))
 
 import qualified Data.Set as Set
 import Control.Monad (zipWithM)
-import Analysis.Monad (MonadCache)
+import Analysis.Monad (MonadCache, AbstractCountM)
 import Debug.Trace (traceShow)
 
 -- | Monad that keeps track of a path condition
@@ -27,7 +27,7 @@ class (Monad m) => MonadPathCondition i m v | m -> v i where
    integrate :: PC i -> m ()
 
 -- | Choose between the two branches non-deterministically
-choice :: (MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b) => m v -> m b -> m b -> m b
+choice :: (AbstractCountM i m, MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b) => m v -> m b -> m b -> m b
 choice mv mcsq malt = mjoin t f
    where t = mv >>= checkTrue
          f = mv >>= checkFalse
@@ -59,14 +59,14 @@ choice mv mcsq malt = mjoin t f
             | otherwise = mzero
 
 -- | Same as `conds` but keeps track of path conditions
-choices :: (MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b)
+choices :: (AbstractCountM i m, MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b)
         => [(m v, m b)] -> m b -> m b
 choices clauses els =
    foldr (uncurry choice) els clauses
 
 -- | Executes the given action when the path condition is feasible
 -- otherwise returns `mzero`
-ifFeasible :: (MonadJoin m, FormulaSolver i m, MonadPathCondition i m v,  Joinable a) => m a -> m a
+ifFeasible :: (MonadJoin m, FormulaSolver i m, AbstractCountM i m, MonadPathCondition i m v,  Joinable a) => m a -> m a
 ifFeasible ma = do
    pcs <- fmap Set.toList getPc
    mjoins (map (isFeasible >=> (\b -> if b then ma else mzero)) pcs)
@@ -76,6 +76,10 @@ type SymbolicM i m v = (-- Domain
                         SymbolicValue v i,
                         -- Symbolic execution
                         MonadPathCondition i m v,
+                        -- Abstract counting, needed 
+                        -- for correctly abstracting 
+                        -- symbolic variables.
+                        AbstractCountM i m,
                         -- Solving
                         FormulaSolver i m)
 
@@ -90,7 +94,7 @@ type SymbolicM i m v = (-- Domain
 newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
                            deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable, MonadCache)
 
-instance {-# OVERLAPPING #-} (MonadJoin m, Show i, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
+instance {-# OVERLAPPING #-} (AbstractCountM i m, MonadJoin m, Show i, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
    extendPc pc'     = traceShow (symbolic pc') $ modify $ Set.map (conjunction (Atomic $ symbolic pc'))
    getPc = get
    integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList

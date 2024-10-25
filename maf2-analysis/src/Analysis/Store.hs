@@ -3,6 +3,7 @@ module Analysis.Store(Store(..), CountingMap, store, restrictSto) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Domain.Core.AbstractCount
 import Lattice
 
 import Data.Set (Set)
@@ -31,7 +32,6 @@ instance (Joinable v, Ord a) => Store (Map a v) a v where
    -- a simple store only supports weak updates
    updateStoWith _ fw = Map.alter (Just . maybe (error "updating at a non-existent address") fw)
 
-
 -- | Restrict the store to the given addresses only
 -- TODO: maybe this should be in the typeclass itself?
 restrictSto :: (Ord a) => Set a -> Map a v -> Map a v
@@ -42,28 +42,6 @@ restrictSto = flip Map.restrictKeys
 --- Abstract counting
 ---
 
-data AbstractCount = CountZero | CountOne | CountInf
-   deriving (Eq, Ord, Show)
-
-inc :: AbstractCount -> AbstractCount
-inc CountZero = CountOne
-inc _ = CountInf
-
-instance Joinable AbstractCount where
-   join CountZero a = a
-   join CountOne CountInf = CountInf
-   join CountOne _ = CountOne 
-   join CountInf _ = CountInf 
-
-instance BottomLattice AbstractCount where
-   bottom = CountZero 
-
-instance PartialOrder AbstractCount where
-   leq CountZero _ = True
-   leq _ CountZero = False
-   leq _ CountInf  = True 
-   leq CountInf _  = False 
-   leq _ _         = True 
 
 newtype CountingMap a v = CountingMap { store :: Map a (v, AbstractCount) }
    deriving (Eq, Ord, Joinable, BottomLattice)

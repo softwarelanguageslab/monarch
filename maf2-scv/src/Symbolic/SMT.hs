@@ -10,13 +10,11 @@ import Control.Monad.Reader
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
-import Debug.Trace
 import qualified Data.Set as Set
-import Control.Monad.RWS (MonadWriter)
 import Data.Set (Set)
-import qualified Data.Set as Set
 import Control.Monad.State
-import Control.Monad.Trans.Writer (runWriter)
+import Domain.Core.AbstractCount (AbstractCount(..))
+import Lattice.Class (leq, justOrBot)
 
 --------------------------------------------------
 -- Translation monad
@@ -30,7 +28,7 @@ type TranslateM i m =
 -- | Lookup the assignment of the given variable 
 -- to a symbolic variable
 symVar :: TranslateM i m => i -> m String
-symVar k = asks (fromJust . Map.lookup k)
+symVar k = maybe fresh return =<< asks (Map.lookup k)
 
 -- | Generate a fresh identifier
 fresh :: TranslateM i m => m String
@@ -103,9 +101,17 @@ translate' (Implies f1 f2) =
    printf "(=> %s %s)" <$> translate' f1 <*> translate' f2
 translate' Empty = return "true"
 
-translate :: (Show i, Ord i) => Formula i -> (String, Map i String, Set String)
-translate formula = (t, syms, freshs)
-   where vars = traceShowId $ Set.toList $ variables formula
+-- | Translate the given formula while accounting for the 
+-- abstract count of each of the symbolic variables in the 
+-- formula. Variables with abstract count > 1 are translated
+-- to fresh variables (i.e., free variables that can not 
+-- occur in other constraints), variables with an abstract 
+-- count of exactly one are translated to regular variables 
+-- and can occur in multiple constraints.
+translate :: (Ord i) => Map i AbstractCount -> Formula i -> (String, Map i String, Set String)
+translate count formula = (t, syms, freshs)
+   where vars = filter countOne $ Set.toList $ variables formula
+         countOne var = leq (justOrBot $ Map.lookup var count) CountOne
          syms = Map.fromList (zip vars (map (("x" ++) . show) [0..length vars]))
          (t, freshs) = runState (runReaderT (translate' formula) syms) Set.empty
 

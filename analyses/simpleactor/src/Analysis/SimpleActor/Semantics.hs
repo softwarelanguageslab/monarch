@@ -17,7 +17,6 @@ import Analysis.SimpleActor.Monad
 
 import Control.Monad.Escape
 import Control.Monad.Join
-import Lattice (EqualLattice(..))
 import Data.Functor (($>))
 
 import Analysis.Monad.Allocation
@@ -46,6 +45,8 @@ import Analysis.Symbolic.Monad (choice, choices)
 -- but we cannot do that since a generic boolean 
 -- is required for its implementation.
 import Domain.Symbolic (equal, var)
+import Analysis.Store (Store)
+import qualified Analysis.Store as Store
 
 ------------------------------------------------------------
 -- Evaluation
@@ -202,7 +203,7 @@ actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
    ("list", aprim0 $ const $ return nil),
    -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
-   ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ; return $ var adr v }),
+   ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeAdr adr (var adr v) ; return $ var adr v }),
    ("print", aprim1 $ const $ const $ return nil) ]
 
 -- | Scheme primitives
@@ -227,5 +228,5 @@ untilJust :: [a -> Maybe b] -> a -> Maybe b
 untilJust fs a = foldl (`maybe` Just) Nothing (fmap ($ a) fs)
 
 -- | Compute a store containing the set of primitives
-initialSto :: (SchemeDomain v) => [String] -> (String -> Adr v) ->  Map (Adr v) v
-initialSto prms allocPrm = Map.fromList $ fmap (\nam -> (allocPrm nam, prim nam)) prms
+initialSto :: (Store s (Adr v) v, SchemeDomain v) => [String] -> (String -> Adr v) ->  s
+initialSto prms allocPrm = Store.from $ fmap (\nam -> (allocPrm nam, prim nam)) prms

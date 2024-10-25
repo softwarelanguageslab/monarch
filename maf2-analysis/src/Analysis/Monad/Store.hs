@@ -7,6 +7,7 @@ module Analysis.Monad.Store (
     StoreM'(..),
     StoreT(..),
     StoreT',
+    AbstractCountM(..),
     StackStoreT,
     runStoreT,
     runWithStore,
@@ -37,13 +38,15 @@ import Analysis.Monad.Cache
 import Control.Monad.Lift
 
 import Control.Monad.Layer
-import Analysis.Store (Store)
+import Analysis.Store (Store, CountingMap)
+import qualified Analysis.Store as Store
 import Data.TypeLevel.AssocList
 import Data.Kind
 import Domain (Address)
 import Control.Monad.Join
 import Data.Maybe (fromJust, fromMaybe, isJust)
 import Control.Monad.Cond (ifM)
+import Domain.Core.AbstractCount (AbstractCount)
 
 ---
 --- StoreM typeclass
@@ -72,7 +75,7 @@ instance {-# OVERLAPPABLE #-} (Monad (t m), StoreM adr v m, MonadLayer t) => Sto
    hasAdr = upperM . hasAdr
 
 updateAndCheck :: (Eq v, StoreM a v m) => a -> (a -> m ()) -> m Bool
-updateAndCheck a f = do ifM (hasAdr a) 
+updateAndCheck a f = do ifM (hasAdr a)
                             (do old <- lookupAdr a
                                 f a
                                 new <- lookupAdr a
@@ -113,12 +116,24 @@ store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 
 -- | Like StoreM, but also allows retrieving the current store
 class Monad m => StoreM' s a v m | m -> s a v where
-   currentStore :: m s 
+   currentStore :: m s
    putStore     :: s -> m ()
 
 instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, StoreM' s adr v m) => StoreM' s adr v (t m) where
    currentStore = upperM currentStore
-   putStore = upperM . putStore 
+   putStore = upperM . putStore
+
+--
+-- AbstractCountM typeclass 
+--
+
+-- | Keeps track of the abstract count for each variable 
+class AbstractCountM adr m | m -> adr where
+   count :: m (Map adr AbstractCount)
+
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, AbstractCountM adr m) => AbstractCountM adr (t m) where
+   count = upperM count
+
 
 ---
 --- StoreT monad transformer 
@@ -135,8 +150,11 @@ instance {-# OVERLAPPING #-} (Monad m, Store s a v, Address a) => StoreM a v (St
    hasAdr adr = gets (isJust . Store.lookupSto adr)
 
 instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM' s a v (StoreT s a v m) where
-   currentStore = get 
-   putStore = put 
+   currentStore = get
+   putStore = put
+
+instance (Monad m) => AbstractCountM adr (StoreT (CountingMap adr v) adr v m) where
+  count = gets (fmap snd . Store.store)
 
 runStoreT :: forall s adr vlu m a . s -> StoreT s adr vlu m a -> m (a, s)
 runStoreT initialSto = flip runStateT initialSto . getStoreT
@@ -173,7 +191,7 @@ runStoreT' initial = flip runStateT initial . getStoreT'
 -- by the mapping 'stores'
 --
 
-type family StackStoreT stores m where 
+type family StackStoreT stores m where
    StackStoreT '[] m = m
    StackStoreT (adr ::-> v ': r) m = StoreT' adr v (StackStoreT r m)
 

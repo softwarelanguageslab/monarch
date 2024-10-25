@@ -16,6 +16,7 @@ import qualified Symbolic.AST as Formula
 import Solver
 import Control.Monad (foldM)
 import Control.Monad.Extra (ifM)
+import Analysis.Monad.Store (AbstractCountM)
 
 -- | Normal form used for representing path constraints,
 -- it is a more restricted form of CNF that disallows disjunctions
@@ -86,11 +87,11 @@ formula2nf (Formula.Disjunction _) =
 
 -- | Is the second formula entailed by the first formula, if so, the second 
 -- formula is more general than the first and therefore 'bigger'.
-leq :: FormulaSolver i m => Formula.Formula i -> Formula.Formula i -> m Bool
+leq :: (AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m Bool
 leq f1 f2 = isCertainlyUnfeasible (Formula.Negation (Formula.Implies f1 f2))
 
 -- | Subsumption is the same as `leq` but flipped.
-subsumes :: FormulaSolver i m => Formula.Formula i -> Formula.Formula i -> m Bool
+subsumes :: (AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m Bool
 subsumes = flip leq
 
 -- | The least upper bound of two path constraints is the 
@@ -100,7 +101,7 @@ subsumes = flip leq
 --
 -- let r = join p q for path constraints p and q 
 -- such that p \/ q |= r
-joinNF :: Ord i => FormulaSolver i m => NormalFormFormula i -> NormalFormFormula i -> m (NormalFormFormula i)
+joinNF :: (Ord i, AbstractCountM i m, FormulaSolver i m) => NormalFormFormula i -> NormalFormFormula i -> m (NormalFormFormula i)
 joinNF p q = fmap fromAtoms r
    where as = Set.union (atoms p) (atoms q)
          c  = Formula.disjunction (nf2formula p) (nf2formula q)
@@ -112,5 +113,5 @@ joinNF p q = fmap fromAtoms r
 
 -- | Joins two formulas together by converting them to normal form 
 -- and joining them using @joinNF@.
-join :: (Ord i, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m (Formula.Formula i) 
+join :: (Ord i, AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m (Formula.Formula i) 
 join p1 p2 = nf2formula <$> joinNF (formula2nf p1) (formula2nf p2)

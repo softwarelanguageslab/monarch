@@ -26,6 +26,8 @@ import Solver.Z3 (runZ3SolverWithSetup)
 import Solver
 import Symbolic.AST ( emptyPC )
 import qualified Symbolic.SMT as SMT
+import Analysis.Store (CountingMap)
+import Analysis.Monad (AbstractCountM)
 
 ------------------------------------------------------------
 -- Shortcuts
@@ -38,7 +40,7 @@ type ActorEnv = Map String (EnvAdr K)
 type ActorCmp = Key (IntraT Identity) Cmp
 type ActorRes = Val (IntraT Identity) ActorVlu
 type ActorMai = Map ActorRef (Set ActorVlu)
-type ActorSto = Map (EnvAdr K) ActorVlu
+type ActorSto = CountingMap (EnvAdr K) ActorVlu
 
 type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Constraint where
       DependsOn m cmp '[] = ()
@@ -82,6 +84,7 @@ type MonadInter m =
         StoreM (VecAdrE Exp K) (VecDom ActorVlu) m,
         StoreM (StrAdrE Exp K) (StrDom ActorVlu) m,
         MonadMailbox ActorVlu m,
+        AbstractCountM (EnvAdr K) m,
         FormulaSolver (EnvAdr K) m)
 
 ------------------------------------------------------------
@@ -104,7 +107,7 @@ initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
 inter :: MonadInter m => Exp -> m ()
 inter exp = lfp intra ((((((ActorExp exp, initialEnv), Map.empty), []), False), Pid exp []), Symbolic.AST.emptyPC)
 
-analyze :: Exp -> IO ((((), ActorSto), ActorMai), Map ActorCmp (Unlist ActorRes))
+analyze :: Exp -> IO ((((), ActorSto), ActorMai), Map ActorCmp (ActorRes))
 analyze exp = do
       (((((((), sto), _), _), _), mb), mapping) <-
               inter exp
@@ -113,8 +116,8 @@ analyze exp = do
             & runWithStore @(Map (StrAdrE Exp K) (StrDom ActorVlu))
             & runWithStore @(Map (VecAdrE Exp K) (VecDom ActorVlu))
             & runWithMailboxT @ActorVlu
-            -- & runWithMapping @ActorCmp @ActorRes
-            & runWithJoinMap @ActorCmp @(Unlist ActorRes)
+            & runWithMapping @ActorCmp @ActorRes
+            -- & runWithJoinMap @ActorCmp @(Unlist ActorRes)
             & runWithComponentTracking @ActorCmp
             & runWithDependencyTracking @ActorCmp @ActorCmp
             & runWithDependencyTracking @ActorCmp @(EnvAdr K)

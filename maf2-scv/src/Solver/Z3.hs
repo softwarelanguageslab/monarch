@@ -119,10 +119,10 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       -- beginning of a solve script
       checkpoint
 
-   solve script   = do
+   solve count script   = do
       restoreCheckpoint
       -- Declare all variables as constants
-      let (translatedScript, names, freshs) = translate script
+      let (translatedScript, names, freshs) = translate count script
       -- evaluate the mall in the solver
       mapM_ (eval . printf "(declare-const %s V)" ) names
       mapM_ (eval . printf "(declare-const %s V)" ) freshs

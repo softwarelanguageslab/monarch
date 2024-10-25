@@ -37,6 +37,7 @@ library
       Domain
       Domain.Class
       Domain.Core
+      Domain.Core.AbstractCount
       Domain.Core.BoolDomain
       Domain.Core.BoolDomain.BottomLifted
       Domain.Core.BoolDomain.Class

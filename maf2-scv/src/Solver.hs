@@ -7,6 +7,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Monad.State
 import Control.Monad.Layer
+import Domain.Core.AbstractCount (AbstractCount(..))
+import Analysis.Monad.Store (AbstractCountM(..))
 
 
 class (Monad m) => FormulaSolver i m | m -> i where
@@ -20,20 +22,20 @@ class (Monad m) => FormulaSolver i m | m -> i where
    -- | Solve the given SMTLib script. Returns whether
    -- there is some model for the given assertions in the SMTLib 
    -- script by outputting SMTLib compatible output.
-   solve :: Formula i -> m SolverResult
+   solve :: Map i AbstractCount -> Formula i -> m SolverResult
    -- | Returns true whenever the formula is feasible (sat or unknown)
-   isFeasible :: Formula i -> m Bool
+   isFeasible :: AbstractCountM i m => Formula i -> m Bool
    isFeasible formula = do
-      result <- solve formula
+      result <- count >>= flip solve formula
       return (isSat result || isUnknown result)
    -- | Returns true whenever the formula is certainly feasible
-   isCertainlyFeasible :: Formula i -> m Bool
+   isCertainlyFeasible :: AbstractCountM i m => Formula i -> m Bool
    isCertainlyFeasible formula =
-      fmap isSat (solve formula)
+      fmap isSat (count >>= flip solve formula)
    -- | Returns true whenever the formule is certainly unfeasible
-   isCertainlyUnfeasible :: Formula i -> m Bool
+   isCertainlyUnfeasible :: AbstractCountM i m => Formula i -> m Bool
    isCertainlyUnfeasible formula =
-      fmap isUnsat (solve formula)
+      fmap isUnsat (count >>= flip solve formula)
 
 --------------------------------------------------
 -- Caching Monad
@@ -75,9 +77,9 @@ instance {-# OVERLAPPING #-} (Ord i, FormulaSolver i m) => FormulaSolver i (Cach
    -- to solve a formula it is first searched for in the 
    -- cache, if found the previous result is returned
    -- otherwise it is passed to the underlying solver
-   solve formula = do
+   solve count' formula = do
       cacheHit <- lookupCache formula
-      maybe (lift (solve formula) >>= putCache formula) return cacheHit
+      maybe (lift (solve count' formula) >>= putCache formula) return cacheHit
 
 ------------------------------------------------------------
 -- Layering
@@ -85,5 +87,5 @@ instance {-# OVERLAPPING #-} (Ord i, FormulaSolver i m) => FormulaSolver i (Cach
 
 instance (Monad (t m), MonadLayer t, FormulaSolver i m) => FormulaSolver i (t m) where
    setup = upperM . setup
-   solve = upperM . solve
+   solve count' = upperM . solve count'
 
