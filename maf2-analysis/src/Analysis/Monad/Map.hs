@@ -8,7 +8,10 @@ module Analysis.Monad.Map (
     put',
     joinWith',
     runWithMapping,
-    runWithMapping'
+    runWithMapping',
+    runMapT,
+    In(..),
+    Out(..)
 ) where
 
 import Control.Monad.Trans
@@ -20,8 +23,7 @@ import Data.Map ( Map )
 import qualified Data.Map as Map
 import Control.Monad.Trans.State (runStateT)
 import Lattice
-    ( BottomLattice, Joinable(..), Lattice, justOrBot, PartialOrder(..) )
-import Control.Monad.Join (fromBL)
+    ( BottomLattice, Joinable(..), justOrBot, PartialOrder(..) )
 import Lattice.BottomLiftedLattice (BottomLifted(Value, Bottom))
 
 --
@@ -68,3 +70,19 @@ runWithMapping (MapT m) = runStateT m Map.empty
 
 runWithMapping' :: forall k v m a . Monad m => MapT k v m a -> m a
 runWithMapping' = fmap fst . runWithMapping
+
+runMapT :: Map k v -> MapT k v m a  -> m (a, Map k v)
+runMapT s (MapT m) = runStateT m s
+
+--
+-- Flow sensitive mappings
+-- 
+
+-- | In address, parametrized by the type of component (or key) from CacheM
+-- and type of value @v@ stored at the address
+newtype In cmp v = In cmp deriving (Ord, Eq, Show)
+-- | Output address, parametrized by the type of component (or key) from CacheM
+-- and type of value @v@ stored at the address
+newtype Out cmp v = Out cmp deriving (Ord, Eq, Show)
+
+

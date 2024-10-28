@@ -9,7 +9,6 @@ module Analysis.Monad.ComponentTracking (
     runWithComponentTracking,
 ) where
 
-import Analysis.Monad.Store
 import Control.Monad.Layer
 
 import Data.Set (Set)

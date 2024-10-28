@@ -2,7 +2,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Analysis.Monad.Fix (lfp, MonadFixpoint (..), FixT (..), Kleisli, runFixT, runAroundT) where
+module Analysis.Monad.Fix (lfp, MonadFixpoint (..), FixT (..), Kleisli, runFixT, AroundT, runAroundT) where
 
 import Analysis.Monad.Cache
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)

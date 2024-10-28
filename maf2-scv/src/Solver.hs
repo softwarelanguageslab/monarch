@@ -52,7 +52,7 @@ initialState = SolverState {
 
 -- | The solver monad
 newtype CachedSolver i m a = CachedSolver { getSolver ::  StateT (SolverState i) m a }
-                     deriving (Applicative, Functor, Monad, MonadTrans, MonadState (SolverState i))
+                     deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadState (SolverState i))
 
 -- | Lookup the given value in the cache
 lookupCache :: (Ord i, Monad m) => Formula i -> CachedSolver i m (Maybe SolverResult)
