@@ -13,4 +13,8 @@ source-repository-package
    location: https://github.com/bramvdbogaerde/layers-mtl.git
    tag: 5201fd1814053630f762c382a79e49b7bf14df8f
 
-packages: .
+packages: 
+   ../../maf2-syntax/
+   ../../maf2-domains/
+   ../../maf2-analysis/
+   .
