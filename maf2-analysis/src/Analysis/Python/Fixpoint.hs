@@ -99,10 +99,10 @@ intra cmp = runIntraAnalysis cmp m
 inter :: forall obj m . AnalysisM m obj => PyPrg -> m (Store obj)
 inter prg = do ((), initialStore) <- runWithStore @(Store obj) @ObjAdr @obj init   -- initialize Python infrastructure                              
                let cmp = ((Main prg, initialEnv), [])
-               add cmp                                                  -- add the main component to the worklist
+               add cmp                                                             -- add the main component to the worklist
                Analysis.Monad.put (PyCmpTaint cmp) mempty 
                Analysis.Monad.put (PyCmpStoreIn cmp) initialStore
-               iterateWL (intra @obj)                                   -- start the analysis 
+               iterateWL (intra @obj)                                              -- start the analysis 
                Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
 
 analyze :: forall obj . PyDomain obj PyRef => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) ())

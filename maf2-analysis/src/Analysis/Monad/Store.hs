@@ -6,12 +6,9 @@ module Analysis.Monad.Store (
     StoreM(..),
     StoreM'(..),
     StoreT(..),
-    StoreT',
     AbstractCountM(..),
-    StackStoreT,
     runStoreT,
     runWithStore,
-    runStoreT',
     lookups,
     deref,
     deref',
@@ -22,15 +19,12 @@ module Analysis.Monad.Store (
 )
 where
 
-import Lattice (Joinable(..), BottomLattice(..), PartialOrder(..), Lattice)
+import Lattice (Joinable(..))
 import qualified Analysis.Store as Store
 import Analysis.Monad.Allocation
 
-import Control.Monad.State.SVar (SVar)
-import qualified Control.Monad.State.SVar as SVar
 
 import Data.Map (Map)
-import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad.State hiding (mzero, join)
@@ -39,12 +33,9 @@ import Control.Monad.Lift
 
 import Control.Monad.Layer
 import Analysis.Store (Store, CountingMap)
-import qualified Analysis.Store as Store
-import Data.TypeLevel.AssocList
-import Data.Kind
 import Domain (Address)
 import Control.Monad.Join
-import Data.Maybe (fromJust, fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust)
 import Control.Monad.Cond (ifM)
 import Domain.Core.AbstractCount (AbstractCount)
 
@@ -161,54 +152,3 @@ runStoreT initialSto = flip runStateT initialSto . getStoreT
 
 runWithStore :: forall s adr vlu m a . Store s adr vlu => StoreT s adr vlu m a -> m (a, s)
 runWithStore = runStoreT Store.emptySto
-
-
----
---- StoreT' monad transformer 
----
-
-
--- TODO[medium]: deprecate and remove the SVar implementation
-newtype StoreT' adr v m a = StoreT' { getStoreT' :: StateT (Map adr (SVar v)) m a }
-                              deriving (Applicative, Functor, Monad, MonadJoinable, MonadState (Map adr (SVar v)), MonadLayer, MonadTrans)
-
-instance {-# OVERLAPPING #-} (SVar.MonadStateVar m, Address adr, Lattice v, Ord adr) => StoreM adr v (StoreT' adr v m) where
-   writeAdr adr vlu =
-      gets (Map.lookup adr) >>=
-         maybe (SVar.new vlu >>= (\var -> modify (Map.insert adr var) >> void (SVar.modify (const (Just vlu)) var)))
-               (void . SVar.modify joinOld)
-       where joinOld vlu' = if subsumes vlu' vlu then Nothing else Just (Lattice.join vlu vlu')
-   updateAdr = writeAdr
-   lookupAdr adr =
-         gets (Map.lookup adr) >>= maybe (SVar.depend bottom >>= insert) SVar.read
-      where insert var = modify (Map.insert adr var) >> return bottom
-
-runStoreT' :: forall adr v m a . Map adr (SVar v) -> StoreT' adr v m a -> m (a, Map adr (SVar v))
-runStoreT' initial = flip runStateT initial . getStoreT'
-
---
--- Run a stack of StoreT's given 
--- by the mapping 'stores'
---
-
-type family StackStoreT stores m where
-   StackStoreT '[] m = m
-   StackStoreT (adr ::-> v ': r) m = StoreT' adr v (StackStoreT r m)
-
--- | Construct a type for a stack of stores from the given mapping
-type family FromMap stores m :: Type -> Type where
-   FromMap '[] m =  m
-   FromMap (kadr ::-> Map adr v ': r) m = StoreT (Map adr v) adr v (FromMap r m)
-
---class WithStores mp mp' m where
---   type FirstAdr mp' :: Type 
---   type FirstVal mp' :: Type
---   type Next mp'     :: Type -> Type
---   withStores :: HMap mp -> StoreT (Map (FirstAdr mp') (FirstVal mp')) (FirstAdr mp') (FirstVal mp') (Next mp') a -> Next mp' a
-
--- instance WithStores mp '[kadr ::-> (Map adr v)] m where  
---    type FirstAdr mp' 
--- | Run the given stack of stores using a HMap to provide 
--- the set of initial stores
---withStores :: HMap mp -> FromMap mp m a -> m (a, HMap mp) 
---withStores = undefined

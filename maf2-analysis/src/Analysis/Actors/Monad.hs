@@ -9,13 +9,11 @@ module Analysis.Actors.Monad(
    runActorT, 
    module Analysis.Scheme.Monad, 
    (!), 
-   runActorSystemT, 
    runActorSystemT', 
    receive, 
    runNoSpawnT,
    NoSpawnT,
    runNoSendT, 
-   emptyActorSystem
 ) where
 
 import Syntax.Scheme.AST
@@ -28,8 +26,6 @@ import Lattice
 
 import Control.Monad.Layer
 import Control.Monad.Join
-import Control.Monad.State.SVar (SVar)
-import qualified Control.Monad.State.SVar as SVar
 
 import qualified Data.Set as Set
 import Data.Map (Map)
@@ -141,42 +137,6 @@ instance (MonadLayer t, ActorLocalM m ref msg mb, Monad m) => ActorLocalM (t m) 
 -- in the monadic context
 runActorT :: forall mb m ref msg a . mb -> ref -> ActorT mb ref msg m a -> m (a, ActorState mb)
 runActorT initialMailbox selfRef (ActorT ma) = runReaderT (runStateT ma (ActorState initialMailbox)) selfRef
-
-------------------------------------------------------------
--- ActorSystemT
-------------------------------------------------------------
-
--- TODO: deprecate this
-type ActorSystemState ref mb = Map ref (SVar mb)
-
-emptyActorSystem :: forall mb ref . ActorSystemState ref mb 
-emptyActorSystem = Map.empty
-
--- | An actor system keeps track of the mailboxes
--- of each actor in the system. For this is keeps
--- a mapping from actor references to mailboxes
--- 
--- This mapping is implemented using SVars such 
--- that dependencies between components of the 
--- analysis can be automatically tracked and 
--- an effect-driven worklist algorithm can be used.
-newtype ActorSystemT ref msg mb m a = ActorSystemT (StateT (ActorSystemState ref mb) m a)
-                         deriving (Functor, Applicative, Monad, MonadLayer, MonadTrans, MonadState (ActorSystemState ref mb))
-
-instance {-# OVERLAPPING #-} (Ord ref, Mailbox mb msg, SVar.MonadStateVar m) => ActorGlobalM (ActorSystemT ref msg mb m) ref msg mb where
-   send ref msg = do
-      mb <- gets (Map.lookup ref) >>= maybe (upperM $ SVar.new MB.empty) pure
-      modify (Map.insert ref mb)
-      -- TODO: we check whether the mailbox abstraction has changed in order
-      -- to signal a change to the SVar layer or not. This is currently not very 
-      -- efficient since it uses Eq's equality. Depending on the abstraction used a more efficient version
-      -- of this could be provided.
-      void $ upperM $ SVar.modify (\mb -> let mb' = enqueue msg mb in if mb == mb' then Nothing else Just mb') mb
-      return True
-   getMailbox = undefined 
-
-runActorSystemT :: ActorSystemState ref mb -> ActorSystemT ref msg mb m a -> m (a, Map ref (SVar mb))
-runActorSystemT initial (ActorSystemT m) = runStateT m initial
 
 ------------------------------------------------------------
 -- ActorSystemT' (without SVar)

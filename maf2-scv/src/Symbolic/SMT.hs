@@ -9,7 +9,6 @@ import Solver
 import Control.Monad.Reader
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Maybe (fromJust)
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Control.Monad.State

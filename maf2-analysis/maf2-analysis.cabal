@@ -67,7 +67,6 @@ library
       Analysis.Scheme
       Analysis.Scheme.Actors.Components
       Analysis.Scheme.Monad
-      Analysis.Scheme.Prelude
       Analysis.Scheme.Primitives
       Analysis.Scheme.Semantics
       Analysis.Scheme.Simple
@@ -75,12 +74,10 @@ library
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
-      Control.Fixpoint.EffectDriven
       Control.Fixpoint.WorkList
       Control.Monad.Cond
       Control.Monad.Layer
       Control.Monad.State.IntPool
-      Control.Monad.State.SVar
       Data.Graph
       Data.Print
       Interpreter.Actors

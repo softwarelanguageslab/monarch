@@ -33,8 +33,6 @@ library
       Analysis.Contracts.Mailbox
       Analysis.Contracts.Monad
       Analysis.Contracts.Semantics
-      Analysis.Contracts.Store
-      Analysis.Symbolic
       Analysis.Symbolic.Monad
       Analysis.Symbolic.Monad.SymbolicStore
       Analysis.Symbolic.Semantics

@@ -94,8 +94,8 @@ type SymbolicM i m v = (-- Domain
 newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
                            deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable, MonadCache)
 
-instance {-# OVERLAPPING #-} (AbstractCountM i m, MonadJoin m, Show i, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
-   extendPc pc'     = traceShow (symbolic pc') $ modify $ Set.map (conjunction (Atomic $ symbolic pc'))
+instance {-# OVERLAPPING #-} (AbstractCountM i m, MonadJoin m, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
+   extendPc pc'     = modify $ Set.map (conjunction (Atomic $ symbolic pc'))
    getPc = get
    integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList
 

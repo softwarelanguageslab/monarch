@@ -27,10 +27,6 @@ where
 
 import Analysis.Monad hiding (EvalM, spawn)
 import Analysis.Actors.Mailbox
-import Analysis.Scheme.Prelude
-  ( ActorDomain(..),
-    SchemeDomain(..)
-  )
 import Analysis.Scheme.Monad (SchemeDomainM)
 import Control.Monad.DomainError
 import Control.Monad.Escape
@@ -44,7 +40,7 @@ import Data.Maybe (fromMaybe, fromJust)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain.Class
-import Lattice (BottomLattice (bottom), CP)
+import Lattice (BottomLattice (bottom))
 import Lattice.Class (Joinable)
 import qualified Lattice.Class as L
 import Syntax.AST
@@ -53,12 +49,12 @@ import Analysis.Monad.Fix (MonadFixpoint)
 import Data.Kind (Type)
 import Domain (SchemeDomain(Env))
 import Lattice.Equal (EqualLattice)
-import Domain.Scheme.Actors.Class (Pid(..))
 import Domain.Core.BoolDomain.Class (BoolDomain (true, false, boolTop))
 import Lattice.Split (SplitLattice)
 import Syntax.Span (SpanOf(..))
 import Syntax.FV
 import Analysis.Symbolic.Monad (SymbolicM)
+import Domain.Scheme hiding (Exp, Env)
 
 ------------------------------------------------------------
 -- 'Components'
@@ -273,7 +269,7 @@ instance (Monad m, α ~ Adr v) => MonadDynamic α (DynamicBindingT v m) where
 
 type Dep v = ARef v
 
-instance (MonadMailbox v m, Show v, WorkListM m cmp, DependencyTrackingM m cmp (Dep v)) => MonadMailbox v (IntraAnalysisT cmp m) where
+instance (MonadMailbox v m, WorkListM m cmp, DependencyTrackingM m cmp (Dep v)) => MonadMailbox v (IntraAnalysisT cmp m) where
   send to msg = trigger @_ @cmp to >> lift (send to msg)
   receive' ref = dependent @_ @cmp ref >> upperM (receive' ref)
 

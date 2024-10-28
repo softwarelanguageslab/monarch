@@ -21,7 +21,9 @@ import Analysis.Contracts.Monad
 import Control.Monad.Join
 import Analysis.Actors ()
 import Analysis.Actors.Monad
-import Analysis.Scheme.Prelude hiding (spawn, Env)
+import Domain.Scheme.Store hiding (Env)
+import Syntax.Scheme
+import Control.Monad.Escape
 
 ------------------------------------------------------------
 -- Environment
