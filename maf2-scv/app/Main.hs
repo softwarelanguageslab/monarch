@@ -10,7 +10,6 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.List ( intercalate )
 import Text.Printf
-import qualified Analysis.Symbolic as Symbolic
 import Analysis.Scheme.Store (values)
 import Domain.Scheme.Store (EnvAdr(..))
 
@@ -30,17 +29,5 @@ runMain = do
             _ <- solve Map.empty exampleFormula
             loop (n-1)
 
-printSto :: Show k => Map (EnvAdr k) (Symbolic.Vlu k) -> String
-printSto m =
-   intercalate "\n" (map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs) ++ "\n----\n"
-   where adrs   = Map.toList m
-         indent = maximum (map (length . show . fst) adrs) + 5
-
 main :: IO ()
-main = do
-   programName <- head <$> getArgs
-   text   <- readFile programName
-   let program = either error id (parseString' $ Actor.prelude ++ text)
-   result <- Symbolic.simpleAnalysis program
-   -- putStrLn $ "analysis finished -- " ++ "number of paths is " ++ show (length v)
-   putStrLn $ printSto $ values $ snd result
+main = putStrLn "Nothing to see here"
