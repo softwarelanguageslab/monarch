@@ -24,6 +24,7 @@ source-repository head
 library
   exposed-modules:
       Analysis.SimpleActor
+      Analysis.SimpleActor.Fixpoint
       Analysis.SimpleActor.Monad
       Analysis.SimpleActor.Semantics
       Control.Monad.Extra

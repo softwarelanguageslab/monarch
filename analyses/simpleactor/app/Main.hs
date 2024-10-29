@@ -68,8 +68,12 @@ printLoc ((((((e, _), _), _), _), _), _) = let (Span filename Position { .. } _)
 -- Entrypoints
 ------------------------------------------------------------
 
+writeTempFileId :: String -> IO String
+writeTempFileId contents = 
+   writeFile "/tmp/in.scm" contents >> return contents
+
 loadFile :: String -> IO Exp
-loadFile = readFile >=> translate >=> return . either (error . ("error while parsing: " ++)) id . parseFromString 
+loadFile = readFile >=> translate >=> writeTempFileId >=> return . either (error . ("error while parsing: " ++)) id . parseFromString 
 
 
 analyzeCmd :: InputOptions -> IO ()

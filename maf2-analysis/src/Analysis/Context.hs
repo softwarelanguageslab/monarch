@@ -1,14 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
-module Analysis.Context where
-
-import Data.Functor
-import Analysis.Monad (AllocM(..))
-import Analysis.Monad.Context
-import Control.Monad.Identity (IdentityT, runIdentityT)
-import Control.Monad.Layer
+module Analysis.Context(MCFA(..), push, pushes, emptyMcfaContext) where
 
 ------------------------------------------------------------
 -- m-cfa
@@ -23,19 +16,10 @@ data MCFA e = MCFA {es :: ![e], max :: !Int}
 push :: e -> MCFA e -> MCFA e
 push e (MCFA es m) = MCFA (take m (e : es)) m
 
+pushes :: [e] -> MCFA e -> MCFA e 
+pushes es (MCFA es' m) = MCFA (take m (es ++ es')) m
+
 -- | Create an empty MCFA context with the given maximum 
 -- context size
 emptyMcfaContext :: forall e .  Int -> MCFA e
 emptyMcfaContext = MCFA []
-
-
---
-
-newtype AllocCFAContextT e m a = AllocCFAContextT (IdentityT m a)
-  deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)
-
-instance (Monad m, CtxM m (MCFA e)) => AllocM (AllocCFAContextT e m) e (MCFA e) where
-  alloc e = getCtx <&> push e
-
-runAllocCFAContextT :: AllocCFAContextT e m a -> m a 
-runAllocCFAContextT (AllocCFAContextT ma) = runIdentityT ma

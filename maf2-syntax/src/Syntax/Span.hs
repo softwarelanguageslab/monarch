@@ -15,7 +15,10 @@ data Span = Span {
       filename :: String, 
       startPosition :: Position, 
       endPosition :: Position 
-   } deriving (Eq, Ord, Show, Generic)
+   } deriving (Eq, Ord, Generic)
+
+instance Show Span where 
+   show Span { .. } = show startPosition ++ "-" ++ show endPosition
 
 -- | Class of syntax trees that have 'Span' information for each
 -- of their nodes

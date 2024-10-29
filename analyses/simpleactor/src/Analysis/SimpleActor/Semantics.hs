@@ -47,6 +47,7 @@ import Analysis.Symbolic.Monad (choice, choices)
 import Domain.Symbolic (equal, var)
 import Analysis.Store (Store)
 import qualified Analysis.Store as Store
+import qualified Data.List as List
 
 ------------------------------------------------------------
 -- Evaluation
@@ -128,10 +129,10 @@ applyClosure e (lam@(Lam prs _ _), env) rec vs =
    if length prs /= length vs then
       error "invalid number of arguments"
    else do
-      ads <- mapM alloc prs
+      ads <- traceShow ("applying " ++ show e ++ "at " ++ show (spanOf e)) $ mapM alloc prs
       let bds = zip (map name prs) ads
-      mapM_ (uncurry writeAdr) (zip ads vs)
-      ifMetaSet (withCtx (spanOf e:)) $
+      withCtx (const [spanOf e]) $ do
+         mapM_ (uncurry writeAdr) (zip ads vs)
          withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 applyPrimitive :: forall v m . EvalM v m => String -> Exp -> [v] -> m v
