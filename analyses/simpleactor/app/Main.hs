@@ -79,8 +79,12 @@ loadFile = readFile >=> translate >=> writeTempFileId >=> return . either (error
 analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename  }) = do 
    ast <- loadFile filename
-   ((((), sto), mbs), res) <- analyze ast
-   putStrLn $ printSto show (\case { (PrmAdr _) -> False ; _ -> True }) sto
+   ((((), out), mbs), res) <- analyze ast
+   mapM_ (\(cmp, sto) -> do
+      print cmp
+      putStrLn $ printSto show (\case { (PrmAdr _) -> False ; _ -> True }) sto
+      putStrLn "=====") (Map.toList out)
+
    putStrLn "====="
    putStrLn $ printMap printLoc (const True) res
    putStrLn "====="

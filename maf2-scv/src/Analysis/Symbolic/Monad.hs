@@ -114,3 +114,17 @@ runWithFormulaT pc = flip runStateT pc . runFormulaT'
 
 runFormulaT :: FormulaT i v m a -> m (a, PC i)
 runFormulaT = flip runStateT (Set.singleton Empty) . runFormulaT'
+
+----------------------------------------------------------------------
+-- Widening per component of path condition
+----------------------------------------------------------------------
+
+
+-- | Keep the path condition in a map from components to 
+-- path conditions which get widened when input paths 
+-- from multiple locations get joined together.
+wideningPerComponent :: (e -> m v) -> e -> m v
+wideningPerComponent = undefined
+
+wideningPerComponentEval :: (e -> m v) -> e -> m v
+wideningPerComponentEval = undefined 

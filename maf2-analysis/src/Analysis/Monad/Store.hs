@@ -175,21 +175,21 @@ evalWithStore = fmap fst . runWithStore
 -- the current store to the @In(component)@ were 
 -- @component@ is the target component and reading 
 -- from the @Out(component) after the component's evaluation
-flowSensitiveStore :: forall v m s e a . (MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e) s) s m, Map.MapM (Map.Out (Cache.Key m e) s) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
+flowSensitiveStore :: forall v m s e a . (Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
 flowSensitiveStore f e = do
    cmp <- upperM $ Cache.key e
    sto <- upperM currentStore
-   upperM $ Map.put (Map.In @_ @s cmp) sto
+   upperM $ Map.joinWith (Map.In cmp) sto
    v <- f e
-   sto' <-  maybe mzero return =<< upperM (Map.get @_ @s (Map.Out @_ @s cmp))
+   sto' <-  maybe mzero return =<< upperM (Map.get @_ @s (Map.Out cmp))
    upperM $ putStore sto'
    return v
 
 -- |  Flow-sensitive evaluation function
-flowSensitiveEval :: forall v m s e a . (MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e) s) s m, Map.MapM (Map.Out (Cache.Key m e) s) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
+flowSensitiveEval :: forall v m s e a . (Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
 flowSensitiveEval eval e = do
    cmp <- upperM $ Cache.key e
-   putStore =<< maybe mzero return =<< upperM (Map.get @_ @s (Map.In @_ @s cmp))
+   putStore =<< maybe mzero return =<< upperM (Map.get @_ @s (Map.In cmp))
    v <- eval e
-   upperM currentStore >>= (upperM . Map.put (Map.Out @_ @s cmp))
+   upperM currentStore >>= (upperM . Map.joinWith (Map.Out cmp))
    return v

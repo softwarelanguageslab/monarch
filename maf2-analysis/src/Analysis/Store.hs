@@ -44,7 +44,7 @@ restrictSto = flip Map.restrictKeys
 
 
 newtype CountingMap a v = CountingMap { store :: Map a (v, AbstractCount) }
-   deriving (Eq, Ord, Joinable, BottomLattice)
+   deriving (Eq, Ord, Joinable, Show, BottomLattice)
 
 instance (Joinable v, Ord a) => Store (CountingMap a v) a v where
    emptySto = CountingMap Map.empty
