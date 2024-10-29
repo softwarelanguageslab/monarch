@@ -168,7 +168,7 @@ instance (vlu ~ PyRef,
                                 [a] -> withTaint @Taint TopLattice.Top (addTaint a)
                                 _   -> pyError ArityError
   applyXPrim DatabaseRead loc = \case
-                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm ())) str
+                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm Prelude.False)) str
                                   _        -> pyError ArityError
                                   where toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
                                         toTaint Lattice.Top            = TopLattice.Top 

@@ -109,13 +109,16 @@ applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr
 -- object primitives
 applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
 -- DataFrame primitives
-applyPrim DataFrameGetItem = prim2' @DfrPrm @StrPrm $ \loc _ _ -> pyStore loc (from @SrsPrm $ inject ())
-applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref'' @StrPrm (\_ -> none $ pyAssignInPrm SDfrPrm (const return) a3 a1) a2
+applyPrim DataFrameGetItem = prim2' @DfrPrm @StrPrm $ \loc dfr _ -> pyStore loc (from @SrsPrm dfr)
+applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref2'' @StrPrm @SrsPrm (\_ srs -> none $ pyAssignInPrm SDfrPrm (assignSeries srs) a3 a1) a2 a3
+        where 
+             assignSeries :: CP Bool -> vlu -> CP Bool -> pyM (CP Bool)
+             assignSeries srs _ dfr = return (join dfr srs)
 applyPrim DataFrameEmpty   = prim1' @DfrPrm $ \loc _ -> pyStore loc (from @BlnPrm boolTop)
 applyPrim DataFrameRename  = prim2' @DfrPrm @DctPrm $ \loc df _ -> pyStore loc (from @DfrPrm df)
 applyPrim DataFrameDropNA  = prim1' @DfrPrm $ \loc df -> pyStore loc (from @DfrPrm df)
-applyPrim DataFrameAppend  = prim2' @DfrPrm @DfrPrm $ \loc _ _ -> pyStore loc (from @DfrPrm $ inject ())
-applyPrim DataFrameFromSeries = prim1' @SrsPrm $ \loc _ -> pyStore loc (from @DfrPrm $ inject ())
+applyPrim DataFrameAppend  = prim2' @DfrPrm @DfrPrm $ \loc df1 df2 -> pyStore loc (from @DfrPrm $ df1 `join` df2)
+applyPrim DataFrameFromSeries = prim1' @SrsPrm $ \loc srs -> pyStore loc (from @DfrPrm $ srs)
 -- Series primitives
 applyPrim SeriesAsType    = prim2 $ \_ self _ -> return self
 applyPrim SeriesMerge     = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1

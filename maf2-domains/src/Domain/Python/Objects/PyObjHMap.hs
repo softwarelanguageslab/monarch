@@ -40,6 +40,8 @@ data PyAbsKey = IntKey
               | VluKey
               | AdrKey
               | CloKey 
+              | DfrKey
+              | SrsKey
 
 type PyPrm (m :: [PyAbsKey :-> Type]) =
   '[
@@ -53,8 +55,8 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
     TupPrm ::-> CPList (Assoc VluKey m),                -- TODO: could use a more optimised representation (e.g., CPVector)
     LstPrm ::-> CPList (Assoc VluKey m),
     DctPrm ::-> CPDictionary String (Assoc VluKey m),
-    DfrPrm ::-> Top,
-    SrsPrm ::-> Top
+    DfrPrm ::-> CP Bool,
+    SrsPrm ::-> CP Bool
   ]
 
 --
