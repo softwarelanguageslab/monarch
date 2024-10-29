@@ -114,8 +114,8 @@ type PyDomain obj vlu = (PyVal vlu,
                          Abs obj TupPrm ~ CPList vlu,
                          Abs obj StrPrm ~ CP String,
                          Abs obj DctPrm ~ CPDictionary String vlu, 
-                         Abs obj DfrPrm ~ BottomLifted Top,
-                         Abs obj SrsPrm ~ BottomLifted Top)
+                         Abs obj DfrPrm ~ CP Bool,
+                         Abs obj SrsPrm ~ CP Bool)
 
 new'' :: PyDomain obj vlu => vlu -> [(String, vlu)] -> [BindingFrom (PyPrmMap obj)] -> obj
 new'' cls attrs = new $ (attrStr ClassAttr, cls):attrs 
