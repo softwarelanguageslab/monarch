@@ -100,7 +100,7 @@ generateGraph files =
          shortFileName = reverse . takeWhile (/='/') . reverse
 
 main :: Options -> IO ()
-main (Options fileName) = ecopipe
+main (Options fileName) = runFile fileName
 
 ecopipe :: IO ()
 ecopipe = generateGraph [

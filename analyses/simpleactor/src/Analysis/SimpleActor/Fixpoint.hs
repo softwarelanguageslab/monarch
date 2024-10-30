@@ -32,6 +32,7 @@ import Syntax.Span
 import Analysis.Monad.Context (MCfaT)
 import Debug.Trace
 import Analysis.Context (emptyMcfaContext)
+import Control.Monad.IO.Class
 
 ------------------------------------------------------------
 -- Shortcuts
@@ -92,6 +93,7 @@ type MonadInter m =
         -- For global stores: StoreM (EnvAdr K) ActorVlu m,
         -- For global stores: AbstractCountM (EnvAdr K) m,
         MonadMailbox ActorVlu m,
+        MonadIO m,
         FormulaSolver (EnvAdr K) m)
 
 ------------------------------------------------------------

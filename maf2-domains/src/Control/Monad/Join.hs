@@ -46,9 +46,9 @@ class (Monad m) => MonadBottom m where
    mzero :: m a 
 
 cond :: (MonadJoin m, BoolDomain b, Joinable v) => m b -> m v -> m v -> m v 
-cond cnd csq alt = mjoin t f
-   where t = cnd >>= (\b -> if isTrue b then csq else mzero)
-         f = cnd >>= (\b -> if isFalse b then alt else mzero)
+cond cnd csq alt = cnd >>= (\b -> mjoin (t b) (f b))
+   where t b = if isTrue b then csq else mzero
+         f b = if isFalse b then alt else mzero
 -- | If value is @Bottom@ results in  @mzero@ computation,
 -- otherwise in a computation returning the wrapped value.
 fromBL :: MonadBottom m => BottomLifted a -> m a

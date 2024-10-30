@@ -17,6 +17,7 @@ import Syntax.AST hiding (filename)
 import Control.Monad ((>=>))
 import Interpreter hiding (PrmAdr, store)
 import Analysis.Store (CountingMap(..))
+import qualified Analysis.Store as Store
 import GHC.Base (join)
 
 ------------------------------------------------------------
@@ -55,11 +56,6 @@ printMap printKey keepKey m  =
    where adrs   = Map.toList $ Map.filterWithKey (flip (const keepKey)) m
          indent = maximum (map (length . printKey . fst) adrs) + 5
 
-printSto :: (Show v) => (k -> String) -> (k -> Bool) -> CountingMap k v -> String
-printSto printKey keepKey m  =
-       intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (printKey k) (show v)) adrs
-   where adrs   = Map.toList $ Map.filterWithKey (flip (const keepKey)) (store m)
-         indent = maximum (map (length . printKey . fst) adrs) + 5
 
 printLoc :: ActorCmp -> String
 printLoc ((((((e, _), _), _), _), _), _) = let (Span filename Position { .. } _) = spanOf e in show line ++ ":" ++ show column ++ "@" ++ filename
@@ -82,7 +78,7 @@ analyzeCmd (InputOptions { filename  }) = do
    ((((), out), mbs), res) <- analyze ast
    mapM_ (\(cmp, sto) -> do
       print cmp
-      putStrLn $ printSto show (\case { (PrmAdr _) -> False ; _ -> True }) sto
+      putStrLn $ Store.printSto show (\case { (PrmAdr _) -> False ; _ -> True }) sto
       putStrLn "=====") (Map.toList out)
 
    putStrLn "====="

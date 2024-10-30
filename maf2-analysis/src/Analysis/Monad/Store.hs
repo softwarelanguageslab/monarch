@@ -28,6 +28,7 @@ import Analysis.Monad.Allocation
 
 
 import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad.State hiding (mzero, join)
@@ -44,6 +45,8 @@ import qualified Analysis.Monad.Map as Map
 import qualified Analysis.Monad.Cache as Cache
 import Analysis.Monad.Cache (MonadCache)
 import Analysis.Monad.Fix (AroundT(..))
+import Debug.Trace (traceShow)
+import Data.List (isInfixOf)
 
 ---
 --- StoreM typeclass
@@ -160,8 +163,9 @@ runStoreT initialSto = flip runStateT initialSto . getStoreT
 runWithStore :: forall s adr vlu m a . Store s adr vlu => StoreT s adr vlu m a -> m (a, s)
 runWithStore = runStoreT Store.emptySto
 
+
 -- | Same as @runWithStore@ but ignores the output store
-evalWithStore :: forall s adr vlu m a . (Functor m, Store s adr vlu) => StoreT s adr vlu m a -> m a 
+evalWithStore :: forall s adr vlu m a . (Functor m, Store s adr vlu) => StoreT s adr vlu m a -> m a
 evalWithStore = fmap fst . runWithStore
 
 
@@ -175,19 +179,23 @@ evalWithStore = fmap fst . runWithStore
 -- the current store to the @In(component)@ were 
 -- @component@ is the target component and reading 
 -- from the @Out(component) after the component's evaluation
-flowSensitiveStore :: forall v m s e a . (Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
+flowSensitiveStore :: forall v m s e a . (MonadIO m, Show v, Show a, Show (Cache.Key m e), s ~ CountingMap a v, Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
 flowSensitiveStore f e = do
    cmp <- upperM $ Cache.key e
-   sto <- upperM currentStore
+   sto <- upperM (currentStore @s @a)
    upperM $ Map.joinWith (Map.In cmp) sto
+   liftIO $ print cmp
+   liftIO $ putStrLn (Store.printSto show (isInfixOf "x" . show) sto)
+   liftIO $ putStrLn "======="
    v <- f e
    sto' <-  maybe mzero return =<< upperM (Map.get @_ @s (Map.Out cmp))
    upperM $ putStore sto'
    return v
 
 -- |  Flow-sensitive evaluation function
-flowSensitiveEval :: forall v m s e a . (Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
+flowSensitiveEval :: forall v m s e a . (Show e, MonadIO m, Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
 flowSensitiveEval eval e = do
+   liftIO $ print e
    cmp <- upperM $ Cache.key e
    putStore =<< maybe mzero return =<< upperM (Map.get @_ @s (Map.In cmp))
    v <- eval e
