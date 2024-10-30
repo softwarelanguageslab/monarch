@@ -136,7 +136,7 @@ instance (vlu ~ PyRef,
           SplitLattice (Esc m),
           EnvM m ObjAdr PyEnv,
           AllocM m PyLoc ObjAdr,
-          GraphM (CP String) () m,
+          GraphM (CP String) (CP Bool) m,
           StoreM ObjAdr obj m)
           =>
           PyM m obj vlu where
@@ -173,7 +173,7 @@ instance (vlu ~ PyRef,
                                   where toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
                                         toTaint Lattice.Top            = TopLattice.Top 
   applyXPrim DatabaseWrite _ = \case
-                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\_ nam -> currentTaint @Taint >>= \t -> addEdges nam t $> constant None) df str 
+                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\dfr nam -> currentTaint @Taint >>= \t -> addEdges nam t dfr $> constant None) df str 
                                   _            -> pyError ArityError  
-                                  where addEdges to TopLattice.Top = addEdge Lattice.Top to () 
-                                        addEdges to (TopLattice.Value s) = mapM_ (\source -> addEdge (Lattice.Constant source) to ()) (Set.toList s) 
+                                  where addEdges to TopLattice.Top dfr = addEdge Lattice.Top to dfr
+                                        addEdges to (TopLattice.Value s) dfr = mapM_ (\source -> addEdge (Lattice.Constant source) to dfr) (Set.toList s) 
