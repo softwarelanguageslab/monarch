@@ -27,6 +27,7 @@ data Exp = Lam [Ide] Exp Span
          | DynVar Ide
          | Begin [Exp] Span
          | Meta Exp Span
+         | Error String Span
          deriving (Eq, Ord)
 
 -- | Literals are expressions that evaluate to themselves
@@ -69,6 +70,7 @@ instance SpanOf Exp where
                (Begin _ s) -> s
                (Meta _ s) -> s
                (Match _ _ s) -> s
+               (Error _ s)   -> s
 
 
 instance Show Exp where
@@ -91,6 +93,7 @@ instance Show Exp where
             (DynVar x)        -> "(dyn " ++ show x ++ ")"
             (Begin es _)      -> printf "(begin %s)" (unwords (map show es))
             (Meta e _)        -> printf "(meta %s)" (show e)
+            (Error e _)       -> printf "(error %s)" (show e)
 
 
 variables :: Pat -> Set String 
@@ -120,3 +123,4 @@ instance FreeVariables Exp where
    fv (DynVar _)        = Set.empty
    fv (Begin es _)      = Set.unions (map fv es)
    fv (Meta e _)        = fv e
+   fv (Error _ _)       = Set.empty

@@ -1,10 +1,12 @@
 {-# LANGUAGE FlexibleInstances, AllowAmbiguousTypes, FlexibleContexts, UndecidableInstances #-}
-module Analysis.Store(Store(..), CountingMap, store, restrictSto) where
+module Analysis.Store(Store(..), CountingMap(..), store, restrictSto, printSto) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Domain.Core.AbstractCount
 import Lattice
+import Data.List 
+import Text.Printf
 
 import Data.Set (Set)
 
@@ -38,13 +40,23 @@ restrictSto :: (Ord a) => Set a -> Map a v -> Map a v
 restrictSto = flip Map.restrictKeys
 
 
+--
+-- Store printing 
+--
+
+printSto :: (Show v) => (k -> String) -> (k -> Bool) -> CountingMap k v -> String
+printSto printKey keepKey m  =
+       intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (printKey k) (show v)) adrs
+   where adrs   = Map.toList $ Map.filterWithKey (flip (const keepKey)) (store m)
+         indent = maximum (map (length . printKey . fst) adrs) + 5
+
 ---
 --- Abstract counting
 ---
 
 
 newtype CountingMap a v = CountingMap { store :: Map a (v, AbstractCount) }
-   deriving (Eq, Ord, Joinable, BottomLattice)
+   deriving (Eq, Ord, Joinable, Show, BottomLattice)
 
 instance (Joinable v, Ord a) => Store (CountingMap a v) a v where
    emptySto = CountingMap Map.empty

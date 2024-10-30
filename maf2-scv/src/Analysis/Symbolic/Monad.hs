@@ -28,9 +28,9 @@ class (Monad m) => MonadPathCondition i m v | m -> v i where
 
 -- | Choose between the two branches non-deterministically
 choice :: (AbstractCountM i m, MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b) => m v -> m b -> m b -> m b
-choice mv mcsq malt = mjoin t f
-   where t = mv >>= checkTrue
-         f = mv >>= checkFalse
+choice mv mcsq malt = mv >>= (\v -> mjoin (t v) (f v))
+   where t = checkTrue
+         f = checkFalse
          -- Below you find a way of checking whether the condition is true or false 
          -- depending on the abstract value and the current path condition.
          --
@@ -114,3 +114,18 @@ runWithFormulaT pc = flip runStateT pc . runFormulaT'
 
 runFormulaT :: FormulaT i v m a -> m (a, PC i)
 runFormulaT = flip runStateT (Set.singleton Empty) . runFormulaT'
+
+----------------------------------------------------------------------
+-- Widening per component of path condition
+----------------------------------------------------------------------
+
+
+-- | Keep the path condition in a map from components to 
+-- path conditions which get widened when input paths 
+-- from multiple locations get joined together.
+wideningPerComponent :: (e -> m v) -> e -> m v
+wideningPerComponent = undefined
+
+-- | Keep path 
+wideningPerComponentEval :: (e -> m v) -> e -> m v
+wideningPerComponentEval = undefined 

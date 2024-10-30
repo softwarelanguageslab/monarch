@@ -103,7 +103,7 @@ generateGraph files =
          toType Top = "?"
 
 main :: Options -> IO ()
-main (Options fileName) = ecopipe
+main (Options fileName) = runFile fileName
 
 ecopipe :: IO ()
 ecopipe = generateGraph [

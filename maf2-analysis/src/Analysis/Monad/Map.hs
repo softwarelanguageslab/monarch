@@ -80,9 +80,9 @@ runMapT s (MapT m) = runStateT m s
 
 -- | In address, parametrized by the type of component (or key) from CacheM
 -- and type of value @v@ stored at the address
-newtype In cmp v = In cmp deriving (Ord, Eq, Show)
+newtype In cmp = In cmp deriving (Ord, Eq, Show)
 -- | Output address, parametrized by the type of component (or key) from CacheM
 -- and type of value @v@ stored at the address
-newtype Out cmp v = Out cmp deriving (Ord, Eq, Show)
+newtype Out cmp = Out cmp deriving (Ord, Eq, Show)
 
 
