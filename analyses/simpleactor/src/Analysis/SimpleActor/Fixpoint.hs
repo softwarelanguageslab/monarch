@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Analysis.SimpleActor.Fixpoint(ActorCmp, analyze) where
 
 import Analysis.SimpleActor.Monad
@@ -26,13 +27,24 @@ import Solver.Z3 (runZ3SolverWithSetup)
 import Solver
 import Symbolic.AST ( emptyPC )
 import qualified Symbolic.SMT as SMT
-import Analysis.Store (CountingMap)
+import Analysis.Store (CountingMap, Store)
+import Analysis.Monad.Store ()
 import Data.Maybe
 import Syntax.Span
 import Analysis.Monad.Context (MCfaT)
 import Debug.Trace
 import Analysis.Context (emptyMcfaContext)
 import Control.Monad.IO.Class
+import Control.Monad (void)
+import Control.Monad.Trans
+import Control.Monad.Layer (MonadLayer)
+import Control.Monad.Reader (ReaderT (ReaderT))
+import Control.Monad.Join (MonadJoinable)
+import Control.Monad.State
+import Lattice (Joinable)
+import Domain (Address)
+import Analysis.Monad.Store (WidenedStoreT)
+import Analysis.Monad (evalWithWidenedStore)
 
 ------------------------------------------------------------
 -- Shortcuts
@@ -56,6 +68,11 @@ type family Unlist (as :: Type) :: Type where
    Unlist [k] = k
 
 ------------------------------------------------------------
+-- Experiments
+------------------------------------------------------------
+
+
+------------------------------------------------------------
 -- Monad
 ------------------------------------------------------------
 
@@ -71,12 +88,13 @@ type IntraT m = MonadStack '[
                MetaT,
                ActorLocalT ActorVlu,
                FormulaT (EnvAdr K) ActorVlu,
+               WidenedStoreT ActorSto (EnvAdr K) ActorVlu,
                NonDetT,
                -- JoinT,
-               CacheT,
+               CacheT
                -- Symbolic execution
                -- SymbolicStoreT (EnvAdr K) ActorVlu
-               StoreT ActorSto (EnvAdr K) ActorVlu
+               -- StoreT ActorSto (EnvAdr K) ActorVlu
             ] m
 
 -- TODO: group some constraint into a constraint alias for ModX
@@ -115,14 +133,15 @@ mainStore e = fromJust . Map.lookup (Out (initialCmp e))
 
 intra :: forall m . MonadInter m
  => ActorCmp -> m ()
-intra cmp = runFixT @(IntraT (IntraAnalysisT ActorCmp m)) eval' cmp
-          & runAlloc @Ide @K @(EnvAdr K) EnvAdr
-          & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
-          & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
-          & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
-          & evalWithStore @ActorSto @(EnvAdr K) @ActorVlu
-          -- & runWithSymbolicStore
-          & runIntraAnalysis cmp
+intra cmp = void $
+             (runFixT @(IntraT (IntraAnalysisT ActorCmp m)) eval' cmp
+           & runAlloc @Ide @K @(EnvAdr K) EnvAdr
+           & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
+           & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
+           & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
+           & evalWithWidenedStore @ActorSto @(EnvAdr K) @ActorVlu
+           -- & runWithSymbolicStore
+           & runIntraAnalysis cmp)
       where eval' = runAroundT (flowSensitiveStore @_ @_ @ActorSto @_ @(EnvAdr K)) . (flowSensitiveEval @_ @_ @ActorSto (eval @ActorVlu))
 
 initialEnv :: Env K

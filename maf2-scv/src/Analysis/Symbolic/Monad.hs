@@ -28,9 +28,9 @@ class (Monad m) => MonadPathCondition i m v | m -> v i where
 
 -- | Choose between the two branches non-deterministically
 choice :: (AbstractCountM i m, MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b) => m v -> m b -> m b -> m b
-choice mv mcsq malt = mv >>= (\v -> mjoin (t v) (f v))
-   where t = checkTrue
-         f = checkFalse
+choice mv mcsq malt = mjoin t f
+   where t = mv >>= checkTrue
+         f = mv >>= checkFalse
          -- Below you find a way of checking whether the condition is true or false 
          -- depending on the abstract value and the current path condition.
          --
