@@ -24,6 +24,7 @@ import ListT
 import Data.Kind (Type)
 import Analysis.Monad.Taint (MayEscapeTaintedT (..), TaintM)
 import Lattice.Tainted (Tainted)
+import Control.Monad.Join (MonadJoinable(..))
 
 ---
 --- MonadCache typeclass
@@ -113,6 +114,10 @@ instance MonadCache m => MonadCache (ListT m) where
     val :: forall v . Val (ListT m) v -> ListT m v
     val v = ListT (val @m @[v] v >>= uncons . ListT.fromFoldable)
     run f = run (ListT.toList . f)
+
+instance (MonadJoinable m) => MonadJoinable (CacheT m) where
+   mjoin (CacheT ma) (CacheT mb) = CacheT $ IdentityT $ mjoin (runIdentityT ma) (runIdentityT mb)
+
 
 -- ---
 -- --- CacheT instance
