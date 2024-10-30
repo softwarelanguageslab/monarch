@@ -93,7 +93,6 @@ type MonadInter m =
         -- For global stores: StoreM (EnvAdr K) ActorVlu m,
         -- For global stores: AbstractCountM (EnvAdr K) m,
         MonadMailbox ActorVlu m,
-        MonadIO m,
         FormulaSolver (EnvAdr K) m)
 
 ------------------------------------------------------------
@@ -132,7 +131,7 @@ initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
 inter :: MonadInter m => Exp -> m ()
 inter = lfp intra . initialCmp
 
-analyze :: Exp -> IO ((((), Map (In ActorCmp) ActorSto), ActorMai), Map ActorCmp ActorRes)
+analyze :: Exp -> IO ((((), Map (Out ActorCmp) ActorSto), ActorMai), Map ActorCmp ActorRes)
 analyze exp = do
       ((((((((), _), _), _), mb), inn), out), mapping) <-
               inter exp
@@ -164,4 +163,4 @@ analyze exp = do
             -- Z3 solving
             & runCachedSolver
             & runZ3SolverWithSetup SMT.prelude
-      return ((((), inn), mb), mapping)
+      return ((((), out), mb), mapping)
