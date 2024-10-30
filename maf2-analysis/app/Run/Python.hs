@@ -93,11 +93,14 @@ generateGraph files =
                                         let (_, _, graph) = analyzeCP parsed
                                         printGraph file graph
          printGraph file graph = mapM_ (putStrLn . showEdge file) (edges graph)
-         showEdge file (from, to, ()) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show (shortFileName file) ++ " ];"
+         showEdge file (from, to, isDep) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show ("[" ++ toType isDep ++ "] " ++ shortFileName file) ++ "];"
          showNode (Constant name) = name
          showNode Top = "⊤"
          showNode _ = "⊥"
          shortFileName = reverse . takeWhile (/='/') . reverse
+         toType (Constant True) = "WINDOW"
+         toType (Constant False) = "REACTOR"
+         toType Top = "?"
 
 main :: Options -> IO ()
 main (Options fileName) = runFile fileName
