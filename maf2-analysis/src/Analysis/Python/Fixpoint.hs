@@ -26,6 +26,7 @@ import Analysis.Monad.Stack
 import Analysis.Monad.Call
 import qualified Control.Monad.Join as MJoin
 import Control.Monad.Identity
+import qualified Lattice.BottomLiftedLattice as BL
 
 import Data.Maybe
 import Data.Graph
@@ -79,11 +80,14 @@ intra :: forall obj m . AnalysisM m obj => PyCmp -> m ()
 intra cmp = runIntraAnalysis cmp m
     where m = do t <- fromJust <$> Analysis.Monad.get (PyCmpTaint cmp)
                  s <- fromJust <$> Analysis.Monad.get (PyCmpStoreIn cmp)
-                 ((),s') <- cache cmp (runCallT (uncurry callFix) . evalBdy)
-                                & runAlloc allocPtr
-                                & runWithTaint t 
-                                & runStoreT s 
-                 Analysis.Monad.put (PyCmpStoreOut cmp) s'
+                 r <- cache cmp (runCallT (uncurry callFix) . evalBdy)
+                        & runAlloc allocPtr
+                        & runWithTaint t 
+                        & runStoreT s 
+                        & runJoinT
+                 case r of 
+                    BL.Value (_, s') -> Analysis.Monad.put (PyCmpStoreOut cmp) s'
+                    _                -> return ()
           callFix :: PyLoc -> PyBdy -> IntraT' obj m PyRef
           callFix _ bdy = do cmp' <- key bdy
                              Analysis.Monad.joinWith (PyCmpTaint cmp')   =<< currentTaint 
