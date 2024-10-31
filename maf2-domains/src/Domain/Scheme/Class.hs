@@ -1,8 +1,9 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue, VarDom, VecDom, PaiDom, StrDom, Address) where
+module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue, VarDom, VecDom, PaiDom, StrDom) where
 
 import Lattice 
 import Domain.Core 
+import Domain.Address
 import Control.Monad.AbstractM
 
 import Data.Set (Set)
@@ -17,9 +18,6 @@ type SchemeDomainPre v =
     BoolDomain v,
     Boo v ~ v)
 
--- | An address is an abstraction for a memory location on which a heap-allocated address resides
-class (Show a, Eq a, Ord a) => Address a
-instance {-# OVERLAPPABLE #-} (Show a, Eq a, Ord a) => Address a
 
 -- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
 class (RealDomain v,

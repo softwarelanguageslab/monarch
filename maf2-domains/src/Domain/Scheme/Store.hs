@@ -25,7 +25,6 @@ module Domain.Scheme.Store(
 ) where
 
 import Syntax.Ide
-import Domain.Scheme.Class (Address)
 import Data.Map (Map)
 import qualified Syntax.Scheme.AST as Scheme
 
@@ -43,13 +42,6 @@ data VecAdrE e ctx = VecAdr e ctx deriving (Eq, Ord, Show)
 type PaiAdr ctx = PaiAdrE Scheme.Exp ctx
 type StrAdr ctx = StrAdrE Scheme.Exp ctx
 type VecAdr ctx = VecAdrE Scheme.Exp ctx
-
--- Address instances
-
-instance (Ord ctx, Show ctx) => Address (EnvAdr ctx)
-instance (Ord e, Show e, Ord ctx, Show ctx) => Address (PaiAdrE e ctx)
-instance (Ord e, Show e, Ord ctx, Show ctx) => Address (StrAdrE e ctx)
-instance (Ord e, Show e, Ord ctx, Show ctx) => Address (VecAdrE e ctx)
 
 -- | With sensible defaults for addresses comes a sensible
 -- default for the environment.

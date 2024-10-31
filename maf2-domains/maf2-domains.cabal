@@ -35,6 +35,7 @@ library
       Data.TypeLevel.HMap.Singletons
       Data.TypeLevel.HMap.TH
       Domain
+      Domain.Address
       Domain.Class
       Domain.Core
       Domain.Core.AbstractCount

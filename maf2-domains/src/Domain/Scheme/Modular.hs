@@ -26,6 +26,7 @@ module Domain.Scheme.Modular(
 ) where
 
 import Lattice
+import Domain.Address
 import Domain.Class
 import Domain.Core
 import Domain.Scheme.Class
