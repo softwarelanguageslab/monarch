@@ -14,6 +14,7 @@ import Data.Set (Set)
 import Control.Monad.State
 import Domain.Core.AbstractCount (AbstractCount(..))
 import Lattice.Class (leq, justOrBot)
+import Data.Maybe (fromJust)
 
 --------------------------------------------------
 -- Translation monad
@@ -110,7 +111,7 @@ translate' Empty = return "true"
 translate :: (Ord i) => Map i AbstractCount -> Formula i -> (String, Map i String, Set String)
 translate count formula = (t, syms, freshs)
    where vars = filter countOne $ Set.toList $ variables formula
-         countOne var = leq (justOrBot $ Map.lookup var count) CountOne
+         countOne var = leq (fromJust $ Map.lookup var count) CountOne
          syms = Map.fromList (zip vars (map (("x" ++) . show) [0..length vars]))
          (t, freshs) = runState (runReaderT (translate' formula) syms) Set.empty
 
