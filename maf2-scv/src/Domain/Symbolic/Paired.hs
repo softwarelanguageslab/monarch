@@ -219,8 +219,10 @@ instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v ex
 
    -- TODO: do we need to symbolically represent a behavior as well?
 
-   isActorRef v = 
-      SchemePairedValue (isActorRef (leftValue v), SymbolicVal $ Predicate "actor?/v" [proposition $ rightValue v])
+   -- XXX: the constraint is problematic in `ActorDomain` we actually **want** 
+   -- a `Boo` type family member so that limit it to a symbolic domain here.
+   isActorRef v = isActorRef (leftValue v)
+   -- SchemePairedValue (isActorRef (leftValue v), SymbolicVal $ Predicate "actor?/v" [proposition $ rightValue v])
 
 
 ------------------------------------------------------------
