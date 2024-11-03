@@ -79,12 +79,21 @@ import Data.Singletons.Decide
 import qualified Data.List as List
 import Data.TypeLevel.AssocList
 import GHC.Base (build)
+import Control.DeepSeq
 
 --
 -- SomeVal (TODO: move this to other utility module?)
 --
 
 data SomeVal = forall v . SomeVal v
+
+instance NFData SomeVal where    
+   -- XXX: this might not be correct as the 
+   -- value enclosed within `SomeVal` is not 
+   -- evaluated. We propably need to create 
+   -- a proper instance for `NFData` for HMap
+   -- rather than relying on the instance on @Map@.
+   rnf x = seq x ()
 
 -- only use this when absolutely sure about the type 
 unsafeCoerceVal :: SomeVal -> v
@@ -115,7 +124,9 @@ type AllAtKey  c m = ForAll (KeyKind m) (AtKey c m) :: Constraint
 type KeyKind (m :: [k :-> Type]) = k
 type KeyType m = Demote (KeyKind m)
 
-newtype HMap (m :: [k :-> Type]) = HMap (Map (KeyType m) SomeVal)
+newtype HMap (m :: [k :-> Type]) = HMap (Map (KeyType m) SomeVal) 
+
+deriving instance (NFData (Demote k)) => NFData (HMap (m :: [k :-> Type]))
 
 -- shorthand for mappings with a "valid"/"usable" key
 type HMapKey m = (SingKind (KeyKind m), SDecide (KeyKind m), Ord (KeyType m))

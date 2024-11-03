@@ -1,5 +1,4 @@
 {-# LANGUAGE UndecidableInstances #-}
-
 module Domain.Core.VectorDomain.PIVector (PIVector(..)) where
 
 import Lattice 
@@ -8,9 +7,13 @@ import Domain.Core.NumberDomain.Class
 import Control.Monad.Join 
 import Control.Monad.DomainError
 import Control.Monad.Escape
+import Control.DeepSeq
+import GHC.Generics
 
 -- position insensitive vector
-data PIVector i c = PIVector i c deriving (Show, Eq, Ord)
+data PIVector i c = PIVector i c deriving (Show, Eq, Ord, Generic)
+
+instance (NFData i, NFData c) => NFData (PIVector i c)
 
 instance (Joinable i, Joinable c) => Joinable (PIVector i c) where
    join (PIVector i1 c1) (PIVector i2 c2) =
