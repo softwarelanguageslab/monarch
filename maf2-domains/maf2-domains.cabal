@@ -35,6 +35,7 @@ library
       Data.TypeLevel.HMap.Singletons
       Data.TypeLevel.HMap.TH
       Domain
+      Domain.Actor
       Domain.Address
       Domain.Class
       Domain.Core
@@ -86,7 +87,6 @@ library
       Domain.Python.World
       Domain.Scheme
       Domain.Scheme.Actors
-      Domain.Scheme.Actors.Class
       Domain.Scheme.Actors.Contract
       Domain.Scheme.Actors.CP
       Domain.Scheme.Actors.Message

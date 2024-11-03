@@ -1,26 +1,21 @@
-module Domain.Scheme.Actors.Class(ActorDomain(..), Pid(..)) where
+module Domain.Actor(Pid(..), ActorDomain(..)) where
 
-import Domain.Scheme.Class 
 import Data.Kind
 import Control.Monad.AbstractM
 import Lattice.Class (Lattice)
 import Data.Set (Set)
 import Domain.Core.NumberDomain (Boo)
 
--- | Representation of actor references, 
--- parametrized by their spawn site.
+-- | Generic representation of actor references, 
+-- parametrized by their spawn site and an optional context.
 data Pid e ctx
   = Pid e ctx
   | EntryPid
   deriving (Ord, Eq, Show)
 
--- TODO: should split this into multiple type classes 
--- since not all actor languages have behaviors. 
--- For example, in Erlang processes are spawned 
--- using a lambda. 
--- | Extension of the Scheme domain with actor references
--- and behaviors.
-class (SchemeDomain v) => ActorDomain v where
+-- | A generic domain for use in Actor based languages.
+-- This domain is minimal, as it only contains process identifiers (indicated by type @ARef v@). Messages are not explicitly modelled, and are assumed to be values of the analyzed programming language. For more complex actor languages such as AmbientTalk, more advanced, specific domains, can be used.
+class ActorDomain v where
    -- | The type of actor reference included in abtract value `v`
    type ARef v :: Type
 
@@ -37,8 +32,3 @@ class (SchemeDomain v) => ActorDomain v where
    -- by returning a set of their abstract values
    arefs' :: v -> Set (ARef v)
 
-   -- | Inject a behavior of an actor in the abstract domain
-   beh  :: (Exp v, Env v) -> v
-
-   -- | Extract behaviors from the abstract values in the domain
-   withBehs :: (AbstractM m, Lattice a) => ((Exp v, Env v) -> m a) -> v -> m a

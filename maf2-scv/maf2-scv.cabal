@@ -29,14 +29,10 @@ source-repository head
 
 library
   exposed-modules:
-      Analysis.Contracts
       Analysis.Contracts.Mailbox
-      Analysis.Contracts.Monad
       Analysis.Contracts.Semantics
       Analysis.Symbolic.Monad
       Analysis.Symbolic.Monad.SymbolicStore
-      Analysis.Symbolic.Semantics
-      Analysis.Traces
       Data.Map.Extra
       Domain.Contract
       Domain.Contract.Behavior

@@ -11,9 +11,10 @@ import Control.Monad.Reader hiding (fix)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Domain.Scheme.Class hiding (Exp)
-import Domain.Scheme.Actors.Class
+import Domain.Actor
 
 import Analysis.SimpleActor.Monad
+import Analysis.Actors.Monad
 
 import Control.Monad.Escape
 import Control.Monad.Join
@@ -25,7 +26,7 @@ import Analysis.Monad.Store
 
 import Analysis.Monad.Fix
 
-import Analysis.Actors.Monad (stoPai)
+import Analysis.Scheme.Monad (stoPai)
 import Domain.Core.PairDomain (cons, car ,cdr)
 import Control.Applicative (liftA2)
 import Analysis.Scheme.Primitives (Prim(..), primitivesByName)

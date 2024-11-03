@@ -48,7 +48,6 @@ type ErlangM m v mb = (
    AllocM m Loc (Adr m),
    Env v ~ BasicEnv (Adr m),
    -- Erlang specific
-   ActorM m v (Msg m) mb,
    ErlangDomain v,
    ErlangCallM m v,
    -- Errors

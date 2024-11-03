@@ -5,7 +5,7 @@ import Data.TypeLevel.HMap ((::->))
 import Data.Map (Map)
 import Lattice
 import Domain.Scheme.Class hiding (Exp)
-import Domain.Scheme.Actors.Class
+import Domain.Actor
 import Domain.Core
 
 type CPActorMapping adr pai vec str ctx exp =

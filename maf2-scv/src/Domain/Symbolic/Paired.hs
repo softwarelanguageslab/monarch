@@ -16,6 +16,7 @@ import Domain.Contract.Communication
 import Lattice.Class
 import Data.Kind
 import Domain.Scheme.Store (EnvAdr, PaiAdrE, StrAdrE, VecAdrE)
+import Domain.Actor
 
 --------------------------------------------------
 -- Declaration
@@ -217,8 +218,6 @@ instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v ex
    arefs'    = arefs'  . leftValue
 
    -- TODO: do we need to symbolically represent a behavior as well?
-   beh beh'   = SchemePairedValue (beh beh', SymbolicVal $ Literal Beh)
-   withBehs f = withBehs f . leftValue
 
    isActorRef v = 
       SchemePairedValue (isActorRef (leftValue v), SymbolicVal $ Predicate "actor?/v" [proposition $ rightValue v])

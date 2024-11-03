@@ -4,6 +4,7 @@ module Analysis.SimpleActor.Fixpoint(ActorCmp, analyze) where
 
 import Analysis.SimpleActor.Monad
 import Analysis.SimpleActor.Semantics
+import Analysis.Actors.Monad
 
 import Data.Map (Map)
 import Data.Function ((&))
