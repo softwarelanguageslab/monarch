@@ -225,6 +225,12 @@ compile (SExp.Str str s) =  pure $ Str str s
 compile (SExp.Bln b s) = pure $ Bln b s
 compile (SExp.Rea r s) = pure $ Rea r s
 compile (SExp.Cha c s) = pure $ Cha c s
+-- list
+compile exp@(SExp.Atom "list" _ ::: vs) =
+   foldr (\e es -> App (Var (Ide "cons" (spanOf e))) [e, es] (spanOf e)) (Nll (spanOf exp)) <$> sequence (SExp.smap compile vs)
+-- and 
+compile exp@(SExp.Atom "and" _ ::: vs) = 
+   foldr (\e es -> Iff e es (Bln False (spanOf exp)) (spanOf e)) (Bln True (spanOf exp)) <$> sequence (SExp.smap compile vs)
 -- begin
 compile (SExp.Atom "begin" _ ::: (SExp.SNil _)) = throwError "begin cannot be empty"
 compile (SExp.Atom "begin" _ ::: xs) = begin <$> compileSequence xs
