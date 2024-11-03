@@ -37,7 +37,7 @@ import Control.Monad.Lift
 
 import Control.Monad.Layer
 import Analysis.Store (Store, CountingMap)
-import Domain (Address)
+import Domain.Address (Address)
 import Control.Monad.Join
 import Data.Maybe (fromMaybe, isJust)
 import Control.Monad.Cond (ifM)
@@ -216,7 +216,10 @@ evalWithStore = fmap fst . runWithStore
 -- the current store to the @In(component)@ were 
 -- @component@ is the target component and reading 
 -- from the @Out(component) after the component's evaluation
-flowSensitiveStore :: forall v m s e a . (Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
+flowSensitiveStore :: forall v m s e a . (Cache.MonadCache m, Map.Widened (Cache.Key m e) s m, StoreM' s a v m) 
+                   => (e -> AroundT e v m v) 
+                   -> e 
+                   -> AroundT e v m v
 flowSensitiveStore f e = do
    cmp <- upperM $ Cache.key e
    sto <- upperM (currentStore @s @a)
@@ -227,7 +230,10 @@ flowSensitiveStore f e = do
    return v
 
 -- |  Flow-sensitive evaluation function
-flowSensitiveEval :: forall v m s e a . (Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
+flowSensitiveEval :: forall v m s e a . (Cache.MonadCache m, Map.Widened (Cache.Key m e) s m, StoreM' s a v m)
+                  => (e -> AroundT e v m v) 
+                  -> e 
+                  -> AroundT e v m v
 flowSensitiveEval eval e = do
    cmp <- upperM $ Cache.key e
    putStore =<< maybe mzero return =<< upperM (Map.get @_ @s (Map.In cmp))

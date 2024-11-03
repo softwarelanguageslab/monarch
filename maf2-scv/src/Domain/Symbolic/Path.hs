@@ -2,12 +2,13 @@
 -- specific generalisation of both paths such 
 -- that the path condition holds on both paths.
 --
--- Note that we do not implement the standard 
--- lattice classes as they require pure computations 
--- to determine subsumption and least upper bounds,
--- whereas in this case external calls to specialized
--- solvers are needed for checking entailment 
--- and satisfiability.
+-- Note that we use `unsafePerformIO` here 
+-- to hand the computation for subsumption 
+-- checking to an SMT solver. We argue however 
+-- that this practice is **safe** since the 
+-- SMT solver is expected to return the same 
+-- answer given the same query, and could 
+-- be replaced with a pure Haskell implementation.
 module Domain.Symbolic.Path(Atom(..), NormalFormFormula(..), leq, subsumes, joinNF, join, formula2nf, nf2formula) where
 
 import Data.Set (Set)

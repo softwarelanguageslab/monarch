@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module Analysis.Monad.Map (
     MapM(..),
@@ -11,7 +12,8 @@ module Analysis.Monad.Map (
     runWithMapping',
     runMapT,
     In(..),
-    Out(..)
+    Out(..),
+    Widened
 ) where
 
 import Control.Monad.Trans
@@ -25,6 +27,7 @@ import Control.Monad.Trans.State (runStateT)
 import Lattice
     ( BottomLattice, Joinable(..), justOrBot, PartialOrder(..) )
 import Lattice.BottomLiftedLattice (BottomLifted(Value, Bottom))
+import Control.Monad.Join (MonadBottom)
 
 --
 -- MapM typeclass
@@ -75,7 +78,7 @@ runMapT :: Map k v -> MapT k v m a  -> m (a, Map k v)
 runMapT s (MapT m) = runStateT m s
 
 --
--- Flow sensitive mappings
+-- Widened per component mappings
 -- 
 
 -- | In address, parametrized by the type of component (or key) from CacheM
@@ -85,4 +88,9 @@ newtype In cmp = In cmp deriving (Ord, Eq, Show)
 -- and type of value @v@ stored at the address
 newtype Out cmp = Out cmp deriving (Ord, Eq, Show)
 
-
+-- | Set of constraints applicable to any per-component widening function
+type Widened cmp v m = 
+   ( MapM (In cmp) v m,
+     MapM (Out cmp) v m, 
+     MonadBottom m,
+     Joinable v )
