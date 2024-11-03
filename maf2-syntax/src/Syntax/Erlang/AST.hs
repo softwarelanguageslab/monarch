@@ -87,5 +87,6 @@ data Expr = Atomic Literal
           | ModVar ModuleName Identifier
           deriving (Eq, Ord, Show)
 
+-- | A clause in a pattern match expression
 data Clause = SimpleClause Pattern [Body] Body 
             deriving (Eq, Ord, Show)

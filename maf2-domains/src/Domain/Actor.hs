@@ -2,9 +2,9 @@ module Domain.Actor(Pid(..), ActorDomain(..)) where
 
 import Data.Kind
 import Control.Monad.AbstractM
-import Lattice.Class (Lattice)
+import Lattice.Class (Lattice, BottomLattice)
 import Data.Set (Set)
-import Domain.Core.NumberDomain (Boo)
+import Domain.Core.BoolDomain.Class (BoolDomain)
 
 -- | Generic representation of actor references, 
 -- parametrized by their spawn site and an optional context.
@@ -26,7 +26,7 @@ class ActorDomain v where
    arefs :: (AbstractM m, Lattice a) => (ARef v -> m a) -> v -> m  a
 
    -- | Check if the given actor value is an actor reference
-   isActorRef :: v -> Boo v
+   isActorRef :: (BoolDomain b, BottomLattice b) => v -> b
 
    -- | Extract the set of actor references from the abstract value 
    -- by returning a set of their abstract values

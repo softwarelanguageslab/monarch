@@ -7,6 +7,7 @@ import Data.TypeLevel.HMap hiding (map)
 import qualified Data.TypeLevel.HMap as HMap
 import Syntax.Erlang
 import Lattice
+import Domain.Actor
 import Domain.Core
 import Domain (Domain(..))
 import Domain.Erlang.Class
@@ -20,7 +21,8 @@ import Data.Singletons.Sigma
 import Data.Kind
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromMaybe)
+import Control.Monad ((<=<))
 
 ------------------------------------------------------------
 -- Configuration
@@ -85,7 +87,6 @@ type IsErlValue c =
    (AllAtKey1 Lattice (ErlMapping c),
     AllAtKey1 Eq (ErlMapping c),
     AllAtKey1 Joinable      (ErlMapping c),
-    AllAtKey1 BottomLattice (ErlMapping c),
     AllAtKey1 PartialOrder  (ErlMapping c),
     KeyIs1 IntDomain  (ErlMapping c) IntKey,
     KeyIs1 BoolDomain (ErlMapping c) BooKey,
@@ -101,10 +102,18 @@ deriving instance (IsErlValue c) => BottomLattice (ErlValue c)
 -- Domain instances
 ------------------------------------------------------------
 
+instance (IsErlValue c) => ActorDomain (ErlValue c) where
+   type ARef (ErlValue c) = PidCfg c
+
+   aref = ErlValue . singleton @PidKey . Set.singleton
+   arefs f = mjoinMap f . Set.toList . fromMaybe Set.empty . HMap.get @PidKey . getValue
+   isActorRef = containsType PidKey . getValue
+   arefs' = fromMaybe Set.empty . HMap.get @PidKey . getValue
+
 instance (IsErlValue c) => Domain (ErlValue c) Bool where
    inject = ErlValue . singleton @BooKey . inject
 
-instance (IsErlValue c) => BoolDomain (ErlValue c)
+instance (IsErlValue c) => BoolDomain (ErlValue c) where
 
 instance (IsErlValue c) => Domain (ErlValue c) Integer where
    inject = ErlValue . singleton @IntKey . inject
@@ -186,4 +195,4 @@ instance (IsErlValue c) => ErlangDomain (ErlValue c) where
    clos f = mjoins . Prelude.map f . maybe [] Set.toList . get @CloKey . getValue
 
    symbols f = mjoins . Prelude.map f . maybe [] Set.toList . get @SymKey . getValue
-   
+
