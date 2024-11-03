@@ -10,7 +10,7 @@ import Lattice
 import Domain.Actor
 import Domain.Core
 import Domain (Domain(..))
-import Domain.Erlang.Class
+import Domain.Erlang.Class hiding (Clo)
 import Control.Monad.Join
 import Control.Monad.DomainError
 import Control.Monad.Escape
@@ -22,7 +22,6 @@ import Data.Kind
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Maybe (isJust, fromMaybe)
-import Control.Monad ((<=<))
 
 ------------------------------------------------------------
 -- Configuration
@@ -50,7 +49,7 @@ type Clo c = (EnvCfg c, [Clause])
 -- Utilities
 ------------------------------------------------------------
 
-binop :: forall mp m . (AllAtKey1 Eq mp, AllAtKey1 Joinable mp, AllAtKey1 Lattice mp, AllAtKey1 BottomLattice mp, AllAtKey1 PartialOrder mp, HMapKey mp, AbstractM m)
+binop :: forall mp m . (AllAtKey1 Eq mp, AllAtKey1 Joinable mp, AllAtKey1 Lattice mp, AllAtKey1 PartialOrder mp, HMapKey mp, AbstractM m)
       => (BindingFrom mp -> BindingFrom mp -> m (HMap mp))
       -> HMap mp -> HMap mp -> m (HMap mp)
 binop f m1 m2 = mjoins (HMap.mapList select m1)
