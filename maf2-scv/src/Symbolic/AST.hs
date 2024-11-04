@@ -14,6 +14,7 @@ module Symbolic.AST
     isUnsat,
     isUnknown,
     emptyPC,
+    emptyFormula,
     PC,
   )
 where
@@ -122,6 +123,10 @@ disjunction :: Ord i => Formula i -> Formula i -> Formula i
 disjunction (Disjunction f1) (Disjunction f2) = Disjunction $ Set.union f1 f2
 disjunction f1 (Disjunction f2) = Disjunction $ Set.union (Set.singleton f1) f2
 disjunction f1 f2 = Disjunction $ Set.fromList [f1, f2]
+
+-- | Create an empty formula
+emptyFormula :: Formula i 
+emptyFormula = Empty
 
 -- | The path condition is an unordered disjunction of formulas
 type PC i = Set (Formula i)

@@ -9,7 +9,7 @@
 -- SMT solver is expected to return the same 
 -- answer given the same query, and could 
 -- be replaced with a pure Haskell implementation.
-module Domain.Symbolic.Path(Atom(..), NormalFormFormula(..), leq, subsumes, joinNF, join, formula2nf, nf2formula) where
+module Domain.Symbolic.Path(Atom(..), NormalFormFormula(..), leq, subsumes, joinNF, join, joinPC, formula2nf, nf2formula) where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -116,3 +116,8 @@ joinNF p q = fmap fromAtoms r
 -- and joining them using @joinNF@.
 join :: (Ord i, AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m (Formula.Formula i) 
 join p1 p2 = nf2formula <$> joinNF (formula2nf p1) (formula2nf p2)
+
+-- | Join two sets of paths together into a singleton set of a single path
+joinPC :: (Ord i, AbstractCountM i m, FormulaSolver i m) => Formula.PC i -> Formula.PC i -> m (Formula.PC i)
+joinPC pc1 = (fmap Set.singleton) . foldM join Formula.emptyFormula . Set.union pc1
+

@@ -37,7 +37,7 @@ import Control.Monad.Join (MonadBottom)
 class Monad m => MapM k v m | m k -> v where
     get :: k -> m (Maybe v)
     put :: k -> v -> m ()
-    joinWith :: Joinable v => k -> v -> m ()
+    joinWith  :: Joinable v => k -> v -> m ()
 
 instance (MapM k v m, Monad (t m), MonadLayer t) => MapM k v (t m) where
     get = upperM . get

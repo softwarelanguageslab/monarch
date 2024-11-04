@@ -19,6 +19,7 @@ module Analysis.Symbolic.Monad(
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
+import qualified Domain.Symbolic.Path as Path
 import Control.Monad.Layer
 import Control.Monad.Join
 import Control.Monad.State.IntPool
@@ -34,6 +35,9 @@ import Analysis.Monad (MonadCache(..), AbstractCountM)
 import qualified Analysis.Monad.Map as Map
 import qualified Analysis.Monad as Cache
 import Analysis.Monad.Fix
+import qualified Symbolic.AST as Symbolic
+import Control.Monad (foldM)
+import Data.Maybe
 
 -- | Monad that keeps track of a path condition
 class (Monad m) => MonadPathCondition i m v | m -> v i where
@@ -162,30 +166,40 @@ instance (MonadCache m, Functor (Base m)) => MonadCache (WidenedFormulaT i v m) 
 -- | Keep the path condition in a map from components to 
 -- path conditions which get widened when input paths 
 -- from multiple locations get joined together.
-wideningPerComponent :: forall m e v i . (MonadCache m, Map.Widened (Cache.Key m e) (PC i) m, MonadPathCondition' i m, MonadPathCondition i m v) 
+wideningPerComponent :: forall m e v i . (Ord i, AbstractCountM i m, FormulaSolver i m, MonadCache m, Map.Widened (Cache.Key m e) (PC i) m, MonadPathCondition' i m, MonadPathCondition i m v) 
                      => (e -> AroundT e v m v) 
                      -> e 
                      -> AroundT e v m v
 wideningPerComponent f e = do 
    cmp <- upperM $ Cache.key e
-   pc' <- upperM getPc 
-   upperM $ Map.joinWith (Map.In cmp) pc' 
+   pc' <- upperM getPc
+   -- XXX: this is a 'hack', we join the path conditions
+   -- here since we need access to `AbstractCountM` and 
+   -- `FormulaSolver` here. Ideally we could integrate
+   --  this with the abstract domain type classes somehow
+   --  but it is unclear right now how to do that.
+   --
+   --  TODO: do not use @Map.get@ here as it introduces a read 
+   --  dependency in the current component that is not needed, therefore 
+   --  making the analysis slower.
+   oldPc <- upperM $ fromMaybe Set.empty <$> Map.get (Map.In cmp)
+   upperM . Map.put (Map.In cmp) =<< Path.joinPC oldPc pc'
    v <- f e 
    pc'' <- maybe mzero return =<< upperM (Map.get @_ @(PC i) (Map.Out cmp))
    putPC pc'' 
    return v
 
 -- | Keep path 
-wideningPerComponentEval :: forall m e i v . (MonadCache m, Map.Widened (Cache.Key m e) (PC i) m, MonadPathCondition' i m, MonadPathCondition i m v) 
+wideningPerComponentEval :: forall m e i v . (Ord i, AbstractCountM i m, FormulaSolver i m, MonadCache m, Map.Widened (Cache.Key m e) (PC i) m, MonadPathCondition' i m, MonadPathCondition i m v) 
                          => (e -> AroundT e v m v)
                          -> e 
                          -> AroundT e v m v
-wideningPerComponentEval eval e = do 
+wideningPerComponentEval eval e = do
    cmp <- upperM $ Cache.key e 
    pc' <- maybe mzero return =<< upperM (Map.get @_ @(PC i) (Map.In cmp))
    putPC pc' 
    v <- eval e 
    pc'' <- getPc
-   Map.put @_ @(PC i) (Map.Out cmp) pc''
+   Map.put @_ @(PC i) (Map.Out cmp) =<< Path.joinPC pc' pc''
    return v
    
