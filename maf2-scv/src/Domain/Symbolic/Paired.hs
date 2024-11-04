@@ -17,13 +17,16 @@ import Lattice.Class
 import Data.Kind
 import Domain.Scheme.Store (EnvAdr, PaiAdrE, StrAdrE, VecAdrE)
 import Domain.Actor
+import Control.DeepSeq
+import GHC.Generics
 
 --------------------------------------------------
 -- Declaration
 --------------------------------------------------
 
 newtype SymbolicVal (exp :: Type) (k :: Type) (i :: Type) = SymbolicVal { proposition :: Proposition i  } 
-                    deriving (Eq, Ord)
+                    deriving (Eq, Ord, NFData)
+
 
 instance Show i => Show (SymbolicVal exp k i) where  
    show = show . proposition

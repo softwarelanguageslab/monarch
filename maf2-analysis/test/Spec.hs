@@ -13,8 +13,8 @@ schemeSmoke =
    mapM_ (analysisSucceeds
             "Scheme analysis" 
             defaultTimeout 
-            Scheme.cpAnalyze 
-            Syntax.Scheme.parseString') SchemeBenchmarks.quick
+            (return . Scheme.cpAnalyze)
+            (return . Syntax.Scheme.parseString')) SchemeBenchmarks.quick
 
 -- | Smoke tests for Python, checkds whether 
 -- all test programs can be analyzed succesfully.

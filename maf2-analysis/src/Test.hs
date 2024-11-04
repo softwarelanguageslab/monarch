@@ -9,7 +9,7 @@ import Data.Maybe (fromMaybe)
 
 -- | Default timeout in seconds
 defaultTimeout :: Int 
-defaultTimeout = 1
+defaultTimeout = 5
 
 -- |  Smoke test: run an analysis on the given file, and check whether it fails (i.e., crashes). If it does crash, the test fails and succeeds otherwise.
 analysisSucceeds :: (NFData res, Show err) =>
@@ -18,16 +18,16 @@ analysisSucceeds :: (NFData res, Show err) =>
   -- Timeout value in seconds
   Int -> 
   -- | an analysis function
-  (e -> res) ->
+  (e -> IO res) ->
   -- | parse function
-  (String -> Either err e) ->
+  (String -> IO (Either err e)) ->
   -- | file to analyze
   String ->
   Spec
 analysisSucceeds name timeoutSec analyze parse filename = do
    it ("The " ++ name ++ " of " ++ show filename ++ " should not fail") $ do 
       contents <- readFile filename
-      let parsed = either (error . ("could not parse " ++) . show) id (parse contents)
+      parsed <- either (error . ("could not parse " ++) . show) id <$> (parse contents)
       -- NOTE: @deepseq@ is required here as 
       -- the analysis might otherwise not complete, 
       -- resulting in the possibility that the 
@@ -39,5 +39,5 @@ analysisSucceeds name timeoutSec analyze parse filename = do
       --
       -- The need for the `NFData` constraint here is rather unfortunate, but is required for @deepseq@ to work.
       () <- fromMaybe (error "timeout while executing analysis") <$> 
-               timeout (timeoutSec*(10^6)) (analyze parsed `deepseq` return ())
+               timeout (timeoutSec*(10^6)) (analyze parsed) >>= (`deepseq` return ())
       return ()

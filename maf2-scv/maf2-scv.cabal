@@ -78,6 +78,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , deepseq
     , extra
     , file-embed
     , maf2-analysis
@@ -117,6 +118,7 @@ executable maf2-scv-exe
   build-depends:
       base >=4.7 && <5
     , containers
+    , deepseq
     , extra
     , file-embed
     , maf2-analysis
@@ -159,6 +161,7 @@ test-suite maf2-scv-test
   build-depends:
       base >=4.7 && <5
     , containers
+    , deepseq
     , dir-traverse
     , either
     , extra

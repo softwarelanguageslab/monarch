@@ -2,6 +2,7 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Analysis.SimpleActor.Monad
   ( MonadActor,
@@ -52,14 +53,19 @@ import Analysis.Symbolic.Monad (SymbolicM)
 import Domain.Scheme hiding (Exp, Env)
 import Domain.Actor
 import Analysis.Actors.Monad
+import Control.DeepSeq
+import GHC.Generics
 
 ------------------------------------------------------------
 -- 'Components'
 ------------------------------------------------------------
 
-data Cmp = FuncBdy  Exp  -- ^ a function call component contains a lambda   
-         | ActorExp Exp  -- ^ a newly spawned actor
+data Cmp = FuncBdy  !Exp  -- ^ a function call component contains a lambda   
+         | ActorExp !Exp  -- ^ a newly spawned actor
       deriving (Show, Eq, Ord)
+
+instance NFData Cmp where  
+   rnf x = x `seq` ()
 
 instance SpanOf Cmp where  
    spanOf (FuncBdy e) = spanOf e 
@@ -77,6 +83,11 @@ instance FreeVariables Cmp where
 -- TODO: BlameErorr should contain label not a string!
 data Error = MatchError | InvalidArgument | BlameError String | ArityMismatch Int Int
   deriving (Eq, Ord, Show)
+
+
+instance NFData Error where   
+   rnf x = x `seq` ()
+
 
 class (SplitLattice e) => SimpleActorErrorDomain e where 
    isMatchError :: (BottomLattice b, BoolDomain b) => e -> b
@@ -198,7 +209,9 @@ instance (Monad m, α ~ Adr v) => MonadDynamic α (DynamicBindingT v m) where
 ------------------------------------------------------------
 
 data ActorError = ActorDomainError DomainError | ActorError Error
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData ActorError
 
 instance Domain (Set ActorError) DomainError where
   inject = Set.singleton . ActorDomainError

@@ -2,10 +2,14 @@
 module Domain.Core.AbstractCount (AbstractCount (..), inc) where
 
 import Lattice.Class (Joinable (..), PartialOrder (..))
+import GHC.Generics
+import Control.DeepSeq
 
 -- | Value that represents abstract count
 data AbstractCount = CountOne | CountInf
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData AbstractCount
 
 -- |  Increment the abstract count by one
 inc :: AbstractCount -> AbstractCount

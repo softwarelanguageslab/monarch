@@ -18,6 +18,7 @@ module Analysis.Monad.Map (
 
 import Control.Monad.Trans
 import Control.Monad.Layer
+import Control.DeepSeq
 
 import Control.Monad.State ( StateT, MonadState )
 import qualified Control.Monad.State as State
@@ -83,10 +84,10 @@ runMapT s (MapT m) = runStateT m s
 
 -- | In address, parametrized by the type of component (or key) from CacheM
 -- and type of value @v@ stored at the address
-newtype In cmp = In cmp deriving (Ord, Eq, Show)
+newtype In cmp = In cmp deriving (Ord, Eq, Show, NFData)
 -- | Output address, parametrized by the type of component (or key) from CacheM
 -- and type of value @v@ stored at the address
-newtype Out cmp = Out cmp deriving (Ord, Eq, Show)
+newtype Out cmp = Out cmp deriving (Ord, Eq, Show, NFData)
 
 -- | Set of constraints applicable to any per-component widening function
 type Widened cmp v m = 
