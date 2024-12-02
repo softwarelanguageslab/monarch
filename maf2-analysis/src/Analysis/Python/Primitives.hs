@@ -68,15 +68,13 @@ applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
 -- string primitives
 applyPrim StringAppend  = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc . from @StrPrm =<< Domain.append s1 s2
 -- dictionary primitives
-applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookupM
-applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (updateDct k) v a1) a2
-   where updateDct key vlu = return . Domain.updateWeak key vlu
+applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookup
+applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (Domain.updateWeak k) v a1) a2
 applyPrim DictKeys      = prim1' @DctPrm $ \loc -> \case
-                                                        Domain.BotDict          -> mzero
                                                         Domain.CPDict kys dct _ -> if Set.size kys == Map.size dct
                                                                                    then do sts <- mapM (\str -> pyStore (tagAs (DctKey str) loc) $ from' @StrPrm str) (Map.keys dct)
                                                                                            pyStore loc $ from @LstPrm $ SeqDomain.fromList sts
-                                                                                   else do str <- pyStore loc $ from @StrPrm (joins $ map Constant $ Map.keys dct)
+                                                                                   else do str <- pyStore loc $ from @StrPrm (joins1 $ map Constant $ Map.keys dct)     -- we know its not empty, because if |dct| == 0, then |kys| == 0 too 
                                                                                            pyStore loc $ from @LstPrm (SeqDomain.TopList str)
                                                         Domain.TopDict _ _  -> do str <- pyStore loc $ from @StrPrm Top --TODO improve precision (don't reuse loc)
                                                                                   pyStore loc $ from @LstPrm (SeqDomain.TopList str)
@@ -85,14 +83,14 @@ applyPrim ListGetItem   = prim2' @LstPrm @IntPrm $ const $ flip SeqDomain.ref
 applyPrim ListSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @IntPrm (\i -> none $ pyAssignInPrm SLstPrm (SeqDomain.setWeak i) v a1) a2
 applyPrim ListLength    = prim1' @LstPrm $ \loc l -> pyStore loc . from @IntPrm =<< SeqDomain.length l
 applyPrim ListIter      = prim1 $ \loc l -> do n <- pyStore (tagAs ItrIdx loc) $ from' @IntPrm @_ @Integer 0
-                                               let obj = new'' ListIteratorType [(attrStr ListAttr, l), (attrStr IndexAttr, n)]
+                                               let obj = new' ListIteratorType [(attrStr ListAttr, l), (attrStr IndexAttr, n)] []
                                                pyStore (tagAs ItrLst loc) obj
 -- list iterator primitives
 applyPrim ListIteratorNext = prim1 $ pyDeref . next
            where
               next :: PyLoc -> ObjAdr -> obj -> pyM vlu
-              next loc adr obj = do let lst = getAttr (attrStr ListAttr) obj
-                                    let idx = getAttr (attrStr IndexAttr) obj
+              next loc adr obj = do lst <- getAttr (attrStr ListAttr) obj
+                                    idx <- getAttr (attrStr IndexAttr) obj
                                     advance loc adr lst idx `orElse` stopIteration loc
               advance :: PyLoc -> ObjAdr -> vlu -> vlu -> pyM vlu
               advance loc adr = pyDeref2'' @LstPrm @IntPrm $
@@ -102,7 +100,7 @@ applyPrim ListIteratorNext = prim1 $ pyDeref . next
                                                    pyAssignAt (attrStr IndexAttr) idx adr
                                                    return v
               stopIteration :: PyLoc -> pyM vlu
-              stopIteration loc = pyRaise =<< pyStore (tagAs NxtExc loc) (new' StopIterationExceptionType)
+              stopIteration loc = pyRaise =<< pyStore (tagAs NxtExc loc) (new' StopIterationExceptionType [] [])
 -- type primitives
 applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr) nam typ
                                                       mro <- computeMRO loc typ sup
@@ -111,13 +109,16 @@ applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr
 -- object primitives
 applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
 -- DataFrame primitives
-applyPrim DataFrameGetItem = prim2' @DfrPrm @StrPrm $ \loc _ _ -> pyStore loc (from @SrsPrm $ inject ())
-applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref'' @StrPrm (\_ -> none $ pyAssignInPrm SDfrPrm (const return) a3 a1) a2
+applyPrim DataFrameGetItem = prim2' @DfrPrm @StrPrm $ \loc dfr _ -> pyStore loc (from @SrsPrm dfr)
+applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref2'' @StrPrm @SrsPrm (\_ srs -> none $ pyAssignInPrm SDfrPrm (assignSeries srs) a3 a1) a2 a3
+        where 
+             assignSeries :: CP Bool -> vlu -> CP Bool -> pyM (CP Bool)
+             assignSeries srs _ dfr = return (join dfr srs)
 applyPrim DataFrameEmpty   = prim1' @DfrPrm $ \loc _ -> pyStore loc (from @BlnPrm boolTop)
 applyPrim DataFrameRename  = prim2' @DfrPrm @DctPrm $ \loc df _ -> pyStore loc (from @DfrPrm df)
 applyPrim DataFrameDropNA  = prim1' @DfrPrm $ \loc df -> pyStore loc (from @DfrPrm df)
-applyPrim DataFrameAppend  = prim2' @DfrPrm @DfrPrm $ \loc _ _ -> pyStore loc (from @DfrPrm $ inject ())
-applyPrim DataFrameFromSeries = prim1' @SrsPrm $ \loc _ -> pyStore loc (from @DfrPrm $ inject ())
+applyPrim DataFrameAppend  = prim2' @DfrPrm @DfrPrm $ \loc df1 df2 -> pyStore loc (from @DfrPrm $ df1 `join` df2)
+applyPrim DataFrameFromSeries = prim1' @SrsPrm $ \loc srs -> pyStore loc (from @DfrPrm $ srs)
 -- Series primitives
 applyPrim SeriesAsType    = prim2 $ \_ self _ -> return self
 applyPrim SeriesMerge     = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1
@@ -144,7 +145,7 @@ prim1 _ _   _  = pyError ArityError
 prim1' :: forall a pyM obj vlu . (SingI a, PyM pyM obj vlu)
         => (PyLoc -> Abs obj a -> pyM vlu)      -- ^ the primitive function
         -> (PyLoc -> [vlu]     -> pyM vlu)      -- ^ the resulting function   
-prim1' f = prim1 $ \loc -> pyDeref' (at @a >=> f loc)
+prim1' f = prim1 $ \loc -> pyDeref' (get @a >=> f loc)
 
 prim2 :: PyM pyM obj vlu
         => (PyLoc -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
@@ -155,8 +156,8 @@ prim2 _ _ _          = pyError ArityError
 prim2' :: forall a1 a2 pyM obj vlu . (SingI a1, SingI a2, PyM pyM obj vlu)
         => (PyLoc -> Abs obj a1 -> Abs obj a2 -> pyM vlu)   -- ^ the primitive function
         -> (PyLoc -> [vlu] -> pyM vlu)                      -- ^ the resulting function 
-prim2' f = prim2 $ \loc -> pyDeref2' (\o1 o2 -> do v1 <- at @a1 o1
-                                                   v2 <- at @a2 o2
+prim2' f = prim2 $ \loc -> pyDeref2' (\o1 o2 -> do v1 <- get @a1 o1
+                                                   v2 <- get @a2 o2
                                                    f loc v1 v2)
 
 prim2'' :: PyM pyM obj vlu
@@ -181,12 +182,12 @@ intBinop :: forall r1 r2 pyM obj vlu . (PyM pyM obj vlu, SingI r1, SingI r2)
           -> (Abs obj ReaPrm -> Abs obj ReaPrm -> pyM (Abs obj r2))   -- the function for floats
           -> obj -> obj -> pyM obj
 intBinop fi fr o1 o2 = condCP (return $ has @ReaPrm o2)  -- if the second arg is a float ...
-                              (do n1 <- at @IntPrm o1       -- ... coerce the first arg to a float as well 
+                              (do n1 <- get @IntPrm o1       -- ... coerce the first arg to a float as well 
                                   r1 <- Domain.toReal n1
-                                  let r2 = get @ReaPrm o2
+                                  let r2 = at @ReaPrm o2
                                   from @r2 <$> fr r1 r2)
-                              (do n1 <- at @IntPrm o1
-                                  n2 <- at @IntPrm o2
+                              (do n1 <- get @IntPrm o1
+                                  n2 <- get @IntPrm o2
                                   from @r1 <$> fi n1 n2)
 
 intBinop' :: forall pyM obj vlu . (PyM pyM obj vlu)
@@ -203,10 +204,10 @@ floatBinop :: forall r pyM obj vlu . (PyM pyM obj vlu, SingI r)
           => (Abs obj ReaPrm -> Abs obj ReaPrm -> pyM (Abs obj r))
           -> obj -> obj -> pyM obj
 floatBinop f o1 o2 = condCP (return $ has @IntPrm o2)   -- if the second arg is an int ...
-                            (do r1 <- at @ReaPrm o1        -- ... coerce it to a float 
-                                let n2 = get @IntPrm o2
+                            (do r1 <- get @ReaPrm o1        -- ... coerce it to a float 
+                                let n2 = at @IntPrm o2
                                 r2 <- Domain.toReal n2
                                 from @r <$> f r1 r2)
-                            (do r1 <- at @ReaPrm o1
-                                r2 <- at @ReaPrm o2
+                            (do r1 <- get @ReaPrm o1
+                                r2 <- get @ReaPrm o2
                                 from @r <$> f r1 r2)

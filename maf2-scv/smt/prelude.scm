@@ -140,6 +140,10 @@
                                 (VBool (>= (unwrap-VReal a) (unwrap-VReal b)))
                                 VError)))))
 
+;; TODO: implement equality for the other datatypes
+(define-fun equal?/v ((a V) (b V)) V 
+            (=/v a b))
+
 
 (define-fun not/v ((a V)) V
             (ite (is-VBool a) (VBool (not (unwrap-bool a))) VError))
@@ -148,3 +152,18 @@
             (ite (is-VBool n) (unwrap-bool n) false))
 (define-fun false?/v ((b V)) Bool
             (ite (is-VBool b) (not (unwrap-bool b)) false))
+
+(define-fun or?/v ((a V) (b V)) V
+            (ite (true?/v a)
+                 a
+                 (ite (true?/v b)
+                      b
+                      (VBool false))))
+
+(define-fun and?/v ((a V) (b V)) V
+            (ite (true?/v a)
+                 (ite (true?/v b)
+                      b
+                      (VBool false))
+                 (VBool false)))
+

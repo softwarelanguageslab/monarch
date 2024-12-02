@@ -20,6 +20,9 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- hspec
+- hspec-contrib
+- deepseq
 
 ghc-options:
 - -Wall
@@ -93,3 +96,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - interpreter
+    - maf2-analysis

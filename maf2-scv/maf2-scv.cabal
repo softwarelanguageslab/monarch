@@ -29,17 +29,10 @@ source-repository head
 
 library
   exposed-modules:
-      Analysis.Contracts
       Analysis.Contracts.Mailbox
-      Analysis.Contracts.Monad
       Analysis.Contracts.Semantics
-      Analysis.Contracts.Store
-      Analysis.Symbolic
       Analysis.Symbolic.Monad
-      Analysis.Symbolic.Monad.Propagation
       Analysis.Symbolic.Monad.SymbolicStore
-      Analysis.Symbolic.Semantics
-      Analysis.Traces
       Data.Map.Extra
       Domain.Contract
       Domain.Contract.Behavior
@@ -85,6 +78,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , deepseq
     , extra
     , file-embed
     , maf2-analysis
@@ -124,6 +118,7 @@ executable maf2-scv-exe
   build-depends:
       base >=4.7 && <5
     , containers
+    , deepseq
     , extra
     , file-embed
     , maf2-analysis
@@ -166,6 +161,7 @@ test-suite maf2-scv-test
   build-depends:
       base >=4.7 && <5
     , containers
+    , deepseq
     , dir-traverse
     , either
     , extra

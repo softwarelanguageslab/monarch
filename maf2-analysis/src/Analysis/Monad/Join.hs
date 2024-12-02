@@ -66,8 +66,8 @@ instance (MonadCache m) => MonadCache (JoinT m) where
 
 -- | Same as `run` from `MonadCache` but replaces the synthetic bottom value 
 -- with the bottom value of the underlying domain.
-runJoinT :: (Functor m, BottomLattice a) => JoinT m a -> m a
-runJoinT (JoinT m) = fmap (\case { Bottom -> bottom ; Value v -> v }) m
+runJoinT :: (Functor m) => JoinT m a -> m (BottomLifted a)
+runJoinT (JoinT m) = m
 
 -- 
 -- NonDetT

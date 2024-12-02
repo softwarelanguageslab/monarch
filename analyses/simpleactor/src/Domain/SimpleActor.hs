@@ -6,20 +6,15 @@ import Prelude hiding (length)
 import Control.Monad
 import Lattice.ConstantPropagationLattice
 import Domain.Scheme hiding (Exp, Env)
-import Domain.Scheme.Actors.CP 
-import Domain.Scheme.Class hiding (Exp, Env)
 import Domain.Scheme.Store hiding (Env)
-import Domain.SimpleActor.Class
 import Domain.Symbolic.Paired
 import Domain.Core.VectorDomain.PIVector
 import Domain.Core.PairDomain
 import Domain.Core.StringDomain
-import Domain.Scheme.Modular (SchemeString(..))
 import Syntax.AST
 
 type ActorValue k = PairedSymbolic 
-   (CPActorValue EnvAdr (PaiAdrE Exp) (VecAdrE Exp) (StrAdrE Exp) k Exp)
-   Exp (PaiAdrE Exp k) (VecAdrE Exp k) (StrAdrE Exp k) (EnvAdr k)
+   (CPActorValue EnvAdr (PaiAdrE Exp) (VecAdrE Exp) (StrAdrE Exp) k Exp)  Exp k (EnvAdr k)
 
 type instance VarDom (ActorValue k) = ActorValue k
 type instance VecDom (ActorValue k) = PIVector (ActorValue k) (ActorValue k)

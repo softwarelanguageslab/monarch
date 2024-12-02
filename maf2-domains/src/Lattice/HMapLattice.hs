@@ -45,13 +45,13 @@ instance (ForAll (KeyKind m) (AtKey1 EqualLattice m), ForAll (KeyKind m) (AtKey1
       | HMap.isSingleton a && HMap.isSingleton b =
          joins $ HMap.mapList (HMap.withC @(AtKey1 EqualLattice m) check) a
       | otherwise = boolTop
-     where check ::  forall (kt :: KeyKind m) b . (BoolDomain b, EqualLattice (Assoc kt m) )=> Sing kt -> Assoc kt m -> b
+     where check :: forall (kt :: KeyKind m) b . (BoolDomain b, BottomLattice b, EqualLattice (Assoc kt m) )=> Sing kt -> Assoc kt m -> b
            check Sing v = maybe (inject False) (eql v) (HMap.get @kt b)
 
-containsType :: (HMapKey m, BoolDomain b) => KeyType m -> HMap m-> b
+containsType :: (HMapKey m, BottomLattice b, BoolDomain b) => KeyType m -> HMap m-> b
 containsType k = check . HMap.keys 
    where check keySet
-            | keySet == Set.empty  = bottom
+            | keySet == Set.empty = bottom
             | Set.size keySet == 1 && k `Set.member` keySet = inject True
             | k `Set.member` keySet = boolTop
             | otherwise = inject False

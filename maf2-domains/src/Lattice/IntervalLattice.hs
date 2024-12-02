@@ -10,6 +10,7 @@ import Lattice.ConstantPropagationLattice
 import Lattice.Split 
 
 import qualified Data.Set as Set 
+import Control.Monad.Join (MonadBottom(..))
 
 -- | A bound of the interval domain, 
 -- is either a concrete value or infinity. 
@@ -67,14 +68,14 @@ instance NumberDomain (Interval Integer) where
    -- TODO: implement isZero, random, plus, minus,times, div, expt
    type Boo (Interval Integer) = CP Bool
    random = const $ return top
-   eq BottomInterval _ = return bottom
-   eq _ BottomInterval = return bottom
+   eq BottomInterval _ = mzero 
+   eq _ BottomInterval = mzero
    eq i1@(Interval l1 u1) i2@(Interval l2 u2) 
       | l1 == u1 && i1 == i2 = return (inject True)
       | overlaps i1 i2       = return boolTop
-      | otherwise            = return (inject False)
+      | otherwise            = return (inject False)
    lt i1@(Interval l1 u1) i2@(Interval l2 u2)
-      | l1 == u1 && i1 == i2 = return (inject False)     -- values are equal!
-      | overlaps i1 i2       = return boolTop            -- if there is overlap, they might be smaller than each-other
-      | otherwise            = return (inject $ u1 < l2) -- if there is no overlap, lower bound of the second one must be bigger than the other
+      | l1 == u1 && i1 == i2 = return (inject False)     -- values are equal!
+      | overlaps i1 i2       = return boolTop            -- if there is overlap, they might be smaller than each-other
+      | otherwise            = return (inject $ u1 < l2) -- if there is no overlap, lower bound of the second one must be bigger than the other
 

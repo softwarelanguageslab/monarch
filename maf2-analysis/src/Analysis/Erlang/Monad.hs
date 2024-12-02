@@ -1,8 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE PolyKinds #-}
-module Analysis.Erlang.Monad(ErlangError(..), ErlangErrorDomain(..), ErlangCallM(..), ErlangM, BasicEnv, Adr, Msg) where
+module Analysis.Erlang.Monad(ErlangError(..), ErlangErrorDomain(..), ErlangM, BasicEnv, Adr, Msg, Cmp(..)) where
 
-import Analysis.Actors.Monad
 import Analysis.Monad
 import Syntax.Erlang
 import Domain.Erlang.Class
@@ -12,9 +11,16 @@ import Domain (Domain)
 
 import Data.Kind
 import Data.Map (Map)
+import Lattice (BottomLattice)
+import Analysis.Monad.Fix (MonadFixpoint)
 
 type BasicEnv adr = Map String adr
-type Clo adr = (BasicEnv adr, [Clause])
+
+-- | Erlang analysis components
+data Cmp = ErlangCall    !Body 
+         | ErlangModule  !Module
+         | ErlangActor   !Body
+         deriving (Eq, Ord, Show)
 
 -- | The type of addresess used in an Erlang
 -- analysis
@@ -22,11 +28,6 @@ type family Adr (m :: k)  :: Type
 -- | The type of messages used in an Erlang 
 -- analysis
 type family Msg (m :: k)  :: Type
-
--- | Introduces call semantics into the Erlang
--- semantics
-class ErlangCallM m v where   
-   call :: Clo (Adr m) -> m v
 
 -- | Types of errors in an Erlang program
 data ErlangError = MatchError
@@ -39,16 +40,16 @@ class ErlangErrorDomain e where
 
 
 type ErlangM m v mb = (
+   BottomLattice v,
    -- Base monads
    AbstractM m,
-   EnvM m (Adr m) (BasicEnv (Adr m)),
+   EnvM m (Adr m) (Env v),
    StoreM (Adr m) v m,
    AllocM m Loc (Adr m),
-   Env v ~ BasicEnv (Adr m),
+   -- Fixpoints
+   MonadFixpoint m Cmp v,
    -- Erlang specific
-   ActorM m v (Msg m) mb,
    ErlangDomain v,
-   ErlangCallM m v,
    -- Errors
    Domain (Esc m) ErlangError,
    ErlangErrorDomain (Esc m),

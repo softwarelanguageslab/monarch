@@ -15,10 +15,10 @@ import Analysis.SimpleActor
 import Options.Applicative
 import Syntax.AST hiding (filename)
 import Control.Monad ((>=>))
-import Interpreter hiding (PrmAdr)
+import Interpreter hiding (PrmAdr, store)
+import Analysis.Store (CountingMap(..))
+import qualified Analysis.Store as Store
 import GHC.Base (join)
-import Debug.Trace
-
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -50,32 +50,41 @@ commandParser =
 -- Inspecting analysis results
 ------------------------------------------------------------
 
-printSto :: (Show v) => (k -> String) -> (k -> Bool) -> Map k v -> String
-printSto printKey keepKey m  =
+printMap :: (Show v) => (k -> String) -> (k -> Bool) -> Map k v -> String
+printMap printKey keepKey m  =
        intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (printKey k) (show v)) adrs
    where adrs   = Map.toList $ Map.filterWithKey (flip (const keepKey)) m
          indent = maximum (map (length . printKey . fst) adrs) + 5
 
+
 printLoc :: ActorCmp -> String
-printLoc (((((e, _), _), _), _), _) = let (Span filename Position { .. } _) = spanOf e in show line ++ ":" ++ show column ++ "@" ++ filename
+printLoc ((((((e, _), _), _), _), _), _) = let (Span filename Position { .. } _) = spanOf e in show line ++ ":" ++ show column ++ "@" ++ filename
 
 ------------------------------------------------------------
 -- Entrypoints
 ------------------------------------------------------------
 
+writeTempFileId :: String -> IO String
+writeTempFileId contents = 
+   writeFile "/tmp/in.scm" contents >> return contents
+
 loadFile :: String -> IO Exp
-loadFile = readFile >=> translate >=> return . either (error . ("error while parsing: " ++)) id . parseFromString 
+loadFile = readFile >=> translate >=> writeTempFileId >=> return . either (error . ("error while parsing: " ++)) id . parseFromString 
 
 
 analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename  }) = do 
    ast <- loadFile filename
-   let ((((), sto), mbs), res) = analyze ast
-   putStrLn $ printSto show (\case { (PrmAdr _) -> False ; _ -> True }) sto
+   ((((), out), mbs), res) <- analyze ast
+   mapM_ (\(cmp, sto) -> do
+      print cmp
+      putStrLn $ Store.printSto show (\case { (PrmAdr _) -> False ; _ -> True }) sto
+      putStrLn "=====") (Map.toList out)
+
    putStrLn "====="
-   putStrLn $ printSto printLoc (const True) res
+   putStrLn $ printMap printLoc (const True) res
    putStrLn "====="
-   putStrLn $ printSto  show (const True) mbs
+   putStrLn $ printMap  show (const True) mbs
    return ()
 
 interpret :: InputOptions -> IO ()

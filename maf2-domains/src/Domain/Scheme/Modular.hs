@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds, PolyKinds, StandaloneKindSignatures, DataKinds, ScopedTypeVariables #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes, DeriveGeneric #-}
 
 module Domain.Scheme.Modular(
    -- * Constraints
@@ -26,7 +26,7 @@ module Domain.Scheme.Modular(
 ) where
 
 import Lattice
-import qualified Lattice.BottomLiftedLattice as BottomLifted
+import Domain.Address
 import Domain.Class
 import Domain.Core
 import Domain.Scheme.Class
@@ -34,6 +34,8 @@ import Control.Monad.Join
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Control.Monad.AbstractM
+import Control.DeepSeq
+import GHC.Generics
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
 import Data.Maybe (fromMaybe)
@@ -41,7 +43,6 @@ import Control.Applicative (Applicative(liftA2))
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad ((>=>))
-import qualified Control.Monad as M
 
 import Data.Kind
 import Data.Singletons
@@ -53,7 +54,6 @@ import Data.List (intercalate)
 import Text.Printf (printf)
 import Lattice.CSetLattice (CSet (CSet))
 import qualified Lattice.CSetLattice as CSet
-import Lattice.BottomLiftedLattice (BottomLifted)
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -115,8 +115,9 @@ data SchemeKey = RealKey
                | ComKey
                | MeCKey
                | FlaKey
-               deriving (Ord, Eq, Show)
+               deriving (Ord, Eq, Show, Generic)
 
+instance NFData SchemeKey
 genHKeys ''SchemeKey
 
 
@@ -147,7 +148,7 @@ type Values m = '[
    ComKey  ::-> Assoc ComConf m
    ]
 
-hasType :: (BoolDomain b) => SchemeKey -> SchemeVal m -> b
+hasType :: (BoolDomain b, BottomLattice b) => SchemeKey -> SchemeVal m -> b
 hasType k = containsType k . getSchemeVal
 
 -- | A Scheme value is an HMap that consists of a mapping
@@ -155,7 +156,9 @@ hasType k = containsType k . getSchemeVal
 -- 
 -- The values ncluded in this map should satisfy the 
 -- constraints given in `IsSchemeValue`.
-newtype SchemeVal (m :: [SchemeConfKey :-> Type]) = SchemeVal { getSchemeVal :: HMap (Values m) }
+newtype SchemeVal (m :: [SchemeConfKey :-> Type]) = SchemeVal { getSchemeVal :: HMap (Values m) } deriving (Generic)
+
+instance NFData (SchemeVal m)
 
 -- | A valid choice for `m` and `c` should satisfy these constraints
 type IsSchemeValue m =
@@ -188,13 +191,15 @@ deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m)), 
 ------------------------------------------------------------
 
 deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Joinable (Values m))) => Joinable (SchemeVal m)
-deriving instance (HMapKey (Values m)) => BottomLattice (SchemeVal m)
+deriving instance BottomLattice (SchemeVal m)
 
 -- Show instance
 -- TODO: this should be valid for any HMap, maybe make it the default implementation?
-instance (ForAll SchemeKey (AtKey1 Show (Values m))) => Show (SchemeVal m) where
+instance (ForAll SchemeKey (AtKey1 Show (Values m)), Show (Assoc ExpConf m)) => Show (SchemeVal m) where
    show (SchemeVal hm) = intercalate "," $ map showElement $ HMap.toList hm
       where showElement :: BindingFrom (Values m) -> String
+            showElement (SCloKey :&: clos') = 
+               show $ Set.map (show . fst) clos'
             showElement (key :&: value) =
                printf "%s ↦ %s" (show $ fromSing key) (withC_ @(AtKey1 Show (Values m)) (show value) key)
 
@@ -205,7 +210,7 @@ instance (IsSchemeValue m, ForAll SchemeKey (AtKey1 EqualLattice (Values m))) =>
       | HMap.isSingleton (getSchemeVal a) && HMap.isSingleton (getSchemeVal b) =
          joins $ HMap.mapList (HMap.withC @(AtKey1 EqualLattice (Values m)) check) (getSchemeVal a)
       | otherwise = boolTop
-     where check ::  forall (kt :: SchemeKey) b . (BoolDomain b, EqualLattice (Assoc kt (Values m))) => Sing kt -> Assoc kt (Values m) -> b
+     where check ::  forall (kt :: SchemeKey) b . (BoolDomain b, BottomLattice b, EqualLattice (Assoc kt (Values m))) => Sing kt -> Assoc kt (Values m) -> b
            check Sing v = maybe (inject False) (eql v) (HMap.get @kt (getSchemeVal b))
 
 ------------------------------------------------------------
@@ -214,13 +219,13 @@ instance (IsSchemeValue m, ForAll SchemeKey (AtKey1 EqualLattice (Values m))) =>
 
 -- | Returns the value at CharKey from the SchemeValue
 -- or escapes with `WrongType` for any other key.
-chars' :: forall mp m a . (BottomLattice a, IsSchemeValue mp, AbstractM m) => (Assoc CharKey (Values mp) -> m a) -> SchemeVal mp -> m a
+chars' :: forall mp m a . (AbstractM m) => (Assoc CharKey (Values mp) -> m a) -> SchemeVal mp -> m a
 chars' f  = maybe (escape WrongType) f . HMap.get @CharKey . getSchemeVal
 
-chars :: forall mp a . (IsSchemeValue mp) => SchemeVal mp -> Maybe (Assoc CharKey (Values mp))
+chars :: forall mp . SchemeVal mp -> Maybe (Assoc CharKey (Values mp))
 chars = HMap.get @CharKey . getSchemeVal
 
-injectChar :: (Assoc CharKey (Values m)) -> SchemeVal m
+injectChar :: Assoc CharKey (Values m) -> SchemeVal m
 injectChar = SchemeVal . HMap.singleton @CharKey
 
 injectInt :: Assoc IntKey (Values m) -> SchemeVal m
@@ -263,7 +268,9 @@ instance (IsSchemeValue m) => BoolDomain (SchemeVal m) where
             falsish _ _ = False
             ors :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const Bool) kt (Values m) -> Bool -> Bool
             ors _ = HMap.withFacts @(Const Bool) @kt @(Values m) (||)
-
+   
+   or a b = justOrBot $ cond (pure a) (pure a) (pure b)
+   and a b = justOrBot $ cond (pure a) (cond (pure b) (pure b) (pure false)) (pure false)
    boolTop = SchemeVal $ HMap.singleton @BoolKey boolTop
    not v = join t f
       where t = if isTrue  v then inject False else bottom
@@ -342,6 +349,7 @@ instance (IsSchemeValue m) => NumberDomain (SchemeVal m) where
       where select :: forall (kt :: SchemeKey) schemeM . (AbstractM schemeM) => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
             select SIntKey v = SchemeVal <$> HMap.singleton @IntKey <$> random v
             select SRealKey v = SchemeVal <$> HMap.singleton @RealKey <$> random v
+            select _ _ = escape WrongType
    plus  = coerceNum plus plus
    minus = coerceNum minus minus
    times = coerceNum times times
@@ -354,7 +362,7 @@ instance (IsSchemeValue m) => NumberDomain (SchemeVal m) where
 -- Integer domain
 ------------------------------------------------------------
 
-typeErrorOp :: Lattice a => AbstractM m => b -> c -> m a
+typeErrorOp :: AbstractM m => b -> c -> m a
 typeErrorOp _ = const $ escape WrongType
 
 
@@ -503,7 +511,7 @@ type IsSchemeString s m = (
    Assoc IntKey (Values m)  ~ IntS s,
    Assoc BoolKey (Values m) ~ BooS s)
 
-newtype SchemeString s v = SchemeString { sconst :: s } deriving (Show, Eq, Ord)
+newtype SchemeString s v = SchemeString { sconst :: s } deriving (Show, Eq, Ord, Generic, NFData)
 
 instance (Joinable s) => Joinable (SchemeString s v) where
    join a b = SchemeString (join (sconst a) (sconst b))

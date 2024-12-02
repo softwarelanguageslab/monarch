@@ -1,12 +1,11 @@
 module Domain.Scheme.Actors.CP(CPActorValue, CPActorMapping, Pid(..)) where
 
-import Syntax.Scheme
 import Domain.Scheme.Modular
 import Data.TypeLevel.HMap ((::->))
 import Data.Map (Map)
 import Lattice
 import Domain.Scheme.Class hiding (Exp)
-import Domain.Scheme.Actors.Class
+import Domain.Actor
 import Domain.Core
 
 type CPActorMapping adr pai vec str ctx exp =
@@ -33,4 +32,3 @@ type instance PaiDom (CPActorValue adr pai vec str ctx exp) = SimplePair (CPActo
 type instance VecDom (CPActorValue adr pai vec str ctx exp) = PIVector (CPActorValue adr pai vec str ctx exp) (CPActorValue adr pai vec str ctx exp) 
 type instance StrDom (CPActorValue adr pai vec str ctx exp) = SchemeString (CP String) (CPActorValue adr pai vec str ctx exp) 
 
-instance (Ord ctx, Show ctx, Ord exp, Show exp) => Address (Pid exp ctx)

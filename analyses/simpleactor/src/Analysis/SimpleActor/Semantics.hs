@@ -11,13 +11,13 @@ import Control.Monad.Reader hiding (fix)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Domain.Scheme.Class hiding (Exp)
-import Domain.Scheme.Actors.Class
+import Domain.Actor
 
 import Analysis.SimpleActor.Monad
+import Analysis.Actors.Monad
 
 import Control.Monad.Escape
 import Control.Monad.Join
-import Lattice (EqualLattice(..))
 import Data.Functor (($>))
 
 import Analysis.Monad.Allocation
@@ -26,7 +26,7 @@ import Analysis.Monad.Store
 
 import Analysis.Monad.Fix
 
-import Analysis.Actors.Monad (stoPai)
+import Analysis.Scheme.Monad (stoPai)
 import Domain.Core.PairDomain (cons, car ,cdr)
 import Control.Applicative (liftA2)
 import Analysis.Scheme.Primitives (Prim(..), primitivesByName)
@@ -36,6 +36,19 @@ import Analysis.Monad.Context (CtxM(..))
 import Data.Maybe
 import Debug.Trace
 import Lattice.Class (bottom)
+-- TODO: we are replacing the @cond@ operation 
+-- here in order to track conditions symbolically, 
+-- this limits the applicability of the semantics 
+-- to one with symbolic constraints. We should 
+-- remove this and make the @cond@ more general.
+import Analysis.Symbolic.Monad (choice, choices)
+-- | Same problem here, we really want to use @eql@
+-- but we cannot do that since a generic boolean 
+-- is required for its implementation.
+import Domain.Symbolic (equal, var)
+import Analysis.Store (Store)
+import qualified Analysis.Store as Store
+import qualified Data.List as List
 
 ------------------------------------------------------------
 -- Evaluation
@@ -57,7 +70,8 @@ eval' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
    v2 <- mapM (eval' rec) es
    apply rec e v1 v2
-eval' rec (Ite e1 e2 e3 _) = cond (eval' rec e1) (eval' rec e2) (eval' rec e3)
+eval' rec (Ite e1 e2 e3 _) =
+   choice (eval' rec e1) (eval' rec e2) (eval' rec e3)
 eval' rec s@(Spawn e _) =
    aref <$> spawn @v s (const $ rec (ActorExp e))
 eval' _ (Terminate _) = terminate $> nil
@@ -102,22 +116,25 @@ eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v m => v -> v -> m ()
 trySend ref p =
-   cond   (pure $ isActorRef ref)
-          (mjoinMap (`send` p) (arefs' ref))
-          (escape InvalidArgument)
+   choice   (pure $ isActorRef ref)
+           (mjoinMap (`send` p) (arefs' ref))
+           (escape InvalidArgument)
 
 apply :: EvalM v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
-apply rec e v vs = condsCP
-   [(pure $ isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
-    (pure $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
+apply rec e v vs = choices
+   [(fromBL $  isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
+    (fromBL $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
 applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
-applyClosure e (lam@(Lam prs _ _), env) rec vs = do
-   ads <- mapM alloc prs
-   let bds = zip (map name prs) ads
-   mapM_ (uncurry writeAdr) (zip ads vs)
-   ifMetaSet (withCtx (spanOf e:)) $
-      withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
+applyClosure e (lam@(Lam prs _ _), env) rec vs =
+   if length prs /= length vs then
+      error "invalid number of arguments"
+   else do
+      ads <- traceShow ("applying " ++ show e ++ "at " ++ show (spanOf e)) $ mapM alloc prs
+      let bds = zip (map name prs) ads
+      withCtx (const [spanOf e]) $ do
+         mapM_ (uncurry writeAdr) (zip ads vs)
+         withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 applyPrimitive :: forall v m . EvalM v m => String -> Exp -> [v] -> m v
 applyPrimitive =
@@ -139,15 +156,15 @@ matchList :: EvalM v m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
 matchList _ [] _ = escape MatchError
 matchList f ((pat, e):pats) value =
    -- TODO: don't rethrow the error, use `catchOn` for this
-   (match pat value >>= f e) `catchOn` (isMatchError, const $ matchList f pats value) 
+   (match pat value >>= f e) `catchOn` (fromBL . isMatchError, const $ matchList f pats value)
 
 -- | Match a pattern against a value
 match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
-match (ValuePat lit) v = -- trace ("l: " ++ show lit ++ " v: " ++ show v ++ " lv: " ++ show (injectLit @v lit)) $
-   condCP (return $ eql (injectLit lit) v) (return Map.empty) (escape MatchError)
+match (ValuePat lit) v =
+   choice (return $ equal (injectLit lit) v) (return Map.empty) (escape MatchError)
 match (PairPat pat1 pat2) v =
-      condCP (pure $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
+   choice (return $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
    where matchPair vp =
             Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
                       <$> match pat1 (car vp)
@@ -165,29 +182,31 @@ injectLit Nil         = nil
 
 data Primitive v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim v)
 
-newtype SimpleActorPrim v = SimpleActorPrim (forall m . EvalM v m => [v] -> m v)
+newtype SimpleActorPrim v = SimpleActorPrim (forall m . EvalM v m => [v] -> Exp -> m v)
 
 -- | A nullary primitive
-aprim0 :: (forall m . EvalM v m => m v) -> SimpleActorPrim v
+aprim0 :: (forall m . EvalM v m => Exp -> m v) -> SimpleActorPrim v
 aprim0 f = SimpleActorPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall m . EvalM v m => v -> m v) -> SimpleActorPrim v
-aprim1 f = SimpleActorPrim $ \case [v] -> f v
-                                   vs -> escape $ ArityMismatch 1 (length vs)
+aprim1 :: (forall m . EvalM v m => v -> Exp -> m v) -> SimpleActorPrim v
+aprim1 f = SimpleActorPrim $  \case [v] -> f v
+                                    vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall m . EvalM v m => v -> v -> m v) -> SimpleActorPrim v
+aprim2 :: (forall m . EvalM v m => v -> v -> Exp -> m v) -> SimpleActorPrim v
 aprim2 f = SimpleActorPrim $ \case [v1, v2] -> f v1 v2
-                                   vs -> escape $ ArityMismatch 2 (length vs)
+                                   vs -> const $ escape $ ArityMismatch 2 (length vs)
 
 -- | Primitives specific to the simple actor language
 actorPrimitives :: Map String (Primitive v)
 actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
-   ("wait-until-all-finished", aprim0 $ return nil ),
-   ("send^" , aprim2 $ \rcv msg -> trySend rcv msg >> return nil),
-   ("list", aprim0 $ return nil),
-   ("print", aprim1 $ const $ return nil) ]
+   ("wait-until-all-finished", aprim0 $ const $ return nil ),
+   ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
+   ("list", aprim0 $ const $ return nil),
+   -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
+   ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeAdr adr (var adr v) ; return $ var adr v }),
+   ("print", aprim1 $ const $ const $ return nil) ]
 
 -- | Scheme primitives
 schemePrimitives :: Map String (Primitive v)
@@ -203,7 +222,7 @@ lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` sche
 
 runPrimitive :: EvalM v m => Primitive v -> Exp -> [v] -> m v
 runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
-runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = const f
+runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = flip f
 
 -- | Run the functions given as a list in the first argument on the 
 -- second argument until an output is found that is @Just@.
@@ -211,5 +230,5 @@ untilJust :: [a -> Maybe b] -> a -> Maybe b
 untilJust fs a = foldl (`maybe` Just) Nothing (fmap ($ a) fs)
 
 -- | Compute a store containing the set of primitives
-initialSto :: (SchemeDomain v) => [String] -> (String -> Adr v) ->  Map (Adr v) v
-initialSto prms allocPrm = Map.fromList $ fmap (\nam -> (allocPrm nam, prim nam)) prms
+initialSto :: (Store s (Adr v) v, SchemeDomain v) => [String] -> (String -> Adr v) ->  s
+initialSto prms allocPrm = Store.from $ fmap (\nam -> (allocPrm nam, prim nam)) prms

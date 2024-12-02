@@ -33,6 +33,7 @@ dependencies:
 - transformers
 - singletons
 - extra
+- deepseq
 
 ghc-options:
 - -Wall

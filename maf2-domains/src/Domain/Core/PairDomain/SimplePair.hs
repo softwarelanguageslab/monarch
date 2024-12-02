@@ -1,11 +1,16 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Domain.Core.PairDomain.SimplePair (SimplePair(..)) where
 
 import Lattice 
+import Control.DeepSeq
+import GHC.Generics
 import Domain.Core.PairDomain.Class 
 
 --import Domain.Core.PairDomain
 
-data SimplePair c = SimplePair c c deriving (Eq, Show, Ord)
+data SimplePair c = SimplePair c c deriving (Eq, Show, Ord, Generic)
+
+instance (NFData c) => NFData (SimplePair c)
 
 instance (Joinable c) => Joinable (SimplePair c) where
    join (SimplePair car1 cdr1) (SimplePair car2 cdr2) =

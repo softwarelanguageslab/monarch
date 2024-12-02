@@ -1,8 +1,9 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue, VarDom, VecDom, PaiDom, StrDom, Address) where
+module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue, VarDom, VecDom, PaiDom, StrDom) where
 
 import Lattice 
 import Domain.Core 
+import Domain.Address
 import Control.Monad.AbstractM
 
 import Data.Set (Set)
@@ -17,9 +18,6 @@ type SchemeDomainPre v =
     BoolDomain v,
     Boo v ~ v)
 
--- | An address is an abstraction for a memory location on which a heap-allocated address resides
-class (Show a, Eq a, Ord a) => Address a
-instance {-# OVERLAPPABLE #-} (Show a, Eq a, Ord a) => Address a
 
 -- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
 class (RealDomain v,
@@ -81,18 +79,18 @@ class (RealDomain v,
 
   -- | Differentiate between values
   -- Note that these predicates ought to be overapproximating, so they should return `True` if it could be a value of the given type
-  isInteger :: BoolDomain b => v -> b
-  isReal    :: BoolDomain b => v -> b
-  isChar    :: BoolDomain b => v -> b
-  isVecPtr  :: BoolDomain b => v -> b
-  isStrPtr  :: BoolDomain b => v -> b
-  isPaiPtr  :: BoolDomain b => v -> b
-  isClo     :: BoolDomain b => v -> b
-  isBool    :: BoolDomain b => v -> b
-  isNil     :: BoolDomain b => v -> b
-  isUnsp    :: BoolDomain b => v -> b
-  isPrim    :: BoolDomain b => v -> b
-  isProc    :: BoolDomain b => v -> b
+  isInteger :: (BottomLattice b, BoolDomain b) => v -> b
+  isReal    :: (BottomLattice b, BoolDomain b) => v -> b
+  isChar    :: (BottomLattice b, BoolDomain b) => v -> b
+  isVecPtr  :: (BottomLattice b, BoolDomain b) => v -> b
+  isStrPtr  :: (BottomLattice b, BoolDomain b) => v -> b
+  isPaiPtr  :: (BottomLattice b, BoolDomain b) => v -> b
+  isClo     :: (BottomLattice b, BoolDomain b) => v -> b
+  isBool    :: (BottomLattice b, BoolDomain b) => v -> b
+  isNil     :: (BottomLattice b, BoolDomain b) => v -> b
+  isUnsp    :: (BottomLattice b, BoolDomain b) => v -> b
+  isPrim    :: (BottomLattice b, BoolDomain b) => v -> b
+  isProc    :: (BottomLattice b, BoolDomain b) => v -> b
   isProc v = or (isPrim v) (isClo v)
 
 -- | Types of values assigned to variables

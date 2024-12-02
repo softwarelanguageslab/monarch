@@ -26,6 +26,8 @@ import Lattice.Split (SplitLattice)
 import Lattice.ConstantPropagationLattice (CP)
 import Control.Monad.Reader (ReaderT (runReaderT, ReaderT))
 import Debug.Trace (traceShow)
+import GHC.Generics
+import Control.DeepSeq
  
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
@@ -33,8 +35,8 @@ class MonadEscape m where
    throw :: Esc m -> m a 
    catch :: (Joinable a) => m a -> (Esc m -> m a) -> m a
 
-catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Joinable a) => m a -> (Esc m -> CP Bool, Esc m -> m a) -> m a
-catchOn bdy (prd, hdl) = bdy `catch` msplitOn (return . prd) hdl throw
+catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Joinable a) => m a -> (Esc m -> m (CP Bool), Esc m -> m a) -> m a
+catchOn bdy (prd, hdl) = bdy `catch` msplitOn prd hdl throw
 
 escape :: (MonadEscape m, Domain (Esc m) e) => e -> m a 
 escape = throw . inject 
@@ -52,7 +54,9 @@ try = flip $ foldr orElse
 data MayEscape e v = Escape e 
                    | Value v
                    | MayBoth v e
-   deriving (Eq, Ord, Functor, Show)
+   deriving (Eq, Ord, Functor, Show, Generic)
+
+instance (NFData e, NFData v) => NFData (MayEscape e v)
 
 -- | Retrieve the value from `MayEscape`, or 
 -- return the default if there is only an error 

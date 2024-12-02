@@ -67,7 +67,6 @@ library
       Analysis.Scheme
       Analysis.Scheme.Actors.Components
       Analysis.Scheme.Monad
-      Analysis.Scheme.Prelude
       Analysis.Scheme.Primitives
       Analysis.Scheme.Semantics
       Analysis.Scheme.Simple
@@ -75,12 +74,10 @@ library
       Analysis.Semantics
       Analysis.Store
       Benchmark.Programs
-      Control.Fixpoint.EffectDriven
       Control.Fixpoint.WorkList
       Control.Monad.Cond
       Control.Monad.Layer
       Control.Monad.State.IntPool
-      Control.Monad.State.SVar
       Data.Graph
       Data.Print
       Interpreter.Actors
@@ -90,6 +87,7 @@ library
       Interpreter.Scheme.Primitives
       Interpreter.Scheme.Semantics
       Interpreter.Scheme.Values
+      Test
   other-modules:
       Data.SetExtra
       Data.ListExtra
@@ -120,6 +118,7 @@ library
     , containers
     , criterion
     , data-default
+    , deepseq
     , hashable
     , hashmap
     , hspec
@@ -174,6 +173,7 @@ executable maf-exe
     , containers
     , criterion
     , data-default
+    , deepseq
     , hashable
     , hashmap
     , hspec
@@ -225,6 +225,7 @@ test-suite maf2-analysis-test
     , containers
     , criterion
     , data-default
+    , deepseq
     , hashable
     , hashmap
     , hspec

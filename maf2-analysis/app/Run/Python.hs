@@ -41,10 +41,8 @@ printOSto s = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k
          indent = maximum (map (length . show . fst) adrs) + 5
 
 printRSto :: Map PyCmp PyRes -> String
-printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showRes v)) cmps
+printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showVal v)) cmps
    where cmps = Map.toList m
-         showRes (BL.Value v) = showVal v
-         showRes BL.Bottom = "⊥"
          showVal (Escape e) = "[!!: "++show e++"]"
          showVal (Value v) = show v
          showVal (MayBoth v e) = "[!!: "++show e++"]" ++ show v
@@ -93,11 +91,14 @@ generateGraph files =
                                         let (_, _, graph) = analyzeCP parsed
                                         printGraph file graph
          printGraph file graph = mapM_ (putStrLn . showEdge file) (edges graph)
-         showEdge file (from, to, ()) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show (shortFileName file) ++ " ];"
+         showEdge file (from, to, isDep) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show ("[" ++ toType isDep ++ "] " ++ shortFileName file) ++ "];"
          showNode (Constant name) = name
          showNode Top = "⊤"
          showNode _ = "⊥"
          shortFileName = reverse . takeWhile (/='/') . reverse
+         toType (Constant True) = "WINDOW"
+         toType (Constant False) = "REACTOR"
+         toType Top = "?"
 
 main :: Options -> IO ()
 main (Options fileName) = ecopipe
@@ -105,7 +106,7 @@ main (Options fileName) = ecopipe
 ecopipe :: IO ()
 ecopipe = generateGraph [
                               "programs/python/zensor/add_regime_status_tag.py",
-                              "programs/python/zensor/strain_resample.py",
+                              --"programs/python/zensor/strain_resample.py",
                               "programs/python/zensor/bolt_str_stats_per_movement.py",
                               "programs/python/zensor/str_stats_per_movement.py",
                               "programs/python/zensor/displacement_corrected_for_inclination.py"

@@ -1,39 +1,57 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
-module Analysis.Symbolic.Monad(SymbolicM, MonadPathCondition(..), MonadIntegerPool(..), LocalStoreM(..), SymbolicValue, FormulaT, runFormulaT, runWithFormulaT, choice, choices, runSymbolicStoreT) where
+{-# LANGUAGE TupleSections #-}
+module Analysis.Symbolic.Monad(
+   -- Type classes
+   SymbolicM, 
+   MonadPathCondition(..), 
+   MonadIntegerPool(..), 
+   SymbolicValue,
+   -- Tracking path condition
+   FormulaT, 
+   runFormulaT, 
+   runWithFormulaT, 
+   choice, 
+   choices,
+   -- Path condition widening
+   wideningPerComponent,
+   wideningPerComponentEval
+) where
 
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
-import Analysis.Scheme.Monad (SchemeM)
+import qualified Domain.Symbolic.Path as Path
 import Control.Monad.Layer
 import Control.Monad.Join
 import Control.Monad.State.IntPool
-import Control.Monad.State (StateT(..), MonadState, modify, gets, get, (>=>), runStateT, put, evalStateT)
+import Control.Monad.State (StateT(..), MonadState (put), modify, get, (>=>), runStateT)
 import Domain
 import Domain.Symbolic
-import Lattice (Joinable(..), BottomLattice(..))
-import Control.Monad.Trans.Class
-import Data.Map (Map)
-import qualified Data.Map as Map
+import qualified Domain.Symbolic.Path as Path
+import Lattice (Joinable(..))
 
 import qualified Data.Set as Set
-import Analysis.Monad (StoreM(..))
-import Data.Functor ((<&>))
+import Control.Monad (zipWithM)
+import Analysis.Monad (MonadCache(..), AbstractCountM)
+import qualified Analysis.Monad.Map as Map
+import qualified Analysis.Monad as Cache
+import Analysis.Monad.Fix
+import qualified Symbolic.AST as Symbolic
+import Control.Monad (foldM)
+import Data.Maybe
 
 -- | Monad that keeps track of a path condition
-class (Monad m) => MonadPathCondition m v | m -> v where
+class (Monad m) => MonadPathCondition i m v | m -> v i where
    -- | Extend the path condition with the given assertion
    extendPc :: v -> m ()
    -- | Get the current path condition
-   getPc :: m PC
+   getPc :: m (PC i)
    -- | Integrate the given path condition in the current one
-   integrate :: PC -> m ()
+   integrate :: PC i -> m ()
 
 -- | Choose between the two branches non-deterministically
-choice :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, BottomLattice b, Joinable b) => m v -> m b -> m b -> m b
-choice mv mcsq malt = mjoin t f
-   where t = mv >>= checkTrue
-         f = mv >>= checkFalse
-         -- Below you find a way of checking whether the condition is true or false 
+choice :: (AbstractCountM i m, MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b) => m v -> m b -> m b -> m b
+choice mv mcsq malt = mv >>= (\v -> mjoin (checkTrue v) (checkFalse v))
+   where -- Below you find a way of checking whether the condition is true or false 
          -- depending on the abstract value and the current path condition.
          --
          -- This might seem a bit convoluted at first but the distinction between the different
@@ -53,54 +71,37 @@ choice mv mcsq malt = mjoin t f
          --  executed.
          checkTrue v
             | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
-            | isTrue  v = extendPc (assertTrue v)  >> ifFeasible mcsq
+            | isTrue  v = extendPc (assertTrue v) >> ifFeasible mcsq
             | otherwise = mzero
          checkFalse v
             | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
-            | isFalse v = extendPc (assertFalse v)  >> ifFeasible malt
+            | isFalse v = extendPc (assertFalse v) >> ifFeasible malt
             | otherwise = mzero
 
 -- | Same as `conds` but keeps track of path conditions
-choices :: (MonadPathCondition m v, MonadJoin m, SymbolicValue v, FormulaSolver m, Joinable b, BottomLattice b)
+choices :: (AbstractCountM i m, MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b)
         => [(m v, m b)] -> m b -> m b
 choices clauses els =
    foldr (uncurry choice) els clauses
 
 -- | Executes the given action when the path condition is feasible
 -- otherwise returns `mzero`
-ifFeasible :: (MonadJoin m, FormulaSolver m, MonadPathCondition m v,  Joinable a, BottomLattice a) => m a -> m a
+ifFeasible :: (MonadJoin m, FormulaSolver i m, AbstractCountM i m, MonadPathCondition i m v,  Joinable a) => m a -> m a
 ifFeasible ma = do
    pcs <- fmap Set.toList getPc
    mjoins (map (isFeasible >=> (\b -> if b then ma else mzero)) pcs)
 
--- | Access the current store or replace it entirely
-class LocalStoreM m a v where
-   -- | Get a map representation of the current store contents
-   getSto :: m (Map a v)
-   -- | Replace the current store by a store with the given contents
-   putSto  :: Map a v -> m ()
-   -- | Integrate the given local store with the current one 
-   -- by replacing the keys in the current with the given if 
-   -- the key is present in the given.
-   integrateSto :: Map a v -> m ()
 
-instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, Monad m, LocalStoreM m a v) => LocalStoreM (t m) a v where
-   getSto = upperM getSto
-   putSto = upperM . putSto
-
-type SymbolicM m v = (SchemeM m v,
-                      -- Domain
-                      SymbolicValue v,
-                      ActorDomain v,
-                      -- Symbolic execution
-                      MonadPathCondition m v,
-                      MonadIntegerPool m,
-                      -- Solving
-                      FormulaSolver m)
-
--- | Attach a fresh symbolic identifier to the given value
-freshIdent :: (MonadIntegerPool m, SymbolicValue v) => v -> m v
-freshIdent v = fresh <&> (`var` v)
+type SymbolicM i m v = (-- Domain
+                        SymbolicValue v i,
+                        -- Symbolic execution
+                        MonadPathCondition i m v,
+                        -- Abstract counting, needed 
+                        -- for correctly abstracting 
+                        -- symbolic variables.
+                        AbstractCountM i m,
+                        -- Solving
+                        FormulaSolver i m)
 
 --------------------------------------------------------------------------
 -- Instances
@@ -110,60 +111,95 @@ freshIdent v = fresh <&> (`var` v)
 
 -- | The FormulaT monad keeps track of the path condition 
 -- and implements the `MonadPathCondition` monad.
-newtype FormulaT v m a = FormulaT { runFormulaT' :: StateT PC m a }
-                           deriving (Monad, Applicative, Functor, MonadState PC, MonadLayer, MonadTrans)
+newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
+                           deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable, MonadCache)
 
-instance (MonadJoinable m) => MonadJoinable (FormulaT v m) where
-   mjoin (FormulaT ma) (FormulaT mb) = FormulaT $ mjoin ma mb
-
-instance {-# OVERLAPPING #-} (MonadJoin m, SymbolicValue v) => MonadPathCondition (FormulaT v m) v where
-   extendPc pc'     = modify $ Set.map (Conjunction (Atomic $ symbolic pc'))
+instance {-# OVERLAPPING #-} (AbstractCountM i m, MonadJoin m, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
+   extendPc pc'     = modify $ Set.map (conjunction (Atomic $ symbolic pc'))
    getPc = get
+   integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList
 
-instance (MonadPathCondition m v, Monad (t m), MonadLayer t) => MonadPathCondition (t m) v where
-   extendPc = upperM . extendPc
-   getPc    = upperM getPc
+
+instance (MonadPathCondition i m v, Monad (t m), MonadLayer t) => MonadPathCondition i (t m) v where
+   extendPc  = upperM . extendPc
+   getPc     = upperM getPc
+   integrate = upperM . integrate
 
 
 -- | Run FormulaT with  the given initial set of path conditions.
 -- Note that `pc` should be non-empty set which is at least the singleton set, 
 -- since there is always one paths in the program that must have a path condition.
-runWithFormulaT :: PC -> FormulaT v m a -> m (a, PC)
+runWithFormulaT :: PC i -> FormulaT i v m a -> m (a, PC i)
 runWithFormulaT pc = flip runStateT pc . runFormulaT'
 
-runFormulaT :: FormulaT v m a -> m (a, PC)
+runFormulaT :: FormulaT i v m a -> m (a, PC i)
 runFormulaT = flip runStateT (Set.singleton Empty) . runFormulaT'
 
--- | A symbolic store is a local store that does not keep track of 
--- its dependencies, but writes all the writes through to an underlying store 
--- that does.
---
--- The idea is that symbolic stores are usually local (i.e., they are passed 
--- into components through contexts and returned through special return values)
--- while the value store is usually global.
-newtype SymbolicStoreT adr v m a = SymbolicStoreT (StateT (SymbolicStore adr v) m a)
-                                 deriving (Applicative, Monad, Functor, MonadState (SymbolicStore adr v), MonadLayer, MonadTrans, MonadJoinable)
-
--- | The contents of a symbolic store.
-type SymbolicStore adr v = Map adr v
-
-instance {-# OVERLAPPING #-} (Ord adr, SymbolicValue v, MonadIntegerPool m, StoreM adr v m, v' ~ Symbolic v) => StoreM adr v (SymbolicStoreT adr v' m) where
-   updateAdr adr v = do
-      -- update the local version
-      modify (Map.insertWith join adr (symbolicValue v))
-      -- write through, but remove symbolic information
-      upperM (updateAdr adr (unsymbolic v))
-   writeAdr = updateAdr
-   lookupAdr adr = do
-      -- combine the symbolic local result (if available) with the global result
-      v' <- upperM (lookupAdr adr) >>= (\v -> if v == bottom then freshIdent v else return v)
-      gets (maybe v' (combine (abstractValue v')) . Map.lookup adr)
-
-instance (Monad m) => LocalStoreM (SymbolicStoreT adr v' m) adr v' where
-   getSto = get
-   putSto = put
-
-runSymbolicStoreT :: forall adr v m a . (Monad m) => SymbolicStore adr (Symbolic v) -> SymbolicStoreT adr (Symbolic v) m a -> m a
-runSymbolicStoreT initialStore (SymbolicStoreT m) = evalStateT m initialStore
+----------------------------------------------------------------------
+-- Widening per component of path condition
+----------------------------------------------------------------------
 
 
+-- | Type class constraint for instances that allow the path condition to be set 
+class MonadPathCondition' i m | m -> i where
+   putPC :: PC i -> m ()
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadPathCondition' i m) => MonadPathCondition' i (t m) where   
+   putPC = upperM . putPC
+
+newtype WidenedFormulaT i v m a = WidenedFormulaT { runWidenedFormulaT' :: FormulaT i v m a }
+                                deriving (Monad, Functor, Applicative, MonadTrans, MonadLayer, MonadJoinable)
+
+instance (Monad m) => MonadPathCondition' i (WidenedFormulaT i v m) where   
+   putPC = WidenedFormulaT . FormulaT . put
+
+instance (MonadCache m, Functor (Base m)) => MonadCache (WidenedFormulaT i v m) where
+  type Key (WidenedFormulaT i v m) k  = Key m k
+  type Val (WidenedFormulaT i v m) v' = Val m v'
+  type Base (WidenedFormulaT i v m)   = WidenedFormulaT i v (Base m)
+
+  key = upperM . key
+  val = upperM . val
+  run f k = WidenedFormulaT $ FormulaT $ StateT state
+      where state pc = (,pc) <$> run (fmap fst . runWithFormulaT pc . runWidenedFormulaT' . f) k
+
+
+-- | Keep the path condition in a map from components to 
+-- path conditions which get widened when input paths 
+-- from multiple locations get joined together.
+wideningPerComponent :: forall m e v i . (Ord i, AbstractCountM i m, FormulaSolver i m, MonadCache m, Map.Widened (Cache.Key m e) (PC i) m, MonadPathCondition' i m, MonadPathCondition i m v) 
+                     => (e -> AroundT e v m v) 
+                     -> e 
+                     -> AroundT e v m v
+wideningPerComponent f e = do 
+   cmp <- upperM $ Cache.key e
+   pc' <- upperM getPc
+   -- XXX: this is a 'hack', we join the path conditions
+   -- here since we need access to `AbstractCountM` and 
+   -- `FormulaSolver` here. Ideally we could integrate
+   --  this with the abstract domain type classes somehow
+   --  but it is unclear right now how to do that.
+   --
+   --  TODO: do not use @Map.get@ here as it introduces a read 
+   --  dependency in the current component that is not needed, therefore 
+   --  making the analysis slower.
+   oldPc <- upperM $ fromMaybe Set.empty <$> Map.get (Map.In cmp)
+   upperM . Map.put (Map.In cmp) =<< Path.joinPC oldPc pc'
+   v <- f e 
+   pc'' <- maybe mzero return =<< upperM (Map.get @_ @(PC i) (Map.Out cmp))
+   putPC pc'' 
+   return v
+
+-- | Keep path 
+wideningPerComponentEval :: forall m e i v . (Ord i, AbstractCountM i m, FormulaSolver i m, MonadCache m, Map.Widened (Cache.Key m e) (PC i) m, MonadPathCondition' i m, MonadPathCondition i m v) 
+                         => (e -> AroundT e v m v)
+                         -> e 
+                         -> AroundT e v m v
+wideningPerComponentEval eval e = do
+   cmp <- upperM $ Cache.key e 
+   pc' <- maybe mzero return =<< upperM (Map.get @_ @(PC i) (Map.In cmp))
+   putPC pc' 
+   v <- eval e 
+   pc'' <- getPc
+   Map.put @_ @(PC i) (Map.Out cmp) =<< Path.joinPC pc' pc''
+   return v
+   

@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, DeriveGeneric #-}
 module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..)) where
 
 import Data.List (intercalate)
@@ -8,6 +8,8 @@ import Text.Printf
 import Syntax.Span
 import Syntax.Ide
 import Syntax.FV
+import Control.DeepSeq
+import GHC.Generics
 
 -- | An expression
 data Exp = Lam [Ide] Exp Span
@@ -27,10 +29,15 @@ data Exp = Lam [Ide] Exp Span
          | DynVar Ide
          | Begin [Exp] Span
          | Meta Exp Span
-         deriving (Eq, Ord)
+         | Error String Span
+         deriving (Eq, Ord, Generic)
+
+instance NFData Exp
 
 -- | Literals are expressions that evaluate to themselves
-data Lit = Num Integer | Boolean Bool | Symbol String | Nil deriving (Eq, Ord)
+data Lit = Num Integer | Boolean Bool | Symbol String | Nil deriving (Eq, Ord, Generic)
+
+instance NFData Lit
 
 instance Show Lit where
    show (Num n) = show n
@@ -39,10 +46,12 @@ instance Show Lit where
    show Nil = "'()"
 
 -- | Pattern language
-data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show)
+data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show, Generic)
+
+instance NFData Pat 
 
 -- | Labels for blame assignment
-newtype Label = Label { getLabelName :: String } deriving (Eq, Ord, Show)
+newtype Label = Label { getLabelName :: String } deriving (Eq, Ord, Show, NFData)
 
 -- | A binding from an identifier to an expression, used in the so-called 
 -- 'binding-forms' to introduce values to which free variables within 
@@ -69,11 +78,12 @@ instance SpanOf Exp where
                (Begin _ s) -> s
                (Meta _ s) -> s
                (Match _ _ s) -> s
+               (Error _ s)   -> s
 
 
 instance Show Exp where
    show = \case
-            (Lam x e _)       -> printf "(lam (%s) %s)" (intercalate "," (map show x)) (show e)
+            (Lam x e _)       -> printf "(lam (%s) %s)" (intercalate " " (map name x)) (show e)
             (App e1 es _)     -> printf "(%s %s)" (show e1) (unwords (map show es))
             (Spawn e1 _)      -> printf "(spawn^ %s)" (show e1)
             (Letrec bds es _) -> printf "(letrec (%s) %s)" (show bds) (show es)
@@ -87,10 +97,11 @@ instance Show Exp where
             (Match v pats _)  -> printf "(match %s %s)" (show v) (show pats)
             (Literal l _)     -> show l
             (Ite e1 e2 e3 _)  -> printf "(if %s %s %s)" (show e1) (show e2) (show e3)
-            (Var x)           -> show x
+            (Var x)           -> name x
             (DynVar x)        -> "(dyn " ++ show x ++ ")"
             (Begin es _)      -> printf "(begin %s)" (unwords (map show es))
             (Meta e _)        -> printf "(meta %s)" (show e)
+            (Error e _)       -> printf "(error %s)" (show e)
 
 
 variables :: Pat -> Set String 
@@ -120,3 +131,4 @@ instance FreeVariables Exp where
    fv (DynVar _)        = Set.empty
    fv (Begin es _)      = Set.unions (map fv es)
    fv (Meta e _)        = fv e
+   fv (Error _ _)       = Set.empty

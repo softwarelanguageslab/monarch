@@ -62,6 +62,7 @@ library
       base >=4.17 && <5
     , containers
     , data-default
+    , deepseq
     , file-embed
     , language-python
     , mtl ==2.2.*
@@ -92,6 +93,7 @@ test-suite maf2-syntax-test
       base >=4.17 && <5
     , containers
     , data-default
+    , deepseq
     , file-embed
     , language-python
     , maf2-syntax

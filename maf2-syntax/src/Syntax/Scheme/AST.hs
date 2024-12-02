@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSynonyms, FlexibleContexts #-}
+{-# LANGUAGE PatternSynonyms, FlexibleContexts, DeriveAnyClass #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
@@ -13,6 +13,7 @@ import Syntax.Scheme.Parser (SExp, pattern (:::))
 import Syntax.Span
 import Control.Applicative
 import Control.Monad.Reader
+import Control.DeepSeq
 import Data.Bifunctor
 import Prelude hiding (span)
 import Syntax.Ide
@@ -57,14 +58,14 @@ data Exp = Num Integer Span          -- ^ number literals
          | Flat Exp Span             -- ^ flat contract
          -- misc
          | Debug String              -- ^ a debug statement, used for debugging the analysis
-         deriving (Eq,Ord, Generic)
+         deriving (Eq,Ord, Generic, NFData)
 
 data Hdl = Hdl Ide [Ide] Exp         -- ^ actor handler
-   deriving (Eq, Ord, Generic)
+   deriving (Eq, Ord, Generic, NFData)
 
 -- | Blame labels used for blaming the correct party.
 data Labels = Labels { positive :: String, negative :: String }
-             deriving (Ord, Eq, Generic, Show)
+             deriving (Ord, Eq, Generic, Show, NFData)
 
 -- AST predicates -- 
 
@@ -224,6 +225,12 @@ compile (SExp.Str str s) =  pure $ Str str s
 compile (SExp.Bln b s) = pure $ Bln b s
 compile (SExp.Rea r s) = pure $ Rea r s
 compile (SExp.Cha c s) = pure $ Cha c s
+-- list
+compile exp@(SExp.Atom "list" _ ::: vs) =
+   foldr (\e es -> App (Var (Ide "cons" (spanOf e))) [e, es] (spanOf e)) (Nll (spanOf exp)) <$> sequence (SExp.smap compile vs)
+-- and 
+compile exp@(SExp.Atom "and" _ ::: vs) = 
+   foldr (\e es -> Iff e es (Bln False (spanOf exp)) (spanOf e)) (Bln True (spanOf exp)) <$> sequence (SExp.smap compile vs)
 -- begin
 compile (SExp.Atom "begin" _ ::: (SExp.SNil _)) = throwError "begin cannot be empty"
 compile (SExp.Atom "begin" _ ::: xs) = begin <$> compileSequence xs

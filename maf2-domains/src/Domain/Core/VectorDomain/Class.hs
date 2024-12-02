@@ -5,7 +5,7 @@ import Control.Monad.AbstractM
 
 import Data.Kind 
 
-class (Lattice v) => VectorDomain v where
+class (Eq v, Joinable v) => VectorDomain v where
    type VContent v :: Type
    type VIndex   v :: Type
 

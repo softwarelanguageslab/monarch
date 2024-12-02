@@ -1,241 +1,113 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
 module Analysis.Actors.Monad(
-   -- 
-   ActorEvalM, 
-   ActorBehaviorM(..), 
-   ActorLocalM(..), 
-   ActorGlobalM(..), 
-   ActorM,
-   runActorT, 
-   module Analysis.Scheme.Monad, 
-   (!), 
-   runActorSystemT, 
-   runActorSystemT', 
-   receive, 
-   runNoSpawnT,
-   NoSpawnT,
-   runNoSendT, 
-   emptyActorSystem
+   MonadMailbox(..),
+   receive,
+   MonadActorLocal(..),
+   GlobalMailboxT, 
+   runWithMailboxT,
+   ActorLocalT
 ) where
 
-import Syntax.Scheme.AST
--- use the monads from the base-semantics
-import Analysis.Scheme.Monad
-import Analysis.Actors.Mailbox
-import qualified Analysis.Actors.Mailbox as MB
-import Domain.Scheme hiding (Exp)
-import Lattice
-
+import Domain.Actor
+import Lattice.Class
+import qualified Lattice.Class as L
 import Control.Monad.Layer
 import Control.Monad.Join
-import Control.Monad.State.SVar (SVar)
-import qualified Control.Monad.State.SVar as SVar
-
-import qualified Data.Set as Set
+import Control.Monad.Reader (ReaderT, ask, local)
+import Analysis.Monad.Cache
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Control.Monad.State (MonadState, StateT(..), gets, put, runStateT, modify)
-import Control.Monad.Reader (MonadReader, ReaderT(..), ask, runReaderT)
-import Control.Monad (void)
-import Control.Monad.Identity (IdentityT, runIdentityT)
-import Data.Maybe (fromMaybe)
-import Analysis.Monad.IntraAnalysis
-import Control.Monad.Cond (ifM)
-import Analysis.Monad.DependencyTracking (DependencyTrackingM, trigger, register)
+import qualified Data.Set as Set
+import Data.Maybe
 import Analysis.Monad.WorkList (WorkListM)
-import Domain.Scheme.Actors.Message
+import Analysis.Monad.DependencyTracking (DependencyTrackingM(..), trigger)
+import Analysis.Monad (IntraAnalysisT)
+import Control.Monad.State (StateT, gets, modify, runStateT)
+import Analysis.Actors.Mailbox (Mailbox, dequeue, enqueue, empty)
 
-type ActorEvalM m v msg mb = 
-   (SchemeM m v, 
-    ActorDomain v, 
-    ActorM m (ARef v) msg mb, 
-    ActorBehaviorM m v,
-    -- message representations
-    MessageDomain msg, 
-    Payload msg ~ v, 
-    Tag msg ~ CP String)
+class (BottomLattice v, Joinable v) => MonadMailbox v m where
+  send :: ARef v -> v -> m ()
+  receive' :: ARef v -> m v
 
-class ActorBehaviorM m v | m -> v where
-   -- | Spawn a new actor with the given behavior, returns an actor reference
-   -- corresponding to the newly spawned actor
-   spawn  :: BottomLattice v => Exp -> m v
-   -- | Change the behavior of the actor to the given new behavior
-   become :: Exp -> m ()
+receive :: (MonadMailbox v m, Monad m) => ARef v -> (v -> m a) -> m a
+receive ref = (receive' ref >>=)
 
-instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, ActorBehaviorM m v) => ActorBehaviorM (t m) v where
-   spawn  = upperM . spawn
-   become = upperM . become
+class MonadActorLocal v m | m -> v where
+  withSelf :: ARef v -> m a -> m a
+  getSelf :: m (ARef v)
+  terminate :: m ()
+  waitUntilAllFinished :: m ()
 
-type ActorM m ref msg mb = (ActorLocalM m ref msg mb, ActorGlobalM m ref msg mb)
+------------------------------------------------------------
+-- Layered instances
+------------------------------------------------------------
 
--- | Monadic context for actors, includes a mailbox 
--- and a reference to the current process identifier
-class ActorLocalM m ref msg mb | m -> ref msg mb where
-   -- | Retrieve a reference to the current actor pid
-   self    :: m ref
-   -- | Receive a message from the mailbox
-   receiveAll :: m [(msg, mb)]
-   -- | Put new mailbox
-   putMailbox :: mb -> m ()
+instance {-# OVERLAPPABLE #-} (MonadActorLocal v m, Monad m, MonadLayer t) => MonadActorLocal v (t m) where
+  withSelf c = lowerM (withSelf c)
+  getSelf = upperM getSelf
+  terminate = upperM terminate
+  waitUntilAllFinished = upperM waitUntilAllFinished
 
-receive :: (MonadJoin m, ActorLocalM m ref msg mb, Joinable a, BottomLattice a) => (msg -> m a) -> m a
-receive f = do
-   msgs <- receiveAll
-   mjoins (map (\(msg, mb') -> putMailbox mb' >> f msg) msgs)
+instance
+  {-# OVERLAPPABLE #-}
+  ( MonadMailbox v m,
+    MonadLayer t,
+    Monad m
+  ) =>
+  MonadMailbox v (t m)
+  where
+  send ref = upperM . send ref
+  receive' = upperM . receive'
 
-class ActorGlobalM m ref msg mb | m -> ref msg mb where
-   -- | Send a message to the given actor
-   -- the return value indicates whether the mailbox 
-   -- has been changed or not
-   send         :: ref -> msg -> m Bool
-   -- | Read the entire mailbox from the global mailbox state
-   getMailbox   :: ref -> m mb
-
-(!) :: (Functor m, ActorGlobalM m ref msg mb) => ref -> msg -> m ()
-(!) ref = void . send ref
-
-
-infixl 0 !
-
-instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, ActorGlobalM m ref msg mb) => ActorGlobalM (t m) ref msg mb where
-   send ref = upperM . send ref
-   getMailbox = upperM . getMailbox
 
 ------------------------------------------------------------
 -- Instances
 ------------------------------------------------------------
 
--- | The state of an actor that consists of its mailbox and a 
--- reference to itself.
-newtype ActorState mb = ActorState { mailbox :: mb }
-                       deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
+-- | Local mailbox, meant to be added above `GlobalMailboxT`
+-- and above any non-determinism and caching effects.
+-- newtype LocalMailboxT v mb m a = LocalMailboxT (StateT (Maybe mb) m a)
+--                                deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)
+--
+-- instance (Monad m) => MonadMailbox v (LocalMailboxT v mb m) where
+-- instance (Monad m) => MonadSpawn v (LocalMailboxT v mb m) where
 
--- | Basic implementation of the ActorM monad
--- It keeps track of the mailbox and a self-reference using the state monad
-newtype ActorT mb ref msg m a =
-      ActorT { _runActorT' :: StateT (ActorState mb) (ReaderT ref m) a }
-   deriving (Functor, Applicative, Monad, MonadReader ref, MonadState (ActorState mb))
+-- | Global mailbox parametrized by a mailbox abstraction
+newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT (Map (ARef v) mb) m a}
+  deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadCache)
 
+deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinable mb) => MonadJoinable (GlobalMailboxT v mb m)
 
-instance MonadTrans (ActorT mb ref msg) where   
-   lift = ActorT . lift . lift
+instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadMailbox v (GlobalMailboxT v mb m) where
+  send ref v = GlobalMailboxT $ modify (Map.insertWith (const . enqueue v) ref (enqueue v empty))
 
-instance MonadLayer (ActorT mb ref msg) where
-   lowerM f (ActorT m) = ActorT $ lowerM (lowerM f) m 
+  -- NOTE: we cannot use `MonadJoin` here since we have passed the `JoinT` layer in the monadic stack,
+  -- thus we use a `Joinable` instance to join the values ourselves. This should **not** happen
+  -- since the `JoinT` and `NonDetT` layers are normally responsible for providing this behavior.
+  -- TODO: investigate how we can prevent monadic computations to be transported down in the stack
+  -- so that they no longer skip the `JoinT` layer.
+  receive' ref = GlobalMailboxT $ gets (foldr L.join bottom . Set.toList . Set.map fst . dequeue . fromMaybe empty . Map.lookup ref)
 
+runWithMailboxT :: forall v mb m a . GlobalMailboxT v mb m a -> m (a, Map (ARef v) mb)
+runWithMailboxT (GlobalMailboxT ma) = runStateT ma Map.empty
 
-instance (Joinable mb, BottomLattice mb, MonadJoin m) => MonadJoinable (ActorT mb ref msg m) where
-   mjoin (ActorT ma) (ActorT mb) = ActorT $ mjoin ma mb
+-- | Actor-local semantics
+newtype ActorLocalT v m a = ActorLocalT {runActorLocalT' :: ReaderT (ARef v) m a}
+  deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadCache)
 
-instance {-# OVERLAPPING #-} (MonadJoin m, Mailbox mb msg) => ActorLocalM (ActorT mb ref msg m) ref msg mb where
-   self    = ask
-   receiveAll = gets (Set.toList . dequeue . mailbox)
-   putMailbox = put . ActorState
+instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
+  getSelf = ActorLocalT ask
+  withSelf r = ActorLocalT . local (const r) . runActorLocalT'
+  terminate = mzero -- no particular behavior in the abstract
+  waitUntilAllFinished = return () -- no behavior in the abstract
 
-instance (MonadLayer t, ActorLocalM m ref msg mb, Monad m) => ActorLocalM (t m) ref msg mb where
-   self = upperM self
-   receiveAll = upperM receiveAll
-   putMailbox = upperM . putMailbox
-
--- | Add he ActorT monad to the stack to provide a mailbox and a reference to "self"
--- in the monadic context
-runActorT :: forall mb m ref msg a . mb -> ref -> ActorT mb ref msg m a -> m (a, ActorState mb)
-runActorT initialMailbox selfRef (ActorT ma) = runReaderT (runStateT ma (ActorState initialMailbox)) selfRef
 
 ------------------------------------------------------------
--- ActorSystemT
+-- Effect registration for global mailboxes
 ------------------------------------------------------------
 
--- TODO: deprecate this
-type ActorSystemState ref mb = Map ref (SVar mb)
+type Dep v = ARef v
 
-emptyActorSystem :: forall mb ref . ActorSystemState ref mb 
-emptyActorSystem = Map.empty
-
--- | An actor system keeps track of the mailboxes
--- of each actor in the system. For this is keeps
--- a mapping from actor references to mailboxes
--- 
--- This mapping is implemented using SVars such 
--- that dependencies between components of the 
--- analysis can be automatically tracked and 
--- an effect-driven worklist algorithm can be used.
-newtype ActorSystemT ref msg mb m a = ActorSystemT (StateT (ActorSystemState ref mb) m a)
-                         deriving (Functor, Applicative, Monad, MonadLayer, MonadTrans, MonadState (ActorSystemState ref mb))
-
-instance {-# OVERLAPPING #-} (Ord ref, Mailbox mb msg, SVar.MonadStateVar m) => ActorGlobalM (ActorSystemT ref msg mb m) ref msg mb where
-   send ref msg = do
-      mb <- gets (Map.lookup ref) >>= maybe (upperM $ SVar.new MB.empty) pure
-      modify (Map.insert ref mb)
-      -- TODO: we check whether the mailbox abstraction has changed in order
-      -- to signal a change to the SVar layer or not. This is currently not very 
-      -- efficient since it uses Eq's equality. Depending on the abstraction used a more efficient version
-      -- of this could be provided.
-      void $ upperM $ SVar.modify (\mb -> let mb' = enqueue msg mb in if mb == mb' then Nothing else Just mb') mb
-      return True
-   getMailbox = undefined 
-
-runActorSystemT :: ActorSystemState ref mb -> ActorSystemT ref msg mb m a -> m (a, Map ref (SVar mb))
-runActorSystemT initial (ActorSystemT m) = runStateT m initial
-
-------------------------------------------------------------
--- ActorSystemT' (without SVar)
-------------------------------------------------------------
-
-type ActorSystemState' ref mb = Map ref mb
-
-newtype ActorSystemT' ref msg mb m a = ActorSystemT' (StateT (ActorSystemState' ref mb) m a)
-                                    deriving (Functor, Applicative, Monad, MonadLayer, MonadTrans, MonadState (ActorSystemState' ref mb))
-
-instance {-# OVERLAPPING #-} (Ord ref, Monad m, Mailbox mb msg) => ActorGlobalM (ActorSystemT' ref msg mb m) ref msg mb where 
-   send ref msg = do
-      mb <- gets (fromMaybe MB.empty . Map.lookup ref)
-      let mb' = enqueue msg mb
-      modify (Map.insert ref mb')
-      return (mb /= mb')
-   getMailbox ref = gets (fromMaybe MB.empty . Map.lookup ref) 
-
-runActorSystemT' :: ActorSystemState' ref mb -> ActorSystemT' ref msg mb m a -> m (a, Map ref mb)
-runActorSystemT' initial (ActorSystemT' m) = runStateT m initial
-
-------------------------------------------------------------
--- Effect registration through ActorSystemT' 
-------------------------------------------------------------
-
-
-instance (DependencyTrackingM m cmp ref, WorkListM m cmp, ActorGlobalM m ref msg mb) => ActorGlobalM (IntraAnalysisT cmp m) ref msg mb where
-   send ref msg = 
-      ifM (upperM $ send ref msg)
-          (upperM $ trigger ref >> return True)
-          (return False)
-   getMailbox ref = 
-      currentCmp >>= (upperM . register ref) >> upperM (getMailbox ref)
-
-------------------------------------------------------------
--- No-op implementations of the monads
-------------------------------------------------------------
-
--- | Instance of ActorBehaviorM that ignores becomes and actor spawns
-newtype NoSpawnT v m a = NoSpawnT (IdentityT m a)
-                       deriving (Monad, Applicative, Functor, MonadLayer, MonadTrans, MonadJoinable)
-
-instance (Monad m) => ActorBehaviorM (NoSpawnT v m) v where
-   spawn  = return . const bottom
-   become = const $ return ()
-
--- | Add the `NoSpawnT` to the monadic stack, introduces an instances of `ActorBehaviorM`
-runNoSpawnT :: NoSpawnT v m a -> m a
-runNoSpawnT (NoSpawnT m) = runIdentityT m
-
-----------------------------------------
-
--- | Instance of ActorGlobalM that ignores "send"
-newtype NoSendT ref msg mb m a = NoSendT (IdentityT m a) 
-                           deriving (Monad, Applicative, Functor, MonadLayer, MonadTrans, MonadJoinable)
-
-instance (Monad m, Mailbox mb msg) => ActorGlobalM (NoSendT ref msg mb m) ref msg mb where 
-   send = const . const (return False)
-   getMailbox = const $ return MB.empty
-
-runNoSendT :: NoSendT ref msg mb m a -> m a 
-runNoSendT (NoSendT m) = runIdentityT m
+instance (MonadMailbox v m, WorkListM m cmp, DependencyTrackingM m cmp (Dep v)) => MonadMailbox v (IntraAnalysisT cmp m) where
+  send to msg = trigger @_ @cmp to >> lift (send to msg)
+  receive' ref = dependent @_ @cmp ref >> upperM (receive' ref)

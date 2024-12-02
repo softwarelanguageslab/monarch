@@ -8,7 +8,6 @@
 module Analysis.Python.Fixpoint where
 
 import Lattice
-import Lattice.BottomLiftedLattice (lowerBottom)
 import Analysis.Python.Common
 import Domain.Python.Objects as PyObj  
 import Analysis.Python.Semantics hiding (call)
@@ -20,15 +19,14 @@ import Domain.Python.Syntax
 
 import Data.Set (Set)
 import Data.Map (Map)
-import qualified Data.Map as Map
 import Prelude hiding (init, read)
-import Control.Monad.Escape
 import Data.Function ((&))
 import Analysis.Python.Escape
 import Analysis.Monad.Stack
 import Analysis.Monad.Call
 import qualified Control.Monad.Join as MJoin
 import Control.Monad.Identity
+import qualified Lattice.BottomLiftedLattice as BL
 
 import Data.Maybe
 import Data.Graph
@@ -45,10 +43,10 @@ type IntraT obj m  = MonadStack '[
                         AllocT PyLoc [PyLoc] ObjAdr, 
                         EnvT PyEnv,
                         CtxT [PyLoc],
-                        JoinT,
                         CacheT,
                         TaintT Taint,
-                        StoreT (Store obj) ObjAdr obj 
+                        StoreT (Store obj) ObjAdr obj,
+                        JoinT
                     ] m 
 
 type IntraT' obj m = IntraT obj (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in IntraT type synonym
@@ -64,7 +62,7 @@ type AnalysisM m obj = (PyDomain obj PyRef,
                         DependencyTrackingM m PyCmp PyCmpTaint,
                         DependencyTrackingM m PyCmp PyCmpStoreIn,
                         DependencyTrackingM m PyCmp PyCmpStoreOut,
-                        GraphM (CP String) () m,
+                        GraphM (CP String) (CP Bool) m,
                         WorkListM m PyCmp)
 
 newtype PyCmpTaint = PyCmpTaint PyCmp
@@ -82,11 +80,14 @@ intra :: forall obj m . AnalysisM m obj => PyCmp -> m ()
 intra cmp = runIntraAnalysis cmp m
     where m = do t <- fromJust <$> Analysis.Monad.get (PyCmpTaint cmp)
                  s <- fromJust <$> Analysis.Monad.get (PyCmpStoreIn cmp)
-                 ((),s') <- cache cmp (runCallT (uncurry callFix) . evalBdy)
-                                & runAlloc allocPtr
-                                & runWithTaint t 
-                                & runStoreT s 
-                 Analysis.Monad.put (PyCmpStoreOut cmp) s'
+                 r <- cache cmp (runCallT (uncurry callFix) . evalBdy)
+                        & runAlloc allocPtr
+                        & runWithTaint t 
+                        & runStoreT s 
+                        & runJoinT
+                 case r of 
+                    BL.Value (_, s') -> Analysis.Monad.put (PyCmpStoreOut cmp) s'
+                    _                -> return ()
           callFix :: PyLoc -> PyBdy -> IntraT' obj m PyRef
           callFix _ bdy = do cmp' <- key bdy
                              Analysis.Monad.joinWith (PyCmpTaint cmp')   =<< currentTaint 
@@ -102,16 +103,16 @@ intra cmp = runIntraAnalysis cmp m
 inter :: forall obj m . AnalysisM m obj => PyPrg -> m (Store obj)
 inter prg = do ((), initialStore) <- runWithStore @(Store obj) @ObjAdr @obj init   -- initialize Python infrastructure                              
                let cmp = ((Main prg, initialEnv), [])
-               add cmp                                                  -- add the main component to the worklist
+               add cmp                                                             -- add the main component to the worklist
                Analysis.Monad.put (PyCmpTaint cmp) mempty 
                Analysis.Monad.put (PyCmpStoreIn cmp) initialStore
-               iterateWL (intra @obj)                                   -- start the analysis 
+               iterateWL (intra @obj)                                              -- start the analysis 
                Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
 
-analyze :: forall obj . PyDomain obj PyRef => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) ())
+analyze :: forall obj . PyDomain obj PyRef => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool))
 analyze prg = (rsto, osto, graph)
     where ((osto, graph), rsto) = inter @obj prg
-                                    & runWithGraph @(SimpleGraph (CP String) ())
+                                    & runWithGraph @(SimpleGraph (CP String) (CP Bool))
                                     & runWithMapping' @PyCmpStoreIn
                                     & runWithMapping' @PyCmpStoreOut 
                                     & runWithMapping @PyCmp
@@ -154,5 +155,5 @@ analyze prg = (rsto, osto, graph)
 
 type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) ())
+analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
 analyzeCP = analyze @PyDomainCP

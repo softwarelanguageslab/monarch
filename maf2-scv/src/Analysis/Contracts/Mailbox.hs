@@ -2,7 +2,6 @@ module Analysis.Contracts.Mailbox (ConstrainedMessage (..), AnnotateMessageT, ru
 
 import qualified Domain.Scheme.Actors.Message as ActorScheme
 import Analysis.Actors.Mailbox
-import Analysis.Actors.Monad (ActorGlobalM (..))
 import Analysis.Symbolic.Monad (MonadPathCondition (..))
 import Control.Monad.Identity
 import Control.Monad.Layer (MonadLayer (..))
@@ -16,7 +15,7 @@ data ConstrainedMessage msg
   = -- | a regular message
     RegularMessage {getMessage :: msg}
   | -- | messagers sent on a path with the given constraints as path condition
-    ConstrainedMessage {getMessage :: msg, pc :: PC}
+    ConstrainedMessage {getMessage :: msg, pc :: PC Int}
   deriving (Ord, Eq, Show)
 
 -- | A version for Actor scheme of the constrained message
@@ -33,12 +32,6 @@ instance (ActorScheme.MessageDomain msg) => ActorScheme.MessageDomain (Constrain
 -- path condition and delegating message sending to a monad lower on the stack.
 newtype AnnotateMessageT v ref msg mb m a = AnnotateMessageT (IdentityT m a)
   deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer)
-
-instance (ActorGlobalM m ref (ConstrainedMessage v) mb, MonadPathCondition m v) => ActorGlobalM (AnnotateMessageT v ref (ConstrainedMessage v) mb m) ref (ConstrainedMessage v) mb where
-  send ref (RegularMessage sm) = getPc >>= upperM . send ref . ConstrainedMessage sm
-  send _ _ = error "can only annotate regular messages"
-  getMailbox = upperM . getMailbox
-
 
 -- | Run the `AnnotateMessageT` monad transformer
 runAnnotateMessageT :: AnnotateMessageT v ref msg mb m a -> m a
