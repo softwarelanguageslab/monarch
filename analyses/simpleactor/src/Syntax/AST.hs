@@ -30,6 +30,7 @@ data Exp = Lam [Ide] Exp Span
          | Begin [Exp] Span
          | Meta Exp Span
          | Error String Span
+         | Input Span
          deriving (Eq, Ord, Generic)
 
 instance NFData Exp
@@ -79,6 +80,7 @@ instance SpanOf Exp where
                (Meta _ s) -> s
                (Match _ _ s) -> s
                (Error _ s)   -> s
+               (Input s) -> s
 
 
 instance Show Exp where
@@ -101,6 +103,7 @@ instance Show Exp where
             (DynVar x)        -> "(dyn " ++ show x ++ ")"
             (Begin es _)      -> printf "(begin %s)" (unwords (map show es))
             (Meta e _)        -> printf "(meta %s)" (show e)
+            (Input _)         -> "(input)"
             (Error e _)       -> printf "(error %s)" (show e)
 
 
@@ -132,3 +135,4 @@ instance FreeVariables Exp where
    fv (Begin es _)      = Set.unions (map fv es)
    fv (Meta e _)        = fv e
    fv (Error _ _)       = Set.empty
+   fv (Input _)         = Set.empty

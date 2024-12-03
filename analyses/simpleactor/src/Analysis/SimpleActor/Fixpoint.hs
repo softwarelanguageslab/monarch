@@ -160,7 +160,7 @@ intra cmp = void
            & runIntraAnalysis cmp)
       where eval' = runAroundT (flowSensitiveStore @_ @_ @ActorSto @_ @(EnvAdr K)) . (flowSensitiveEval @_ @_ @ActorSto (eval @ActorVlu))
 
-initialEnv :: Env K
+initialEnv :: Env k
 initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
 
 inter :: MonadInter m => Exp -> m ()

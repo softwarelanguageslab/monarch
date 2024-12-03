@@ -79,6 +79,7 @@ library
     , maf2-syntax
     , mtl
     , process
+    , rio
   default-language: Haskell2010
 
 executable interpreter-exe
@@ -120,6 +121,7 @@ executable interpreter-exe
     , maf2-domains
     , maf2-syntax
     , optparse-applicative
+    , rio
   default-language: Haskell2010
 
 test-suite interpreter-test
@@ -158,4 +160,5 @@ test-suite interpreter-test
     , hspec-contrib
     , interpreter
     , maf2-analysis
+    , rio
   default-language: Haskell2010

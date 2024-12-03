@@ -5,7 +5,10 @@ module Main (main) where
 
 import Syntax.Compiler
 import Data.Map (Map)
-import Data.List (intercalate)
+import Data.Set (Set)
+import Data.Maybe
+import qualified Data.Set as Set
+import Data.List (intercalate, find)
 import Text.Printf
 import qualified Data.Map as Map
 import Syntax.Span hiding (filename)
@@ -18,6 +21,7 @@ import Control.Monad ((>=>))
 import Interpreter hiding (PrmAdr, store)
 import Analysis.Store (CountingMap(..))
 import qualified Analysis.Store as Store
+import qualified Analysis.Smallstep as Smallstep
 import GHC.Base (join)
 
 ------------------------------------------------------------
@@ -27,8 +31,9 @@ import GHC.Base (join)
 type Command = IO ()
 
 
-newtype InputOptions = InputOptions {
-                  filename :: String
+data InputOptions = InputOptions {
+                  filename :: String,
+                  doTranslate :: Bool
               } deriving (Show, Ord, Eq)
 
 
@@ -37,12 +42,13 @@ inputOptions = InputOptions <$> strOption
                   (   long "file"
                    <> short 'f'
                    <> help "Input file"
-                  )
+                  ) <*> flag True False ( long "no-translate" <> help "If present, disables translations" )
 
 commandParser :: Parser Command
 commandParser =
    subparser
-    (   command "analyze" (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
+    (   command "smallstep" (info (smallstepCmd <$> inputOptions) (progDesc "Analyze a program using the ASE in small-step"))
+    <>  command "analyze" (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
     <>  command "eval"    (info (interpret <$> inputOptions) (progDesc "Run a program")))
 
 
@@ -65,16 +71,28 @@ printLoc ((((((e, _), _), _), _), _), _) = let (Span filename Position { .. } _)
 ------------------------------------------------------------
 
 writeTempFileId :: String -> IO String
-writeTempFileId contents = 
+writeTempFileId contents =
    writeFile "/tmp/in.scm" contents >> return contents
 
 loadFile :: String -> IO Exp
-loadFile = readFile >=> translate >=> writeTempFileId >=> return . either (error . ("error while parsing: " ++)) id . parseFromString 
+loadFile = loadFile' True
+
+loadFile' :: Bool -> String -> IO Exp
+loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTempFileId else return) >=> return . either (error . ("error while parsing: " ++)) id . parseFromString
+
+
+printSmallstepResult :: Set Smallstep.State -> IO () 
+printSmallstepResult = print . fromJust . find Smallstep.isFinalState 
+         
+
+smallstepCmd :: InputOptions -> IO ()
+smallstepCmd (InputOptions { .. }) = do
+   loadFile' doTranslate filename >>= Smallstep.analyze >>= printSmallstepResult
 
 
 analyzeCmd :: InputOptions -> IO ()
-analyzeCmd (InputOptions { filename  }) = do 
-   ast <- loadFile filename
+analyzeCmd (InputOptions { filename, doTranslate  }) = do
+   ast <- loadFile' doTranslate filename
    ((((), out), mbs), res) <- analyze ast
    mapM_ (\(cmp, sto) -> do
       print cmp
@@ -88,8 +106,8 @@ analyzeCmd (InputOptions { filename  }) = do
    return ()
 
 interpret :: InputOptions -> IO ()
-interpret (InputOptions { filename }) = 
-   loadFile filename >>= runEval . eval >>= print
+interpret (InputOptions { .. }) =
+   loadFile' doTranslate filename >>= runEval . eval >>= print
 
 ------------------------------------------------------------
 -- Main entrypoint

@@ -23,6 +23,7 @@ dependencies:
 - hspec
 - hspec-contrib
 - deepseq
+- rio
 
 ghc-options:
 - -Wall
