@@ -27,6 +27,7 @@ library
       Analysis.SimpleActor.Fixpoint
       Analysis.SimpleActor.Monad
       Analysis.SimpleActor.Semantics
+      Analysis.Smallstep
       Control.Monad.Extra
       Domain.SimpleActor
       Domain.SimpleActor.Class
