@@ -4,6 +4,7 @@ import Test
 import qualified Benchmark.Programs as SchemeBenchmarks
 import qualified Analysis.Scheme.Simple as Scheme
 import qualified Syntax.Scheme
+import qualified Benchmark.Programs as SchemeBenchmarks
 
 
 -- | Smoke tests for Scheme, checks whether 

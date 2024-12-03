@@ -84,14 +84,14 @@ runMapT s (MapT m) = runStateT m s
 
 -- | In address, parametrized by the type of component (or key) from CacheM
 -- and type of value @v@ stored at the address
-newtype In cmp = In cmp deriving (Ord, Eq, Show, NFData)
+newtype In cmp v = In cmp deriving (Ord, Eq, Show, NFData)
 -- | Output address, parametrized by the type of component (or key) from CacheM
 -- and type of value @v@ stored at the address
-newtype Out cmp = Out cmp deriving (Ord, Eq, Show, NFData)
+newtype Out cmp v = Out cmp deriving (Ord, Eq, Show, NFData)
 
 -- | Set of constraints applicable to any per-component widening function
 type Widened cmp v m = 
-   ( MapM (In cmp) v m,
-     MapM (Out cmp) v m, 
+   ( MapM (In cmp v) v m,
+     MapM (Out cmp v) v m, 
      MonadBottom m,
      Joinable v )
