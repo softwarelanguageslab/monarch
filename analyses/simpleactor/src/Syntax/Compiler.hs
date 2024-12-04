@@ -21,8 +21,10 @@ parseFromString = fmap head . parseSexp >=> compile
 compile :: MonadCompile m => SExp -> m Exp
 compile ex@(Atom "lambda" _ ::: args ::: es) =
    Lam <$> smapM compileParam args
-       <*> (Begin <$> smapM compile es <*> pureSpan ex)
+       <*> (mkSeq <$> smapM compile es <*> pureSpan ex)
        <*> pureSpan ex
+   where mkSeq [x] = const x 
+         mkSeq xs = Begin xs
 compile e@(Atom "lambda" _ ::: _) =
    throwError $ "invalid syntax for lambda " ++ show e
 compile ex@(Atom "spawn^" _ ::: e ::: SNil _) = Spawn <$> compile e <*> pureSpan ex
