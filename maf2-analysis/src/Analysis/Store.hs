@@ -13,6 +13,7 @@ import Data.Set (Set)
 
 -- | A generic store typeclass
 class Joinable v => Store s a v | s -> a v where
+   size      :: s ->  Int 
    emptySto  :: s
    lookupSto :: a -> s -> Maybe v
    extendSto :: a -> v -> s -> s
@@ -24,11 +25,12 @@ class Joinable v => Store s a v | s -> a v where
    updateSto adr v = updateStoWith (const v) (`join` v) adr 
    updateStoWith :: {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> s -> s
    --updateStoWith fs _ adr s = let v' = fs (lookupSto adr s) in updateSto adr v' s
-   {-# MINIMAL emptySto, lookupSto, extendSto, updateStoWith #-}
+   {-# MINIMAL size, emptySto, lookupSto, extendSto, updateStoWith #-}
 
 
 -- | Simple map-based instance of the store with weak updates
 instance (Joinable v, Ord a) => Store (Map a v) a v where
+   size = Map.size
    emptySto = Map.empty
    lookupSto = Map.lookup
    extendSto adr vlu = Map.alter (Just . maybe vlu (join vlu)) adr
@@ -59,14 +61,16 @@ printSto printKey keepKey m  =
 newtype CountingMap a v = CountingMap { store :: Map a (v, AbstractCount) }
    deriving (Eq, Ord, Joinable, Show, BottomLattice, NFData)
 
-instance (Joinable v, Ord a) => Store (CountingMap a v) a v where
+instance (Joinable v, Show a, Ord a) => Store (CountingMap a v) a v where
+   size = Map.size . store 
    emptySto = CountingMap Map.empty
    lookupSto a = fmap fst . Map.lookup a . store 
    extendSto a v = CountingMap . Map.alter extend a . store
       where extend Nothing            = Just (v, CountOne)
             extend (Just (v', count)) = Just (v' `join` v, inc count)
+   updateStoWith :: (Joinable v, Show a, Ord a) => (v -> v) -> (v -> v) -> a -> CountingMap a v -> CountingMap a v
    updateStoWith fs fw a = CountingMap . Map.alter update a . store 
-      where update Nothing              = error "updating an unbound address"
+      where update Nothing              = error ("updating an unbound address " ++ show a)
             update (Just (v, CountOne)) = Just (fs v, CountOne)
             update (Just (v, count))    = Just (fw v, count)
 

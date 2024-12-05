@@ -106,7 +106,7 @@ main (Options fileName) = ecopipe
 ecopipe :: IO ()
 ecopipe = generateGraph [
                               "programs/python/zensor/add_regime_status_tag.py",
-                              --"programs/python/zensor/strain_resample.py",
+                              "programs/python/zensor/strain_resample.py",
                               "programs/python/zensor/bolt_str_stats_per_movement.py",
                               "programs/python/zensor/str_stats_per_movement.py",
                               "programs/python/zensor/displacement_corrected_for_inclination.py"

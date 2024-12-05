@@ -52,6 +52,7 @@ import Analysis.Monad.Fix (AroundT(..))
 ---
 
 class (Monad m, Joinable v, Address a) => StoreM a v m | m a -> v where
+   storeSize :: m Int 
    -- | Write to a newly allocated address
    writeAdr  :: a -> v -> m ()
    -- | Update an existing address
@@ -64,9 +65,10 @@ class (Monad m, Joinable v, Address a) => StoreM a v m | m a -> v where
    -- | Checks whether an address already exists in the store
    hasAdr :: a -> m Bool
 
-   {-# MINIMAL lookupAdr, writeAdr, updateWith, hasAdr #-}
+   {-# MINIMAL storeSize, lookupAdr, writeAdr, updateWith, hasAdr #-}
 
 instance {-# OVERLAPPABLE #-} (Monad (t m), StoreM adr v m, MonadLayer t) => StoreM adr v (t m) where
+   storeSize = upperM (storeSize @adr @v @m)
    writeAdr adr =  upperM . writeAdr adr
    updateAdr adr =  upperM . updateAdr adr
    lookupAdr  =  upperM . lookupAdr
@@ -143,6 +145,7 @@ newtype StoreT s adr vlu m a = StoreT { getStoreT :: StateT s m a }
    deriving (Applicative, Functor, Monad, MonadJoinable, MonadState s, MonadLayer, MonadTrans, MonadTransControl, MonadCache)
 
 instance {-# OVERLAPPING #-} (Monad m, Store s a v, Address a) => StoreM a v (StoreT s a v m) where
+   storeSize = gets Store.size
    writeAdr adr vlu = modify (Store.extendSto adr vlu)
    updateAdr adr vlu = modify (Store.updateSto adr vlu)
    updateWith fs fw adr = modify (Store.updateStoWith fs fw adr)

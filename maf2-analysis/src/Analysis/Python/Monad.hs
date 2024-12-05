@@ -59,7 +59,8 @@ instance Show PyBdy where
   show (LoopBdy loc _ _) = printf "<loop at %s>" (show loc)
 
 class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
-  -- components -- >
+  pyStoreSize  :: m Int 
+  -- components -- 
   pyCall       :: PyLoc -> PyBdy -> m vlu
   -- objects and values --
   pyAlloc      :: PyLoc -> obj -> m ObjAdr
@@ -140,6 +141,7 @@ instance (vlu ~ PyRef,
           StoreM ObjAdr obj m)
           =>
           PyM m obj vlu where
+  pyStoreSize = storeSize @ObjAdr @obj @m
   pyCall = curry call 
   pyAlloc = store 
   pyDeref f = unwrapTainted (deref f . addrs)
