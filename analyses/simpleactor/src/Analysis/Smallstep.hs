@@ -36,6 +36,7 @@ import Control.Monad.DomainError
 import Analysis.Python.Primitives (applyPrim)
 import Syntax (SpanOf(..))
 import Analysis.Scheme.Store (SchemeStore'(values))
+import Analysis.Store (Store(..))
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -186,7 +187,7 @@ pushKont :: Span          -- ^ allocation site for the continuation
          -> (KAdr, KSto)
 pushKont ℓ context kont σ = (adr, σ')
    where adr = KAdr ℓ context 
-         σ'  = Map.insertWith Lat.join adr (Set.singleton kont) σ
+         σ'  = extendSto adr (Set.singleton kont) σ
 
 -- | Failure continuations 
 data Kontf = Branch PC Adr
@@ -287,8 +288,8 @@ stepCompound st = error $ "unsupported program state" ++ show st
 applyClosure :: State -> [Val] -> (Exp, Env) -> State
 applyClosure st@State{ .. } vs (Lam xs e _, ρ') = st { control = Ev e ρ'', store = store', context = pushK (spanOf e) context}
    where ads = map ((`alloc` context) . spanOf) xs
-         bds = Map.fromList $ zip ads (map RVal vs)
-         store' = Map.unionWith Lat.join bds store -- XXX: weak update!
+         bds = zip ads (map RVal vs)
+         store' = extendsSto bds store
          ρ'' = Map.union (Map.fromList $ zip (map name xs) ads) ρ'
 applyClosure _ _ _ = error "invalid closure"
 
@@ -311,8 +312,8 @@ step st@(State { control = (Ap v), .. }) =
       return $ Set.map applyKont (fromMaybe Set.empty $ Map.lookup top kont)
    where applyKont (LetK nam env bds bdy top') = 
                let adr = alloc (spanOf nam) context
-                   store' = Map.insert adr (RVal v) store 
-                   env' = Map.insert (name nam) adr env
+                   store' = extendSto adr (RVal v) store 
+                   env'   = Map.insert (name nam) adr env
                in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
       
 
