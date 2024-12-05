@@ -11,16 +11,15 @@ import Syntax.AST
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
-import qualified Data.List as List
 import qualified Data.Set as Set
 import Control.Monad.Reader.Class
 import Control.Monad.Reader (ReaderT)
-import Control.Monad.Layer (MonadTrans (lift))
+import Control.Monad.Layer (MonadTrans ())
 import Lattice.Class (PartialOrder (subsumes), Joinable)
 import qualified Lattice.Class as Lat
 import Lattice.SetLattice ()
 import RIO.Prelude
-import Domain.SimpleActor (ActorValue, ActorValue', ActorValueUnified)
+import Domain.SimpleActor (ActorValueUnified)
 import Domain.Symbolic.Class (SymbolicValue(..))
 import Analysis.Scheme.Primitives (initialEnv)
 import Domain.Scheme.Class hiding (Exp, Env, Adr)
@@ -28,15 +27,11 @@ import Data.Maybe (fromJust)
 import Analysis.SimpleActor.Semantics (injectLit, initialSto, allPrimitives)
 import Symbolic.AST (Formula (..), emptyFormula, conjunction)
 import Lattice (justOrBot)
-import Control.Monad.Join (cond, MonadJoinable(..), MonadBottom(..), MonadJoin, condsCP, fromBL)
+import Control.Monad.Join (cond, condsCP, fromBL)
 
-import Debug.Trace
-import Control.Monad.Escape
-import Control.Monad.DomainError
-import Analysis.Python.Primitives (applyPrim)
 import Syntax (SpanOf(..))
-import Analysis.Scheme.Store (SchemeStore'(values))
 import Analysis.Store (Store(..))
+import Analysis.Monad.Stack (MonadStack)
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -317,6 +312,17 @@ step st@(State { control = (Ap v), .. }) =
                in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
       
 
+------------------------------------------------------------
+-- Adaptor into the monadic stack for the primitives
+------------------------------------------------------------
+
+type AdaptT m a = MonadStack '[] m a
+
+runInPrimMStack :: Sto -- ^ the initial store 
+                -> AdaptT m a -- ^ the monadic computation to run 
+                -> m (Set (a, Sto))
+runInPrimMStack = undefined
+                                    
 ------------------------------------------------------------
 -- Utility functions (mostly for inspecting the results)
 ------------------------------------------------------------
