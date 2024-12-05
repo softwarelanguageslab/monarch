@@ -33,22 +33,26 @@ type SchemeDomainM e v m = (
    EqualLattice v,
    -- Store interactions
    StoreM (PAdr v) (PaiDom v) m,
-   StoreM (Adr v)  (VarDom v) m,
    StoreM (VAdr v) (VecDom v) m,
    StoreM (SAdr v) (StrDom v) m,
    -- Allocation
-   AllocM m Ide (Adr v),   -- variable allocation
    AllocM m e (PAdr v),    -- pair allocation
    AllocM m e (VAdr v),    -- vector allocation
    AllocM m e (SAdr v),    -- string allocation
    S.Exp v ~ e
    )
 
--- | Scheme analysis monad (without open recursion on @eval@) 
-type SchemeM' m v = (
-   SchemeDomainM Exp v m,
+type SchemeEM' e v m = (
+   SchemeDomainM e v m,
+   -- Allocation for variables
+   AllocM m Ide (Adr v),   
+   -- Stores for variables
+   StoreM (Adr v)  (VarDom v) m,
    -- Environment
    EnvM m (Adr v) (Env v))
+
+-- | Scheme analysis monad (without open recursion on @eval@) 
+type SchemeM' m v = SchemeEM' Exp v m
 
 -- | Full Scheme analysis monad
 type SchemeM m v = (SchemeM' m v, MonadFixpoint m Exp v)
@@ -59,5 +63,5 @@ allocVec :: SchemeDomainM e v m => e -> m (VAdr v)
 allocVec = alloc
 allocStr :: SchemeDomainM e v m => e -> m (SAdr v)
 allocStr = alloc
-allocVar :: SchemeDomainM e v m => Ide -> m (Adr v)
+allocVar :: SchemeEM' e v m => Ide -> m (Adr v)
 allocVar = alloc

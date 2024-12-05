@@ -15,19 +15,20 @@ import qualified Domain.Class as Domain
 import qualified Data.Set as Set
 import Control.Monad.Reader.Class
 import Control.Monad.Reader (ReaderT)
-import Lattice.Class (PartialOrder (subsumes), Joinable)
+import Lattice.Class (PartialOrder (subsumes), Joinable, BottomLattice)
 import qualified Lattice.Class as Lat
 import Lattice.SetLattice ()
-import RIO.Prelude
+import RIO.Prelude hiding (mzero)
 import Domain.SimpleActor (ActorValueUnified)
 import Domain.Symbolic.Class (SymbolicValue(..))
-import Analysis.Scheme.Primitives (initialEnv)
+import Analysis.Scheme.Primitives (initialEnv, primitivesByName)
+import qualified Analysis.Scheme.Primitives as Prim
 import Domain.Scheme.Class hiding (Exp, Env, Adr)
 import Data.Maybe (fromJust)
 import Analysis.SimpleActor.Semantics (injectLit, initialSto, allPrimitives)
 import Symbolic.AST (Formula (..), Proposition(Variable), emptyFormula, conjunction)
-import Lattice (justOrBot)
-import Control.Monad.Join (cond, condsCP, fromBL)
+import Lattice (justOrBot, CP)
+import Control.Monad.Join (cond, condsCP, fromBL, MonadBottom (..), MonadJoinable)
 
 import Syntax (SpanOf(..))
 import System.Random (uniform, uniformR, mkStdGen)
@@ -35,6 +36,18 @@ import Domain.Symbolic (SymbolicVal(SymbolicVal))
 import System.Random.Stateful (StdGen)
 import Analysis.Store (Store(..))
 import Analysis.Monad.Stack (MonadStack)
+import Control.Monad.Escape
+import Control.Monad.DomainError
+import Analysis.Monad.Allocation hiding (alloc)
+import Analysis.Monad.Store
+import Analysis.Monad (NonDetT, CtxT)
+import Domain.Scheme.Store (EnvAdr (..), PaiAdrE (PaiAdr), StrAdrE (StrAdr), VecAdrE (VecAdr))
+import Analysis.Monad.Cache (CacheT, MonadCache (run))
+import Data.Kind (Type)
+import Control.Monad.State (StateT, gets, modify, MonadState)
+import Domain (SimplePair, PIVector)
+import Domain.Scheme (SchemeString)
+import RIO (runIdentity)
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -88,6 +101,20 @@ instance Joinable AllVal where
 fromRVal :: AllVal -> Val
 fromRVal (RVal v) = v
 fromRVal _ = error "not an RValue"
+
+-- | Returns the value as an RVal if it is one
+isRVal :: AllVal -> Maybe Val
+isRVal (RVal v) = Just v
+isRVal _ = Nothing
+isPVal :: AllVal -> Maybe (PaiDom Val)
+isPVal (ConsVal v) = Just v
+isPVal _ = Nothing
+isSVal :: AllVal -> Maybe (StrDom Val)
+isSVal (StrVal v) = Just v
+isSVal _ = Nothing
+isVVal :: AllVal -> Maybe (VecDom Val)
+isVVal (VecVal v) = Just v
+isVVal _ = Nothing
 
 ------------------------------------------------------------
 -- Shorthands
@@ -167,14 +194,14 @@ data RandomSeq = RandomSeq {
       }
 
 instance Show RandomSeq where
-   show (RandomSeq _ size seed) = "<sequence of size " ++ show size ++ " with seed " ++ show seed ++ ">" 
-instance Eq RandomSeq where  
+   show (RandomSeq _ size seed) = "<sequence of size " ++ show size ++ " with seed " ++ show seed ++ ">"
+instance Eq RandomSeq where
    -- two sequences are equal if the values produced so far are the same 
    -- and they have the same seed.
-   (==) (RandomSeq _ seed1 size1) (RandomSeq _ seed2 size2) = 
+   (==) (RandomSeq _ seed1 size1) (RandomSeq _ seed2 size2) =
       seed1 == seed2 && size1 == size2
-instance Ord RandomSeq where  
-   (<=) (RandomSeq _ seed1 size1) (RandomSeq _ seed2 size2) = 
+instance Ord RandomSeq where
+   (<=) (RandomSeq _ seed1 size1) (RandomSeq _ seed2 size2) =
       seed1 <= seed2 && size1 <= size2
 
 infiniteSeq :: StdGen -> [PVal]
@@ -237,10 +264,10 @@ data Kont = LetK Ide Env [Binding] Exp KAdr
 pushKont :: Span          -- ^ allocation site for the continuation
          -> Context       -- ^ calling context
          -> Kont          -- ^ the continuation to store
-         -> KSto         
+         -> KSto
          -> (KAdr, KSto)
 pushKont ℓ context kont σ = (adr, σ')
-   where adr = KAdr ℓ context 
+   where adr = KAdr ℓ context
          σ'  = extendSto adr (Set.singleton kont) σ
 
 -- | Failure continuations 
@@ -326,18 +353,18 @@ stepCompound :: SmallstepM m => State -> m (Set State)
 -- ST-If
 stepCompound state@(State { control = Ev (Ite e1 e2 e3 _) ρ, .. }) =
    let value = atomicEval (assertAtomic e1) ρ store
-   -- TODO: add branching with the other continuation
+   -- TODO: add branching with the failure continuation
    in return $ justOrBot $
          cond (return value)
               (return $ Set.singleton $ state { control = Ev e2 ρ, pc = conjunction (Atomic (symbolic value)) pc })
               (return $ Set.singleton $ state  { control = Ev e3 ρ, pc = conjunction (Negation (Atomic (symbolic value))) pc })
 -- ST-App
-stepCompound st@(State { control = Ev (App operator operands _) ρ, .. }) = return $ justOrBot $
+stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) = return $ justOrBot $
                   condsCP
                      [(fromBL (isClo operatorValue),
                          return $ Set.map (applyClosure st operandsValues) (clos operatorValue)),
                       (fromBL (isPrim operatorValue),
-                         return $ Set.map (applyPrimitive st operandsValues) (prims operatorValue))]
+                         return $ foldMap (applyPrimitive st exp operandsValues) (prims operatorValue))]
                      (return Set.empty)
    where operatorValue = atomicEval (assertAtomic operator) ρ store
          operandsValues = map (atomicEval' ρ store . assertAtomic) operands
@@ -347,10 +374,10 @@ stepCompound st@(State { control = Ev (Input ℓ) _, .. }) =
       return $ Set.singleton $ st { control = Ap (combine value (fresh ℓ context)), rvs = vs' }
    where (value, vs') = lookupModel (freshVar ℓ context) model rvs
 -- ST-Let1
-stepCompound st@(State { control = Ev (Letrec ((nam,exp):bds) bdy _) ρ, .. }) = 
+stepCompound st@(State { control = Ev (Letrec ((nam,exp):bds) bdy _) ρ, .. }) =
       return $ Set.singleton $ st { control = Ev exp ρ, kont = kont', top = top' }
-   where (top', kont') = pushKont (spanOf nam) context (LetK nam ρ bds bdy top) kont  
-stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) = 
+   where (top', kont') = pushKont (spanOf nam) context (LetK nam ρ bds bdy top) kont
+stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) =
       return $ Set.singleton $ st { control = Ev bdy ρ }
 stepCompound st = error $ "unsupported program state" ++ show st
 
@@ -362,8 +389,8 @@ applyClosure st@State{ .. } vs (Lam xs e _, ρ') = st { control = Ev e ρ'', sto
          ρ'' = Map.union (Map.fromList $ zip (map name xs) ads) ρ'
 applyClosure _ _ _ = error "invalid closure"
 
-applyPrimitive :: State -> [Val] -> String -> State
-applyPrimitive = undefined
+applyPrimitive :: State -> Exp -> [Val] -> String -> Set State
+applyPrimitive (st@State { .. }) e vs nam = Set.map (\(v, store') -> st { control = Ap v, store = store' }) $ runIdentity $ runInPrimMStack store context (Prim.run (fromJust $ Map.lookup nam primitivesByName) e vs)
 
 step :: SmallstepM m => State -> m (Set State)
 -- ST-Atomic
@@ -377,26 +404,77 @@ step (State (Ap _) _ Hlt _ Hlt _  _ _ _ _) = return Set.empty
 step (State (Ap v) σ Hlt kont topFail ψ context model rvs φ) =
    undefined
 -- ST-Let2
-step st@(State { control = (Ap v), .. }) = 
+step st@(State { control = (Ap v), .. }) =
       return $ Set.map applyKont (fromMaybe Set.empty $ Map.lookup top kont)
-   where applyKont (LetK nam env bds bdy top') = 
+   where applyKont (LetK nam env bds bdy top') =
                let adr = alloc (spanOf nam) context
-                   store' = extendSto adr (RVal v) store 
+                   store' = extendSto adr (RVal v) store
                    env'   = Map.insert (name nam) adr env
                in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
-      
+
 
 ------------------------------------------------------------
 -- Adaptor into the monadic stack for the primitives
 ------------------------------------------------------------
 
-type AdaptT m a = MonadStack '[] m a
+-- | Same as @StoreT@ but accepts a type constructor as it first argument, 
+-- which is given the @k@ and @v@.
+type StoreT' (s :: Type -> Type -> Type) k v = (StoreT (s k v) k v)
 
-runInPrimMStack :: Sto -- ^ the initial store 
+class Coerce from to where
+   coerce :: from -> to
+instance Coerce AllVal (SimplePair Val) where
+   coerce = fromJust . isPVal
+instance Coerce AllVal (PIVector Val Val) where
+   coerce = fromJust . isVVal
+instance Coerce AllVal (SchemeString (CP String) Val) where
+   coerce = fromJust . isSVal
+instance Coerce (SimplePair Val) AllVal where   
+   coerce = ConsVal
+instance Coerce (PIVector Val Val) AllVal where  
+   coerce = VecVal
+instance Coerce (SchemeString (CP String) Val) AllVal  where    
+   coerce = StrVal
+
+newtype CoerceStore from adr to = CoerceStore { getCoerce :: Map adr from } deriving (Eq, Ord, Show, Joinable, BottomLattice)
+
+instance (Coerce from to, Coerce to from, Joinable from, Joinable to, Ord adr) => Store (CoerceStore from adr to) adr to where
+   emptySto = CoerceStore emptySto
+   lookupSto adr = fmap coerce . lookupSto adr . getCoerce
+   extendSto adr val = CoerceStore . extendSto adr (coerce val) . getCoerce
+   updateSto adr val = CoerceStore . updateSto adr (coerce val) . getCoerce
+   updateStoWith = undefined
+
+
+type AdaptT m a = MonadStack '[
+                  MayEscapeT (Set DomainError),
+                  AllocT Exp Context Adr,
+                  CtxT Context,
+                  StoreT' (CoerceStore AllVal) Adr (PaiDom Val),
+                  StoreT' (CoerceStore AllVal) Adr (StrDom Val),
+                  StoreT' (CoerceStore AllVal) Adr (VecDom Val),
+                  NonDetT,
+                  CacheT
+               ] m a
+
+runInPrimMStack :: (Monad m, Ord a)
+                => Sto -- ^ the initial store 
+                -> Context -- ^ the current context
                 -> AdaptT m a -- ^ the monadic computation to run 
                 -> m (Set (a, Sto))
-runInPrimMStack = undefined
-                                    
+runInPrimMStack initialSto context m = foldMap extract . Set.fromList <$>  run (const m) initialState
+                                                                         & runAlloc @Exp @Context @Adr (Adr . spanOf)
+      where extract (((v, paiSto), strSto), vecSto) =
+                          case v of
+                              Value v -> Set.singleton (v, combine paiSto strSto vecSto)
+                              MayBoth v _ -> Set.singleton (v, combine paiSto  strSto vecSto)
+                              _ -> Set.empty
+            combine paiSto strSto vecSto = Lat.joins [getCoerce paiSto, getCoerce strSto, getCoerce vecSto] -- XXX: this undoes any strong updates since the pair store will not have the same updates as the strStore!
+            initialCoerceSto :: CoerceStore AllVal Adr to
+            initialCoerceSto = CoerceStore initialSto
+            initialState = (((((), context), initialCoerceSto), initialCoerceSto), initialCoerceSto)
+
+
 ------------------------------------------------------------
 -- Utility functions (mostly for inspecting the results)
 ------------------------------------------------------------
