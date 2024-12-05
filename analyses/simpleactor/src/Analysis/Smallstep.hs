@@ -12,16 +12,14 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Domain.Class as Domain
-import qualified Data.List as List
 import qualified Data.Set as Set
 import Control.Monad.Reader.Class
 import Control.Monad.Reader (ReaderT)
-import Control.Monad.Layer (MonadTrans (lift))
 import Lattice.Class (PartialOrder (subsumes), Joinable)
 import qualified Lattice.Class as Lat
 import Lattice.SetLattice ()
 import RIO.Prelude
-import Domain.SimpleActor (ActorValue, ActorValue', ActorValueUnified)
+import Domain.SimpleActor (ActorValueUnified)
 import Domain.Symbolic.Class (SymbolicValue(..))
 import Analysis.Scheme.Primitives (initialEnv)
 import Domain.Scheme.Class hiding (Exp, Env, Adr)
@@ -29,18 +27,14 @@ import Data.Maybe (fromJust)
 import Analysis.SimpleActor.Semantics (injectLit, initialSto, allPrimitives)
 import Symbolic.AST (Formula (..), Proposition(Variable), emptyFormula, conjunction)
 import Lattice (justOrBot)
-import Control.Monad.Join (cond, MonadJoinable(..), MonadBottom(..), MonadJoin, condsCP, fromBL)
+import Control.Monad.Join (cond, condsCP, fromBL)
 
-import Debug.Trace
-import Control.Monad.Escape
-import Control.Monad.DomainError
-import Analysis.Python.Primitives (applyPrim)
 import Syntax (SpanOf(..))
-import System.Random (randomRIO, randomIO, uniform, uniformR, mkStdGen)
-import Analysis.Scheme.Store (SchemeStore'(values))
+import System.Random (uniform, uniformR, mkStdGen)
 import Domain.Symbolic (SymbolicVal(SymbolicVal))
 import System.Random.Stateful (StdGen)
-import Data.List (uncons)
+import Analysis.Store (Store(..))
+import Analysis.Monad.Stack (MonadStack)
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -126,6 +120,9 @@ type Binding = (Ide, Exp)
 -- | A model is an assignment from symbolic variables to their values
 type Model = Map SymVar PVal
 
+-- | The context is a list of call-sites
+type Context = [Span]
+
 ------------------------------------------------------------
 -- Managing abstraction of context
 ------------------------------------------------------------
@@ -170,7 +167,7 @@ data RandomSeq = RandomSeq {
       }
 
 instance Show RandomSeq where
-   show (RandomSeq _ seed size) = "<sequence of size " ++ show size ++ " with seed " ++ show seed ++ ">" 
+   show (RandomSeq _ size seed) = "<sequence of size " ++ show size ++ " with seed " ++ show seed ++ ">" 
 instance Eq RandomSeq where  
    -- two sequences are equal if the values produced so far are the same 
    -- and they have the same seed.
@@ -232,15 +229,26 @@ data Control = Ev Exp Env | Ap Val
             deriving (Ord, Eq, Show)
 
 -- | Continuations
-data Kont = LetK Ide [Binding] Exp Adr
+data Kont = LetK Ide Env [Binding] Exp KAdr
          deriving (Eq, Ord, Show)
+
+-- | Push a continuation on the continuation stack by allocating an address 
+-- store the continuation there and linking it with the given address
+pushKont :: Span          -- ^ allocation site for the continuation
+         -> Context       -- ^ calling context
+         -> Kont          -- ^ the continuation to store
+         -> KSto         
+         -> (KAdr, KSto)
+pushKont ℓ context kont σ = (adr, σ')
+   where adr = KAdr ℓ context 
+         σ'  = extendSto adr (Set.singleton kont) σ
 
 -- | Failure continuations 
 data Kontf = Branch PC Adr
            deriving (Eq, Ord, Show)
 
 -- | Continuation store
-type KSto = Map KAdr Kont
+type KSto = Map KAdr (Set Kont)
 
 -- | Failure continuation store
 type FSto = Map KAdr Kontf
@@ -338,13 +346,19 @@ stepCompound st@(State { control = Ev (App operator operands _) ρ, .. }) = retu
 stepCompound st@(State { control = Ev (Input ℓ) _, .. }) =
       return $ Set.singleton $ st { control = Ap (combine value (fresh ℓ context)), rvs = vs' }
    where (value, vs') = lookupModel (freshVar ℓ context) model rvs
+-- ST-Let1
+stepCompound st@(State { control = Ev (Letrec ((nam,exp):bds) bdy _) ρ, .. }) = 
+      return $ Set.singleton $ st { control = Ev exp ρ, kont = kont', top = top' }
+   where (top', kont') = pushKont (spanOf nam) context (LetK nam ρ bds bdy top) kont  
+stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) = 
+      return $ Set.singleton $ st { control = Ev bdy ρ }
 stepCompound st = error $ "unsupported program state" ++ show st
 
 applyClosure :: State -> [Val] -> (Exp, Env) -> State
 applyClosure st@State{ .. } vs (Lam xs e _, ρ') = st { control = Ev e ρ'', store = store', context = pushK (spanOf e) context}
    where ads = map ((`alloc` context) . spanOf) xs
-         bds = Map.fromList $ zip ads (map RVal vs)
-         store' = Map.unionWith Lat.join bds store -- XXX: weak update!
+         bds = zip ads (map RVal vs)
+         store' = extendsSto bds store
          ρ'' = Map.union (Map.fromList $ zip (map name xs) ads) ρ'
 applyClosure _ _ _ = error "invalid closure"
 
@@ -360,9 +374,29 @@ step state@(State { control = Ev e ρ, store = σ }) =
 -- final state, nothing to do anymore
 step (State (Ap _) _ Hlt _ Hlt _  _ _ _ _) = return Set.empty
 -- ST-Backtrack
-step (State (Ap v) σ top kont topFail ψ context model vs φ) =
+step (State (Ap v) σ Hlt kont topFail ψ context model rvs φ) =
    undefined
+-- ST-Let2
+step st@(State { control = (Ap v), .. }) = 
+      return $ Set.map applyKont (fromMaybe Set.empty $ Map.lookup top kont)
+   where applyKont (LetK nam env bds bdy top') = 
+               let adr = alloc (spanOf nam) context
+                   store' = extendSto adr (RVal v) store 
+                   env'   = Map.insert (name nam) adr env
+               in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
+      
 
+------------------------------------------------------------
+-- Adaptor into the monadic stack for the primitives
+------------------------------------------------------------
+
+type AdaptT m a = MonadStack '[] m a
+
+runInPrimMStack :: Sto -- ^ the initial store 
+                -> AdaptT m a -- ^ the monadic computation to run 
+                -> m (Set (a, Sto))
+runInPrimMStack = undefined
+                                    
 ------------------------------------------------------------
 -- Utility functions (mostly for inspecting the results)
 ------------------------------------------------------------
