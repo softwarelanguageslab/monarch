@@ -92,7 +92,7 @@ eval query = do
 checkpoint :: Z3Solver i ()
 checkpoint = void $ eval "(push 1)"
 
--- | Restures the solver the last checkpoint
+-- | Restores the solver the last checkpoint
 restoreCheckpoint :: Z3Solver i ()
 restoreCheckpoint =
    void $ eval "(pop 1)" >> checkpoint

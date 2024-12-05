@@ -261,24 +261,25 @@ data Kont = LetK Ide Env [Binding] Exp KAdr
 
 -- | Push a continuation on the continuation stack by allocating an address 
 -- store the continuation there and linking it with the given address
-pushKont :: Span          -- ^ allocation site for the continuation
+pushKont :: (Ord a)
+         => Span          -- ^ allocation site for the continuation
          -> Context       -- ^ calling context
-         -> Kont          -- ^ the continuation to store
-         -> KSto
-         -> (KAdr, KSto)
+         -> a
+         -> Map KAdr (Set a) -- ^ the continuation store
+         -> (KAdr, Map KAdr (Set a))
 pushKont ℓ context kont σ = (adr, σ')
    where adr = KAdr ℓ context
          σ'  = extendSto adr (Set.singleton kont) σ
 
 -- | Failure continuations 
-data Kontf = Branch PC Adr
+data Kontf = Branch PC KAdr
            deriving (Eq, Ord, Show)
 
 -- | Continuation store
 type KSto = Map KAdr (Set Kont)
 
 -- | Failure continuation store
-type FSto = Map KAdr Kontf
+type FSto = Map KAdr (Set Kontf)
 
 -- | Abstract machine states
 data State = State {
@@ -317,6 +318,10 @@ deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord 
 lookupModel :: SymVar -> Model -> RandomSeq -> (PVal, RandomSeq)
 lookupModel var mod vs = maybe (takeSeq vs) (,vs) (Map.lookup var mod)
 
+-- | Compute an assignment for the model (if one is available)
+computeModel :: SmallstepM m => PC -> m (Maybe Model)
+computeModel = return . const Nothing -- TODO
+
 ------------------------------------------------------------
 -- Small-stepping relation
 ------------------------------------------------------------
@@ -347,17 +352,22 @@ atomicEval (Atomically e) _ _ =
 
 -- | Forces the expression to be atomic, if it is not atomic results in a run-time error
 assertAtomic :: Exp -> IsAtomic Exp
-assertAtomic = fromLeft (error "not an atomic") . isAtomic
+assertAtomic e = fromLeft (error $ "not an atomic" ++ show e) $ isAtomic e
 
 stepCompound :: SmallstepM m => State -> m (Set State)
 -- ST-If
-stepCompound state@(State { control = Ev (Ite e1 e2 e3 _) ρ, .. }) =
-   let value = atomicEval (assertAtomic e1) ρ store
-   -- TODO: add branching with the failure continuation
-   in return $ justOrBot $
+stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) =
+   return $ justOrBot $
          cond (return value)
-              (return $ Set.singleton $ state { control = Ev e2 ρ, pc = conjunction (Atomic (symbolic value)) pc })
-              (return $ Set.singleton $ state  { control = Ev e3 ρ, pc = conjunction (Negation (Atomic (symbolic value))) pc })
+              -- ST-IfTrue
+              (return $ Set.singleton $ state { control = Ev e2 ρ, pc = φt, topFail = topTrue, kontf = kontf't })
+              -- ST-IfFalse
+              (return $ Set.singleton $ state  { control = Ev e3 ρ, pc = φf, topFail = topFalse, kontf = kontf'f})
+         where value = atomicEval (assertAtomic e1) ρ store
+               φt =  conjunction (Atomic (symbolic value)) pc
+               φf =  conjunction (Atomic (symbolic value)) pc
+               (topTrue, kontf't) = pushKont (spanOf ite) context (Branch φf topFail) kontf
+               (topFalse, kontf'f) = pushKont (spanOf ite) context (Branch φt topFail) kontf
 -- ST-App
 stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) = return $ justOrBot $
                   condsCP
@@ -390,7 +400,7 @@ applyClosure st@State{ .. } vs (Lam xs e _, ρ') = st { control = Ev e ρ'', sto
 applyClosure _ _ _ = error "invalid closure"
 
 applyPrimitive :: State -> Exp -> [Val] -> String -> Set State
-applyPrimitive (st@State { .. }) e vs nam = Set.map (\(v, store') -> st { control = Ap v, store = store' }) $ runIdentity $ runInPrimMStack store context (Prim.run (fromJust $ Map.lookup nam primitivesByName) e vs)
+applyPrimitive st@State { .. } e vs nam = Set.map (\(v, store') -> st { control = Ap v, store = store' }) $ runIdentity $ runInPrimMStack store context (Prim.run (fromJust $ Map.lookup nam primitivesByName) e vs)
 
 step :: SmallstepM m => State -> m (Set State)
 -- ST-Atomic
@@ -401,8 +411,13 @@ step state@(State { control = Ev e ρ, store = σ }) =
 -- final state, nothing to do anymore
 step (State (Ap _) _ Hlt _ Hlt _  _ _ _ _) = return Set.empty
 -- ST-Backtrack
-step (State (Ap v) σ Hlt kont topFail ψ context model rvs φ) =
-   undefined
+step st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ _) =
+      foldMapM applyKont (fromMaybe Set.empty $ Map.lookup topFail ψ) 
+   where applyKont (Branch cnd topFail') = do 
+            ec <- ask
+            maybeModel <- computeModel cnd 
+            maybe (return Set.empty) (\model' -> return $ Set.singleton $ st { store = initialStoreExecutor ec, control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), model = model', topFail = topFail' } ) maybeModel
+         
 -- ST-Let2
 step st@(State { control = (Ap v), .. }) =
       return $ Set.map applyKont (fromMaybe Set.empty $ Map.lookup top kont)
@@ -429,11 +444,11 @@ instance Coerce AllVal (PIVector Val Val) where
    coerce = fromJust . isVVal
 instance Coerce AllVal (SchemeString (CP String) Val) where
    coerce = fromJust . isSVal
-instance Coerce (SimplePair Val) AllVal where   
+instance Coerce (SimplePair Val) AllVal where
    coerce = ConsVal
-instance Coerce (PIVector Val Val) AllVal where  
+instance Coerce (PIVector Val Val) AllVal where
    coerce = VecVal
-instance Coerce (SchemeString (CP String) Val) AllVal  where    
+instance Coerce (SchemeString (CP String) Val) AllVal  where
    coerce = StrVal
 
 newtype CoerceStore from adr to = CoerceStore { getCoerce :: Map adr from } deriving (Eq, Ord, Show, Joinable, BottomLattice)
