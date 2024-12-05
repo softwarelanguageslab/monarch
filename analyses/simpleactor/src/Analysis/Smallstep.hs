@@ -11,6 +11,7 @@ import Syntax.AST
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
+import qualified Domain.Class as Domain
 import qualified Data.List as List
 import qualified Data.Set as Set
 import Control.Monad.Reader.Class
@@ -26,7 +27,7 @@ import Analysis.Scheme.Primitives (initialEnv)
 import Domain.Scheme.Class hiding (Exp, Env, Adr)
 import Data.Maybe (fromJust)
 import Analysis.SimpleActor.Semantics (injectLit, initialSto, allPrimitives)
-import Symbolic.AST (Formula (..), emptyFormula, conjunction)
+import Symbolic.AST (Formula (..), Proposition(Variable), emptyFormula, conjunction)
 import Lattice (justOrBot)
 import Control.Monad.Join (cond, MonadJoinable(..), MonadBottom(..), MonadJoin, condsCP, fromBL)
 
@@ -35,7 +36,11 @@ import Control.Monad.Escape
 import Control.Monad.DomainError
 import Analysis.Python.Primitives (applyPrim)
 import Syntax (SpanOf(..))
+import System.Random (randomRIO, randomIO, uniform, uniformR, mkStdGen)
 import Analysis.Scheme.Store (SchemeStore'(values))
+import Domain.Symbolic (SymbolicVal(SymbolicVal))
+import System.Random.Stateful (StdGen)
+import Data.List (uncons)
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -76,13 +81,13 @@ deriving instance (Show (PaiDom Val), Show (VecDom Val), Show (StrDom Val)) => S
 deriving instance (Eq (PaiDom Val), Eq (VecDom Val), Eq (StrDom Val)) => Eq AllVal
 deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord AllVal
 
-instance Joinable AllVal where   
+instance Joinable AllVal where
    -- Values in `AllVal` can never overlap so only compatible values 
    -- needt be joined together
-   join (RVal a) (RVal b) = RVal $ Lat.join a b 
-   join (ConsVal a) (ConsVal b) = ConsVal $ Lat.join a b 
-   join (VecVal a) (VecVal b) = VecVal $ Lat.join a b 
-   join (StrVal a) (StrVal b) = StrVal $ Lat.join a b 
+   join (RVal a) (RVal b) = RVal $ Lat.join a b
+   join (ConsVal a) (ConsVal b) = ConsVal $ Lat.join a b
+   join (VecVal a) (VecVal b) = VecVal $ Lat.join a b
+   join (StrVal a) (StrVal b) = StrVal $ Lat.join a b
    join _ _ = error "cannot join unrelated types"
 
 -- | Assume that the value is a regular value 
@@ -141,15 +146,72 @@ alloc :: Span -> [Span] -> Adr
 alloc = Adr
 
 ------------------------------------------------------------
--- Monadic context (mostly for convenience)
+-- Allocation of symbolic variables 
 ------------------------------------------------------------
 
-class MonadRandom m where
-   random :: m PVal
-instance (Monad m, MonadRandom m , MonadTrans t) => MonadRandom (t m) where
-   random = lift random
-instance MonadRandom IO where
-   random = undefined -- TODO
+fresh :: Span -> [Span] -> Symbolic Val
+fresh ℓ = SymbolicVal . Variable . freshVar ℓ
+
+freshVar :: Span -> [Span] -> SymVar
+freshVar = alloc
+
+------------------------------------------------------------
+-- Random sequences
+------------------------------------------------------------
+
+-- | Infinite sequence of random program values
+data RandomSeq = RandomSeq {
+         -- | An infinite sequence of program values
+         getSeq :: [PVal],
+         -- | The number of random values produced so far
+         seqSize :: Int,
+         -- | Initial seed
+         seed :: Int
+      }
+
+instance Show RandomSeq where
+   show (RandomSeq _ seed size) = "<sequence of size " ++ show size ++ " with seed " ++ show seed ++ ">" 
+instance Eq RandomSeq where  
+   -- two sequences are equal if the values produced so far are the same 
+   -- and they have the same seed.
+   (==) (RandomSeq _ seed1 size1) (RandomSeq _ seed2 size2) = 
+      seed1 == seed2 && size1 == size2
+instance Ord RandomSeq where  
+   (<=) (RandomSeq _ seed1 size1) (RandomSeq _ seed2 size2) = 
+      seed1 <= seed2 && size1 <= size2
+
+infiniteSeq :: StdGen -> [PVal]
+infiniteSeq g = nxt : infiniteSeq g'
+   where (nxt, g') = genSeq g
+
+-- | Create an infinite sequence of random values
+initialSeq :: RandomSeq
+initialSeq = RandomSeq (infiniteSeq (mkStdGen seed)) 0 seed
+   where seed = 42
+
+-- | Take a value from the random sequence
+takeSeq :: RandomSeq -> (PVal, RandomSeq)
+takeSeq s = let (v:s') = getSeq s
+            in (v, RandomSeq s' (seqSize s + 1) (seed s))
+
+-- | Choose a random value from the given list
+choose :: [a] -> StdGen -> (a, StdGen)
+choose vs g = let (idx, g') = uniformR (0, max-1) g in (vs !! idx, g')
+   where max = length vs
+
+-- | Generate a random integer
+randomInteger :: StdGen -> (Integer, StdGen)
+randomInteger g = let (i :: Int, g') = uniform g in (toInteger i, g')
+
+-- | Generate a random program value
+genSeq :: StdGen -> (PVal, StdGen)
+genSeq g = (v, g'')
+   where (i, g') = randomInteger g
+         (v, g'') = choose [Domain.inject i] g'
+
+------------------------------------------------------------
+-- Monadic context (mostly for convenience)
+------------------------------------------------------------
 
 -- | Some context needed for the concolic execution, to be 
 -- passed around in a reader monad.
@@ -159,8 +221,7 @@ data ConcolicContext = ConcolicContext {
       initialExpExecutor :: Exp
    }
 
-type SmallstepM m = (MonadRandom m,
-                     MonadReader ConcolicContext m)
+type SmallstepM m = (MonadReader ConcolicContext m)
 
 ------------------------------------------------------------
 -- State space
@@ -202,13 +263,24 @@ data State = State {
       context :: [Span],
       -- | The model
       model :: Model,
+      -- | Sequence of random values
+      rvs :: RandomSeq,
       -- | Path condition
       pc :: PC
-   } 
+   }
 
 deriving instance (Show (PaiDom Val), Show (VecDom Val), Show (StrDom Val)) => Show State
 deriving instance (Eq (PaiDom Val), Eq (VecDom Val), Eq (StrDom Val)) => Eq State
 deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord State
+
+------------------------------------------------------------
+-- Interaction with the model
+------------------------------------------------------------
+
+-- | Lookup a symbolic variable from the model or return a random
+-- one of there is no such variable
+lookupModel :: SymVar -> Model -> RandomSeq -> (PVal, RandomSeq)
+lookupModel var mod vs = maybe (takeSeq vs) (,vs) (Map.lookup var mod)
 
 ------------------------------------------------------------
 -- Small-stepping relation
@@ -242,17 +314,17 @@ atomicEval (Atomically e) _ _ =
 assertAtomic :: Exp -> IsAtomic Exp
 assertAtomic = fromLeft (error "not an atomic") . isAtomic
 
-stepCompound :: State -> Set State
+stepCompound :: SmallstepM m => State -> m (Set State)
 -- ST-If
 stepCompound state@(State { control = Ev (Ite e1 e2 e3 _) ρ, .. }) =
    let value = atomicEval (assertAtomic e1) ρ store
    -- TODO: add branching with the other continuation
-   in justOrBot $
+   in return $ justOrBot $
          cond (return value)
               (return $ Set.singleton $ state { control = Ev e2 ρ, pc = conjunction (Atomic (symbolic value)) pc })
               (return $ Set.singleton $ state  { control = Ev e3 ρ, pc = conjunction (Negation (Atomic (symbolic value))) pc })
 -- ST-App
-stepCompound st@(State { control = Ev (App operator operands _) ρ, .. }) = justOrBot $
+stepCompound st@(State { control = Ev (App operator operands _) ρ, .. }) = return $ justOrBot $
                   condsCP
                      [(fromBL (isClo operatorValue),
                          return $ Set.map (applyClosure st operandsValues) (clos operatorValue)),
@@ -262,6 +334,10 @@ stepCompound st@(State { control = Ev (App operator operands _) ρ, .. }) = just
    where operatorValue = atomicEval (assertAtomic operator) ρ store
          operandsValues = map (atomicEval' ρ store . assertAtomic) operands
          atomicEval' ρ σ e = atomicEval e ρ σ
+-- ST-Input
+stepCompound st@(State { control = Ev (Input ℓ) _, .. }) =
+      return $ Set.singleton $ st { control = Ap (combine value (fresh ℓ context)), rvs = vs' }
+   where (value, vs') = lookupModel (freshVar ℓ context) model rvs
 stepCompound st = error $ "unsupported program state" ++ show st
 
 applyClosure :: State -> [Val] -> (Exp, Env) -> State
@@ -280,11 +356,11 @@ step :: SmallstepM m => State -> m (Set State)
 step state@(State { control = Ev e ρ, store = σ }) =
    case isAtomic e of
       Left  atom -> return $ Set.singleton $ state { control = Ap (atomicEval atom ρ σ) }
-      Right _ -> return $ stepCompound state
+      Right _ -> stepCompound state
 -- final state, nothing to do anymore
-step state@(State (Ap _) _ Hlt _ Hlt _  _ _ _) = return Set.empty
+step (State (Ap _) _ Hlt _ Hlt _  _ _ _ _) = return Set.empty
 -- ST-Backtrack
-step (State (Ap v) σ top kont topFail ψ context model φ) =
+step (State (Ap v) σ top kont topFail ψ context model vs φ) =
    undefined
 
 ------------------------------------------------------------
@@ -292,7 +368,7 @@ step (State (Ap v) σ top kont topFail ψ context model φ) =
 ------------------------------------------------------------
 
 isFinalState :: State -> Bool
-isFinalState (State (Ap _) _ Hlt _ Hlt _ _ _ _) = True
+isFinalState (State (Ap _) _ Hlt _ Hlt _ _ _ _ _) = True
 isFinalState _ = False
 
 ------------------------------------------------------------
@@ -311,11 +387,11 @@ lfp f initial = do
    if subsumes nxt initial && not (subsumes initial nxt) then lfp f nxt else return nxt
 
 analysisStore :: Sto
-analysisStore = fmap RVal $ initialSto allPrimitives PrimAdr
+analysisStore = RVal <$> initialSto allPrimitives PrimAdr
 
 inject :: Exp -> State
 inject e =
-   State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty emptyFormula
+   State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq emptyFormula
 
 runContext :: Exp -- ^ the initial expression
            -> ReaderT ConcolicContext IO a

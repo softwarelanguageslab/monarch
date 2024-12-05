@@ -79,6 +79,7 @@ library
     , maf2-syntax
     , mtl
     , process
+    , random
     , rio
   default-language: Haskell2010
 

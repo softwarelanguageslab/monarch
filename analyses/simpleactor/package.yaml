@@ -70,6 +70,7 @@ library:
     - exceptions
     - process
     - layers-mtl
+    - random
 
 executables:
   interpreter-exe:
