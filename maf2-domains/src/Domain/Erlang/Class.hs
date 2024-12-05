@@ -1,4 +1,4 @@
-module Domain.Erlang.Class(ErlangDomain(..)) where
+module Domain.Erlang.Class(ErlangDomain(..), Clo) where
 
 import Syntax.Erlang
 import Data.Kind

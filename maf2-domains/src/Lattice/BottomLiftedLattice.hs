@@ -11,9 +11,13 @@ module Lattice.BottomLiftedLattice(
 import Lattice.Class
 import Lattice.Equal (EqualLattice(eql))
 import Domain.Class (Domain(..))
+import Control.DeepSeq
+import GHC.Generics
 
 data BottomLifted a = Bottom | Value a
-   deriving (Eq, Ord, Show, Functor)
+   deriving (Eq, Ord, Show, Functor, Generic)
+
+instance (NFData a) => NFData (BottomLifted a)
 
 instance Applicative BottomLifted where
    pure = Value

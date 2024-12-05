@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-missing-methods #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
-
+{-# LANGUAGE DeriveAnyClass #-}
 module Lattice.ConstantPropagationLattice(CP(..), fromCP) where
 
 import Lattice.Class 
@@ -9,9 +9,10 @@ import Domain.Class
 import Domain.Core.BoolDomain.Class
 
 import GHC.Generics
+import Control.DeepSeq
 
 data CP a = Constant a | Top
-    deriving (Eq, Ord, Show, Generic)
+    deriving (Eq, Ord, Show, Generic, NFData)
 
 instance Ord a => Joinable (CP a) where
     join v@(Constant x1) (Constant x2)

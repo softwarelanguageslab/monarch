@@ -35,6 +35,8 @@ library
       Data.TypeLevel.HMap.Singletons
       Data.TypeLevel.HMap.TH
       Domain
+      Domain.Actor
+      Domain.Address
       Domain.Class
       Domain.Core
       Domain.Core.AbstractCount
@@ -85,7 +87,6 @@ library
       Domain.Python.World
       Domain.Scheme
       Domain.Scheme.Actors
-      Domain.Scheme.Actors.Class
       Domain.Scheme.Actors.Contract
       Domain.Scheme.Actors.CP
       Domain.Scheme.Actors.Message
@@ -143,11 +144,13 @@ library
       GADTs
       LambdaCase
       EmptyCase
+      NoDeriveAnyClass
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
     , containers
     , data-default
+    , deepseq
     , extra
     , language-python
     , layers-mtl
@@ -191,6 +194,7 @@ test-suite maf2-domains-test
       GADTs
       LambdaCase
       EmptyCase
+      NoDeriveAnyClass
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HUnit
@@ -198,6 +202,7 @@ test-suite maf2-domains-test
     , base >=4.7 && <5
     , containers
     , data-default
+    , deepseq
     , extra
     , hspec
     , hspec-contrib

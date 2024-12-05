@@ -1,9 +1,9 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
--- | An implementation of 'Domain.Scheme.Actors.Class.ActorDomain' for 'Domain.Scheme.Modular.SchemeVal'
-module Domain.Scheme.Actors.Modular where
+-- | An implementation of 'Domain.Actor..ActorDomain' for 'Domain.Scheme.Modular.SchemeVal'
+module Domain.Scheme.Actors.Modular() where
 
-import Domain.Scheme.Actors.Class
+import Domain.Actor
 import Domain.Scheme.Modular
 import Data.TypeLevel.HMap (Assoc)
 import qualified Data.TypeLevel.HMap as HMap
@@ -30,11 +30,3 @@ instance (IsSchemeValue m) => ActorDomain (SchemeVal m) where
    arefs'     = fromMaybe Set.empty . HMap.get @PidKey . getSchemeVal
    isActorRef = hasType PidKey
 
-   -- behaviors
-   beh = SchemeVal . HMap.singleton @BehKey . Set.singleton
-   withBehs :: forall schemeM a . (AbstractM schemeM, Lattice a) => (Beh m -> schemeM a) -> SchemeVal m -> schemeM a
-   withBehs f = mjoins . HMap.mapList select . getSchemeVal 
-      where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM a
-            select SBehKey v = mjoins (fmap f (Set.toList v))
-            select _ _ = escape WrongType
-   

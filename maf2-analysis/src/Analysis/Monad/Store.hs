@@ -7,9 +7,11 @@ module Analysis.Monad.Store (
     StoreM'(..),
     StoreT(..),
     AbstractCountM(..),
+    WidenedStoreT,
     runStoreT,
     runWithStore,
     evalWithStore,
+    evalWithWidenedStore,
     lookups,
     deref,
     deref',
@@ -28,7 +30,6 @@ import Analysis.Monad.Allocation
 
 
 import Data.Map (Map)
-import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad.State hiding (mzero, join)
@@ -36,17 +37,15 @@ import Control.Monad.Lift
 
 import Control.Monad.Layer
 import Analysis.Store (Store, CountingMap)
-import Domain (Address)
+import Domain.Address (Address)
 import Control.Monad.Join
 import Data.Maybe (fromMaybe, isJust)
 import Control.Monad.Cond (ifM)
 import Domain.Core.AbstractCount (AbstractCount)
 import qualified Analysis.Monad.Map as Map
 import qualified Analysis.Monad.Cache as Cache
-import Analysis.Monad.Cache (MonadCache)
+import Analysis.Monad.Cache (MonadCache (..))
 import Analysis.Monad.Fix (AroundT(..))
-import Debug.Trace (traceShow)
-import Data.List (isInfixOf)
 
 ---
 --- StoreM typeclass
@@ -157,6 +156,44 @@ instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM' s a v (StoreT s a
    currentStore = get
    putStore = put
 
+------------------------------------------------------------
+-- Store widening
+------------------------------------------------------------
+
+newtype WidenedStoreT s adr v m a = WidenedStoreT { widenedStoreT :: StoreT s adr v m a }
+                                  deriving (Applicative, Functor, Monad, MonadLayer, MonadTrans, MonadJoinable)
+
+instance (Monad (Base m), MonadCache m) => MonadCache (WidenedStoreT s adr v m) where
+   type Key (WidenedStoreT s adr v m) k  = Key m k
+   type Val (WidenedStoreT s adr v m) v' = Val m v'
+   type Base (WidenedStoreT s adr v m) = WidenedStoreT s adr v (Base m)
+
+   key = lift . key
+   val = lift . val
+   run f k = WidenedStoreT $ StoreT $ StateT $ \sto -> (,sto) <$> run (fmap fst . runStoreT sto . widenedStoreT . f) k
+
+
+instance {-# OVERLAPPING #-} (Store s adr v, Address adr, Monad m) => StoreM adr v (WidenedStoreT s adr v m) where
+  lookupAdr = WidenedStoreT . lookupAdr 
+  writeAdr adr  = WidenedStoreT . writeAdr adr
+  updateWith fs fw = WidenedStoreT . updateWith fs fw
+  hasAdr = WidenedStoreT . hasAdr
+
+instance {-# OVERLAPPING #-} (Store s adr v, Monad m) => StoreM' s adr v (WidenedStoreT s adr v m) where 
+   currentStore = WidenedStoreT currentStore 
+   putStore = WidenedStoreT . putStore
+
+instance (Monad m) => AbstractCountM adr (WidenedStoreT (CountingMap adr v) adr v m) where 
+   count = WidenedStoreT count
+
+evalWithWidenedStore :: forall s adr vlu m a . (Store s adr vlu, Functor m) => WidenedStoreT s adr vlu m a -> m a
+evalWithWidenedStore (WidenedStoreT m) = 
+   evalWithStore m
+
+------------------------------------------------------------
+-- Abstract counting
+------------------------------------------------------------
+
 instance (Monad m) => AbstractCountM adr (StoreT (CountingMap adr v) adr v m) where
   count = gets (fmap snd . Store.store)
 
@@ -182,25 +219,27 @@ evalWithStore = fmap fst . runWithStore
 -- the current store to the @In(component)@ were 
 -- @component@ is the target component and reading 
 -- from the @Out(component) after the component's evaluation
-flowSensitiveStore :: forall v m s e a . (MonadIO m, Show v, Show a, Show (Cache.Key m e), s ~ CountingMap a v, Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
+flowSensitiveStore :: forall v m s e a . (Cache.MonadCache m, Map.Widened (Cache.Key m e) s m, StoreM' s a v m) 
+                   => (e -> AroundT e v m v) 
+                   -> e 
+                   -> AroundT e v m v
 flowSensitiveStore f e = do
    cmp <- upperM $ Cache.key e
    sto <- upperM (currentStore @s @a)
-   upperM $ Map.joinWith (Map.In cmp) sto
-   liftIO $ print cmp
-   liftIO $ putStrLn (Store.printSto show (isInfixOf "x" . show) sto)
-   liftIO $ putStrLn "======="
+   upperM $ Map.joinWith (Map.In @_ @s cmp) sto
    v <- f e
-   sto' <-  maybe mzero return =<< upperM (Map.get @_ @s (Map.Out cmp))
+   sto' <-  maybe mzero return =<< upperM (Map.get @_ @s (Map.Out @_ @s cmp))
    upperM $ putStore sto'
    return v
 
 -- |  Flow-sensitive evaluation function
-flowSensitiveEval :: forall v m s e a . (Show e, MonadIO m, Joinable s, MonadBottom m, Cache.MonadCache m, Map.MapM (Map.In (Cache.Key m e)) s m, Map.MapM (Map.Out (Cache.Key m e)) s m, StoreM' s a v m) => (e -> AroundT e v m v) -> e -> AroundT e v m v
+flowSensitiveEval :: forall v m s e a . (Cache.MonadCache m, Map.Widened (Cache.Key m e) s m, StoreM' s a v m)
+                  => (e -> AroundT e v m v) 
+                  -> e 
+                  -> AroundT e v m v
 flowSensitiveEval eval e = do
-   liftIO $ print e
    cmp <- upperM $ Cache.key e
-   putStore =<< maybe mzero return =<< upperM (Map.get @_ @s (Map.In cmp))
+   putStore =<< maybe mzero return =<< upperM (Map.get @_ @s (Map.In @_ @s cmp))
    v <- eval e
-   upperM currentStore >>= (upperM . Map.joinWith (Map.Out cmp))
+   upperM currentStore >>= (upperM . Map.joinWith (Map.Out @_ @s cmp))
    return v

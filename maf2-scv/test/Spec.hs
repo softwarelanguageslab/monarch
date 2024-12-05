@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 import Test.Hspec
 
 -- Imports that are needed in the environment 
@@ -12,6 +13,7 @@ import Control.Monad.Layer
 import Control.Monad.Identity (IdentityT (runIdentityT))
 import qualified Data.Map as Map
 import Analysis.Monad.Store (AbstractCountM(..))
+import Domain.Core.AbstractCount (AbstractCount(CountOne))
 
 newtype EmptyCountT i m a = EmptyCountT (IdentityT m a) 
                         deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer)
@@ -19,8 +21,10 @@ newtype EmptyCountT i m a = EmptyCountT (IdentityT m a)
 runEmptyCountT :: EmptyCountT i m a -> m a
 runEmptyCountT (EmptyCountT m) = runIdentityT m
 
-instance (Monad m) => AbstractCountM i (EmptyCountT i m) where 
-   count = return Map.empty
+instance (Monad m) => AbstractCountM String (EmptyCountT i m) where 
+   count = return $ Map.fromList (map (,CountOne) pool)
+      -- A pool a variables allocated up to 100 variables
+      where pool = map (("x" ++) . show) [(0 :: Integer) .. 100]
 
 withSolver :: EmptyCountT i (Z3Solver String) a -> IO a
 withSolver ma = runZ3Solver $ runEmptyCountT (setup SMT.prelude >> ma)

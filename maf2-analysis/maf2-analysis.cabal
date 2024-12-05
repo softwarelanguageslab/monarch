@@ -87,6 +87,7 @@ library
       Interpreter.Scheme.Primitives
       Interpreter.Scheme.Semantics
       Interpreter.Scheme.Values
+      Test
   other-modules:
       Data.SetExtra
       Data.ListExtra
@@ -117,6 +118,7 @@ library
     , containers
     , criterion
     , data-default
+    , deepseq
     , hashable
     , hashmap
     , hspec
@@ -171,6 +173,7 @@ executable maf-exe
     , containers
     , criterion
     , data-default
+    , deepseq
     , hashable
     , hashmap
     , hspec
@@ -222,6 +225,7 @@ test-suite maf2-analysis-test
     , containers
     , criterion
     , data-default
+    , deepseq
     , hashable
     , hashmap
     , hspec

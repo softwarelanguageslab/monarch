@@ -7,6 +7,7 @@ import Domain.Core.AbstractCount
 import Lattice
 import Data.List 
 import Text.Printf
+import Control.DeepSeq
 
 import Data.Set (Set)
 
@@ -58,7 +59,7 @@ printSto printKey keepKey m  =
 
 
 newtype CountingMap a v = CountingMap { store :: Map a (v, AbstractCount) }
-   deriving (Eq, Ord, Joinable, Show, BottomLattice)
+   deriving (Eq, Ord, Joinable, Show, BottomLattice, NFData)
 
 instance (Joinable v, Show a, Ord a) => Store (CountingMap a v) a v where
    size = Map.size . store 

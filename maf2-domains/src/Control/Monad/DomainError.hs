@@ -10,10 +10,15 @@ import Lattice.UnitLattice()
 import Lattice.SetLattice()
 import Data.Set (Set)
 
+import GHC.Generics
+import Control.DeepSeq
+
 
 -- | Errors in the abstract domain are represented as arbitrary strings
 data DomainError = WrongType | IndexOutOfBounds | KeyNotFound | InvalidArgument
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord, Show, Generic)
+
+instance NFData DomainError
 
 class Domain a DomainError => ErrorDomain a
 

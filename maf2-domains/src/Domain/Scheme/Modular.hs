@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds, PolyKinds, StandaloneKindSignatures, DataKinds, ScopedTypeVariables #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes, DeriveGeneric #-}
 
 module Domain.Scheme.Modular(
    -- * Constraints
@@ -26,6 +26,7 @@ module Domain.Scheme.Modular(
 ) where
 
 import Lattice
+import Domain.Address
 import Domain.Class
 import Domain.Core
 import Domain.Scheme.Class
@@ -33,6 +34,8 @@ import Control.Monad.Join
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Control.Monad.AbstractM
+import Control.DeepSeq
+import GHC.Generics
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
 import Data.Maybe (fromMaybe)
@@ -112,8 +115,9 @@ data SchemeKey = RealKey
                | ComKey
                | MeCKey
                | FlaKey
-               deriving (Ord, Eq, Show)
+               deriving (Ord, Eq, Show, Generic)
 
+instance NFData SchemeKey
 genHKeys ''SchemeKey
 
 
@@ -152,7 +156,9 @@ hasType k = containsType k . getSchemeVal
 -- 
 -- The values ncluded in this map should satisfy the 
 -- constraints given in `IsSchemeValue`.
-newtype SchemeVal (m :: [SchemeConfKey :-> Type]) = SchemeVal { getSchemeVal :: HMap (Values m) }
+newtype SchemeVal (m :: [SchemeConfKey :-> Type]) = SchemeVal { getSchemeVal :: HMap (Values m) } deriving (Generic)
+
+instance NFData (SchemeVal m)
 
 -- | A valid choice for `m` and `c` should satisfy these constraints
 type IsSchemeValue m =
@@ -505,7 +511,7 @@ type IsSchemeString s m = (
    Assoc IntKey (Values m)  ~ IntS s,
    Assoc BoolKey (Values m) ~ BooS s)
 
-newtype SchemeString s v = SchemeString { sconst :: s } deriving (Show, Eq, Ord)
+newtype SchemeString s v = SchemeString { sconst :: s } deriving (Show, Eq, Ord, Generic, NFData)
 
 instance (Joinable s) => Joinable (SchemeString s v) where
    join a b = SchemeString (join (sconst a) (sconst b))

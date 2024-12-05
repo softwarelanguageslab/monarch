@@ -28,6 +28,7 @@ dependencies:
 - file-embed
 - template-haskell
 - process
+- deepseq
 
 ghc-options:
 - -Wall

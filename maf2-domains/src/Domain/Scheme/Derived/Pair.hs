@@ -33,12 +33,13 @@ import Domain.Scheme.Class
 import Control.Monad.Join
 import qualified Data.Set as Set
 import Text.Printf (printf)
+import Control.DeepSeq
 
 ------------------------------------------------------------
 -- Declaration
 ------------------------------------------------------------
 
-newtype SchemePairedValue l r = SchemePairedValue (l, r) deriving (Eq, Ord)
+newtype SchemePairedValue l r = SchemePairedValue (l, r) deriving (Eq, Ord, NFData)
 
 instance (Show l, Show r) => Show (SchemePairedValue l r) where  
    show (SchemePairedValue (l, r)) = printf "(%s, %s)" (show l) (show r)

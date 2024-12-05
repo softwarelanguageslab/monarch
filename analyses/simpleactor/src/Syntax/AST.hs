@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase, DeriveGeneric #-}
 module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..)) where
 
 import Data.List (intercalate)
@@ -8,6 +8,8 @@ import Text.Printf
 import Syntax.Span
 import Syntax.Ide
 import Syntax.FV
+import Control.DeepSeq
+import GHC.Generics
 
 -- | An expression
 data Exp = Lam [Ide] Exp Span
@@ -28,10 +30,15 @@ data Exp = Lam [Ide] Exp Span
          | Begin [Exp] Span
          | Meta Exp Span
          | Error String Span
-         deriving (Eq, Ord)
+         | Input Span
+         deriving (Eq, Ord, Generic)
+
+instance NFData Exp
 
 -- | Literals are expressions that evaluate to themselves
-data Lit = Num Integer | Boolean Bool | Symbol String | Nil deriving (Eq, Ord)
+data Lit = Num Integer | Boolean Bool | Symbol String | Nil deriving (Eq, Ord, Generic)
+
+instance NFData Lit
 
 instance Show Lit where
    show (Num n) = show n
@@ -40,10 +47,12 @@ instance Show Lit where
    show Nil = "'()"
 
 -- | Pattern language
-data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show)
+data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show, Generic)
+
+instance NFData Pat 
 
 -- | Labels for blame assignment
-newtype Label = Label { getLabelName :: String } deriving (Eq, Ord, Show)
+newtype Label = Label { getLabelName :: String } deriving (Eq, Ord, Show, NFData)
 
 -- | A binding from an identifier to an expression, used in the so-called 
 -- 'binding-forms' to introduce values to which free variables within 
@@ -71,6 +80,7 @@ instance SpanOf Exp where
                (Meta _ s) -> s
                (Match _ _ s) -> s
                (Error _ s)   -> s
+               (Input s) -> s
 
 
 instance Show Exp where
@@ -93,6 +103,7 @@ instance Show Exp where
             (DynVar x)        -> "(dyn " ++ show x ++ ")"
             (Begin es _)      -> printf "(begin %s)" (unwords (map show es))
             (Meta e _)        -> printf "(meta %s)" (show e)
+            (Input _)         -> "(input)"
             (Error e _)       -> printf "(error %s)" (show e)
 
 
@@ -124,3 +135,4 @@ instance FreeVariables Exp where
    fv (Begin es _)      = Set.unions (map fv es)
    fv (Meta e _)        = fv e
    fv (Error _ _)       = Set.empty
+   fv (Input _)         = Set.empty

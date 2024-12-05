@@ -8,7 +8,6 @@ import qualified Syntax.Scheme.Parser as SExp
 import Control.Monad.Except
 import Syntax.AST
 import Syntax.Span (SpanOf)
-import Debug.Trace (traceShow)
 
 type MonadCompile m = (MonadError String m)
 
@@ -21,8 +20,10 @@ parseFromString = fmap head . parseSexp >=> compile
 compile :: MonadCompile m => SExp -> m Exp
 compile ex@(Atom "lambda" _ ::: args ::: es) =
    Lam <$> smapM compileParam args
-       <*> (Begin <$> smapM compile es <*> pureSpan ex)
+       <*> (mkSeq <$> smapM compile es <*> pureSpan ex)
        <*> pureSpan ex
+   where mkSeq [x] = const x 
+         mkSeq xs = Begin xs
 compile e@(Atom "lambda" _ ::: _) =
    throwError $ "invalid syntax for lambda " ++ show e
 compile ex@(Atom "spawn^" _ ::: e ::: SNil _) = Spawn <$> compile e <*> pureSpan ex
@@ -51,6 +52,10 @@ compile (Atom "dyn" _ ::: Atom dyn s ::: SNil _) =
    return $ DynVar $ Ide dyn s
 compile e@(Atom "dyn" _ ::: _) =
    throwError $ "invalid syntax for dyn " ++ show e
+compile e@(Atom "input" _ ::: SNil _) = 
+   return $ Input (spanOf e)
+compile e@(Atom "input" _ ::: _) = 
+   throwError $ "invalid syntax for input " ++ show e
 compile ex@(SExp.Num n _) =
    return $ Literal (Syntax.AST.Num n) (spanOf ex)
 compile ex@(SExp.Bln b _) =

@@ -27,6 +27,7 @@ library
       Analysis.SimpleActor.Fixpoint
       Analysis.SimpleActor.Monad
       Analysis.SimpleActor.Semantics
+      Analysis.Smallstep
       Control.Monad.Extra
       Domain.SimpleActor
       Domain.SimpleActor.Class
@@ -66,7 +67,10 @@ library
       base >=4.7 && <5
     , concurrency
     , containers
+    , deepseq
     , exceptions
+    , hspec
+    , hspec-contrib
     , layers-mtl
     , lens
     , maf2-analysis
@@ -75,6 +79,8 @@ library
     , maf2-syntax
     , mtl
     , process
+    , random
+    , rio
   default-language: Haskell2010
 
 executable interpreter-exe
@@ -108,11 +114,15 @@ executable interpreter-exe
   build-depends:
       base >=4.7 && <5
     , containers
+    , deepseq
+    , hspec
+    , hspec-contrib
     , interpreter
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
     , optparse-applicative
+    , rio
   default-language: Haskell2010
 
 test-suite interpreter-test
@@ -146,5 +156,10 @@ test-suite interpreter-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , deepseq
+    , hspec
+    , hspec-contrib
     , interpreter
+    , maf2-analysis
+    , rio
   default-language: Haskell2010

@@ -46,4 +46,4 @@ jobs:
       run: cabal build
     - name: Run tests
       working-directory: maf2-scv
-      run: cabal test
+      run: cabal test --test-show-details=always --test-options="--color"

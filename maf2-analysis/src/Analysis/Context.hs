@@ -3,13 +3,18 @@
 
 module Analysis.Context(MCFA(..), push, pushes, emptyMcfaContext) where
 
+import GHC.Generics
+import Control.DeepSeq
+
 ------------------------------------------------------------
 -- m-cfa
 ------------------------------------------------------------
 
 -- | m-cfa context,
 data MCFA e = MCFA {es :: ![e], max :: !Int}
-            deriving (Eq, Ord, Show)
+            deriving (Eq, Ord, Show, Generic)
+
+instance (NFData e) => NFData (MCFA e)
 
 -- | Push an element on the m-cfa context,
 -- respecting the maximum number of elements in the context

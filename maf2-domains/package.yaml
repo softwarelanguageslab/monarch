@@ -24,6 +24,7 @@ dependencies:
 - mtl
 - layers-mtl
 - transformers
+- deepseq
 - data-default
 - extra
 - vector
@@ -70,6 +71,7 @@ default-extensions:
   - GADTs
   - LambdaCase
   - EmptyCase 
+  - NoDeriveAnyClass
 
 
 tests:

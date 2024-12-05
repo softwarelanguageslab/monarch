@@ -26,6 +26,8 @@ import Lattice.Split (SplitLattice)
 import Lattice.ConstantPropagationLattice (CP)
 import Control.Monad.Reader (ReaderT (runReaderT, ReaderT))
 import Debug.Trace (traceShow)
+import GHC.Generics
+import Control.DeepSeq
  
 -- | Monad to handle errors in the abstract domain
 class MonadEscape m where
@@ -52,7 +54,9 @@ try = flip $ foldr orElse
 data MayEscape e v = Escape e 
                    | Value v
                    | MayBoth v e
-   deriving (Eq, Ord, Functor, Show)
+   deriving (Eq, Ord, Functor, Show, Generic)
+
+instance (NFData e, NFData v) => NFData (MayEscape e v)
 
 -- | Retrieve the value from `MayEscape`, or 
 -- return the default if there is only an error 
