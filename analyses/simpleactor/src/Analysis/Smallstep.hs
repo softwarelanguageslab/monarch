@@ -121,6 +121,9 @@ type Binding = (Ide, Exp)
 -- | A model is an assignment from symbolic variables to their values
 type Model = Map SymVar PVal
 
+-- | The context is a list of call-sites
+type Context = [Span]
+
 ------------------------------------------------------------
 -- Managing abstraction of context
 ------------------------------------------------------------
@@ -171,15 +174,26 @@ data Control = Ev Exp Env | Ap Val
             deriving (Ord, Eq, Show)
 
 -- | Continuations
-data Kont = LetK Ide [Binding] Exp Adr
+data Kont = LetK Ide Env [Binding] Exp KAdr
          deriving (Eq, Ord, Show)
+
+-- | Push a continuation on the continuation stack by allocating an address 
+-- store the continuation there and linking it with the given address
+pushKont :: Span          -- ^ allocation site for the continuation
+         -> Context       -- ^ calling context
+         -> Kont          -- ^ the continuation to store
+         -> KSto         
+         -> (KAdr, KSto)
+pushKont ℓ context kont σ = (adr, σ')
+   where adr = KAdr ℓ context 
+         σ'  = Map.insertWith Lat.join adr (Set.singleton kont) σ
 
 -- | Failure continuations 
 data Kontf = Branch PC Adr
            deriving (Eq, Ord, Show)
 
 -- | Continuation store
-type KSto = Map KAdr Kont
+type KSto = Map KAdr (Set Kont)
 
 -- | Failure continuation store
 type FSto = Map KAdr Kontf
@@ -262,6 +276,12 @@ stepCompound st@(State { control = Ev (App operator operands _) ρ, .. }) = just
    where operatorValue = atomicEval (assertAtomic operator) ρ store
          operandsValues = map (atomicEval' ρ store . assertAtomic) operands
          atomicEval' ρ σ e = atomicEval e ρ σ
+-- ST-Let1
+stepCompound st@(State { control = Ev (Letrec ((nam,exp):bds) bdy _) ρ, .. }) = 
+      Set.singleton $ st { control = Ev exp ρ, kont = kont', top = top' }
+   where (top', kont') = pushKont (spanOf nam) context (LetK nam ρ bds bdy top) kont  
+stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) = 
+      Set.singleton $ st { control = Ev bdy ρ }
 stepCompound st = error $ "unsupported program state" ++ show st
 
 applyClosure :: State -> [Val] -> (Exp, Env) -> State
@@ -282,10 +302,19 @@ step state@(State { control = Ev e ρ, store = σ }) =
       Left  atom -> return $ Set.singleton $ state { control = Ap (atomicEval atom ρ σ) }
       Right _ -> return $ stepCompound state
 -- final state, nothing to do anymore
-step state@(State (Ap _) _ Hlt _ Hlt _  _ _ _) = return Set.empty
+step (State (Ap _) _ Hlt _ Hlt _  _ _ _) = return Set.empty
 -- ST-Backtrack
-step (State (Ap v) σ top kont topFail ψ context model φ) =
+step (State (Ap v) σ Hlt kont topFail ψ context model φ) =
    undefined
+-- ST-Let2
+step st@(State { control = (Ap v), .. }) = 
+      return $ Set.map applyKont (fromMaybe Set.empty $ Map.lookup top kont)
+   where applyKont (LetK nam env bds bdy top') = 
+               let adr = alloc (spanOf nam) context
+                   store' = Map.insert adr (RVal v) store 
+                   env' = Map.insert (name nam) adr env
+               in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
+      
 
 ------------------------------------------------------------
 -- Utility functions (mostly for inspecting the results)
