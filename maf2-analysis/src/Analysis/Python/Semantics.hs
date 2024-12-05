@@ -27,6 +27,8 @@ import qualified Data.Set as Set
 import Prelude hiding (break, exp, lookup, True, False)
 import Data.Functor (($>))
 import Analysis.Environment (extends)
+import qualified Debug.Trace as Debug
+import GHC.IO (unsafePerformIO)
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a

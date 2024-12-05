@@ -72,7 +72,6 @@ newtype PyCmpStoreIn = PyCmpStoreIn PyCmp
 newtype PyCmpStoreOut = PyCmpStoreOut PyCmp
     deriving (Eq, Ord, Show)
 
-
 type PyCmp = Key (IntraT () Identity) PyBdy
 type PyRes = Val (IntraT () Identity) PyRef  
 
@@ -90,15 +89,17 @@ intra cmp = runIntraAnalysis cmp m
                     _                -> return ()
           callFix :: PyLoc -> PyBdy -> IntraT' obj m PyRef
           callFix _ bdy = do cmp' <- key bdy
-                             Analysis.Monad.joinWith (PyCmpTaint cmp')   =<< currentTaint 
-                             Analysis.Monad.joinWith (PyCmpStoreIn cmp') =<< currentStore
-                             spawn cmp'
-                             rv <- cached cmp'
-                             rs <- Analysis.Monad.get (PyCmpStoreOut cmp')
-                             v <- maybe MJoin.mzero return rv
-                             s <- maybe MJoin.mzero return rs 
-                             putStore s
-                             return v 
+                             spawn cmp' 
+                             Analysis.Monad.joinWith (PyCmpTaint cmp') =<< currentTaint 
+                             changed <- Analysis.Monad.joinWith' (PyCmpStoreIn cmp') =<< currentStore
+                             if changed
+                             then MJoin.mzero 
+                             else do rv <- cached cmp'
+                                     rs <- Analysis.Monad.get (PyCmpStoreOut cmp')
+                                     v <- maybe MJoin.mzero return rv
+                                     s <- maybe MJoin.mzero return rs 
+                                     putStore s 
+                                     return v 
 
 inter :: forall obj m . AnalysisM m obj => PyPrg -> m (Store obj)
 inter prg = do ((), initialStore) <- runWithStore @(Store obj) @ObjAdr @obj init   -- initialize Python infrastructure                              
