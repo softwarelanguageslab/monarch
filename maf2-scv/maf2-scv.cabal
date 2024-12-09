@@ -52,6 +52,7 @@ library
       Solver.Z3
       Symbolic.AST
       Symbolic.SMT
+      Symbolic.SMT.AST
   other-modules:
       Paths_maf2_scv
   autogen-modules:

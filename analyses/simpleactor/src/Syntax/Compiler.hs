@@ -90,14 +90,6 @@ compileParam :: MonadError String m => SExp -> m Ide
 compileParam ex@(Atom x _) = return $ Ide x (spanOf ex)
 compileParam e = throwError $ "invalid parameter " ++ show e
 
-smapM :: MonadError String m => (SExp -> m a) -> SExp -> m [a]
-smapM _ (SNil _) = return []
-smapM f (a ::: as) = do
-   v <- f a
-   vs <- smapM f as
-   return (v:vs)
-smapM _ e = throwError $ "malformed list " ++ show e
-
 compilePats :: MonadError String m => SExp -> m [(Pat, Exp)]
 compilePats = smapM compileHandler
    where compileHandler :: MonadError String m => SExp -> m (Pat, Exp)

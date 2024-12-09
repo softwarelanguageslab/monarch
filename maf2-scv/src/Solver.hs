@@ -36,6 +36,8 @@ class (Monad m) => FormulaSolver i m | m -> i where
    isCertainlyUnfeasible :: AbstractCountM i m => Formula i -> m Bool
    isCertainlyUnfeasible formula =
       fmap isUnsat (count >>= flip solve formula)
+   -- | Compute and get the current model
+   getModel :: m Model
 
 --------------------------------------------------
 -- Caching Monad
@@ -80,6 +82,8 @@ instance {-# OVERLAPPING #-} (Ord i, FormulaSolver i m) => FormulaSolver i (Cach
    solve count' formula = do
       cacheHit <- lookupCache formula
       maybe (lift (solve count' formula) >>= putCache formula) return cacheHit
+   -- cached model retrieval is currently not supported 
+   getModel = error "cannot cache the model"
 
 ------------------------------------------------------------
 -- Layering
@@ -88,4 +92,4 @@ instance {-# OVERLAPPING #-} (Ord i, FormulaSolver i m) => FormulaSolver i (Cach
 instance (Monad (t m), MonadLayer t, FormulaSolver i m) => FormulaSolver i (t m) where
    setup = upperM . setup
    solve count' = upperM . solve count'
-
+   getModel = upperM getModel

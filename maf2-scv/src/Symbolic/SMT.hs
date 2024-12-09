@@ -1,5 +1,7 @@
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TupleSections #-}
 -- | Translation for Symbolic.AST formulas to and from SMTLib
-module Symbolic.SMT(prelude, translate, parseResult, SolverResult(..), setupSMT) where
+module Symbolic.SMT(prelude, translate, parseResult, parseModel, SolverResult(..), setupSMT) where
 
 import Text.Printf
 import Symbolic.AST
@@ -15,6 +17,10 @@ import Control.Monad.State
 import Domain.Core.AbstractCount (AbstractCount(..))
 import Lattice.Class (leq, justOrBot)
 import Data.Maybe (fromJust)
+import Control.Monad.Error
+import qualified Syntax.Scheme.Parser as SExp
+import Syntax.Scheme.Parser (pattern (:::))
+import Data.Either (fromRight)
 
 --------------------------------------------------
 -- Translation monad
@@ -115,8 +121,28 @@ translate count formula = (t, syms, freshs)
          syms = Map.fromList (zip vars (map (("x" ++) . show) [0..length vars]))
          (t, freshs) = runState (runReaderT (translate' formula) syms) Set.empty
 
+-- | Parse an S-expression literal to an SMT literal
+parseLiteral :: MonadError String m => SExp.SExp -> m Literal
+parseLiteral (SExp.Num n _) = return $ Num n
+parseLiteral (SExp.Rea r _) = return $ Rea r
+parseLiteral (SExp.Bln b _) = return $ Boo b
+parseLiteral (SExp.Cha c _) = return $ Cha c
+parseLiteral (SExp.Atom a _) = return $ Sym a
+parseLiteral _ = throwError "unsupported literal"
+
+-- | Parse the S-expression to a model
+parseAssignment :: MonadError String m => SExp.SExp -> m (String, Literal) 
+parseAssignment (SExp.Atom "define-fun" _ ::: SExp.Atom x _ ::: _ ::: SExp.Atom _sort _ ::: literal ::: SExp.SNil _) = 
+   (x,) <$> parseLiteral literal
+parseAssignment _ = throwError "not a valid assignment"
+   
+-- | Parse a list of assignments into a model
+parseModel :: MonadError String m => SExp.SExp -> m Model 
+parseModel = fmap (Model . Map.fromList) . SExp.smapM parseAssignment
+
+-- | Parses the (check-sat) result
 parseResult :: String -> SolverResult
-parseResult "sat" = Sat
+parseResult "sat" = Sat 
 parseResult "unsat" = Unsat
 parseResult _ = Unknown
 

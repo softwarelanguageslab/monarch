@@ -167,3 +167,5 @@
                       (VBool false))
                  (VBool false)))
 
+;; enable "success" messages after every command/query
+(set-option :print-success true)

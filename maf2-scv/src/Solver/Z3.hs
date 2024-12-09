@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 -- | The Z3 solver
 module Solver.Z3(Z3Solver, runZ3Solver, runZ3SolverWithSetup)  where
 
@@ -9,8 +10,14 @@ import Data.Maybe
 
 import Solver
 import Symbolic.SMT
+import qualified Syntax.Scheme.Parser as SExp
+import Data.Functor.Classes (readData)
+import Data.Either (fromRight)
+import Data.Functor
 
 data Z3SolverState = Z3SolverState {
+   -- | Buffer of output from Z3
+   buffer :: [String],
    -- | Cached setup-code
    setupCode :: String,
    -- | The (stdin, write) input handle 
@@ -30,6 +37,7 @@ spawnZ3 :: String -- ^ setup SMTLib code
 spawnZ3 setupCode' = do
    (Just hin, Just hout, _, handle) <- createProcess (proc "z3" ["-in"]) { std_in = CreatePipe, std_out = CreatePipe, std_err = Inherit }
    return Z3SolverState {
+      buffer = [],
       setupCode = setupCode',
       inputHandle = hin,
       outputHandle = hout,
@@ -52,50 +60,60 @@ terminateZ3 :: Z3Solver i ()
 terminateZ3 =
    gets (processHandle . fromJust) >>= Z3Solver . lift . terminateProcess
 
-sentinel :: String
-sentinel =
-   "\"-----------------------------------------------------------\""
-
--- | Put out the sentinel to the Z3 process.
--- once the sentinel has been found in the output of the process
--- we known that we can stop reading
-putSentinel :: Z3Solver i ()
-putSentinel =
-   gets (inputHandle . fromJust) >>=
-      Z3Solver . lift . flip hPutStrLn (printf "(display %s)" sentinel)
-
-
--- | Read until sentinel ignoring the output of  the sentinel
--- itself.
-readUntilSentinel :: Z3Solver i String
-readUntilSentinel = do
+-- | Read until a valid datum (from the S-expressions) is found 
+-- in the input handle. Reads line-by-line.
+readDatum :: Z3Solver i SExp.SExp
+readDatum = do
    hout <- gets (outputHandle . fromJust)
-   line <- Z3Solver $ lift $ hGetLine hout
-   if line == sentinel then
-      return []
-   else do
-      rest <- readUntilSentinel
-      return (line ++ rest)
+   line <- liftIO $ hGetLine hout
+   liftIO $ print line
+   currentBuffer <- modify (\(Just st) -> Just $ st { buffer = line : buffer st }) >> gets (buffer . fromJust)
+   case SExp.parseDatum "z3-in" (concat $ reverse currentBuffer) of 
+      -- continue reading lines until a valid datum is found
+      Left _ -> readDatum
+      -- otherwise return the result
+      Right (result, rest) -> do
+         modify (\(Just st) -> Just $ st { buffer = [rest] }) 
+         liftIO $ print result
+         return result
+
+-- | Ensure that the given S-expression is a symbol with the given contents
+ensureAtom :: String -> SExp.SExp -> Z3Solver i ()
+ensureAtom expected (SExp.Atom nam _) 
+   | nam == expected = return () 
+   | otherwise = error $ "expected " ++ expected ++ " but got " ++ nam
+ensureAtom expected expr = 
+   error $ "expected atom with contents " ++ expected ++ " but got " ++ show expr ++ " instead"
+
+-- | Assumes that the given S-expression is an atom and returns its name 
+-- otherwise results in an error.
+fromAtom :: SExp.SExp -> Z3Solver i String
+fromAtom (SExp.Atom name _) = return name 
+fromAtom expr = error $ "not an artom " ++ show expr
 
 -- | Evaluate the given script 
 -- and read the answer from the output of the Z3 process.
-eval :: String -> Z3Solver i String
+eval :: String -> Z3Solver i SExp.SExp
 eval query = do
    -- write the query to stdin of the attached process
    hin <- gets (inputHandle . fromJust)
    Z3Solver $ lift $ hPutStrLn hin query
-   putSentinel
    Z3Solver $ lift $ hFlush hin
-   readUntilSentinel
+   readDatum
+
+-- | Runs the command and ensures that it is successfully executed, 
+-- but requires that there is no other output. (assumes the :print-success option)
+command :: String -> Z3Solver i () 
+command = eval >=> ensureAtom "success"
 
 -- | Creates a checkpoint at the current point in evaluation
 checkpoint :: Z3Solver i ()
-checkpoint = void $ eval "(push 1)"
+checkpoint = command "(push 1)"
 
 -- | Restores the solver the last checkpoint
 restoreCheckpoint :: Z3Solver i ()
 restoreCheckpoint =
-   void $ eval "(pop 1)" >> checkpoint
+   command "(pop 1)" >> checkpoint
 
 -- | Run the Z3Solver
 runZ3Solver :: Z3Solver i a -> IO a
@@ -119,6 +137,8 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       -- beginning of a solve script
       checkpoint
 
+   getModel = eval "(get-model)" <&> (fromRight (error "could not parse model") . parseModel)
+
    solve count script   = do
       restoreCheckpoint
       -- Declare all variables as constants
@@ -129,6 +149,6 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       -- Evaluate all the assertions, and ignore any errors
       _ <- eval (printf "(assert %s)" translatedScript)
       -- Check whether the model is satisfiable
-      result <- parseResult <$> eval "(check-sat)"
+      result <- parseResult <$> (fromAtom =<< eval "(check-sat)")
       Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)
       return result

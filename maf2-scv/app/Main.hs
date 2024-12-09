@@ -14,6 +14,15 @@ import Analysis.Scheme.Store (values)
 import Domain.Scheme.Store (EnvAdr(..))
 
 import System.Environment
+import System.Process
+import System.IO
+import Syntax.Scheme.Parser (parseDatum)
+import Data.Either (fromRight)
+import qualified Syntax.Scheme.Parser as SExp
+import Control.Monad.State
+import Data.Functor (($>))
+import Debug.Trace (traceShowId)
+import qualified Data.Sequence as SExp
 
 exampleFormula :: (Formula String)
 exampleFormula = conjunction
@@ -29,5 +38,7 @@ runMain = do
             _ <- solve Map.empty exampleFormula
             loop (n-1)
 
+
 main :: IO ()
 main = putStrLn "Nothing to see here"
+

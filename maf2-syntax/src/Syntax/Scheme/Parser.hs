@@ -1,8 +1,9 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# LANGUAGE FlexibleContexts #-}
 -- | Parser to S-expressions
-module Syntax.Scheme.Parser(SExp(..), Span(..), parseSexp, spanOf, pattern (:::), smap) where
+module Syntax.Scheme.Parser(SExp(..), Span(..), parseSexp, parseDatum, spanOf, pattern (:::), smap, smapM) where
 
 import Data.Functor
 import Text.ParserCombinators.Parsec
@@ -11,6 +12,7 @@ import qualified Text.ParserCombinators.Parsec.Token as Token
 import Text.Printf
 import Syntax.Span
 import Data.Functor.Identity (Identity)
+import Control.Monad.Error
 
 -- | Location information
 fromSourcePos :: SourcePos -> Span
@@ -19,7 +21,7 @@ fromSourcePos pos = Span {
    startPosition = Position {
       line = sourceLine pos,
       column = sourceColumn pos
-   }, 
+   },
    endPosition = Position {
       line = sourceLine pos,
       column = sourceColumn pos
@@ -52,6 +54,14 @@ smap :: (SExp -> a) -> SExp -> [a]
 smap _ (SNil _) = []
 smap f (Pai a as _) = f a : smap f as
 smap _ e = error $ "invalid list " ++ show e
+
+smapM :: MonadError String m => (SExp -> m a) -> SExp -> m [a]
+smapM _ (SNil _) = return []
+smapM f (a ::: as) = do
+   v <- f a
+   vs <- smapM f as
+   return (v:vs)
+smapM _ e = throwError $ "malformed list " ++ show e
 
 --
 -- Span computation
@@ -111,6 +121,7 @@ languageDef :: GenLanguageDef String u Identity
 languageDef = emptyDef { Token.commentStart = "#|",
                          Token.commentEnd = "|#",
                          Token.commentLine = ";",
+
                          Token.identStart = letter <|> oneOf "*/<=>!?:$%_&~^@",
                          Token.identLetter = alphaNum <|> oneOf "+-.*/<=>!?:$%_&~^" }
 
@@ -143,6 +154,7 @@ sexpParser = do
    expr <- whiteSpace >> many expression
    eof
    return expr
+
 
 expression :: Parser SExp
 expression = withSpan $ atom <|> try literal <|> pair <|> quote <|> quasiquote <|> try unquoteSplice <|> unquote
@@ -205,6 +217,14 @@ characterExp = Cha <$> lexeme (symbol "#\\" >> (alphaNum <|> oneOf "*/<=>!?:$%_&
 -- Parser
 --
 
+-- | Run the parser to obtain a datum, returns the remainder of the input  
+-- and the parsed datum (if one is available). If parsing fails, the 
+-- output is still consumed, which is important when streaming from 
+-- network connections or from input/output buffers.
+parseDatum :: SourceName -> String -> Either String (SExp, String)
+parseDatum nam = either (Left . show) Right  . parse (whiteSpace >> expression >>= (\expr -> getInput <&> (expr,))) nam
+
+-- | Parse an s-expression as a string
 parseSexp :: String -> Either String [SExp]
 parseSexp = convert . parse sexpParser "SExpParser"
    where convert (Left e)  = Left $ show e
