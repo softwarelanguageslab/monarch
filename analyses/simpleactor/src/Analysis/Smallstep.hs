@@ -51,10 +51,11 @@ import Domain.Scheme (SchemeString)
 import RIO (runIdentity)
 import Solver (FormulaSolver (..))
 import Solver (FormulaSolver(..))
-import Domain.Core.AbstractCount (AbstractCount(CountInf))
+import Domain.Core.AbstractCount (AbstractCount(CountInf, CountOne))
 import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
 import qualified Symbolic.SMT as SMT
 import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
+import qualified Debug.Trace as Debug
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -268,7 +269,11 @@ instance Monoid SuccessorMap where
 
 -- | Abstract control component
 data Control = Ev Exp Env | Ap Val
-            deriving (Ord, Eq, Show)
+            deriving (Ord, Eq)
+
+instance Show Control where   
+   show (Ev e _) = "ev(" ++ show e ++ ")"
+   show (Ap v) = "ap(" ++ show v ++ ")"
 
 -- | Continuations
 data Kont = LetK Ide Env [Binding] Exp KAdr
@@ -316,11 +321,16 @@ data State = State {
       model :: Model,
       -- | Sequence of random values
       rvs :: RandomSeq,
+      -- | Abstract counting map
+      counts :: Map SymVar AbstractCount,
       -- | Path condition
       pc :: PC
    }
 
-deriving instance (Show (PaiDom Val), Show (VecDom Val), Show (StrDom Val)) => Show State
+instance Show State where  
+   show (State { .. }) = 
+      "⟨" ++ show control ++ ", σ, " ++ show top ++ "," ++  "<kstore> ," ++ show topFail ++ "," ++ show context ++ "," ++ show model ++ "," ++ show rvs ++ "," ++ show counts ++ "," ++ show pc ++ "⟩"
+
 deriving instance (Eq (PaiDom Val), Eq (VecDom Val), Eq (StrDom Val)) => Eq State
 deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord State
 
@@ -417,8 +427,10 @@ stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) = 
          atomicEval' ρ σ e = atomicEval e ρ σ
 -- ST-Input
 stepCompound st@(State { control = Ev (Input ℓ) _, .. }) =
-      return $ Set.singleton $ st { control = Ap (combine value (fresh ℓ context)), rvs = vs' }
+      return $ Set.singleton $ st { control = Ap (combine value freshSymVar), rvs = vs', counts = counts' }
    where (value, vs') = lookupModel (freshVar ℓ context) model rvs
+         freshSymVar = fresh ℓ context
+         counts' = Map.insertWith (const . const CountInf) (freshVar ℓ context) CountOne counts
 -- ST-Let1
 stepCompound st@(State { control = Ev (Letrec ((nam,exp):bds) bdy _) ρ, .. }) =
       return $ Set.singleton $ st { control = Ev exp ρ, kont = kont', top = top' }
@@ -445,14 +457,17 @@ step' state@(State { control = Ev e ρ, store = σ }) =
       Left  atom -> return $ Set.singleton $ state { control = Ap (atomicEval atom ρ σ) }
       Right _ -> stepCompound state
 -- final state, nothing to do anymore
-step' (State (Ap _) _ Hlt _ Hlt _  _ _ _ _) = return Set.empty
+step' (State (Ap _) _ Hlt _ Hlt _  _ _ _ _ _) = return Set.empty
 -- ST-Backtrack
-step' st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ _) =
+step' st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ _ _) =
       foldMapM applyKont (fromMaybe Set.empty $ Map.lookup topFail ψ) 
    where applyKont (Branch cnd topFail') = do 
             ec <- ask
             maybeModel <- computeModel cnd 
-            maybe (return Set.empty) (\model' -> return $ Set.singleton $ st { store = initialStoreExecutor ec, control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), model = model', topFail = topFail' } ) maybeModel
+            -- XXX: we set the abstract counts to the empty map here since we restart 
+            -- the execution, but since we are also abstracting the concolic iterations 
+            -- do we need to keep that into account? Probably not? Why?
+            maybe (return Set.empty) (\model' -> return $ Set.singleton $ st { store = initialStoreExecutor ec, control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), model = model', topFail = topFail', counts = Map.empty, pc = emptyFormula } ) maybeModel
          
 -- ST-Let2
 step' st@(State { control = (Ap v), .. }) =
@@ -465,7 +480,7 @@ step' st@(State { control = (Ap v), .. }) =
 
 step :: SmallstepM m => State -> m (Set State)
 step inn = do 
-   successors <- step' inn
+   successors <- step' (Debug.traceShow (rvs inn) inn) -- (Debug.traceShowId inn)
    tell (SuccessorMap $ Map.singleton inn successors)
    return successors
 
@@ -536,7 +551,7 @@ runInPrimMStack initialSto context m = foldMap extract . Set.fromList <$>  run (
 ------------------------------------------------------------
 
 isFinalState :: State -> Bool
-isFinalState (State (Ap _) _ Hlt _ Hlt _ _ _ _ _) = True
+isFinalState (State (Ap _) _ Hlt _ Hlt _ _ _ _ _ _) = True
 isFinalState _ = False
 
 isStuckState :: SuccessorMap -> State -> Bool 
@@ -549,7 +564,7 @@ isStuckState succs st =
 
 -- | Collect states until no more states are found
 collect :: SmallstepM m => Set State -> m (Set State)
-collect ss = Set.union ss <$> foldMapM step ss
+collect ss = Debug.traceShow (Set.size ss) <$> Set.union ss <$> foldMapM step ss
 
 -- | Compute the least fix point assuming that the output of the function 
 -- is monotonic.
@@ -563,7 +578,7 @@ analysisStore = RVal <$> initialSto allPrimitives PrimAdr
 
 inject :: Exp -> State
 inject e =
-   State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq emptyFormula
+   State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq Map.empty emptyFormula
 
 runContext :: Exp -- ^ the initial expression
            -> ReaderT ConcolicContext (WriterT SuccessorMap (Z3Solver SymVar)) a

@@ -153,5 +153,6 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       -- Evaluate all the assertions, and ignore any errors
       _ <- command (printf "(assert %s)" translatedScript)
       -- Check whether the model is satisfiable
-      parseResult <$> (fromAtom =<< eval "(check-sat)")
+      result <- parseResult <$> (fromAtom =<< eval "(check-sat)")
       -- Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)
+      return result
