@@ -22,6 +22,7 @@ import qualified Syntax.Scheme.Parser as SExp
 import Syntax.Scheme.Parser (pattern (:::))
 import Data.Either (fromRight)
 import Data.Monoid (Sum(..))
+import Debug.Trace
 
 --------------------------------------------------
 -- Translation monad
@@ -145,7 +146,7 @@ parseModel assgn = fmap (Model . Map.fromList) . SExp.smapM (parseAssignment ass
 parseResult :: String -> SolverResult
 parseResult "sat" = Sat 
 parseResult "unsat" = Unsat
-parseResult _ = Unknown
+parseResult v = trace ("++++ " ++ show v) Unknown
 
 ------------------------------------------------------------
 -- Utility functions

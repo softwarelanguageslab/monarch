@@ -1,5 +1,4 @@
 ;; enable "success" messages after every command/query
-(set-option :print-success true)
 
 (declare-datatypes ()
                    ((Span (KnownSpan (span-line Int) (span-column Int))
@@ -170,3 +169,4 @@
                       (VBool false))
                  (VBool false)))
 
+(set-option :print-success true)

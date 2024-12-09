@@ -69,7 +69,6 @@ readDatum :: Z3Solver i SExp.SExp
 readDatum = do
    hout <- gets (outputHandle . fromJust)
    line <- liftIO $ hGetLine hout
-   liftIO $ print line
    currentBuffer <- modify (\(Just st) -> Just $ st { buffer = line : buffer st }) >> gets (buffer . fromJust)
    case SExp.parseDatum "z3-in" (concat $ reverse currentBuffer) of 
       -- continue reading lines until a valid datum is found
@@ -77,7 +76,6 @@ readDatum = do
       -- otherwise return the result
       Right (result, rest) -> do
          modify (\(Just st) -> Just $ st { buffer = [rest] }) 
-         liftIO $ print result
          return result
 
 -- | Ensure that the given S-expression is a symbol with the given contents
@@ -135,7 +133,7 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       -- spawn the new instance
       Z3Solver (lift $ spawnZ3 setupCode') >>= (put . Just)
       -- evaluate the setup script
-      _ <- eval setupCode'
+      _ <- command setupCode'
       -- store this as a checkpoint to return to in the 
       -- beginning of a solve script
       checkpoint
