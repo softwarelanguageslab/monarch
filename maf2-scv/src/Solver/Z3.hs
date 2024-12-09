@@ -148,11 +148,11 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       let (translatedScript, names, freshs') = translate count script
       let freshs = Set.unions (Map.elems freshs')
       -- evaluate the mall in the solver
-      mapM_ (command . printf "(declare-const %s V)" ) names
+      -- mapM_ (command . printf "(declare-const %s V)" ) names
       mapM_ (command . printf "(declare-const %s V)" ) freshs
       -- Evaluate all the assertions, and ignore any errors
       _ <- command (printf "(assert %s)" translatedScript)
       -- Check whether the model is satisfiable
       result <- parseResult <$> (fromAtom =<< eval "(check-sat)")
-      -- Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)
+      Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)
       return result

@@ -353,16 +353,12 @@ convertModel = Map.map (Lat.joins . Set.map mapValue) . Symbolic.getModel
          mapValue (Symbolic.Sym a) = symbol a
 
 -- | Compute an assignment for the model (if one is available)
-computeModel :: SmallstepM m => PC -> m (Maybe Model)
-computeModel pc = do 
+computeModel :: SmallstepM m => Map SymVar AbstractCount -> PC -> m (Maybe Model)
+computeModel c pc = do 
       result <- solve c pc 
       if isSat result then 
          Just . convertModel <$> getModel c pc
       else return Nothing
-      -- XXX: we associate the abstract count of each variable with infinite 
-      -- at the moment, which yields a very small precision, update to use 
-      -- real abstract counts.
-   where c = Map.fromList $ map (,CountInf) (Set.toList $ variables pc)
 
 ------------------------------------------------------------
 -- Small-stepping relation
@@ -459,11 +455,11 @@ step' state@(State { control = Ev e ρ, store = σ }) =
 -- final state, nothing to do anymore
 step' (State (Ap _) _ Hlt _ Hlt _  _ _ _ _ _) = return Set.empty
 -- ST-Backtrack
-step' st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ _ _) =
+step' st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ c _) =
       foldMapM applyKont (fromMaybe Set.empty $ Map.lookup topFail ψ) 
    where applyKont (Branch cnd topFail') = do 
             ec <- ask
-            maybeModel <- computeModel cnd 
+            maybeModel <- computeModel c cnd 
             -- XXX: we set the abstract counts to the empty map here since we restart 
             -- the execution, but since we are also abstracting the concolic iterations 
             -- do we need to keep that into account? Probably not? Why?

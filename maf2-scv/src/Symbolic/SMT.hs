@@ -36,14 +36,16 @@ type TranslateM i m =
 -- | Lookup the assignment of the given variable 
 -- to a symbolic variable
 symVar :: TranslateM i m => i -> m String
-symVar k = maybe (fresh k) return =<< asks (Map.lookup k)
+symVar k = do 
+   vrr <- maybe fresh return =<< asks (Map.lookup k)
+   modify (Map.insertWith Set.union k (Set.singleton vrr))
+   return vrr
 
 -- | Generate a fresh identifier
-fresh :: TranslateM i m => i -> m String
-fresh i = do
+fresh :: TranslateM i m => m String
+fresh = do
    siz <- gets (foldMap (Sum . Set.size))
    let vrr = "y" ++ show (getSum siz)
-   modify (Map.insertWith Set.union i (Set.singleton vrr))
    return vrr
 
 
