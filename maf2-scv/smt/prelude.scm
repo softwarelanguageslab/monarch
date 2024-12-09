@@ -25,7 +25,8 @@
 (define-fun null?/v ((n V)) V
             (VBool (is-VNil n)))
 
-(declare-fun fresh () V)
+;; XXX: re-enable these functions
+; (declare-fun fresh () V)
 
 (define-fun string?/v ((s V)) V
             (VBool (is-VString s)))
@@ -42,7 +43,8 @@
 
 (define-fun any?/v ((n V)) V 
             (VBool true))
-(declare-fun string-length (V) V) 
+;; XXX: re-enable these functions
+; (declare-fun string-length (V) V) 
 
 (define-fun +/v ((a V) (b V)) V
             (ite (and (is-VInteger a) (is-VInteger b)) 

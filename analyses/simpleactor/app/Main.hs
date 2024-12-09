@@ -6,7 +6,6 @@ module Main (main) where
 import Syntax.Compiler
 import Data.Map (Map)
 import Data.Set (Set)
-import Data.Maybe
 import qualified Data.Set as Set
 import Data.List (intercalate, find)
 import Text.Printf
@@ -17,12 +16,11 @@ import Domain.Scheme.Store
 import Analysis.SimpleActor
 import Options.Applicative
 import Syntax.AST hiding (filename)
-import Control.Monad ((>=>))
 import Interpreter hiding (PrmAdr, store)
-import Analysis.Store (CountingMap(..))
 import qualified Analysis.Store as Store
 import qualified Analysis.Smallstep as Smallstep
-import GHC.Base (join)
+import System.IO
+import Control.Monad
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -33,7 +31,8 @@ type Command = IO ()
 
 data InputOptions = InputOptions {
                   filename :: String,
-                  doTranslate :: Bool
+                  doTranslate :: Bool,
+                  debug :: Bool
               } deriving (Show, Ord, Eq)
 
 
@@ -43,6 +42,7 @@ inputOptions = InputOptions <$> strOption
                    <> short 'f'
                    <> help "Input file"
                   ) <*> flag True False ( long "no-translate" <> help "If present, disables translations" )
+                  <*> flag False True ( long "debug" <> help "If present, enable debug output" )
 
 commandParser :: Parser Command
 commandParser =
@@ -81,13 +81,45 @@ loadFile' :: Bool -> String -> IO Exp
 loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTempFileId else return) >=> return . either (error . ("error while parsing: " ++)) id . parseFromString
 
 
-printSmallstepResult :: Set Smallstep.State -> IO () 
-printSmallstepResult = print . fromJust . find Smallstep.isFinalState 
+------------------------------
+-- Smallstep
+------------------------------
+
+-- | Print a dot graph
+printGraph :: Handle -> Map Smallstep.State (Set Smallstep.State) -> IO () 
+printGraph h succs = hPutStrLn h "digraph {" >> mapM_ (hPutStrLn h . showEdge) edges >> hPutStrLn h "}"
+   where showNode st = showControl (Smallstep.control st) ++ "," ++ show (Smallstep.pc st) ++ "@" ++ show (Smallstep.top st) ++ "," ++ show (Smallstep.topFail st)
+         showControl (Smallstep.Ev e _) = show e 
+         showControl (Smallstep.Ap v) = show v
+         edges = concatMap (\(st, nxts) -> map ( (showNode st,) . showNode) (Set.toList nxts)) (Map.toList succs)
+         showEdge (from, to) = "\t" ++ show from ++ " -> " ++ show to ++ ";"
+
+printSmallstepResult :: Bool -> (Set Smallstep.State, Smallstep.SuccessorMap) -> IO () 
+printSmallstepResult debug (states, succs) = do
+   putStrLn $ "Found " ++ show (Set.size states) ++ " reachable states"
+   let finalStates = find Smallstep.isFinalState states
+   maybe (putStrLn "No final states found (machine is stuck or only contains cycles, i.e., result is bottom)") (putStrLn . ("Final state is " ++) . show) finalStates
+   when debug $ do 
+      putStrLn "Debug mode is enabled using the --debug flag, printing stuck states ..."
+      let stuckStates = Set.filter (Smallstep.isStuckState succs) states
+      if Set.size stuckStates == 0 then 
+         putStrLn "No stuck states"
+      else 
+         mapM_ print (Set.toList stuckStates)
+      putStrLn "Outputting graph to output/st_graph.dot ..." 
+      file <- openFile "./output/st_graph.dot" WriteMode
+      printGraph file (Smallstep.getSuccessorMap succs)
+      hClose file
+   
          
 
 smallstepCmd :: InputOptions -> IO ()
 smallstepCmd (InputOptions { .. }) = do
-   loadFile' doTranslate filename >>= Smallstep.analyze >>= printSmallstepResult
+   loadFile' doTranslate filename >>= Smallstep.analyze >>= printSmallstepResult debug
+
+------------------------------
+-- Big step SCV
+------------------------------
 
 
 analyzeCmd :: InputOptions -> IO ()

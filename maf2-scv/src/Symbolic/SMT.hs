@@ -16,7 +16,7 @@ import Data.Set (Set)
 import Control.Monad.State
 import Domain.Core.AbstractCount (AbstractCount(..))
 import Lattice.Class (leq, justOrBot)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, fromMaybe)
 import Control.Monad.Error
 import qualified Syntax.Scheme.Parser as SExp
 import Syntax.Scheme.Parser (pattern (:::))
@@ -125,26 +125,29 @@ translate count formula = (t, syms, freshs)
 
 -- | Parse an S-expression literal to an SMT literal
 parseLiteral :: MonadError String m => SExp.SExp -> m Literal
-parseLiteral (SExp.Num n _) = return $ Num n
-parseLiteral (SExp.Rea r _) = return $ Rea r
-parseLiteral (SExp.Bln b _) = return $ Boo b
-parseLiteral (SExp.Cha c _) = return $ Cha c
-parseLiteral (SExp.Atom a _) = return $ Sym a
-parseLiteral _ = throwError "unsupported literal"
+parseLiteral (SExp.Atom "VInteger" _ ::: SExp.Num n _ ::: SExp.SNil _) =
+   return $ Num n
+parseLiteral (SExp.Atom "VReal" _ ::: SExp.Rea n _ ::: SExp.SNil _) =
+   return $ Rea n
+parseLiteral (SExp.Atom "VBool" _ ::: SExp.Bln n _ ::: SExp.SNil _) =
+   return $ Boo n
+parseLiteral (SExp.Atom "VSymbol" _ ::: SExp.Atom n _ ::: SExp.SNil _) =
+   return $ Sym n
+parseLiteral l = throwError $ "unsupported literal = "  ++ show l ++ ";"
 
 -- | Parse the S-expression to a model
-parseAssignment :: MonadError String m => Map String i -> SExp.SExp -> m (i, Literal) 
-parseAssignment assgn (SExp.Atom "define-fun" _ ::: SExp.Atom x _ ::: _ ::: SExp.Atom _sort _ ::: literal ::: SExp.SNil _) = 
-   (fromJust (Map.lookup x assgn),) <$> parseLiteral literal
+parseAssignment :: MonadError String m => Map String i -> SExp.SExp -> m (i, Set Literal)
+parseAssignment assgn e@(SExp.Atom "define-fun" _ ::: SExp.Atom x _ ::: _ ::: SExp.Atom _sort _ ::: literal ::: SExp.SNil _) =
+   (fromMaybe (error $ "variable " ++ show x ++ " not found" ++ " in " ++ show e) (Map.lookup x assgn),) . Set.singleton <$> parseLiteral literal
 parseAssignment _ _ = throwError "not a valid assignment"
-   
+
 -- | Parse a list of assignments into a model
 parseModel :: (Ord i, MonadError String m) => Map String i -> SExp.SExp -> m (Model i)
-parseModel assgn = fmap (Model . Map.fromList) . SExp.smapM (parseAssignment assgn)
+parseModel assgn = fmap (Model . Map.fromListWith Set.union) . SExp.smapM (parseAssignment assgn)
 
 -- | Parses the (check-sat) result
 parseResult :: String -> SolverResult
-parseResult "sat" = Sat 
+parseResult "sat" = Sat
 parseResult "unsat" = Unsat
 parseResult v = trace ("++++ " ++ show v) Unknown
 

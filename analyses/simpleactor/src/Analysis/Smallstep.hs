@@ -26,7 +26,8 @@ import qualified Analysis.Scheme.Primitives as Prim
 import Domain.Scheme.Class hiding (Exp, Env, Adr)
 import Data.Maybe (fromJust)
 import Analysis.SimpleActor.Semantics (injectLit, initialSto, allPrimitives)
-import Symbolic.AST (Formula (..), Proposition(Variable), emptyFormula, conjunction)
+import Symbolic.AST (Formula (..), Proposition(Variable), emptyFormula, conjunction, isSat, SelectVariable (variables))
+import qualified Symbolic.AST as Symbolic
 import Lattice (justOrBot, CP)
 import Control.Monad.Join (cond, condsCP, fromBL, MonadBottom (..), MonadJoinable)
 
@@ -48,6 +49,12 @@ import Control.Monad.State (StateT, gets, modify, MonadState)
 import Domain (SimplePair, PIVector)
 import Domain.Scheme (SchemeString)
 import RIO (runIdentity)
+import Solver (FormulaSolver (..))
+import Solver (FormulaSolver(..))
+import Domain.Core.AbstractCount (AbstractCount(CountInf))
+import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
+import qualified Symbolic.SMT as SMT
+import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -245,7 +252,15 @@ data ConcolicContext = ConcolicContext {
       initialExpExecutor :: Exp
    }
 
-type SmallstepM m = (MonadReader ConcolicContext m)
+type SmallstepM m = (MonadReader ConcolicContext m, MonadWriter SuccessorMap m, FormulaSolver SymVar m)
+
+newtype SuccessorMap = SuccessorMap { getSuccessorMap :: Map State (Set State) }
+
+instance Semigroup SuccessorMap where  
+   (<>) m = SuccessorMap . Map.unionWith Set.union (getSuccessorMap m) . getSuccessorMap
+instance Monoid SuccessorMap where  
+   mempty = SuccessorMap $ Map.empty 
+   mappend = (<>)
 
 ------------------------------------------------------------
 -- State space
@@ -318,9 +333,26 @@ deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord 
 lookupModel :: SymVar -> Model -> RandomSeq -> (PVal, RandomSeq)
 lookupModel var mod vs = maybe (takeSeq vs) (,vs) (Map.lookup var mod)
 
+-- | Convert an SMT model to a ASE model
+convertModel :: Symbolic.Model SymVar -> Model 
+convertModel = Map.map (Lat.joins . Set.map mapValue) . Symbolic.getModel
+   where mapValue (Symbolic.Num n) = Domain.inject n
+         mapValue (Symbolic.Rea r) = Domain.inject r 
+         mapValue (Symbolic.Boo b) = Domain.inject b 
+         mapValue (Symbolic.Cha c) = Domain.inject c
+         mapValue (Symbolic.Sym a) = symbol a
+
 -- | Compute an assignment for the model (if one is available)
 computeModel :: SmallstepM m => PC -> m (Maybe Model)
-computeModel = return . const Nothing -- TODO
+computeModel pc = do 
+      result <- solve c pc 
+      if isSat result then 
+         Just . convertModel <$> getModel c pc
+      else return Nothing
+      -- XXX: we associate the abstract count of each variable with infinite 
+      -- at the moment, which yields a very small precision, update to use 
+      -- real abstract counts.
+   where c = Map.fromList $ map (,CountInf) (Set.toList $ variables pc)
 
 ------------------------------------------------------------
 -- Small-stepping relation
@@ -360,14 +392,18 @@ stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) =
    return $ justOrBot $
          cond (return value)
               -- ST-IfTrue
-              (return $ Set.singleton $ state { control = Ev e2 ρ, pc = φt, topFail = topTrue, kontf = kontf't })
+              -- XXX: currently we overapproximate by stating that we have already 
+              -- visited the other branch, hence `topFail` staying the same, but
+              -- we should actually incorperate an abstraction of the visited set.
+              (return $ Set.fromList [newSt e2 φt kontf't topTrue, newSt e2 φt kontf't topFail])
               -- ST-IfFalse
-              (return $ Set.singleton $ state  { control = Ev e3 ρ, pc = φf, topFail = topFalse, kontf = kontf'f})
+              (return $ Set.fromList [newSt e3 φf kontf'f topFalse, newSt e3 φf kontf'f topFail])
          where value = atomicEval (assertAtomic e1) ρ store
-               φt =  conjunction (Atomic (symbolic value)) pc
-               φf =  conjunction (Atomic (symbolic value)) pc
+               φt =  conjunction (Atomic (symbolic $ assertTrue value)) pc
+               φf =  conjunction (Atomic (symbolic $ assertFalse value)) pc
                (topTrue, kontf't) = pushKont (spanOf ite) context (Branch φf topFail) kontf
                (topFalse, kontf'f) = pushKont (spanOf ite) context (Branch φt topFail) kontf
+               newSt e φ' kontf' topFail' = state { control = Ev e ρ, pc = φ', topFail = topFail', kontf = kontf'  }
 -- ST-App
 stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) = return $ justOrBot $
                   condsCP
@@ -402,16 +438,16 @@ applyClosure _ _ _ = error "invalid closure"
 applyPrimitive :: State -> Exp -> [Val] -> String -> Set State
 applyPrimitive st@State { .. } e vs nam = Set.map (\(v, store') -> st { control = Ap v, store = store' }) $ runIdentity $ runInPrimMStack store context (Prim.run (fromJust $ Map.lookup nam primitivesByName) e vs)
 
-step :: SmallstepM m => State -> m (Set State)
+step' :: SmallstepM m => State -> m (Set State)
 -- ST-Atomic
-step state@(State { control = Ev e ρ, store = σ }) =
+step' state@(State { control = Ev e ρ, store = σ }) =
    case isAtomic e of
       Left  atom -> return $ Set.singleton $ state { control = Ap (atomicEval atom ρ σ) }
       Right _ -> stepCompound state
 -- final state, nothing to do anymore
-step (State (Ap _) _ Hlt _ Hlt _  _ _ _ _) = return Set.empty
+step' (State (Ap _) _ Hlt _ Hlt _  _ _ _ _) = return Set.empty
 -- ST-Backtrack
-step st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ _) =
+step' st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ _) =
       foldMapM applyKont (fromMaybe Set.empty $ Map.lookup topFail ψ) 
    where applyKont (Branch cnd topFail') = do 
             ec <- ask
@@ -419,7 +455,7 @@ step st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ _) =
             maybe (return Set.empty) (\model' -> return $ Set.singleton $ st { store = initialStoreExecutor ec, control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), model = model', topFail = topFail' } ) maybeModel
          
 -- ST-Let2
-step st@(State { control = (Ap v), .. }) =
+step' st@(State { control = (Ap v), .. }) =
       return $ Set.map applyKont (fromMaybe Set.empty $ Map.lookup top kont)
    where applyKont (LetK nam env bds bdy top') =
                let adr = alloc (spanOf nam) context
@@ -427,6 +463,11 @@ step st@(State { control = (Ap v), .. }) =
                    env'   = Map.insert (name nam) adr env
                in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
 
+step :: SmallstepM m => State -> m (Set State)
+step inn = do 
+   successors <- step' inn
+   tell (SuccessorMap $ Map.singleton inn successors)
+   return successors
 
 ------------------------------------------------------------
 -- Adaptor into the monadic stack for the primitives
@@ -498,6 +539,10 @@ isFinalState :: State -> Bool
 isFinalState (State (Ap _) _ Hlt _ Hlt _ _ _ _ _) = True
 isFinalState _ = False
 
+isStuckState :: SuccessorMap -> State -> Bool 
+isStuckState succs st = 
+   Set.size (fromMaybe Set.empty (Map.lookup st (getSuccessorMap succs))) == 0
+
 ------------------------------------------------------------
 -- Analysis
 ------------------------------------------------------------
@@ -521,10 +566,13 @@ inject e =
    State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq emptyFormula
 
 runContext :: Exp -- ^ the initial expression
-           -> ReaderT ConcolicContext IO a
-           -> IO a
-runContext e0 m = runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0)
+           -> ReaderT ConcolicContext (WriterT SuccessorMap (Z3Solver SymVar)) a
+           -> IO (a, SuccessorMap)
+runContext e0 m = 
+         runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0)
+       & runWriterT
+       & runZ3SolverWithSetup SMT.prelude
 
 -- | Computes the set of states reachable from @e@
-analyze :: Exp -> IO (Set State)
+analyze :: Exp -> IO (Set State, SuccessorMap)
 analyze e = runContext e $ lfp collect $ Set.singleton $ inject e

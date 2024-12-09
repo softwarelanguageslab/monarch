@@ -138,7 +138,7 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       -- beginning of a solve script
       checkpoint
 
-   getModel count script = eval "(get-model)" <&> (fromRight (error "could not parse model") . parseModel assgn')   
+   getModel count script = eval "(get-model)" <&> (either error id  . parseModel assgn')   
       where (_, _, assgn) = translate count script
             assgn' = Map.fromList $ concatMap (\(key, values) -> map (,key) (Set.toList values)) $ Map.toList assgn
 
@@ -153,6 +153,5 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       -- Evaluate all the assertions, and ignore any errors
       _ <- command (printf "(assert %s)" translatedScript)
       -- Check whether the model is satisfiable
-      result <- parseResult <$> (fromAtom =<< eval "(check-sat)")
-      Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)
-      return result
+      parseResult <$> (fromAtom =<< eval "(check-sat)")
+      -- Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)

@@ -179,7 +179,7 @@ instance (Ord i) => SelectVariable (Proposition i) i where
 
 -- | The model of an SMT formula is an assignment of variables 
 -- to their values
-newtype Model i = Model { getModel :: Map i Literal }
+newtype Model i = Model { getModel :: Map i (Set Literal) }
               deriving (Ord, Eq, Show)
 
 -- |  The result of solving an SMT formula.

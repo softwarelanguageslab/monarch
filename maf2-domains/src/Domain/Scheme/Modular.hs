@@ -201,7 +201,7 @@ instance (ForAll SchemeKey (AtKey1 Show (Values m)), Show (Assoc ExpConf m)) => 
             showElement (SCloKey :&: clos') = 
                show $ Set.map (show . fst) clos'
             showElement (key :&: value) =
-               printf "%s ↦ %s" (show $ fromSing key) (withC_ @(AtKey1 Show (Values m)) (show value) key)
+               printf "%s -> %s" (show $ fromSing key) (withC_ @(AtKey1 Show (Values m)) (show value) key)
 
 -- EqualLattice
 instance (IsSchemeValue m, ForAll SchemeKey (AtKey1 EqualLattice (Values m))) => EqualLattice (SchemeVal m) where
