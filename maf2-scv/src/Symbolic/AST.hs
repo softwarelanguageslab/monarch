@@ -52,15 +52,15 @@ data Literal
 
 instance NFData Literal
 
-instance Show Literal where  
-   show (Num n) = show n 
+instance Show Literal where
+   show (Num n) = show n
    show (Rea d) = show d
-   show (Str s) = show s 
-   show (Boo b) = show b 
-   show (Cha c) = show c 
+   show (Str s) = show s
+   show (Boo b) = show b
+   show (Cha c) = show c
    show (Sym s) = s
    show Beh = "beh"
-   show Mon = "mon" 
+   show Mon = "mon"
    show Nil = "()"
    show Unsp = "#u"
    show (Actor _) = "α"
@@ -73,7 +73,7 @@ instance Show Literal where
 -- quantified.
 data Proposition i
   = Variable !i      -- ^ a symbolic variable represent by @i@
-  | Function !String -- ^ a built-in SMTlib function
+  | Function !String -- ^ a built-in SMTlib function
   | Literal  !Literal
   | -- | assertion that the proposition's truth value is "true"
     IsTrue   !(Proposition i)
@@ -94,8 +94,8 @@ data Proposition i
 instance (NFData i) => NFData (Proposition i)
 
 -- | Make proposition showable
-instance (Show i) => Show (Proposition i) where 
-   show (Variable i)  = show i 
+instance (Show i) => Show (Proposition i) where
+   show (Variable i)  = show i
    show (Function f)  = f
    show (Literal lit) = show lit
    show (IsTrue p)    = "true?/v(" ++ show p ++ ")"
@@ -120,38 +120,38 @@ data Formula i
 instance NFData i => NFData (Formula i)
 
 -- | Create a conjunction of two formulas
-conjunction :: Ord i => Formula i -> Formula i -> Formula i 
+conjunction :: Ord i => Formula i -> Formula i -> Formula i
 conjunction (Conjunction f1) (Conjunction f2) = Conjunction $ Set.union f1 f2
 conjunction f1 (Conjunction f2) = Conjunction $ Set.union (Set.singleton f1) f2
 conjunction f1 f2 = Conjunction $ Set.fromList [f1, f2]
 
 -- | Create a disjunction of two formulas
-disjunction :: Ord i => Formula i -> Formula i -> Formula i 
+disjunction :: Ord i => Formula i -> Formula i -> Formula i
 disjunction (Disjunction f1) (Disjunction f2) = Disjunction $ Set.union f1 f2
 disjunction f1 (Disjunction f2) = Disjunction $ Set.union (Set.singleton f1) f2
 disjunction f1 f2 = Disjunction $ Set.fromList [f1, f2]
 
 -- | Create an empty formula
-emptyFormula :: Formula i 
+emptyFormula :: Formula i
 emptyFormula = Empty
 
 -- | The path condition is an unordered disjunction of formulas
 type PC i = Set (Formula i)
 
-emptyPC :: PC i 
+emptyPC :: PC i
 emptyPC = Set.singleton Empty
 
 -- | Make formulas showable
-instance (Show i) => Show (Formula i) where  
+instance (Show i) => Show (Formula i) where
    show (Conjunction fs) = intercalate " /\\ " (map show (Set.toList fs))
    show (Disjunction fs) = intercalate " \\/" (map show (Set.toList fs))
    show (Implies f1 f2) = show f1 ++ "=>" ++ show f2
-   show (Negation f1) = "¬" ++ show f1 
+   show (Negation f1) = "¬" ++ show f1
    show (Atomic p) = "(" ++ show p ++ ")"
    show Empty = "ϵ"
 
 -- | Select all variables in the formula
-class SelectVariable v i |  v -> i where
+class SelectVariable v i |  v -> i where
   variables :: v -> Set i
 
 -- | Variables can be selected from formulas
@@ -179,7 +179,7 @@ instance (Ord i) => SelectVariable (Proposition i) i where
 
 -- | The model of an SMT formula is an assignment of variables 
 -- to their values
-newtype Model = Model (Map String Literal)
+newtype Model i = Model { getModel :: Map i Literal }
               deriving (Ord, Eq, Show)
 
 -- |  The result of solving an SMT formula.

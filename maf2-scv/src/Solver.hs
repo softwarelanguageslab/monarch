@@ -1,7 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Solver(runCachedSolver, CachedSolver, FormulaSolver(..)) where
 
-import Symbolic.AST
+import Symbolic.AST hiding (getModel)
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -37,7 +37,7 @@ class (Monad m) => FormulaSolver i m | m -> i where
    isCertainlyUnfeasible formula =
       fmap isUnsat (count >>= flip solve formula)
    -- | Compute and get the current model
-   getModel :: m Model
+   getModel :: Map i AbstractCount -> Formula i -> m (Model i)
 
 --------------------------------------------------
 -- Caching Monad
@@ -92,4 +92,4 @@ instance {-# OVERLAPPING #-} (Ord i, FormulaSolver i m) => FormulaSolver i (Cach
 instance (Monad (t m), MonadLayer t, FormulaSolver i m) => FormulaSolver i (t m) where
    setup = upperM . setup
    solve count' = upperM . solve count'
-   getModel = upperM getModel
+   getModel count' = upperM  . getModel count'

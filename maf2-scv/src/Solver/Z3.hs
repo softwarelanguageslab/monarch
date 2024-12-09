@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# LANGUAGE TupleSections #-}
 -- | The Z3 solver
 module Solver.Z3(Z3Solver, runZ3Solver, runZ3SolverWithSetup)  where
 
@@ -14,6 +15,8 @@ import qualified Syntax.Scheme.Parser as SExp
 import Data.Functor.Classes (readData)
 import Data.Either (fromRight)
 import Data.Functor
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 data Z3SolverState = Z3SolverState {
    -- | Buffer of output from Z3
@@ -137,12 +140,15 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       -- beginning of a solve script
       checkpoint
 
-   getModel = eval "(get-model)" <&> (fromRight (error "could not parse model") . parseModel)
+   getModel count script = eval "(get-model)" <&> (fromRight (error "could not parse model") . parseModel assgn')   
+      where (_, _, assgn) = translate count script
+            assgn' = Map.fromList $ concatMap (\(key, values) -> map (,key) (Set.toList values)) $ Map.toList assgn
 
    solve count script   = do
       restoreCheckpoint
       -- Declare all variables as constants
-      let (translatedScript, names, freshs) = translate count script
+      let (translatedScript, names, freshs') = translate count script
+      let freshs = Set.unions (Map.elems freshs')
       -- evaluate the mall in the solver
       mapM_ (command . printf "(declare-const %s V)" ) names
       mapM_ (command . printf "(declare-const %s V)" ) freshs

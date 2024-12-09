@@ -21,6 +21,7 @@ import Control.Monad.Error
 import qualified Syntax.Scheme.Parser as SExp
 import Syntax.Scheme.Parser (pattern (:::))
 import Data.Either (fromRight)
+import Data.Monoid (Sum(..))
 
 --------------------------------------------------
 -- Translation monad
@@ -28,20 +29,20 @@ import Data.Either (fromRight)
 
 type TranslateM i m =
    (MonadReader (Map i String) m,
-    MonadState (Set String) m, Ord i)
+    MonadState (Map i (Set String)) m, Ord i)
 
 
 -- | Lookup the assignment of the given variable 
 -- to a symbolic variable
 symVar :: TranslateM i m => i -> m String
-symVar k = maybe fresh return =<< asks (Map.lookup k)
+symVar k = maybe (fresh k) return =<< asks (Map.lookup k)
 
 -- | Generate a fresh identifier
-fresh :: TranslateM i m => m String
-fresh = do
-   siz <- gets Set.size
-   let vrr = "y" ++ show siz
-   modify (Set.insert vrr)
+fresh :: TranslateM i m => i -> m String
+fresh i = do
+   siz <- gets (foldMap (Sum . Set.size))
+   let vrr = "y" ++ show (getSum siz)
+   modify (Map.insertWith Set.union i (Set.singleton vrr))
    return vrr
 
 
@@ -85,7 +86,7 @@ translateAtomic (Application f1 f2) =
    printf "(%s %s)" <$> translateAtomic f1 <*> (unwords <$> mapM translateAtomic f2)
 translateAtomic Bottom = return "(VError)"
 translateAtomic Tautology = return "true"
-translateAtomic Fresh = fresh
+translateAtomic Fresh = error "translation of fresh is no longer supported"
 -- translateAtomic (Choice a b) = 
 --    -- we currently do not have good support for joins 
 --    -- in the symbolic representation, hence we simply return a fresh 
@@ -114,12 +115,12 @@ translate' Empty = return "true"
 -- occur in other constraints), variables with an abstract 
 -- count of exactly one are translated to regular variables 
 -- and can occur in multiple constraints.
-translate :: (Ord i) => Map i AbstractCount -> Formula i -> (String, Map i String, Set String)
+translate :: (Ord i) => Map i AbstractCount -> Formula i -> (String, Map i String, Map i (Set String))
 translate count formula = (t, syms, freshs)
    where vars = filter countOne $ Set.toList $ variables formula
          countOne var = leq (fromJust $ Map.lookup var count) CountOne
          syms = Map.fromList (zip vars (map (("x" ++) . show) [0..length vars]))
-         (t, freshs) = runState (runReaderT (translate' formula) syms) Set.empty
+         (t, freshs) = runState (runReaderT (translate' formula) syms) Map.empty
 
 -- | Parse an S-expression literal to an SMT literal
 parseLiteral :: MonadError String m => SExp.SExp -> m Literal
@@ -131,14 +132,14 @@ parseLiteral (SExp.Atom a _) = return $ Sym a
 parseLiteral _ = throwError "unsupported literal"
 
 -- | Parse the S-expression to a model
-parseAssignment :: MonadError String m => SExp.SExp -> m (String, Literal) 
-parseAssignment (SExp.Atom "define-fun" _ ::: SExp.Atom x _ ::: _ ::: SExp.Atom _sort _ ::: literal ::: SExp.SNil _) = 
-   (x,) <$> parseLiteral literal
-parseAssignment _ = throwError "not a valid assignment"
+parseAssignment :: MonadError String m => Map String i -> SExp.SExp -> m (i, Literal) 
+parseAssignment assgn (SExp.Atom "define-fun" _ ::: SExp.Atom x _ ::: _ ::: SExp.Atom _sort _ ::: literal ::: SExp.SNil _) = 
+   (fromJust (Map.lookup x assgn),) <$> parseLiteral literal
+parseAssignment _ _ = throwError "not a valid assignment"
    
 -- | Parse a list of assignments into a model
-parseModel :: MonadError String m => SExp.SExp -> m Model 
-parseModel = fmap (Model . Map.fromList) . SExp.smapM parseAssignment
+parseModel :: (Ord i, MonadError String m) => Map String i -> SExp.SExp -> m (Model i)
+parseModel assgn = fmap (Model . Map.fromList) . SExp.smapM (parseAssignment assgn)
 
 -- | Parses the (check-sat) result
 parseResult :: String -> SolverResult
