@@ -23,7 +23,7 @@ e ::= ae | if ae e e | let x = e in e | ae ae ... | match ae with (pat => e) ..
 (define (translate exp)
   (match exp 
     [(quasiquote (lambda (,@xs) ,@exs))
-     `(lambda (,@xs) ,(map translate exs))]
+     `(lambda (,@xs) ,@(map translate exs))]
     [(quasiquote (spawn ,e))
      (let ((x (gensym)))
      `(letrec ((,x ,(translate e))) (spawn ,x)))]
