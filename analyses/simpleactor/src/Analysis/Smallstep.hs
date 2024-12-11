@@ -56,6 +56,7 @@ import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
 import qualified Symbolic.SMT as SMT
 import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
 import qualified Debug.Trace as Debug
+import Interpreter (emptyContext)
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -382,7 +383,7 @@ atomicEval (Atomically lam@(Lam {})) env _ = injectClo (lam, env)
 atomicEval (Atomically (Literal l _)) _ _ = injectLit l
 atomicEval (Atomically (Self {})) _ _ = error "self not supported"
 atomicEval (Atomically (Var (Ide nam _))) env sto =
-   fromMaybe (error $ "variable " ++ nam ++ " not found") (Map.lookup nam env >>= (fmap fromRVal . flip Map.lookup sto))
+   fromMaybe (error $ "variable " ++ nam ++ " not found " ++ show sto ++ (show $ Map.lookup nam env)) (Map.lookup nam env >>= (fmap fromRVal . flip Map.lookup sto))
 atomicEval (Atomically e) _ _ =
    error $
        "unreachable case because of values produced by `isAtomic` so either `isAtomic` is wrong or we are missing cases."
@@ -466,7 +467,7 @@ step' st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ c _) =
             -- XXX: we set the abstract counts to the empty map here since we restart 
             -- the execution, but since we are also abstracting the concolic iterations 
             -- do we need to keep that into account? Probably not? Why?
-            maybe (return Set.empty) (\model' -> return $ Set.singleton $ st { store = initialStoreExecutor ec, control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), model = model', topFail = topFail', counts = Map.empty, pc = emptyFormula } ) maybeModel
+            maybe (return Set.empty) (\model' -> return $ Set.singleton $ st { store = initialStoreExecutor ec, control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), model = model', topFail = topFail', counts = Map.empty, pc = emptyFormula, context = [] } ) maybeModel
          
 -- ST-Let2
 step' st@(State { control = (Ap v), .. }) =
