@@ -1,5 +1,6 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE RecordWildCards #-}
 -- | Translation for Symbolic.AST formulas to and from SMTLib
 module Symbolic.SMT(prelude, translate, parseResult, parseModel, SolverResult(..), setupSMT) where
 
@@ -15,37 +16,74 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import Control.Monad.State
 import Domain.Core.AbstractCount (AbstractCount(..))
-import Lattice.Class (leq, justOrBot)
+import Lattice.Class (leq)
 import Data.Maybe (fromJust, fromMaybe)
 import Control.Monad.Error
 import qualified Syntax.Scheme.Parser as SExp
 import Syntax.Scheme.Parser (pattern (:::))
-import Data.Either (fromRight)
 import Data.Monoid (Sum(..))
 import Debug.Trace
+import Control.Monad.Writer
+import Control.Lens.TH
+import Control.Lens (over, view)
+import Data.Functor
+import Control.Applicative
+import Data.Foldable (Foldable(toList, fold))
 
 --------------------------------------------------
 -- Translation monad
 --------------------------------------------------
 
+-- | State that keeps track of a mapping between symbolic variables 
+-- and their SMT constants. It also keeps track of unmapped constants 
+-- as a set of strings.
+data TranslationMappingState i  = TranslationMappingState {
+   -- | Mapped variables
+   _mappedVariables :: Map i (Set String),
+   -- | Unmapped+mapped variables
+   _allVariables :: Set String
+}
+
+-- | The initial mapping state
+initialMappingState :: TranslationMappingState i
+initialMappingState = TranslationMappingState {
+   _mappedVariables = Map.empty,
+   _allVariables = Set.empty
+}
+
+makeLenses ''TranslationMappingState
+
+-- | Register a mapped variable
+registerMapped :: TranslateM i m => i -> String -> m ()
+registerMapped k v = do
+   modify (over mappedVariables (Map.insertWith Set.union k (Set.singleton v)))
+
+-- | Register an unmapped variable
+registerUnmapped :: TranslateM i m => String -> m ()
+registerUnmapped v =
+   modify (over allVariables (Set.union (Set.singleton v)))
+
+-- | Get the total number of variables
+numberOfVariables :: TranslateM i m => m Int
+numberOfVariables = gets (Set.size . view allVariables)
+
 type TranslateM i m =
-   (MonadReader (Map i String) m,
-    MonadState (Map i (Set String)) m, Ord i)
+   ( MonadReader (Map i String) m, -- constants mapped to symbolic variables  
+     MonadState (TranslationMappingState i) m, Ord i)
 
 
 -- | Lookup the assignment of the given variable 
 -- to a symbolic variable
 symVar :: TranslateM i m => i -> m String
-symVar k = do 
-   vrr <- maybe fresh return =<< asks (Map.lookup k)
-   modify (Map.insertWith Set.union k (Set.singleton vrr))
-   return vrr
+symVar k = do
+   (\vrr -> registerMapped k vrr $> vrr) =<< maybe fresh return =<< asks (Map.lookup k)
 
 -- | Generate a fresh identifier
 fresh :: TranslateM i m => m String
 fresh = do
-   siz <- gets (foldMap (Sum . Set.size))
-   let vrr = "y" ++ show (getSum siz)
+   siz <- numberOfVariables
+   let vrr = "y" ++ show siz
+   registerUnmapped vrr
    return vrr
 
 
@@ -89,7 +127,7 @@ translateAtomic (Application f1 f2) =
    printf "(%s %s)" <$> translateAtomic f1 <*> (unwords <$> mapM translateAtomic f2)
 translateAtomic Bottom = return "(VError)"
 translateAtomic Tautology = return "true"
-translateAtomic Fresh = error "translation of fresh is no longer supported"
+translateAtomic Fresh = fresh
 -- translateAtomic (Choice a b) = 
 --    -- we currently do not have good support for joins 
 --    -- in the symbolic representation, hence we simply return a fresh 
@@ -118,12 +156,22 @@ translate' Empty = return "true"
 -- occur in other constraints), variables with an abstract 
 -- count of exactly one are translated to regular variables 
 -- and can occur in multiple constraints.
-translate :: (Ord i) => Map i AbstractCount -> Formula i -> (String, Map i String, Map i (Set String))
-translate count formula = (t, syms, freshs)
+translate :: (Ord i) => Map i AbstractCount -> Formula i -> (String, Set String, Map i (Set String))
+translate count formula = (t, allVariables', mappedVariables')
    where vars = filter countOne $ Set.toList $ variables formula
          countOne var = leq (fromJust $ Map.lookup var count) CountOne
          syms = Map.fromList (zip vars (map (("x" ++) . show) [0..length vars]))
-         (t, freshs) = runState (runReaderT (translate' formula) syms) Map.empty
+         (t, TranslationMappingState { .. }) = runState (runReaderT (translate' formula) syms) initialMappingState
+         -- some variables will be unconstrained (e.g., because of abstraction) but they still need to get values 
+         -- from the model. These variables are the ones that are in the abstract count mapping but not in the 
+         -- mapped variables mapping.
+         unconstrainedVariables = Set.difference (Map.keysSet count) (Map.keysSet _mappedVariables)
+         -- generate SMT constants for these variables
+         unconstrainedConstants = Map.fromList $ zipWith (\k idx -> (k, Set.singleton $ "z" ++ show idx)) (Set.toList unconstrainedVariables) [0 :: Int ..]
+         allVariables' = _allVariables `Set.union` fold (Map.elems unconstrainedConstants)
+         mappedVariables' = Map.unionWith Set.union _mappedVariables unconstrainedConstants
+
+
 
 -- | Parse an S-expression literal to an SMT literal
 parseLiteral :: MonadError String m => SExp.SExp -> m Literal
@@ -131,27 +179,28 @@ parseLiteral (SExp.Atom "VInteger" _ ::: SExp.Num n _ ::: SExp.SNil _) =
    return $ Num n
 parseLiteral (SExp.Atom "VReal" _ ::: SExp.Rea n _ ::: SExp.SNil _) =
    return $ Rea n
-parseLiteral (SExp.Atom "VBool" _ ::: SExp.Bln n _ ::: SExp.SNil _) =
-   return $ Boo n
+parseLiteral (SExp.Atom "VBool" _ ::: SExp.Atom truthValue _ ::: SExp.SNil _)
+   | truthValue == "true" || truthValue == "false" = return (Boo (truthValue == "true"))
+   | otherwise = throwError $ "invalid boolean literal " ++ truthValue
 parseLiteral (SExp.Atom "VSymbol" _ ::: SExp.Atom n _ ::: SExp.SNil _) =
    return $ Sym n
 parseLiteral l = throwError $ "unsupported literal = "  ++ show l ++ ";"
 
 -- | Parse the S-expression to a model
-parseAssignment :: MonadError String m => Map String i -> SExp.SExp -> m (i, Set Literal)
-parseAssignment assgn e@(SExp.Atom "define-fun" _ ::: SExp.Atom x _ ::: _ ::: SExp.Atom _sort _ ::: literal ::: SExp.SNil _) =
-   (fromMaybe (error $ "variable " ++ show x ++ " not found" ++ " in " ++ show e) (Map.lookup x assgn),) . Set.singleton <$> parseLiteral literal
+parseAssignment :: MonadError String m => Map String i -> SExp.SExp -> m (Maybe (i, Set Literal))
+parseAssignment assgn (SExp.Atom "define-fun" _ ::: SExp.Atom x _ ::: _ ::: SExp.Atom _sort _ ::: literal ::: SExp.SNil _) =
+   liftA2 (,) (Map.lookup x assgn) . Just . Set.singleton <$> parseLiteral literal
 parseAssignment _ _ = throwError "not a valid assignment"
 
 -- | Parse a list of assignments into a model
 parseModel :: (Ord i, MonadError String m) => Map String i -> SExp.SExp -> m (Model i)
-parseModel assgn = fmap (Model . Map.fromListWith Set.union) . SExp.smapM (parseAssignment assgn)
+parseModel assgn = fmap (Model . Map.fromListWith Set.union . concatMap toList) . SExp.smapM (parseAssignment assgn)
 
 -- | Parses the (check-sat) result
 parseResult :: String -> SolverResult
 parseResult "sat" = Sat
 parseResult "unsat" = Unsat
-parseResult v = trace ("++++ " ++ show v) Unknown
+parseResult _ = Unknown
 
 ------------------------------------------------------------
 -- Utility functions

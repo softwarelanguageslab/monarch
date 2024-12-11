@@ -12,8 +12,6 @@ import Data.Maybe
 import Solver
 import Symbolic.SMT
 import qualified Syntax.Scheme.Parser as SExp
-import Data.Functor.Classes (readData)
-import Data.Either (fromRight)
 import Data.Functor
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -144,15 +142,15 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
 
    solve count script   = do
       restoreCheckpoint
+      -- Z3Solver $ liftIO $ putStrLn $ "trying to translate script " ++ show script
       -- Declare all variables as constants
-      let (translatedScript, names, freshs') = translate count script
-      let freshs = Set.unions (Map.elems freshs')
+      let (translatedScript, names, _) = translate count script
       -- evaluate the mall in the solver
       -- mapM_ (command . printf "(declare-const %s V)" ) names
-      mapM_ (command . printf "(declare-const %s V)" ) freshs
+      mapM_ (command . printf "(declare-const %s V)" ) names
       -- Evaluate all the assertions, and ignore any errors
       _ <- command (printf "(assert %s)" translatedScript)
       -- Check whether the model is satisfiable
       result <- parseResult <$> (fromAtom =<< eval "(check-sat)")
-      Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)
+      -- Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)
       return result

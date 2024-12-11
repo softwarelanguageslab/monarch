@@ -33,6 +33,7 @@ dependencies:
 - transformers
 - singletons
 - extra
+- lens
 - deepseq
 
 ghc-options:

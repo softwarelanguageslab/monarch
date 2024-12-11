@@ -82,6 +82,7 @@ library
     , deepseq
     , extra
     , file-embed
+    , lens
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
@@ -122,6 +123,7 @@ executable maf2-scv-exe
     , deepseq
     , extra
     , file-embed
+    , lens
     , maf2-analysis
     , maf2-domains
     , maf2-scv
@@ -172,6 +174,7 @@ test-suite maf2-scv-test
     , hspec-contrib
     , hspec-core
     , hspec-expectations
+    , lens
     , maf2-analysis
     , maf2-domains
     , maf2-scv
