@@ -49,8 +49,8 @@ import Control.Monad.State (StateT, gets, modify, MonadState)
 import Domain (SimplePair, PIVector)
 import Domain.Scheme (SchemeString)
 import RIO (runIdentity)
-import Solver (FormulaSolver (..))
-import Solver (FormulaSolver(..))
+import Solver (FormulaSolver (..), CachedSolver)
+import Solver (FormulaSolver(..), runCachedSolver)
 import Domain.Core.AbstractCount (AbstractCount(CountInf, CountOne))
 import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
 import qualified Symbolic.SMT as SMT
@@ -277,7 +277,7 @@ instance Show Control where
    show (Ap v) = "ap(" ++ show v ++ ")"
 
 -- | Continuations
-data Kont = LetK Ide Env [Binding] Exp KAdr
+data Kont = LetK Adr Env [Binding] Exp KAdr
          deriving (Eq, Ord, Show)
 
 -- | Push a continuation on the continuation stack by allocating an address 
@@ -431,7 +431,7 @@ stepCompound st@(State { control = Ev (Input ℓ) _, .. }) =
 -- ST-Let1
 stepCompound st@(State { control = Ev (Letrec ((nam,exp):bds) bdy _) ρ, .. }) =
       return $ Set.singleton $ st { control = Ev exp ρ', kont = kont', top = top' }
-   where (top', kont') = pushKont (spanOf nam) context (LetK nam ρ bds bdy top) kont
+   where (top', kont') = pushKont (spanOf nam) context (LetK adr ρ' bds bdy top) kont
          -- pre allocate address so variable exists in the lexical scope 
          adr = alloc (spanOf nam) context 
          ρ' = Map.insert (name nam) adr ρ
@@ -440,7 +440,7 @@ stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) =
 stepCompound st = error $ "unsupported program state" ++ show st
 
 applyClosure :: State -> [Val] -> (Exp, Env) -> State
-applyClosure st@State{ .. } vs (Lam xs e _, ρ') = st { control = Ev e ρ'', store = store', context = pushK (spanOf e) context}
+applyClosure st@State{ .. } vs (Lam xs e _, ρ') = st { control = Ev e ρ'', store = store', context =  pushK (spanOf e) context}
    where ads = map ((`alloc` context) . spanOf) xs
          bds = zip ads (map RVal vs)
          store' = extendsSto bds store
@@ -467,15 +467,13 @@ step' st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ c _) =
             -- XXX: we set the abstract counts to the empty map here since we restart 
             -- the execution, but since we are also abstracting the concolic iterations 
             -- do we need to keep that into account? Probably not? Why?
-            maybe (return Set.empty) (\model' -> return $ Set.singleton $ st { store = initialStoreExecutor ec, control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), model = model', topFail = topFail', counts = Map.empty, pc = emptyFormula, context = [] } ) maybeModel
+            maybe (return Set.empty) (\model' -> return $ Set.singleton $ st { kont = Map.empty, store = initialStoreExecutor ec, control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), model = model', topFail = topFail', counts = Map.empty, pc = emptyFormula, context = [] } ) maybeModel
          
 -- ST-Let2
 step' st@(State { control = (Ap v), .. }) =
       return $ Set.map applyKont (fromMaybe Set.empty $ Map.lookup top kont)
-   where applyKont (LetK nam env bds bdy top') =
-               let adr = alloc (spanOf nam) context
-                   store' = extendSto adr (RVal v) store
-                   env'   = Map.insert (name nam) adr env
+   where applyKont (LetK adr env' bds bdy top') =
+               let store' = extendSto adr (RVal v) store
                in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
 
 step :: SmallstepM m => State -> m (Set State)
@@ -564,7 +562,7 @@ isStuckState succs st =
 
 -- | Collect states until no more states are found
 collect :: SmallstepM m => Set State -> m (Set State)
-collect ss = Set.union ss <$> foldMapM step ss
+collect ss = (Debug.trace ("number of elements in set " ++ show (Set.size ss))) <$> Set.union ss <$> foldMapM step ss
 
 -- | Compute the least fix point assuming that the output of the function 
 -- is monotonic.
@@ -581,11 +579,12 @@ inject e =
    State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq Map.empty emptyFormula
 
 runContext :: Exp -- ^ the initial expression
-           -> ReaderT ConcolicContext (WriterT SuccessorMap (Z3Solver SymVar)) a
+           -> ReaderT ConcolicContext (WriterT SuccessorMap (CachedSolver SymVar (Z3Solver SymVar))) a
            -> IO (a, SuccessorMap)
 runContext e0 m = 
          runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0)
        & runWriterT
+       & runCachedSolver
        & runZ3SolverWithSetup SMT.prelude
 
 -- | Computes the set of states reachable from @e@
