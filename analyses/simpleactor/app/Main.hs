@@ -88,7 +88,8 @@ loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTem
 -- | Print a dot graph
 printGraph :: Handle -> Map Smallstep.State (Set Smallstep.State) -> IO () 
 printGraph h succs = hPutStrLn h "digraph {" >> mapM_ (hPutStrLn h . showEdge) edges >> hPutStrLn h "}"
-   where showNode st = showControl (Smallstep.control st) ++ "," ++ show (Smallstep.pc st) ++ "@" ++ show (Smallstep.top st) ++ "," ++ show (Smallstep.topFail st)
+   where showNode st = 
+            showControl (Smallstep.control st) ++ "," ++ show (Smallstep.pc st) ++ "@" ++ show (Smallstep.top st) ++ "," ++ show (Smallstep.topFail st)
          showControl (Smallstep.Ev e _) = show e 
          showControl (Smallstep.Ap v) = show v
          edges = concatMap (\(st, nxts) -> map ( (showNode st,) . showNode) (Set.toList nxts)) (Map.toList succs)

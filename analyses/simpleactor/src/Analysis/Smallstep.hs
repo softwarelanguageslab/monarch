@@ -382,7 +382,7 @@ atomicEval (Atomically lam@(Lam {})) env _ = injectClo (lam, env)
 atomicEval (Atomically (Literal l _)) _ _ = injectLit l
 atomicEval (Atomically (Self {})) _ _ = error "self not supported"
 atomicEval (Atomically (Var (Ide nam _))) env sto =
-   fromJust (Map.lookup nam env >>= (fmap fromRVal . flip Map.lookup sto))
+   fromMaybe (error $ "variable " ++ nam ++ " not found") (Map.lookup nam env >>= (fmap fromRVal . flip Map.lookup sto))
 atomicEval (Atomically e) _ _ =
    error $
        "unreachable case because of values produced by `isAtomic` so either `isAtomic` is wrong or we are missing cases."
@@ -429,8 +429,11 @@ stepCompound st@(State { control = Ev (Input ℓ) _, .. }) =
          counts' = Map.insertWith (const . const CountInf) (freshVar ℓ context) CountOne counts
 -- ST-Let1
 stepCompound st@(State { control = Ev (Letrec ((nam,exp):bds) bdy _) ρ, .. }) =
-      return $ Set.singleton $ st { control = Ev exp ρ, kont = kont', top = top' }
+      return $ Set.singleton $ st { control = Ev exp ρ', kont = kont', top = top' }
    where (top', kont') = pushKont (spanOf nam) context (LetK nam ρ bds bdy top) kont
+         -- pre allocate address so variable exists in the lexical scope 
+         adr = alloc (spanOf nam) context 
+         ρ' = Map.insert (name nam) adr ρ
 stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) =
       return $ Set.singleton $ st { control = Ev bdy ρ }
 stepCompound st = error $ "unsupported program state" ++ show st
@@ -476,7 +479,7 @@ step' st@(State { control = (Ap v), .. }) =
 
 step :: SmallstepM m => State -> m (Set State)
 step inn = do 
-   successors <- step' (Debug.traceShow (rvs inn) inn) -- (Debug.traceShowId inn)
+   successors <- step' inn -- (Debug.traceShowId inn)
    tell (SuccessorMap $ Map.singleton inn successors)
    return successors
 
@@ -560,7 +563,7 @@ isStuckState succs st =
 
 -- | Collect states until no more states are found
 collect :: SmallstepM m => Set State -> m (Set State)
-collect ss = Debug.traceShow (Set.size ss) <$> Set.union ss <$> foldMapM step ss
+collect ss = Set.union ss <$> foldMapM step ss
 
 -- | Compute the least fix point assuming that the output of the function 
 -- is monotonic.
