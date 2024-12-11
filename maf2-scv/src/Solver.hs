@@ -9,6 +9,7 @@ import Control.Monad.State
 import Control.Monad.Layer
 import Domain.Core.AbstractCount (AbstractCount(..))
 import Analysis.Monad.Store (AbstractCountM(..))
+import Control.Lens (makeLenses, view, over)
 
 
 class (Monad m) => FormulaSolver i m | m -> i where
@@ -43,13 +44,21 @@ class (Monad m) => FormulaSolver i m | m -> i where
 -- Caching Monad
 --------------------------------------------------
 
+data CacheKey i = CacheKey (Map i AbstractCount) (Formula i)
+                 deriving (Eq, Ord, Show)
+
+type Cache i v = Map (CacheKey i) v
+   
 -- | A cache for already solved SMT formulae
-newtype SolverState i = SolverState { getCache :: Map (Formula i) SolverResult }
+data SolverState i = SolverState { _satCache :: Cache i SolverResult, _modelCache :: Cache i (Model i) }
+
+makeLenses ''SolverState
 
 -- | Construct the initial contents of the cache
 initialState :: SolverState i
 initialState = SolverState {
-      getCache = Map.empty
+      _satCache = Map.empty,
+      _modelCache = Map.empty
    }
 
 -- | The solver monad
@@ -57,13 +66,21 @@ newtype CachedSolver i m a = CachedSolver { getSolver ::  StateT (SolverState i)
                      deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadState (SolverState i))
 
 -- | Lookup the given value in the cache
-lookupCache :: (Ord i, Monad m) => Formula i -> CachedSolver i m (Maybe SolverResult)
-lookupCache formula = gets (Map.lookup formula . getCache)
+lookupCache :: (Ord i, Monad m) => CacheKey i -> CachedSolver i m (Maybe SolverResult)
+lookupCache formula = gets (Map.lookup formula . view satCache)
+
+-- | Lookup the cached model from the cache
+lookupCacheModel :: (Ord i, Monad m) => CacheKey i -> CachedSolver i m (Maybe (Model i))
+lookupCacheModel key = gets (Map.lookup key . view modelCache) 
 
 -- | Put the given result in the cache
-putCache :: forall m i . (Ord i, Monad m) => Formula i -> SolverResult -> CachedSolver i m SolverResult
+putCache :: forall m i . (Ord i, Monad m) => CacheKey i -> SolverResult -> CachedSolver i m SolverResult
 putCache formula solution =
-   modify (SolverState . Map.insert formula solution . getCache) >> return solution
+   modify (over satCache (Map.insert formula solution)) >> return solution
+
+putCacheModel :: forall m i . (Ord i, Monad m) => CacheKey i -> Model i -> CachedSolver i m (Model i)
+putCacheModel formula solution =
+   modify (over modelCache (Map.insert formula solution)) >> return solution
 
 -- | Run the solver monad
 runCachedSolver :: Monad m => CachedSolver i m a -> m a
@@ -80,10 +97,12 @@ instance {-# OVERLAPPING #-} (Ord i, FormulaSolver i m) => FormulaSolver i (Cach
    -- cache, if found the previous result is returned
    -- otherwise it is passed to the underlying solver
    solve count' formula = do
-      cacheHit <- lookupCache formula
-      maybe (lift (solve count' formula) >>= putCache formula) return cacheHit
+      cacheHit <- lookupCache (CacheKey count' formula)
+      maybe (lift (solve count' formula) >>= putCache (CacheKey count' formula)) return cacheHit
    -- cached model retrieval is currently not supported 
-   getModel = error "cannot cache the model"
+   getModel count' formula = do
+      cacheHit <- lookupCacheModel (CacheKey count' formula)
+      maybe (lift (getModel count' formula) >>= putCacheModel (CacheKey count' formula)) return cacheHit
 
 ------------------------------------------------------------
 -- Layering
