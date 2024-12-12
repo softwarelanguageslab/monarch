@@ -26,10 +26,10 @@ import qualified Analysis.Scheme.Primitives as Prim
 import Domain.Scheme.Class hiding (Exp, Env, Adr)
 import Data.Maybe (fromJust)
 import Analysis.SimpleActor.Semantics (injectLit, initialSto, allPrimitives)
-import Symbolic.AST (Formula (..), Proposition(Variable), emptyFormula, conjunction, isSat, SelectVariable (variables))
+import Symbolic.AST (Formula (..), Proposition(Variable), emptyFormula, conjunction, isSat)
 import qualified Symbolic.AST as Symbolic
 import Lattice (justOrBot, CP)
-import Control.Monad.Join (cond, condsCP, fromBL, MonadBottom (..), MonadJoinable)
+import Control.Monad.Join (cond, condsCP, fromBL)
 
 import Syntax (SpanOf(..))
 import System.Random (uniform, uniformR, mkStdGen)
@@ -42,21 +42,18 @@ import Control.Monad.DomainError
 import Analysis.Monad.Allocation hiding (alloc)
 import Analysis.Monad.Store
 import Analysis.Monad (NonDetT, CtxT)
-import Domain.Scheme.Store (EnvAdr (..), PaiAdrE (PaiAdr), StrAdrE (StrAdr), VecAdrE (VecAdr))
 import Analysis.Monad.Cache (CacheT, MonadCache (run))
 import Data.Kind (Type)
-import Control.Monad.State (StateT, gets, modify, MonadState)
 import Domain (SimplePair, PIVector)
 import Domain.Scheme (SchemeString)
 import RIO (runIdentity)
 import Solver (FormulaSolver (..), CachedSolver)
-import Solver (FormulaSolver(..), runCachedSolver)
+import Solver (runCachedSolver)
 import Domain.Core.AbstractCount (AbstractCount(CountInf, CountOne))
 import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
 import qualified Symbolic.SMT as SMT
 import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
 import qualified Debug.Trace as Debug
-import Interpreter (emptyContext)
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -560,9 +557,20 @@ isStuckState succs st =
 -- Analysis
 ------------------------------------------------------------
 
--- | Collect states until no more states are found
+-- | Compute the set of successors for the given list of states
 collect :: SmallstepM m => Set State -> m (Set State)
-collect ss = (Debug.trace ("number of elements in set " ++ show (Set.size ss))) <$> Set.union ss <$> foldMapM step ss
+collect = foldMapM step
+
+-- | Incremental computation of the least fixed point by only considering the 
+-- successors states produced in the previous iteration for the next iteration
+lfpInc' :: (Monad m, PartialOrder v, Joinable v, Show v) => (v -> m v) -> v -> v -> m v
+lfpInc' f acc ss = do  
+   nxt <- f ss
+   let acc' = Lat.join nxt acc
+   if subsumes acc' acc && not (subsumes acc acc') then lfpInc' f acc' nxt else return acc'
+
+lfpInc :: (Monad m, PartialOrder v, Joinable v, Show v) => (v -> m v) -> v -> m v
+lfpInc f initial = lfpInc' f initial initial
 
 -- | Compute the least fix point assuming that the output of the function 
 -- is monotonic.
@@ -589,4 +597,4 @@ runContext e0 m =
 
 -- | Computes the set of states reachable from @e@
 analyze :: Exp -> IO (Set State, SuccessorMap)
-analyze e = runContext e $ lfp collect $ Set.singleton $ inject e
+analyze e = runContext e $ lfpInc collect $ Set.singleton $ inject e
