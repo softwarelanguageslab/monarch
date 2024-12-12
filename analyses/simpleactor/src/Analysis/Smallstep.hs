@@ -40,20 +40,20 @@ import Analysis.Monad.Stack (MonadStack)
 import Control.Monad.Escape
 import Control.Monad.DomainError
 import Analysis.Monad.Allocation hiding (alloc)
-import Analysis.Monad.Store
+import Analysis.Monad.Store hiding (store)
 import Analysis.Monad (NonDetT, CtxT)
 import Analysis.Monad.Cache (CacheT, MonadCache (run))
 import Data.Kind (Type)
 import Domain (SimplePair, PIVector)
 import Domain.Scheme (SchemeString)
 import RIO (runIdentity)
-import Solver (FormulaSolver (..), CachedSolver)
-import Solver (runCachedSolver)
+import Solver ( FormulaSolver(..), CachedSolver, runCachedSolver )
 import Domain.Core.AbstractCount (AbstractCount(CountInf, CountOne))
 import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
 import qualified Symbolic.SMT as SMT
 import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
 import qualified Debug.Trace as Debug
+import Symbolic.AST (mapVariables)
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -75,7 +75,7 @@ data AdrWithContext k = Adr Span k | PrimAdr String deriving (Show, Ord, Eq)
 
 -- | Values from the value domain, this combines 
 -- a symbolic with an abstract value.
-type Val = ActorValueUnified [Span] AdrWithContext
+type Val = ActorValueUnified [Span] AdrWithContext SymVar
 
 -- | Program values
 type PVal = Abstract Val
@@ -129,11 +129,11 @@ isVVal _ = Nothing
 type Adr = AdrWithContext [Span]
 
 -- | Continuation store
-data KAdr = KAdr Span [Span] | Hlt
+data KAdr k = KAdr Span k | Hlt
           deriving (Ord, Eq, Show)
 
 -- | Symbolic variable
-type SymVar = Adr
+data SymVar = SymVar Span [Span] ModelContext deriving (Eq, Ord, Show)
 
 -- | An environment
 type Env = Map String Adr
@@ -169,6 +169,48 @@ pushK :: Span -> [Span] -> [Span]
 pushK s = take 1 . (s :)
 
 ------------------------------------------------------------
+-- Managing abstraction of model's context
+------------------------------------------------------------
+
+-- | The context associated with iterations of the concolic loop 
+-- is a sequence of path constraints originating from the failure continuations.
+--
+-- This way, the model is only widened whenever we loop to the same path constraint, 
+-- and since path constraints themselves are widened and thus made finite, the number 
+-- of contexts and therefore number of models is also finite.
+newtype ModelContext = MCtx [PC] deriving (Eq, Ord, Show)
+
+-- | Create an initial (empty) model context
+emptyModelContext :: ModelContext 
+emptyModelContext = MCtx []
+
+-- | The number of constraints to keep in the model's context
+mk :: Int
+mk = 1
+
+-- | Remove the cointext from a variable
+removeContextFromVariable :: SymVar -> SymVar
+removeContextFromVariable (SymVar ℓ ℓs mctx) = SymVar ℓ ℓs emptyModelContext
+
+-- | Remove the model context from the formula
+removeContextFromFormula :: Formula SymVar -> Formula SymVar
+removeContextFromFormula = mapVariables removeContextFromVariable 
+
+-- | Push a constraint at the beginning of the models context
+pushMK :: ModelContext -> PC -> ModelContext
+pushMK (MCtx pcs) = MCtx . take mk .  (: pcs) . removeContextFromFormula
+
+-- | Adapt a single variable so that they use the given model context 
+-- instead of their current one
+adaptVariable :: ModelContext -> SymVar -> SymVar
+adaptVariable newCtx (SymVar ℓ context _) = SymVar ℓ context newCtx
+
+-- | Adapt a model so that the symbolic variables of the model use 
+-- the given context instead of their current one
+adaptModel :: ModelContext -> Model -> Model
+adaptModel ctx = Map.mapKeys (adaptVariable ctx)
+
+------------------------------------------------------------
 -- Address allocation
 ------------------------------------------------------------
 
@@ -179,11 +221,11 @@ alloc = Adr
 -- Allocation of symbolic variables 
 ------------------------------------------------------------
 
-fresh :: Span -> [Span] -> Symbolic Val
-fresh ℓ = SymbolicVal . Variable . freshVar ℓ
+fresh :: Span -> [Span] -> ModelContext -> Symbolic Val
+fresh ℓ ℓs = SymbolicVal . Variable . freshVar ℓ ℓs
 
-freshVar :: Span -> [Span] -> SymVar
-freshVar = alloc
+freshVar :: Span -> [Span] -> ModelContext -> SymVar
+freshVar = SymVar
 
 ------------------------------------------------------------
 -- Random sequences
@@ -255,10 +297,10 @@ type SmallstepM m = (MonadReader ConcolicContext m, MonadWriter SuccessorMap m, 
 
 newtype SuccessorMap = SuccessorMap { getSuccessorMap :: Map State (Set State) }
 
-instance Semigroup SuccessorMap where  
+instance Semigroup SuccessorMap where
    (<>) m = SuccessorMap . Map.unionWith Set.union (getSuccessorMap m) . getSuccessorMap
-instance Monoid SuccessorMap where  
-   mempty = SuccessorMap $ Map.empty 
+instance Monoid SuccessorMap where
+   mempty = SuccessorMap Map.empty
    mappend = (<>)
 
 ------------------------------------------------------------
@@ -269,35 +311,38 @@ instance Monoid SuccessorMap where
 data Control = Ev Exp Env | Ap Val
             deriving (Ord, Eq)
 
-instance Show Control where   
+instance Show Control where
    show (Ev e _) = "ev(" ++ show e ++ ")"
    show (Ap v) = "ap(" ++ show v ++ ")"
 
 -- | Continuations
-data Kont = LetK Adr Env [Binding] Exp KAdr
+data Kont = LetK Adr Env [Binding] Exp (KAdr [Span])
          deriving (Eq, Ord, Show)
 
 -- | Push a continuation on the continuation stack by allocating an address 
 -- store the continuation there and linking it with the given address
-pushKont :: (Ord a)
+pushKont :: (Ord a, Ord k, Show k)
          => Span          -- ^ allocation site for the continuation
-         -> Context       -- ^ calling context
+         -> k       -- ^ calling context
          -> a
-         -> Map KAdr (Set a) -- ^ the continuation store
-         -> (KAdr, Map KAdr (Set a))
+         -> Map (KAdr k) (Set a) -- ^ the continuation store
+         -> (KAdr k, Map (KAdr k) (Set a))
 pushKont ℓ context kont σ = (adr, σ')
    where adr = KAdr ℓ context
          σ'  = extendSto adr (Set.singleton kont) σ
 
+-- | Failure continuation addresses
+type FAdr = KAdr ([Span], ModelContext)
+
 -- | Failure continuations 
-data Kontf = Branch PC KAdr
+data Kontf = Branch PC FAdr
            deriving (Eq, Ord, Show)
 
 -- | Continuation store
-type KSto = Map KAdr (Set Kont)
+type KSto = Map (KAdr [Span]) (Set Kont)
 
 -- | Failure continuation store
-type FSto = Map KAdr (Set Kontf)
+type FSto = Map FAdr (Set Kontf)
 
 -- | Abstract machine states
 data State = State {
@@ -306,11 +351,11 @@ data State = State {
       -- | (Local) Store component
       store :: Sto,
       -- | Top of the continuation stack
-      top :: KAdr,
+      top :: KAdr [Span],
       -- | Local continuation store
       kont :: KSto,
       -- | Top of the failure continuation stack
-      topFail :: KAdr,
+      topFail :: FAdr,
       -- | Failure continuation storez
       kontf :: FSto,
       -- | Calling context
@@ -322,11 +367,13 @@ data State = State {
       -- | Abstract counting map
       counts :: Map SymVar AbstractCount,
       -- | Path condition
-      pc :: PC
+      pc :: PC, 
+      -- | The model context
+      mcontext :: ModelContext
    }
 
-instance Show State where  
-   show (State { .. }) = 
+instance Show State where
+   show (State { .. }) =
       "⟨" ++ show control ++ ", σ, " ++ show top ++ "," ++  "<kstore> ," ++ show topFail ++ "," ++ show context ++ "," ++ show model ++ "," ++ show rvs ++ "," ++ show counts ++ "," ++ show pc ++ "⟩"
 
 deriving instance (Eq (PaiDom Val), Eq (VecDom Val), Eq (StrDom Val)) => Eq State
@@ -342,19 +389,19 @@ lookupModel :: SymVar -> Model -> RandomSeq -> (PVal, RandomSeq)
 lookupModel var mod vs = maybe (takeSeq vs) (,vs) (Map.lookup var mod)
 
 -- | Convert an SMT model to a ASE model
-convertModel :: Symbolic.Model SymVar -> Model 
+convertModel :: Symbolic.Model SymVar -> Model
 convertModel = Map.map (Lat.joins . Set.map mapValue) . Symbolic.getModel
    where mapValue (Symbolic.Num n) = Domain.inject n
-         mapValue (Symbolic.Rea r) = Domain.inject r 
-         mapValue (Symbolic.Boo b) = Domain.inject b 
+         mapValue (Symbolic.Rea r) = Domain.inject r
+         mapValue (Symbolic.Boo b) = Domain.inject b
          mapValue (Symbolic.Cha c) = Domain.inject c
          mapValue (Symbolic.Sym a) = symbol a
 
 -- | Compute an assignment for the model (if one is available)
 computeModel :: SmallstepM m => Map SymVar AbstractCount -> PC -> m (Maybe Model)
-computeModel c pc = do 
-      result <- solve c pc 
-      if isSat result then 
+computeModel c pc = do
+      result <- solve c pc
+      if isSat result then
          Just . convertModel <$> getModel c pc
       else return Nothing
 
@@ -380,7 +427,7 @@ atomicEval (Atomically lam@(Lam {})) env _ = injectClo (lam, env)
 atomicEval (Atomically (Literal l _)) _ _ = injectLit l
 atomicEval (Atomically (Self {})) _ _ = error "self not supported"
 atomicEval (Atomically (Var (Ide nam _))) env sto =
-   fromMaybe (error $ "variable " ++ nam ++ " not found " ++ show sto ++ (show $ Map.lookup nam env)) (Map.lookup nam env >>= (fmap fromRVal . flip Map.lookup sto))
+   fromMaybe (error $ "variable " ++ nam ++ " not found " ++ show sto ++ show (Map.lookup nam env)) (Map.lookup nam env >>= fmap fromRVal . flip Map.lookup sto)
 atomicEval (Atomically e) _ _ =
    error $
        "unreachable case because of values produced by `isAtomic` so either `isAtomic` is wrong or we are missing cases."
@@ -405,8 +452,8 @@ stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) =
          where value = atomicEval (assertAtomic e1) ρ store
                φt =  conjunction (Atomic (symbolic $ assertTrue value)) pc
                φf =  conjunction (Atomic (symbolic $ assertFalse value)) pc
-               (topTrue, kontf't) = pushKont (spanOf ite) context (Branch φf topFail) kontf
-               (topFalse, kontf'f) = pushKont (spanOf ite) context (Branch φt topFail) kontf
+               (topTrue, kontf't) = pushKont (spanOf ite) (context, mcontext) (Branch φf topFail) kontf
+               (topFalse, kontf'f) = pushKont (spanOf ite) (context, mcontext) (Branch φt topFail) kontf
                newSt e φ' kontf' topFail' = state { control = Ev e ρ, pc = φ', topFail = topFail', kontf = kontf'  }
 -- ST-App
 stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) = return $ justOrBot $
@@ -422,15 +469,15 @@ stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) = 
 -- ST-Input
 stepCompound st@(State { control = Ev (Input ℓ) _, .. }) =
       return $ Set.singleton $ st { control = Ap (combine value freshSymVar), rvs = vs', counts = counts' }
-   where (value, vs') = lookupModel (freshVar ℓ context) model rvs
-         freshSymVar = fresh ℓ context
-         counts' = Map.insertWith (const . const CountInf) (freshVar ℓ context) CountOne counts
+   where (value, vs') = lookupModel (freshVar ℓ context mcontext) model rvs
+         freshSymVar = fresh ℓ context mcontext
+         counts' = Map.insertWith (const . const CountInf) (freshVar ℓ context mcontext) CountOne counts
 -- ST-Let1
 stepCompound st@(State { control = Ev (Letrec ((nam,exp):bds) bdy _) ρ, .. }) =
       return $ Set.singleton $ st { control = Ev exp ρ', kont = kont', top = top' }
    where (top', kont') = pushKont (spanOf nam) context (LetK adr ρ' bds bdy top) kont
          -- pre allocate address so variable exists in the lexical scope 
-         adr = alloc (spanOf nam) context 
+         adr = alloc (spanOf nam) context
          ρ' = Map.insert (name nam) adr ρ
 stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) =
       return $ Set.singleton $ st { control = Ev bdy ρ }
@@ -454,18 +501,29 @@ step' state@(State { control = Ev e ρ, store = σ }) =
       Left  atom -> return $ Set.singleton $ state { control = Ap (atomicEval atom ρ σ) }
       Right _ -> stepCompound state
 -- final state, nothing to do anymore
-step' (State (Ap _) _ Hlt _ Hlt _  _ _ _ _ _) = return Set.empty
+step' (State (Ap _) _ Hlt _ Hlt _  _ _ _ _ _ _) = return Set.empty
 -- ST-Backtrack
-step' st@(State (Ap _) _ Hlt _ topFail ψ _ _ _ c _) =
-      foldMapM applyKont (fromMaybe Set.empty $ Map.lookup topFail ψ) 
-   where applyKont (Branch cnd topFail') = do 
+step' st@(State (Ap _) _ Hlt _ topFail ψ _ model _ c  _ mcontext) =
+      foldMapM applyKont (fromMaybe Set.empty $ Map.lookup topFail ψ)
+   where applyKont (Branch cnd topFail') = do
             ec <- ask
-            maybeModel <- computeModel c cnd 
-            -- XXX: we set the abstract counts to the empty map here since we restart 
-            -- the execution, but since we are also abstracting the concolic iterations 
-            -- do we need to keep that into account? Probably not? Why?
-            maybe (return Set.empty) (\model' -> return $ Set.singleton $ st { kont = Map.empty, store = initialStoreExecutor ec, control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), model = model', topFail = topFail', counts = Map.empty, pc = emptyFormula, context = [] } ) maybeModel
-         
+            maybeModel <- computeModel c cnd
+            let context' = pushMK mcontext cnd
+            let mkModel model' = adaptModel context' (Map.withoutKeys model' (Set.difference (Map.keysSet model') (Map.keysSet c) ))
+            maybe (return Set.empty)
+                 (\model' -> if model == Map.empty then return Set.empty else 
+                     return $ Set.singleton $ 
+                        st { kont = Map.empty,
+                             store = initialStoreExecutor ec,
+                             control = Ev (initialExpExecutor ec) (initialEnvExecutor ec), 
+                             model = Lat.join model (mkModel model'), 
+                             topFail = topFail',
+                             counts = Map.empty, 
+                             pc = emptyFormula, 
+                             context = [], 
+                             mcontext = context' 
+                        } ) maybeModel
+
 -- ST-Let2
 step' st@(State { control = (Ap v), .. }) =
       return $ Set.map applyKont (fromMaybe Set.empty $ Map.lookup top kont)
@@ -474,7 +532,7 @@ step' st@(State { control = (Ap v), .. }) =
                in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
 
 step :: SmallstepM m => State -> m (Set State)
-step inn = do 
+step inn = do
    successors <- step' inn -- (Debug.traceShowId inn)
    tell (SuccessorMap $ Map.singleton inn successors)
    return successors
@@ -546,11 +604,11 @@ runInPrimMStack initialSto context m = foldMap extract . Set.fromList <$>  run (
 ------------------------------------------------------------
 
 isFinalState :: State -> Bool
-isFinalState (State (Ap _) _ Hlt _ Hlt _ _ _ _ _ _) = True
+isFinalState (State (Ap _) _ Hlt _ Hlt _ _ _ _ _ _ _) = True
 isFinalState _ = False
 
-isStuckState :: SuccessorMap -> State -> Bool 
-isStuckState succs st = 
+isStuckState :: SuccessorMap -> State -> Bool
+isStuckState succs st =
    Set.size (fromMaybe Set.empty (Map.lookup st (getSuccessorMap succs))) == 0
 
 ------------------------------------------------------------
@@ -563,13 +621,13 @@ collect = foldMapM step
 
 -- | Incremental computation of the least fixed point by only considering the 
 -- successors states produced in the previous iteration for the next iteration
-lfpInc' :: (Monad m, PartialOrder v, Joinable v, Show v) => (v -> m v) -> v -> v -> m v
-lfpInc' f acc ss = do  
-   nxt <- f ss
+lfpInc' :: (Monad m, PartialOrder v, Joinable v, Show v, v ~ Set State) => (v -> m v) -> v -> v -> m v
+lfpInc' f acc ss = do
+   nxt <- f ss -- Debug.trace ("number of states in accumulator " ++ show (Set.size acc)) $ f ss
    let acc' = Lat.join nxt acc
    if subsumes acc' acc && not (subsumes acc acc') then lfpInc' f acc' nxt else return acc'
 
-lfpInc :: (Monad m, PartialOrder v, Joinable v, Show v) => (v -> m v) -> v -> m v
+lfpInc :: (Monad m, PartialOrder v, Joinable v, Show v, v ~ Set State) => (v -> m v) -> v -> m v
 lfpInc f initial = lfpInc' f initial initial
 
 -- | Compute the least fix point assuming that the output of the function 
@@ -584,12 +642,12 @@ analysisStore = RVal <$> initialSto allPrimitives PrimAdr
 
 inject :: Exp -> State
 inject e =
-   State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq Map.empty emptyFormula
+   State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq Map.empty emptyFormula emptyModelContext
 
 runContext :: Exp -- ^ the initial expression
            -> ReaderT ConcolicContext (WriterT SuccessorMap (CachedSolver SymVar (Z3Solver SymVar))) a
            -> IO (a, SuccessorMap)
-runContext e0 m = 
+runContext e0 m =
          runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0)
        & runWriterT
        & runCachedSolver

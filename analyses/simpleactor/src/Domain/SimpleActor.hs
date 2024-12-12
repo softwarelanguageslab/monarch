@@ -17,20 +17,20 @@ import Data.Kind
 
 type AdrK = Type -> Type
 
-type ActorValue' k (adr :: AdrK) (padr :: AdrK) (vadr :: AdrK) (sadr :: AdrK) = PairedSymbolic 
-   (CPActorValue adr padr vadr sadr k Exp)  Exp k (adr k)
+type ActorValue' k (adr :: AdrK) (padr :: AdrK) (vadr :: AdrK) (sadr :: AdrK) sym = PairedSymbolic 
+   (CPActorValue adr padr vadr sadr k Exp)  Exp k sym
 
 -- | Actor value with standard Scheme addresses
-type ActorValue k = ActorValue' k EnvAdr (PaiAdrE Exp) (VecAdrE Exp) (StrAdrE Exp)
+type ActorValue k sym = ActorValue' k EnvAdr (PaiAdrE Exp) (VecAdrE Exp) (StrAdrE Exp) sym
 
 -- | A variant of the actor value with the same address for every type of address
-type ActorValueUnified k (adr :: Type -> Type) = PairedSymbolic 
-   (CPActorValue adr adr adr adr k Exp)  Exp k (adr k)
+type ActorValueUnified k (adr :: Type -> Type) sym = PairedSymbolic 
+   (CPActorValue adr adr adr adr k Exp)  Exp k sym
 
-type instance VarDom (ActorValue' k adr padr vadr sadr) = ActorValue' k adr padr vadr sadr
-type instance VecDom (ActorValue' k adr padr vadr sadr) = PIVector (ActorValue' k adr padr vadr sadr) (ActorValue' k adr padr vadr sadr)
-type instance PaiDom (ActorValue' k adr padr vadr sadr) = SimplePair (ActorValue' k adr padr vadr sadr)
-type instance StrDom (ActorValue' k adr padr vadr sadr) = SchemeString (CP String) (ActorValue' k adr padr vadr sadr)
+type instance VarDom (ActorValue' k adr padr vadr sadr sym) = ActorValue' k adr padr vadr sadr sym
+type instance VecDom (ActorValue' k adr padr vadr sadr sym) = PIVector (ActorValue' k adr padr vadr sadr sym) (ActorValue' k adr padr vadr sadr sym)
+type instance PaiDom (ActorValue' k adr padr vadr sadr sym) = SimplePair (ActorValue' k adr padr vadr sadr sym)
+type instance StrDom (ActorValue' k adr padr vadr sadr sym) = SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)
 
 type family ForAllAdr (c :: [Type -> Constraint]) v :: Constraint where   
    ForAllAdr '[] v = () 
@@ -38,10 +38,10 @@ type family ForAllAdr (c :: [Type -> Constraint]) v :: Constraint where
 
 -- TODO: this is actually from `maf2-scv` in `Domain.Symbolic.CPDomain` which 
 -- reflects `ActorValue` perhaps we should use that instead.
-instance (Show k, Ord k, ForAllAdr '[Show, Eq, Ord] (ActorValue' k adr padr vadr sadr)) => StringDomain (SchemeString (CP String) (ActorValue' k adr padr vadr sadr)) where
-   type IntS (SchemeString (CP String) (ActorValue' k adr padr vadr sadr)) = ActorValue' k adr padr vadr sadr
-   type ChaS (SchemeString (CP String) (ActorValue' k adr padr vadr sadr)) = ActorValue' k adr padr vadr sadr
-   type BooS (SchemeString (CP String) (ActorValue' k adr padr vadr sadr)) = ActorValue' k adr padr vadr sadr
+instance (Show k, Ord k, Eq sym, Ord sym, ForAllAdr '[Show, Eq, Ord] (ActorValue' k adr padr vadr sadr sym)) => StringDomain (SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)) where
+   type IntS (SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)) = ActorValue' k adr padr vadr sadr sym
+   type ChaS (SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)) = ActorValue' k adr padr vadr sadr sym
+   type BooS (SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)) = ActorValue' k adr padr vadr sadr sym
    length = (length . sconst) >=> (return . mkLeft . insertInt)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = mkLeft . insertChar <$> (ref (sconst s) =<< integers (leftValue i))

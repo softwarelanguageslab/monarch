@@ -157,10 +157,10 @@ translate' Empty = return "true"
 -- occur in other constraints), variables with an abstract 
 -- count of exactly one are translated to regular variables 
 -- and can occur in multiple constraints.
-translate :: (Ord i) => Map i AbstractCount -> Formula i -> (String, Set String, Map i (Set String))
+translate :: (Ord i, Show i) => Map i AbstractCount -> Formula i -> (String, Set String, Map i (Set String))
 translate count formula = (t, allVariables', mappedVariables')
    where vars = filter countOne $ Set.toList $ variables formula
-         countOne var = leq (fromJust $ Map.lookup var count) CountOne
+         countOne var = leq (fromMaybe (error $ "variable " ++ show var ++ " not found in the abstract count map") $ Map.lookup var count) CountOne
          syms = Map.fromList (zip vars (map (("x" ++) . show) [0..length vars]))
          (t, TranslationMappingState { .. }) = runState (runReaderT (translate' formula) syms) initialMappingState
          -- some variables will be unconstrained (e.g., because of abstraction) but they still need to get values 

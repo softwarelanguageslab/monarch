@@ -25,30 +25,16 @@ import Domain.Scheme.Class (PaiDom, VecDom, StrDom)
 import qualified Data.Map as Map
 import Data.Kind (Type, Constraint)
 import Domain.SimpleActor
-import Analysis.Symbolic.Monad (FormulaT)
+import Analysis.Symbolic.Monad
+    ( FormulaT )
 import Solver.Z3 (runZ3SolverWithSetup)
 import Solver
 import Symbolic.AST ( emptyPC, PC )
 import qualified Symbolic.SMT as SMT
-import Analysis.Store (CountingMap, Store)
-import Analysis.Monad.Store ()
+import Analysis.Store (CountingMap)
 import Data.Maybe
-import Syntax.Span
-import Analysis.Monad.Context (MCfaT)
-import Debug.Trace
 import Analysis.Context (emptyMcfaContext)
-import Control.Monad.IO.Class
-import Control.Monad (void)
-import Control.Monad.Trans
-import Control.Monad.Layer (MonadLayer)
-import Control.Monad.Reader (ReaderT (ReaderT))
-import Control.Monad.Join (MonadJoinable)
 import Control.Monad.State
-import Lattice (Joinable)
-import Domain (Address)
-import Analysis.Monad.Store (WidenedStoreT)
-import Analysis.Monad (evalWithWidenedStore)
-import Analysis.Symbolic.Monad (WidenedFormulaT, evalWithWidenedFormulaT, pathWideningPerComponent, pathWideningPerComponentEval)
 
 ------------------------------------------------------------
 -- Shortcuts
@@ -56,7 +42,7 @@ import Analysis.Symbolic.Monad (WidenedFormulaT, evalWithWidenedFormulaT, pathWi
 
 type K = [Span]
 type ActorRef = Pid Exp K
-type ActorVlu = ActorValue K
+type ActorVlu = ActorValue K (EnvAdr K)
 type ActorEnv = Map String (EnvAdr K)
 type ActorCmp = Key (IntraT Identity) Cmp
 type ActorRes = Val (IntraT Identity) ActorVlu
@@ -107,14 +93,14 @@ type MonadInter m =
       ( MapM ActorCmp ActorRes m,
         WorkListM m ActorCmp,
         ComponentTrackingM m ActorCmp,
-        DependsOn m ActorCmp '[ 
-            ActorCmp , 
-            EnvAdr K, 
-            Pid Exp K, 
-            PaiAdrE Exp K, 
-            VecAdrE Exp K, 
-            StrAdrE Exp K, 
-            In ActorCmp ActorSto, 
+        DependsOn m ActorCmp '[
+            ActorCmp ,
+            EnvAdr K,
+            Pid Exp K,
+            PaiAdrE Exp K,
+            VecAdrE Exp K,
+            StrAdrE Exp K,
+            In ActorCmp ActorSto,
             Out ActorCmp ActorSto ],
             -- In ActorCmp ActorPC,
             -- Out ActorCmp ActorPC ],
@@ -148,7 +134,7 @@ mainStore e = fromJust . Map.lookup (Out (initialCmp e))
 
 intra :: forall m . MonadInter m
  => ActorCmp -> m ()
-intra cmp = void 
+intra cmp = void
              (runFixT @(IntraT (IntraAnalysisT ActorCmp m)) eval' cmp
            & runAlloc @Ide @K @(EnvAdr K) EnvAdr
            & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr

@@ -18,6 +18,7 @@ module Symbolic.AST
     emptyFormula,
     PC,
     Model(..),
+    mapVariables
   )
 where
 
@@ -27,11 +28,7 @@ import Data.List (intercalate)
 import qualified Data.Set as Set
 import GHC.Generics
 import Control.DeepSeq
-import qualified Syntax.Scheme.Parser as SExp
-import Syntax.Scheme.Parser (pattern (:::))
 import Data.Map (Map)
-import qualified Data.Map as Map
-import Control.Monad.Except
 
 -- | A literal as they appear in a source program
 data Literal
@@ -176,6 +173,9 @@ instance (Ord i) => SelectVariable (Proposition i) i where
   variables (Application p1 p2) = variables p1 `Set.union` mconcat (map variables p2)
   variables (Function _) = Set.empty
 
+------------------------------------------------------------
+-- Solver results
+------------------------------------------------------------
 
 -- | The model of an SMT formula is an assignment of variables 
 -- to their values
@@ -201,4 +201,30 @@ isUnknown :: SolverResult -> Bool
 isUnknown Unknown = True
 isUnknown _ = False
 
+------------------------------------------------------------
+-- Transformation of the path constraint
+------------------------------------------------------------
 
+class MapVariables e where
+   mapVariables :: Ord i => (i -> i ) -> e i -> e i
+
+instance MapVariables Proposition where   
+   mapVariables f (Variable i) = Variable (f i)
+   mapVariables _ fun@(Function _) = fun
+   mapVariables _ lit@(Literal _) = lit 
+   mapVariables f (IsTrue prop) = IsTrue (mapVariables f prop) 
+   mapVariables f (IsFalse prop) = IsFalse (mapVariables f prop) 
+   mapVariables f (Predicate nam props) = Predicate nam (map (mapVariables f) props)
+   mapVariables f (Application operator operands) = Application (mapVariables f operator) (map (mapVariables f) operands)
+   mapVariables _ Tautology = Tautology 
+   mapVariables _ Fresh = Fresh 
+   mapVariables _ Bottom = Bottom
+
+
+instance MapVariables Formula where 
+   mapVariables f (Conjunction fs) = Conjunction $ Set.map (mapVariables f) fs
+   mapVariables f (Disjunction fs) = Disjunction $ Set.map (mapVariables f) fs 
+   mapVariables f (Implies f1 f2)  = Implies (mapVariables f f1) (mapVariables f f2)
+   mapVariables f (Negation prop) = Negation (mapVariables f prop)
+   mapVariables f (Atomic prop) = Atomic (mapVariables f prop)
+   mapVariables _ Empty = Empty
