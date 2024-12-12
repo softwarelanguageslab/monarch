@@ -57,6 +57,7 @@ makeLenses ''TranslationMappingState
 registerMapped :: TranslateM i m => i -> String -> m ()
 registerMapped k v = do
    modify (over mappedVariables (Map.insertWith Set.union k (Set.singleton v)))
+   registerUnmapped v
 
 -- | Register an unmapped variable
 registerUnmapped :: TranslateM i m => String -> m ()
