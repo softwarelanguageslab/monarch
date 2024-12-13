@@ -18,7 +18,7 @@ import Options.Applicative
 import Syntax.AST hiding (filename)
 import Interpreter hiding (PrmAdr, store)
 import qualified Analysis.Store as Store
-import qualified Analysis.Smallstep as Smallstep
+import qualified Analysis.ASE.Smallstep as Smallstep
 import System.IO
 import Control.Monad
 
@@ -95,7 +95,7 @@ printGraph h succs = hPutStrLn h "digraph {" >> mapM_ (hPutStrLn h . showEdge) e
          edges = concatMap (\(st, nxts) -> map ( (showNode st,) . showNode) (Set.toList nxts)) (Map.toList succs)
          showEdge (from, to) = "\t" ++ show from ++ " -> " ++ show to ++ ";"
 
-printSmallstepResult :: Bool -> (Set Smallstep.State, Smallstep.SuccessorMap) -> IO () 
+printSmallstepResult :: Bool -> (Set Smallstep.State, Smallstep.SuccessorMap Smallstep.State) -> IO () 
 printSmallstepResult debug (states, succs) = do
    putStrLn $ "Found " ++ show (Set.size states) ++ " reachable states"
    let finalStates = find Smallstep.isFinalState states
