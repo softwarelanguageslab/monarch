@@ -6,13 +6,12 @@ import Syntax.AST
 import Domain.SimpleActor
 import Domain.Scheme.Class hiding (Env, Exp, Adr)
 import Domain.Symbolic.Class
-import Lattice.Class (Joinable)
+import Lattice.Class (Joinable, BottomLattice)
 import qualified Lattice.Class as Lat
-import Symbolic.AST hiding (Model, PC)
+import Symbolic.AST hiding (Literal, getModel, Model, PC)
+import Syntax.Span
 import Solver
 
-import Data.Map (Map)
-import Data.Set(Set)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Control.Monad.Reader
@@ -20,6 +19,24 @@ import Control.Monad.Writer (MonadWriter)
 import System.Random
 import Domain.Symbolic.Paired (SymbolicVal(..))
 import qualified Domain.Class as Domain
+import Domain.Core.AbstractCount (AbstractCount)
+import qualified Symbolic.AST as Symbolic hiding (Literal)
+import Data.Kind
+import Analysis.Monad.Store
+import RIO
+import Domain.Core hiding (length)
+import Domain.Scheme (SchemeString)
+import Lattice.ConstantPropagationLattice
+import Analysis.Store
+import Analysis.Monad.Stack (MonadStack)
+import Control.Monad.Escape
+import Control.Monad.DomainError
+import Analysis.Monad.Allocation
+import Analysis.Monad.Context
+import Analysis.Monad.Join
+import Analysis.Monad.Cache hiding (Val)
+import Analysis.SimpleActor.Semantics (injectLit)
+import Data.Maybe
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -156,7 +173,7 @@ mk = 1
 
 -- | Remove the cointext from a variable
 removeContextFromVariable :: SymVar -> SymVar
-removeContextFromVariable (SymVar ℓ ℓs mctx) = SymVar ℓ ℓs emptyModelContext
+removeContextFromVariable (SymVar ℓ ℓs _) = SymVar ℓ ℓs emptyModelContext
 
 -- | Remove the model context from the formula
 removeContextFromFormula :: Formula SymVar -> Formula SymVar
@@ -297,3 +314,122 @@ type KSto = Map (KAdr [Span]) (Set Kont)
 
 -- | Failure continuation store
 type FSto = Map FAdr (Set Kontf)
+
+------------------------------------------------------------
+-- Interaction with the model
+------------------------------------------------------------
+
+-- | Lookup a symbolic variable from the model or return a random
+-- one of there is no such variable
+lookupModel :: SymVar -> Model -> RandomSeq -> (PVal, RandomSeq)
+lookupModel var mod vs = maybe (takeSeq vs) (,vs) (Map.lookup var mod)
+
+-- | Convert an SMT model to a ASE model
+convertModel :: Symbolic.Model SymVar -> Model
+convertModel = Map.map (Lat.joins . Set.map mapValue) . Symbolic.getModel
+   where mapValue (Symbolic.Num n) = Domain.inject n
+         mapValue (Symbolic.Rea r) = Domain.inject r
+         mapValue (Symbolic.Boo b) = Domain.inject b
+         mapValue (Symbolic.Cha c) = Domain.inject c
+         mapValue (Symbolic.Sym a) = symbol a
+
+-- | Compute an assignment for the model (if one is available)
+computeModel :: SmallstepM s m => Map SymVar AbstractCount -> PC -> m (Maybe Model)
+computeModel c pc = do
+      result <- solve c pc
+      if isSat result then
+         Just . convertModel <$> getModel c pc
+      else return Nothing
+
+------------------------------------------------------------
+-- Atomic evaluation 
+------------------------------------------------------------
+
+newtype IsAtomic e = Atomically e
+
+-- | Checks whether an expression is atomic
+isAtomic :: Exp -> Either (IsAtomic Exp) Exp
+isAtomic e = case e of
+               Lam {}      -> Left $ Atomically e
+               Self {}     -> Left $ Atomically e
+               Literal {}  -> Left $ Atomically e
+               Var {}      -> Left $ Atomically e
+               _           -> Right e
+
+-- | Evaluate an atomic expression, fails 
+-- if the expression is non-atomic
+atomicEval :: IsAtomic Exp -> Env -> Sto -> Val
+atomicEval (Atomically lam@(Lam {})) env _ = injectClo (lam, env)
+atomicEval (Atomically (Literal l _)) _ _ = injectLit l
+atomicEval (Atomically (Self {})) _ _ = error "self not supported"
+atomicEval (Atomically (Var (Ide nam _))) env sto =
+   fromMaybe (error $ "variable " ++ nam ++ " not found " ++ show sto ++ show (Map.lookup nam env)) (Map.lookup nam env >>= fmap fromRVal . flip Map.lookup sto)
+atomicEval (Atomically e) _ _ =
+   error $
+       "unreachable case because of values produced by `isAtomic` so either `isAtomic` is wrong or we are missing cases."
+    ++ "Failed on " ++ show e
+
+-- | Forces the expression to be atomic, if it is not atomic results in a run-time error
+assertAtomic :: Exp -> IsAtomic Exp
+assertAtomic e = fromLeft (error $ "not an atomic" ++ show e) $ isAtomic e
+
+------------------------------------------------------------
+-- Adaptor into the monadic stack for the primitives
+------------------------------------------------------------
+
+-- | Same as @StoreT@ but accepts a type constructor as it first argument, 
+-- which is given the @k@ and @v@.
+type StoreT' (s :: Type -> Type -> Type) k v = (StoreT (s k v) k v)
+
+class Coerce from to where
+   coerce :: from -> to
+instance Coerce AllVal (SimplePair Val) where
+   coerce = fromJust . isPVal
+instance Coerce AllVal (PIVector Val Val) where
+   coerce = fromJust . isVVal
+instance Coerce AllVal (SchemeString (CP String) Val) where
+   coerce = fromJust . isSVal
+instance Coerce (SimplePair Val) AllVal where
+   coerce = ConsVal
+instance Coerce (PIVector Val Val) AllVal where
+   coerce = VecVal
+instance Coerce (SchemeString (CP String) Val) AllVal  where
+   coerce = StrVal
+
+newtype CoerceStore from adr to = CoerceStore { getCoerce :: Map adr from } deriving (Eq, Ord, Show, Joinable, BottomLattice)
+
+instance (Coerce from to, Coerce to from, Joinable from, Joinable to, Ord adr) => Store (CoerceStore from adr to) adr to where
+   emptySto = CoerceStore emptySto
+   lookupSto adr = fmap coerce . lookupSto adr . getCoerce
+   extendSto adr val = CoerceStore . extendSto adr (coerce val) . getCoerce
+   updateSto adr val = CoerceStore . updateSto adr (coerce val) . getCoerce
+   updateStoWith = undefined
+
+
+type AdaptT m a = MonadStack '[
+                  MayEscapeT (Set DomainError),
+                  AllocT Exp Context Adr,
+                  CtxT Context,
+                  StoreT' (CoerceStore AllVal) Adr (PaiDom Val),
+                  StoreT' (CoerceStore AllVal) Adr (StrDom Val),
+                  StoreT' (CoerceStore AllVal) Adr (VecDom Val),
+                  NonDetT,
+                  CacheT
+               ] m a
+
+runInPrimMStack :: (Monad m, Ord a)
+                => Sto -- ^ the initial store 
+                -> Context -- ^ the current context
+                -> AdaptT m a -- ^ the monadic computation to run 
+                -> m (Set (a, Sto))
+runInPrimMStack initialSto context m = foldMap extract . Set.fromList <$>  run (const m) initialState
+                                                                         & runAlloc @Exp @Context @Adr (Adr . spanOf)
+      where extract (((v, paiSto), strSto), vecSto) =
+                          case v of
+                              Value v -> Set.singleton (v, combine paiSto strSto vecSto)
+                              MayBoth v _ -> Set.singleton (v, combine paiSto  strSto vecSto)
+                              _ -> Set.empty
+            combine paiSto strSto vecSto = Lat.joins [getCoerce paiSto, getCoerce strSto, getCoerce vecSto] -- XXX: this undoes any strong updates since the pair store will not have the same updates as the strStore!
+            initialCoerceSto :: CoerceStore AllVal Adr to
+            initialCoerceSto = CoerceStore initialSto
+            initialState = (((((), context), initialCoerceSto), initialCoerceSto), initialCoerceSto)

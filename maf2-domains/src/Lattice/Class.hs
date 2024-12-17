@@ -1,4 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
 module Lattice.Class (
    Joinable(..), 
    TopLattice(..),
@@ -11,10 +13,12 @@ module Lattice.Class (
    overlap,
    joins,
    joins1,
-   joinMap 
+   joinMap,
+   joinMapM,
 ) where
 
 import Data.Void
+import Data.Foldable (foldrM)
 
 ------------------------------------------------------------
 --- Joinable / JoinLattice
@@ -47,6 +51,10 @@ joins1 = foldr1 join
 -- | Like foldMap, folding all mapped values using a join
 joinMap :: (Joinable v, BottomLattice v, Foldable t) => (a -> v) -> t a -> v  
 joinMap f = foldr (join . f) bottom 
+
+-- | A version of @joinMap@ that is monadic in its return value
+joinMapM :: (Monad m, Joinable v, BottomLattice v, Foldable t) => (a -> m v) -> t a -> m v
+joinMapM f = foldrM (\x v -> join <$> (f x) <*> return v) bottom
 
 -- | A lattice with a top element
 class TopLattice v where 

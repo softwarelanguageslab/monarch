@@ -19,6 +19,8 @@ import Syntax.AST hiding (filename)
 import Interpreter hiding (PrmAdr, store)
 import qualified Analysis.Store as Store
 import qualified Analysis.ASE.Smallstep as Smallstep
+import qualified Analysis.ASE.Common as ASE
+import qualified Analysis.ASE.WidenedStates as SmallStepWidened
 import System.IO
 import Control.Monad
 
@@ -49,7 +51,8 @@ commandParser =
    subparser
     (   command "smallstep" (info (smallstepCmd <$> inputOptions) (progDesc "Analyze a program using the ASE in small-step"))
     <>  command "analyze" (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
-    <>  command "eval"    (info (interpret <$> inputOptions) (progDesc "Run a program")))
+    <>  command "eval"    (info (interpret <$> inputOptions) (progDesc "Run a program"))
+    <>  command "smallstepw" (info (smallstepWideningCmd <$> inputOptions) (progDesc "Analyze a program using ASE in small-step, widened version")))
 
 
 ------------------------------------------------------------
@@ -117,6 +120,32 @@ printSmallstepResult debug (states, succs) = do
 smallstepCmd :: InputOptions -> IO ()
 smallstepCmd (InputOptions { .. }) = do
    loadFile' doTranslate filename >>= Smallstep.analyze >>= printSmallstepResult debug
+
+------------------------------
+-- Smallstep with widening
+------------------------------
+
+
+printSmallstepWidenedResult :: Bool -> ((SmallStepWidened.Shared, Set SmallStepWidened.State), Smallstep.SuccessorMap SmallStepWidened.State) -> IO () 
+printSmallstepWidenedResult debug ((shared, states), succs) = do
+   putStrLn $ "Found " ++ show (Set.size states) ++ " reachable states"
+   let finalStates = find SmallStepWidened.isFinalState states
+   maybe (putStrLn "No final states found (machine is stuck or only contains cycles, i.e., result is bottom)") (putStrLn . ("Final state is " ++) . show) finalStates
+   when debug $ do 
+      putStrLn "Debug mode is enabled using the --debug flag, printing stuck states ..."
+      let stuckStates = Set.filter (SmallStepWidened.isStuckState succs) states
+      if Set.size stuckStates == 0 then 
+         putStrLn "No stuck states"
+      else 
+         mapM_ print (Set.toList stuckStates)
+      --putStrLn "Outputting graph to output/st_graph.dot ..." 
+      --file <- openFile "./output/st_graph.dot" WriteMode
+      -- printGraph file (ASE.getSuccessorMap succs)
+      --hClose file
+
+smallstepWideningCmd :: InputOptions -> IO () 
+smallstepWideningCmd (InputOptions { .. }) = do 
+   loadFile' doTranslate filename >>= SmallStepWidened.analyze >>= printSmallstepWidenedResult debug
 
 ------------------------------
 -- Big step SCV
