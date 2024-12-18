@@ -39,6 +39,8 @@
   (match exp 
     [(quasiquote (contract-out ,@contracts))
      (translate-contracts contracts)]
+    [(quasiquote (provide ,@exports))
+     `(begin ,@(map translate exports))]
     [(quasiquote (,exp1 ,@exs))
      `(,(translate exp1) ,@(map translate exs))]
     [literal literal]))

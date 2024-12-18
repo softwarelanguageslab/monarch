@@ -233,6 +233,18 @@
     [(quasiquote (flat ,e))
      (let ((j (gensym)) (k (gensym)) (v (gensym)))
         (instrument-meta `(lambda (,j ,k ,v) (if (,e ,v) ,v (blame ,j (quote ,e))))))] 
+    [(quasiquote (-> ,@κs))
+     (let* ((ags (drop-right κs 1))
+            (ret (last κs))
+            (vs (map (lambda ign (gensym)) ags))
+            (j (gensym "j"))
+            (k (gensym "k"))
+            (f (gensym "f")))
+
+       (instrument-meta
+         `(lambda (,j ,k ,f)
+            (lambda ,vs
+              ,(instrument-meta `(,(translate-aux ret) ,j ,k (,f ,@(map (lambda (arg v) (instrument-meta `(,(translate-aux arg) ,j ,k ,v))) ags vs))))))))]
     [(quasiquote (-> ,κ1 ,κ2))
      (let ((j (gensym)) (k (gensym)) (f (gensym)) (v (gensym)))
        (instrument-meta 
