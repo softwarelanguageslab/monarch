@@ -119,7 +119,7 @@ printSmallstepResult debug (states, succs) = do
 
 smallstepCmd :: InputOptions -> IO ()
 smallstepCmd (InputOptions { .. }) = do
-   loadFile' doTranslate filename >>= Smallstep.analyze >>= printSmallstepResult debug
+   loadFile' doTranslate filename >>= Smallstep.analyze 1 >>= printSmallstepResult debug
 
 ------------------------------
 -- Smallstep with widening
@@ -145,7 +145,7 @@ printSmallstepWidenedResult debug ((shared, states), succs) = do
 
 smallstepWideningCmd :: InputOptions -> IO () 
 smallstepWideningCmd (InputOptions { .. }) = do 
-   loadFile' doTranslate filename >>= SmallStepWidened.analyze >>= printSmallstepWidenedResult debug
+   loadFile' doTranslate filename >>= SmallStepWidened.analyze 1 >>= printSmallstepWidenedResult debug
 
 ------------------------------
 -- Big step SCV

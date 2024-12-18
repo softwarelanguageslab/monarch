@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 -- | Abstractions common between machine states
 module Analysis.ASE.Common where
 
@@ -15,7 +16,7 @@ import Solver
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Control.Monad.Reader
-import Control.Monad.Writer (MonadWriter)
+import Control.Monad.Writer (MonadWriter (tell), WriterT)
 import System.Random
 import Domain.Symbolic.Paired (SymbolicVal(..))
 import qualified Domain.Class as Domain
@@ -37,6 +38,8 @@ import Analysis.Monad.Join
 import Analysis.Monad.Cache hiding (Val)
 import Analysis.SimpleActor.Semantics (injectLit)
 import Data.Maybe
+import Control.Monad.Layer (MonadLayer (..))
+import Analysis.Monad (DependencyTrackingM(register))
 
 ------------------------------------------------------------
 -- Syntax verification
@@ -53,8 +56,10 @@ isANF = undefined
 -- Value Domain
 ------------------------------------------------------------
 
+instance NFData k => NFData (AdrWithContext k)
+
 -- | Allocation-site addresses with context
-data AdrWithContext k = Adr Span k | PrimAdr String deriving (Show, Ord, Eq)
+data AdrWithContext k = Adr Span k | PrimAdr String deriving (Show, Ord, Eq, Generic)
 
 -- | Values from the value domain, this combines 
 -- a symbolic with an abstract value.
@@ -72,10 +77,12 @@ data AllVal = RVal Val
             | ConsVal (PaiDom Val)
             | VecVal (VecDom Val)
             | StrVal (StrDom Val)
+            deriving Generic
 
 deriving instance (Show (PaiDom Val), Show (VecDom Val), Show (StrDom Val)) => Show AllVal
 deriving instance (Eq (PaiDom Val), Eq (VecDom Val), Eq (StrDom Val)) => Eq AllVal
 deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord AllVal
+instance (NFData (PaiDom Val), NFData (VecDom Val), NFData (StrDom Val)) => NFData AllVal
 
 instance Joinable AllVal where
    -- Values in `AllVal` can never overlap so only compatible values 
@@ -111,12 +118,16 @@ isVVal _ = Nothing
 
 type Adr = AdrWithContext [Span]
 
+instance NFData k => NFData (KAdr k)
+
 -- | Continuation store
 data KAdr k = KAdr Span k | Hlt
-          deriving (Ord, Eq, Show)
+          deriving (Ord, Eq, Show, Generic) 
 
 -- | Symbolic variable
-data SymVar = SymVar Span [Span] ModelContext deriving (Eq, Ord, Show)
+data SymVar = SymVar Span [Span] ModelContext deriving (Eq, Ord, Show, Generic)
+
+instance NFData SymVar
 
 -- | An environment
 type Env = Map String Adr
@@ -143,15 +154,13 @@ type Context = [Span]
 -- Managing abstraction of contex
 ------------------------------------------------------------
 
-k :: Int
-k = 1
-
 -- | Push a calling context on the stack of contexts and limit 
 -- its length
-pushK :: Span -> [Span] -> [Span]
-pushK s = take 1 . (s :)
+pushK :: Int -> Span -> [Span] -> [Span]
+pushK k s = take k . (s :)
 
 ------------------------------------------------------------
+-- 
 -- Managing abstraction of model's context
 ------------------------------------------------------------
 
@@ -161,7 +170,9 @@ pushK s = take 1 . (s :)
 -- This way, the model is only widened whenever we loop to the same path constraint, 
 -- and since path constraints themselves are widened and thus made finite, the number 
 -- of contexts and therefore number of models is also finite.
-newtype ModelContext = MCtx [PC] deriving (Eq, Ord, Show)
+newtype ModelContext = MCtx [PC] deriving (Eq, Ord, Show, Generic)
+
+instance NFData ModelContext
 
 -- | Create an initial (empty) model context
 emptyModelContext :: ModelContext
@@ -224,6 +235,11 @@ data RandomSeq = RandomSeq {
          seed :: Int
       }
 
+-- special instance of NFData to prevent computing the entire 
+-- sequence since it is infinite.
+instance NFData RandomSeq where  
+   rnf = const ()
+
 instance Show RandomSeq where
    show (RandomSeq _ size seed) = "<sequence of size " ++ show size ++ " with seed " ++ show seed ++ ">"
 instance Eq RandomSeq where
@@ -265,6 +281,19 @@ genSeq g = (v, g'')
          (v, g'') = choose [Domain.inject i] g'
 
 ------------------------------------------------------------
+-- Successor map monadic contet
+------------------------------------------------------------
+
+class MonadSuccessorMap s m | m -> s where  
+   registerSuccessor :: s -> m ()
+
+instance {-# OVERLAPPABLE #-} (MonadSuccessorMap s m , Monad m, MonadLayer t) => MonadSuccessorMap s (t m) where  
+   registerSuccessor = upperM . registerSuccessor
+
+instance (Monad m, Monoid s) => MonadSuccessorMap s (WriterT s m) where   
+   registerSuccessor = tell
+
+------------------------------------------------------------
 -- Monadic context (mostly for convenience)
 ------------------------------------------------------------
 
@@ -273,12 +302,15 @@ genSeq g = (v, g'')
 data ConcolicContext = ConcolicContext {
       initialStoreExecutor :: Sto,
       initialEnvExecutor :: Env,
-      initialExpExecutor :: Exp
+      initialExpExecutor :: Exp, 
+      contextSensitivity :: Int
    }
 
-type SmallstepM s m = (MonadReader ConcolicContext m, MonadWriter (SuccessorMap s) m, FormulaSolver SymVar m)
+type SmallstepM s m = (MonadReader ConcolicContext m, MonadSuccessorMap (SuccessorMap s) m, FormulaSolver SymVar m)
 
-newtype SuccessorMap s = SuccessorMap { getSuccessorMap :: Map s (Set s) }
+newtype SuccessorMap s = SuccessorMap { getSuccessorMap :: Map s (Set s) } deriving (Generic)
+
+instance NFData s => NFData (SuccessorMap s)
 
 instance (Ord s) => Semigroup (SuccessorMap s) where
    (<>) m = SuccessorMap . Map.unionWith Set.union (getSuccessorMap m) . getSuccessorMap
@@ -290,21 +322,27 @@ instance (Ord s) => Monoid (SuccessorMap s) where
 -- Common abstract machine components
 ------------------------------------------------------------
 
+instance NFData Control
+
 -- | Abstract control component
 data Control = Ev Exp Env | Ap Val
-            deriving (Ord, Eq)
+            deriving (Ord, Eq, Generic)
 
 instance Show Control where
    show (Ev e _) = "ev(" ++ show e ++ ")"
    show (Ap v) = "ap(" ++ show v ++ ")"
 
+instance NFData Kont
+
 -- | Continuations
 data Kont = LetK Adr Env [Binding] Exp (KAdr [Span])
-         deriving (Eq, Ord, Show)
+         deriving (Eq, Ord, Show, Generic)
+
+instance NFData Kontf
 
 -- | Failure continuations 
 data Kontf = Branch PC FAdr
-           deriving (Eq, Ord, Show)
+           deriving (Eq, Ord, Show, Generic)
 
 -- | Failure continuation addresses
 type FAdr = KAdr ([Span], ModelContext)

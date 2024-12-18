@@ -28,6 +28,11 @@ instance {-# OVERLAPPABLE #-} (MonadIO m, Monad (t m), MonadLayer t) => MonadIO 
 instance {-# OVERLAPPABLE #-} (Monad (t m), MonadBottom m, MonadLayer t) => MonadBottom (t m) where 
    mzero = upperM mzero
 
+-- | Implements a `MonadReader` for layered monads
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadReader r m, MonadLayer t) => MonadReader r (t m) where  
+   ask = upperM ask 
+   local f = lowerM (local f)
+
 -- | StateT instance
 instance MonadLayer (StateT s) where
    lowerM f m = StateT (f . runStateT m)

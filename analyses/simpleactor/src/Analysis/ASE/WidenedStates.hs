@@ -1,4 +1,4 @@
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
 -- | Version of the small-step semantics that widens particular parts of the original small-step state. 
 -- More specifically, the path condition and store can be widened so that they are no longer part of the 
 -- state itself, but either globally or indexed by state.
@@ -38,6 +38,10 @@ import qualified Symbolic.SMT as SMT
 import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
 import Analysis.ASE.Common
 import qualified Debug.Trace as Debug
+import Analysis.Monad (runJoinT)
+import Lattice.BottomLiftedLattice (lowerBottom)
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
 ------------------------------------------------------------
 -- State space
@@ -75,14 +79,19 @@ data State = State {
       pc :: PC,
       -- | The model context
       mcontext :: ModelContext
-   }
+   } deriving (Generic)
+
+
+instance NFData State
 
 -- | State machine components shared across all states
 type Shared = Map State SharedStep
 
 
 -- | Parts of the shared components that are relevant for the current stepping relation
-data SharedStep = SharedStep { vstoStep :: Sto, kstoStep :: KSto, fstoStep :: FSto } deriving (Ord, Eq, Show)
+data SharedStep = SharedStep { vstoStep :: Sto, kstoStep :: KSto, fstoStep :: FSto } deriving (Ord, Eq, Show, Generic)
+
+instance NFData SharedStep
 
 instance BottomLattice SharedStep where
    bottom = SharedStep Lat.bottom Lat.bottom Lat.bottom
@@ -107,7 +116,7 @@ deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord 
 stepCompound :: SmallstepM State m => State -> SharedStep -> m (Set State, SharedStep)
 -- ST-If
 stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) shared =
-   return $ justOrBot $
+   fmap lowerBottom $ runJoinT $
          cond (return value)
               -- ST-IfTrue
               -- XXX: currently we overapproximate by stating that we have already 
@@ -123,10 +132,10 @@ stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) shared =
                (topFalse, kontf'f) = pushKont (spanOf ite) (context, mcontext) (Branch φt topFail) (fstoStep shared)
                newSt e φ' topFail' = state { control = Ev e ρ, pc = φ', topFail = topFail' }
 -- ST-App
-stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) shared = return $ justOrBot $
+stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) shared = fmap lowerBottom $ runJoinT $
                   condsCP
                      [(fromBL (isClo operatorValue),
-                         return (Lat.joinMap (applyClosure st shared operandsValues) (clos operatorValue))),
+                         Lat.joinMapM (applyClosure st shared operandsValues) (clos operatorValue)),
                       (fromBL (isPrim operatorValue),
                          return (Lat.joinMap (applyPrimitive st shared exp operandsValues) (prims operatorValue)))]
                      (return (Set.empty, shared))
@@ -150,8 +159,10 @@ stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) shared =
       return (Set.singleton $ st { control = Ev bdy ρ }, shared)
 stepCompound st _ = error $ "unsupported program state" ++ show st
 
-applyClosure :: State -> SharedStep -> [Val] -> (Exp, Env) -> (Set State, SharedStep)
-applyClosure st@State{ .. } shared vs (Lam xs e _, ρ') = (Set.singleton $ st { control = Ev e ρ'', context =  pushK (spanOf e) context}, shared { vstoStep = store' })
+applyClosure :: SmallstepM State m => State -> SharedStep -> [Val] -> (Exp, Env) -> m (Set State, SharedStep)
+applyClosure st@State{ .. } shared vs (Lam xs e _, ρ') = do 
+      k <- asks contextSensitivity
+      return (Set.singleton $ st { control = Ev e ρ'', context =  pushK k (spanOf e) context}, shared { vstoStep = store' })
    where ads = map ((`alloc` context) . spanOf) xs
          bds = zip ads (map RVal vs)
          store' = extendsSto bds (vstoStep shared)
@@ -199,7 +210,7 @@ step' st@(State { control = (Ap v), .. }) shared =
 step :: SmallstepM State m => Shared -> State -> m (Shared, Set State)
 step shared inn = do
    (successors, sharedStep) <- step' inn (fromJust $ Map.lookup inn shared)
-   tell (SuccessorMap $ Map.singleton inn successors)
+   registerSuccessor (SuccessorMap $ Map.singleton inn successors)
    return (Map.fromList $ map (,sharedStep) (Set.toList successors), successors)
 
 ------------------------------------------------------------
@@ -248,10 +259,11 @@ inject e =
    State (Ev e (initialEnv PrimAdr)) Hlt Hlt [] Map.empty initialSeq Map.empty emptyFormula emptyModelContext
 
 runContext :: Exp -- ^ the initial expression
+           -> Int -- ^ the desidered context sensitivity
            -> ReaderT ConcolicContext (WriterT (SuccessorMap State) (CachedSolver SymVar (Z3Solver SymVar))) a
            -> IO (a, SuccessorMap State)
-runContext e0 m =
-         runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0)
+runContext e0 k m =
+         runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0 k)
        & runWriterT
        & runCachedSolver
        & runZ3SolverWithSetup SMT.prelude
@@ -262,7 +274,7 @@ initialShared :: State  -- ^ the initial state
 initialShared initSt = Map.singleton initSt (SharedStep { vstoStep = analysisStore, kstoStep = Map.empty, fstoStep = Map.empty })
 
 -- | Computes the set of states reachable from @e@
-analyze :: Exp -> IO ((Shared, Set State), SuccessorMap State)
-analyze e = runContext e $ lfp f (initialShared initialSt, Set.singleton initialSt)
+analyze :: Int -> Exp -> IO ((Shared, Set State), SuccessorMap State)
+analyze k e = runContext e k $ lfp f (initialShared initialSt, Set.singleton initialSt)
    where initialSt = inject e
          f = uncurry collect

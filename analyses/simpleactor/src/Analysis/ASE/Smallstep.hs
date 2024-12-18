@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DeriveGeneric #-}
 -- | Small-step semantics for abstract concolic execution. 
 module Analysis.ASE.Smallstep(analyze, State(..), isFinalState, isStuckState, module Analysis.ASE.Common) where
 
@@ -37,6 +38,10 @@ import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
 import qualified Symbolic.SMT as SMT
 import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
 import Analysis.ASE.Common
+import Analysis.Monad (runJoinT)
+import Lattice.BottomLiftedLattice (lowerBottom)
+import GHC.Generics
+import Control.DeepSeq
 
 ------------------------------------------------------------
 -- State space
@@ -54,6 +59,8 @@ pushKont :: (Ord a, Ord k, Show k)
 pushKont ℓ context kont σ = (adr, σ')
    where adr = KAdr ℓ context
          σ'  = extendSto adr (Set.singleton kont) σ
+
+instance NFData State
 
 -- | Abstract machine states
 data State = State {
@@ -81,7 +88,7 @@ data State = State {
       pc :: PC,
       -- | The model context
       mcontext :: ModelContext
-   }
+   } deriving (Generic)
 
 instance Show State where
    show (State { .. }) =
@@ -113,10 +120,10 @@ stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) =
                (topFalse, kontf'f) = pushKont (spanOf ite) (context, mcontext) (Branch φt topFail) kontf
                newSt e φ' kontf' topFail' = state { control = Ev e ρ, pc = φ', topFail = topFail', kontf = kontf'  }
 -- ST-App
-stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) = return $ justOrBot $
+stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) = fmap lowerBottom $ runJoinT $
                   condsCP
                      [(fromBL (isClo operatorValue),
-                         return $ Set.map (applyClosure st operandsValues) (clos operatorValue)),
+                          Set.fromList <$> mapM (applyClosure st operandsValues) (Set.toList $ clos operatorValue)),
                       (fromBL (isPrim operatorValue),
                          return $ foldMap (applyPrimitive st exp operandsValues) (prims operatorValue))]
                      (return Set.empty)
@@ -140,8 +147,10 @@ stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) =
       return $ Set.singleton $ st { control = Ev bdy ρ }
 stepCompound st = error $ "unsupported program state" ++ show st
 
-applyClosure :: State -> [Val] -> (Exp, Env) -> State
-applyClosure st@State{ .. } vs (Lam xs e _, ρ') = st { control = Ev e ρ'', store = store', context =  pushK (spanOf e) context}
+applyClosure :: SmallstepM State m => State -> [Val] -> (Exp, Env) -> m State
+applyClosure st@State{ .. } vs (Lam xs e _, ρ') = do
+      k <- asks contextSensitivity
+      return st { control = Ev e ρ'', store = store', context =  pushK k (spanOf e) context}
    where ads = map ((`alloc` context) . spanOf) xs
          bds = zip ads (map RVal vs)
          store' = extendsSto bds store
@@ -191,7 +200,7 @@ step' st@(State { control = (Ap v), .. }) =
 step :: SmallstepM State m => State -> m (Set State)
 step inn = do
    successors <- step' inn -- (Debug.traceShowId inn)
-   tell (SuccessorMap $ Map.singleton inn successors)
+   registerSuccessor (SuccessorMap $ Map.singleton inn successors)
    return successors
 
 ------------------------------------------------------------
@@ -240,14 +249,15 @@ inject e =
    State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq Map.empty emptyFormula emptyModelContext
 
 runContext :: Exp -- ^ the initial expression
+           -> Int -- ^ the desired context sensitivity
            -> ReaderT ConcolicContext (WriterT (SuccessorMap State) (CachedSolver SymVar (Z3Solver SymVar))) a
            -> IO (a, SuccessorMap State)
-runContext e0 m =
-         runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0)
+runContext e0 k m =
+         runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0 k)
        & runWriterT
        & runCachedSolver
        & runZ3SolverWithSetup SMT.prelude
 
 -- | Computes the set of states reachable from @e@
-analyze :: Exp -> IO (Set State, SuccessorMap State)
-analyze e = runContext e $ lfpInc collect $ Set.singleton $ inject e
+analyze :: Int -> Exp -> IO (Set State, SuccessorMap State)
+analyze k e = runContext e k $ lfpInc collect $ Set.singleton $ inject e

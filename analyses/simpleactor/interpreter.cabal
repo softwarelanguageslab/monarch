@@ -89,6 +89,7 @@ library
 executable interpreter-exe
   main-is: Main.hs
   other-modules:
+      ASE.Benchmark
       Paths_interpreter
   autogen-modules:
       Paths_interpreter
