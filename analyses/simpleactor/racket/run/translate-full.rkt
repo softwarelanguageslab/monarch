@@ -4,6 +4,7 @@
 (require racket/pretty)
 (require (prefix-in cc: "../translations/cc-combinator.rkt"))
 (require (prefix-in ac: "../translations/actor-translation.rkt"))
+(require (prefix-in co: "../translations/contract-out-translation.rkt"))
 
 ;; A full translation from Racket actors 
 ;; with their contracts to λα/c
@@ -22,4 +23,4 @@
 
 (pretty-display (cc:translate 
            #:meta #f
-           (ac:translate (read))))
+           (ac:translate (co:translate (read)))))
