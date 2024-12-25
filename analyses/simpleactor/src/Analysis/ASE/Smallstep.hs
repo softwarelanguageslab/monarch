@@ -36,7 +36,7 @@ import Solver ( CachedSolver, runCachedSolver )
 import Domain.Core.AbstractCount (AbstractCount(CountInf, CountOne))
 import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
 import qualified Symbolic.SMT as SMT
-import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
+import Control.Monad.Writer (WriterT (runWriterT))
 import Analysis.ASE.Common
 import Analysis.Monad (runJoinT)
 import Lattice.BottomLiftedLattice (lowerBottom)
@@ -102,6 +102,9 @@ deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord 
 ------------------------------------------------------------
 
 stepCompound :: SmallstepM State m => State -> m (Set State)
+-- ST-Blame (failed assertion)
+stepCompound state@(State { control = Ev (Blame _ s) _ }) = 
+   return $ Set.singleton (state { control = Err s })
 -- ST-If
 stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) =
    return $ justOrBot $
@@ -196,6 +199,8 @@ step' st@(State { control = (Ap v), .. }) =
    where applyKont (LetK adr env' bds bdy top') =
                let store' = extendSto adr (RVal v) store
                in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
+-- Error state is stuck
+step' (State { control = Err _ }) = return Set.empty
 
 step :: SmallstepM State m => State -> m (Set State)
 step inn = do

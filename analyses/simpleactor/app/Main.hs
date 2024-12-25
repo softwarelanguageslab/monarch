@@ -97,6 +97,7 @@ printGraph h succs = hPutStrLn h "digraph {" >> mapM_ (hPutStrLn h . showEdge) e
             showControl (Smallstep.control st) ++ "," ++ show (Smallstep.pc st) ++ "@" ++ show (Smallstep.top st) ++ "," ++ show (Smallstep.topFail st)
          showControl (Smallstep.Ev e _) = show e 
          showControl (Smallstep.Ap v) = show v
+         showControl (Smallstep.Err s) = "error @ " ++ show s
          edges = concatMap (\(st, nxts) -> map ( (showNode st,) . showNode) (Set.toList nxts)) (Map.toList succs)
          showEdge (from, to) = "\t" ++ show from ++ " -> " ++ show to ++ ";"
 

@@ -114,7 +114,9 @@ deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord 
 ------------------------------------------------------------
 
 stepCompound :: SmallstepM State m => State -> SharedStep -> m (Set State, SharedStep)
--- ST-If
+-- ST-Blame (failed assertion)
+stepCompound state@(State { control = Ev (Blame _ s) _ }) shared = 
+   return (Set.singleton (state { control = Err s }), shared)
 stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) shared =
    fmap lowerBottom $ runJoinT $
          cond (return value)
@@ -206,6 +208,8 @@ step' st@(State { control = (Ap v), .. }) shared =
    where applyKont (LetK adr env' bds bdy top') =
                let store' = extendSto adr (RVal v) (vstoStep shared)
                in (Set.singleton $ st { control = Ev (Letrec bds bdy (spanOf bdy)) env', top = top' }, shared { vstoStep = store' })
+-- Error state is stuck
+step' (State { control = Err _ }) shared = return (Set.empty, shared)
 
 step :: SmallstepM State m => Shared -> State -> m (Shared, Set State)
 step shared inn = do

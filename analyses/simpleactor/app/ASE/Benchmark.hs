@@ -192,8 +192,7 @@ runTimeBenchmarks benchmarks outputFilename = do
       hClose outputHandle
    where runSingle (name, runner) program outputHandle = do
             expr <- loadProgram program
-            results <- mapM (\i -> time (runner expr) <&> uncurry (Result name i) >>= (\result -> putStr "*" >> hFlush stdout >> return result)) [0..totalIterations]
-            results `deepseq` mapM (writeToHandle outputHandle program) results
+            mapM_ (\i -> time (runner expr) <&> uncurry (Result name i) >>= (\result -> putStr "*" >> hFlush stdout >> writeToHandle outputHandle program result)) [0..totalIterations]
          benchmarkWithConfigurations = [ (runner, benchmark) | runner <- analysisConfigurations, benchmark <- benchmarks ]
 
 ------------------------------------------------------------
