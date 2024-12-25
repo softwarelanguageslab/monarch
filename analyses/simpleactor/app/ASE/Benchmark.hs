@@ -10,10 +10,11 @@ import Syntax.Compiler
 import qualified Analysis.ASE.Smallstep as SmallStep
 import qualified Analysis.ASE.WidenedStates as SmallStepWidened
 
-
 -- Haskell-related
 import Control.DeepSeq
 import Control.Monad
+import Data.Map (Map) 
+import qualified Data.Map as Map
 
 benchmarkPrograms = [
       "games_snake.rkt",
@@ -53,6 +54,7 @@ benchmarkPrograms = [
       "softy_tak.rkt"
    ]
 
+{-
 -- | Loads a program from disk, translates it to a simpler form amenable for verification, parses and compiles it
 loadProgram :: String -> IO Exp
 loadProgram = readFile >=> translate >=> return . either (error . ("error while parsing" ++)) id . parseFromString
@@ -69,10 +71,24 @@ analysisConfigurations = concatMap (\k -> [
       ("widened per state, k = " ++ show k, fmap AnalysisResult . SmallStepWidened.analyze k)
    ]) [1..5]
 
+-- | The total of iterations to run the benchmark for
+totalIterations :: Int
+totalIterations = 20
+
+time :: IO () -> IO Integer 
+time act = do 
+   start <- getTime
+   v <- act
+   v `deepseq` getTime
 
 -- | Run the timing benchmarks over the set of programs
 benchmarkTime :: [String] -- ^ the programs to run the benchmark on
               -> String   -- ^ the name of the file to output the benchmark results to 
               -> IO ()
-benchmarkTime = undefined
+benchmarkTime = run
+   where runSingle (name, runner) program = do 
+            exp <- loadProgram program
+            results <- mapM (\i -> time (runner exp) >>= (\time -> (name, i, time))) [0..totalIterations]
+            results `deepseq` (return results)
 
+-}
