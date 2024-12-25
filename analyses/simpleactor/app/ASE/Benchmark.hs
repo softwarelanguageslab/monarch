@@ -96,7 +96,11 @@ benchmarkPrograms = [
    ]
 
 testBenchmarkPrograms :: [String] 
-testBenchmarkPrograms = ["programs/test/ase/simpleloop-anf.scm"]
+testBenchmarkPrograms = [
+      "programs/test/ase/simpleloop-anf.scm",
+      "programs/test/ase/blame.scm",
+      "programs/test/ase/blame-unreachable.scm"
+   ]
 
 -- | Loads a program from disk, translates it to a simpler form amenable for verification, parses and compiles it
 loadProgram :: String -> IO Exp
@@ -141,8 +145,9 @@ instance Common.IsAnalysisResult AnalysisResult where
 
 analysisConfigurations :: [(String, Exp -> IO AnalysisResult)]
 analysisConfigurations = concatMap (\k -> [
-      ("smallstep, k = " ++ show k, fmap AnalysisResult . SmallStep.analyze k),
-      ("widened per state, k = " ++ show k, fmap AnalysisResult . SmallStepWidened.analyze k)
+      ("smallstep;" ++ show k, fmap AnalysisResult . SmallStep.analyze k),
+      ("widened per state;" ++ show k, fmap AnalysisResult . SmallStepWidened.analyze k),
+      ("global widening;"++show k, fmap AnalysisResult . SmallStepWidened.analyzeGlobal k)
    ]) [1..5]
 
 
@@ -155,7 +160,6 @@ data Result = Result {
    } deriving (Generic)
 
 instance NFData Result
-
 
 class CSVResult r where    
    -- | Write a single result to a file

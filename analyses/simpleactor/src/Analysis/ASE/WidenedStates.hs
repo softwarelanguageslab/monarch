@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances, DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
 -- | Version of the small-step semantics that widens particular parts of the original small-step state. 
 -- More specifically, the path condition and store can be widened so that they are no longer part of the 
 -- state itself, but either globally or indexed by state.
@@ -42,6 +43,7 @@ import Analysis.Monad (runJoinT)
 import Lattice.BottomLiftedLattice (lowerBottom)
 import GHC.Generics (Generic)
 import Control.DeepSeq
+import RIO (Identity)
 
 ------------------------------------------------------------
 -- State space
@@ -85,7 +87,7 @@ data State = State {
 instance NFData State
 
 -- | State machine components shared across all states
-type Shared = Map State SharedStep
+type Shared f = Map (f State) SharedStep
 
 
 -- | Parts of the shared components that are relevant for the current stepping relation
@@ -211,17 +213,17 @@ step' st@(State { control = (Ap v), .. }) shared =
 -- Error state is stuck
 step' (State { control = Err _ }) shared = return (Set.empty, shared)
 
-step :: SmallstepM State m => Shared -> State -> m (Shared, Set State)
+step :: (Ord (f State), Applicative f,  SmallstepM State m) => Shared f -> State -> m (Shared f, Set State)
 step shared inn = do
-   (successors, sharedStep) <- step' inn (fromJust $ Map.lookup inn shared)
+   (successors, sharedStep) <- step' inn (fromJust $ Map.lookup (pure inn) shared)
    registerSuccessor (SuccessorMap $ Map.singleton inn successors)
-   return (Map.fromList $ map (,sharedStep) (Set.toList successors), successors)
+   return (Map.fromList $ map ((,sharedStep) . pure) (Set.toList successors), successors)
 
 ------------------------------------------------------------
 -- Utility functions (mostly for inspecting the results)
 ------------------------------------------------------------
 
-instance IsAnalysisResult ((Shared, Set State), SuccessorMap State) where  
+instance IsAnalysisResult ((Shared f, Set State), SuccessorMap State) where  
    failedAssertions ((_, states), _) = fromIntegral $ Set.size $ Set.filter isError states
       where isError (State { control = Err _ }) = True 
             isError _ = False
@@ -239,8 +241,8 @@ isStuckState succs st =
 ------------------------------------------------------------
 
 -- | Compute the set of successors for the given list of states
-collect :: SmallstepM State m => Shared -> Set State -> m (Shared, Set State)
-collect shared ss = Lat.join (shared, ss) <$> foldMapM (step shared) ss
+collect :: (Applicative f, Ord (f State), SmallstepM State m) => Shared f -> Set State -> m (Shared f, Set State)
+collect shared ss = Lat.join (shared, ss) <$> Lat.joinMapM (step shared) ss
 
 -- | Incremental computation of the least fixed point by only considering the 
 -- successors states produced in the previous iteration for the next iteration
@@ -278,12 +280,31 @@ runContext e0 k m =
        & runZ3SolverWithSetup SMT.prelude
 
 -- | The initial shared state 
-initialShared :: State  -- ^ the initial state
-              -> Shared
-initialShared initSt = Map.singleton initSt (SharedStep { vstoStep = analysisStore, kstoStep = Map.empty, fstoStep = Map.empty })
+initialShared :: Applicative f 
+              => State  -- ^ the initial state
+              -> Shared f
+initialShared initSt = Map.singleton (pure initSt) (SharedStep { vstoStep = analysisStore, kstoStep = Map.empty, fstoStep = Map.empty })
 
 -- | Computes the set of states reachable from @e@
-analyze :: Int -> Exp -> IO ((Shared, Set State), SuccessorMap State)
-analyze k e = runContext e k $ lfp f (initialShared initialSt, Set.singleton initialSt)
+analyze' :: (Applicative f, Ord (f State), Show (f State)) => Int -> Exp -> IO ((Shared f, Set State), SuccessorMap State)
+analyze' k e = runContext e k $ lfp f (initialShared initialSt, Set.singleton initialSt)
    where initialSt = inject e
          f = uncurry collect
+
+-- | Widening per state
+analyze :: Int -> Exp -> IO ((Shared Identity, Set State), SuccessorMap State)
+analyze = analyze'
+
+-- | Type isomorphic with unit but with a kind that is compatible with functor and applicative
+data Unit a = Unit deriving (Ord, Eq, Show, Functor)
+
+instance NFData (Unit a) where   
+   rnf a = a `seq` ()
+
+instance Applicative Unit where  
+   pure = const Unit
+   (<*>) _ _ = Unit
+
+-- | Widening globally
+analyzeGlobal :: Int -> Exp -> IO ((Shared Unit, Set State), SuccessorMap State)
+analyzeGlobal = analyze'

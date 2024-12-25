@@ -24,6 +24,7 @@ import qualified Analysis.ASE.WidenedStates as SmallStepWidened
 import System.IO
 import Control.Monad
 import ASE.Benchmark
+import RIO (Identity)
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -129,7 +130,7 @@ smallstepCmd (InputOptions { .. }) = do
 ------------------------------
 
 
-printSmallstepWidenedResult :: Bool -> ((SmallStepWidened.Shared, Set SmallStepWidened.State), Smallstep.SuccessorMap SmallStepWidened.State) -> IO () 
+printSmallstepWidenedResult :: Bool -> ((SmallStepWidened.Shared Identity, Set SmallStepWidened.State), Smallstep.SuccessorMap SmallStepWidened.State) -> IO () 
 printSmallstepWidenedResult debug ((shared, states), succs) = do
    putStrLn $ "Found " ++ show (Set.size states) ++ " reachable states"
    let finalStates = find SmallStepWidened.isFinalState states
