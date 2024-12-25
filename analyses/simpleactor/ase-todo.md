@@ -17,6 +17,6 @@ TODO
 
 ## Preprocessing
 
-* [ ] Undefiner
+* [X] Undefiner
 * [ ] Input data generator based on shape of the contract (needed for structs)
 * [ ] Translation of structs
