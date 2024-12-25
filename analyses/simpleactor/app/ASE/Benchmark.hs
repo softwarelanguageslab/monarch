@@ -8,6 +8,7 @@ import Syntax.Simplifier
 import Syntax.Compiler
 
 -- Analyses
+import qualified Analysis.ASE.Common as Common
 import qualified Analysis.ASE.Smallstep as SmallStep
 import qualified Analysis.ASE.WidenedStates as SmallStepWidened
 
@@ -15,7 +16,7 @@ import qualified Analysis.ASE.WidenedStates as SmallStepWidened
 import Control.DeepSeq
 import Control.Monad
 import GHC.Generics
-import RIO hiding (hFlush)
+import RIO hiding (hFlush, hClose)
 
 -- Files
 import System.FilePath.Posix
@@ -26,10 +27,8 @@ import Data.Time
 import Data.Time.Clock.System
 import Data.Time.Format.ISO8601
 
-
 -- Command line parsing imports
 import Options.Applicative
-
 
 ------------------------------------------------------------
 -- Command-line interface
@@ -43,7 +42,15 @@ benchmarkOptions :: Parser BenchmarkOptions
 benchmarkOptions = BenchmarkOptions <$> strOption ( long "file" <> short 'f' <> help "Output filename" )
 
 benchmarkCmd :: BenchmarkOptions -> IO () 
-benchmarkCmd (BenchmarkOptions { .. }) = runTimeBenchmarks benchmarkPrograms outputFilename
+benchmarkCmd (BenchmarkOptions { .. }) = do 
+      let benchmarks = testBenchmarkPrograms
+      putStrLn "Running precision benchmarks"
+      runPrecisionBenchmarks benchmarks precisionBenchmarkOutput
+      putStrLn "Running time benchmarks"
+      runTimeBenchmarks benchmarks timeBenchmarkOutput
+   where (base, extension) = splitExtension outputFilename
+         timeBenchmarkOutput = addExtension (base ++ "-time") extension
+         precisionBenchmarkOutput = addExtension (base ++ "-precision") extension
 
 ------------------------------------------------------------
 -- Benchmark programs
@@ -88,9 +95,12 @@ benchmarkPrograms = [
       "softy_tak.rkt"
    ]
 
+testBenchmarkPrograms :: [String] 
+testBenchmarkPrograms = ["programs/test/ase/simpleloop-anf.scm"]
+
 -- | Loads a program from disk, translates it to a simpler form amenable for verification, parses and compiles it
 loadProgram :: String -> IO Exp
-loadProgram = readFile >=> translate >=> return . either (error . ("error while parsing" ++)) id . parseFromString
+loadProgram = readFile >=> return . either (error . ("error while parsing" ++)) id . parseFromString
 
 ------------------------------------------------------------
 -- Timing
@@ -111,7 +121,7 @@ time act = do
    start <- getTime
    v <- act
    end <- v `deepseq` getTime
-   return (v, start - end)
+   return (v, end - start)
 
 ------------------------------------------------------------
 -- Analysis results and configurations
@@ -121,10 +131,13 @@ time act = do
 -- analysis result is known, except that it can be inspected 
 -- and evaluated using `deepseq`.
 data AnalysisResult where
-   AnalysisResult :: (NFData a) => a -> AnalysisResult
+   AnalysisResult :: (Common.IsAnalysisResult a, NFData a) => a -> AnalysisResult
 
 instance NFData AnalysisResult where
    rnf (AnalysisResult a) = rnf a
+
+instance Common.IsAnalysisResult AnalysisResult where 
+   failedAssertions (AnalysisResult r) = Common.failedAssertions r
 
 analysisConfigurations :: [(String, Exp -> IO AnalysisResult)]
 analysisConfigurations = concatMap (\k -> [
@@ -143,24 +156,29 @@ data Result = Result {
 
 instance NFData Result
 
--- | Write a single result to a file
-writeToFile :: Handle -- ^ the file handle to write the output to, gets flushed after writing
-            -> String -- ^ name of the program to write the result for
-            -> Result -- ^ the result to write to the file
-            -> IO ()
-writeToFile hdl programName (Result { .. }) = do
-   hPutStr hdl programName >> hPutStr hdl ";"
-   hPutStr hdl benchmarkName >> hPutStr hdl ";"
-   hPutStr hdl (show benchmarkIteration) >> hPutStr hdl ";"
-   hPutStr hdl (show benchmarkTime) >> hPutChar hdl '\n'
-   hFlush hdl
+
+class CSVResult r where    
+   -- | Write a single result to a file
+   writeToHandle :: Handle  -- ^ the handle to write the results to
+                 -> String  -- ^ the name of the program 
+                 -> r       -- ^ the result to write 
+                 -> IO ()
+
+
+instance CSVResult Result where 
+   writeToHandle hdl programName (Result { .. }) = do
+      hPutStr hdl programName >> hPutStr hdl ";"
+      hPutStr hdl benchmarkName >> hPutStr hdl ";"
+      hPutStr hdl (show benchmarkIteration) >> hPutStr hdl ";"
+      hPutStr hdl (show benchmarkTime) >> hPutChar hdl '\n'
+      hFlush hdl
 
 -- | Open an output file suffixed with the timestamp
 openTimestamped :: FilePath -> IO Handle
 openTimestamped path = do
       currentTime <- getCurrentTime
       let formattedTime = iso8601Show currentTime
-      let filename = addExtension (base ++ formattedTime) extension
+      let filename = addExtension (base ++ "-" ++ formattedTime) extension
       openFile filename WriteMode
    where (base, extension) = splitExtension path
 
@@ -170,9 +188,43 @@ runTimeBenchmarks :: [String] -- ^ the programs to run the benchmark on
                   -> IO ()
 runTimeBenchmarks benchmarks outputFilename = do
       outputHandle <- openTimestamped outputFilename
-      mapM_ (\(runner,filename) -> runSingle runner filename >>= mapM (writeToFile outputHandle filename)) benchmarkWithConfigurations
-   where runSingle (name, runner) program = do
+      mapM_ (\(runner,filename) -> runSingle runner filename outputHandle >> putStrLn (filename ++ " " ++ fst runner ++ " done")) benchmarkWithConfigurations
+      hClose outputHandle
+   where runSingle (name, runner) program outputHandle = do
             expr <- loadProgram program
-            results <- mapM (\i -> time (runner expr) <&> uncurry (Result name i)) [0..totalIterations]
-            results `deepseq` return results
+            results <- mapM (\i -> time (runner expr) <&> uncurry (Result name i) >>= (\result -> putStr "*" >> hFlush stdout >> return result)) [0..totalIterations]
+            results `deepseq` mapM (writeToHandle outputHandle program) results
          benchmarkWithConfigurations = [ (runner, benchmark) | runner <- analysisConfigurations, benchmark <- benchmarks ]
+
+------------------------------------------------------------
+-- Precision benchmarks
+------------------------------------------------------------
+
+
+data PrecisionResult = PrecisionResult {
+      precisionName :: String, 
+      precisionFailedAsserts :: Integer
+   } 
+
+instance CSVResult PrecisionResult where  
+   writeToHandle hdl programName (PrecisionResult { .. }) = do
+      hPutStr hdl programName >> hPutStr hdl ";" 
+      hPutStr hdl precisionName >> hPutStr hdl ";" 
+      hPutStr hdl (show precisionFailedAsserts)
+      hPutChar hdl '\n' >> hFlush hdl
+
+-- | Run the precision benchmarks on the given list of programs and output the results 
+-- to the file with the given name (opened in timestamped mode)
+runPrecisionBenchmarks :: [String] -- ^ the list of benchmarks to run precision tests for
+                       -> String   -- ^ the output filename
+                       -> IO ()
+runPrecisionBenchmarks benchmarks outputFilename = do 
+      outputHandle <- openTimestamped outputFilename
+      mapM_ (\(runner, filename) -> runSingle runner filename >>= writeToHandle outputHandle filename) benchmarksWithConfigurations
+      hClose outputHandle
+   where runSingle (name, runner) program = do 
+            putStrLn $ "Running " ++ name ++ " on " ++ program ++ " for precision measurements"
+            expr <- loadProgram program 
+            result <- runner expr
+            return (PrecisionResult name (Common.failedAssertions result))
+         benchmarksWithConfigurations = [ (runner, benchmark) | runner <- analysisConfigurations, benchmark <- benchmarks ]

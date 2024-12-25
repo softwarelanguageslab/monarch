@@ -207,6 +207,11 @@ step inn = do
 -- Utility functions (mostly for inspecting the results)
 ------------------------------------------------------------
 
+instance IsAnalysisResult (Set State, SuccessorMap State) where   
+   failedAssertions (states, _) = fromIntegral $ Set.size $ Set.filter isError states
+      where isError (State { control = Err _}) = True 
+            isError _ = False
+
 isFinalState :: State -> Bool
 isFinalState (State (Ap _) _ Hlt _ Hlt _ _ _ _ _ _ _) = True
 isFinalState _ = False

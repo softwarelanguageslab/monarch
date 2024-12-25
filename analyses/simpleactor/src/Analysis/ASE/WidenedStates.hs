@@ -217,6 +217,11 @@ step shared inn = do
 -- Utility functions (mostly for inspecting the results)
 ------------------------------------------------------------
 
+instance IsAnalysisResult ((Shared, Set State), SuccessorMap State) where  
+   failedAssertions ((_, states), _) = fromIntegral $ Set.size $ Set.filter isError states
+      where isError (State { control = Err _ }) = True 
+            isError _ = False
+
 isFinalState :: State -> Bool
 isFinalState (State { control = (Ap _), top = Hlt, topFail = Hlt }) = True
 isFinalState _ = False

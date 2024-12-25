@@ -325,12 +325,13 @@ instance (Ord s) => Monoid (SuccessorMap s) where
 instance NFData Control
 
 -- | Abstract control component
-data Control = Ev Exp Env | Ap Val
+data Control = Ev Exp Env | Ap Val | Err Span
             deriving (Ord, Eq, Generic)
 
 instance Show Control where
    show (Ev e _) = "ev(" ++ show e ++ ")"
    show (Ap v) = "ap(" ++ show v ++ ")"
+   show (Err s) = "error(" ++ show s ++ ")"
 
 instance NFData Kont
 
@@ -471,3 +472,12 @@ runInPrimMStack initialSto context m = foldMap extract . Set.fromList <$>  run (
             initialCoerceSto :: CoerceStore AllVal Adr to
             initialCoerceSto = CoerceStore initialSto
             initialState = (((((), context), initialCoerceSto), initialCoerceSto), initialCoerceSto)
+
+
+------------------------------------------------------------
+-- Interpretation of results
+------------------------------------------------------------
+
+class IsAnalysisResult r where 
+   -- | Count the number of detected failed assertions
+   failedAssertions :: r -> Integer
