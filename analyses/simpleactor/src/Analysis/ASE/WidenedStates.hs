@@ -26,24 +26,21 @@ import Symbolic.AST
     ( Formula(..),
       emptyFormula,
       conjunction )
-import Lattice (justOrBot)
 import Control.Monad.Join (cond, condsCP, fromBL)
 
 import Syntax (SpanOf(..))
 import Analysis.Store (Store(..))
-import RIO (runIdentity)
+import RIO ( runIdentity, Identity )
 import Solver ( CachedSolver, runCachedSolver )
 import Domain.Core.AbstractCount (AbstractCount(CountInf, CountOne))
 import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
 import qualified Symbolic.SMT as SMT
-import Control.Monad.Writer (MonadWriter (tell), WriterT (runWriterT))
+import Control.Monad.Writer (WriterT (runWriterT))
 import Analysis.ASE.Common
-import qualified Debug.Trace as Debug
 import Analysis.Monad (runJoinT)
 import Lattice.BottomLiftedLattice (lowerBottom)
 import GHC.Generics (Generic)
 import Control.DeepSeq
-import RIO (Identity)
 
 ------------------------------------------------------------
 -- State space
@@ -117,7 +114,7 @@ deriving instance (Ord (PaiDom Val), Ord (VecDom Val), Ord (StrDom Val)) => Ord 
 
 stepCompound :: SmallstepM State m => State -> SharedStep -> m (Set State, SharedStep)
 -- ST-Blame (failed assertion)
-stepCompound state@(State { control = Ev (Blame _ s) _ }) shared = 
+stepCompound state@(State { control = Ev (Blame _ s) _ }) shared =
    return (Set.singleton (state { control = Err s }), shared)
 stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) shared =
    fmap lowerBottom $ runJoinT $
@@ -164,7 +161,7 @@ stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) shared =
 stepCompound st _ = error $ "unsupported program state" ++ show st
 
 applyClosure :: SmallstepM State m => State -> SharedStep -> [Val] -> (Exp, Env) -> m (Set State, SharedStep)
-applyClosure st@State{ .. } shared vs (Lam xs e _, ρ') = do 
+applyClosure st@State{ .. } shared vs (Lam xs e _, ρ') = do
       k <- asks contextSensitivity
       return (Set.singleton $ st { control = Ev e ρ'', context =  pushK k (spanOf e) context}, shared { vstoStep = store' })
    where ads = map ((`alloc` context) . spanOf) xs
@@ -223,9 +220,9 @@ step shared inn = do
 -- Utility functions (mostly for inspecting the results)
 ------------------------------------------------------------
 
-instance IsAnalysisResult ((Shared f, Set State), SuccessorMap State) where  
+instance IsAnalysisResult ((Shared f, Set State), SuccessorMap State) where
    failedAssertions ((_, states), _) = fromIntegral $ Set.size $ Set.filter isError states
-      where isError (State { control = Err _ }) = True 
+      where isError (State { control = Err _ }) = True
             isError _ = False
 
 isFinalState :: State -> Bool
@@ -280,7 +277,7 @@ runContext e0 k m =
        & runZ3SolverWithSetup SMT.prelude
 
 -- | The initial shared state 
-initialShared :: Applicative f 
+initialShared :: Applicative f
               => State  -- ^ the initial state
               -> Shared f
 initialShared initSt = Map.singleton (pure initSt) (SharedStep { vstoStep = analysisStore, kstoStep = Map.empty, fstoStep = Map.empty })
@@ -298,10 +295,10 @@ analyze = analyze'
 -- | Type isomorphic with unit but with a kind that is compatible with functor and applicative
 data Unit a = Unit deriving (Ord, Eq, Show, Functor)
 
-instance NFData (Unit a) where   
+instance NFData (Unit a) where
    rnf a = a `seq` ()
 
-instance Applicative Unit where  
+instance Applicative Unit where
    pure = const Unit
    (<*>) _ _ = Unit
 

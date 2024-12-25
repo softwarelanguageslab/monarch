@@ -119,8 +119,6 @@ printSmallstepResult debug (states, succs) = do
       printGraph file (Smallstep.getSuccessorMap succs)
       hClose file
    
-         
-
 smallstepCmd :: InputOptions -> IO ()
 smallstepCmd (InputOptions { .. }) = do
    loadFile' doTranslate filename >>= Smallstep.analyze 1 >>= printSmallstepResult debug

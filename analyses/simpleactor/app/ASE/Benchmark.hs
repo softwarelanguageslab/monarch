@@ -29,6 +29,7 @@ import Data.Time.Format.ISO8601
 
 -- Command line parsing imports
 import Options.Applicative
+import GHC.IO.Handle.Text (hPutStrLn)
 
 ------------------------------------------------------------
 -- Command-line interface
@@ -192,6 +193,7 @@ runTimeBenchmarks :: [String] -- ^ the programs to run the benchmark on
                   -> IO ()
 runTimeBenchmarks benchmarks outputFilename = do
       outputHandle <- openTimestamped outputFilename
+      hPutStrLn outputHandle "programName;configuration;k;iteration;time"
       mapM_ (\(runner,filename) -> runSingle runner filename outputHandle >> putStrLn (filename ++ " " ++ fst runner ++ " done")) benchmarkWithConfigurations
       hClose outputHandle
    where runSingle (name, runner) program outputHandle = do
@@ -223,6 +225,7 @@ runPrecisionBenchmarks :: [String] -- ^ the list of benchmarks to run precision 
                        -> IO ()
 runPrecisionBenchmarks benchmarks outputFilename = do 
       outputHandle <- openTimestamped outputFilename
+      hPutStrLn outputHandle "programName;precisionName;k;failedAsserts"
       mapM_ (\(runner, filename) -> runSingle runner filename >>= writeToHandle outputHandle filename) benchmarksWithConfigurations
       hClose outputHandle
    where runSingle (name, runner) program = do 
