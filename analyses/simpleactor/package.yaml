@@ -89,6 +89,8 @@ executables:
     - maf2-syntax
     - maf2-domains
     - maf2-analysis
+    - filepath
+    - time
 
 tests:
   interpreter-test:

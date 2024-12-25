@@ -23,6 +23,7 @@ import qualified Analysis.ASE.Common as ASE
 import qualified Analysis.ASE.WidenedStates as SmallStepWidened
 import System.IO
 import Control.Monad
+import ASE.Benchmark
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -52,7 +53,8 @@ commandParser =
     (   command "smallstep" (info (smallstepCmd <$> inputOptions) (progDesc "Analyze a program using the ASE in small-step"))
     <>  command "analyze" (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
     <>  command "eval"    (info (interpret <$> inputOptions) (progDesc "Run a program"))
-    <>  command "smallstepw" (info (smallstepWideningCmd <$> inputOptions) (progDesc "Analyze a program using ASE in small-step, widened version")))
+    <>  command "smallstepw" (info (smallstepWideningCmd <$> inputOptions) (progDesc "Analyze a program using ASE in small-step, widened version"))
+    <>  command "asebenchmark" (info (benchmarkCmd <$> benchmarkOptions) (progDesc "Benchmark ASE programs in all configurations")))
 
 
 ------------------------------------------------------------
