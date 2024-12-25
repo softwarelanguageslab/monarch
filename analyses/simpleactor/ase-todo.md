@@ -1,10 +1,6 @@
 TODO
 ----
 
-## Analysis code
-
-* [ ] Support for match expression
-
 ## Benchmarking code
 
 * [ ] widening of path condition along the existing lines
@@ -19,4 +15,5 @@ TODO
 
 * [X] Undefiner
 * [ ] Input data generator based on shape of the contract (needed for structs)
-* [ ] Translation of structs
+* [X] Translation of structs
+* [ ] Add the required built-in contracts
