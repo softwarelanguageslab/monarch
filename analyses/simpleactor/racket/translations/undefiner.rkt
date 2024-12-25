@@ -101,3 +101,7 @@
       (foo 20)))
   (displayln (undefine-program test-program))
   (displayln (undefine-program '(42))))
+
+(provide
+  undefine-program
+  undefine)
