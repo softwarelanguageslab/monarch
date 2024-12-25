@@ -1,5 +1,7 @@
 #lang racket
 
+(require racket/pretty)
+
 ;; This module transforms all `define` expression in a program 
 ;; to a series of (nested) `letrec` expressions.
 
@@ -36,8 +38,11 @@
         (if (not (is-define? current))
             (surround-letrec
                (lambda ()
-                   (cons (undefine current #f)
-                         (undefine-sequence* rest allowed))))
+                   (let ((result (undefine current #f)))
+                     (if (null? result)
+                         (undefine-sequence rest allowed)
+                         (cons (undefine current #f)
+                               (undefine-sequence* rest allowed))))))
             (begin (undefine current #t) (undefine-sequence* rest allowed))))))
 
 (define (undefine-sequence exs allowed) (undefine-sequence* exs allowed))
@@ -89,8 +94,14 @@
   ;; if the undefiner functions correctly the program
   ;; should only contain a single expression
   (define result (undefine-sequence program #t))
-  (unless (null? (cdr result)) (error "program should only contain a single `letrec` expression"))
+  (unless (null? (cdr result)) 
+    (pretty-display result)
+    (error (format "program should only contain a single `letrec` expression ~a~n" result)))
+
   (car result))
+
+(define (undefine-single program)
+  (undefine program #t))
 
 (module+ main 
   (define test-program 
@@ -102,6 +113,7 @@
   (displayln (undefine-program test-program))
   (displayln (undefine-program '(42))))
 
+
 (provide
   undefine-program
-  undefine)
+  undefine-single)

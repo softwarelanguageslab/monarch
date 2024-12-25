@@ -46,7 +46,7 @@
   (match exp
     [(quasiquote (struct ,name ,fields ,@annotations)) 
      (define nam (gensym name))
-     `(,(translate-constructor name (map field-name fields))
+     `(begin ,(translate-constructor name (map field-name fields))
        (define (,(string->symbol (string-append (symbol->string name) "?")) ,nam)
          (eq? (car ,nam) (quote ,name)))
        ,@(map (translate-field name) (map field-name fields) (build-list (length fields) values)))]

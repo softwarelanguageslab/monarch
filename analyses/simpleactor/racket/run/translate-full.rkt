@@ -2,6 +2,8 @@
 
 
 (require racket/pretty)
+(require (prefix-in un: "../translations/undefiner.rkt"))
+(require (prefix-in st: "../translations/structs-to-pair.rkt"))
 (require (prefix-in cc: "../translations/cc-combinator.rkt"))
 (require (prefix-in ac: "../translations/actor-translation.rkt"))
 (require (prefix-in co: "../translations/contract-out-translation.rkt"))
@@ -21,6 +23,10 @@
 ;; n ∈ ℕ       b ∈ 𝔹 ::= true | false
 ;;
 
-(pretty-display (cc:translate 
+
+(pretty-display 
+  (un:undefine-single
+     (st:translate
+        (cc:translate 
            #:meta #f
-           (ac:translate (co:translate (read)))))
+           (ac:translate (co:translate (read)))))))
