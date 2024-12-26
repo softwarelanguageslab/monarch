@@ -44,7 +44,7 @@ benchmarkOptions = BenchmarkOptions <$> strOption ( long "file" <> short 'f' <> 
 
 benchmarkCmd :: BenchmarkOptions -> IO () 
 benchmarkCmd (BenchmarkOptions { .. }) = do 
-      let benchmarks = testBenchmarkPrograms
+      let benchmarks = benchmarkPrograms
       putStrLn "Running precision benchmarks"
       runPrecisionBenchmarks benchmarks precisionBenchmarkOutput
       putStrLn "Running time benchmarks"
@@ -59,41 +59,41 @@ benchmarkCmd (BenchmarkOptions { .. }) = do
 
 benchmarkPrograms :: [String]
 benchmarkPrograms = [
-      "games_snake.rkt",
-      "games_tetris.rkt",
-      "games_zombie.rkt",
-      "mochi_fold-div.rkt",
-      "mochi_hors.rkt",
-      "mochi_hrec.rkt",
-      "mochi_l-zipunzip.rkt",
-      "mochi_map-foldr.rkt",
-      "mochi_mappend.rkt",
-      "mochi_mem.rkt",
-      "mochi_mult.rkt",
-      "mochi_neg.rkt",
-      "mochi_nth0.rkt",
-      "mochi_r-file.rkt",
-      "mochi_r-lock.rkt",
-      "mochi_reverse.rkt",
-      "mochi_sum.rkt",
-      "mochi_zip.rkt",
-      "sergey_blur.rkt",
-      "sergey_eta.rkt",
-      "sergey_kcfa2.rkt",
-      "sergey_kcfa3.rkt",
-      "sergey_loop2.rkt",
-      "sergey_mj09.rkt",
-      "sergey_sat.rkt",
-      "softy_append.rkt",
-      "softy_cpstak.rkt",
-      "softy_last-pair.rkt",
-      "softy_last.rkt",
-      "softy_length-acc.rkt",
-      "softy_length.rkt",
-      "softy_member.rkt",
-      "softy_recursive-div2.rkt",
-      "softy_subst.rkt",
-      "softy_tak.rkt"
+      "benchmarks-out/games_snake.rkt",
+      "benchmarks-out/games_tetris.rkt",
+      "benchmarks-out/games_zombie.rkt",
+      "benchmarks-out/mochi_fold-div.rkt",
+      "benchmarks-out/mochi_hors.rkt",
+      "benchmarks-out/mochi_hrec.rkt",
+      "benchmarks-out/mochi_l-zipunzip.rkt",
+      "benchmarks-out/mochi_map-foldr.rkt",
+      "benchmarks-out/mochi_mappend.rkt",
+      "benchmarks-out/mochi_mem.rkt",
+      "benchmarks-out/mochi_mult.rkt",
+      "benchmarks-out/mochi_neg.rkt",
+      "benchmarks-out/mochi_nth0.rkt",
+      "benchmarks-out/mochi_r-file.rkt",
+      "benchmarks-out/mochi_r-lock.rkt",
+      "benchmarks-out/mochi_reverse.rkt",
+      "benchmarks-out/mochi_sum.rkt",
+      "benchmarks-out/mochi_zip.rkt",
+      "benchmarks-out/sergey_blur.rkt",
+      "benchmarks-out/sergey_eta.rkt",
+      "benchmarks-out/sergey_kcfa2.rkt",
+      "benchmarks-out/sergey_kcfa3.rkt",
+      "benchmarks-out/sergey_loop2.rkt",
+      "benchmarks-out/sergey_mj09.rkt",
+      "benchmarks-out/sergey_sat.rkt",
+      "benchmarks-out/softy_append.rkt",
+      "benchmarks-out/softy_cpstak.rkt",
+      "benchmarks-out/softy_last-pair.rkt",
+      "benchmarks-out/softy_last.rkt",
+      "benchmarks-out/softy_length-acc.rkt",
+      "benchmarks-out/softy_length.rkt",
+      "benchmarks-out/softy_member.rkt",
+      "benchmarks-out/softy_recursive-div2.rkt",
+      "benchmarks-out/softy_subst.rkt",
+      "benchmarks-out/softy_tak.rkt"
    ]
 
 testBenchmarkPrograms :: [String] 

@@ -21,8 +21,8 @@
 (struct snake (dir segs))
 (struct world (snake food))
 (define DIR/C (one-of/c 'up 'down 'left 'right))
-(define POSN/C (struct/c posn real? real?))
-(define SNAKE/C (struct/c snake DIR/C (and/c cons? (listof POSN/C))))
+(define POSN/C (struct/c posn real?/c real?/c))
+(define SNAKE/C (struct/c snake DIR/C (and/c cons?/c (listof POSN/C))))
 (define WORLD/C (struct/c world SNAKE/C POSN/C))
 
 

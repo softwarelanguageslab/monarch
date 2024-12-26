@@ -11,25 +11,32 @@ ae ::= λx . e | l | self | blame | x | dyn x
 e ::= ae | if ae e e | let x = e in e | ae ae ... | match ae with (pat => e) ... | pair ae ae
 |#
 
+(define (empty-begin? beg)
+  (match beg
+    [(quasiquote (begin)) #t]
+    [_ #f]))
+
+(define (nonempty-begin? beg) (not (empty-begin? beg)))
+
 (define (translate-parts lst)
   (if (null? lst)
     (values '() '() '())
     (let-values ([(aes xs es) (translate-parts (cdr lst))])
       (if (atomic? (car lst))
           (values (cons (car lst) aes) xs es)
-          (letrec ((x (gensym)))
+          (letrec ((x (gensym "x")))
             (values (cons x aes) (cons x xs) (cons (translate (car lst)) es)))))))
 
 (define (translate exp)
   (match exp 
     [(quasiquote (lambda (,@xs) ,@exs))
-     `(lambda (,@xs) ,@(map translate exs))]
+     `(lambda (,@xs) ,(translate `(begin ,@exs)))]
     [(quasiquote (spawn ,e))
      (let ((x (gensym)))
      `(letrec ((,x ,(translate e))) (spawn ,x)))]
     [(quasiquote (letrec ,bds ,@bdy))
      `(letrec ,(map (lambda (bdn) (list (car bdn) (translate (cadr bdn)))) bds)
-              ,@(map translate bdy))]
+             ,(translate `(begin ,@bdy)))]
     [(quasiquote (terminate)) `(terminate)]
     [(quasiquote (self)) `(self)]
     [(quasiquote (pair ,e1 ,e2))
@@ -49,12 +56,14 @@ e ::= ae | if ae e e | let x = e in e | ae ae ... | match ae with (pat => e) ..
            `(letrec ((,x-cnd ,(translate e1)))
               (if ,x-cnd ,(translate e2) ,(translate e3)))))]
     [(quasiquote (dyn ,x)) `(dyn ,x)]
-    [(quasiquote (begin ,@es))
-     (letrec ((xs (map (lambda ign (gensym)) es)))
-       `(letrec
-          (,@(map (lambda (x e) (list x (translate e))) xs es))
-
-          ,(last xs)))]
+    [(quasiquote (begin ,@es0))
+     (if (null? es0) 
+       '() 
+        (let ((es (filter nonempty-begin? es0)))
+           (letrec ((xs (map (lambda ign (gensym)) es)))
+             `(letrec
+                (,@(map (lambda (x e) (list x (translate e))) xs es))
+                ,(last xs)))))]
     [(quasiquote (meta ,e)) `(meta ,(translate e))]
     ;[(quasiquote (receive ,@xs)) (error "translate: receive not implemented")]
     [(quasiquote (match ,e ,clauses)) 
@@ -64,6 +73,7 @@ e ::= ae | if ae e e | let x = e in e | ae ae ... | match ae with (pat => e) ..
 
     ;[(quasiquote (parametrize ,@xs)) (error "translate: parametrize not implemented")]
     [(quasiquote (,operator ,@operands))
+
      (let-values ([(aes xs es) (translate-parts (cons operator operands))])
        (if (null? xs)
            aes
@@ -74,6 +84,9 @@ e ::= ae | if ae e e | let x = e in e | ae ae ... | match ae with (pat => e) ..
 
 (define (lambda? x) (match x 
                       [(quasiquote (lambda ,xs ,@bdy)) #t] [_ #f]))
-(define (atomic? x) (or (boolean? x) (number? x) (symbol? x) (string? x) (lambda? x)))
+(define (atomic? x) 
+  (match x 
+    [(quasiquote (quote ,x)) #t]
+    [_  (or (null? x) (boolean? x) (number? x) (symbol? x) (string? x) (lambda? x))]))
 
 (provide translate)

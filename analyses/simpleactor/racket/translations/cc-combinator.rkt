@@ -245,6 +245,22 @@
          `(lambda (,j ,k ,f)
             (lambda ,vs
               ,(instrument-meta `(,(translate-aux ret) ,j ,k (,f ,@(map (lambda (arg v) (instrument-meta `(,(translate-aux arg) ,j ,k ,v))) ags vs))))))))]
+    [(quasiquote (->d ,@κs))
+     (let* ((ags (drop-right κs 1))
+            (ret (last κs))
+            (vs (map (lambda ign (gensym)) ags))
+            (j (gensym "j"))
+            (k (gensym "k"))
+            (f (gensym "f"))
+            (xs (map (lambda ags (gensym "x")) ags)))
+
+       (instrument-meta
+         `(lambda (,j ,k ,f)
+            (lambda ,vs
+              (letrec 
+                ,(map (lambda (arg v x) (list x (instrument-meta `(,(translate-aux arg) ,j ,k ,v)))) ags vs xs)
+               ;; TODO: blame assignment is actually wrong here: a third party is needed now!
+               ,(instrument-meta `((,(translate-aux ret) ,@xs) ,j ,k (,f ,@xs))))))))]
     [(quasiquote (-> ,κ1 ,κ2))
      (let ((j (gensym)) (k (gensym)) (f (gensym)) (v (gensym)))
        (instrument-meta 
@@ -255,6 +271,24 @@
      (instrument-meta `(,(translate-aux κ) (quote ,j) (quote ,k) ,(translate-aux v)))]
     [(quasiquote (behavior/c ,@messages))
      (translate-behavior/c e)]
+    [(quasiquote (one-of/c ,@options))
+     (let ((j (gensym "j")) (k (gensym "k")) (v (gensym "v")))
+      (define (gen-oneof options v)
+        (if (null? (cdr options))
+            `(eq? ,(car options) ,v)
+            `(if (eq? ,(car options) ,v)
+                 #t 
+                 ,(gen-oneof (cdr options) v))))
+         (translate-aux `(flat (lambda (,v) ,(gen-oneof options v)))))]
+    [(quasiquote (struct/c ,name ,@fields))
+     (define (gen-field-checks j k fields v checked-v)
+       (let ((checked (gensym "checked")))
+          (if (null? fields)
+              (consify (reverse checked-v))
+              `(letrec ((,checked (,(translate-aux (car fields)) (quote ,j) (quote ,k) (car ,v))))
+                   ,(gen-field-checks j k (cdr fields) `(cdr ,v) (cons checked checked-v))))))
+     (let ((v (gensym "v")) (j (gensym "j")) (k (gensym "k")))
+        `(lambda (,j ,k ,v) ,(gen-field-checks j k fields v (list name))))]
     [(quasiquote (receive ,pats))
      `(receive ,(append pats (enhanced-receive-patterns pats)))]
     [(quasiquote (,es ...))
@@ -282,6 +316,7 @@
 
 (module+ main
   (require "../tests/prelude.rkt")
+  (require racket/pretty)
 
 
    ;(displayln (translate test-1))
@@ -291,10 +326,10 @@
    ;(displayln (eval_ `(,(translate test-3) (lambda (x) (* x 2))))) ;; returns 84
    ;(displayln (eval_ `(,(translate test-3) (lambda (x) (* x -2))))) ;; return blame error on k
 
-   (displayln (translate test-4 #:meta #t))
-   (displayln (eval_ (translate test-4 #:meta #t))) ;; returns 5
-   (displayln (eval_ `(,(translate test-5) 2))) ;; returns 1
-   (displayln (eval_ `(,(translate test-5) 1))) ;; blame error blaming k
-
+   ;(displayln (translate test-4 #:meta #t))
+   ;(displayln (eval_ (translate test-4 #:meta #t))) ;; returns 5
+   ;(displayln (eval_ `(,(translate test-5) 2))) ;; returns 1
+   ;(displayln (eval_ `(,(translate test-5) 1))) ;; blame error blaming k
+   (pretty-display (translate `(struct/c world TETRA/C BSET/C)))
    )
 

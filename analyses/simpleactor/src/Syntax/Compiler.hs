@@ -78,6 +78,10 @@ compile ex@(op ::: oprs) =
 
 compile ex@(Atom x _) = return $ Var $ Ide x (spanOf ex)
 compile ex@(Quo (Atom s _) _) = return $ Literal (Symbol s) (spanOf ex)
+compile ex@(Quo (SNil _) _) = return $ Literal Nil (spanOf ex)
+-- TODO: strings are not symbols!
+compile ex@(Str str _) = return $ Literal (Symbol str) (spanOf ex)
+compile ex@(Cha c _) = return $ Literal  (Character c) (spanOf ex)
 compile e = throwError $ "invalid syntax " ++ show e
 
 compileBdn :: MonadError String m => SExp -> m (Ide, Exp)

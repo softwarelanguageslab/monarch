@@ -51,26 +51,27 @@
 ;; expressions are allowed at that location
 (define (undefine exp allowed)
    (match exp 
-     [(quasiquote (letrec ,bds ,bdy)) 
+     [(quasiquote (letrec ,bds ,@bdy)) 
       (let ((names (map car bds))
             (values (map cadr bds)))
 
       (parameterize [(*defines* '())] `(letrec ,(map (lambda (name value) `(,name ,(undefine value #f))) names values) 
-                                              ,(undefine-sequence bdy #t))))]
-     [(quasiquote (let ,bds ,bdy)) 
+                                              ,@(undefine-sequence bdy #t))))]
+     [(quasiquote (let ,bds ,@bdy)) 
       (let ((names (map car bds))
             (values (map cadr bds)))
 
       (parameterize [(*defines* '())] `(let ,(map (lambda (name value) `(,name ,(undefine value #f))) names values) 
-                                            ,(undefine-sequence bdy #t))))]
-     [(quasiquote (let* ,bds ,bdy))
+                                            ,@(undefine-sequence bdy #t))))]
+     [(quasiquote (let* ,bds ,@bdy))
       (let ((names (map car bds))
             (values (map cadr bds)))
 
       (parameterize [(*defines* '())] `(let* ,(map (lambda (name value) `(,name ,(undefine value #f))) names values) 
-                                            ,(undefine-sequence bdy #t))))]
+                                            ,@(undefine-sequence bdy #t))))]
      [(quasiquote (begin ,@exs))
-       (undefine-sequence exs allowed)]
+       (define undefined-sequence (undefine-sequence exs allowed))
+       `(begin ,@undefined-sequence)]
      [(quasiquote (lambda ,ags ,@bdy))
       (parameterize [(*defines* '())] `(lambda ,ags ,@(undefine-sequence bdy #t)))]
      [(quasiquote (define (,f ,@ags) ,@bdy))
@@ -95,7 +96,6 @@
   ;; should only contain a single expression
   (define result (undefine-sequence program #t))
   (unless (null? (cdr result)) 
-    (pretty-display result)
     (error (format "program should only contain a single `letrec` expression ~a~n" result)))
 
   (car result))
@@ -105,11 +105,12 @@
 
 (module+ main 
   (define test-program 
-    `((define x 10)
-      (display (+ x 2))
-      (define y 20)
-      (define (foo x) (+ x y))
-      (foo 20)))
+    `((letrec ((x 10))
+         (define x 10)
+         (display (+ x 2))
+         (define y 20)
+         (define (foo x) (+ x y))
+         (foo 20))))
   (displayln (undefine-program test-program))
   (displayln (undefine-program '(42))))
 
