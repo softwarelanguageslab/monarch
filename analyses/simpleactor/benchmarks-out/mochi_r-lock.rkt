@@ -1141,7 +1141,6 @@
                                                     (letrec ((x7560 (cdr l)))
                                                       (member e x7560))))))))
                                     g7555)))
-                               (call-with-current-continuation call/cc)
                                (cddddr
                                 (lambda (x)
                                   (letrec ((g7561
@@ -2639,7 +2638,6 @@
                                                     (letrec ((x8003 (cdr l)))
                                                       (member e x8003))))))))
                                     g7998)))
-                               (call-with-current-continuation call/cc)
                                (cddddr
                                 (lambda (x)
                                   (letrec ((g8004

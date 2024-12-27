@@ -243,7 +243,7 @@
        (if (equal? (car l) e)
          l
          (member e (cdr l)))))
-   (define call-with-current-continuation call/cc)
+   ;(define call-with-current-continuation call/cc)
    (define (cddddr x)  (cdr (cdr (cdr (cdr x)))))
    (define (cadddr x)  (car (cdr (cdr (cdr x)))))
    (define (int-top) (random 42))
