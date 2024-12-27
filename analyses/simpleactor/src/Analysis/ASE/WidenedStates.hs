@@ -31,7 +31,7 @@ import Control.Monad.Join (cond, condsCP, fromBL)
 
 import Syntax (SpanOf(..))
 import Analysis.Store (Store(..))
-import RIO ( runIdentity, Identity, liftIO )
+import RIO ( runIdentity, Identity, liftIO, hFlush, stdout )
 import Solver ( CachedSolver, runCachedSolver )
 import Domain.Core.AbstractCount (AbstractCount(CountInf, CountOne))
 import Solver.Z3 (Z3Solver, runZ3SolverWithSetup)
@@ -43,7 +43,7 @@ import Lattice.BottomLiftedLattice (lowerBottom, BottomLifted)
 import GHC.Generics (Generic)
 import Control.DeepSeq
 import Data.Kind (Type)
-import Data.Foldable (foldrM)
+import Data.Foldable (foldrM, foldlM)
 import qualified Debug.Trace as Debug
 import qualified Analysis.Environment as Environment
 import qualified Lattice.BottomLiftedLattice as BL
@@ -288,6 +288,7 @@ step' (State { control = Err _ }) _ = return (Set.empty, emptyDelta)
 step :: (Ord (f State), Applicative f,  SmallstepM State m) => Shared f -> State -> m (SharedStepDelta, Set State)
 step shared inn = do
    (successors, delta) <- step' inn (fromJust $ Map.lookup (pure inn) shared)
+   -- liftIO (putStr ".") >> hFlush stdout
    registerSuccessor (SuccessorMap $ Map.singleton inn successors)
    return (delta, successors)
 
@@ -314,9 +315,11 @@ isStuckState succs st =
 
 collect' :: (Applicative f, Ord (f State), SmallstepM State m) => Shared f -> Set State -> Set State ->  m (Shared f, Set State)
 collect' shared nxt ss = do
-      (shared', nxt') <- foldrM merge (shared, Set.empty) nxt
+      (shared', nxt') <- foldlM (flip merge) (shared, Set.empty) nxt
       let ss' = Set.union ss nxt'
-      liftIO (putStrLn $ "number of discovered states " ++ show (Set.size ss'))
+      --liftIO (putStrLn "")
+      --liftIO (putStrLn $ "number of discovered states " ++ show (Set.size ss'))
+      --liftIO (putStrLn $ "number of next states " ++ show (Set.size nxt))
       -- mapM_ (\state -> liftIO $ putStrLn $ "discovered state " ++ show state) (Set.difference ss' ss)
       if (Set.size ss' > 1000 && False) || (shared', ss') == (shared, ss) then
          return (shared', ss')
@@ -325,7 +328,7 @@ collect' shared nxt ss = do
    where merge inn (shared', ss') = do
             (delta, successors) <- step shared inn
             let originalSharedStep = fromMaybe Lat.bottom (Map.lookup (pure inn) shared')
-            return (Map.unionWith Lat.join (Map.fromList $ map ((,applyDeltaJoin originalSharedStep delta) . pure) (Set.toList successors)) shared', ss' `Set.union` successors)
+            successors `deepseq` return (Map.unionWith Lat.join (Map.fromList $ map ((,applyDeltaJoin originalSharedStep delta) . pure) (Set.toList successors)) shared', ss' `Set.union` successors)
 
 -- | Compute the set of successors for the given list of states
 collect :: (Applicative f, Ord (f State), SmallstepM State m) => Shared f -> Set State -> m (Shared f, Set State)
@@ -336,7 +339,7 @@ collect shared ss = do
    where merge inn (shared', ss') = do
             (delta, successors) <- step shared inn
             let originalSharedStep = fromMaybe Lat.bottom (Map.lookup (pure inn) shared')
-            return (Map.union (Map.fromList $ map ((,applyDeltaJoin originalSharedStep delta) . pure) (Set.toList successors)) shared', ss' `Set.union` successors)
+            successors `deepseq` (return (Map.union (Map.fromList $ map ((,applyDeltaJoin originalSharedStep delta) . pure) (Set.toList successors)) shared', ss' `Set.union` successors))
 
 -- | Incremental computation of the least fixed point by only considering the 
 -- successors states produced in the previous iteration for the next iteration
