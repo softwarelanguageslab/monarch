@@ -17,7 +17,7 @@ import qualified Lattice.Class as Lat
 import Lattice.SetLattice ()
 import RIO.Prelude hiding (mzero)
 import Domain.Symbolic.Class (SymbolicValue(..))
-import Analysis.Scheme.Primitives (initialEnv, primitivesByName)
+import Analysis.Scheme.Primitives (primitivesByName)
 import qualified Analysis.Scheme.Primitives as Prim
 import Domain.Scheme.Class hiding (Exp, Env, Adr)
 import Data.Maybe (fromJust)
@@ -262,14 +262,14 @@ analysisStore = RVal <$> initialSto allPrimitives PrimAdr
 
 inject :: Exp -> State
 inject e =
-   State (Ev e (initialEnv PrimAdr)) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq Map.empty emptyFormula emptyModelContext
+   State (Ev e initialEnv) analysisStore Hlt Map.empty Hlt Map.empty [] Map.empty initialSeq Map.empty emptyFormula emptyModelContext
 
 runContext :: Exp -- ^ the initial expression
            -> Int -- ^ the desired context sensitivity
            -> ReaderT ConcolicContext (WriterT (SuccessorMap State) (CachedSolver SymVar (Z3Solver SymVar))) a
            -> IO (a, SuccessorMap State)
 runContext e0 k m =
-         runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0 k)
+         runReaderT m (ConcolicContext analysisStore initialEnv e0 k)
        & runWriterT
        & runCachedSolver
        & runZ3SolverWithSetup SMT.prelude

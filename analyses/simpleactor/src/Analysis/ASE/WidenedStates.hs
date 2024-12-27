@@ -18,11 +18,11 @@ import qualified Lattice.Class as Lat
 import Lattice.SetLattice ()
 import RIO.Prelude hiding (mzero)
 import Domain.Symbolic.Class (SymbolicValue(..))
-import Analysis.Scheme.Primitives (initialEnv, primitivesByName)
+import Analysis.Scheme.Primitives (primitivesByName)
 import qualified Analysis.Scheme.Primitives as Prim
 import Domain.Scheme.Class hiding (Exp, Env, Adr)
 import Data.Maybe (fromJust)
-import Analysis.SimpleActor.Semantics (initialSto, allPrimitives)
+import Analysis.SimpleActor.Semantics (initialSto, allPrimitives, lookupPrimitive, runPrimitive)
 import Symbolic.AST
     ( Formula(..),
       emptyFormula,
@@ -239,7 +239,7 @@ applyClosure _ _ _ _ = error "invalid closure"
 
 applyPrimitive :: State -> SharedStep -> Exp -> [Val] -> String -> (Set State, SharedStepDelta)
 -- XXX: here we are passing the ENTIRE STORE in the delta, best to compute the difference here and only use the delta!
-applyPrimitive st@State { .. } shared e vs nam = Lat.joinMap (\(v, store') -> (Set.singleton st { control = Ap v }, emptyDelta { vstoDelta = DeltaStore (Map.map BL.Value store') })) $ runIdentity $ runInPrimMStack (vstoStep shared) context (Prim.run (fromJust $ Map.lookup nam primitivesByName) e vs)
+applyPrimitive st@State { .. } shared e vs nam = Lat.joinMap (\(v, store') -> (Set.singleton st { control = Ap v }, emptyDelta { vstoDelta = DeltaStore (Map.map BL.Value store') })) $ runIdentity $ runInPrimMStack (vstoStep shared) context (runPrimitive (fromJust $ lookupPrimitive nam) e vs)
 
 step' :: SmallstepM State m => State -> SharedStep -> m (Set State, SharedStepDelta)
 -- ST-Atomic
@@ -364,14 +364,14 @@ analysisStore = RVal <$> initialSto allPrimitives PrimAdr
 
 inject :: Exp -> State
 inject e =
-   State (Ev e (initialEnv PrimAdr)) Hlt Hlt [] Map.empty initialSeq Map.empty emptyFormula emptyModelContext
+   State (Ev e initialEnv) Hlt Hlt [] Map.empty initialSeq Map.empty emptyFormula emptyModelContext
 
 runContext :: Exp -- ^ the initial expression
            -> Int -- ^ the desidered context sensitivity
            -> ReaderT ConcolicContext (WriterT (SuccessorMap State) (CachedSolver SymVar (Z3Solver SymVar))) a
            -> IO (a, SuccessorMap State)
 runContext e0 k m =
-         runReaderT m (ConcolicContext analysisStore (initialEnv PrimAdr) e0 k)
+         runReaderT m (ConcolicContext analysisStore initialEnv e0 k)
        & runWriterT
        & runCachedSolver
        & runZ3SolverWithSetup SMT.prelude

@@ -55,6 +55,8 @@ import Domain.Actor
 import Analysis.Actors.Monad
 import Control.DeepSeq
 import GHC.Generics
+import Domain.Symbolic (SymbolicValue (Symbolic), SymbolicVal, Abstract)
+import Symbolic.AST (Proposition)
 
 ------------------------------------------------------------
 -- 'Components'
@@ -177,7 +179,9 @@ type EvalM v m =
     ActorDomain v,
     EqualLattice v,
     Show v,
-    SymbolicM (Adr v) m v
+    SymbolicM (Adr v) m v,
+    SymbolicValue v (Adr v),
+    Symbolic v ~ SymbolicVal Exp [Span] (Adr v) (Abstract v)
   )
 
 ------------------------------------------------------------

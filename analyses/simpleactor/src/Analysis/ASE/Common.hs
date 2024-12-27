@@ -36,7 +36,7 @@ import Analysis.Monad.Allocation
 import Analysis.Monad.Context
 import Analysis.Monad.Join
 import Analysis.Monad.Cache hiding (Val)
-import Analysis.SimpleActor.Semantics (injectLit)
+import Analysis.SimpleActor.Semantics (injectLit, allPrimitives)
 import Data.Maybe
 import Control.Monad.Layer (MonadLayer (..))
 import Analysis.Monad (DependencyTrackingM(register))
@@ -353,6 +353,13 @@ type KSto = Map (KAdr [Span]) (Set Kont)
 
 -- | Failure continuation store
 type FSto = Map FAdr (Set Kontf)
+
+------------------------------------------------------------
+-- Initial environments and stores
+------------------------------------------------------------
+
+initialEnv :: Env
+initialEnv = Map.fromList (fmap (\nam -> (nam, PrimAdr nam)) allPrimitives)
 
 ------------------------------------------------------------
 -- Interaction with the model

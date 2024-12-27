@@ -42,13 +42,14 @@ import Lattice.Class (bottom)
 -- to one with symbolic constraints. We should 
 -- remove this and make the @cond@ more general.
 import Analysis.Symbolic.Monad (choice, choices)
--- | Same problem here, we really want to use @eql@
+-- Same problem here, we really want to use @eql@
 -- but we cannot do that since a generic boolean 
 -- is required for its implementation.
-import Domain.Symbolic (equal, var)
+import Domain.Symbolic (equal, var, combine, abstractValue, symbolicValue, SymbolicValue, SymbolicVal (SymbolicVal, proposition))
 import Analysis.Store (Store)
 import qualified Analysis.Store as Store
 import qualified Data.List as List
+import Symbolic.AST (Proposition(Predicate))
 
 ------------------------------------------------------------
 -- Evaluation
@@ -183,30 +184,34 @@ injectLit Nil         = nil
 
 data Primitive v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim v)
 
-newtype SimpleActorPrim v = SimpleActorPrim (forall m . EvalM v m => [v] -> Exp -> m v)
+newtype SimpleActorPrim v = SimpleActorPrim (forall m . (SymbolicValue v (Adr v), EvalM v m) => [v] -> Exp -> m v)
 
 -- | A nullary primitive
 aprim0 :: (forall m . EvalM v m => Exp -> m v) -> SimpleActorPrim v
 aprim0 f = SimpleActorPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall m . EvalM v m => v -> Exp -> m v) -> SimpleActorPrim v
+aprim1 :: (forall m  . (SymbolicValue v (Adr v), EvalM v m) => v -> Exp -> m v) -> SimpleActorPrim v
 aprim1 f = SimpleActorPrim $  \case [v] -> f v
                                     vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall m . EvalM v m => v -> v -> Exp -> m v) -> SimpleActorPrim v
+aprim2 :: (forall m . (SymbolicValue v (Adr v), EvalM v m) => v -> v -> Exp -> m v) -> SimpleActorPrim v
 aprim2 f = SimpleActorPrim $ \case [v1, v2] -> f v1 v2
                                    vs -> const $ escape $ ArityMismatch 2 (length vs)
 
 -- | Primitives specific to the simple actor language
-actorPrimitives :: Map String (Primitive v)
+actorPrimitives :: forall v . Map String (Primitive v)
 actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("wait-until-all-finished", aprim0 $ const $ return nil ),
    ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
    ("list", aprim0 $ const $ return nil),
    -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
    ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeAdr adr (var adr v) ; return $ var adr v }),
+   -- XXX: this `combine` is not supposed to be here, but it is easier to add a symbolic representation to `isInteger`
+   -- since `isInteger` is parametrized by any boolean lattice `b`
+   ("integer?", aprim1 $ \v _ -> return $ combine (abstractValue @v (isInteger @v v)) (SymbolicVal $ Predicate "integer?/v" [proposition $ symbolicValue v])),
+   ("number?", aprim1 $ \v _ -> return $ combine (abstractValue @v (isInteger @v v)) (SymbolicVal $ Predicate "number?/v" [proposition $ symbolicValue v])),
    ("print", aprim1 $ const $ const $ return nil) ]
 
 -- | Scheme primitives
