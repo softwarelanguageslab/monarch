@@ -126,7 +126,7 @@
                                                              g7180
                                                              'pair?)))))
                                                 g7274)))
-                                           (integer?
+                                           (integer?/c
                                             (lambda (g7183 g7184 g7185)
                                               (letrec ((g7276
                                                         (letrec ((x-cnd7277
