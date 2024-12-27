@@ -47,6 +47,13 @@
 
 (define (undefine-sequence exs allowed) (undefine-sequence* exs allowed))
 
+
+(define (flatten-begin seq)
+  (cond 
+    ((not (pair? seq)) (list seq))
+    ((eq? (car seq) 'begin) (apply append (map flatten-begin (cdr seq))))
+    (else (list seq))))
+
 ;; Undefine the given expression while taking into account that `define` 
 ;; expressions are allowed at that location
 (define (undefine exp allowed)
@@ -70,7 +77,7 @@
       (parameterize [(*defines* '())] `(let* ,(map (lambda (name value) `(,name ,(undefine value #f))) names values) 
                                             ,@(undefine-sequence bdy #t))))]
      [(quasiquote (begin ,@exs))
-       (define undefined-sequence (undefine-sequence exs allowed))
+       (define undefined-sequence (undefine-sequence (flatten-begin `(begin ,@exs)) allowed))
        `(begin ,@undefined-sequence)]
      [(quasiquote (lambda ,ags ,@bdy))
       (parameterize [(*defines* '())] `(lambda ,ags ,@(undefine-sequence bdy #t)))]
@@ -112,7 +119,9 @@
          (define (foo x) (+ x y))
          (foo 20))))
   (displayln (undefine-program test-program))
-  (displayln (undefine-program '(42))))
+  (displayln (undefine-program '(42)))
+
+  (displayln (flatten-begin '(begin (begin (define x 1) (define y 2) x) (+ x 1)))))
 
 
 (provide

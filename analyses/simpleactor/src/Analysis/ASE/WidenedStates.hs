@@ -317,7 +317,7 @@ collect' shared nxt ss = do
       (shared', nxt') <- foldrM merge (shared, Set.empty) nxt
       let ss' = Set.union ss nxt'
       liftIO (putStrLn $ "number of discovered states " ++ show (Set.size ss'))
-      mapM_ (\state -> liftIO $ putStrLn $ "discovered state " ++ show state) (Set.difference ss' ss)
+      -- mapM_ (\state -> liftIO $ putStrLn $ "discovered state " ++ show state) (Set.difference ss' ss)
       if (Set.size ss' > 1000 && False) || (shared', ss') == (shared, ss) then
          return (shared', ss')
       else
@@ -331,7 +331,7 @@ collect' shared nxt ss = do
 collect :: (Applicative f, Ord (f State), SmallstepM State m) => Shared f -> Set State -> m (Shared f, Set State)
 collect shared ss = do
       (shared', ss') <- foldrM merge (shared, ss) ss
-      liftIO (putStrLn $ "number of discovered states " ++ show (Set.size ss'))
+      -- liftIO (putStrLn $ "number of discovered states " ++ show (Set.size ss'))
       return (shared', ss')
    where merge inn (shared', ss') = do
             (delta, successors) <- step shared inn

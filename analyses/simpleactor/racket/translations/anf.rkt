@@ -22,10 +22,12 @@ e ::= ae | if ae e e | let x = e in e | ae ae ... | match ae with (pat => e) ..
   (if (null? lst)
     (values '() '() '())
     (let-values ([(aes xs es) (translate-parts (cdr lst))])
-      (if (atomic? (car lst))
-          (values (cons (car lst) aes) xs es)
+      (cond
+        ((atomic? (car lst)) (values (cons (car lst) aes) xs es))
+        ((lambda? (car lst)) (values (cons (translate (car lst)) aes) xs es))
+        (else 
           (letrec ((x (gensym "x")))
-            (values (cons x aes) (cons x xs) (cons (translate (car lst)) es)))))))
+            (values (cons x aes) (cons x xs) (cons (translate (car lst)) es))))))))
 
 (define (translate exp)
   (match exp 
@@ -87,6 +89,6 @@ e ::= ae | if ae e e | let x = e in e | ae ae ... | match ae with (pat => e) ..
 (define (atomic? x) 
   (match x 
     [(quasiquote (quote ,x)) #t]
-    [_  (or (null? x) (boolean? x) (number? x) (symbol? x) (string? x) (lambda? x))]))
+    [_  (or (null? x) (boolean? x) (number? x) (symbol? x) (string? x))]))
 
 (provide translate)

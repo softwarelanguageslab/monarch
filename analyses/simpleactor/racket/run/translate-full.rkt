@@ -34,3 +34,15 @@
 ;           (ac:translate (ap:translate (co:translate (read))))))))
 ; (pretty-display (st:translate (ap:translate (co:translate (read)))))
 (pretty-write (an:translate (un:undefine-single (st:translate (cc:translate #:meta #f (ac:translate (ap:translate (co:translate (read)))))))))
+;(pretty-write (an:translate (un:undefine-single (st:translate (cc:translate #:meta #f (ac:translate (co:translate (read))))))))
+;(pretty-write (un:undefine-single (st:translate (cc:translate #:meta #f (ac:translate (ap:translate (co:translate (read))))))))
+;(pretty-write (co:translate (read)))
+;
+
+;; (begin (begin 
+;;    (define x 10)
+;;    (define y 20)
+;;    x 
+;;    y)
+;; (+ x y))
+;;    
