@@ -25,7 +25,7 @@
    (define image? any/c) ;; TODO: unsupported, not sure how to support this?
    (define cons?/c (flat pair?))
    (define pair?/c (flat pair?))
-   (define integer? (flat integer?))
+   (define integer?/c (flat integer?))
    (define (and/c c1 c2)
       (lambda (k j v) 
            (and (c1 k j v) (c2 k j v))))
