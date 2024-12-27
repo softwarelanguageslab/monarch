@@ -147,7 +147,7 @@ instance Common.IsAnalysisResult AnalysisResult where
 analysisConfigurations :: [(String, Exp -> IO AnalysisResult)]
 analysisConfigurations = concatMap (\k -> [
       --("smallstep;" ++ show k, fmap AnalysisResult . SmallStep.analyze k),
-      ("widened per state;" ++ show k, fmap AnalysisResult . SmallStepWidened.analyze k),
+      ("widened per state;" ++ show k, fmap AnalysisResult . SmallStepWidened.analyze k)
       --("global widening;"++show k, fmap AnalysisResult . SmallStepWidened.analyzeGlobal k)
    ]) [1..5]
 
