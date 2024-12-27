@@ -1,0 +1,3 @@
+interpreter-exe: not an atomic(f7234 (number?/c j7232 k7233 g7229) (number?/c j7232 k7233 g7230) (number?/c j7232 k7233 g7231))
+CallStack (from HasCallStack):
+  error, called at src/Analysis/ASE/Common.hs:413:28 in interpreter-0.1.0.0-inplace:Analysis.ASE.Common

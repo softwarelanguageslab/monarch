@@ -16,4 +16,4 @@ TODO
 * [X] Undefiner
 * [ ] Input data generator based on shape of the contract (needed for structs)
 * [X] Translation of structs
-* [ ] Add the required built-in contracts
+* [X] Add the required built-in contracts -- TODO: test whether they are correctly translated
