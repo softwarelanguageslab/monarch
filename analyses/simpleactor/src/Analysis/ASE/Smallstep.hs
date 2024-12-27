@@ -42,6 +42,7 @@ import Analysis.Monad (runJoinT)
 import Lattice.BottomLiftedLattice (lowerBottom)
 import GHC.Generics
 import Control.DeepSeq
+import qualified Analysis.Environment as Environment
 
 ------------------------------------------------------------
 -- State space
@@ -119,8 +120,8 @@ stepCompound state@(State { control = Ev ite@(Ite e1 e2 e3 _) ρ, .. }) =
          where value = atomicEval (assertAtomic e1) ρ store
                φt =  conjunction (Atomic (symbolic $ assertTrue value)) pc
                φf =  conjunction (Atomic (symbolic $ assertFalse value)) pc
-               (topTrue, kontf't) = pushKont (spanOf ite) (context, mcontext) (Branch φf topFail) kontf
-               (topFalse, kontf'f) = pushKont (spanOf ite) (context, mcontext) (Branch φt topFail) kontf
+               (topTrue, kontf't) = pushKont (spanOf ite) (context, mcontext) (Branch φf counts topFail) kontf
+               (topFalse, kontf'f) = pushKont (spanOf ite) (context, mcontext) (Branch φt counts topFail) kontf
                newSt e φ' kontf' topFail' = state { control = Ev e ρ, pc = φ', topFail = topFail', kontf = kontf'  }
 -- ST-App
 stepCompound st@(State { control = Ev exp@(App operator operands _) ρ, .. }) = fmap lowerBottom $ runJoinT $
@@ -140,12 +141,13 @@ stepCompound st@(State { control = Ev (Input ℓ) _, .. }) =
          freshSymVar = fresh ℓ context mcontext
          counts' = Map.insertWith (const . const CountInf) (freshVar ℓ context mcontext) CountOne counts
 -- ST-Let1
-stepCompound st@(State { control = Ev (Letrec ((nam,exp):bds) bdy _) ρ, .. }) =
+stepCompound st@(State { control = Ev (Letrec allBds@((nam,exp):bds) bdy _) ρ, .. }) =
       return $ Set.singleton $ st { control = Ev exp ρ', kont = kont', top = top' }
-   where (top', kont') = pushKont (spanOf nam) context (LetK adr ρ' bds bdy top) kont
+   where (top', kont') = pushKont (spanOf nam) context (LetK adrs ρ' bds bdy top) kont
          -- pre allocate address so variable exists in the lexical scope 
-         adr = alloc (spanOf nam) context
-         ρ' = Map.insert (name nam) adr ρ
+         newBds = zip (map (name . fst) allBds) (map (flip alloc context . spanOf . fst) allBds)
+         adrs = map snd newBds
+         ρ' = Environment.extends newBds ρ
 stepCompound st@(State { control = Ev (Letrec [] bdy _) ρ }) =
       return $ Set.singleton $ st { control = Ev bdy ρ }
 stepCompound st = error $ "unsupported program state" ++ show st
@@ -172,15 +174,15 @@ step' state@(State { control = Ev e ρ, store = σ }) =
 -- final state, nothing to do anymore
 step' (State (Ap _) _ Hlt _ Hlt _  _ _ _ _ _ _) = return Set.empty
 -- ST-Backtrack
-step' st@(State (Ap _) _ Hlt _ topFail ψ _ model _ c  _ mcontext) =
+step' st@(State (Ap _) _ Hlt _ topFail ψ _ model _ _  _ mcontext) =
       foldMapM applyKont (fromMaybe Set.empty $ Map.lookup topFail ψ)
-   where applyKont (Branch cnd topFail') = do
+   where applyKont (Branch cnd c topFail') = do
             ec <- ask
             maybeModel <- computeModel c cnd
             let context' = pushMK mcontext cnd
             let mkModel model' = adaptModel context' (Map.withoutKeys model' (Set.difference (Map.keysSet model') (Map.keysSet c) ))
             maybe (return Set.empty)
-                 (\model' -> if model == Map.empty then return Set.empty else
+                 (\model' -> if model' == Map.empty then return Set.empty else
                      return $ Set.singleton $
                         st { kont = Map.empty,
                              store = initialStoreExecutor ec,
@@ -196,9 +198,13 @@ step' st@(State (Ap _) _ Hlt _ topFail ψ _ model _ c  _ mcontext) =
 -- ST-Let2
 step' st@(State { control = (Ap v), .. }) =
       return $ Set.map applyKont (fromMaybe Set.empty $ Map.lookup top kont)
-   where applyKont (LetK adr env' bds bdy top') =
+   where applyKont (LetK [adr] env' [] bdy top') =
                let store' = extendSto adr (RVal v) store
-               in st { control = Ev (Letrec bds bdy (spanOf bdy)) env', store = store', top = top' }
+               in (st { control = Ev bdy env', top = top', store = store' })
+         applyKont (LetK (adr:adrs) env' ((nam,ex):bds) bdy top') =
+               let store' = extendSto adr (RVal v) store
+                   (top'', kont') = pushKont (spanOf nam) context (LetK adrs env' bds bdy top') kont
+               in (st { control = Ev ex env', top = top'', store = store', kont = kont' }) 
 -- Error state is stuck
 step' (State { control = Err _ }) = return Set.empty
 

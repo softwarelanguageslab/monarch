@@ -178,6 +178,8 @@ translate count formula = (t, allVariables', mappedVariables')
 parseLiteral :: MonadError String m => SExp.SExp -> m Literal
 parseLiteral (SExp.Atom "VInteger" _ ::: SExp.Num n _ ::: SExp.SNil _) =
    return $ Num n
+parseLiteral (SExp.Atom "VReal" _ ::: (SExp.Atom "-" _ ::: SExp.Rea n _ ::: SExp.SNil _) ::: SExp.SNil _) = 
+   return $ Rea (-n)
 parseLiteral (SExp.Atom "VReal" _ ::: SExp.Rea n _ ::: SExp.SNil _) =
    return $ Rea n
 parseLiteral (SExp.Atom "VBool" _ ::: SExp.Atom truthValue _ ::: SExp.SNil _)

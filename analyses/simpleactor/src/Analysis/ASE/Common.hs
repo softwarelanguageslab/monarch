@@ -180,7 +180,7 @@ emptyModelContext = MCtx []
 
 -- | The number of constraints to keep in the model's context
 mk :: Int
-mk = 1
+mk = 0
 
 -- | Remove the cointext from a variable
 removeContextFromVariable :: SymVar -> SymVar
@@ -306,7 +306,7 @@ data ConcolicContext = ConcolicContext {
       contextSensitivity :: Int
    }
 
-type SmallstepM s m = (MonadReader ConcolicContext m, MonadSuccessorMap (SuccessorMap s) m, FormulaSolver SymVar m)
+type SmallstepM s m = (MonadReader ConcolicContext m, MonadSuccessorMap (SuccessorMap s) m, FormulaSolver SymVar m, MonadIO m)
 
 newtype SuccessorMap s = SuccessorMap { getSuccessorMap :: Map s (Set s) } deriving (Generic)
 
@@ -336,13 +336,13 @@ instance Show Control where
 instance NFData Kont
 
 -- | Continuations
-data Kont = LetK Adr Env [Binding] Exp (KAdr [Span])
+data Kont = LetK [Adr] Env [Binding] Exp (KAdr [Span])
          deriving (Eq, Ord, Show, Generic)
 
 instance NFData Kontf
 
 -- | Failure continuations 
-data Kontf = Branch PC FAdr
+data Kontf = Branch PC CountMap FAdr
            deriving (Eq, Ord, Show, Generic)
 
 -- | Failure continuation addresses
@@ -357,6 +357,8 @@ type FSto = Map FAdr (Set Kontf)
 ------------------------------------------------------------
 -- Interaction with the model
 ------------------------------------------------------------
+
+type CountMap = Map SymVar AbstractCount
 
 -- | Lookup a symbolic variable from the model or return a random
 -- one of there is no such variable
@@ -373,7 +375,7 @@ convertModel = Map.map (Lat.joins . Set.map mapValue) . Symbolic.getModel
          mapValue (Symbolic.Sym a) = symbol a
 
 -- | Compute an assignment for the model (if one is available)
-computeModel :: SmallstepM s m => Map SymVar AbstractCount -> PC -> m (Maybe Model)
+computeModel :: SmallstepM s m => CountMap -> PC -> m (Maybe Model)
 computeModel c pc = do
       result <- solve c pc
       if isSat result then

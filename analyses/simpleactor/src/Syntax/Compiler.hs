@@ -85,8 +85,8 @@ compile ex@(Cha c _) = return $ Literal  (Character c) (spanOf ex)
 compile e = throwError $ "invalid syntax " ++ show e
 
 compileBdn :: MonadError String m => SExp -> m (Ide, Exp)
-compileBdn ex@((Atom x _) ::: e ::: SNil _) =
-   (Ide x (spanOf ex) ,) <$> compile e
+compileBdn ((Atom x s) ::: e ::: SNil _) =
+   (Ide x s ,) <$> compile e
 compileBdn e =
    throwError $ "invalid syntax for binding in letrec " ++ show e
 

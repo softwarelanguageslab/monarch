@@ -2,6 +2,20 @@
 ;; It has to be compiled to SimpleActor since SimpleActor does not understand `flat` neither does is understand `define`.
 
 (begin 
+   ;; Original functions
+   (define orig-+ +)
+   (define orig-- -)
+   (define orig-* *)
+   (define orig-/ /)
+   (define orig-car car)
+   (define orig-cdr cdr)
+   (define orig-cons cons)
+   (define orig-vector-ref vector-ref)
+   (define orig-vector-set vector-set!)
+
+   ;; break letrec chain
+   '()
+
    ;; Built-in flat contracts
    (define real/c (flat real?))
    (define boolean?/c (flat boolean?))
@@ -31,36 +45,27 @@
    ;; Contracts on primitive functions (these shadow the primitive functions)
 
    ;; Arithmetic operations
-   (define orig-+ +)
    (define + (mon server client (-> number?/c number?/c number?/c) (lambda (a b) (orig-+ a b))))
 
-   (define orig-- -)
    (define - (mon server client (-> number?/c number?/c number?/c) (lambda (a b) (orig-- a b))))
 
-   (define orig-* *)
    (define * (mon server client (-> number?/c number?/c number?/c) (lambda (a b) (orig-* a b))))
 
-   (define orig-/ /)
    (define / (mon server client (-> number?/c number?/c number?/c) (lambda (a b) (orig-/ a b))))
 
    ;; Datastructor operations
 
    ;; Pairs
-   (define orig-car car)
    (define car (mon server client (-> pair?/c any/c) (lambda (p) (orig-car p))))
 
-   (define orig-cdr cdr)
    (define cdr (mon server client (-> pair?/c any/c) (lambda (p) (orig-cdr p))))
 
-   (define orig-cons cons)
    (define cons (mon server client (-> any/c any/c pair?/c) (lambda (a b) (cons a b))))
 
    ;; Vectors
 
-   (define orig-vector-ref vector-ref)
    (define vector-ref (mon server client (-> vector?/c integer?/c) (lambda (v i) (orig-vector-ref v i))))
 
-   (define orig-vector-set vector-set!)
    (define vector-set! (mon server client (-> vector?/c integer?/c any/c) (lambda (vec i v) (orig-vector-set! vec i v))))
 
    ;; Assertions

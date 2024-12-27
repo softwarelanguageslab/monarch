@@ -1,5 +1,6 @@
 ;; enable "success" messages after every command/query
 
+(set-option :pp.decimal true)  ; Enable decimal output
 (declare-datatypes ()
                    ((Span (KnownSpan (span-line Int) (span-column Int))
                           (UnknownSpan))))
