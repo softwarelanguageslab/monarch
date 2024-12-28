@@ -55,16 +55,16 @@ import Symbolic.AST (Proposition(Predicate))
 -- Evaluation
 ------------------------------------------------------------
 
-showIfBot :: EvalM v m => String -> v -> m v
+showIfBot :: EvalM i v m => String -> v -> m v
 showIfBot s v = (if v == bottom then trace s else id) (return v)
 
-eval :: forall v m . EvalM v m => Cmp -> m v
+eval :: forall v m i . EvalM i v m => Cmp -> m v
 eval = fix evalCmp
    where evalCmp recur (FuncBdy (Lam _ bdy _)) = eval' recur bdy
          evalCmp recur (ActorExp e) = eval' recur e
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
-eval' :: forall v m . EvalM v m => (Cmp -> m v) -> Exp -> m v
+eval' :: forall v m i . EvalM i v m => (Cmp -> m v) -> Exp -> m v
 eval' _ lam@(Lam {}) = injectClo . (lam,) <$> getEnv
 eval' _ (Literal lit _) = return (injectLit lit)
 eval' rec e@(App e1 es _) = do
@@ -115,18 +115,18 @@ eval' rec (Meta e _) =
    withMetaSet (withCtx (spanOf e:) (eval' rec e))
 eval' _ e = error $  "unsupported expression: " ++ show e
 
-trySend :: EvalM v m => v -> v -> m ()
+trySend :: EvalM i v m => v -> v -> m ()
 trySend ref p =
    choice   (pure $ isActorRef ref)
            (mjoinMap (`send` p) (arefs' ref))
            (escape InvalidArgument)
 
-apply :: EvalM v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
+apply :: EvalM i v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
 apply rec e v vs = choices
    [(fromBL $  isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (fromBL $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
-applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
+applyClosure :: EvalM i v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e (lam@(Lam prs _ _), env) rec vs =
    if length prs /= length vs then
       error "invalid number of arguments"
@@ -137,13 +137,13 @@ applyClosure e (lam@(Lam prs _ _), env) rec vs =
          mapM_ (uncurry writeAdr) (zip ads vs)
          withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
-applyPrimitive :: forall v m . EvalM v m => String -> Exp -> [v] -> m v
+applyPrimitive :: forall v m i . EvalM i v m => String -> Exp -> [v] -> m v
 applyPrimitive =
    runPrimitive . fromJust . lookupPrimitive
 
 type Mapping v = Map Ide v
 
-allocMapping :: EvalM v m => Map Ide v -> m (Env v)
+allocMapping :: EvalM i v m => Map Ide v -> m (Env v)
 allocMapping bds = do
    -- TODO: clean this up
    env <- getEnv
@@ -153,14 +153,14 @@ allocMapping bds = do
 -- against a value.
 --
 -- NOTE: written in CPS because @Exp@ is not @Joinable@
-matchList :: EvalM v m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
+matchList :: EvalM i v m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
 matchList _ [] _ = escape MatchError
 matchList f ((pat, e):pats) value =
    -- TODO: don't rethrow the error, use `catchOn` for this
    (match pat value >>= f e) `catchOn` (fromBL . isMatchError, const $ matchList f pats value)
 
 -- | Match a pattern against a value
-match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)
+match :: forall v m i . EvalM i v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
 match (ValuePat lit) v =
    choice (return $ equal (injectLit lit) v) (return Map.empty) (escape MatchError)
@@ -184,19 +184,19 @@ injectLit Nil         = nil
 
 data Primitive v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim v)
 
-newtype SimpleActorPrim v = SimpleActorPrim (forall m . (SymbolicValue v (Adr v), EvalM v m) => [v] -> Exp -> m v)
+newtype SimpleActorPrim v = SimpleActorPrim (forall i m . (PrimM i v m) => [v] -> Exp -> m v)
 
 -- | A nullary primitive
-aprim0 :: (forall m . EvalM v m => Exp -> m v) -> SimpleActorPrim v
+aprim0 :: (forall m i  . PrimM i v m => Exp -> m v) -> SimpleActorPrim v
 aprim0 f = SimpleActorPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall m  . (SymbolicValue v (Adr v), EvalM v m) => v -> Exp -> m v) -> SimpleActorPrim v
+aprim1 :: (forall m i . (PrimM i v m) => v -> Exp -> m v) -> SimpleActorPrim v
 aprim1 f = SimpleActorPrim $  \case [v] -> f v
                                     vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall m . (SymbolicValue v (Adr v), EvalM v m) => v -> v -> Exp -> m v) -> SimpleActorPrim v
+aprim2 :: (forall m i . (PrimM i v m) => v -> v -> Exp -> m v) -> SimpleActorPrim v
 aprim2 f = SimpleActorPrim $ \case [v1, v2] -> f v1 v2
                                    vs -> const $ escape $ ArityMismatch 2 (length vs)
 
@@ -204,10 +204,10 @@ aprim2 f = SimpleActorPrim $ \case [v1, v2] -> f v1 v2
 actorPrimitives :: forall v . Map String (Primitive v)
 actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("wait-until-all-finished", aprim0 $ const $ return nil ),
-   ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
+   -- ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
    ("list", aprim0 $ const $ return nil),
    -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
-   ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeAdr adr (var adr v) ; return $ var adr v }),
+   -- ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeAdr adr (var adr v) ; return $ var adr v }),
    -- XXX: this `combine` is not supposed to be here, but it is easier to add a symbolic representation to `isInteger`
    -- since `isInteger` is parametrized by any boolean lattice `b`
    ("integer?", aprim1 $ \v _ -> return $ combine (abstractValue @v (isInteger @v v)) (SymbolicVal $ Predicate "integer?/v" [proposition $ symbolicValue v])),
@@ -226,7 +226,7 @@ allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives
 lookupPrimitive :: String -> Maybe (Primitive v)
 lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
 
-runPrimitive :: EvalM v m => Primitive v -> Exp -> [v] -> m v
+runPrimitive :: PrimM i v m => Primitive v -> Exp -> [v] -> m v
 runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
 runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = flip f
 

@@ -12,6 +12,7 @@ module Analysis.SimpleActor.Monad
     MonadSpawn,
     spawn,
     EvalM,
+    PrimM,
     Error (..),
     ActorError,
     MetaT, 
@@ -148,7 +149,7 @@ instance
  withExtendedDynamic bds = lowerM (withExtendedDynamic bds)
  lookupDynamic = upperM . lookupDynamic
 
-spawn :: EvalM v m => Exp -> (ARef v -> m v) -> m (ARef v)
+spawn :: forall v i m . EvalM i v m => Exp -> (ARef v -> m v) -> m (ARef v)
 spawn e f = do 
    ctx <- getCtx
    let s = Pid e ctx
@@ -162,27 +163,30 @@ spawn e f = do
 ------------------------------------------------------------
 
 -- | Evaluation monad
-type EvalM v m =
-  ( MonadJoinable m,
-    EnvM m (Adr v) (Env v),
-    AllocM m Ide (Adr v),
-    StoreM (Adr v) v m,
+type EvalM i v m =
+  ( EnvM m (Adr v) (Env v),
     MonadActor v m,
-    MonadEscape m,
     MonadFixpoint m Cmp v,
     CtxM m [Span],
-    Domain (Esc m) DomainError,
-    Domain (Esc m) Error,
-    BottomLattice (Esc m),
     SimpleActorErrorDomain (Esc m),
-    SchemeDomainM Exp v m,
+    SymbolicM i m v,
+    PrimM i v m
+  )
+
+type PrimM i v m = 
+   (SchemeDomainM Exp v m,
     ActorDomain v,
     EqualLattice v,
     Show v,
-    SymbolicM (Adr v) m v,
-    SymbolicValue v (Adr v),
-    Symbolic v ~ SymbolicVal Exp [Span] (Adr v) (Abstract v)
-  )
+    SymbolicValue v i,
+    Symbolic v ~ SymbolicVal Exp [Span] i (Abstract v),
+    MonadEscape m,
+    Domain (Esc m) DomainError,
+    Domain (Esc m) Error,
+    BottomLattice (Esc m),
+    AllocM m Ide (Adr v),
+    StoreM (Adr v) v m)
+
 
 ------------------------------------------------------------
 -- Instances
