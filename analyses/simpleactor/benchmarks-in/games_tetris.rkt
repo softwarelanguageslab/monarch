@@ -9,8 +9,8 @@
 (struct world (tetra blocks))
 (struct posn (x y))
 (define COLOR/C symbol?)
-(define POSN/C (struct/c posn real? real?))
-(define BLOCK/C (struct/c block real? real? COLOR/C))
+(define POSN/C (struct/c posn real?/c real?/c))
+(define BLOCK/C (struct/c block real?/c real?/c COLOR/C))
 (define BSET/C (listof BLOCK/C))
 (define TETRA/C (struct/c tetra POSN/C BSET/C))
 (define WORLD/C (struct/c world TETRA/C BSET/C))
@@ -455,15 +455,15 @@
   [overlay (-> image? image? image?)]
   [circle (-> real?/c real?/c string?/c image?)]
   [rectangle (-> real?/c real?/c COLOR/C COLOR/C image?)]
-  [place-image (-> image?/c real?/c real?/c image?/c image?/c)]
+  [place-image (-> image/c real?/c real?/c image/c image/c)]
   [empty-scene (-> real?/c real?/c image?)]
   ;; aux
   [list-pick-random (-> (and/c cons?/c (listof TETRA/C)) TETRA/C)]
   [neg-1 integer?/c] ;; ha!
   ;; visual
-  [world->image (-> WORLD/C image?/c)]
-  [blocks->image (-> BSET/C image?/c)]
-  [block->image (-> BLOCK/C image?/c)]
-  [place-block (-> BLOCK/C image?/c image?/c)]
+  [world->image (-> WORLD/C image/c)]
+  [blocks->image (-> BSET/C image/c)]
+  [block->image (-> BLOCK/C image/c)]
+  [place-block (-> BLOCK/C image/c image/c)]
   [world0 (-> (and/c cons?/c (listof TETRA/C)) WORLD/C)]
   ))

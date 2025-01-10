@@ -36,7 +36,7 @@ data Exp = Lam [Ide] Exp Span
 instance NFData Exp
 
 -- | Literals are expressions that evaluate to themselves
-data Lit = Num Integer | Boolean Bool | Symbol String | Nil deriving (Eq, Ord, Generic)
+data Lit = Num Integer | Character Char | Boolean Bool | Symbol String | String String | Nil deriving (Eq, Ord, Generic)
 
 instance NFData Lit
 
@@ -44,6 +44,8 @@ instance Show Lit where
    show (Num n) = show n
    show (Boolean b) = show b
    show (Symbol s) = show s
+   show (String str) = show str
+   show (Character c) = "\\#" ++ show c
    show Nil = "'()"
 
 -- | Pattern language

@@ -23,6 +23,8 @@ import qualified Analysis.ASE.Common as ASE
 import qualified Analysis.ASE.WidenedStates as SmallStepWidened
 import System.IO
 import Control.Monad
+import ASE.Benchmark
+import RIO (Identity)
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -52,7 +54,8 @@ commandParser =
     (   command "smallstep" (info (smallstepCmd <$> inputOptions) (progDesc "Analyze a program using the ASE in small-step"))
     <>  command "analyze" (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
     <>  command "eval"    (info (interpret <$> inputOptions) (progDesc "Run a program"))
-    <>  command "smallstepw" (info (smallstepWideningCmd <$> inputOptions) (progDesc "Analyze a program using ASE in small-step, widened version")))
+    <>  command "smallstepw" (info (smallstepWideningCmd <$> inputOptions) (progDesc "Analyze a program using ASE in small-step, widened version"))
+    <>  command "asebenchmark" (info (benchmarkCmd <$> benchmarkOptions) (progDesc "Benchmark ASE programs in all configurations")))
 
 
 ------------------------------------------------------------
@@ -95,6 +98,7 @@ printGraph h succs = hPutStrLn h "digraph {" >> mapM_ (hPutStrLn h . showEdge) e
             showControl (Smallstep.control st) ++ "," ++ show (Smallstep.pc st) ++ "@" ++ show (Smallstep.top st) ++ "," ++ show (Smallstep.topFail st)
          showControl (Smallstep.Ev e _) = show e 
          showControl (Smallstep.Ap v) = show v
+         showControl (Smallstep.Err s) = "error @ " ++ show s
          edges = concatMap (\(st, nxts) -> map ( (showNode st,) . showNode) (Set.toList nxts)) (Map.toList succs)
          showEdge (from, to) = "\t" ++ show from ++ " -> " ++ show to ++ ";"
 
@@ -115,8 +119,6 @@ printSmallstepResult debug (states, succs) = do
       printGraph file (Smallstep.getSuccessorMap succs)
       hClose file
    
-         
-
 smallstepCmd :: InputOptions -> IO ()
 smallstepCmd (InputOptions { .. }) = do
    loadFile' doTranslate filename >>= Smallstep.analyze 1 >>= printSmallstepResult debug
@@ -126,7 +128,7 @@ smallstepCmd (InputOptions { .. }) = do
 ------------------------------
 
 
-printSmallstepWidenedResult :: Bool -> ((SmallStepWidened.Shared, Set SmallStepWidened.State), Smallstep.SuccessorMap SmallStepWidened.State) -> IO () 
+printSmallstepWidenedResult :: Bool -> ((SmallStepWidened.Shared Identity, Set SmallStepWidened.State), Smallstep.SuccessorMap SmallStepWidened.State) -> IO () 
 printSmallstepWidenedResult debug ((shared, states), succs) = do
    putStrLn $ "Found " ++ show (Set.size states) ++ " reachable states"
    let finalStates = find SmallStepWidened.isFinalState states

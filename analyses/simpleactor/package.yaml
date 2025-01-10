@@ -35,6 +35,10 @@ ghc-options:
 - -Wmissing-export-lists
 - -Wmissing-home-modules
 - -Wpartial-fields
+- -O3
+- -fspecialise
+- -fexpose-all-unfoldings
+- -flate-dmd-anal
 - -Wredundant-constraints
 
 default-extensions:
@@ -89,6 +93,8 @@ executables:
     - maf2-syntax
     - maf2-domains
     - maf2-analysis
+    - filepath
+    - time
 
 tests:
   simpleactor-tests:

@@ -7,6 +7,35 @@
 (define (invalid-syntax for e)
   (error (format "invalid syntax for ~a at ~a" for e)))
 
+(define (translate-cond clauses)
+  (if (null? clauses)
+      '()
+      (let* ((clause (car clauses))
+             (cnd (car clause))
+             (bdy (cdr clause)))
+        (if (eq? cnd 'else)
+          `(begin ,@bdy)
+          `(if cnd 
+               (begin ,@bdy)
+               ,(translate-cond (cdr clauses)))))))
+
+(define (translate-and conditions)
+  (cond 
+    ((null? conditions) #f)
+    ((null? (cdr conditions)) (car conditions))
+    (else `(if ,(car conditions) ,(translate-and (cdr conditions)) #f))))
+
+(define (translate-or conditions)
+  (cond 
+    ((null? conditions) #t)
+    ((null? (cdr conditions)) (car conditions))
+    (else 
+      (let ((val (gensym "val")))
+      `(letrec ((,val ,(car conditions)))
+         (if ,val
+             ,val
+             ,(translate-or (cdr conditions))))))))
+
 (define (translate e)
   (match e
    [(quasiquote (behavior ,ags ,handlers))
@@ -33,6 +62,16 @@
           (send^ act msg)))]
    [(quasiquote (spawn ,@es))
     (invalid-syntax "spawn" e)]
+   [(quasiquote (let ,bds ,@bdy))
+    `(letrec ,(map (lambda (bdn) (list (car bdn) (translate (cadr bdn)))) bds) ,@(map translate bdy))]
+   [(quasiquote (let* ,bds ,@bdy))
+    `(letrec ,(map (lambda (bdn) (list (car bdn) (translate (cadr bdn)))) bds) ,@(map translate bdy))]
+   [(quasiquote (cond ,@clauses))
+    (translate-cond clauses)]
+   [(quasiquote (and ,@conditions))
+    (translate-and conditions)]
+   [(quasiquote (or ,@conditions))
+    (translate-or conditions)]
    [(quasiquote self)
     '(dyn self)]
    [(quasiquote (,es ...))

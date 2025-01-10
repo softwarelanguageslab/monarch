@@ -174,6 +174,7 @@ injectLit :: SchemeDomain v => Lit -> v
 injectLit (Boolean b) = inject b
 injectLit (Symbol s)  = symbol s
 injectLit (Num n)     = inject n
+injectLit (Character c) = inject c
 injectLit Nil         = nil
 
 ------------------------------------------------------------
