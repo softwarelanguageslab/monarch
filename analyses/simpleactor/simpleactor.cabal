@@ -4,7 +4,7 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 
-name:           interpreter
+name:           simpleactor
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/interpreter#readme>
 homepage:       https://github.com/bramvdbogaerde/simplecc#readme
@@ -40,9 +40,9 @@ library
       Syntax.Compiler
       Syntax.Simplifier
   other-modules:
-      Paths_interpreter
+      Paths_simpleactor
   autogen-modules:
-      Paths_interpreter
+      Paths_simpleactor
   hs-source-dirs:
       src
   default-extensions:
@@ -86,13 +86,13 @@ library
     , rio
   default-language: Haskell2010
 
-executable interpreter-exe
+executable simpleactor-exe
   main-is: Main.hs
   other-modules:
       ASE.Benchmark
-      Paths_interpreter
+      Paths_simpleactor
   autogen-modules:
-      Paths_interpreter
+      Paths_simpleactor
   hs-source-dirs:
       app
   default-extensions:
@@ -122,21 +122,21 @@ executable interpreter-exe
     , deepseq
     , hspec
     , hspec-contrib
-    , interpreter
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
     , optparse-applicative
     , rio
+    , simpleactor
   default-language: Haskell2010
 
-test-suite interpreter-test
+test-suite simpleactor-tests
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_interpreter
+      Paths_simpleactor
   autogen-modules:
-      Paths_interpreter
+      Paths_simpleactor
   hs-source-dirs:
       test
   default-extensions:
@@ -165,7 +165,7 @@ test-suite interpreter-test
     , deepseq
     , hspec
     , hspec-contrib
-    , interpreter
     , maf2-analysis
     , rio
+    , simpleactor
   default-language: Haskell2010

@@ -1,4 +1,4 @@
-name:                interpreter
+name:                simpleactor
 version:             0.1.0.0
 github:              "bramvdbogaerde/simplecc"
 license:             BSD-3-Clause
@@ -75,7 +75,7 @@ library:
     - random
 
 executables:
-  interpreter-exe:
+  simpleactor-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -85,13 +85,13 @@ executables:
     dependencies:
     - containers
     - optparse-applicative
-    - interpreter
+    - simpleactor
     - maf2-syntax
     - maf2-domains
     - maf2-analysis
 
 tests:
-  interpreter-test:
+  simpleactor-tests:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -99,5 +99,5 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - interpreter
+    - simpleactor
     - maf2-analysis
