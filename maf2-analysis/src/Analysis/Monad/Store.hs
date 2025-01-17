@@ -116,7 +116,7 @@ store loc v = alloc loc >>= (\adr -> writeAdr adr v >> pure adr)
 ---
 
 -- | Like StoreM, but also allows retrieving the current store
-class Monad m => StoreM' s a v m | m -> s a v where
+class Monad m => StoreM' s a v m | m s -> a v where
    currentStore :: m s
    putStore     :: s -> m ()
 
