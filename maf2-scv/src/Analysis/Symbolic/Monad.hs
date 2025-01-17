@@ -45,6 +45,8 @@ class (Monad m) => MonadPathCondition i m v | m -> v i where
    extendPc :: v -> m ()
    -- | Get the current path condition
    getPc :: m (PC i)
+   -- | Change the current path condition to the given one
+   putPc :: PC i -> m ()
    -- | Integrate the given path condition in the current one
    integrate :: PC i -> m ()
 
@@ -118,12 +120,14 @@ instance {-# OVERLAPPING #-} (AbstractCountM i m, MonadJoin m, FormulaSolver i m
    extendPc pc'     = modify $ Set.map (conjunction (Atomic $ symbolic pc'))
    getPc = get
    integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList
+   putPc = put
 
 
 instance (MonadPathCondition i m v, Monad (t m), MonadLayer t) => MonadPathCondition i (t m) v where
    extendPc  = upperM . extendPc
    getPc     = upperM getPc
    integrate = upperM . integrate
+   putPc     = upperM . putPc
 
 
 -- | Run FormulaT with  the given initial set of path conditions.
