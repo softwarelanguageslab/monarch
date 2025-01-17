@@ -7,10 +7,10 @@ source-repository-package
 
 
 packages:
-   ../monarch/maf2-syntax/
-   ../monarch/maf2-domains/
-   ../monarch/maf2-analysis/
-   ../monarch/maf2-scv/
-   ../monarch/thirdparty/language-python/language-python/
-   ../monarch/analyses/simpleactor/
+   ../../maf2-syntax/
+   ../../maf2-domains/
+   ../../maf2-analysis/
+   ../../maf2-scv/
+   ../../thirdparty/language-python/language-python/
+   ../../analyses/simpleactor/
    ./

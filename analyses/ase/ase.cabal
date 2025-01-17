@@ -11,7 +11,7 @@ build-type:     Simple
 library
   exposed-modules:
       ASE.Domain.SymbolicVariable
-      ASE.LocalStore
+      ASE.Fixpoint
       ASE.Machine
       ASE.Machines.Local
       ASE.Semantics
