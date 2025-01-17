@@ -1,0 +1,65 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.37.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           ase
+version:        0.1
+build-type:     Simple
+
+library
+  exposed-modules:
+      ASE.Domain.SymbolicVariable
+      ASE.LocalStore
+      ASE.Machine
+      ASE.Machines.Local
+      ASE.Semantics
+      ASE.Syntax
+  other-modules:
+      Paths_ase
+  hs-source-dirs:
+      src
+  default-extensions:
+      LambdaCase
+      TypeFamilies
+      FlexibleContexts
+      MultiParamTypeClasses
+      FunctionalDependencies
+      ConstraintKinds
+      TupleSections
+  build-depends:
+      base >=4.2
+    , maf2-analysis
+    , maf2-domains
+    , maf2-scv
+    , maf2-syntax
+    , mtl
+    , rio
+    , simpleactor
+  default-language: Haskell2010
+
+executable ase
+  main-is: Main.hs
+  other-modules:
+      Paths_ase
+  hs-source-dirs:
+      app
+  default-extensions:
+      LambdaCase
+      TypeFamilies
+      FlexibleContexts
+      MultiParamTypeClasses
+      FunctionalDependencies
+      ConstraintKinds
+      TupleSections
+  build-depends:
+      base >=4.2
+    , maf2-analysis
+    , maf2-domains
+    , maf2-scv
+    , maf2-syntax
+    , mtl
+    , rio
+    , simpleactor
+  default-language: Haskell2010

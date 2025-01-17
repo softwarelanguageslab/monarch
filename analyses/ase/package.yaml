@@ -1,0 +1,29 @@
+name: ase
+version: 0.1
+
+
+dependencies:
+  - base >= 4.2
+  - maf2-analysis
+  - maf2-syntax
+  - maf2-domains
+  - maf2-scv
+  - simpleactor
+  - rio
+  - mtl
+
+default-extensions:
+  - LambdaCase
+  - TypeFamilies
+  - FlexibleContexts
+  - MultiParamTypeClasses
+  - FunctionalDependencies
+  - ConstraintKinds
+  - TupleSections
+
+library:  
+  source-dirs: src
+
+executable:
+  source-dirs: app
+  main: Main.hs
