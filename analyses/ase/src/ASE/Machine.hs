@@ -176,6 +176,10 @@ data ContinuationState k =  ContinuationState {
       stateTopAddress :: KAdr k,
       stateTopFailAddress :: FAdr k
    } deriving (Ord, Eq, Show)
+-- | Initial contents of the continuation stack
+initialContinuationStack :: ContinuationState k 
+initialContinuationStack = ContinuationState Hlt FHlt 
+
 -- | State monad intepretation of the @MonadContinuation@ type class
 newtype ContinuationT k m a = ContinuationT (StateT (ContinuationState k) m a)
                           deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadCache, MonadState (ContinuationState k)) 
