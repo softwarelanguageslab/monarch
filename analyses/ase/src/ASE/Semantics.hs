@@ -170,3 +170,4 @@ step (Ap v) =  liftA2 (,) topAddress topFailAddress
             (k, _)      -> stepApply v   -- apply the continuation
       )
 step (Ev e ρ) = withEnv (const ρ) (stepEval e)
+

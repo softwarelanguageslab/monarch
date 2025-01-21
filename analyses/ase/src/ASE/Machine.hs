@@ -269,13 +269,31 @@ pushCtx e es = do
    return (take k' (e : es))
 
 ------------------------------------------------------------
--- Interaction with the model
+-- Random inputs
 ------------------------------------------------------------
 
 -- | Monad to model an infinite sequence of random values
-class MonadInput v m | m -> v where
+class (InputFrom v) => MonadInput v m | m -> v where
    -- | Take a value from the infinite random sequence
    randomInput :: m v
+
+-- | Values from which a value can be taken based on some
+-- unbounded random integer
+class InputFrom v where    
+   inputValue :: Int -> v
+
+-- | Layered instance of the @MonadInput@ type class
+instance (MonadLayer t, Monad m, MonadInput v m) => MonadInput v (t m) where  
+   randomInput = upperM randomInput
+
+-- | Trivial instance of the random input monad based 
+-- on the @random@ package. 
+newtype InputT v m = InputT () -- XXX: TODO
+
+------------------------------------------------------------
+-- Interaction with the model
+------------------------------------------------------------
+
 
 -- | A monad to interact with the concolic model, parametrized 
 -- by the type of symbolic variable @i@, a program domain @v@, and a 
@@ -293,7 +311,7 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadModel i v m, SymbolicValue v i, Mon
    putModel = upperM . putModel
 -- | A trivial instance of the MonadModel based on the state monad
 newtype ModelT i v m a = ModelT (StateT (Map i (Abstract v)) m a)
-                       deriving (Monad, Applicative, MonadCache, Functor)
+                       deriving (Monad, Applicative, MonadCache, MonadLayer, MonadTrans, Functor)
 
 instance (SymbolicValue v i, Ord i, MonadBottom m, MonadInput (Abstract v) m) => MonadModel i v (ModelT i v m) where
    lookupModel i = ModelT $ gets (Map.lookup i) >>= maybe (lift randomInput) return

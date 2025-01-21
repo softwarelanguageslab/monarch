@@ -10,12 +10,14 @@ build-type:     Simple
 
 library
   exposed-modules:
+      ASE.Analyses
       ASE.Domain.SymbolicVariable
       ASE.Fixpoint
       ASE.Machine
       ASE.Machines.Local
       ASE.Semantics
       ASE.Syntax
+      Data.Tuple.Extra
   other-modules:
       Paths_ase
   hs-source-dirs:
@@ -28,6 +30,7 @@ library
       FunctionalDependencies
       ConstraintKinds
       TupleSections
+      GADTs
   build-depends:
       base >=4.2
     , maf2-analysis
@@ -53,6 +56,7 @@ executable ase
       FunctionalDependencies
       ConstraintKinds
       TupleSections
+      GADTs
   build-depends:
       base >=4.2
     , maf2-analysis

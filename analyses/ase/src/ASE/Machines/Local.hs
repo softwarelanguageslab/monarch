@@ -18,14 +18,16 @@ import Analysis.Monad.Store (StoreT)
 import qualified Analysis.Monad.Cache as Cache
 import Analysis.Monad.Cache (CacheT, MonadCache (Key, Val))
 import Analysis.Monad (EnvT, NonDetT, runNonDetT)
-import Control.Monad.Escape (MayEscapeT, MayEscape, MonadEscape(..))
+import Control.Monad.Escape (MayEscapeT, MayEscape(Value, MayBoth), MonadEscape(..))
 import Control.Monad.DomainError
 import Control.Monad.Join (MonadJoinable, MonadBottom)
 import Control.Monad.Identity
 import Control.Monad.Layer (MonadLayer)
 import qualified Control.Monad.Join
 import Data.Kind
+import Data.Tuple.Extra 
 import Data.TypeLevel.HList
+import Data.Maybe
 import RIO
 import qualified RIO.Set as Set
 import qualified RIO.Map as Map
@@ -73,18 +75,27 @@ initialSto :: Map (VAdr K) V
 initialSto = undefined
 
 -- |  The initial state of the local machine
-initialState :: Exp -> Env K -> State m
-initialState e0 ρ0 = uncons $  Ev e0 ρ0
-                           :+: initialContinuationStack -- continuation 
-                           :+: Map.empty                -- abstract count
-                           :+: emptyPC                  -- formula 
-                           :+: Map.empty                -- continuation store
-                           :+: Map.empty                -- failure continuation store 
-                           :+: initialSto               -- value store 
-                           :+: Map.empty                -- model 
-                           :+: nil
+initialState :: Exp -> Env K -> Map (VAdr K) V -> State m
+initialState e0 ρ0 σ0 = Ev e0 ρ0
+                    <+> initialContinuationStack -- continuation 
+                    <+> Map.empty                -- abstract count
+                    <+> emptyPC                  -- formula 
+                    <+> Map.empty                -- continuation store
+                    <+> Map.empty                -- failure continuation store 
+                    <+> initialSto               -- value store 
+                    <+> Map.empty                -- model 
 
 -- | Run a single step of the local machine and produce a local machine state
-runLocalMachine :: Monad m => (Ctrl V K -> (StackT m (Ctrl V K))) -> State m -> m (Set (Val (StackT m) (Ctrl V K)))
-runLocalMachine m k = Cache.run m k' & runNonDetT & fmap Set.fromList
+runLocalMachine :: Monad m => (Ctrl V K -> (StackT m (Ctrl V K))) -> State m -> m (Set (State m))
+runLocalMachine m k = Cache.run m k' 
+                    -- Run the semantics non-deterministically
+                    & runNonDetT 
+                    -- Filter out all escaping values and replace them 
+                    -- by empty list, convert the resulting list to a set 
+                    -- afterwards.
+                    & fmap (Set.fromList . mapMaybe (isEscape . unnest))
    where k' = (k, Map.empty)
+         isEscape :: HList (Unnest (Val (StackT m) (Ctrl V K))) -> Maybe (State m)
+         isEscape (Value v :+: rest) = Just $ uncons $ v :+: rest 
+         isEscape (MayBoth v _ :+: rest) = Just $ uncons $ v :+: rest
+         isEscape _ = Nothing

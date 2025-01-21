@@ -20,6 +20,7 @@ default-extensions:
   - FunctionalDependencies
   - ConstraintKinds
   - TupleSections
+  - GADTs
 
 library:  
   source-dirs: src
