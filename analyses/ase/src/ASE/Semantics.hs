@@ -1,6 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeApplications #-}
-
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 -- | Language semantics, formulated using the generic machine interface, but 
 -- fixes the type of values being used.
 module ASE.Semantics where
@@ -9,7 +9,7 @@ import ASE.Syntax
 import ASE.Machine
 import ASE.Domain.SymbolicVariable
 import Analysis.Monad.Environment (EnvM(lookupEnv, getEnv, withExtendedEnv, withEnv))
-import Analysis.Monad (StoreM(lookupAdr, writeAdr), StoreM' (putStore))
+import Analysis.Monad (StoreM(lookupAdr, writeAdr), StoreM' (putStore), withCtx, getCtx)
 import Analysis.SimpleActor.Semantics (injectLit)
 import Analysis.Monad.Allocation (AllocM(alloc))
 import Control.Monad (ap)
@@ -17,7 +17,7 @@ import Control.Monad.Join
 import Domain.Scheme.Class (SchemeDomain(injectClo, withProc))
 import Domain.SimpleActor (ActorValueUnified)
 import Symbolic.AST (Proposition(Variable), conjunction, Formula (Atomic), isSat)
-import Domain.Symbolic.Class (SymbolicValue(combine, assertFalse), symbolic)
+import Domain.Symbolic.Class (SymbolicValue(combine, assertFalse), symbolic, Abstract)
 import Domain.Symbolic (SymbolicVal(SymbolicVal), SymbolicValue (assertTrue))
 import RIO hiding (mzero)
 import qualified RIO.Set as Set
@@ -40,6 +40,8 @@ import qualified Solver
 type V = ActorValueUnified [Span] VAdr SymbolicVariable
 type K = [Span]
 type MachineM m = MonadMachine K V m
+
+instance (v ~ Abstract V) => InputFrom v where 
 
 ------------------------------------------------------------
 -- Solving for the model
@@ -75,8 +77,9 @@ applyPrim = undefined
 
 -- | Apply a user-defined closure
 applyClo :: MachineM m => [V] -> Exp -> (Exp, Env K) -> m (Ctrl V K)
-applyClo ags e (Lam xs bdy _, ρ) =
-   withSmallstepCtx (pushCtx (spanOf e)) $ do
+applyClo ags e (Lam xs bdy _, ρ) = do  
+   ctx' <- getCtx >>= (pushCtx (spanOf e)) 
+   withCtx (const ctx') $ do
       ads <- mapM (alloc . spanOf) xs
       let prs = map name xs
       let ρ' = extends (zip prs ads) ρ

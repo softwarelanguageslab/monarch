@@ -1,4 +1,4 @@
-module ASE.Domain.SymbolicVariable(SymbolicVariable, PC) where  
+module ASE.Domain.SymbolicVariable(SymbolicVariable(..), PC) where  
 
 import Syntax.Span
 import qualified Symbolic.AST

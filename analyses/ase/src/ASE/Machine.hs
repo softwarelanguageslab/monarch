@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, StandaloneDeriving #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
 -- | Generic machine components
@@ -10,20 +10,21 @@ import Analysis.Environment (Environment)
 import qualified Analysis.Environment as Env
 import ASE.Domain.SymbolicVariable (SymbolicVariable, PC)
 import ASE.Syntax
-import Analysis.Monad.Store (StoreM, writeAdr, lookupAdr, StoreM')
-import Analysis.Monad (EnvM, CtxM (withCtx))
+import Analysis.Monad.Store (StoreM, writeAdr, lookupAdr, StoreM', AbstractCountM(..))
+import Analysis.Monad (EnvM, CtxM (getCtx, withCtx))
 import Analysis.Monad.Allocation (AllocM, alloc)
 import Analysis.Symbolic.Monad (MonadPathCondition)
 import Analysis.ASE.Smallstep (State(topFail))
 import Analysis.Monad.Cache (MonadCache)
 import Control.Monad.Layer (MonadLayer, upperM)
-import Control.Monad.Join (MonadBottom(..), MonadJoin)
+import Control.Monad.Join (MonadBottom(..), MonadJoinable, MonadJoin)
 import Control.Monad.DomainError (DomainError)
 import Control.Monad.Escape (MonadEscape, Esc)
 import Domain.Core.AbstractCount (AbstractCount (..))
 import Domain.Class (Domain)
 import Domain.Symbolic.Class
 import Data.Kind
+import Data.Random
 import Lattice.Class
 import qualified Lattice.Class as Lat
 import qualified RIO.Map as Map
@@ -31,7 +32,7 @@ import RIO hiding (mzero)
 import RIO.State
 import Syntax.AST hiding (Label)
 import qualified Symbolic.AST
-import Analysis.Monad.Context (CtxM)
+import Analysis.Monad.Context (CtxM(..))
 import qualified RIO.Set as Set
 import Solver (FormulaSolver, solve)
 import Symbolic.AST (Formula, isSat)
@@ -132,11 +133,20 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadAbstractCount a m) =>
 -- | Trivial instance of the @MonadAbstractCount@ type class 
 -- as a state monad managing an abstract count mapping.
 newtype AbstractCountT α m a = AbstractCountT (StateT (Map α AbstractCount) m a) 
-               deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer, MonadCache, MonadState (Map α AbstractCount))
+               deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer, MonadCache, MonadJoinable, MonadState (Map α AbstractCount))
 instance (Ord α, MonadBottom m) => MonadAbstractCount α (AbstractCountT α m) where
    countIncrement α = modify (Map.insertWith Lat.join α CountOne)
    currentCount α = gets (Map.lookup α) >>= maybe mzero return
    getCounts = gets CountMap
+
+--- XXX: MonadAbstractCount duplicates some of the behavior of AbstractCountM, 
+-- those two should be merged. The major difference between them is that the 
+-- former is meant to put constraints on a store with values, while the other 
+-- is independent of whether the things counted are addresses in a store 
+-- or something else.
+instance (Ord α, MonadBottom m) => AbstractCountM α (AbstractCountT α m) where  
+   count = fmap getCountMap getCounts
+
 
 -- | A monad that manages the continuation stack, it stores the 
 -- continuation in the continuation store.
@@ -180,9 +190,15 @@ data ContinuationState k =  ContinuationState {
 initialContinuationStack :: ContinuationState k 
 initialContinuationStack = ContinuationState Hlt FHlt 
 
+-- | Dummy instance of @Joinable@ and @BottomLattice@ for @ContinuationState@
+instance Joinable (ContinuationState k) where 
+   join = error "no \"join\" implement for \"ContinuationState\": continuation states should not be joined together"
+instance BottomLattice (ContinuationState k) where 
+   bottom = error "no \"bottom\" implement for \"ContinuationState\": continuation states should not be bottomed"
+
 -- | State monad intepretation of the @MonadContinuation@ type class
 newtype ContinuationT k m a = ContinuationT (StateT (ContinuationState k) m a)
-                          deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadCache, MonadState (ContinuationState k)) 
+                          deriving (Functor, Applicative, MonadJoinable, MonadBottom, Monad, MonadTrans, MonadLayer, MonadCache, MonadState (ContinuationState k)) 
 instance ( StoreM (KAdr k) (Set (KKont k)) m,
            StoreM (FAdr k) (Set (FKont k)) m ) => MonadContinuation k (ContinuationT k m) where
    topAddress = gets stateTopAddress
@@ -203,33 +219,28 @@ instance ( StoreM (KAdr k) (Set (KKont k)) m,
 -- should behave more as a @State@ monad where it can be 
 -- imperatively updated and returned from the stepping function.
 class MonadSmallstepContext k m | m -> k where    
-   -- | Get the current context
-   getCtx :: m k
    -- | Change the current context
    putCtx :: k -> m ()
 
 -- | A layered instance of the @MonadSmallstepContext@ type class
-instance (Monad m, MonadLayer t, MonadSmallstepContext k m) => MonadSmallstepContext k (t m) where   
-   getCtx = upperM getCtx 
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSmallstepContext k m) => MonadSmallstepContext k (t m) where   
    putCtx = upperM . putCtx
 
 -- | A trivial instance of @MonadSmallstepContext@ using a state monad
 newtype SmallstepContextT k m a = SmallstepContextT (StateT k m a) 
-                           deriving (Applicative, Monad, Functor, MonadCache, MonadState k)
+                           deriving (Applicative, Monad, Functor, MonadCache, MonadJoinable, MonadTrans, MonadLayer, MonadState k)
 instance (Monad m) => MonadSmallstepContext k (SmallstepContextT k m) where 
-   getCtx = get 
    putCtx = put
-   
--- | Convenience function for integrating the small-step context with 
--- the existing monad infrastructure. 
---
--- Does the same as @withCtx@ but also changes current context in the 
--- state monad.
-withSmallstepCtx :: (Monad m, MonadSmallstepContext k m, CtxM m k) => (k -> m k) -> m a -> m a 
-withSmallstepCtx f ma = do 
-   k <- f =<< getCtx
-   putCtx k 
-   withCtx (const k) ma
+instance (Monad m) => CtxM (SmallstepContextT k m) k where  
+   withCtx f m = fmap f getCtx >>= putCtx >> m
+   getCtx = get
+
+-- Dummy instance of @Joinable@ and @BottomLattice@ for [Span] 
+-- so that @MonadJoinable@ can be derrived for @SmallstepContextT@
+instance {-# OVERLAPPING #-} Joinable [Span] where   
+   join = error "no \"join\" for \"Span\""
+instance {-# OVERLAPPING #-} BottomLattice [Span] where   
+   bottom = error "no \"bottom\" for \"Span\""
 
 ------------------------------------------------------------
 -- Analysis configuration
@@ -253,11 +264,15 @@ instance {-# OVERLAPPABLE #-} (MonadLayer t,  Monad m, Monad (t m), MonadConfigu
    getK = upperM getK
    getConfiguration = upperM getConfiguration
 -- | Trivial instance of the @MonadConfiguration@ type class using the reader monad transformer
-newtype ConfigurationT k v m a = ConfigurationT (ReaderT (Configuration k v) m a) 
+newtype ConfigurationT k v m a = ConfigurationT { runConfigurationT' ::  (ReaderT (Configuration k v) m a)  }
       deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer, MonadReader (Configuration k v)) 
 instance (Monad m) => MonadConfiguration k v (ConfigurationT k v m) where  
    getK = asks k
    getConfiguration = ask
+
+-- | Run a computation inside the @ConfigurationT@ monad
+runConfigurationT :: Configuration k v -> ConfigurationT k v m a -> m a
+runConfigurationT cfg = flip runReaderT cfg . runConfigurationT' 
 
 ------------------------------------------------------------
 -- K-cfa
@@ -283,12 +298,25 @@ class InputFrom v where
    inputValue :: Int -> v
 
 -- | Layered instance of the @MonadInput@ type class
-instance (MonadLayer t, Monad m, MonadInput v m) => MonadInput v (t m) where  
+instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadInput v m) => MonadInput v (t m) where  
    randomInput = upperM randomInput
 
--- | Trivial instance of the random input monad based 
--- on the @random@ package. 
-newtype InputT v m = InputT () -- XXX: TODO
+-- | Dummy instance of @Joinable@ for @RandomSeq@ since they should 
+-- never be joined together
+instance Joinable RandomSeq where   
+   join = error "no \"join\" for \"RandomSeq\": two \"RandomSeq\" values should never be joined"
+instance BottomLattice RandomSeq where   
+   bottom = error "no \"bottom\" for \"RandomSeq\""
+
+-- | Trivial instane based on carrying around a `Data.Random` infinite 
+-- sequence of integers in a  state monad
+newtype InputT v m a = InputT (StateT RandomSeq m a)
+                     deriving (Applicative, Monad, MonadJoinable, Functor, MonadState RandomSeq, MonadTrans, MonadLayer, MonadCache)
+instance (Monad m, InputFrom v) => MonadInput v (InputT v m) where   
+   randomInput = do  
+      (x, xs) <- gets takeSeq
+      put xs 
+      return (inputValue (fromIntegral x))
 
 ------------------------------------------------------------
 -- Interaction with the model
@@ -313,6 +341,8 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadModel i v m, SymbolicValue v i, Mon
 newtype ModelT i v m a = ModelT (StateT (Map i (Abstract v)) m a)
                        deriving (Monad, Applicative, MonadCache, MonadLayer, MonadTrans, Functor)
 
+deriving instance (Joinable (Abstract v), MonadJoinable m, Ord i) => MonadJoinable (ModelT i v m)
+
 instance (SymbolicValue v i, Ord i, MonadBottom m, MonadInput (Abstract v) m) => MonadModel i v (ModelT i v m) where
    lookupModel i = ModelT $ gets (Map.lookup i) >>= maybe (lift randomInput) return
    putModel = ModelT . put
@@ -333,8 +363,11 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
                            MonadContinuation k m, 
                            -- Store interactions
                            StoreM (VAdr k) v m,
+                           -- StoreM (VAdr k) (Domain.PaiDom v) m,
+                           -- StoreM (VAdr k) (Domain.StrDom v) m, 
+                           -- StoreM (VAdr k) (Domain.VecDom v) m, 
                            StoreM' (Map (VAdr k) v) (VAdr k) v m,
-                           StoreM' (Map (KAdr k) (KKont k)) (KAdr k) (KKont k) m,
+                           StoreM' (Map (KAdr k) (Set (KKont k))) (KAdr k) (Set (KKont k)) m,
                            -- Non-determinism monad
                            MonadJoin m,
                            -- Allocation monads
