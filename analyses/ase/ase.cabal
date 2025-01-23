@@ -48,6 +48,8 @@ library
 executable ase
   main-is: Main.hs
   other-modules:
+      Commands.Analyze
+      Options
       Paths_ase
   hs-source-dirs:
       app
@@ -61,12 +63,14 @@ executable ase
       TupleSections
       GADTs
   build-depends:
-      base >=4.2
+      ase
+    , base >=4.2
     , maf2-analysis
     , maf2-domains
     , maf2-scv
     , maf2-syntax
     , mtl
+    , optparse-applicative
     , random
     , rio
     , simpleactor

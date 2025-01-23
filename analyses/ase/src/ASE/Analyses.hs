@@ -1,5 +1,5 @@
 -- | Instantiations of the ASE analysis
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds, FlexibleInstances #-}
 module ASE.Analyses where 
 
 import ASE.Fixpoint
@@ -8,6 +8,7 @@ import ASE.Machine
 import qualified ASE.Semantics as Semantics
 import ASE.Domain.SymbolicVariable
 import Analysis.Monad.Stack
+import Data.TypeLevel.HList
 import Syntax.AST
 import RIO
 import qualified RIO.Map as Map
@@ -42,12 +43,26 @@ runM cfg = runZ3SolverWithSetup SMT.prelude . runConfigurationT cfg
 
 -- | Class of types representing analysis results
 class IsAnalysisResult a where   
+   -- | Returns the set of reachable blame AST nodes detected 
+   -- by the analysis
+   blameNodes' :: a -> Set Span
+   -- | Returns the set of values in halting program states
+   values' :: a -> Set Semantics.V
 
 -- | A "dynamically" typed analysis result, this can be 
 -- used in automated benchmarks to run an analysis 
 -- and obtained specific parts of its analysis result.
 data AnalysisResult where   
    AnalysisResult :: IsAnalysisResult a => a -> AnalysisResult
+
+-- | Obtain the set of reachable blame nodes for any analysis result
+blameNodes :: AnalysisResult -> Set Span
+blameNodes (AnalysisResult a) = blameNodes' a
+
+-- | Obtain the set of program values in halting program states 
+-- for any analysis result
+values :: AnalysisResult -> Set Semantics.V
+values (AnalysisResult a) = values' a 
 
 ------------------------------------------------------------
 -- Initial configurations
@@ -67,11 +82,25 @@ initialConfiguration e k =
 -- Local Machine Analysis
 ------------------------------------------------------------
 
-instance IsAnalysisResult (Set a)
+-- | Result from the local machine analysis
+newtype LocalAnalysisResult = LocalAnalysisResult { getLocalAnalysisResult :: Set LocalMachine.State }
 
+-- | The local machine result is an analysis result
+instance IsAnalysisResult LocalAnalysisResult where    
+   -- To extract the nodes relating to a blame error, we need to traverse the set of 
+   -- reachable states and only select those that relate to the evaluation of a blame AST node.
+   blameNodes' = Set.fromList . mapMaybe (extract . unnest) . Set.toList . getLocalAnalysisResult
+      where extract :: HList (Unnest (LocalMachine.State)) -> Maybe Span
+            extract (Ev (Blame _ s) _ :+: _) = Just s 
+            extract _ = Nothing
+   values' = Set.fromList . mapMaybe (extract . unnest) . Set.toList . getLocalAnalysisResult 
+      where extract :: HList (Unnest (LocalMachine.State)) -> Maybe Semantics.V 
+            extract (Ap v :+: (ContinuationState Hlt _) :+: _) = Just v 
+            extract _ = Nothing
+   
 -- | Local analysis
 localAnalysis :: Analysis
-localAnalysis e k = AnalysisResult <$> runM cfg (compute initial (collect $ LocalMachine.runLocalMachine Semantics.step)) 
+localAnalysis e k = AnalysisResult . LocalAnalysisResult <$> runM cfg (compute initial (collect $ LocalMachine.runLocalMachine Semantics.step)) 
    where cfg     = initialConfiguration e k
          initial = Set.singleton $ LocalMachine.initialState cfg
 

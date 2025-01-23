@@ -29,3 +29,6 @@ library:
 executable:
   source-dirs: app
   main: Main.hs
+  dependencies:
+    - optparse-applicative
+    - ase
