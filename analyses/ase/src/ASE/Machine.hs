@@ -17,7 +17,7 @@ import Analysis.Symbolic.Monad (MonadPathCondition)
 import Analysis.ASE.Smallstep (State(topFail))
 import Analysis.Monad.Cache (MonadCache)
 import Control.Monad.Layer (MonadLayer, upperM)
-import Control.Monad.Join (MonadBottom(..), MonadJoinable, MonadJoin)
+import Control.Monad.Join (MonadBottom(..), MonadJoinable, MonadJoin, mjoinMap)
 import Control.Monad.DomainError (DomainError)
 import Control.Monad.Escape (MonadEscape, Esc)
 import Domain.Core.AbstractCount (AbstractCount (..))
@@ -49,7 +49,7 @@ data Ctrl v k = Ev !Exp !(Env k) | Ap !v
               deriving (Eq, Ord, Show)
 
 instance Joinable (Ctrl v k) where    
-   join = error "\"join\" not defined for Ctrl but should never bet called"
+   join = error "\"join\" not defined for Ctrl but should never be called"
 instance BottomLattice (Ctrl v k) where  
    bottom = error "\"bottom\" not defined for Ctrl but should never be called"
 
@@ -71,6 +71,18 @@ newtype Model v = Model { getModel :: Map SymbolicVariable (Abstract v) }
 -- variable (based on the location in the AST of the expression of the variable)
 -- or a primitive.
 data VAdr k = VAdr !(Label Exp) !k | PrimAdr !String
+            deriving (Eq, Ord, Show)
+
+-- | Type of pair addresses
+data PAdr k = PAdr Exp !k
+            deriving (Eq, Ord, Show)
+
+-- | Type of vector addresses
+data CAdr k = CAdr Exp !k
+            deriving (Eq, Ord, Show)
+
+-- | Type of string addresses
+data SAdr k = SAdr Exp !k
             deriving (Eq, Ord, Show)
 
 ------------------------------------------------------------
@@ -147,7 +159,6 @@ instance (Ord α, MonadBottom m) => MonadAbstractCount α (AbstractCountT α m) 
 instance (Ord α, MonadBottom m) => AbstractCountM α (AbstractCountT α m) where  
    count = fmap getCountMap getCounts
 
-
 -- | A monad that manages the continuation stack, it stores the 
 -- continuation in the continuation store.
 class (StoreM (KAdr k) (Set (KKont k)) m,
@@ -162,17 +173,17 @@ class (StoreM (KAdr k) (Set (KKont k)) m,
    putFailAddress :: FAdr k -> m ()
    -- | Push a continuation on the continuation stack
    pushK :: KAdr k -> KFrame k -> m ()
-   pushK adr frm = topAddress >>= (writeAdr adr . Set.singleton  .KKont frm)
+   pushK adr frm = topAddress >>= (writeAdr adr . Set.singleton  .KKont frm) >> putTopAddress adr
    -- | Push a failure continuation on the failure continuatuion stack
    pushF :: FAdr k -> FFrame -> m ()
-   pushF adr frm = topFailAddress >>= (writeAdr adr . Set.singleton . FKont frm)
+   pushF adr frm = topFailAddress >>= (writeAdr adr . Set.singleton . FKont frm) >> putFailAddress adr
    -- | Pop a continuation frame from the continuation stack
    popK :: (Joinable a, BottomLattice a, MonadBottom m, MonadJoin m) => (KFrame k -> m a) -> m a
-   popK f = topAddress >>= lookupAdr >>= joinMapM linkAndExecute  
+   popK f = topAddress >>= lookupAdr >>= mjoinMap linkAndExecute  
       where linkAndExecute (KKont frm nxt) = putTopAddress nxt >> f frm
    -- | Pop a continuation frame from the failure continuation stack
    popF :: (Joinable a, BottomLattice a, MonadBottom m, MonadJoin m) => (FFrame -> m a) -> m a
-   popF f = topFailAddress >>= lookupAdr >>= joinMapM linkAndExecute  
+   popF f = topFailAddress >>= lookupAdr >>= mjoinMap linkAndExecute
       where linkAndExecute (FKont frm nxt) = putFailAddress nxt >> f frm
 
 -- | Layered instance of @MonadContinuation@
@@ -363,9 +374,9 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
                            MonadContinuation k m, 
                            -- Store interactions
                            StoreM (VAdr k) v m,
-                           -- StoreM (VAdr k) (Domain.PaiDom v) m,
-                           -- StoreM (VAdr k) (Domain.StrDom v) m, 
-                           -- StoreM (VAdr k) (Domain.VecDom v) m, 
+                           StoreM (PAdr k) (Domain.PaiDom v) m,
+                           StoreM (SAdr k) (Domain.StrDom v) m, 
+                           StoreM (CAdr k) (Domain.VecDom v) m, 
                            StoreM' (Map (VAdr k) v) (VAdr k) v m,
                            StoreM' (Map (KAdr k) (Set (KKont k))) (KAdr k) (Set (KKont k)) m,
                            -- Non-determinism monad
@@ -375,6 +386,9 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
                            AllocM m (Label Exp) (FAdr k), 
                            AllocM m (Label Exp) SymbolicVariable, 
                            AllocM m (Label Exp) (VAdr k),
+                           AllocM m Exp (PAdr k),
+                           AllocM m Exp (SAdr k),
+                           AllocM m Exp (CAdr k),
                            MonadEscape m,
                            Domain (Esc m) DomainError,
                            -- Context

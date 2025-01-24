@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE Strict #-}
 -- | A small-step machine where all components are local to the machine's state, this ensures the most precision 
 -- but is also the slowest as it results in an exponentional number of program states.
 --
@@ -30,6 +31,7 @@ import Data.Tuple.Extra
 import Data.TypeLevel.HList
 import Data.Maybe
 import Domain.Symbolic.Class (Abstract)
+import Domain.Scheme.Class (PaiDom, VecDom, StrDom)
 import RIO
 import qualified RIO.Set as Set
 import qualified RIO.Map as Map
@@ -60,12 +62,18 @@ type StackT m = MonadStack '[
       AllocT Span K (FAdr K),
       AllocT Span K SymbolicVariable,
       AllocT Span K (VAdr K),
+      AllocT Exp  K (PAdr K), 
+      AllocT Exp  K (SAdr K), 
+      AllocT Exp  K (CAdr K),
       -- Context
       SmallstepContextT K, 
       -- Store
       StoreT' (KAdr K) (Set (KKont K)), 
       StoreT' (FAdr K) (Set (FKont K)),
       StoreT' (VAdr K) V,
+      StoreT' (PAdr K) (PaiDom V), 
+      StoreT' (SAdr K) (StrDom V), 
+      StoreT' (CAdr K) (VecDom V),
       -- Model
       ModelT SymbolicVariable V,
       -- Random input
@@ -76,14 +84,13 @@ type StackT m = MonadStack '[
       NonDetT
    ] m
 
-type State m = Unescape (Val (StackT m) (Ctrl V K))
+type State = Unescape (Val (StackT Identity) (Ctrl V K))
 
 initialContext :: K 
 initialContext = []
 
-
 -- |  The initial state of the local machine
-initialState :: Configuration K V -> State m
+initialState :: Configuration K V -> State
 initialState cfg =  Ev (e0 cfg) (ρ0 cfg)
                 <+> initialContinuationStack -- continuation 
                 <+> emptyPC                  -- formula 
@@ -92,17 +99,23 @@ initialState cfg =  Ev (e0 cfg) (ρ0 cfg)
                 <+> Map.empty                -- continuation store
                 <+> Map.empty                -- failure continuation store 
                 <+> (σ0 cfg)                 -- value store 
+                <+> Map.empty                -- pair store 
+                <+> Map.empty                -- string store
+                <+> Map.empty                -- vector store
                 <+> Map.empty                -- model 
                 <+> Random.initialSeq        -- infinite random sequence
 
 -- | Run a single step of the local machine and produce a local machine state
-runLocalMachine :: Monad m => (Ctrl V K -> StackT m (Ctrl V K)) -> State m -> m (Set (State m))
+runLocalMachine :: Monad m => (Ctrl V K -> StackT m (Ctrl V K)) -> State -> m (Set State)
 runLocalMachine m k = Cache.run m k' 
                     -- Run the allocators
                     & runAlloc KAdr 
                     & runAlloc FAdr
                     & runAlloc (const . SymbolicVariable)
                     & runAlloc VAdr 
+                    & runAlloc PAdr 
+                    & runAlloc SAdr
+                    & runAlloc CAdr
                     -- Run the semantics non-deterministically
                     & runNonDetT 
                     -- Filter out all escaping values and replace them 
@@ -110,7 +123,7 @@ runLocalMachine m k = Cache.run m k'
                     -- afterwards.
                     & fmap (Set.fromList . mapMaybe (isEscape . unnest))
    where k' = (k, Map.empty)
-         isEscape :: HList (Unnest (Val (StackT m) (Ctrl V K))) -> Maybe (State m)
+         isEscape :: HList (Unnest (Val (StackT m) (Ctrl V K))) -> Maybe State
          isEscape (Value v :+: rest) = Just $ uncons $ v :+: rest 
          isEscape (MayBoth v _ :+: rest) = Just $ uncons $ v :+: rest
          isEscape _ = Nothing

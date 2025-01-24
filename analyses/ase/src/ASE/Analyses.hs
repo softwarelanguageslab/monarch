@@ -9,10 +9,12 @@ import qualified ASE.Semantics as Semantics
 import ASE.Domain.SymbolicVariable
 import Analysis.Monad.Stack
 import Data.TypeLevel.HList
+import qualified Analysis.Scheme.Primitives as Primitives
 import Syntax.AST
 import RIO
 import qualified RIO.Map as Map
 import qualified RIO.Set as Set
+import Solver(CachedSolver, runCachedSolver)
 import Solver.Z3
 import qualified Symbolic.SMT as SMT
 
@@ -28,14 +30,15 @@ type Analysis = Exp -- ^ the expression the analyze
 
 -- | The type of the monadic context shared between all analyses
 type AnalysisM = MonadStack '[
-                  ConfigurationT Semantics.K Semantics.V
+                  ConfigurationT Semantics.K Semantics.V,
+                  CachedSolver SymbolicVariable
                ] (Z3Solver SymbolicVariable)
 
 -- | All ASE analyses require a configuration and a monadic 
 -- context in which SMT formulae can be solved for their 
 -- satisfiability. This function provides such facilities.
 runM :: Configuration Semantics.K Semantics.V -> AnalysisM a -> IO a
-runM cfg = runZ3SolverWithSetup SMT.prelude . runConfigurationT cfg
+runM cfg = runZ3SolverWithSetup SMT.prelude . runCachedSolver . runConfigurationT cfg
 
 ------------------------------------------------------------
 -- Analysis Results
@@ -69,10 +72,10 @@ values (AnalysisResult a) = values' a
 ------------------------------------------------------------
 
 initialEnv :: Env Semantics.K
-initialEnv = Map.empty
+initialEnv = Primitives.initialEnv PrimAdr
 
 initialSto :: Map (VAdr Semantics.K) Semantics.V
-initialSto = Map.empty
+initialSto = Primitives.initialSto initialEnv
 
 initialConfiguration :: Exp -> Int -> Configuration Semantics.K Semantics.V
 initialConfiguration e k = 

@@ -13,6 +13,9 @@ dependencies:
   - mtl
   - random
 
+ghc-options:
+  - -O2
+
 default-extensions:
   - LambdaCase
   - TypeFamilies

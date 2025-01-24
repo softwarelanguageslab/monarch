@@ -1,6 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TypeOperators #-}
 -- | Language semantics, formulated using the generic machine interface, but 
 -- fixes the type of values being used.
 module ASE.Semantics where
@@ -12,18 +12,19 @@ import Analysis.Monad.Environment (EnvM(lookupEnv, getEnv, withExtendedEnv, with
 import Analysis.Monad (StoreM(lookupAdr, writeAdr), StoreM' (putStore), withCtx, getCtx)
 import Analysis.SimpleActor.Semantics (injectLit)
 import Analysis.Monad.Allocation (AllocM(alloc))
+import qualified Analysis.Scheme.Primitives as Primitives
 import Control.Monad (ap)
 import Control.Monad.Join
 import Domain.Scheme.Class (SchemeDomain(injectClo, withProc))
-import Domain.SimpleActor (ActorValueUnified)
-import Symbolic.AST (Proposition(Variable), conjunction, Formula (Atomic), isSat)
+import Domain.SimpleActor (ActorValue')
+import Symbolic.AST (Proposition(Variable), conjunction, Formula (Atomic), isSat, emptyPC)
 import Domain.Symbolic.Class (SymbolicValue(combine, assertFalse), symbolic, Abstract)
 import Domain.Symbolic (SymbolicVal(SymbolicVal), SymbolicValue (assertTrue))
 import RIO hiding (mzero)
 import qualified RIO.Set as Set
 import Syntax.Span (spanOf)
 import Analysis.Environment (Environment(extends))
-import Analysis.Symbolic.Monad (extendPc, getPc)
+import Analysis.Symbolic.Monad (extendPc, getPc, putPc)
 import qualified Symbolic.AST as Symbolic
 import Solver (FormulaSolver (solve))
 import qualified Domain.Class as Domain
@@ -37,11 +38,13 @@ import qualified Solver
 -- Shorthands
 ------------------------------------------------------------
 
-type V = ActorValueUnified [Span] VAdr SymbolicVariable
+type V = ActorValue' [Span] VAdr PAdr CAdr SAdr SymbolicVariable
 type K = [Span]
-type MachineM m = MonadMachine K V m
+type MachineM m = (MonadIO m, MonadMachine K V m)
 
 instance (v ~ Abstract V) => InputFrom v where 
+   inputValue i = cases !! (i `mod` length cases)
+      where cases = [Domain.inject (toInteger i)]
 
 ------------------------------------------------------------
 -- Solving for the model
@@ -72,8 +75,8 @@ computeModel c pc = do
 ------------------------------------------------------------
 
 -- | Apply a primitive function
-applyPrim :: [V] -> Exp -> String -> m (Ctrl V K)
-applyPrim = undefined
+applyPrim :: MachineM m => [V] -> Exp -> String -> m (Ctrl V K)
+applyPrim vs e nam = maybe mzero (fmap Ap) $ Primitives.run <$> Map.lookup nam Primitives.primitivesByName <*> pure e <*> pure vs
 
 -- | Apply a user-defined closure
 applyClo :: MachineM m => [V] -> Exp -> (Exp, Env K) -> m (Ctrl V K)
@@ -104,7 +107,8 @@ evalLetrec ads (exp:exs) bdy = do
 atomicEval :: MachineM m => Exp -> m V
 atomicEval (Literal l _)   = return $ injectLit l
 atomicEval (Var (Ide x _)) = lookupEnv x >>= lookupAdr
-atomicEval lam@(Lam {})  = getEnv <&> injectClo . (lam,)
+atomicEval lam@(Lam {})    = getEnv <&> injectClo . (lam,)
+atomicEval exp             = error $ "expression " ++ show exp ++ " is not an atomic expression"
 
 -- | Evaluation part of the @step@ping function, dispatches
 -- directly over the expressions in @Exp@.
@@ -134,6 +138,7 @@ stepEval (Letrec bds bdy _) = do
    ads <- mapM (alloc . spanOf . fst) bds
    ρ'  <- extends (zip (map (name . fst) bds) ads) <$> getEnv
    withEnv (const ρ') $ evalLetrec ads (map snd bds) bdy
+stepEval (Blame _ _) = mzero
 stepEval e = error $ "Expression " ++ show e ++ " is not supported by this interpreter"
 
 -- | Apply the current continuation
@@ -155,7 +160,9 @@ restart = popF selectContinuation
             -- ... by resetting the store
             putStore @(Map (VAdr K) V) (σ0 cfg)
             -- ... and resetting the continuation store
-            -- putStore @(Map (KAdr K) (KKont K)) Map.empty
+            putStore @(Map (KAdr K) (Set (KKont K))) @(KAdr K) @(Set (KKont K)) Map.empty
+            -- ... and resetting the path condition
+            putPc emptyPC
             -- ... and by evaluating the initial program expression
             return (Ev (e0 cfg) (ρ0 cfg))
 
@@ -166,10 +173,10 @@ restart = popF selectContinuation
 -- If the machine halts it returns @mzero@ denoting 
 -- the empty computation so that no successor states are generated.
 step :: MachineM m => Ctrl V K -> m (Ctrl V K)
-step (Ap v) =  liftA2 (,) topAddress topFailAddress
-    >>= (\case
+step (Ap v) = liftA2 (,) topAddress topFailAddress
+    >>= (\a -> case a of 
             (Hlt, FHlt) -> mzero         -- machine has no continuations, it has reached a halting state 
-            (Hlt, _)    -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
+            (Hlt, top)  -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
             (k, _)      -> stepApply v   -- apply the continuation
       )
 step (Ev e ρ) = withEnv (const ρ) (stepEval e)

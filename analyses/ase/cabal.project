@@ -14,3 +14,8 @@ packages:
    ../../thirdparty/language-python/language-python/
    ../../analyses/simpleactor/
    ./
+
+packages: .
+optimization: 2
+package *
+  optimization: 2
