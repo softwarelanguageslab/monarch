@@ -50,12 +50,14 @@ instance (Monad m, MonadEscape m) => MonadEscape (AllocT from ctx to m) where
    catch (AllocT m) f = AllocT $ ReaderT $ \alloc -> runReaderT m alloc `catch` (flip runReaderT alloc . runAllocT_ . f)
 
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
+   {-# INLINE alloc #-}
    alloc loc = do
       ctx <- AllocT $ lift getCtx
       f   <- ask
       return $ f loc ctx
 
 instance (AllocM m from to, Monad (l m), MonadLayer l) => AllocM (l m) from to where
+   {-# INLINE alloc #-}
    alloc = upperM . alloc @m @from @to
 
 

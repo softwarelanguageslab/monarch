@@ -68,11 +68,16 @@ class (Monad m, Joinable v, Address a) => StoreM a v m | m a -> v where
    {-# MINIMAL storeSize, lookupAdr, writeAdr, updateWith, hasAdr #-}
 
 instance {-# OVERLAPPABLE #-} (Monad (t m), StoreM adr v m, MonadLayer t) => StoreM adr v (t m) where
+   {-# INLINE writeAdr #-}
    storeSize = upperM (storeSize @adr @v @m)
    writeAdr adr =  upperM . writeAdr adr
+   {-# INLINE updateAdr #-}
    updateAdr adr =  upperM . updateAdr adr
+   {-# INLINE lookupAdr #-}
    lookupAdr  =  upperM . lookupAdr
+   {-# INLINE updateWith #-}
    updateWith fs fw = upperM . updateWith fs fw
+   {-# INLINE hasAdr #-}
    hasAdr = upperM . hasAdr
 
 updateAndCheck :: (Eq v, StoreM a v m) => a -> (a -> m ()) -> m Bool

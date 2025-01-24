@@ -56,6 +56,7 @@ instance MonadCache m => MonadCache (IdentityT m) where
     type Base (IdentityT m) = Base m
     key = lift . key
     val = lift . val
+    {-# INLINE run #-}
     run f = run (runIdentityT . f)
 
 instance MonadCache m => MonadCache (MaybeT m) where
@@ -64,6 +65,7 @@ instance MonadCache m => MonadCache (MaybeT m) where
     type Base (MaybeT m) = Base m
     key = lift . key
     val = MaybeT . val
+    {-# INLINE run #-}
     run f = run (runMaybeT . f)
 
 instance MonadCache m => MonadCache (StateT s m) where
@@ -72,6 +74,7 @@ instance MonadCache m => MonadCache (StateT s m) where
      type Base (StateT s m) = Base m
      key k = StateT $ \s -> (,s) <$> key (k, s)
      val = StateT . const . val
+     {-# INLINE run #-}
      run f = run (\(k,s) -> runStateT (f k) s)
 
 instance (Joinable e, MonadCache m) => MonadCache (MayEscapeT e m) where
@@ -80,6 +83,7 @@ instance (Joinable e, MonadCache m) => MonadCache (MayEscapeT e m) where
     type Base (MayEscapeT e m) = Base m
     key = lift . key
     val = MayEscapeT . val
+    {-# INLINE run #-}
     run f = run (runMayEscape . f)
 
 instance (TaintM t m, Joinable e, MonadCache m) => MonadCache (MayEscapeTaintedT t e m) where
@@ -88,6 +92,7 @@ instance (TaintM t m, Joinable e, MonadCache m) => MonadCache (MayEscapeTaintedT
     type Base (MayEscapeTaintedT t e m) = Base m
     key = lift . key 
     val = MayEscapeTaintedT . val 
+    {-# INLINE run #-}
     run f = run (runMayEscapeTainted . f)
 
 instance MonadCache m => MonadCache (ReaderT r m) where
@@ -96,6 +101,7 @@ instance MonadCache m => MonadCache (ReaderT r m) where
     type Base (ReaderT r m) = Base m
     key k = ReaderT $ \r -> key (k,r)
     val = ReaderT . const . val
+    {-# INLINE run #-}
     run f = run (\(k,r) -> runReaderT (f k) r)
 
 instance (MonadCache m, Monoid w) => MonadCache (WriterT w m) where
@@ -104,6 +110,7 @@ instance (MonadCache m, Monoid w) => MonadCache (WriterT w m) where
     type Base (WriterT w m) = Base m
     key = lift . key
     val = WriterT . val
+    {-# INLINE run #-}
     run f = run (runWriterT . f)
 
 instance MonadCache m => MonadCache (ListT m) where
@@ -113,9 +120,11 @@ instance MonadCache m => MonadCache (ListT m) where
     key = lift . key
     val :: forall v . Val (ListT m) v -> ListT m v
     val v = ListT (val @m @[v] v >>= uncons . ListT.fromFoldable)
+    {-# INLINE run #-}
     run f = run (ListT.toList . f)
 
 instance (MonadJoinable m) => MonadJoinable (CacheT m) where
+   {-# INLINE mjoin #-}
    mjoin (CacheT ma) (CacheT mb) = CacheT $ IdentityT $ mjoin (runIdentityT ma) (runIdentityT mb)
 
 
@@ -132,8 +141,10 @@ instance Monad m => MonadCache (CacheT m) where
     type Base (CacheT m) = m
     key = CacheT . return
     val = CacheT . return
+    {-# INLINE run #-}
     run f = runCacheT . f
 
+{-# INLINE runCacheT #-}
 runCacheT :: CacheT m a -> m a
 runCacheT (CacheT m) = runIdentityT m
 

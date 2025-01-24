@@ -39,7 +39,9 @@ instance {-# OVERLAPPING #-} Monad m => CtxM (CtxT ctx m) ctx where
    getCtx = ask
    withCtx = local
 instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, CtxM m ctx) => CtxM (t m) ctx where
+   {-# INLINE getCtx #-}
    getCtx =  upperM getCtx
+   {-# INLINE withCtx #-}
    withCtx f = lowerM (withCtx f)
 
 runCtx :: ctx -> (CtxT ctx m) a -> m a

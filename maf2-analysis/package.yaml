@@ -61,6 +61,8 @@ default-extensions:
   - GeneralizedNewtypeDeriving
 
 ghc-options:
+- -fspecialise-aggressively
+- -fexpose-all-unfoldings
 - -Wall
 - -Wcompat
 - -Widentities

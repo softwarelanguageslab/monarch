@@ -33,6 +33,7 @@ library
       ConstraintKinds
       TupleSections
       GADTs
+  ghc-options: -O2
   build-depends:
       base >=4.2
     , maf2-analysis
@@ -62,6 +63,7 @@ executable ase
       ConstraintKinds
       TupleSections
       GADTs
+  ghc-options: -O2 -rtsopts "-with-rtsopts=-sstderr"
   build-depends:
       ase
     , base >=4.2

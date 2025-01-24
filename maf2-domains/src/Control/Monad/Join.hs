@@ -98,27 +98,34 @@ msplitOnCP = msplitOn
 -- Some instances for convenience
 
 instance (MonadJoinable m) => MonadJoinable (ReaderT r m) where
+   {-# INLINE mjoin #-}
    mjoin ma mb = ReaderT $ \r -> mjoin (runReaderT ma r) (runReaderT mb r)
 
 instance (MonadBottom m) => MonadBottom (ReaderT r m) where 
+   {-# INLINE mzero #-}
    mzero = ReaderT $ const mzero
 
 instance (MonadJoinable m, Joinable w, BottomLattice w, Monoid w) => MonadJoinable (WriterT w m) where
+   {-# INLINE mjoin #-}
    mjoin (WriterT ma) (WriterT mb) = WriterT (mjoin ma mb)
 
 instance (Monoid w, MonadBottom m) => MonadBottom (WriterT w m) where 
    mzero = WriterT mzero
 
 instance (MonadJoinable m, Joinable s, BottomLattice s) => MonadJoinable (StateT s m) where
+   {-# INLINE mjoin #-}
    mjoin ma mb = StateT (\st -> mjoin (runStateT ma st) (runStateT mb st))
 
 instance (MonadBottom m) => MonadBottom (StateT r m) where 
+   {-# INLINE mzero #-}
    mzero = StateT $ const mzero
 
 instance (MonadJoinable m) => MonadJoinable (MaybeT m) where
+   {-# INLINE mjoin #-}
    mjoin ma mb = MaybeT $ mjoin (runMaybeT ma) (runMaybeT mb)
 
 instance (MonadBottom m) => MonadBottom (MaybeT m) where 
+   {-# INLINE mzero #-}
    mzero = MaybeT mzero
 
 instance MonadJoinable Maybe where
@@ -134,6 +141,8 @@ instance MonadJoinable Identity where
    mjoin = liftA2 join
 
 instance (MonadJoinable m) => MonadJoinable (IdentityT m) where
+   {-# INLINE mjoin #-}
    mjoin (IdentityT ma) (IdentityT mb) = IdentityT $ mjoin ma mb
 instance (MonadBottom m) => MonadBottom (IdentityT m) where 
+   {-# INLINE mzero #-}
    mzero = IdentityT mzero

@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, StandaloneDeriving #-}
+{-# LANGUAGE Strict #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
 -- | Generic machine components
@@ -173,10 +174,10 @@ class (StoreM (KAdr k) (Set (KKont k)) m,
    putFailAddress :: FAdr k -> m ()
    -- | Push a continuation on the continuation stack
    pushK :: KAdr k -> KFrame k -> m ()
-   pushK adr frm = topAddress >>= (writeAdr adr . Set.singleton  .KKont frm) >> putTopAddress adr
+   pushK adr frm = {-# SCC "PUSHK" #-} topAddress >>= (writeAdr adr . Set.singleton  .KKont frm) >> putTopAddress adr
    -- | Push a failure continuation on the failure continuatuion stack
    pushF :: FAdr k -> FFrame -> m ()
-   pushF adr frm = topFailAddress >>= (writeAdr adr . Set.singleton . FKont frm) >> putFailAddress adr
+   pushF adr frm = {-# SCC "PUSHF" #-} topFailAddress >>= (writeAdr adr . Set.singleton . FKont frm) >> putFailAddress adr
    -- | Pop a continuation frame from the continuation stack
    popK :: (Joinable a, BottomLattice a, MonadBottom m, MonadJoin m) => (KFrame k -> m a) -> m a
    popK f = topAddress >>= lookupAdr >>= mjoinMap linkAndExecute  

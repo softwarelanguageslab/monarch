@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, AllowAmbiguousTypes, FlexibleContexts, UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances, AllowAmbiguousTypes, FlexibleContexts, UndecidableInstances, Strict #-}
 module Analysis.Store(Store(..), CountingMap(..), store, restrictSto, printSto) where
 
 import Data.Map (Map)

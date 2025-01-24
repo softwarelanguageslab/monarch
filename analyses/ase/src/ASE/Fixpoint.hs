@@ -1,4 +1,5 @@
 -- | Fixpoint for ASE's small-step machines
+{-# LANGUAGE Strict #-}
 module ASE.Fixpoint where 
 
 import Lattice.Class
@@ -7,8 +8,8 @@ import qualified RIO.Set as Set
 
 
 -- | Collecting semantics for a given small-step relation
-collect :: (Monad m, Ord a) => (a -> m (Set a)) -> Set a -> m (Set a)
-collect f s = foldM (\r v -> Set.union <$> (f v) <*> pure r) Set.empty (Set.toList s)
+collect :: (Monad m, MonadIO m, Ord a) => (a -> m (Set a)) -> Set a -> m (Set a)
+collect f s = foldM (\r v -> r `seq` Set.union <$> (f v) <*> pure r) Set.empty (Set.toList s)
 
 -- | Compute the fixpoint of the given monadic function.
 --
@@ -21,9 +22,9 @@ compute initial f = loop initial initial
    where loop nxt acc = do 
             -- compute the successor states
             nxt' <- Set.filter (not . flip Set.member acc) <$> f nxt 
-            let acc' = join acc nxt'
+            let acc' = nxt' `seq` join acc nxt'
             liftIO (putStrLn $ "current seen state size = " ++ (show $ Set.size acc'))
-            if Set.size acc == Set.size acc' 
+            if Set.size acc' > 700 || Set.size acc == Set.size acc' 
             -- if the accumulator no longer changes, return the 
             -- result of the computation
             then (return acc')

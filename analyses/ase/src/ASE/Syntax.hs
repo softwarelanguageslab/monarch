@@ -1,4 +1,5 @@
 -- | Additional context for the syntax of SimpleActor
+{-# LANGUAGE Strict #-}
 module ASE.Syntax(isAtomic, module Syntax.AST, Label) where
 
 import Data.Kind

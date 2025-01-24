@@ -1,6 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TypeOperators #-}
+{-# LANGUAGE Strict #-}
 -- | Language semantics, formulated using the generic machine interface, but 
 -- fixes the type of values being used.
 module ASE.Semantics where
@@ -150,7 +151,7 @@ stepApply v = popK selectContinuation
 -- in the model so that the machine explores the path associated 
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
-restart = popF selectContinuation
+restart = liftIO (putStr "R") >> popF selectContinuation
    where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero restartUsingModel <=< computeModel cnt) pc
          restartUsingModel model = do 
             -- add the model to the next execution
@@ -173,11 +174,11 @@ restart = popF selectContinuation
 -- If the machine halts it returns @mzero@ denoting 
 -- the empty computation so that no successor states are generated.
 step :: MachineM m => Ctrl V K -> m (Ctrl V K)
-step (Ap v) = liftA2 (,) topAddress topFailAddress
+step (Ap v) = liftIO (putStr "*") >> liftA2 (,) topAddress topFailAddress
     >>= (\a -> case a of 
             (Hlt, FHlt) -> mzero         -- machine has no continuations, it has reached a halting state 
             (Hlt, top)  -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
             (k, _)      -> stepApply v   -- apply the continuation
       )
-step (Ev e ρ) = withEnv (const ρ) (stepEval e)
+step (Ev e ρ) = liftIO (putStr "*") >> withEnv (const ρ) (stepEval e)
 

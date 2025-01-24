@@ -1,5 +1,6 @@
 -- | Instantiations of the ASE analysis
 {-# LANGUAGE DataKinds, FlexibleInstances #-}
+{-# LANGUAGE Strict #-}
 module ASE.Analyses where 
 
 import ASE.Fixpoint

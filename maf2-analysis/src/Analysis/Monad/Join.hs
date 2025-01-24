@@ -42,18 +42,25 @@ instance (Monad m) => MonadBottom (JoinT m) where
 
 -- Standard monad implementations
 instance (Functor m) => Functor (JoinT m) where
+   {-# INLINE fmap #-}
    fmap f (JoinT m) = JoinT $ fmap (\case Bottom -> Bottom
                                           Value v -> Value (f v)) m
 instance (Monad m) => Applicative (JoinT m) where
+   {-# INLINE pure #-}
    pure = JoinT . pure . Value
+   {-# INLINE (<*>) #-}
    (<*>) = ap
 instance (Monad m) => Monad (JoinT m) where
+   {-# INLINE (>>=) #-}
    (>>=) (JoinT m) f = JoinT $ m >>= (\case Bottom  -> return Bottom
                                             Value v -> runJoinT' (f v))
 instance MonadTrans JoinT where
+   {-# INLINE lift #-}
    lift m = JoinT $ fmap Value m
 instance MonadLayer JoinT where
+   {-# INLINE upperM #-}
    upperM = lift
+   {-# INLINE lowerM #-}
    lowerM f m = JoinT $ f (runJoinT' m)
 instance (MonadCache m) => MonadCache (JoinT m) where
    type Key (JoinT m) k = Key m k
