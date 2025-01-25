@@ -9,7 +9,7 @@ import qualified RIO.Set as Set
 
 -- | Collecting semantics for a given small-step relation
 collect :: (Monad m, MonadIO m, Ord a) => (a -> m (Set a)) -> Set a -> m (Set a)
-collect f s = foldM (\r v -> r `seq` Set.union <$> (f v) <*> pure r) Set.empty (Set.toList s)
+collect f s = foldM (\r v -> r `seq` Set.union <$> (f v) <*> pure r) Set.empty s
 
 -- | Compute the fixpoint of the given monadic function.
 --
@@ -24,7 +24,7 @@ compute initial f = loop initial initial
             nxt' <- Set.filter (not . flip Set.member acc) <$> f nxt 
             let acc' = nxt' `seq` join acc nxt'
             liftIO (putStrLn $ "current seen state size = " ++ (show $ Set.size acc'))
-            if Set.size acc' > 700 || Set.size acc == Set.size acc' 
+            if Set.size acc == Set.size acc' 
             -- if the accumulator no longer changes, return the 
             -- result of the computation
             then (return acc')

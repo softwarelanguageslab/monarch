@@ -10,7 +10,7 @@ import ASE.Syntax
 import ASE.Machine
 import ASE.Domain.SymbolicVariable
 import Analysis.Monad.Environment (EnvM(lookupEnv, getEnv, withExtendedEnv, withEnv))
-import Analysis.Monad (StoreM(lookupAdr, writeAdr), StoreM' (putStore), withCtx, getCtx)
+import Analysis.Monad (StoreM(lookupAdr, writeAdr), StoreM' (putStore), withCtx, getCtx, currentStore)
 import Analysis.SimpleActor.Semantics (injectLit)
 import Analysis.Monad.Allocation (AllocM(alloc))
 import qualified Analysis.Scheme.Primitives as Primitives
@@ -34,6 +34,8 @@ import qualified Symbolic.AST
 import qualified RIO.Map as Map
 import qualified Lattice.Class as Lat
 import qualified Solver
+import System.IO (stdout)
+
 
 ------------------------------------------------------------
 -- Shorthands
@@ -101,8 +103,8 @@ evalLetrec  :: MachineM m => [VAdr K] -> [Exp] -> Exp -> m (Ctrl V K)
 evalLetrec [] [] bdy = Ev bdy <$> getEnv
 evalLetrec ads (exp:exs) bdy = do
    kadr <- alloc (spanOf exp)
-   getEnv >>= pushK kadr . LetK ads exs bdy
-   Ev exp <$> getEnv
+   liftIO . (\s -> putStr $ "{" ++ s ++ "}") . show . Map.size =<<  currentStore @(Map (KAdr K) (Set (KKont K))) @(KAdr K) @(Set (KKont K))
+   getEnv >>= (\env -> ev exp env kadr (LetK ads exs bdy env))
 
 -- | Evaluate an expression atomically
 atomicEval :: MachineM m => Exp -> m V
@@ -117,6 +119,7 @@ stepEval :: MachineM m => Exp -> m (Ctrl V K)
 stepEval e
    | isAtomic e = Ap <$> atomicEval e
 stepEval (Ite cnd csq alt s) = do
+   --liftIO (putStr "{IF}")
    vcnd <- atomicEval cnd
    αf <- alloc s
    mjoinMap (\pc -> do
@@ -125,33 +128,40 @@ stepEval (Ite cnd csq alt s) = do
          (  extendPc (assertTrue vcnd)  
          >> pushF αf (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)) count) 
          >> getEnv <&> Ev csq )
-         (extendPc (assertFalse vcnd) 
+         (  extendPc (assertFalse vcnd) 
          >> pushF αf (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)) count) 
          >> getEnv <&> Ev alt) ) =<< getPc
 stepEval (Input s) = do
+   -- liftIO (putStr "{IN}")
    sym <- allocSym s
    Ap . (`combine` (SymbolicVal $ Variable sym)) <$> lookupModel sym
 stepEval app@(App operator operands _) = do
+      -- liftIO (putStr "{APP}")
       operator' <- atomicEval operator
       operands' <- mapM atomicEval operands
       apply operator' operands' app
 stepEval (Letrec bds bdy _) = do
+   -- liftIO (putStr "{LETREC}")
    ads <- mapM (alloc . spanOf . fst) bds
    ρ'  <- extends (zip (map (name . fst) bds) ads) <$> getEnv
    withEnv (const ρ') $ evalLetrec ads (map snd bds) bdy
 stepEval (Blame _ _) = mzero
 stepEval e = error $ "Expression " ++ show e ++ " is not supported by this interpreter"
 
+-- | Apply the given continuation
+applyContinuation :: MachineM m => V -> KFrame K -> m (Ctrl V K)
+applyContinuation v = 
+   \case (LetK (adr:ads) exs bdy ρ) -> writeAdr adr v >> withEnv (const ρ) (evalLetrec ads exs bdy)
+
 -- | Apply the current continuation
 stepApply :: MachineM m => V -> m (Ctrl V K)
-stepApply v = popK selectContinuation
-   where selectContinuation (LetK (adr:ads) exs bdy ρ) = writeAdr adr v >> withEnv (const ρ) (evalLetrec ads exs bdy)
+stepApply = popK . applyContinuation
 
 -- | Restart the machine with the appropriate assignments 
 -- in the model so that the machine explores the path associated 
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
-restart = liftIO (putStr "R") >> popF selectContinuation
+restart = popF selectContinuation
    where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero restartUsingModel <=< computeModel cnt) pc
          restartUsingModel model = do 
             -- add the model to the next execution
@@ -174,11 +184,36 @@ restart = liftIO (putStr "R") >> popF selectContinuation
 -- If the machine halts it returns @mzero@ denoting 
 -- the empty computation so that no successor states are generated.
 step :: MachineM m => Ctrl V K -> m (Ctrl V K)
-step (Ap v) = liftIO (putStr "*") >> liftA2 (,) topAddress topFailAddress
-    >>= (\a -> case a of 
-            (Hlt, FHlt) -> mzero         -- machine has no continuations, it has reached a halting state 
-            (Hlt, top)  -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
-            (k, _)      -> stepApply v   -- apply the continuation
-      )
-step (Ev e ρ) = liftIO (putStr "*") >> withEnv (const ρ) (stepEval e)
+step (Ap v) = liftA2 (,) topAddress topFailAddress
+    >>= (\case (Hlt, FHlt) -> mzero         -- machine has no continuations, it has reached a halting state 
+               (Hlt, top)  -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
+               (k, _)      -> stepApply v   -- apply the continuation
+        ) 
+step (Ev e ρ) =  withEnv (const ρ) (stepEval e)
+
+------------------------------------------------------------
+-- Optimisations
+------------------------------------------------------------
+
+-- | Same as producing an @Ev@ state but checks whether the expression 
+-- can be evaluated in a single step, and if so prevents a continuation 
+-- from being pushed on the continuation stack and applies the continuation
+-- with the evaluated value instead.
+ev :: MachineM m => Exp -> Env K -> KAdr K -> KFrame K -> m (Ctrl V K) 
+ev e ρ α κ 
+      | isAtomic e = withEnv (const ρ) $ (`applyContinuation` κ) =<< (atomicEval e)
+      | otherwise = case e of 
+                        -- The reason that we select based on the type of expression 
+                        -- is to ensure that no redundant work is performed. For instance, 
+                        -- an @if@ expression will never result in a value in a single 
+                        -- step, as such we don't pass such expressions to "stepEval".
+                        -- 
+                        -- However, conceptually this is equivalent to:
+                        -- withEnv (const ρ) (stepEval e) >>= (\case (Ap v) -> applyContinuation v κ
+                        --                                           _ -> pushK α κ >> return (Ev e ρ))
+                        Input _   -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+                        App _ _ _ -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+                        _ -> pushK α κ >> return (Ev e ρ)
+   where stepEvalInline (Ap v) = applyContinuation v κ
+         stepEvalInline _ = pushK α κ >> return (Ev e ρ)
 
