@@ -930,71 +930,66 @@
                                                                                                     (letrec ((g7418
                                                                                                               (if val6895
                                                                                                                 val6895
-                                                                                                                (letrec ((x7437
+                                                                                                                (letrec ((x7434
                                                                                                                           (vector?
                                                                                                                            a))
-                                                                                                                         (x7436
+                                                                                                                         (x7433
                                                                                                                           (vector?
                                                                                                                            b))
                                                                                                                          (x7419
-                                                                                                                          (letrec ((x7433
-                                                                                                                                    (letrec ((x7434
-                                                                                                                                              (letrec ((x7435
-                                                                                                                                                        (vector-length
-                                                                                                                                                         a)))
-                                                                                                                                                (n
-                                                                                                                                                 x7435))))
-                                                                                                                                      (x7434)))
-                                                                                                                                   (x7420
-                                                                                                                                    (letrec ((x7431
-                                                                                                                                              (letrec ((x7432
-                                                                                                                                                        (vector-length
-                                                                                                                                                         b)))
-                                                                                                                                                (=
-                                                                                                                                                 x7432
-                                                                                                                                                 n)))
-                                                                                                                                             (x7421
-                                                                                                                                              (letrec ((loop
-                                                                                                                                                        (lambda (i)
-                                                                                                                                                          (letrec ((g7422
-                                                                                                                                                                    (letrec ((x7429
-                                                                                                                                                                              (=
-                                                                                                                                                                               i
-                                                                                                                                                                               n))
-                                                                                                                                                                             (x7423
-                                                                                                                                                                              (letrec ((x7426
-                                                                                                                                                                                        (letrec ((x7428
-                                                                                                                                                                                                  (vector-ref
-                                                                                                                                                                                                   a
-                                                                                                                                                                                                   i))
-                                                                                                                                                                                                 (x7427
-                                                                                                                                                                                                  (vector-ref
-                                                                                                                                                                                                   b
-                                                                                                                                                                                                   i)))
-                                                                                                                                                                                          (equal?
-                                                                                                                                                                                           x7428
-                                                                                                                                                                                           x7427)))
-                                                                                                                                                                                       (x7424
-                                                                                                                                                                                        (letrec ((x7425
-                                                                                                                                                                                                  (+
-                                                                                                                                                                                                   i
-                                                                                                                                                                                                   1)))
-                                                                                                                                                                                          (loop
-                                                                                                                                                                                           x7425))))
-                                                                                                                                                                                (and x7426
-                                                                                                                                                                                     x7424))))
-                                                                                                                                                                      (or x7429
-                                                                                                                                                                          x7423))))
-                                                                                                                                                            g7422))))
-                                                                                                                                                (letrec ((g7430
-                                                                                                                                                          (loop
-                                                                                                                                                           0)))
-                                                                                                                                                  g7430))))
-                                                                                                                                      (and x7431
-                                                                                                                                           x7421))))
-                                                                                                                            (let x7433 x7420))))
-                                                                                                                  (and x7437
-                                                                                                                       x7436
+                                                                                                                          (letrec ((n
+                                                                                                                                    (vector-length
+                                                                                                                                     a)))
+                                                                                                                            (letrec ((g7420
+                                                                                                                                      (letrec ((x7431
+                                                                                                                                                (letrec ((x7432
+                                                                                                                                                          (vector-length
+                                                                                                                                                           b)))
+                                                                                                                                                  (=
+                                                                                                                                                   x7432
+                                                                                                                                                   n)))
+                                                                                                                                               (x7421
+                                                                                                                                                (letrec ((loop
+                                                                                                                                                          (lambda (i)
+                                                                                                                                                            (letrec ((g7422
+                                                                                                                                                                      (letrec ((x7429
+                                                                                                                                                                                (=
+                                                                                                                                                                                 i
+                                                                                                                                                                                 n))
+                                                                                                                                                                               (x7423
+                                                                                                                                                                                (letrec ((x7426
+                                                                                                                                                                                          (letrec ((x7428
+                                                                                                                                                                                                    (vector-ref
+                                                                                                                                                                                                     a
+                                                                                                                                                                                                     i))
+                                                                                                                                                                                                   (x7427
+                                                                                                                                                                                                    (vector-ref
+                                                                                                                                                                                                     b
+                                                                                                                                                                                                     i)))
+                                                                                                                                                                                            (equal?
+                                                                                                                                                                                             x7428
+                                                                                                                                                                                             x7427)))
+                                                                                                                                                                                         (x7424
+                                                                                                                                                                                          (letrec ((x7425
+                                                                                                                                                                                                    (+
+                                                                                                                                                                                                     i
+                                                                                                                                                                                                     1)))
+                                                                                                                                                                                            (loop
+                                                                                                                                                                                             x7425))))
+                                                                                                                                                                                  (and x7426
+                                                                                                                                                                                       x7424))))
+                                                                                                                                                                        (or x7429
+                                                                                                                                                                            x7423))))
+                                                                                                                                                              g7422))))
+                                                                                                                                                  (letrec ((g7430
+                                                                                                                                                            (loop
+                                                                                                                                                             0)))
+                                                                                                                                                    g7430))))
+                                                                                                                                        (and x7431
+                                                                                                                                             x7421))))
+                                                                                                                              g7420))))
+                                                                                                                  (and x7434
+                                                                                                                       x7433
                                                                                                                        x7419)))))
                                                                                                       g7418)))))
                                                                                         g7409)))))
@@ -1003,1054 +998,1054 @@
                                                 g7401)))
                                            (cdaaar
                                             (lambda (x)
-                                              (letrec ((g7438
-                                                        (letrec ((x7439
-                                                                  (letrec ((x7440
-                                                                            (letrec ((x7441
+                                              (letrec ((g7435
+                                                        (letrec ((x7436
+                                                                  (letrec ((x7437
+                                                                            (letrec ((x7438
                                                                                       (car
                                                                                        x)))
                                                                               (car
-                                                                               x7441))))
+                                                                               x7438))))
                                                                     (car
-                                                                     x7440))))
-                                                          (cdr x7439))))
-                                                g7438)))
+                                                                     x7437))))
+                                                          (cdr x7436))))
+                                                g7435)))
                                            (caaddr
                                             (lambda (x)
-                                              (letrec ((g7442
-                                                        (letrec ((x7443
-                                                                  (letrec ((x7444
-                                                                            (letrec ((x7445
+                                              (letrec ((g7439
+                                                        (letrec ((x7440
+                                                                  (letrec ((x7441
+                                                                            (letrec ((x7442
                                                                                       (cdr
                                                                                        x)))
                                                                               (cdr
-                                                                               x7445))))
+                                                                               x7442))))
                                                                     (car
-                                                                     x7444))))
-                                                          (car x7443))))
-                                                g7442)))
+                                                                     x7441))))
+                                                          (car x7440))))
+                                                g7439)))
                                            (eqv?
                                             (lambda (x y)
-                                              (letrec ((g7446 (eq? x y)))
-                                                g7446)))
+                                              (letrec ((g7443 (eq? x y)))
+                                                g7443)))
                                            (>=
                                             (lambda (x y)
-                                              (letrec ((g7447
-                                                        (letrec ((x7449
+                                              (letrec ((g7444
+                                                        (letrec ((x7446
                                                                   (number? x)))
-                                                          (assert x7449)))
-                                                       (g7448
+                                                          (assert x7446)))
+                                                       (g7445
                                                         (letrec ((val6896
                                                                   (> x y)))
-                                                          (letrec ((g7450
+                                                          (letrec ((g7447
                                                                     (if val6896
                                                                       val6896
                                                                       (letrec ((val6897
                                                                                 (=
                                                                                  x
                                                                                  y)))
-                                                                        (letrec ((g7451
+                                                                        (letrec ((g7448
                                                                                   (if val6897
                                                                                     val6897
                                                                                     #f)))
-                                                                          g7451)))))
-                                                            g7450))))
-                                                g7448)))
+                                                                          g7448)))))
+                                                            g7447))))
+                                                g7445)))
                                            (call-with-input-file
                                             (lambda (filename proc)
-                                              (letrec ((g7452
-                                                        (letrec ((x7455
+                                              (letrec ((g7449
+                                                        (letrec ((x7452
                                                                   (string?
                                                                    filename)))
-                                                          (assert x7455)))
-                                                       (g7453
-                                                        (letrec ((x7456
+                                                          (assert x7452)))
+                                                       (g7450
+                                                        (letrec ((x7453
                                                                   (procedure?
                                                                    proc)))
-                                                          (assert x7456)))
-                                                       (g7454
+                                                          (assert x7453)))
+                                                       (g7451
                                                         (letrec ((input-port
                                                                   (open-input-file
                                                                    filename))
                                                                  (res
                                                                   (proc
                                                                    input-port)))
-                                                          (letrec ((g7457
+                                                          (letrec ((g7454
                                                                     (close-input-port
                                                                      input-port))
-                                                                   (g7458 res))
-                                                            g7458))))
-                                                g7454)))
+                                                                   (g7455 res))
+                                                            g7455))))
+                                                g7451)))
                                            (ref
                                             (lambda (x)
-                                              (letrec ((g7459 (cons x '())))
-                                                g7459)))
+                                              (letrec ((g7456 (cons x '())))
+                                                g7456)))
                                            (char>=?
                                             (lambda (c1 c2)
-                                              (letrec ((g7460
-                                                        (letrec ((x7463
+                                              (letrec ((g7457
+                                                        (letrec ((x7460
                                                                   (char? c1)))
-                                                          (assert x7463)))
-                                                       (g7461
-                                                        (letrec ((x7464
+                                                          (assert x7460)))
+                                                       (g7458
+                                                        (letrec ((x7461
                                                                   (char? c2)))
-                                                          (assert x7464)))
-                                                       (g7462
+                                                          (assert x7461)))
+                                                       (g7459
                                                         (letrec ((val6898
                                                                   (char>?
                                                                    c1
                                                                    c2)))
-                                                          (letrec ((g7465
+                                                          (letrec ((g7462
                                                                     (if val6898
                                                                       val6898
                                                                       (char=?
                                                                        c1
                                                                        c2))))
-                                                            g7465))))
-                                                g7462)))
+                                                            g7462))))
+                                                g7459)))
                                            (cdaar
+                                            (lambda (x)
+                                              (letrec ((g7463
+                                                        (letrec ((x7464
+                                                                  (letrec ((x7465
+                                                                            (car
+                                                                             x)))
+                                                                    (car
+                                                                     x7465))))
+                                                          (cdr x7464))))
+                                                g7463)))
+                                           (cdaddr
                                             (lambda (x)
                                               (letrec ((g7466
                                                         (letrec ((x7467
                                                                   (letrec ((x7468
-                                                                            (car
-                                                                             x)))
+                                                                            (letrec ((x7469
+                                                                                      (cdr
+                                                                                       x)))
+                                                                              (cdr
+                                                                               x7469))))
                                                                     (car
                                                                      x7468))))
                                                           (cdr x7467))))
                                                 g7466)))
-                                           (cdaddr
-                                            (lambda (x)
-                                              (letrec ((g7469
-                                                        (letrec ((x7470
-                                                                  (letrec ((x7471
-                                                                            (letrec ((x7472
-                                                                                      (cdr
-                                                                                       x)))
-                                                                              (cdr
-                                                                               x7472))))
-                                                                    (car
-                                                                     x7471))))
-                                                          (cdr x7470))))
-                                                g7469)))
                                            (__toplevel_cdr cdr)
                                            (cadar
+                                            (lambda (x)
+                                              (letrec ((g7470
+                                                        (letrec ((x7471
+                                                                  (letrec ((x7472
+                                                                            (car
+                                                                             x)))
+                                                                    (cdr
+                                                                     x7472))))
+                                                          (car x7471))))
+                                                g7470)))
+                                           (caadr
                                             (lambda (x)
                                               (letrec ((g7473
                                                         (letrec ((x7474
                                                                   (letrec ((x7475
-                                                                            (car
-                                                                             x)))
-                                                                    (cdr
-                                                                     x7475))))
-                                                          (car x7474))))
-                                                g7473)))
-                                           (caadr
-                                            (lambda (x)
-                                              (letrec ((g7476
-                                                        (letrec ((x7477
-                                                                  (letrec ((x7478
                                                                             (cdr
                                                                              x)))
                                                                     (car
-                                                                     x7478))))
-                                                          (car x7477))))
-                                                g7476)))
+                                                                     x7475))))
+                                                          (car x7474))))
+                                                g7473)))
                                            (char-ci>?
                                             (lambda (c1 c2)
-                                              (letrec ((g7479
-                                                        (letrec ((x7482
+                                              (letrec ((g7476
+                                                        (letrec ((x7479
                                                                   (char? c1)))
-                                                          (assert x7482)))
-                                                       (g7480
-                                                        (letrec ((x7483
+                                                          (assert x7479)))
+                                                       (g7477
+                                                        (letrec ((x7480
                                                                   (char? c2)))
-                                                          (assert x7483)))
-                                                       (g7481
-                                                        (letrec ((x7484
+                                                          (assert x7480)))
+                                                       (g7478
+                                                        (letrec ((x7481
                                                                   (char-ci<=?
                                                                    c1
                                                                    c2)))
-                                                          (not x7484))))
-                                                g7481)))
+                                                          (not x7481))))
+                                                g7478)))
                                            (__toplevel_set-cdr! set-cdr!)
                                            (caaaar
                                             (lambda (x)
-                                              (letrec ((g7485
-                                                        (letrec ((x7486
-                                                                  (letrec ((x7487
-                                                                            (letrec ((x7488
+                                              (letrec ((g7482
+                                                        (letrec ((x7483
+                                                                  (letrec ((x7484
+                                                                            (letrec ((x7485
                                                                                       (car
                                                                                        x)))
                                                                               (car
-                                                                               x7488))))
+                                                                               x7485))))
                                                                     (car
-                                                                     x7487))))
-                                                          (car x7486))))
-                                                g7485)))
+                                                                     x7484))))
+                                                          (car x7483))))
+                                                g7482)))
                                            (negative?
                                             (lambda (x)
-                                              (letrec ((g7489
-                                                        (letrec ((x7491
+                                              (letrec ((g7486
+                                                        (letrec ((x7488
                                                                   (number? x)))
-                                                          (assert x7491)))
-                                                       (g7490 (< x 0)))
-                                                g7490)))
+                                                          (assert x7488)))
+                                                       (g7487 (< x 0)))
+                                                g7487)))
                                            (memv
                                             (lambda (e l)
-                                              (letrec ((g7492 (memq e l)))
-                                                g7492)))
+                                              (letrec ((g7489 (memq e l)))
+                                                g7489)))
                                            (caaar
                                             (lambda (x)
-                                              (letrec ((g7493
-                                                        (letrec ((x7494
-                                                                  (letrec ((x7495
+                                              (letrec ((g7490
+                                                        (letrec ((x7491
+                                                                  (letrec ((x7492
                                                                             (car
                                                                              x)))
                                                                     (car
-                                                                     x7495))))
-                                                          (car x7494))))
-                                                g7493)))
+                                                                     x7492))))
+                                                          (car x7491))))
+                                                g7490)))
                                            (debug
                                             (lambda (e)
-                                              (letrec ((g7496 '())) g7496)))
+                                              (letrec ((g7493 '())) g7493)))
                                            (reverse
                                             (lambda (l)
-                                              (letrec ((g7497
-                                                        (letrec ((x7499
+                                              (letrec ((g7494
+                                                        (letrec ((x7496
                                                                   (list? l)))
-                                                          (assert x7499)))
-                                                       (g7498
-                                                        (letrec ((x-cnd7500
+                                                          (assert x7496)))
+                                                       (g7495
+                                                        (letrec ((x-cnd7497
                                                                   (null? l)))
-                                                          (if x-cnd7500
+                                                          (if x-cnd7497
                                                             '()
-                                                            (letrec ((x7503
-                                                                      (letrec ((x7504
+                                                            (letrec ((x7500
+                                                                      (letrec ((x7501
                                                                                 (cdr
                                                                                  l)))
                                                                         (reverse
-                                                                         x7504)))
-                                                                     (x7501
-                                                                      (letrec ((x7502
+                                                                         x7501)))
+                                                                     (x7498
+                                                                      (letrec ((x7499
                                                                                 (car
                                                                                  l)))
                                                                         (list
-                                                                         x7502))))
+                                                                         x7499))))
                                                               (append
-                                                               x7503
-                                                               x7501))))))
-                                                g7498)))
+                                                               x7500
+                                                               x7498))))))
+                                                g7495)))
                                            (caaadr
                                             (lambda (x)
-                                              (letrec ((g7505
-                                                        (letrec ((x7506
-                                                                  (letrec ((x7507
-                                                                            (letrec ((x7508
+                                              (letrec ((g7502
+                                                        (letrec ((x7503
+                                                                  (letrec ((x7504
+                                                                            (letrec ((x7505
                                                                                       (cdr
                                                                                        x)))
                                                                               (car
-                                                                               x7508))))
+                                                                               x7505))))
                                                                     (car
-                                                                     x7507))))
-                                                          (car x7506))))
-                                                g7505)))
+                                                                     x7504))))
+                                                          (car x7503))))
+                                                g7502)))
                                            (cddadr
                                             (lambda (x)
-                                              (letrec ((g7509
-                                                        (letrec ((x7510
-                                                                  (letrec ((x7511
-                                                                            (letrec ((x7512
+                                              (letrec ((g7506
+                                                        (letrec ((x7507
+                                                                  (letrec ((x7508
+                                                                            (letrec ((x7509
                                                                                       (cdr
                                                                                        x)))
                                                                               (car
-                                                                               x7512))))
+                                                                               x7509))))
                                                                     (cdr
-                                                                     x7511))))
-                                                          (cdr x7510))))
-                                                g7509)))
+                                                                     x7508))))
+                                                          (cdr x7507))))
+                                                g7506)))
                                            (odd?
                                             (lambda (x)
-                                              (letrec ((g7513
-                                                        (letrec ((x7515
+                                              (letrec ((g7510
+                                                        (letrec ((x7512
                                                                   (number? x)))
-                                                          (assert x7515)))
-                                                       (g7514
-                                                        (letrec ((x7516
+                                                          (assert x7512)))
+                                                       (g7511
+                                                        (letrec ((x7513
                                                                   (modulo
                                                                    x
                                                                    2)))
-                                                          (= 1 x7516))))
-                                                g7514)))
+                                                          (= 1 x7513))))
+                                                g7511)))
                                            (caadar
                                             (lambda (x)
-                                              (letrec ((g7517
-                                                        (letrec ((x7518
-                                                                  (letrec ((x7519
-                                                                            (letrec ((x7520
+                                              (letrec ((g7514
+                                                        (letrec ((x7515
+                                                                  (letrec ((x7516
+                                                                            (letrec ((x7517
                                                                                       (car
                                                                                        x)))
                                                                               (cdr
-                                                                               x7520))))
+                                                                               x7517))))
                                                                     (car
-                                                                     x7519))))
-                                                          (car x7518))))
-                                                g7517)))
+                                                                     x7516))))
+                                                          (car x7515))))
+                                                g7514)))
                                            (apply
                                             (lambda (proc args)
-                                              (letrec ((g7521
-                                                        (letrec ((x7524
+                                              (letrec ((g7518
+                                                        (letrec ((x7521
                                                                   (procedure?
                                                                    proc)))
-                                                          (assert x7524)))
-                                                       (g7522
-                                                        (letrec ((x7525
+                                                          (assert x7521)))
+                                                       (g7519
+                                                        (letrec ((x7522
                                                                   (list?
                                                                    args)))
-                                                          (assert x7525)))
-                                                       (g7523
+                                                          (assert x7522)))
+                                                       (g7520
                                                         (if cnd
-                                                          (letrec ((g7526
+                                                          (letrec ((g7523
                                                                     (proc)))
-                                                            g7526)
+                                                            g7523)
                                                           (if cnd
-                                                            (letrec ((g7527
-                                                                      (letrec ((x7528
+                                                            (letrec ((g7524
+                                                                      (letrec ((x7525
                                                                                 (car
                                                                                  args)))
                                                                         (proc
-                                                                         x7528))))
-                                                              g7527)
+                                                                         x7525))))
+                                                              g7524)
                                                             (if cnd
-                                                              (letrec ((g7529
-                                                                        (letrec ((x7531
+                                                              (letrec ((g7526
+                                                                        (letrec ((x7528
                                                                                   (car
                                                                                    args))
-                                                                                 (x7530
+                                                                                 (x7527
                                                                                   (cadr
                                                                                    args)))
                                                                           (proc
-                                                                           x7531
-                                                                           x7530))))
-                                                                g7529)
+                                                                           x7528
+                                                                           x7527))))
+                                                                g7526)
                                                               (if cnd
-                                                                (letrec ((g7532
-                                                                          (letrec ((x7535
+                                                                (letrec ((g7529
+                                                                          (letrec ((x7532
                                                                                     (car
                                                                                      args))
-                                                                                   (x7534
+                                                                                   (x7531
                                                                                     (cadr
                                                                                      args))
-                                                                                   (x7533
+                                                                                   (x7530
                                                                                     (caddr
                                                                                      args)))
                                                                             (proc
-                                                                             x7535
-                                                                             x7534
-                                                                             x7533))))
-                                                                  g7532)
+                                                                             x7532
+                                                                             x7531
+                                                                             x7530))))
+                                                                  g7529)
                                                                 (if cnd
-                                                                  (letrec ((g7536
-                                                                            (letrec ((x7540
+                                                                  (letrec ((g7533
+                                                                            (letrec ((x7537
                                                                                       (car
                                                                                        args))
-                                                                                     (x7539
+                                                                                     (x7536
                                                                                       (cadr
                                                                                        args))
-                                                                                     (x7538
+                                                                                     (x7535
                                                                                       (caddr
                                                                                        args))
-                                                                                     (x7537
+                                                                                     (x7534
                                                                                       (cadddr
                                                                                        args)))
                                                                               (proc
-                                                                               x7540
-                                                                               x7539
-                                                                               x7538
-                                                                               x7537))))
-                                                                    g7536)
+                                                                               x7537
+                                                                               x7536
+                                                                               x7535
+                                                                               x7534))))
+                                                                    g7533)
                                                                   (if cnd
-                                                                    (letrec ((g7541
-                                                                              (letrec ((x7547
+                                                                    (letrec ((g7538
+                                                                              (letrec ((x7544
                                                                                         (car
                                                                                          args))
-                                                                                       (x7546
+                                                                                       (x7543
                                                                                         (cadr
                                                                                          args))
-                                                                                       (x7545
+                                                                                       (x7542
                                                                                         (caddr
                                                                                          args))
-                                                                                       (x7544
+                                                                                       (x7541
                                                                                         (cadddr
                                                                                          args))
-                                                                                       (x7542
-                                                                                        (letrec ((x7543
+                                                                                       (x7539
+                                                                                        (letrec ((x7540
                                                                                                   (cddddr
                                                                                                    args)))
                                                                                           (car
-                                                                                           x7543))))
+                                                                                           x7540))))
                                                                                 (proc
-                                                                                 x7547
-                                                                                 x7546
-                                                                                 x7545
                                                                                  x7544
-                                                                                 x7542))))
-                                                                      g7541)
+                                                                                 x7543
+                                                                                 x7542
+                                                                                 x7541
+                                                                                 x7539))))
+                                                                      g7538)
                                                                     (if cnd
-                                                                      (letrec ((g7548
-                                                                                (letrec ((x7556
+                                                                      (letrec ((g7545
+                                                                                (letrec ((x7553
                                                                                           (car
                                                                                            args))
-                                                                                         (x7555
+                                                                                         (x7552
                                                                                           (cadr
                                                                                            args))
-                                                                                         (x7554
+                                                                                         (x7551
                                                                                           (caddr
                                                                                            args))
-                                                                                         (x7553
+                                                                                         (x7550
                                                                                           (cadddr
                                                                                            args))
-                                                                                         (x7551
-                                                                                          (letrec ((x7552
+                                                                                         (x7548
+                                                                                          (letrec ((x7549
                                                                                                     (cddddr
                                                                                                      args)))
                                                                                             (car
-                                                                                             x7552)))
-                                                                                         (x7549
-                                                                                          (letrec ((x7550
+                                                                                             x7549)))
+                                                                                         (x7546
+                                                                                          (letrec ((x7547
                                                                                                     (cddddr
                                                                                                      args)))
                                                                                             (cadr
-                                                                                             x7550))))
+                                                                                             x7547))))
                                                                                   (proc
-                                                                                   x7556
-                                                                                   x7555
-                                                                                   x7554
                                                                                    x7553
+                                                                                   x7552
                                                                                    x7551
-                                                                                   x7549))))
-                                                                        g7548)
+                                                                                   x7550
+                                                                                   x7548
+                                                                                   x7546))))
+                                                                        g7545)
                                                                       (if cnd
-                                                                        (letrec ((g7557
-                                                                                  (letrec ((x7567
+                                                                        (letrec ((g7554
+                                                                                  (letrec ((x7564
                                                                                             (car
                                                                                              args))
-                                                                                           (x7566
+                                                                                           (x7563
                                                                                             (cadr
-                                                                                             args))
-                                                                                           (x7565
-                                                                                            (caddr
-                                                                                             args))
-                                                                                           (x7564
-                                                                                            (cadddr
                                                                                              args))
                                                                                            (x7562
-                                                                                            (letrec ((x7563
+                                                                                            (caddr
+                                                                                             args))
+                                                                                           (x7561
+                                                                                            (cadddr
+                                                                                             args))
+                                                                                           (x7559
+                                                                                            (letrec ((x7560
                                                                                                       (cddddr
                                                                                                        args)))
                                                                                               (car
-                                                                                               x7563)))
-                                                                                           (x7560
-                                                                                            (letrec ((x7561
+                                                                                               x7560)))
+                                                                                           (x7557
+                                                                                            (letrec ((x7558
                                                                                                       (cddddr
                                                                                                        args)))
                                                                                               (cadr
-                                                                                               x7561)))
-                                                                                           (x7558
-                                                                                            (letrec ((x7559
+                                                                                               x7558)))
+                                                                                           (x7555
+                                                                                            (letrec ((x7556
                                                                                                       (cddddr
                                                                                                        args)))
                                                                                               (caddr
-                                                                                               x7559))))
+                                                                                               x7556))))
                                                                                     (proc
-                                                                                     x7567
-                                                                                     x7566
-                                                                                     x7565
                                                                                      x7564
+                                                                                     x7563
                                                                                      x7562
-                                                                                     x7560
-                                                                                     x7558))))
-                                                                          g7557)
-                                                                        (letrec ((g7568
+                                                                                     x7561
+                                                                                     x7559
+                                                                                     x7557
+                                                                                     x7555))))
+                                                                          g7554)
+                                                                        (letrec ((g7565
                                                                                   (error
                                                                                    "Unsupported call.")))
-                                                                          g7568)))))))))))
-                                                g7523)))
+                                                                          g7565)))))))))))
+                                                g7520)))
                                            (member
                                             (lambda (e l)
-                                              (letrec ((g7569
-                                                        (letrec ((x7571
+                                              (letrec ((g7566
+                                                        (letrec ((x7568
                                                                   (list? l)))
-                                                          (assert x7571)))
-                                                       (g7570
-                                                        (letrec ((x-cnd7572
+                                                          (assert x7568)))
+                                                       (g7567
+                                                        (letrec ((x-cnd7569
                                                                   (null? l)))
-                                                          (if x-cnd7572
+                                                          (if x-cnd7569
                                                             #f
-                                                            (letrec ((x-cnd7573
-                                                                      (letrec ((x7574
+                                                            (letrec ((x-cnd7570
+                                                                      (letrec ((x7571
                                                                                 (car
                                                                                  l)))
                                                                         (equal?
-                                                                         x7574
+                                                                         x7571
                                                                          e))))
-                                                              (if x-cnd7573
+                                                              (if x-cnd7570
                                                                 l
-                                                                (letrec ((x7575
+                                                                (letrec ((x7572
                                                                           (cdr
                                                                            l)))
                                                                   (member
                                                                    e
-                                                                   x7575))))))))
-                                                g7570)))
+                                                                   x7572))))))))
+                                                g7567)))
                                            (cddddr
                                             (lambda (x)
-                                              (letrec ((g7576
-                                                        (letrec ((x7577
-                                                                  (letrec ((x7578
-                                                                            (letrec ((x7579
+                                              (letrec ((g7573
+                                                        (letrec ((x7574
+                                                                  (letrec ((x7575
+                                                                            (letrec ((x7576
                                                                                       (cdr
                                                                                        x)))
                                                                               (cdr
-                                                                               x7579))))
+                                                                               x7576))))
                                                                     (cdr
-                                                                     x7578))))
-                                                          (cdr x7577))))
-                                                g7576)))
+                                                                     x7575))))
+                                                          (cdr x7574))))
+                                                g7573)))
                                            (cadddr
                                             (lambda (x)
-                                              (letrec ((g7580
-                                                        (letrec ((x7581
-                                                                  (letrec ((x7582
-                                                                            (letrec ((x7583
+                                              (letrec ((g7577
+                                                        (letrec ((x7578
+                                                                  (letrec ((x7579
+                                                                            (letrec ((x7580
                                                                                       (cdr
                                                                                        x)))
                                                                               (cdr
-                                                                               x7583))))
+                                                                               x7580))))
                                                                     (cdr
-                                                                     x7582))))
-                                                          (car x7581))))
-                                                g7580)))
+                                                                     x7579))))
+                                                          (car x7578))))
+                                                g7577)))
                                            (int-top
                                             (lambda ()
-                                              (letrec ((g7584 (random 42)))
-                                                g7584)))
+                                              (letrec ((g7581 (random 42)))
+                                                g7581)))
                                            (zero?
                                             (lambda (x)
-                                              (letrec ((g7585
-                                                        (letrec ((x7587
+                                              (letrec ((g7582
+                                                        (letrec ((x7584
                                                                   (number? x)))
-                                                          (assert x7587)))
-                                                       (g7586 (= x 0)))
-                                                g7586)))
+                                                          (assert x7584)))
+                                                       (g7583 (= x 0)))
+                                                g7583)))
                                            (string>=?
                                             (lambda (s1 s2)
-                                              (letrec ((g7588
+                                              (letrec ((g7585
                                                         (letrec ((val6899
                                                                   (string>?
                                                                    s1
                                                                    s2)))
-                                                          (letrec ((g7589
+                                                          (letrec ((g7586
                                                                     (if val6899
                                                                       val6899
                                                                       (string=?
                                                                        s1
                                                                        s2))))
-                                                            g7589))))
-                                                g7588)))
+                                                            g7586))))
+                                                g7585)))
                                            (cadr
                                             (lambda (x)
-                                              (letrec ((g7590
-                                                        (letrec ((x7591
+                                              (letrec ((g7587
+                                                        (letrec ((x7588
                                                                   (cdr x)))
-                                                          (car x7591))))
-                                                g7590)))
+                                                          (car x7588))))
+                                                g7587)))
                                            (__toplevel_car car)
                                            (list?
                                             (lambda (l)
-                                              (letrec ((g7592
+                                              (letrec ((g7589
                                                         (letrec ((val6900
-                                                                  (letrec ((x7595
+                                                                  (letrec ((x7592
                                                                             (pair?
                                                                              l))
-                                                                           (x7593
-                                                                            (letrec ((x7594
+                                                                           (x7590
+                                                                            (letrec ((x7591
                                                                                       (cdr
                                                                                        l)))
                                                                               (list?
-                                                                               x7594))))
-                                                                    (and x7595
-                                                                         x7593))))
-                                                          (letrec ((g7596
+                                                                               x7591))))
+                                                                    (and x7592
+                                                                         x7590))))
+                                                          (letrec ((g7593
                                                                     (if val6900
                                                                       val6900
                                                                       (null?
                                                                        l))))
-                                                            g7596))))
-                                                g7592)))
+                                                            g7593))))
+                                                g7589)))
                                            (cddaar
                                             (lambda (x)
-                                              (letrec ((g7597
-                                                        (letrec ((x7598
-                                                                  (letrec ((x7599
-                                                                            (letrec ((x7600
+                                              (letrec ((g7594
+                                                        (letrec ((x7595
+                                                                  (letrec ((x7596
+                                                                            (letrec ((x7597
                                                                                       (car
                                                                                        x)))
                                                                               (car
-                                                                               x7600))))
+                                                                               x7597))))
                                                                     (cdr
-                                                                     x7599))))
-                                                          (cdr x7598))))
-                                                g7597)))
+                                                                     x7596))))
+                                                          (cdr x7595))))
+                                                g7594)))
                                            (char-numeric?
                                             (lambda (c)
-                                              (letrec ((g7601
-                                                        (letrec ((x-cnd7602
-                                                                  (letrec ((x7603
+                                              (letrec ((g7598
+                                                        (letrec ((x-cnd7599
+                                                                  (letrec ((x7600
                                                                             #\0))
                                                                     (char<=?
-                                                                     x7603
+                                                                     x7600
                                                                      c))))
-                                                          (if x-cnd7602
-                                                            (letrec ((x7604
+                                                          (if x-cnd7599
+                                                            (letrec ((x7601
                                                                       #\9))
                                                               (char<=?
                                                                c
-                                                               x7604))
+                                                               x7601))
                                                             #f))))
-                                                g7601)))
+                                                g7598)))
                                            (__toplevel_cons cons)
                                            (assv
                                             (lambda (k l)
-                                              (letrec ((g7605
-                                                        (letrec ((x7607
+                                              (letrec ((g7602
+                                                        (letrec ((x7604
                                                                   (list? l)))
-                                                          (assert x7607)))
-                                                       (g7606
-                                                        (letrec ((x-cnd7608
+                                                          (assert x7604)))
+                                                       (g7603
+                                                        (letrec ((x-cnd7605
                                                                   (null? l)))
-                                                          (if x-cnd7608
+                                                          (if x-cnd7605
                                                             #f
-                                                            (letrec ((x-cnd7609
-                                                                      (letrec ((x7610
+                                                            (letrec ((x-cnd7606
+                                                                      (letrec ((x7607
                                                                                 (caar
                                                                                  l)))
                                                                         (eqv?
-                                                                         x7610
+                                                                         x7607
                                                                          k))))
-                                                              (if x-cnd7609
+                                                              (if x-cnd7606
                                                                 (car l)
-                                                                (letrec ((x7611
+                                                                (letrec ((x7608
                                                                           (cdr
                                                                            l)))
                                                                   (assq
                                                                    k
-                                                                   x7611))))))))
-                                                g7606)))
+                                                                   x7608))))))))
+                                                g7603)))
                                            (not
                                             (lambda (x)
-                                              (letrec ((g7612 (if x #f #t)))
-                                                g7612)))
+                                              (letrec ((g7609 (if x #f #t)))
+                                                g7609)))
                                            (__toplevel_append
                                             (lambda (l1 l2)
-                                              (letrec ((g7613 (append l1 l2)))
-                                                g7613)))
+                                              (letrec ((g7610 (append l1 l2)))
+                                                g7610)))
                                            (memq
                                             (lambda (e l)
-                                              (letrec ((g7614
-                                                        (letrec ((x7616
+                                              (letrec ((g7611
+                                                        (letrec ((x7613
                                                                   (list? l)))
-                                                          (assert x7616)))
-                                                       (g7615
-                                                        (letrec ((x-cnd7617
+                                                          (assert x7613)))
+                                                       (g7612
+                                                        (letrec ((x-cnd7614
                                                                   (null? l)))
-                                                          (if x-cnd7617
+                                                          (if x-cnd7614
                                                             #f
-                                                            (letrec ((x-cnd7618
-                                                                      (letrec ((x7619
+                                                            (letrec ((x-cnd7615
+                                                                      (letrec ((x7616
                                                                                 (car
                                                                                  l)))
                                                                         (eq?
-                                                                         x7619
+                                                                         x7616
                                                                          e))))
-                                                              (if x-cnd7618
+                                                              (if x-cnd7615
                                                                 l
-                                                                (letrec ((x7620
+                                                                (letrec ((x7617
                                                                           (cdr
                                                                            l)))
                                                                   (memq
                                                                    e
-                                                                   x7620))))))))
-                                                g7615)))
+                                                                   x7617))))))))
+                                                g7612)))
                                            (cadaar
                                             (lambda (x)
-                                              (letrec ((g7621
-                                                        (letrec ((x7622
-                                                                  (letrec ((x7623
-                                                                            (letrec ((x7624
+                                              (letrec ((g7618
+                                                        (letrec ((x7619
+                                                                  (letrec ((x7620
+                                                                            (letrec ((x7621
                                                                                       (car
                                                                                        x)))
                                                                               (car
-                                                                               x7624))))
+                                                                               x7621))))
                                                                     (cdr
-                                                                     x7623))))
-                                                          (car x7622))))
-                                                g7621)))
+                                                                     x7620))))
+                                                          (car x7619))))
+                                                g7618)))
                                            (length
                                             (lambda (l)
-                                              (letrec ((g7625
-                                                        (letrec ((x7627
+                                              (letrec ((g7622
+                                                        (letrec ((x7624
                                                                   (list? l)))
-                                                          (assert x7627)))
-                                                       (g7626
+                                                          (assert x7624)))
+                                                       (g7623
                                                         (letrec ((rec
                                                                   (lambda (l)
-                                                                    (letrec ((g7628
-                                                                              (letrec ((x-cnd7629
+                                                                    (letrec ((g7625
+                                                                              (letrec ((x-cnd7626
                                                                                         (null?
                                                                                          l)))
-                                                                                (if x-cnd7629
+                                                                                (if x-cnd7626
                                                                                   0
-                                                                                  (letrec ((x7630
-                                                                                            (letrec ((x7631
+                                                                                  (letrec ((x7627
+                                                                                            (letrec ((x7628
                                                                                                       (cdr
                                                                                                        l)))
                                                                                               (rec
-                                                                                               x7631))))
+                                                                                               x7628))))
                                                                                     (+
                                                                                      1
-                                                                                     x7630))))))
-                                                                      g7628))))
-                                                          (letrec ((g7632
+                                                                                     x7627))))))
+                                                                      g7625))))
+                                                          (letrec ((g7629
                                                                     (rec l)))
-                                                            g7632))))
-                                                g7626)))
+                                                            g7629))))
+                                                g7623)))
                                            (char-ci<=?
                                             (lambda (c1 c2)
-                                              (letrec ((g7633
-                                                        (letrec ((x7636
+                                              (letrec ((g7630
+                                                        (letrec ((x7633
                                                                   (char? c1)))
-                                                          (assert x7636)))
-                                                       (g7634
-                                                        (letrec ((x7637
+                                                          (assert x7633)))
+                                                       (g7631
+                                                        (letrec ((x7634
                                                                   (char? c2)))
-                                                          (assert x7637)))
-                                                       (g7635
+                                                          (assert x7634)))
+                                                       (g7632
                                                         (letrec ((val6901
                                                                   (char-ci<?
                                                                    c1
                                                                    c2)))
-                                                          (letrec ((g7638
+                                                          (letrec ((g7635
                                                                     (if val6901
                                                                       val6901
                                                                       (char-ci=?
                                                                        c1
                                                                        c2))))
-                                                            g7638))))
-                                                g7635)))
+                                                            g7635))))
+                                                g7632)))
                                            (string>?
                                             (lambda (s1 s2)
-                                              (letrec ((g7639
-                                                        (letrec ((x7640
+                                              (letrec ((g7636
+                                                        (letrec ((x7637
                                                                   (string<=?
                                                                    s1
                                                                    s2)))
-                                                          (not x7640))))
-                                                g7639)))
+                                                          (not x7637))))
+                                                g7636)))
                                            (cdadr
                                             (lambda (x)
-                                              (letrec ((g7641
-                                                        (letrec ((x7642
-                                                                  (letrec ((x7643
+                                              (letrec ((g7638
+                                                        (letrec ((x7639
+                                                                  (letrec ((x7640
                                                                             (cdr
                                                                              x)))
                                                                     (car
-                                                                     x7643))))
-                                                          (cdr x7642))))
-                                                g7641)))
+                                                                     x7640))))
+                                                          (cdr x7639))))
+                                                g7638)))
                                            (assoc
                                             (lambda (k l)
-                                              (letrec ((g7644
-                                                        (letrec ((x7646
+                                              (letrec ((g7641
+                                                        (letrec ((x7643
                                                                   (list? l)))
-                                                          (assert x7646)))
-                                                       (g7645
-                                                        (letrec ((x-cnd7647
+                                                          (assert x7643)))
+                                                       (g7642
+                                                        (letrec ((x-cnd7644
                                                                   (null? l)))
-                                                          (if x-cnd7647
+                                                          (if x-cnd7644
                                                             #f
-                                                            (letrec ((x-cnd7648
-                                                                      (letrec ((x7649
+                                                            (letrec ((x-cnd7645
+                                                                      (letrec ((x7646
                                                                                 (caar
                                                                                  l)))
                                                                         (equal?
-                                                                         x7649
+                                                                         x7646
                                                                          k))))
-                                                              (if x-cnd7648
+                                                              (if x-cnd7645
                                                                 (car l)
-                                                                (letrec ((x7650
+                                                                (letrec ((x7647
                                                                           (cdr
                                                                            l)))
                                                                   (assoc
                                                                    k
-                                                                   x7650))))))))
-                                                g7645)))
+                                                                   x7647))))))))
+                                                g7642)))
                                            (caar
                                             (lambda (x)
-                                              (letrec ((g7651
-                                                        (letrec ((x7652
+                                              (letrec ((g7648
+                                                        (letrec ((x7649
                                                                   (car x)))
-                                                          (car x7652))))
-                                                g7651)))
+                                                          (car x7649))))
+                                                g7648)))
                                            (char>?
                                             (lambda (c1 c2)
-                                              (letrec ((g7653
-                                                        (letrec ((x7656
+                                              (letrec ((g7650
+                                                        (letrec ((x7653
                                                                   (char? c1)))
-                                                          (assert x7656)))
-                                                       (g7654
-                                                        (letrec ((x7657
+                                                          (assert x7653)))
+                                                       (g7651
+                                                        (letrec ((x7654
                                                                   (char? c2)))
-                                                          (assert x7657)))
-                                                       (g7655
-                                                        (letrec ((x7658
+                                                          (assert x7654)))
+                                                       (g7652
+                                                        (letrec ((x7655
                                                                   (char<=?
                                                                    c1
                                                                    c2)))
-                                                          (not x7658))))
-                                                g7655)))
+                                                          (not x7655))))
+                                                g7652)))
                                            (string<=?
                                             (lambda (s1 s2)
-                                              (letrec ((g7659
+                                              (letrec ((g7656
                                                         (letrec ((val6902
                                                                   (string<?
                                                                    s1
                                                                    s2)))
-                                                          (letrec ((g7660
+                                                          (letrec ((g7657
                                                                     (if val6902
                                                                       val6902
                                                                       (string=?
                                                                        s1
                                                                        s2))))
-                                                            g7660))))
-                                                g7659)))
+                                                            g7657))))
+                                                g7656)))
                                            (for-each
                                             (lambda (f l)
-                                              (letrec ((g7661
-                                                        (letrec ((x7664
+                                              (letrec ((g7658
+                                                        (letrec ((x7661
                                                                   (procedure?
                                                                    f)))
-                                                          (assert x7664)))
-                                                       (g7662
-                                                        (letrec ((x7665
+                                                          (assert x7661)))
+                                                       (g7659
+                                                        (letrec ((x7662
                                                                   (list? l)))
-                                                          (assert x7665)))
-                                                       (g7663
-                                                        (letrec ((x-cnd7666
+                                                          (assert x7662)))
+                                                       (g7660
+                                                        (letrec ((x-cnd7663
                                                                   (null? l)))
-                                                          (if x-cnd7666
+                                                          (if x-cnd7663
                                                             #t
-                                                            (letrec ((x-cnd7667
+                                                            (letrec ((x-cnd7664
                                                                       (pair?
                                                                        l)))
-                                                              (if x-cnd7667
-                                                                (letrec ((g7668
-                                                                          (letrec ((x7670
+                                                              (if x-cnd7664
+                                                                (letrec ((g7665
+                                                                          (letrec ((x7667
                                                                                     (car
                                                                                      l)))
                                                                             (f
-                                                                             x7670)))
-                                                                         (g7669
-                                                                          (letrec ((x7671
+                                                                             x7667)))
+                                                                         (g7666
+                                                                          (letrec ((x7668
                                                                                     (cdr
                                                                                      l)))
                                                                             (for-each
                                                                              f
-                                                                             x7671))))
-                                                                  g7669)
+                                                                             x7668))))
+                                                                  g7666)
                                                                 '()))))))
-                                                g7663)))
+                                                g7660)))
                                            (abs
                                             (lambda (x)
-                                              (letrec ((g7672
-                                                        (letrec ((x7674
+                                              (letrec ((g7669
+                                                        (letrec ((x7671
                                                                   (number? x)))
-                                                          (assert x7674)))
-                                                       (g7673
-                                                        (letrec ((x-cnd7675
+                                                          (assert x7671)))
+                                                       (g7670
+                                                        (letrec ((x-cnd7672
                                                                   (< x 0)))
-                                                          (if x-cnd7675
+                                                          (if x-cnd7672
                                                             (- 0 x)
                                                             x))))
-                                                g7673)))
+                                                g7670)))
                                            (char-ci>=?
                                             (lambda (c1 c2)
-                                              (letrec ((g7676
-                                                        (letrec ((x7679
+                                              (letrec ((g7673
+                                                        (letrec ((x7676
                                                                   (char? c1)))
-                                                          (assert x7679)))
-                                                       (g7677
-                                                        (letrec ((x7680
+                                                          (assert x7676)))
+                                                       (g7674
+                                                        (letrec ((x7677
                                                                   (char? c2)))
-                                                          (assert x7680)))
-                                                       (g7678
+                                                          (assert x7677)))
+                                                       (g7675
                                                         (letrec ((val6903
                                                                   (char-ci>?
                                                                    c1
                                                                    c2)))
-                                                          (letrec ((g7681
+                                                          (letrec ((g7678
                                                                     (if val6903
                                                                       val6903
                                                                       (char-ci=?
                                                                        c1
                                                                        c2))))
-                                                            g7681))))
-                                                g7678)))
+                                                            g7678))))
+                                                g7675)))
                                            (caddar
                                             (lambda (x)
-                                              (letrec ((g7682
-                                                        (letrec ((x7683
-                                                                  (letrec ((x7684
-                                                                            (letrec ((x7685
+                                              (letrec ((g7679
+                                                        (letrec ((x7680
+                                                                  (letrec ((x7681
+                                                                            (letrec ((x7682
                                                                                       (car
                                                                                        x)))
                                                                               (cdr
-                                                                               x7685))))
+                                                                               x7682))))
                                                                     (cdr
-                                                                     x7684))))
-                                                          (car x7683))))
-                                                g7682)))
+                                                                     x7681))))
+                                                          (car x7680))))
+                                                g7679)))
                                            (newline
                                             (lambda ()
-                                              (letrec ((g7686 #f)) g7686)))
+                                              (letrec ((g7683 #f)) g7683)))
                                            (lcm
                                             (lambda (m n)
-                                              (letrec ((g7687
-                                                        (letrec ((x7689
-                                                                  (letrec ((x7690
+                                              (letrec ((g7684
+                                                        (letrec ((x7686
+                                                                  (letrec ((x7687
                                                                             (*
                                                                              m
                                                                              n)))
                                                                     (abs
-                                                                     x7690)))
-                                                                 (x7688
+                                                                     x7687)))
+                                                                 (x7685
                                                                   (gcd m n)))
-                                                          (/ x7689 x7688))))
-                                                g7687)))
+                                                          (/ x7686 x7685))))
+                                                g7684)))
                                            (deref car)
                                            (>
                                             (lambda (x y)
-                                              (letrec ((g7691
-                                                        (letrec ((x7693
+                                              (letrec ((g7688
+                                                        (letrec ((x7690
                                                                   (number? x)))
-                                                          (assert x7693)))
-                                                       (g7692
-                                                        (letrec ((x7694
+                                                          (assert x7690)))
+                                                       (g7689
+                                                        (letrec ((x7691
                                                                   (<= x y)))
-                                                          (not x7694))))
-                                                g7692)))
+                                                          (not x7691))))
+                                                g7689)))
                                            (list-ref
                                             (lambda (l index)
-                                              (letrec ((g7695
-                                                        (letrec ((x7699
+                                              (letrec ((g7692
+                                                        (letrec ((x7696
                                                                   (list? l)))
-                                                          (assert x7699)))
-                                                       (g7696
-                                                        (letrec ((x7700
+                                                          (assert x7696)))
+                                                       (g7693
+                                                        (letrec ((x7697
                                                                   (number?
                                                                    index)))
-                                                          (assert x7700)))
-                                                       (g7697
-                                                        (letrec ((x7701
-                                                                  (letrec ((x7702
+                                                          (assert x7697)))
+                                                       (g7694
+                                                        (letrec ((x7698
+                                                                  (letrec ((x7699
                                                                             (length
                                                                              l)))
                                                                     (<
                                                                      index
-                                                                     x7702))))
-                                                          (assert x7701)))
-                                                       (g7698
-                                                        (letrec ((x-cnd7703
+                                                                     x7699))))
+                                                          (assert x7698)))
+                                                       (g7695
+                                                        (letrec ((x-cnd7700
                                                                   (= index 0)))
-                                                          (if x-cnd7703
+                                                          (if x-cnd7700
                                                             (car l)
-                                                            (letrec ((x7705
+                                                            (letrec ((x7702
                                                                       (cdr l))
-                                                                     (x7704
+                                                                     (x7701
                                                                       (-
                                                                        index
                                                                        1)))
                                                               (list-ref
-                                                               x7705
-                                                               x7704))))))
-                                                g7698)))
+                                                               x7702
+                                                               x7701))))))
+                                                g7695)))
                                            (gcd
                                             (lambda (a b)
-                                              (letrec ((g7706
-                                                        (letrec ((x-cnd7707
+                                              (letrec ((g7703
+                                                        (letrec ((x-cnd7704
                                                                   (= b 0)))
-                                                          (if x-cnd7707
+                                                          (if x-cnd7704
                                                             a
-                                                            (letrec ((x7708
+                                                            (letrec ((x7705
                                                                       (modulo
                                                                        a
                                                                        b)))
                                                               (gcd
                                                                b
-                                                               x7708))))))
-                                                g7706)))
+                                                               x7705))))))
+                                                g7703)))
                                            (image
                                             (lambda ()
-                                              (letrec ((g7709
+                                              (letrec ((g7706
                                                         (cons 'image '())))
-                                                g7709)))
+                                                g7706)))
                                            (image?
                                             (lambda (image7196)
-                                              (letrec ((g7710
-                                                        (letrec ((x7711
+                                              (letrec ((g7707
+                                                        (letrec ((x7708
                                                                   (car
                                                                    image7196)))
-                                                          (eq? x7711 'image))))
-                                                g7710)))
+                                                          (eq? x7708 'image))))
+                                                g7707)))
                                            (empty-scene
                                             (lambda (w h)
-                                              (letrec ((g7712 (image)))
-                                                g7712)))
+                                              (letrec ((g7709 (image)))
+                                                g7709)))
                                            (place-image
                                             (lambda (i₁ r c i₂)
-                                              (letrec ((g7713 (image)))
-                                                g7713)))
+                                              (letrec ((g7710 (image)))
+                                                g7710)))
                                            (circle
                                             (lambda (r m c)
-                                              (letrec ((g7714 (image)))
-                                                g7714)))
+                                              (letrec ((g7711 (image)))
+                                                g7711)))
                                            (min
                                             (lambda (x y)
-                                              (letrec ((g7715
-                                                        (letrec ((x-cnd7716
+                                              (letrec ((g7712
+                                                        (letrec ((x-cnd7713
                                                                   (<= x y)))
-                                                          (if x-cnd7716 x y))))
-                                                g7715)))
+                                                          (if x-cnd7713 x y))))
+                                                g7712)))
                                            (max
                                             (lambda (x y)
-                                              (letrec ((g7717
-                                                        (letrec ((x-cnd7718
+                                              (letrec ((g7714
+                                                        (letrec ((x-cnd7715
                                                                   (>= x y)))
-                                                          (if x-cnd7718 x y))))
-                                                g7717)))
+                                                          (if x-cnd7715 x y))))
+                                                g7714)))
                                            (abs
                                             (lambda (x)
-                                              (letrec ((g7719
-                                                        (letrec ((x-cnd7720
+                                              (letrec ((g7716
+                                                        (letrec ((x-cnd7717
                                                                   (>= x 0)))
-                                                          (if x-cnd7720
+                                                          (if x-cnd7717
                                                             x
                                                             (- 0 x)))))
-                                                g7719)))
+                                                g7716)))
                                            (sqr
                                             (lambda (x)
-                                              (letrec ((g7721 (* x x)))
-                                                g7721)))
+                                              (letrec ((g7718 (* x x)))
+                                                g7718)))
                                            (WIDTH 400)
                                            (HEIGHT 400)
                                            (MT-SCENE
@@ -2066,53 +2061,53 @@
                                              "green"))
                                            (posn/c
                                             (lambda (j6974 k6975 f6976)
-                                              (letrec ((g7722
+                                              (letrec ((g7719
                                                         (lambda (g6973)
-                                                          (letrec ((g7723
+                                                          (letrec ((g7720
                                                                     (letrec ((x6977
                                                                               ((lambda (g6981
                                                                                         g6982
                                                                                         g6983)
-                                                                                 (letrec ((g7724
-                                                                                           (letrec ((x-cnd7725
+                                                                                 (letrec ((g7721
+                                                                                           (letrec ((x-cnd7722
                                                                                                      ((lambda (v6980)
-                                                                                                        (letrec ((g7726
-                                                                                                                  (letrec ((x-cnd7727
+                                                                                                        (letrec ((g7723
+                                                                                                                  (letrec ((x-cnd7724
                                                                                                                             (eq?
                                                                                                                              'x
                                                                                                                              v6980)))
-                                                                                                                    (if x-cnd7727
+                                                                                                                    (if x-cnd7724
                                                                                                                       #t
-                                                                                                                      (letrec ((x-cnd7728
+                                                                                                                      (letrec ((x-cnd7725
                                                                                                                                 (eq?
                                                                                                                                  'y
                                                                                                                                  v6980)))
-                                                                                                                        (if x-cnd7728
+                                                                                                                        (if x-cnd7725
                                                                                                                           #t
-                                                                                                                          (letrec ((x-cnd7729
+                                                                                                                          (letrec ((x-cnd7726
                                                                                                                                     (eq?
                                                                                                                                      'posn
                                                                                                                                      v6980)))
-                                                                                                                            (if x-cnd7729
+                                                                                                                            (if x-cnd7726
                                                                                                                               #t
-                                                                                                                              (letrec ((x-cnd7730
+                                                                                                                              (letrec ((x-cnd7727
                                                                                                                                         (eq?
                                                                                                                                          'move-toward/speed
                                                                                                                                          v6980)))
-                                                                                                                                (if x-cnd7730
+                                                                                                                                (if x-cnd7727
                                                                                                                                   #t
-                                                                                                                                  (letrec ((x-cnd7731
+                                                                                                                                  (letrec ((x-cnd7728
                                                                                                                                             (eq?
                                                                                                                                              'draw-on/image
                                                                                                                                              v6980)))
-                                                                                                                                    (if x-cnd7731
+                                                                                                                                    (if x-cnd7728
                                                                                                                                       #t
                                                                                                                                       (eq?
                                                                                                                                        'dist
                                                                                                                                        v6980)))))))))))))
-                                                                                                          g7726))
+                                                                                                          g7723))
                                                                                                       g6983)))
-                                                                                             (if x-cnd7725
+                                                                                             (if x-cnd7722
                                                                                                g6983
                                                                                                (blame
                                                                                                 g6981
@@ -2140,194 +2135,194 @@
                                                                                                              (eq?
                                                                                                               'dist
                                                                                                               v6980))))))))))))
-                                                                                   g7724))
+                                                                                   g7721))
                                                                                j6974
                                                                                k6975
                                                                                g6973)))
-                                                                      (letrec ((g7732
-                                                                                (letrec ((x7734
+                                                                      (letrec ((g7729
+                                                                                (letrec ((x7731
                                                                                           ((lambda (msg)
-                                                                                             (letrec ((g7735
+                                                                                             (letrec ((g7732
                                                                                                        (if cnd
-                                                                                                         (letrec ((g7736
+                                                                                                         (letrec ((g7733
                                                                                                                    (lambda (j6984
                                                                                                                             k6985
                                                                                                                             f6986)
-                                                                                                                     (letrec ((g7737
+                                                                                                                     (letrec ((g7734
                                                                                                                                (lambda ()
-                                                                                                                                 (letrec ((g7738
-                                                                                                                                           (letrec ((x7739
+                                                                                                                                 (letrec ((g7735
+                                                                                                                                           (letrec ((x7736
                                                                                                                                                      (f6986)))
                                                                                                                                              (real?
                                                                                                                                               j6984
                                                                                                                                               k6985
-                                                                                                                                              x7739))))
-                                                                                                                                   g7738))))
-                                                                                                                       g7737))))
-                                                                                                           g7736)
+                                                                                                                                              x7736))))
+                                                                                                                                   g7735))))
+                                                                                                                       g7734))))
+                                                                                                           g7733)
                                                                                                          (if cnd
-                                                                                                           (letrec ((g7740
+                                                                                                           (letrec ((g7737
                                                                                                                      (lambda (j6987
                                                                                                                               k6988
                                                                                                                               f6989)
-                                                                                                                       (letrec ((g7741
+                                                                                                                       (letrec ((g7738
                                                                                                                                  (lambda ()
-                                                                                                                                   (letrec ((g7742
-                                                                                                                                             (letrec ((x7743
+                                                                                                                                   (letrec ((g7739
+                                                                                                                                             (letrec ((x7740
                                                                                                                                                        (f6989)))
                                                                                                                                                (real?
                                                                                                                                                 j6987
                                                                                                                                                 k6988
-                                                                                                                                                x7743))))
-                                                                                                                                     g7742))))
-                                                                                                                         g7741))))
-                                                                                                             g7740)
+                                                                                                                                                x7740))))
+                                                                                                                                     g7739))))
+                                                                                                                         g7738))))
+                                                                                                             g7737)
                                                                                                            (if cnd
-                                                                                                             (letrec ((g7744
+                                                                                                             (letrec ((g7741
                                                                                                                        (lambda (j6990
                                                                                                                                 k6991
                                                                                                                                 f6992)
-                                                                                                                         (letrec ((g7745
+                                                                                                                         (letrec ((g7742
                                                                                                                                    (lambda ()
-                                                                                                                                     (letrec ((g7746
-                                                                                                                                               (letrec ((x7747
+                                                                                                                                     (letrec ((g7743
+                                                                                                                                               (letrec ((x7744
                                                                                                                                                          (f6992)))
                                                                                                                                                  (posn/c
                                                                                                                                                   j6990
                                                                                                                                                   k6991
-                                                                                                                                                  x7747))))
-                                                                                                                                       g7746))))
-                                                                                                                           g7745))))
-                                                                                                               g7744)
+                                                                                                                                                  x7744))))
+                                                                                                                                       g7743))))
+                                                                                                                           g7742))))
+                                                                                                               g7741)
                                                                                                              (if cnd
-                                                                                                               (letrec ((g7748
+                                                                                                               (letrec ((g7745
                                                                                                                          (lambda (j6995
                                                                                                                                   k6996
                                                                                                                                   f6997)
-                                                                                                                           (letrec ((g7749
+                                                                                                                           (letrec ((g7746
                                                                                                                                      (lambda (g6993
                                                                                                                                               g6994)
-                                                                                                                                       (letrec ((g7750
-                                                                                                                                                 (letrec ((x7751
-                                                                                                                                                           (letrec ((x7753
+                                                                                                                                       (letrec ((g7747
+                                                                                                                                                 (letrec ((x7748
+                                                                                                                                                           (letrec ((x7750
                                                                                                                                                                      (posn/c
                                                                                                                                                                       j6995
                                                                                                                                                                       k6996
                                                                                                                                                                       g6993))
-                                                                                                                                                                    (x7752
+                                                                                                                                                                    (x7749
                                                                                                                                                                      (real?
                                                                                                                                                                       j6995
                                                                                                                                                                       k6996
                                                                                                                                                                       g6994)))
                                                                                                                                                              (f6997
-                                                                                                                                                              x7753
-                                                                                                                                                              x7752))))
+                                                                                                                                                              x7750
+                                                                                                                                                              x7749))))
                                                                                                                                                    (posn/c
                                                                                                                                                     j6995
                                                                                                                                                     k6996
-                                                                                                                                                    x7751))))
-                                                                                                                                         g7750))))
-                                                                                                                             g7749))))
-                                                                                                                 g7748)
+                                                                                                                                                    x7748))))
+                                                                                                                                         g7747))))
+                                                                                                                             g7746))))
+                                                                                                                 g7745)
                                                                                                                (if cnd
-                                                                                                                 (letrec ((g7754
+                                                                                                                 (letrec ((g7751
                                                                                                                            (lambda (j7000
                                                                                                                                     k7001
                                                                                                                                     f7002)
-                                                                                                                             (letrec ((g7755
+                                                                                                                             (letrec ((g7752
                                                                                                                                        (lambda (g6998
                                                                                                                                                 g6999)
-                                                                                                                                         (letrec ((g7756
-                                                                                                                                                   (letrec ((x7757
-                                                                                                                                                             (letrec ((x7759
+                                                                                                                                         (letrec ((g7753
+                                                                                                                                                   (letrec ((x7754
+                                                                                                                                                             (letrec ((x7756
                                                                                                                                                                        (image?
                                                                                                                                                                         j7000
                                                                                                                                                                         k7001
                                                                                                                                                                         g6998))
-                                                                                                                                                                      (x7758
+                                                                                                                                                                      (x7755
                                                                                                                                                                        (image?
                                                                                                                                                                         j7000
                                                                                                                                                                         k7001
                                                                                                                                                                         g6999)))
                                                                                                                                                                (f7002
-                                                                                                                                                                x7759
-                                                                                                                                                                x7758))))
+                                                                                                                                                                x7756
+                                                                                                                                                                x7755))))
                                                                                                                                                      (image?
                                                                                                                                                       j7000
                                                                                                                                                       k7001
-                                                                                                                                                      x7757))))
-                                                                                                                                           g7756))))
-                                                                                                                               g7755))))
-                                                                                                                   g7754)
+                                                                                                                                                      x7754))))
+                                                                                                                                           g7753))))
+                                                                                                                               g7752))))
+                                                                                                                   g7751)
                                                                                                                  (if cnd
-                                                                                                                   (letrec ((g7760
+                                                                                                                   (letrec ((g7757
                                                                                                                              (lambda (j7004
                                                                                                                                       k7005
                                                                                                                                       f7006)
-                                                                                                                               (letrec ((g7761
+                                                                                                                               (letrec ((g7758
                                                                                                                                          (lambda (g7003)
-                                                                                                                                           (letrec ((g7762
-                                                                                                                                                     (letrec ((x7763
-                                                                                                                                                               (letrec ((x7764
+                                                                                                                                           (letrec ((g7759
+                                                                                                                                                     (letrec ((x7760
+                                                                                                                                                               (letrec ((x7761
                                                                                                                                                                          (posn/c
                                                                                                                                                                           j7004
                                                                                                                                                                           k7005
                                                                                                                                                                           g7003)))
                                                                                                                                                                  (f7006
-                                                                                                                                                                  x7764))))
+                                                                                                                                                                  x7761))))
                                                                                                                                                        (real?
                                                                                                                                                         j7004
                                                                                                                                                         k7005
-                                                                                                                                                        x7763))))
-                                                                                                                                             g7762))))
-                                                                                                                                 g7761))))
-                                                                                                                     g7760)
-                                                                                                                   (letrec ((g7765
+                                                                                                                                                        x7760))))
+                                                                                                                                             g7759))))
+                                                                                                                                 g7758))))
+                                                                                                                     g7757)
+                                                                                                                   (letrec ((g7762
                                                                                                                              "error"))
-                                                                                                                     g7765)))))))))
-                                                                                               g7735))
+                                                                                                                     g7762)))))))))
+                                                                                               g7732))
                                                                                            x6977))
-                                                                                         (x7733
+                                                                                         (x7730
                                                                                           (f6976
                                                                                            x6977)))
-                                                                                  (x7734
+                                                                                  (x7731
                                                                                    j6974
                                                                                    k6975
-                                                                                   x7733))))
-                                                                        g7732))))
-                                                            g7723))))
-                                                g7722)))
+                                                                                   x7730))))
+                                                                        g7729))))
+                                                            g7720))))
+                                                g7719)))
                                            (player/c
                                             (lambda (j7008 k7009 f7010)
-                                              (letrec ((g7766
+                                              (letrec ((g7763
                                                         (lambda (g7007)
-                                                          (letrec ((g7767
+                                                          (letrec ((g7764
                                                                     (letrec ((x7011
                                                                               ((lambda (g7015
                                                                                         g7016
                                                                                         g7017)
-                                                                                 (letrec ((g7768
-                                                                                           (letrec ((x-cnd7769
+                                                                                 (letrec ((g7765
+                                                                                           (letrec ((x-cnd7766
                                                                                                      ((lambda (v7014)
-                                                                                                        (letrec ((g7770
-                                                                                                                  (letrec ((x-cnd7771
+                                                                                                        (letrec ((g7767
+                                                                                                                  (letrec ((x-cnd7768
                                                                                                                             (eq?
                                                                                                                              'posn
                                                                                                                              v7014)))
-                                                                                                                    (if x-cnd7771
+                                                                                                                    (if x-cnd7768
                                                                                                                       #t
-                                                                                                                      (letrec ((x-cnd7772
+                                                                                                                      (letrec ((x-cnd7769
                                                                                                                                 (eq?
                                                                                                                                  'move-toward
                                                                                                                                  v7014)))
-                                                                                                                        (if x-cnd7772
+                                                                                                                        (if x-cnd7769
                                                                                                                           #t
                                                                                                                           (eq?
                                                                                                                            'draw-on
                                                                                                                            v7014)))))))
-                                                                                                          g7770))
+                                                                                                          g7767))
                                                                                                       g7017)))
-                                                                                             (if x-cnd7769
+                                                                                             (if x-cnd7766
                                                                                                g7017
                                                                                                (blame
                                                                                                 g7015
@@ -2343,129 +2338,129 @@
                                                                                                        (eq?
                                                                                                         'draw-on
                                                                                                         v7014)))))))))
-                                                                                   g7768))
+                                                                                   g7765))
                                                                                j7008
                                                                                k7009
                                                                                g7007)))
-                                                                      (letrec ((g7773
-                                                                                (letrec ((x7775
+                                                                      (letrec ((g7770
+                                                                                (letrec ((x7772
                                                                                           ((lambda (msg)
-                                                                                             (letrec ((g7776
+                                                                                             (letrec ((g7773
                                                                                                        (if cnd
-                                                                                                         (letrec ((g7777
+                                                                                                         (letrec ((g7774
                                                                                                                    (lambda (j7018
                                                                                                                             k7019
                                                                                                                             f7020)
-                                                                                                                     (letrec ((g7778
+                                                                                                                     (letrec ((g7775
                                                                                                                                (lambda ()
-                                                                                                                                 (letrec ((g7779
-                                                                                                                                           (letrec ((x7780
+                                                                                                                                 (letrec ((g7776
+                                                                                                                                           (letrec ((x7777
                                                                                                                                                      (f7020)))
                                                                                                                                              (posn/c
                                                                                                                                               j7018
                                                                                                                                               k7019
-                                                                                                                                              x7780))))
-                                                                                                                                   g7779))))
-                                                                                                                       g7778))))
-                                                                                                           g7777)
+                                                                                                                                              x7777))))
+                                                                                                                                   g7776))))
+                                                                                                                       g7775))))
+                                                                                                           g7774)
                                                                                                          (if cnd
-                                                                                                           (letrec ((g7781
+                                                                                                           (letrec ((g7778
                                                                                                                      (lambda (j7022
                                                                                                                               k7023
                                                                                                                               f7024)
-                                                                                                                       (letrec ((g7782
+                                                                                                                       (letrec ((g7779
                                                                                                                                  (lambda (g7021)
-                                                                                                                                   (letrec ((g7783
-                                                                                                                                             (letrec ((x7784
-                                                                                                                                                       (letrec ((x7785
+                                                                                                                                   (letrec ((g7780
+                                                                                                                                             (letrec ((x7781
+                                                                                                                                                       (letrec ((x7782
                                                                                                                                                                  (posn/c
                                                                                                                                                                   j7022
                                                                                                                                                                   k7023
                                                                                                                                                                   g7021)))
                                                                                                                                                          (f7024
-                                                                                                                                                          x7785))))
+                                                                                                                                                          x7782))))
                                                                                                                                                (player/c
                                                                                                                                                 j7022
                                                                                                                                                 k7023
-                                                                                                                                                x7784))))
-                                                                                                                                     g7783))))
-                                                                                                                         g7782))))
-                                                                                                             g7781)
+                                                                                                                                                x7781))))
+                                                                                                                                     g7780))))
+                                                                                                                         g7779))))
+                                                                                                             g7778)
                                                                                                            (if cnd
-                                                                                                             (letrec ((g7786
+                                                                                                             (letrec ((g7783
                                                                                                                        (lambda (j7026
                                                                                                                                 k7027
                                                                                                                                 f7028)
-                                                                                                                         (letrec ((g7787
+                                                                                                                         (letrec ((g7784
                                                                                                                                    (lambda (g7025)
-                                                                                                                                     (letrec ((g7788
-                                                                                                                                               (letrec ((x7789
-                                                                                                                                                         (letrec ((x7790
+                                                                                                                                     (letrec ((g7785
+                                                                                                                                               (letrec ((x7786
+                                                                                                                                                         (letrec ((x7787
                                                                                                                                                                    (image?
                                                                                                                                                                     j7026
                                                                                                                                                                     k7027
                                                                                                                                                                     g7025)))
                                                                                                                                                            (f7028
-                                                                                                                                                            x7790))))
+                                                                                                                                                            x7787))))
                                                                                                                                                  (image?
                                                                                                                                                   j7026
                                                                                                                                                   k7027
-                                                                                                                                                  x7789))))
-                                                                                                                                       g7788))))
-                                                                                                                           g7787))))
-                                                                                                               g7786)
-                                                                                                             (letrec ((g7791
+                                                                                                                                                  x7786))))
+                                                                                                                                       g7785))))
+                                                                                                                           g7784))))
+                                                                                                               g7783)
+                                                                                                             (letrec ((g7788
                                                                                                                        "error"))
-                                                                                                               g7791))))))
-                                                                                               g7776))
+                                                                                                               g7788))))))
+                                                                                               g7773))
                                                                                            x7011))
-                                                                                         (x7774
+                                                                                         (x7771
                                                                                           (f7010
                                                                                            x7011)))
-                                                                                  (x7775
+                                                                                  (x7772
                                                                                    j7008
                                                                                    k7009
-                                                                                   x7774))))
-                                                                        g7773))))
-                                                            g7767))))
-                                                g7766)))
+                                                                                   x7771))))
+                                                                        g7770))))
+                                                            g7764))))
+                                                g7763)))
                                            (zombie/c
                                             (lambda (j7030 k7031 f7032)
-                                              (letrec ((g7792
+                                              (letrec ((g7789
                                                         (lambda (g7029)
-                                                          (letrec ((g7793
+                                                          (letrec ((g7790
                                                                     (letrec ((x7033
                                                                               ((lambda (g7037
                                                                                         g7038
                                                                                         g7039)
-                                                                                 (letrec ((g7794
-                                                                                           (letrec ((x-cnd7795
+                                                                                 (letrec ((g7791
+                                                                                           (letrec ((x-cnd7792
                                                                                                      ((lambda (v7036)
-                                                                                                        (letrec ((g7796
-                                                                                                                  (letrec ((x-cnd7797
+                                                                                                        (letrec ((g7793
+                                                                                                                  (letrec ((x-cnd7794
                                                                                                                             (eq?
                                                                                                                              'posn
                                                                                                                              v7036)))
-                                                                                                                    (if x-cnd7797
+                                                                                                                    (if x-cnd7794
                                                                                                                       #t
-                                                                                                                      (letrec ((x-cnd7798
+                                                                                                                      (letrec ((x-cnd7795
                                                                                                                                 (eq?
                                                                                                                                  'draw-on/color
                                                                                                                                  v7036)))
-                                                                                                                        (if x-cnd7798
+                                                                                                                        (if x-cnd7795
                                                                                                                           #t
-                                                                                                                          (letrec ((x-cnd7799
+                                                                                                                          (letrec ((x-cnd7796
                                                                                                                                     (eq?
                                                                                                                                      'touching?
                                                                                                                                      v7036)))
-                                                                                                                            (if x-cnd7799
+                                                                                                                            (if x-cnd7796
                                                                                                                               #t
                                                                                                                               (eq?
                                                                                                                                'move-toward
                                                                                                                                v7036)))))))))
-                                                                                                          g7796))
+                                                                                                          g7793))
                                                                                                       g7039)))
-                                                                                             (if x-cnd7795
+                                                                                             (if x-cnd7792
                                                                                                g7039
                                                                                                (blame
                                                                                                 g7037
@@ -2485,171 +2480,171 @@
                                                                                                          (eq?
                                                                                                           'move-toward
                                                                                                           v7036))))))))))
-                                                                                   g7794))
+                                                                                   g7791))
                                                                                j7030
                                                                                k7031
                                                                                g7029)))
-                                                                      (letrec ((g7800
-                                                                                (letrec ((x7802
+                                                                      (letrec ((g7797
+                                                                                (letrec ((x7799
                                                                                           ((lambda (msg)
-                                                                                             (letrec ((g7803
+                                                                                             (letrec ((g7800
                                                                                                        (if cnd
-                                                                                                         (letrec ((g7804
+                                                                                                         (letrec ((g7801
                                                                                                                    (lambda (j7040
                                                                                                                             k7041
                                                                                                                             f7042)
-                                                                                                                     (letrec ((g7805
+                                                                                                                     (letrec ((g7802
                                                                                                                                (lambda ()
-                                                                                                                                 (letrec ((g7806
-                                                                                                                                           (letrec ((x7807
+                                                                                                                                 (letrec ((g7803
+                                                                                                                                           (letrec ((x7804
                                                                                                                                                      (f7042)))
                                                                                                                                              (posn/c
                                                                                                                                               j7040
                                                                                                                                               k7041
-                                                                                                                                              x7807))))
-                                                                                                                                   g7806))))
-                                                                                                                       g7805))))
-                                                                                                           g7804)
+                                                                                                                                              x7804))))
+                                                                                                                                   g7803))))
+                                                                                                                       g7802))))
+                                                                                                           g7801)
                                                                                                          (if cnd
-                                                                                                           (letrec ((g7808
+                                                                                                           (letrec ((g7805
                                                                                                                      (lambda (j7045
                                                                                                                               k7046
                                                                                                                               f7047)
-                                                                                                                       (letrec ((g7809
+                                                                                                                       (letrec ((g7806
                                                                                                                                  (lambda (g7043
                                                                                                                                           g7044)
-                                                                                                                                   (letrec ((g7810
-                                                                                                                                             (letrec ((x7811
-                                                                                                                                                       (letrec ((x7813
+                                                                                                                                   (letrec ((g7807
+                                                                                                                                             (letrec ((x7808
+                                                                                                                                                       (letrec ((x7810
                                                                                                                                                                  (string?
                                                                                                                                                                   j7045
                                                                                                                                                                   k7046
                                                                                                                                                                   g7043))
-                                                                                                                                                                (x7812
+                                                                                                                                                                (x7809
                                                                                                                                                                  (image?
                                                                                                                                                                   j7045
                                                                                                                                                                   k7046
                                                                                                                                                                   g7044)))
                                                                                                                                                          (f7047
-                                                                                                                                                          x7813
-                                                                                                                                                          x7812))))
+                                                                                                                                                          x7810
+                                                                                                                                                          x7809))))
                                                                                                                                                (image?
                                                                                                                                                 j7045
                                                                                                                                                 k7046
-                                                                                                                                                x7811))))
-                                                                                                                                     g7810))))
-                                                                                                                         g7809))))
-                                                                                                             g7808)
+                                                                                                                                                x7808))))
+                                                                                                                                     g7807))))
+                                                                                                                         g7806))))
+                                                                                                             g7805)
                                                                                                            (if cnd
-                                                                                                             (letrec ((g7814
+                                                                                                             (letrec ((g7811
                                                                                                                        (lambda (j7049
                                                                                                                                 k7050
                                                                                                                                 f7051)
-                                                                                                                         (letrec ((g7815
+                                                                                                                         (letrec ((g7812
                                                                                                                                    (lambda (g7048)
-                                                                                                                                     (letrec ((g7816
-                                                                                                                                               (letrec ((x7817
-                                                                                                                                                         (letrec ((x7818
+                                                                                                                                     (letrec ((g7813
+                                                                                                                                               (letrec ((x7814
+                                                                                                                                                         (letrec ((x7815
                                                                                                                                                                    (posn/c
                                                                                                                                                                     j7049
                                                                                                                                                                     k7050
                                                                                                                                                                     g7048)))
                                                                                                                                                            (f7051
-                                                                                                                                                            x7818))))
+                                                                                                                                                            x7815))))
                                                                                                                                                  (boolean?
                                                                                                                                                   j7049
                                                                                                                                                   k7050
-                                                                                                                                                  x7817))))
-                                                                                                                                       g7816))))
-                                                                                                                           g7815))))
-                                                                                                               g7814)
+                                                                                                                                                  x7814))))
+                                                                                                                                       g7813))))
+                                                                                                                           g7812))))
+                                                                                                               g7811)
                                                                                                              (if cnd
-                                                                                                               (letrec ((g7819
+                                                                                                               (letrec ((g7816
                                                                                                                          (lambda (j7053
                                                                                                                                   k7054
                                                                                                                                   f7055)
-                                                                                                                           (letrec ((g7820
+                                                                                                                           (letrec ((g7817
                                                                                                                                      (lambda (g7052)
-                                                                                                                                       (letrec ((g7821
-                                                                                                                                                 (letrec ((x7822
-                                                                                                                                                           (letrec ((x7823
+                                                                                                                                       (letrec ((g7818
+                                                                                                                                                 (letrec ((x7819
+                                                                                                                                                           (letrec ((x7820
                                                                                                                                                                      (posn/c
                                                                                                                                                                       j7053
                                                                                                                                                                       k7054
                                                                                                                                                                       g7052)))
                                                                                                                                                              (f7055
-                                                                                                                                                              x7823))))
+                                                                                                                                                              x7820))))
                                                                                                                                                    (zombie/c
                                                                                                                                                     j7053
                                                                                                                                                     k7054
-                                                                                                                                                    x7822))))
-                                                                                                                                         g7821))))
-                                                                                                                             g7820))))
-                                                                                                                 g7819)
-                                                                                                               (letrec ((g7824
+                                                                                                                                                    x7819))))
+                                                                                                                                         g7818))))
+                                                                                                                             g7817))))
+                                                                                                                 g7816)
+                                                                                                               (letrec ((g7821
                                                                                                                          "error"))
-                                                                                                                 g7824)))))))
-                                                                                               g7803))
+                                                                                                                 g7821)))))))
+                                                                                               g7800))
                                                                                            x7033))
-                                                                                         (x7801
+                                                                                         (x7798
                                                                                           (f7032
                                                                                            x7033)))
-                                                                                  (x7802
+                                                                                  (x7799
                                                                                    j7030
                                                                                    k7031
-                                                                                   x7801))))
-                                                                        g7800))))
-                                                            g7793))))
-                                                g7792)))
+                                                                                   x7798))))
+                                                                        g7797))))
+                                                            g7790))))
+                                                g7789)))
                                            (horde/c
                                             (lambda (j7057 k7058 f7059)
-                                              (letrec ((g7825
+                                              (letrec ((g7822
                                                         (lambda (g7056)
-                                                          (letrec ((g7826
+                                                          (letrec ((g7823
                                                                     (letrec ((x7060
                                                                               ((lambda (g7064
                                                                                         g7065
                                                                                         g7066)
-                                                                                 (letrec ((g7827
-                                                                                           (letrec ((x-cnd7828
+                                                                                 (letrec ((g7824
+                                                                                           (letrec ((x-cnd7825
                                                                                                      ((lambda (v7063)
-                                                                                                        (letrec ((g7829
-                                                                                                                  (letrec ((x-cnd7830
+                                                                                                        (letrec ((g7826
+                                                                                                                  (letrec ((x-cnd7827
                                                                                                                             (eq?
                                                                                                                              'dead
                                                                                                                              v7063)))
-                                                                                                                    (if x-cnd7830
+                                                                                                                    (if x-cnd7827
                                                                                                                       #t
-                                                                                                                      (letrec ((x-cnd7831
+                                                                                                                      (letrec ((x-cnd7828
                                                                                                                                 (eq?
                                                                                                                                  'undead
                                                                                                                                  v7063)))
-                                                                                                                        (if x-cnd7831
+                                                                                                                        (if x-cnd7828
                                                                                                                           #t
-                                                                                                                          (letrec ((x-cnd7832
+                                                                                                                          (letrec ((x-cnd7829
                                                                                                                                     (eq?
                                                                                                                                      'draw-on
                                                                                                                                      v7063)))
-                                                                                                                            (if x-cnd7832
+                                                                                                                            (if x-cnd7829
                                                                                                                               #t
-                                                                                                                              (letrec ((x-cnd7833
+                                                                                                                              (letrec ((x-cnd7830
                                                                                                                                         (eq?
                                                                                                                                          'touching?
                                                                                                                                          v7063)))
-                                                                                                                                (if x-cnd7833
+                                                                                                                                (if x-cnd7830
                                                                                                                                   #t
-                                                                                                                                  (letrec ((x-cnd7834
+                                                                                                                                  (letrec ((x-cnd7831
                                                                                                                                             (eq?
                                                                                                                                              'move-toward
                                                                                                                                              v7063)))
-                                                                                                                                    (if x-cnd7834
+                                                                                                                                    (if x-cnd7831
                                                                                                                                       #t
                                                                                                                                       (eq?
                                                                                                                                        'eat-brains
                                                                                                                                        v7063)))))))))))))
-                                                                                                          g7829))
+                                                                                                          g7826))
                                                                                                       g7066)))
-                                                                                             (if x-cnd7828
+                                                                                             (if x-cnd7825
                                                                                                g7066
                                                                                                (blame
                                                                                                 g7064
@@ -2677,186 +2672,186 @@
                                                                                                              (eq?
                                                                                                               'eat-brains
                                                                                                               v7063))))))))))))
-                                                                                   g7827))
+                                                                                   g7824))
                                                                                j7057
                                                                                k7058
                                                                                g7056)))
-                                                                      (letrec ((g7835
-                                                                                (letrec ((x7837
+                                                                      (letrec ((g7832
+                                                                                (letrec ((x7834
                                                                                           ((lambda (msg)
-                                                                                             (letrec ((g7838
+                                                                                             (letrec ((g7835
                                                                                                        (if cnd
-                                                                                                         (letrec ((g7839
+                                                                                                         (letrec ((g7836
                                                                                                                    (lambda (j7067
                                                                                                                             k7068
                                                                                                                             f7069)
-                                                                                                                     (letrec ((g7840
+                                                                                                                     (letrec ((g7837
                                                                                                                                (lambda ()
-                                                                                                                                 (letrec ((g7841
-                                                                                                                                           (letrec ((x7842
+                                                                                                                                 (letrec ((g7838
+                                                                                                                                           (letrec ((x7839
                                                                                                                                                      (f7069)))
                                                                                                                                              (zombies/c
                                                                                                                                               j7067
                                                                                                                                               k7068
-                                                                                                                                              x7842))))
-                                                                                                                                   g7841))))
-                                                                                                                       g7840))))
-                                                                                                           g7839)
+                                                                                                                                              x7839))))
+                                                                                                                                   g7838))))
+                                                                                                                       g7837))))
+                                                                                                           g7836)
                                                                                                          (if cnd
-                                                                                                           (letrec ((g7843
+                                                                                                           (letrec ((g7840
                                                                                                                      (lambda (j7070
                                                                                                                               k7071
                                                                                                                               f7072)
-                                                                                                                       (letrec ((g7844
+                                                                                                                       (letrec ((g7841
                                                                                                                                  (lambda ()
-                                                                                                                                   (letrec ((g7845
-                                                                                                                                             (letrec ((x7846
+                                                                                                                                   (letrec ((g7842
+                                                                                                                                             (letrec ((x7843
                                                                                                                                                        (f7072)))
                                                                                                                                                (zombies/c
                                                                                                                                                 j7070
                                                                                                                                                 k7071
-                                                                                                                                                x7846))))
-                                                                                                                                     g7845))))
-                                                                                                                         g7844))))
-                                                                                                             g7843)
+                                                                                                                                                x7843))))
+                                                                                                                                     g7842))))
+                                                                                                                         g7841))))
+                                                                                                             g7840)
                                                                                                            (if cnd
-                                                                                                             (letrec ((g7847
+                                                                                                             (letrec ((g7844
                                                                                                                        (lambda (j7074
                                                                                                                                 k7075
                                                                                                                                 f7076)
-                                                                                                                         (letrec ((g7848
+                                                                                                                         (letrec ((g7845
                                                                                                                                    (lambda (g7073)
-                                                                                                                                     (letrec ((g7849
-                                                                                                                                               (letrec ((x7850
-                                                                                                                                                         (letrec ((x7851
+                                                                                                                                     (letrec ((g7846
+                                                                                                                                               (letrec ((x7847
+                                                                                                                                                         (letrec ((x7848
                                                                                                                                                                    (image?
                                                                                                                                                                     j7074
                                                                                                                                                                     k7075
                                                                                                                                                                     g7073)))
                                                                                                                                                            (f7076
-                                                                                                                                                            x7851))))
+                                                                                                                                                            x7848))))
                                                                                                                                                  (image?
                                                                                                                                                   j7074
                                                                                                                                                   k7075
-                                                                                                                                                  x7850))))
-                                                                                                                                       g7849))))
-                                                                                                                           g7848))))
-                                                                                                               g7847)
+                                                                                                                                                  x7847))))
+                                                                                                                                       g7846))))
+                                                                                                                           g7845))))
+                                                                                                               g7844)
                                                                                                              (if cnd
-                                                                                                               (letrec ((g7852
+                                                                                                               (letrec ((g7849
                                                                                                                          (lambda (j7078
                                                                                                                                   k7079
                                                                                                                                   f7080)
-                                                                                                                           (letrec ((g7853
+                                                                                                                           (letrec ((g7850
                                                                                                                                      (lambda (g7077)
-                                                                                                                                       (letrec ((g7854
-                                                                                                                                                 (letrec ((x7855
-                                                                                                                                                           (letrec ((x7856
+                                                                                                                                       (letrec ((g7851
+                                                                                                                                                 (letrec ((x7852
+                                                                                                                                                           (letrec ((x7853
                                                                                                                                                                      (posn/c
                                                                                                                                                                       j7078
                                                                                                                                                                       k7079
                                                                                                                                                                       g7077)))
                                                                                                                                                              (f7080
-                                                                                                                                                              x7856))))
+                                                                                                                                                              x7853))))
                                                                                                                                                    (boolean?
                                                                                                                                                     j7078
                                                                                                                                                     k7079
-                                                                                                                                                    x7855))))
-                                                                                                                                         g7854))))
-                                                                                                                             g7853))))
-                                                                                                                 g7852)
+                                                                                                                                                    x7852))))
+                                                                                                                                         g7851))))
+                                                                                                                             g7850))))
+                                                                                                                 g7849)
                                                                                                                (if cnd
-                                                                                                                 (letrec ((g7857
+                                                                                                                 (letrec ((g7854
                                                                                                                            (lambda (j7082
                                                                                                                                     k7083
                                                                                                                                     f7084)
-                                                                                                                             (letrec ((g7858
+                                                                                                                             (letrec ((g7855
                                                                                                                                        (lambda (g7081)
-                                                                                                                                         (letrec ((g7859
-                                                                                                                                                   (letrec ((x7860
-                                                                                                                                                             (letrec ((x7861
+                                                                                                                                         (letrec ((g7856
+                                                                                                                                                   (letrec ((x7857
+                                                                                                                                                             (letrec ((x7858
                                                                                                                                                                        (posn/c
                                                                                                                                                                         j7082
                                                                                                                                                                         k7083
                                                                                                                                                                         g7081)))
                                                                                                                                                                (f7084
-                                                                                                                                                                x7861))))
+                                                                                                                                                                x7858))))
                                                                                                                                                      (horde/c
                                                                                                                                                       j7082
                                                                                                                                                       k7083
-                                                                                                                                                      x7860))))
-                                                                                                                                           g7859))))
-                                                                                                                               g7858))))
-                                                                                                                   g7857)
+                                                                                                                                                      x7857))))
+                                                                                                                                           g7856))))
+                                                                                                                               g7855))))
+                                                                                                                   g7854)
                                                                                                                  (if cnd
-                                                                                                                   (letrec ((g7862
+                                                                                                                   (letrec ((g7859
                                                                                                                              (lambda (j7085
                                                                                                                                       k7086
                                                                                                                                       f7087)
-                                                                                                                               (letrec ((g7863
+                                                                                                                               (letrec ((g7860
                                                                                                                                          (lambda ()
-                                                                                                                                           (letrec ((g7864
-                                                                                                                                                     (letrec ((x7865
+                                                                                                                                           (letrec ((g7861
+                                                                                                                                                     (letrec ((x7862
                                                                                                                                                                (f7087)))
                                                                                                                                                        (horde/c
                                                                                                                                                         j7085
                                                                                                                                                         k7086
-                                                                                                                                                        x7865))))
-                                                                                                                                             g7864))))
-                                                                                                                                 g7863))))
-                                                                                                                     g7862)
-                                                                                                                   (letrec ((g7866
+                                                                                                                                                        x7862))))
+                                                                                                                                             g7861))))
+                                                                                                                                 g7860))))
+                                                                                                                     g7859)
+                                                                                                                   (letrec ((g7863
                                                                                                                              "error"))
-                                                                                                                     g7866)))))))))
-                                                                                               g7838))
+                                                                                                                     g7863)))))))))
+                                                                                               g7835))
                                                                                            x7060))
-                                                                                         (x7836
+                                                                                         (x7833
                                                                                           (f7059
                                                                                            x7060)))
-                                                                                  (x7837
+                                                                                  (x7834
                                                                                    j7057
                                                                                    k7058
-                                                                                   x7836))))
-                                                                        g7835))))
-                                                            g7826))))
-                                                g7825)))
+                                                                                   x7833))))
+                                                                        g7832))))
+                                                            g7823))))
+                                                g7822)))
                                            (zombies/c
                                             (lambda (j7089 k7090 f7091)
-                                              (letrec ((g7867
+                                              (letrec ((g7864
                                                         (lambda (g7088)
-                                                          (letrec ((g7868
+                                                          (letrec ((g7865
                                                                     (letrec ((x7092
                                                                               ((lambda (g7096
                                                                                         g7097
                                                                                         g7098)
-                                                                                 (letrec ((g7869
-                                                                                           (letrec ((x-cnd7870
+                                                                                 (letrec ((g7866
+                                                                                           (letrec ((x-cnd7867
                                                                                                      ((lambda (v7095)
-                                                                                                        (letrec ((g7871
-                                                                                                                  (letrec ((x-cnd7872
+                                                                                                        (letrec ((g7868
+                                                                                                                  (letrec ((x-cnd7869
                                                                                                                             (eq?
                                                                                                                              'move-toward
                                                                                                                              v7095)))
-                                                                                                                    (if x-cnd7872
+                                                                                                                    (if x-cnd7869
                                                                                                                       #t
-                                                                                                                      (letrec ((x-cnd7873
+                                                                                                                      (letrec ((x-cnd7870
                                                                                                                                 (eq?
                                                                                                                                  'draw-on/color
                                                                                                                                  v7095)))
-                                                                                                                        (if x-cnd7873
+                                                                                                                        (if x-cnd7870
                                                                                                                           #t
-                                                                                                                          (letrec ((x-cnd7874
+                                                                                                                          (letrec ((x-cnd7871
                                                                                                                                     (eq?
                                                                                                                                      'touching?
                                                                                                                                      v7095)))
-                                                                                                                            (if x-cnd7874
+                                                                                                                            (if x-cnd7871
                                                                                                                               #t
                                                                                                                               (eq?
                                                                                                                                'kill-all
                                                                                                                                v7095)))))))))
-                                                                                                          g7871))
+                                                                                                          g7868))
                                                                                                       g7098)))
-                                                                                             (if x-cnd7870
+                                                                                             (if x-cnd7867
                                                                                                g7098
                                                                                                (blame
                                                                                                 g7096
@@ -2876,165 +2871,165 @@
                                                                                                          (eq?
                                                                                                           'kill-all
                                                                                                           v7095))))))))))
-                                                                                   g7869))
+                                                                                   g7866))
                                                                                j7089
                                                                                k7090
                                                                                g7088)))
-                                                                      (letrec ((g7875
-                                                                                (letrec ((x7877
+                                                                      (letrec ((g7872
+                                                                                (letrec ((x7874
                                                                                           ((lambda (msg)
-                                                                                             (letrec ((g7878
+                                                                                             (letrec ((g7875
                                                                                                        (if cnd
-                                                                                                         (letrec ((g7879
+                                                                                                         (letrec ((g7876
                                                                                                                    (lambda (j7100
                                                                                                                             k7101
                                                                                                                             f7102)
-                                                                                                                     (letrec ((g7880
+                                                                                                                     (letrec ((g7877
                                                                                                                                (lambda (g7099)
-                                                                                                                                 (letrec ((g7881
-                                                                                                                                           (letrec ((x7882
-                                                                                                                                                     (letrec ((x7883
+                                                                                                                                 (letrec ((g7878
+                                                                                                                                           (letrec ((x7879
+                                                                                                                                                     (letrec ((x7880
                                                                                                                                                                (posn/c
                                                                                                                                                                 j7100
                                                                                                                                                                 k7101
                                                                                                                                                                 g7099)))
                                                                                                                                                        (f7102
-                                                                                                                                                        x7883))))
+                                                                                                                                                        x7880))))
                                                                                                                                              (zombies/c
                                                                                                                                               j7100
                                                                                                                                               k7101
-                                                                                                                                              x7882))))
-                                                                                                                                   g7881))))
-                                                                                                                       g7880))))
-                                                                                                           g7879)
+                                                                                                                                              x7879))))
+                                                                                                                                   g7878))))
+                                                                                                                       g7877))))
+                                                                                                           g7876)
                                                                                                          (if cnd
-                                                                                                           (letrec ((g7884
+                                                                                                           (letrec ((g7881
                                                                                                                      (lambda (j7105
                                                                                                                               k7106
                                                                                                                               f7107)
-                                                                                                                       (letrec ((g7885
+                                                                                                                       (letrec ((g7882
                                                                                                                                  (lambda (g7103
                                                                                                                                           g7104)
-                                                                                                                                   (letrec ((g7886
-                                                                                                                                             (letrec ((x7887
-                                                                                                                                                       (letrec ((x7889
+                                                                                                                                   (letrec ((g7883
+                                                                                                                                             (letrec ((x7884
+                                                                                                                                                       (letrec ((x7886
                                                                                                                                                                  (string?
                                                                                                                                                                   j7105
                                                                                                                                                                   k7106
                                                                                                                                                                   g7103))
-                                                                                                                                                                (x7888
+                                                                                                                                                                (x7885
                                                                                                                                                                  (image?
                                                                                                                                                                   j7105
                                                                                                                                                                   k7106
                                                                                                                                                                   g7104)))
                                                                                                                                                          (f7107
-                                                                                                                                                          x7889
-                                                                                                                                                          x7888))))
+                                                                                                                                                          x7886
+                                                                                                                                                          x7885))))
                                                                                                                                                (image?
                                                                                                                                                 j7105
                                                                                                                                                 k7106
-                                                                                                                                                x7887))))
-                                                                                                                                     g7886))))
-                                                                                                                         g7885))))
-                                                                                                             g7884)
+                                                                                                                                                x7884))))
+                                                                                                                                     g7883))))
+                                                                                                                         g7882))))
+                                                                                                             g7881)
                                                                                                            (if cnd
-                                                                                                             (letrec ((g7890
+                                                                                                             (letrec ((g7887
                                                                                                                        (lambda (j7109
                                                                                                                                 k7110
                                                                                                                                 f7111)
-                                                                                                                         (letrec ((g7891
+                                                                                                                         (letrec ((g7888
                                                                                                                                    (lambda (g7108)
-                                                                                                                                     (letrec ((g7892
-                                                                                                                                               (letrec ((x7893
-                                                                                                                                                         (letrec ((x7894
+                                                                                                                                     (letrec ((g7889
+                                                                                                                                               (letrec ((x7890
+                                                                                                                                                         (letrec ((x7891
                                                                                                                                                                    (posn/c
                                                                                                                                                                     j7109
                                                                                                                                                                     k7110
                                                                                                                                                                     g7108)))
                                                                                                                                                            (f7111
-                                                                                                                                                            x7894))))
+                                                                                                                                                            x7891))))
                                                                                                                                                  (boolean?
                                                                                                                                                   j7109
                                                                                                                                                   k7110
-                                                                                                                                                  x7893))))
-                                                                                                                                       g7892))))
-                                                                                                                           g7891))))
-                                                                                                               g7890)
+                                                                                                                                                  x7890))))
+                                                                                                                                       g7889))))
+                                                                                                                           g7888))))
+                                                                                                               g7887)
                                                                                                              (if cnd
-                                                                                                               (letrec ((g7895
+                                                                                                               (letrec ((g7892
                                                                                                                          (lambda (j7113
                                                                                                                                   k7114
                                                                                                                                   f7115)
-                                                                                                                           (letrec ((g7896
+                                                                                                                           (letrec ((g7893
                                                                                                                                      (lambda (g7112)
-                                                                                                                                       (letrec ((g7897
-                                                                                                                                                 (letrec ((x7898
-                                                                                                                                                           (letrec ((x7899
+                                                                                                                                       (letrec ((g7894
+                                                                                                                                                 (letrec ((x7895
+                                                                                                                                                           (letrec ((x7896
                                                                                                                                                                      (zombies/c
                                                                                                                                                                       j7113
                                                                                                                                                                       k7114
                                                                                                                                                                       g7112)))
                                                                                                                                                              (f7115
-                                                                                                                                                              x7899))))
+                                                                                                                                                              x7896))))
                                                                                                                                                    (horde/c
                                                                                                                                                     j7113
                                                                                                                                                     k7114
-                                                                                                                                                    x7898))))
-                                                                                                                                         g7897))))
-                                                                                                                             g7896))))
-                                                                                                                 g7895)
-                                                                                                               (letrec ((g7900
+                                                                                                                                                    x7895))))
+                                                                                                                                         g7894))))
+                                                                                                                             g7893))))
+                                                                                                                 g7892)
+                                                                                                               (letrec ((g7897
                                                                                                                          "error"))
-                                                                                                                 g7900)))))))
-                                                                                               g7878))
+                                                                                                                 g7897)))))))
+                                                                                               g7875))
                                                                                            x7092))
-                                                                                         (x7876
+                                                                                         (x7873
                                                                                           (f7091
                                                                                            x7092)))
-                                                                                  (x7877
+                                                                                  (x7874
                                                                                    j7089
                                                                                    k7090
-                                                                                   x7876))))
-                                                                        g7875))))
-                                                            g7868))))
-                                                g7867)))
+                                                                                   x7873))))
+                                                                        g7872))))
+                                                            g7865))))
+                                                g7864)))
                                            (world/c
                                             (lambda (j7117 k7118 f7119)
-                                              (letrec ((g7901
+                                              (letrec ((g7898
                                                         (lambda (g7116)
-                                                          (letrec ((g7902
+                                                          (letrec ((g7899
                                                                     (letrec ((x7120
                                                                               ((lambda (g7124
                                                                                         g7125
                                                                                         g7126)
-                                                                                 (letrec ((g7903
-                                                                                           (letrec ((x-cnd7904
+                                                                                 (letrec ((g7900
+                                                                                           (letrec ((x-cnd7901
                                                                                                      ((lambda (v7123)
-                                                                                                        (letrec ((g7905
-                                                                                                                  (letrec ((x-cnd7906
+                                                                                                        (letrec ((g7902
+                                                                                                                  (letrec ((x-cnd7903
                                                                                                                             (eq?
                                                                                                                              'on-mouse
                                                                                                                              v7123)))
-                                                                                                                    (if x-cnd7906
+                                                                                                                    (if x-cnd7903
                                                                                                                       #t
-                                                                                                                      (letrec ((x-cnd7907
+                                                                                                                      (letrec ((x-cnd7904
                                                                                                                                 (eq?
                                                                                                                                  'on-tick
                                                                                                                                  v7123)))
-                                                                                                                        (if x-cnd7907
+                                                                                                                        (if x-cnd7904
                                                                                                                           #t
-                                                                                                                          (letrec ((x-cnd7908
+                                                                                                                          (letrec ((x-cnd7905
                                                                                                                                     (eq?
                                                                                                                                      'to-draw
                                                                                                                                      v7123)))
-                                                                                                                            (if x-cnd7908
+                                                                                                                            (if x-cnd7905
                                                                                                                               #t
                                                                                                                               (eq?
                                                                                                                                'stop-when
                                                                                                                                v7123)))))))))
-                                                                                                          g7905))
+                                                                                                          g7902))
                                                                                                       g7126)))
-                                                                                             (if x-cnd7904
+                                                                                             (if x-cnd7901
                                                                                                g7126
                                                                                                (blame
                                                                                                 g7124
@@ -3054,1273 +3049,1268 @@
                                                                                                          (eq?
                                                                                                           'stop-when
                                                                                                           v7123))))))))))
-                                                                                   g7903))
+                                                                                   g7900))
                                                                                j7117
                                                                                k7118
                                                                                g7116)))
-                                                                      (letrec ((g7909
-                                                                                (letrec ((x7911
+                                                                      (letrec ((g7906
+                                                                                (letrec ((x7908
                                                                                           ((lambda (msg)
-                                                                                             (letrec ((g7912
+                                                                                             (letrec ((g7909
                                                                                                        (if cnd
-                                                                                                         (letrec ((g7913
+                                                                                                         (letrec ((g7910
                                                                                                                    (lambda (j7130
                                                                                                                             k7131
                                                                                                                             f7132)
-                                                                                                                     (letrec ((g7914
+                                                                                                                     (letrec ((g7911
                                                                                                                                (lambda (g7127
                                                                                                                                         g7128
                                                                                                                                         g7129)
-                                                                                                                                 (letrec ((g7915
-                                                                                                                                           (letrec ((x7916
-                                                                                                                                                     (letrec ((x7919
+                                                                                                                                 (letrec ((g7912
+                                                                                                                                           (letrec ((x7913
+                                                                                                                                                     (letrec ((x7916
                                                                                                                                                                (real?
                                                                                                                                                                 j7130
                                                                                                                                                                 k7131
                                                                                                                                                                 g7127))
-                                                                                                                                                              (x7918
+                                                                                                                                                              (x7915
                                                                                                                                                                (real?
                                                                                                                                                                 j7130
                                                                                                                                                                 k7131
                                                                                                                                                                 g7128))
-                                                                                                                                                              (x7917
+                                                                                                                                                              (x7914
                                                                                                                                                                (string?
                                                                                                                                                                 j7130
                                                                                                                                                                 k7131
                                                                                                                                                                 g7129)))
                                                                                                                                                        (f7132
-                                                                                                                                                        x7919
-                                                                                                                                                        x7918
-                                                                                                                                                        x7917))))
+                                                                                                                                                        x7916
+                                                                                                                                                        x7915
+                                                                                                                                                        x7914))))
                                                                                                                                              (world/c
                                                                                                                                               j7130
                                                                                                                                               k7131
-                                                                                                                                              x7916))))
-                                                                                                                                   g7915))))
-                                                                                                                       g7914))))
-                                                                                                           g7913)
+                                                                                                                                              x7913))))
+                                                                                                                                   g7912))))
+                                                                                                                       g7911))))
+                                                                                                           g7910)
                                                                                                          (if cnd
-                                                                                                           (letrec ((g7920
+                                                                                                           (letrec ((g7917
                                                                                                                      (lambda (j7133
                                                                                                                               k7134
                                                                                                                               f7135)
-                                                                                                                       (letrec ((g7921
+                                                                                                                       (letrec ((g7918
                                                                                                                                  (lambda ()
-                                                                                                                                   (letrec ((g7922
-                                                                                                                                             (letrec ((x7923
+                                                                                                                                   (letrec ((g7919
+                                                                                                                                             (letrec ((x7920
                                                                                                                                                        (f7135)))
                                                                                                                                                (world/c
                                                                                                                                                 j7133
                                                                                                                                                 k7134
-                                                                                                                                                x7923))))
-                                                                                                                                     g7922))))
-                                                                                                                         g7921))))
-                                                                                                             g7920)
+                                                                                                                                                x7920))))
+                                                                                                                                     g7919))))
+                                                                                                                         g7918))))
+                                                                                                             g7917)
                                                                                                            (if cnd
-                                                                                                             (letrec ((g7924
+                                                                                                             (letrec ((g7921
                                                                                                                        (lambda (j7136
                                                                                                                                 k7137
                                                                                                                                 f7138)
-                                                                                                                         (letrec ((g7925
+                                                                                                                         (letrec ((g7922
                                                                                                                                    (lambda ()
-                                                                                                                                     (letrec ((g7926
-                                                                                                                                               (letrec ((x7927
+                                                                                                                                     (letrec ((g7923
+                                                                                                                                               (letrec ((x7924
                                                                                                                                                          (f7138)))
                                                                                                                                                  (image?
                                                                                                                                                   j7136
                                                                                                                                                   k7137
-                                                                                                                                                  x7927))))
-                                                                                                                                       g7926))))
-                                                                                                                           g7925))))
-                                                                                                               g7924)
+                                                                                                                                                  x7924))))
+                                                                                                                                       g7923))))
+                                                                                                                           g7922))))
+                                                                                                               g7921)
                                                                                                              (if cnd
-                                                                                                               (letrec ((g7928
+                                                                                                               (letrec ((g7925
                                                                                                                          (lambda (j7139
                                                                                                                                   k7140
                                                                                                                                   f7141)
-                                                                                                                           (letrec ((g7929
+                                                                                                                           (letrec ((g7926
                                                                                                                                      (lambda ()
-                                                                                                                                       (letrec ((g7930
-                                                                                                                                                 (letrec ((x7931
+                                                                                                                                       (letrec ((g7927
+                                                                                                                                                 (letrec ((x7928
                                                                                                                                                            (f7141)))
                                                                                                                                                    (boolean?
                                                                                                                                                     j7139
                                                                                                                                                     k7140
-                                                                                                                                                    x7931))))
-                                                                                                                                         g7930))))
-                                                                                                                             g7929))))
-                                                                                                                 g7928)
-                                                                                                               (letrec ((g7932
+                                                                                                                                                    x7928))))
+                                                                                                                                         g7927))))
+                                                                                                                             g7926))))
+                                                                                                                 g7925)
+                                                                                                               (letrec ((g7929
                                                                                                                          "error"))
-                                                                                                                 g7932)))))))
-                                                                                               g7912))
+                                                                                                                 g7929)))))))
+                                                                                               g7909))
                                                                                            x7120))
-                                                                                         (x7910
+                                                                                         (x7907
                                                                                           (f7119
                                                                                            x7120)))
-                                                                                  (x7911
+                                                                                  (x7908
                                                                                    j7117
                                                                                    k7118
-                                                                                   x7910))))
-                                                                        g7909))))
-                                                            g7902))))
-                                                g7901)))
+                                                                                   x7907))))
+                                                                        g7906))))
+                                                            g7899))))
+                                                g7898)))
                                            (new-world
                                             (lambda (player mouse zombies)
-                                              (letrec ((g7933
-                                                        (letrec ((x7962 (msg))
-                                                                 (x7934
+                                              (letrec ((g7930
+                                                        (letrec ((x7959 (msg))
+                                                                 (x7931
                                                                   (if cnd
-                                                                    (letrec ((g7935
-                                                                              (letrec ((x7940
+                                                                    (letrec ((g7932
+                                                                              (letrec ((x7937
                                                                                         (x
                                                                                          y
                                                                                          me))
-                                                                                       (x7936
-                                                                                        (letrec ((x7937
-                                                                                                  (letrec ((x-cnd7938
+                                                                                       (x7933
+                                                                                        (letrec ((x7934
+                                                                                                  (letrec ((x-cnd7935
                                                                                                             (equal?
                                                                                                              me
                                                                                                              "leave")))
-                                                                                                    (if x-cnd7938
-                                                                                                      (letrec ((x7939
+                                                                                                    (if x-cnd7935
+                                                                                                      (letrec ((x7936
                                                                                                                 (player
                                                                                                                  'posn)))
-                                                                                                        (x7939))
+                                                                                                        (x7936))
                                                                                                       (new-posn
                                                                                                        x
                                                                                                        y)))))
                                                                                           (new-world
                                                                                            player
-                                                                                           x7937
+                                                                                           x7934
                                                                                            zombies))))
-                                                                                (λ x7940
-                                                                                  x7936))))
-                                                                      g7935)
+                                                                                (λ x7937
+                                                                                  x7933))))
+                                                                      g7932)
                                                                     (if cnd
-                                                                      (letrec ((g7941
-                                                                                (letrec ((x7942
-                                                                                          (letrec ((x7949
-                                                                                                    (letrec ((x7950
+                                                                      (letrec ((g7938
+                                                                                (letrec ((x7939
+                                                                                          (letrec ((x7946
+                                                                                                    (letrec ((x7947
                                                                                                               (player
                                                                                                                'move-toward)))
-                                                                                                      (x7950
+                                                                                                      (x7947
                                                                                                        mouse)))
-                                                                                                   (x7943
-                                                                                                    (letrec ((x7946
-                                                                                                              (letrec ((x7947
-                                                                                                                        (letrec ((x7948
+                                                                                                   (x7940
+                                                                                                    (letrec ((x7943
+                                                                                                              (letrec ((x7944
+                                                                                                                        (letrec ((x7945
                                                                                                                                   (zombies
                                                                                                                                    'eat-brains)))
-                                                                                                                          (x7948))))
-                                                                                                                (x7947
+                                                                                                                          (x7945))))
+                                                                                                                (x7944
                                                                                                                  'move-toward)))
-                                                                                                             (x7944
-                                                                                                              (letrec ((x7945
+                                                                                                             (x7941
+                                                                                                              (letrec ((x7942
                                                                                                                         (player
                                                                                                                          'posn)))
-                                                                                                                (x7945))))
-                                                                                                      (x7946
-                                                                                                       x7944))))
+                                                                                                                (x7942))))
+                                                                                                      (x7943
+                                                                                                       x7941))))
                                                                                             (new-world
-                                                                                             x7949
+                                                                                             x7946
                                                                                              mouse
-                                                                                             x7943))))
+                                                                                             x7940))))
                                                                                   (λ ()
-                                                                                    x7942))))
-                                                                        g7941)
+                                                                                    x7939))))
+                                                                        g7938)
                                                                       (if cnd
-                                                                        (letrec ((g7951
-                                                                                  (letrec ((x7952
-                                                                                            (letrec ((x7955
+                                                                        (letrec ((g7948
+                                                                                  (letrec ((x7949
+                                                                                            (letrec ((x7952
                                                                                                       (player
                                                                                                        'draw-on))
-                                                                                                     (x7953
-                                                                                                      (letrec ((x7954
+                                                                                                     (x7950
+                                                                                                      (letrec ((x7951
                                                                                                                 (zombies
                                                                                                                  'draw-on)))
-                                                                                                        (x7954
+                                                                                                        (x7951
                                                                                                          MT-SCENE))))
-                                                                                              (x7955
-                                                                                               x7953))))
+                                                                                              (x7952
+                                                                                               x7950))))
                                                                                     (λ ()
-                                                                                      x7952))))
-                                                                          g7951)
+                                                                                      x7949))))
+                                                                          g7948)
                                                                         (if cnd
-                                                                          (letrec ((g7956
-                                                                                    (letrec ((x7957
-                                                                                              (letrec ((x7960
+                                                                          (letrec ((g7953
+                                                                                    (letrec ((x7954
+                                                                                              (letrec ((x7957
                                                                                                         (zombies
                                                                                                          'touching?))
-                                                                                                       (x7958
-                                                                                                        (letrec ((x7959
+                                                                                                       (x7955
+                                                                                                        (letrec ((x7956
                                                                                                                   (player
                                                                                                                    'posn)))
-                                                                                                          (x7959))))
-                                                                                                (x7960
-                                                                                                 x7958))))
+                                                                                                          (x7956))))
+                                                                                                (x7957
+                                                                                                 x7955))))
                                                                                       (λ ()
-                                                                                        x7957))))
-                                                                            g7956)
-                                                                          (letrec ((g7961
+                                                                                        x7954))))
+                                                                            g7953)
+                                                                          (letrec ((g7958
                                                                                     "unknown message"))
-                                                                            g7961)))))))
-                                                          (λ x7962 x7934))))
-                                                g7933)))
+                                                                            g7958)))))))
+                                                          (λ x7959 x7931))))
+                                                g7930)))
                                            (new-player
                                             (lambda (p)
-                                              (letrec ((g7963
-                                                        (letrec ((x7976 (msg))
-                                                                 (x7964
+                                              (letrec ((g7960
+                                                        (letrec ((x7973 (msg))
+                                                                 (x7961
                                                                   (if cnd
-                                                                    (letrec ((g7965
+                                                                    (letrec ((g7962
                                                                               (λ ()
                                                                                 p)))
-                                                                      g7965)
+                                                                      g7962)
                                                                     (if cnd
-                                                                      (letrec ((g7966
-                                                                                (letrec ((x7970
+                                                                      (letrec ((g7963
+                                                                                (letrec ((x7967
                                                                                           (q))
-                                                                                         (x7967
-                                                                                          (letrec ((x7968
-                                                                                                    (letrec ((x7969
+                                                                                         (x7964
+                                                                                          (letrec ((x7965
+                                                                                                    (letrec ((x7966
                                                                                                               (p
                                                                                                                'move-toward/speed)))
-                                                                                                      (x7969
+                                                                                                      (x7966
                                                                                                        q
                                                                                                        PLAYER-SPEED))))
                                                                                             (new-player
-                                                                                             x7968))))
-                                                                                  (λ x7970
-                                                                                    x7967))))
-                                                                        g7966)
+                                                                                             x7965))))
+                                                                                  (λ x7967
+                                                                                    x7964))))
+                                                                        g7963)
                                                                       (if cnd
-                                                                        (letrec ((g7971
-                                                                                  (letrec ((x7974
+                                                                        (letrec ((g7968
+                                                                                  (letrec ((x7971
                                                                                             (scn))
-                                                                                           (x7972
-                                                                                            (letrec ((x7973
+                                                                                           (x7969
+                                                                                            (letrec ((x7970
                                                                                                       (p
                                                                                                        'draw-on/image)))
-                                                                                              (x7973
+                                                                                              (x7970
                                                                                                PLAYER-IMG
                                                                                                scn))))
-                                                                                    (λ x7974
-                                                                                      x7972))))
-                                                                          g7971)
-                                                                        (letrec ((g7975
+                                                                                    (λ x7971
+                                                                                      x7969))))
+                                                                          g7968)
+                                                                        (letrec ((g7972
                                                                                   "unknown message"))
-                                                                          g7975))))))
-                                                          (λ x7976 x7964))))
-                                                g7963)))
+                                                                          g7972))))))
+                                                          (λ x7973 x7961))))
+                                                g7960)))
                                            (new-horde
                                             (lambda (undead dead)
-                                              (letrec ((g7977
-                                                        (letrec ((x8003 (msg))
-                                                                 (x7978
+                                              (letrec ((g7974
+                                                        (letrec ((x8000 (msg))
+                                                                 (x7975
                                                                   (if cnd
-                                                                    (letrec ((g7979
+                                                                    (letrec ((g7976
                                                                               (λ ()
                                                                                 dead)))
-                                                                      g7979)
+                                                                      g7976)
                                                                     (if cnd
-                                                                      (letrec ((g7980
+                                                                      (letrec ((g7977
                                                                                 (λ ()
                                                                                   undead)))
-                                                                        g7980)
+                                                                        g7977)
                                                                       (if cnd
-                                                                        (letrec ((g7981
-                                                                                  (letrec ((x7986
+                                                                        (letrec ((g7978
+                                                                                  (letrec ((x7983
                                                                                             (scn))
-                                                                                           (x7982
-                                                                                            (letrec ((x7985
+                                                                                           (x7979
+                                                                                            (letrec ((x7982
                                                                                                       (undead
                                                                                                        'draw-on/color))
-                                                                                                     (x7983
-                                                                                                      (letrec ((x7984
+                                                                                                     (x7980
+                                                                                                      (letrec ((x7981
                                                                                                                 (dead
                                                                                                                  'draw-on/color)))
-                                                                                                        (x7984
+                                                                                                        (x7981
                                                                                                          "black"
                                                                                                          scn))))
-                                                                                              (x7985
+                                                                                              (x7982
                                                                                                "yellow"
-                                                                                               x7983))))
-                                                                                    (λ x7986
-                                                                                      x7982))))
-                                                                          g7981)
+                                                                                               x7980))))
+                                                                                    (λ x7983
+                                                                                      x7979))))
+                                                                          g7978)
                                                                         (if cnd
-                                                                          (letrec ((g7987
-                                                                                    (letrec ((x7993
+                                                                          (letrec ((g7984
+                                                                                    (letrec ((x7990
                                                                                               (p))
-                                                                                             (x7988
-                                                                                              (letrec ((x7991
-                                                                                                        (letrec ((x7992
+                                                                                             (x7985
+                                                                                              (letrec ((x7988
+                                                                                                        (letrec ((x7989
                                                                                                                   (undead
                                                                                                                    'touching?)))
-                                                                                                          (x7992
+                                                                                                          (x7989
                                                                                                            p)))
-                                                                                                       (x7989
-                                                                                                        (letrec ((x7990
+                                                                                                       (x7986
+                                                                                                        (letrec ((x7987
                                                                                                                   (dead
                                                                                                                    'touching?)))
-                                                                                                          (x7990
+                                                                                                          (x7987
                                                                                                            p))))
-                                                                                                (or x7991
-                                                                                                    x7989))))
-                                                                                      (λ x7993
-                                                                                        x7988))))
-                                                                            g7987)
+                                                                                                (or x7988
+                                                                                                    x7986))))
+                                                                                      (λ x7990
+                                                                                        x7985))))
+                                                                            g7984)
                                                                           (if cnd
-                                                                            (letrec ((g7994
-                                                                                      (letrec ((x7998
+                                                                            (letrec ((g7991
+                                                                                      (letrec ((x7995
                                                                                                 (p))
-                                                                                               (x7995
-                                                                                                (letrec ((x7996
-                                                                                                          (letrec ((x7997
+                                                                                               (x7992
+                                                                                                (letrec ((x7993
+                                                                                                          (letrec ((x7994
                                                                                                                     (undead
                                                                                                                      'move-toward)))
-                                                                                                            (x7997
+                                                                                                            (x7994
                                                                                                              p))))
                                                                                                   (new-horde
-                                                                                                   x7996
+                                                                                                   x7993
                                                                                                    dead))))
-                                                                                        (λ x7998
-                                                                                          x7995))))
-                                                                              g7994)
+                                                                                        (λ x7995
+                                                                                          x7992))))
+                                                                              g7991)
                                                                             (if cnd
-                                                                              (letrec ((g7999
-                                                                                        (letrec ((x8000
-                                                                                                  (letrec ((x8001
+                                                                              (letrec ((g7996
+                                                                                        (letrec ((x7997
+                                                                                                  (letrec ((x7998
                                                                                                             (undead
                                                                                                              'kill-all)))
-                                                                                                    (x8001
+                                                                                                    (x7998
                                                                                                      dead))))
                                                                                           (λ ()
-                                                                                            x8000))))
-                                                                                g7999)
-                                                                              (letrec ((g8002
+                                                                                            x7997))))
+                                                                                g7996)
+                                                                              (letrec ((g7999
                                                                                         "unknown message"))
-                                                                                g8002)))))))))
-                                                          (λ x8003 x7978))))
-                                                g7977)))
+                                                                                g7999)))))))))
+                                                          (λ x8000 x7975))))
+                                                g7974)))
                                            (new-cons-zombies
                                             (lambda (z r)
-                                              (letrec ((g8004
-                                                        (letrec ((x8055 (msg))
-                                                                 (x8005
+                                              (letrec ((g8001
+                                                        (letrec ((x8049 (msg))
+                                                                 (x8002
                                                                   (if cnd
-                                                                    (letrec ((g8006
-                                                                              (letrec ((x8012
+                                                                    (letrec ((g8003
+                                                                              (letrec ((x8009
                                                                                         (p))
-                                                                                       (x8007
-                                                                                        (letrec ((x8010
-                                                                                                  (letrec ((x8011
+                                                                                       (x8004
+                                                                                        (letrec ((x8007
+                                                                                                  (letrec ((x8008
                                                                                                             (z
                                                                                                              'move-toward)))
-                                                                                                    (x8011
+                                                                                                    (x8008
                                                                                                      p)))
-                                                                                                 (x8008
-                                                                                                  (letrec ((x8009
+                                                                                                 (x8005
+                                                                                                  (letrec ((x8006
                                                                                                             (r
                                                                                                              'move-toward)))
-                                                                                                    (x8009
+                                                                                                    (x8006
                                                                                                      p))))
                                                                                           (new-cons-zombies
-                                                                                           x8010
-                                                                                           x8008))))
-                                                                                (λ x8012
-                                                                                  x8007))))
-                                                                      g8006)
+                                                                                           x8007
+                                                                                           x8005))))
+                                                                                (λ x8009
+                                                                                  x8004))))
+                                                                      g8003)
                                                                     (if cnd
-                                                                      (letrec ((g8013
-                                                                                (letrec ((x8018
+                                                                      (letrec ((g8010
+                                                                                (letrec ((x8015
                                                                                           (c
                                                                                            s))
-                                                                                         (x8014
-                                                                                          (letrec ((x8017
+                                                                                         (x8011
+                                                                                          (letrec ((x8014
                                                                                                     (z
                                                                                                      'draw-on/color))
-                                                                                                   (x8015
-                                                                                                    (letrec ((x8016
+                                                                                                   (x8012
+                                                                                                    (letrec ((x8013
                                                                                                               (r
                                                                                                                'draw-on/color)))
-                                                                                                      (x8016
+                                                                                                      (x8013
                                                                                                        c
                                                                                                        s))))
-                                                                                            (x8017
+                                                                                            (x8014
                                                                                              c
-                                                                                             x8015))))
-                                                                                  (λ x8018
-                                                                                    x8014))))
-                                                                        g8013)
+                                                                                             x8012))))
+                                                                                  (λ x8015
+                                                                                    x8011))))
+                                                                        g8010)
                                                                       (if cnd
-                                                                        (letrec ((g8019
-                                                                                  (letrec ((x8025
+                                                                        (letrec ((g8016
+                                                                                  (letrec ((x8022
                                                                                             (p))
-                                                                                           (x8020
-                                                                                            (letrec ((x8023
-                                                                                                      (letrec ((x8024
+                                                                                           (x8017
+                                                                                            (letrec ((x8020
+                                                                                                      (letrec ((x8021
                                                                                                                 (z
                                                                                                                  'touching?)))
-                                                                                                        (x8024
+                                                                                                        (x8021
                                                                                                          p)))
-                                                                                                     (x8021
-                                                                                                      (letrec ((x8022
+                                                                                                     (x8018
+                                                                                                      (letrec ((x8019
                                                                                                                 (r
                                                                                                                  'touching?)))
-                                                                                                        (x8022
+                                                                                                        (x8019
                                                                                                          p))))
-                                                                                              (or x8023
-                                                                                                  x8021))))
-                                                                                    (λ x8025
-                                                                                      x8020))))
-                                                                          g8019)
+                                                                                              (or x8020
+                                                                                                  x8018))))
+                                                                                    (λ x8022
+                                                                                      x8017))))
+                                                                          g8016)
                                                                         (if cnd
-                                                                          (letrec ((g8026
-                                                                                    (letrec ((x8053
+                                                                          (letrec ((g8023
+                                                                                    (letrec ((x8047
                                                                                               (dead))
-                                                                                             (x8027
-                                                                                              (letrec ((x8040
-                                                                                                        (letrec ((x8044
-                                                                                                                  (letrec ((x8049
-                                                                                                                            (letrec ((x8052
+                                                                                             (x8024
+                                                                                              (letrec ((x8034
+                                                                                                        (letrec ((x8038
+                                                                                                                  (letrec ((x8043
+                                                                                                                            (letrec ((x8046
                                                                                                                                       (r
                                                                                                                                        'touching?))
-                                                                                                                                     (x8050
-                                                                                                                                      (letrec ((x8051
+                                                                                                                                     (x8044
+                                                                                                                                      (letrec ((x8045
                                                                                                                                                 (z
                                                                                                                                                  'posn)))
-                                                                                                                                        (x8051))))
-                                                                                                                              (x8052
-                                                                                                                               x8050)))
-                                                                                                                           (x8045
-                                                                                                                            (letrec ((x8048
+                                                                                                                                        (x8045))))
+                                                                                                                              (x8046
+                                                                                                                               x8044)))
+                                                                                                                           (x8039
+                                                                                                                            (letrec ((x8042
                                                                                                                                       (dead
                                                                                                                                        'touching?))
-                                                                                                                                     (x8046
-                                                                                                                                      (letrec ((x8047
+                                                                                                                                     (x8040
+                                                                                                                                      (letrec ((x8041
                                                                                                                                                 (z
                                                                                                                                                  'posn)))
-                                                                                                                                        (x8047))))
-                                                                                                                              (x8048
-                                                                                                                               x8046))))
-                                                                                                                    (or x8049
-                                                                                                                        x8045)))
-                                                                                                                 (x8041
-                                                                                                                  (letrec ((x8043
+                                                                                                                                        (x8041))))
+                                                                                                                              (x8042
+                                                                                                                               x8040))))
+                                                                                                                    (or x8043
+                                                                                                                        x8039)))
+                                                                                                                 (x8035
+                                                                                                                  (letrec ((x8037
                                                                                                                             (r
                                                                                                                              'kill-all))
-                                                                                                                           (x8042
+                                                                                                                           (x8036
                                                                                                                             (new-cons-zombies
                                                                                                                              z
                                                                                                                              dead)))
-                                                                                                                    (x8043
-                                                                                                                     x8042))))
-                                                                                                          (x8044
-                                                                                                           x8041)))
-                                                                                                       (x8028
-                                                                                                        (letrec ((x8029
-                                                                                                                  (letrec ((x8036
-                                                                                                                            (letrec ((x8037
-                                                                                                                                      (letrec ((x8038
-                                                                                                                                                (letrec ((x8039
-                                                                                                                                                          (r
-                                                                                                                                                           'kill-all)))
-                                                                                                                                                  (x8039
-                                                                                                                                                   dead))))
-                                                                                                                                        (res
-                                                                                                                                         x8038))))
-                                                                                                                              (x8037)))
-                                                                                                                           (x8030
-                                                                                                                            (letrec ((x8033
-                                                                                                                                      (letrec ((x8034
-                                                                                                                                                (letrec ((x8035
-                                                                                                                                                          (res
-                                                                                                                                                           'undead)))
-                                                                                                                                                  (x8035))))
-                                                                                                                                        (new-cons-zombies
-                                                                                                                                         z
-                                                                                                                                         x8034)))
-                                                                                                                                     (x8031
-                                                                                                                                      (letrec ((x8032
-                                                                                                                                                (res
-                                                                                                                                                 'dead)))
-                                                                                                                                        (x8032))))
-                                                                                                                              (new-horde
-                                                                                                                               x8033
-                                                                                                                               x8031))))
-                                                                                                                    (let x8036 x8030))))
+                                                                                                                    (x8037
+                                                                                                                     x8036))))
+                                                                                                          (x8038
+                                                                                                           x8035)))
+                                                                                                       (x8025
+                                                                                                        (letrec ((x8026
+                                                                                                                  (letrec ((res
+                                                                                                                            (letrec ((x8027
+                                                                                                                                      (r
+                                                                                                                                       'kill-all)))
+                                                                                                                              (x8027
+                                                                                                                               dead))))
+                                                                                                                    (letrec ((g8028
+                                                                                                                              (letrec ((x8031
+                                                                                                                                        (letrec ((x8032
+                                                                                                                                                  (letrec ((x8033
+                                                                                                                                                            (res
+                                                                                                                                                             'undead)))
+                                                                                                                                                    (x8033))))
+                                                                                                                                          (new-cons-zombies
+                                                                                                                                           z
+                                                                                                                                           x8032)))
+                                                                                                                                       (x8029
+                                                                                                                                        (letrec ((x8030
+                                                                                                                                                  (res
+                                                                                                                                                   'dead)))
+                                                                                                                                          (x8030))))
+                                                                                                                                (new-horde
+                                                                                                                                 x8031
+                                                                                                                                 x8029))))
+                                                                                                                      g8028))))
                                                                                                           (else
-                                                                                                           x8029))))
+                                                                                                           x8026))))
                                                                                                 (cond
-                                                                                                 x8040
-                                                                                                 x8028))))
-                                                                                      (λ x8053
-                                                                                        x8027))))
-                                                                            g8026)
-                                                                          (letrec ((g8054
+                                                                                                 x8034
+                                                                                                 x8025))))
+                                                                                      (λ x8047
+                                                                                        x8024))))
+                                                                            g8023)
+                                                                          (letrec ((g8048
                                                                                     "unknown message"))
-                                                                            g8054)))))))
-                                                          (λ x8055 x8005))))
-                                                g8004)))
+                                                                            g8048)))))))
+                                                          (λ x8049 x8002))))
+                                                g8001)))
                                            (new-mt-zombies
                                             (lambda ()
-                                              (letrec ((g8056
-                                                        (letrec ((x8070 (msg))
-                                                                 (x8057
+                                              (letrec ((g8050
+                                                        (letrec ((x8064 (msg))
+                                                                 (x8051
                                                                   (if cnd
-                                                                    (letrec ((g8058
-                                                                              (letrec ((x8060
+                                                                    (letrec ((g8052
+                                                                              (letrec ((x8054
                                                                                         (p))
-                                                                                       (x8059
+                                                                                       (x8053
                                                                                         (new-mt-zombies)))
-                                                                                (λ x8060
-                                                                                  x8059))))
-                                                                      g8058)
+                                                                                (λ x8054
+                                                                                  x8053))))
+                                                                      g8052)
                                                                     (if cnd
-                                                                      (letrec ((g8061
-                                                                                (letrec ((x8062
+                                                                      (letrec ((g8055
+                                                                                (letrec ((x8056
                                                                                           (c
                                                                                            s)))
-                                                                                  (λ x8062
+                                                                                  (λ x8056
                                                                                     s))))
-                                                                        g8061)
+                                                                        g8055)
                                                                       (if cnd
-                                                                        (letrec ((g8063
-                                                                                  (letrec ((x8064
+                                                                        (letrec ((g8057
+                                                                                  (letrec ((x8058
                                                                                             (p)))
-                                                                                    (λ x8064
+                                                                                    (λ x8058
                                                                                       #f))))
-                                                                          g8063)
+                                                                          g8057)
                                                                         (if cnd
-                                                                          (letrec ((g8065
-                                                                                    (letrec ((x8068
+                                                                          (letrec ((g8059
+                                                                                    (letrec ((x8062
                                                                                               (dead))
-                                                                                             (x8066
-                                                                                              (letrec ((x8067
+                                                                                             (x8060
+                                                                                              (letrec ((x8061
                                                                                                         (new-mt-zombies)))
                                                                                                 (new-horde
-                                                                                                 x8067
+                                                                                                 x8061
                                                                                                  dead))))
-                                                                                      (λ x8068
-                                                                                        x8066))))
-                                                                            g8065)
-                                                                          (letrec ((g8069
+                                                                                      (λ x8062
+                                                                                        x8060))))
+                                                                            g8059)
+                                                                          (letrec ((g8063
                                                                                     "unknown message"))
-                                                                            g8069)))))))
-                                                          (λ x8070 x8057))))
-                                                g8056)))
+                                                                            g8063)))))))
+                                                          (λ x8064 x8051))))
+                                                g8050)))
                                            (new-zombie
                                             (lambda (p)
-                                              (letrec ((g8071
-                                                        (letrec ((x8090 (msg))
-                                                                 (x8072
+                                              (letrec ((g8065
+                                                        (letrec ((x8084 (msg))
+                                                                 (x8066
                                                                   (if cnd
-                                                                    (letrec ((g8073
+                                                                    (letrec ((g8067
                                                                               (λ ()
                                                                                 p)))
-                                                                      g8073)
+                                                                      g8067)
                                                                     (if cnd
-                                                                      (letrec ((g8074
-                                                                                (letrec ((x8078
+                                                                      (letrec ((g8068
+                                                                                (letrec ((x8072
                                                                                           (c
                                                                                            s))
-                                                                                         (x8075
-                                                                                          (letrec ((x8077
+                                                                                         (x8069
+                                                                                          (letrec ((x8071
                                                                                                     (p
                                                                                                      'draw-on/image))
-                                                                                                   (x8076
+                                                                                                   (x8070
                                                                                                     (circle
                                                                                                      ZOMBIE-RADIUS
                                                                                                      "solid"
                                                                                                      c)))
-                                                                                            (x8077
-                                                                                             x8076
+                                                                                            (x8071
+                                                                                             x8070
                                                                                              s))))
-                                                                                  (λ x8078
-                                                                                    x8075))))
-                                                                        g8074)
+                                                                                  (λ x8072
+                                                                                    x8069))))
+                                                                        g8068)
                                                                       (if cnd
-                                                                        (letrec ((g8079
-                                                                                  (letrec ((x8083
+                                                                        (letrec ((g8073
+                                                                                  (letrec ((x8077
                                                                                             (q))
-                                                                                           (x8080
-                                                                                            (letrec ((x8081
-                                                                                                      (letrec ((x8082
+                                                                                           (x8074
+                                                                                            (letrec ((x8075
+                                                                                                      (letrec ((x8076
                                                                                                                 (p
                                                                                                                  'dist)))
-                                                                                                        (x8082
+                                                                                                        (x8076
                                                                                                          q))))
                                                                                               (<=
-                                                                                               x8081
+                                                                                               x8075
                                                                                                ZOMBIE-RADIUS))))
-                                                                                    (λ x8083
-                                                                                      x8080))))
-                                                                          g8079)
+                                                                                    (λ x8077
+                                                                                      x8074))))
+                                                                          g8073)
                                                                         (if cnd
-                                                                          (letrec ((g8084
-                                                                                    (letrec ((x8088
+                                                                          (letrec ((g8078
+                                                                                    (letrec ((x8082
                                                                                               (q))
-                                                                                             (x8085
-                                                                                              (letrec ((x8086
-                                                                                                        (letrec ((x8087
+                                                                                             (x8079
+                                                                                              (letrec ((x8080
+                                                                                                        (letrec ((x8081
                                                                                                                   (p
                                                                                                                    'move-toward/speed)))
-                                                                                                          (x8087
+                                                                                                          (x8081
                                                                                                            q
                                                                                                            ZOMBIE-SPEED))))
                                                                                                 (new-zombie
-                                                                                                 x8086))))
-                                                                                      (λ x8088
-                                                                                        x8085))))
-                                                                            g8084)
-                                                                          (letrec ((g8089
+                                                                                                 x8080))))
+                                                                                      (λ x8082
+                                                                                        x8079))))
+                                                                            g8078)
+                                                                          (letrec ((g8083
                                                                                     "unknown message"))
-                                                                            g8089)))))))
-                                                          (λ x8090 x8072))))
-                                                g8071)))
+                                                                            g8083)))))))
+                                                          (λ x8084 x8066))))
+                                                g8065)))
                                            (new-posn
                                             (lambda (x y)
-                                              (letrec ((g8091
+                                              (letrec ((g8085
                                                         (letrec ((this
-                                                                  (letrec ((x8148
+                                                                  (letrec ((x8142
                                                                             (msg))
-                                                                           (x8092
+                                                                           (x8086
                                                                             (if cnd
-                                                                              (letrec ((g8093
+                                                                              (letrec ((g8087
                                                                                         (λ ()
                                                                                           x)))
-                                                                                g8093)
+                                                                                g8087)
                                                                               (if cnd
-                                                                                (letrec ((g8094
+                                                                                (letrec ((g8088
                                                                                           (λ ()
                                                                                             y)))
-                                                                                  g8094)
+                                                                                  g8088)
                                                                                 (if cnd
-                                                                                  (letrec ((g8095
+                                                                                  (letrec ((g8089
                                                                                             (λ ()
                                                                                               this)))
-                                                                                    g8095)
+                                                                                    g8089)
                                                                                   (if cnd
-                                                                                    (letrec ((g8096
-                                                                                              (letrec ((x8126
+                                                                                    (letrec ((g8090
+                                                                                              (letrec ((x8120
                                                                                                         (p
                                                                                                          speed))
-                                                                                                       (x8097
-                                                                                                        (letrec ((x8112
-                                                                                                                  (letrec ((x8122
-                                                                                                                            (letrec ((x8123
-                                                                                                                                      (letrec ((x8124
-                                                                                                                                                (letrec ((x8125
+                                                                                                       (x8091
+                                                                                                        (letrec ((x8106
+                                                                                                                  (letrec ((x8116
+                                                                                                                            (letrec ((x8117
+                                                                                                                                      (letrec ((x8118
+                                                                                                                                                (letrec ((x8119
                                                                                                                                                           (p
                                                                                                                                                            'x)))
-                                                                                                                                                  (x8125))))
+                                                                                                                                                  (x8119))))
                                                                                                                                         (-
-                                                                                                                                         x8124
+                                                                                                                                         x8118
                                                                                                                                          x))))
                                                                                                                               (δx
-                                                                                                                               x8123)))
-                                                                                                                           (x8118
-                                                                                                                            (letrec ((x8119
-                                                                                                                                      (letrec ((x8120
-                                                                                                                                                (letrec ((x8121
+                                                                                                                               x8117)))
+                                                                                                                           (x8112
+                                                                                                                            (letrec ((x8113
+                                                                                                                                      (letrec ((x8114
+                                                                                                                                                (letrec ((x8115
                                                                                                                                                           (p
                                                                                                                                                            'y)))
-                                                                                                                                                  (x8121))))
+                                                                                                                                                  (x8115))))
                                                                                                                                         (-
-                                                                                                                                         x8120
+                                                                                                                                         x8114
                                                                                                                                          y))))
                                                                                                                               (δy
-                                                                                                                               x8119)))
-                                                                                                                           (x8113
-                                                                                                                            (letrec ((x8114
-                                                                                                                                      (letrec ((x8115
-                                                                                                                                                (letrec ((x8117
+                                                                                                                               x8113)))
+                                                                                                                           (x8107
+                                                                                                                            (letrec ((x8108
+                                                                                                                                      (letrec ((x8109
+                                                                                                                                                (letrec ((x8111
                                                                                                                                                           (abs
                                                                                                                                                            δx))
-                                                                                                                                                         (x8116
+                                                                                                                                                         (x8110
                                                                                                                                                           (abs
                                                                                                                                                            δy)))
                                                                                                                                                   (max
-                                                                                                                                                   x8117
-                                                                                                                                                   x8116))))
+                                                                                                                                                   x8111
+                                                                                                                                                   x8110))))
                                                                                                                                         (min
                                                                                                                                          speed
-                                                                                                                                         x8115))))
+                                                                                                                                         x8109))))
                                                                                                                               (move-distance
-                                                                                                                               x8114))))
-                                                                                                                    (x8122
-                                                                                                                     x8118
-                                                                                                                     x8113)))
-                                                                                                                 (x8098
-                                                                                                                  (letrec ((x8104
-                                                                                                                            (letrec ((x8109
-                                                                                                                                      (letrec ((x8111
+                                                                                                                               x8108))))
+                                                                                                                    (x8116
+                                                                                                                     x8112
+                                                                                                                     x8107)))
+                                                                                                                 (x8092
+                                                                                                                  (letrec ((x8098
+                                                                                                                            (letrec ((x8103
+                                                                                                                                      (letrec ((x8105
                                                                                                                                                 (abs
                                                                                                                                                  δx))
-                                                                                                                                               (x8110
+                                                                                                                                               (x8104
                                                                                                                                                 (abs
                                                                                                                                                  δy)))
                                                                                                                                         (<
-                                                                                                                                         x8111
-                                                                                                                                         x8110)))
-                                                                                                                                     (x8105
-                                                                                                                                      (letrec ((x8108
+                                                                                                                                         x8105
+                                                                                                                                         x8104)))
+                                                                                                                                     (x8099
+                                                                                                                                      (letrec ((x8102
                                                                                                                                                 (this
                                                                                                                                                  'move))
-                                                                                                                                               (x8106
-                                                                                                                                                (letrec ((x-cnd8107
+                                                                                                                                               (x8100
+                                                                                                                                                (letrec ((x-cnd8101
                                                                                                                                                           (positive?
                                                                                                                                                            δy)))
-                                                                                                                                                  (if x-cnd8107
+                                                                                                                                                  (if x-cnd8101
                                                                                                                                                     move-distance
                                                                                                                                                     (-
                                                                                                                                                      0
                                                                                                                                                      move-distance)))))
-                                                                                                                                        (x8108
+                                                                                                                                        (x8102
                                                                                                                                          0
-                                                                                                                                         x8106))))
-                                                                                                                              (x8109
-                                                                                                                               x8105)))
-                                                                                                                           (x8099
-                                                                                                                            (letrec ((x8100
-                                                                                                                                      (letrec ((x8103
+                                                                                                                                         x8100))))
+                                                                                                                              (x8103
+                                                                                                                               x8099)))
+                                                                                                                           (x8093
+                                                                                                                            (letrec ((x8094
+                                                                                                                                      (letrec ((x8097
                                                                                                                                                 (this
                                                                                                                                                  'move))
-                                                                                                                                               (x8101
-                                                                                                                                                (letrec ((x-cnd8102
+                                                                                                                                               (x8095
+                                                                                                                                                (letrec ((x-cnd8096
                                                                                                                                                           (positive?
                                                                                                                                                            δx)))
-                                                                                                                                                  (if x-cnd8102
+                                                                                                                                                  (if x-cnd8096
                                                                                                                                                     move-distance
                                                                                                                                                     (-
                                                                                                                                                      0
                                                                                                                                                      move-distance)))))
-                                                                                                                                        (x8103
-                                                                                                                                         x8101
+                                                                                                                                        (x8097
+                                                                                                                                         x8095
                                                                                                                                          0))))
                                                                                                                               (else
-                                                                                                                               x8100))))
+                                                                                                                               x8094))))
                                                                                                                     (cond
-                                                                                                                     x8104
-                                                                                                                     x8099))))
-                                                                                                          (let* x8112 x8098))))
-                                                                                                (λ x8126
-                                                                                                  x8097))))
-                                                                                      g8096)
+                                                                                                                     x8098
+                                                                                                                     x8093))))
+                                                                                                          (let* x8106 x8092))))
+                                                                                                (λ x8120
+                                                                                                  x8091))))
+                                                                                      g8090)
                                                                                     (if cnd
-                                                                                      (letrec ((g8127
-                                                                                                (letrec ((x8131
+                                                                                      (letrec ((g8121
+                                                                                                (letrec ((x8125
                                                                                                           (δx
                                                                                                            δy))
-                                                                                                         (x8128
-                                                                                                          (letrec ((x8130
+                                                                                                         (x8122
+                                                                                                          (letrec ((x8124
                                                                                                                     (+
                                                                                                                      x
                                                                                                                      δx))
-                                                                                                                   (x8129
+                                                                                                                   (x8123
                                                                                                                     (+
                                                                                                                      y
                                                                                                                      δy)))
                                                                                                             (new-posn
-                                                                                                             x8130
-                                                                                                             x8129))))
-                                                                                                  (λ x8131
-                                                                                                    x8128))))
-                                                                                        g8127)
+                                                                                                             x8124
+                                                                                                             x8123))))
+                                                                                                  (λ x8125
+                                                                                                    x8122))))
+                                                                                        g8121)
                                                                                       (if cnd
-                                                                                        (letrec ((g8132
-                                                                                                  (letrec ((x8134
+                                                                                        (letrec ((g8126
+                                                                                                  (letrec ((x8128
                                                                                                             (img
                                                                                                              scn))
-                                                                                                           (x8133
+                                                                                                           (x8127
                                                                                                             (place-image
                                                                                                              img
                                                                                                              x
                                                                                                              y
                                                                                                              scn)))
-                                                                                                    (λ x8134
-                                                                                                      x8133))))
-                                                                                          g8132)
+                                                                                                    (λ x8128
+                                                                                                      x8127))))
+                                                                                          g8126)
                                                                                         (if cnd
-                                                                                          (letrec ((g8135
-                                                                                                    (letrec ((x8146
+                                                                                          (letrec ((g8129
+                                                                                                    (letrec ((x8140
                                                                                                               (p))
-                                                                                                             (x8136
-                                                                                                              (letrec ((x8137
-                                                                                                                        (letrec ((x8142
-                                                                                                                                  (letrec ((x8143
-                                                                                                                                            (letrec ((x8144
-                                                                                                                                                      (letrec ((x8145
+                                                                                                             (x8130
+                                                                                                              (letrec ((x8131
+                                                                                                                        (letrec ((x8136
+                                                                                                                                  (letrec ((x8137
+                                                                                                                                            (letrec ((x8138
+                                                                                                                                                      (letrec ((x8139
                                                                                                                                                                 (p
                                                                                                                                                                  'y)))
-                                                                                                                                                        (x8145))))
+                                                                                                                                                        (x8139))))
                                                                                                                                               (-
-                                                                                                                                               x8144
+                                                                                                                                               x8138
                                                                                                                                                y))))
                                                                                                                                     (sqr
-                                                                                                                                     x8143)))
-                                                                                                                                 (x8138
-                                                                                                                                  (letrec ((x8139
-                                                                                                                                            (letrec ((x8140
-                                                                                                                                                      (letrec ((x8141
+                                                                                                                                     x8137)))
+                                                                                                                                 (x8132
+                                                                                                                                  (letrec ((x8133
+                                                                                                                                            (letrec ((x8134
+                                                                                                                                                      (letrec ((x8135
                                                                                                                                                                 (p
                                                                                                                                                                  'x)))
-                                                                                                                                                        (x8141))))
+                                                                                                                                                        (x8135))))
                                                                                                                                               (-
-                                                                                                                                               x8140
+                                                                                                                                               x8134
                                                                                                                                                x))))
                                                                                                                                     (sqr
-                                                                                                                                     x8139))))
+                                                                                                                                     x8133))))
                                                                                                                           (+
-                                                                                                                           x8142
-                                                                                                                           x8138))))
+                                                                                                                           x8136
+                                                                                                                           x8132))))
                                                                                                                 (sqrt
-                                                                                                                 x8137))))
-                                                                                                      (λ x8146
-                                                                                                        x8136))))
-                                                                                            g8135)
-                                                                                          (letrec ((g8147
+                                                                                                                 x8131))))
+                                                                                                      (λ x8140
+                                                                                                        x8130))))
+                                                                                            g8129)
+                                                                                          (letrec ((g8141
                                                                                                     "unknown message"))
-                                                                                            g8147))))))))))
-                                                                    (λ x8148
-                                                                      x8092))))
-                                                          (letrec ((g8149
+                                                                                            g8141))))))))))
+                                                                    (λ x8142
+                                                                      x8086))))
+                                                          (letrec ((g8143
                                                                     this))
-                                                            g8149))))
-                                                g8091)))
+                                                            g8143))))
+                                                g8085)))
                                            (w0
-                                            (letrec ((x8163
-                                                      (letrec ((x8164
+                                            (letrec ((x8157
+                                                      (letrec ((x8158
                                                                 (new-posn
                                                                  0
                                                                  0)))
-                                                        (new-player x8164)))
-                                                     (x8162 (new-posn 0 0))
-                                                     (x8150
-                                                      (letrec ((x8155
-                                                                (letrec ((x8160
-                                                                          (letrec ((x8161
+                                                        (new-player x8158)))
+                                                     (x8156 (new-posn 0 0))
+                                                     (x8144
+                                                      (letrec ((x8149
+                                                                (letrec ((x8154
+                                                                          (letrec ((x8155
                                                                                     (new-posn
                                                                                      100
                                                                                      300)))
                                                                             (new-zombie
-                                                                             x8161)))
-                                                                         (x8156
-                                                                          (letrec ((x8158
-                                                                                    (letrec ((x8159
+                                                                             x8155)))
+                                                                         (x8150
+                                                                          (letrec ((x8152
+                                                                                    (letrec ((x8153
                                                                                               (new-posn
                                                                                                100
                                                                                                200)))
                                                                                       (new-zombie
-                                                                                       x8159)))
-                                                                                   (x8157
+                                                                                       x8153)))
+                                                                                   (x8151
                                                                                     (new-mt-zombies)))
                                                                             (new-cons-zombies
-                                                                             x8158
-                                                                             x8157))))
+                                                                             x8152
+                                                                             x8151))))
                                                                   (new-cons-zombies
-                                                                   x8160
-                                                                   x8156)))
-                                                               (x8151
-                                                                (letrec ((x8153
-                                                                          (letrec ((x8154
+                                                                   x8154
+                                                                   x8150)))
+                                                               (x8145
+                                                                (letrec ((x8147
+                                                                          (letrec ((x8148
                                                                                     (new-posn
                                                                                      200
                                                                                      200)))
                                                                             (new-zombie
-                                                                             x8154)))
-                                                                         (x8152
+                                                                             x8148)))
+                                                                         (x8146
                                                                           (new-mt-zombies)))
                                                                   (new-cons-zombies
-                                                                   x8153
-                                                                   x8152))))
+                                                                   x8147
+                                                                   x8146))))
                                                         (new-horde
-                                                         x8155
-                                                         x8151))))
-                                              (new-world x8163 x8162 x8150))))
-                                    (letrec ((g8165
-                                              (letrec ((x8178
+                                                         x8149
+                                                         x8145))))
+                                              (new-world x8157 x8156 x8144))))
+                                    (letrec ((g8159
+                                              (letrec ((x8172
                                                         ((lambda (j7143
                                                                   k7144
                                                                   f7145)
-                                                           (letrec ((g8179
+                                                           (letrec ((g8173
                                                                      (lambda (g7142)
-                                                                       (letrec ((g8180
-                                                                                 (letrec ((x8181
-                                                                                           (letrec ((x8182
+                                                                       (letrec ((g8174
+                                                                                 (letrec ((x8175
+                                                                                           (letrec ((x8176
                                                                                                      (any/c
                                                                                                       j7143
                                                                                                       k7144
                                                                                                       g7142)))
                                                                                              (f7145
-                                                                                              x8182))))
+                                                                                              x8176))))
                                                                                    (boolean?/c
                                                                                     j7143
                                                                                     k7144
-                                                                                    x8181))))
-                                                                         g8180))))
-                                                             g8179))
+                                                                                    x8175))))
+                                                                         g8174))))
+                                                             g8173))
                                                          'module
                                                          'importer
                                                          image?))
-                                                       (x8177 (input)))
-                                                (x8178 x8177)))
-                                             (g8166
-                                              (letrec ((x8185
+                                                       (x8171 (input)))
+                                                (x8172 x8171)))
+                                             (g8160
+                                              (letrec ((x8179
                                                         ((lambda (j7148
                                                                   k7149
                                                                   f7150)
-                                                           (letrec ((g8186
+                                                           (letrec ((g8180
                                                                      (lambda (g7146
                                                                               g7147)
-                                                                       (letrec ((g8187
-                                                                                 (letrec ((x8188
-                                                                                           (letrec ((x8190
+                                                                       (letrec ((g8181
+                                                                                 (letrec ((x8182
+                                                                                           (letrec ((x8184
                                                                                                      (real?/c
                                                                                                       j7148
                                                                                                       k7149
                                                                                                       g7146))
-                                                                                                    (x8189
+                                                                                                    (x8183
                                                                                                      (real?/c
                                                                                                       j7148
                                                                                                       k7149
                                                                                                       g7147)))
                                                                                              (f7150
-                                                                                              x8190
-                                                                                              x8189))))
+                                                                                              x8184
+                                                                                              x8183))))
                                                                                    (image?
                                                                                     j7148
                                                                                     k7149
-                                                                                    x8188))))
-                                                                         g8187))))
-                                                             g8186))
+                                                                                    x8182))))
+                                                                         g8181))))
+                                                             g8180))
                                                          'module
                                                          'importer
                                                          empty-scene))
-                                                       (x8184 (input))
-                                                       (x8183 (input)))
-                                                (x8185 x8184 x8183)))
-                                             (g8167
-                                              (letrec ((x8195
+                                                       (x8178 (input))
+                                                       (x8177 (input)))
+                                                (x8179 x8178 x8177)))
+                                             (g8161
+                                              (letrec ((x8189
                                                         ((lambda (j7155
                                                                   k7156
                                                                   f7157)
-                                                           (letrec ((g8196
+                                                           (letrec ((g8190
                                                                      (lambda (g7151
                                                                               g7152
                                                                               g7153
                                                                               g7154)
-                                                                       (letrec ((g8197
-                                                                                 (letrec ((x8198
-                                                                                           (letrec ((x8202
+                                                                       (letrec ((g8191
+                                                                                 (letrec ((x8192
+                                                                                           (letrec ((x8196
                                                                                                      (image?/c
                                                                                                       j7155
                                                                                                       k7156
                                                                                                       g7151))
-                                                                                                    (x8201
+                                                                                                    (x8195
                                                                                                      (real?/c
                                                                                                       j7155
                                                                                                       k7156
                                                                                                       g7152))
-                                                                                                    (x8200
+                                                                                                    (x8194
                                                                                                      (real?/c
                                                                                                       j7155
                                                                                                       k7156
                                                                                                       g7153))
-                                                                                                    (x8199
+                                                                                                    (x8193
                                                                                                      (image?
                                                                                                       j7155
                                                                                                       k7156
                                                                                                       g7154)))
                                                                                              (f7157
-                                                                                              x8202
-                                                                                              x8201
-                                                                                              x8200
-                                                                                              x8199))))
+                                                                                              x8196
+                                                                                              x8195
+                                                                                              x8194
+                                                                                              x8193))))
                                                                                    (image?
                                                                                     j7155
                                                                                     k7156
-                                                                                    x8198))))
-                                                                         g8197))))
-                                                             g8196))
+                                                                                    x8192))))
+                                                                         g8191))))
+                                                             g8190))
                                                          'module
                                                          'importer
                                                          place-image))
-                                                       (x8194 (input))
-                                                       (x8193 (input))
-                                                       (x8192 (input))
-                                                       (x8191 (input)))
-                                                (x8195
-                                                 x8194
-                                                 x8193
-                                                 x8192
-                                                 x8191)))
-                                             (g8168
-                                              (letrec ((x8206
+                                                       (x8188 (input))
+                                                       (x8187 (input))
+                                                       (x8186 (input))
+                                                       (x8185 (input)))
+                                                (x8189
+                                                 x8188
+                                                 x8187
+                                                 x8186
+                                                 x8185)))
+                                             (g8162
+                                              (letrec ((x8200
                                                         ((lambda (j7161
                                                                   k7162
                                                                   f7163)
-                                                           (letrec ((g8207
+                                                           (letrec ((g8201
                                                                      (lambda (g7158
                                                                               g7159
                                                                               g7160)
-                                                                       (letrec ((g8208
-                                                                                 (letrec ((x8209
-                                                                                           (letrec ((x8212
+                                                                       (letrec ((g8202
+                                                                                 (letrec ((x8203
+                                                                                           (letrec ((x8206
                                                                                                      (real?/c
                                                                                                       j7161
                                                                                                       k7162
                                                                                                       g7158))
-                                                                                                    (x8211
+                                                                                                    (x8205
                                                                                                      (string?/c
                                                                                                       j7161
                                                                                                       k7162
                                                                                                       g7159))
-                                                                                                    (x8210
+                                                                                                    (x8204
                                                                                                      (string?/c
                                                                                                       j7161
                                                                                                       k7162
                                                                                                       g7160)))
                                                                                              (f7163
-                                                                                              x8212
-                                                                                              x8211
-                                                                                              x8210))))
+                                                                                              x8206
+                                                                                              x8205
+                                                                                              x8204))))
                                                                                    (image?
                                                                                     j7161
                                                                                     k7162
-                                                                                    x8209))))
-                                                                         g8208))))
-                                                             g8207))
+                                                                                    x8203))))
+                                                                         g8202))))
+                                                             g8201))
                                                          'module
                                                          'importer
                                                          circle))
-                                                       (x8205 (input))
-                                                       (x8204 (input))
-                                                       (x8203 (input)))
-                                                (x8206 x8205 x8204 x8203)))
-                                             (g8169
-                                              (letrec ((x8216
+                                                       (x8199 (input))
+                                                       (x8198 (input))
+                                                       (x8197 (input)))
+                                                (x8200 x8199 x8198 x8197)))
+                                             (g8163
+                                              (letrec ((x8210
                                                         ((lambda (j7167
                                                                   k7168
                                                                   f7169)
-                                                           (letrec ((g8217
+                                                           (letrec ((g8211
                                                                      (lambda (g7164
                                                                               g7165
                                                                               g7166)
-                                                                       (letrec ((g8218
-                                                                                 (letrec ((x8219
-                                                                                           (letrec ((x8222
+                                                                       (letrec ((g8212
+                                                                                 (letrec ((x8213
+                                                                                           (letrec ((x8216
                                                                                                      (player/c
                                                                                                       j7167
                                                                                                       k7168
                                                                                                       g7164))
-                                                                                                    (x8221
+                                                                                                    (x8215
                                                                                                      (posn/c
                                                                                                       j7167
                                                                                                       k7168
                                                                                                       g7165))
-                                                                                                    (x8220
+                                                                                                    (x8214
                                                                                                      (horde/c
                                                                                                       j7167
                                                                                                       k7168
                                                                                                       g7166)))
                                                                                              (f7169
-                                                                                              x8222
-                                                                                              x8221
-                                                                                              x8220))))
+                                                                                              x8216
+                                                                                              x8215
+                                                                                              x8214))))
                                                                                    (world/c
                                                                                     j7167
                                                                                     k7168
-                                                                                    x8219))))
-                                                                         g8218))))
-                                                             g8217))
+                                                                                    x8213))))
+                                                                         g8212))))
+                                                             g8211))
                                                          'module
                                                          'importer
                                                          new-world))
-                                                       (x8215 (input))
-                                                       (x8214 (input))
-                                                       (x8213 (input)))
-                                                (x8216 x8215 x8214 x8213)))
-                                             (g8170
-                                              (letrec ((x8224
+                                                       (x8209 (input))
+                                                       (x8208 (input))
+                                                       (x8207 (input)))
+                                                (x8210 x8209 x8208 x8207)))
+                                             (g8164
+                                              (letrec ((x8218
                                                         ((lambda (j7171
                                                                   k7172
                                                                   f7173)
-                                                           (letrec ((g8225
+                                                           (letrec ((g8219
                                                                      (lambda (g7170)
-                                                                       (letrec ((g8226
-                                                                                 (letrec ((x8227
-                                                                                           (letrec ((x8228
+                                                                       (letrec ((g8220
+                                                                                 (letrec ((x8221
+                                                                                           (letrec ((x8222
                                                                                                      (posn/c
                                                                                                       j7171
                                                                                                       k7172
                                                                                                       g7170)))
                                                                                              (f7173
-                                                                                              x8228))))
+                                                                                              x8222))))
                                                                                    (player/c
                                                                                     j7171
                                                                                     k7172
-                                                                                    x8227))))
-                                                                         g8226))))
-                                                             g8225))
+                                                                                    x8221))))
+                                                                         g8220))))
+                                                             g8219))
                                                          'module
                                                          'importer
                                                          new-player))
-                                                       (x8223 (input)))
-                                                (x8224 x8223)))
-                                             (g8171
-                                              (letrec ((x8231
+                                                       (x8217 (input)))
+                                                (x8218 x8217)))
+                                             (g8165
+                                              (letrec ((x8225
                                                         ((lambda (j7176
                                                                   k7177
                                                                   f7178)
-                                                           (letrec ((g8232
+                                                           (letrec ((g8226
                                                                      (lambda (g7174
                                                                               g7175)
-                                                                       (letrec ((g8233
-                                                                                 (letrec ((x8234
-                                                                                           (letrec ((x8236
+                                                                       (letrec ((g8227
+                                                                                 (letrec ((x8228
+                                                                                           (letrec ((x8230
                                                                                                      (zombies/c
                                                                                                       j7176
                                                                                                       k7177
                                                                                                       g7174))
-                                                                                                    (x8235
+                                                                                                    (x8229
                                                                                                      (zombies/c
                                                                                                       j7176
                                                                                                       k7177
                                                                                                       g7175)))
                                                                                              (f7178
-                                                                                              x8236
-                                                                                              x8235))))
+                                                                                              x8230
+                                                                                              x8229))))
                                                                                    (horde/c
                                                                                     j7176
                                                                                     k7177
-                                                                                    x8234))))
-                                                                         g8233))))
-                                                             g8232))
+                                                                                    x8228))))
+                                                                         g8227))))
+                                                             g8226))
                                                          'module
                                                          'importer
                                                          new-horde))
-                                                       (x8230 (input))
-                                                       (x8229 (input)))
-                                                (x8231 x8230 x8229)))
-                                             (g8172
-                                              (letrec ((x8239
+                                                       (x8224 (input))
+                                                       (x8223 (input)))
+                                                (x8225 x8224 x8223)))
+                                             (g8166
+                                              (letrec ((x8233
                                                         ((lambda (j7181
                                                                   k7182
                                                                   f7183)
-                                                           (letrec ((g8240
+                                                           (letrec ((g8234
                                                                      (lambda (g7179
                                                                               g7180)
-                                                                       (letrec ((g8241
-                                                                                 (letrec ((x8242
-                                                                                           (letrec ((x8244
+                                                                       (letrec ((g8235
+                                                                                 (letrec ((x8236
+                                                                                           (letrec ((x8238
                                                                                                      (zombie/c
                                                                                                       j7181
                                                                                                       k7182
                                                                                                       g7179))
-                                                                                                    (x8243
+                                                                                                    (x8237
                                                                                                      (zombies/c
                                                                                                       j7181
                                                                                                       k7182
                                                                                                       g7180)))
                                                                                              (f7183
-                                                                                              x8244
-                                                                                              x8243))))
+                                                                                              x8238
+                                                                                              x8237))))
                                                                                    (zombies/c
                                                                                     j7181
                                                                                     k7182
-                                                                                    x8242))))
-                                                                         g8241))))
-                                                             g8240))
+                                                                                    x8236))))
+                                                                         g8235))))
+                                                             g8234))
                                                          'module
                                                          'importer
                                                          new-cons-zombies))
-                                                       (x8238 (input))
-                                                       (x8237 (input)))
-                                                (x8239 x8238 x8237)))
-                                             (g8173
+                                                       (x8232 (input))
+                                                       (x8231 (input)))
+                                                (x8233 x8232 x8231)))
+                                             (g8167
                                               ((lambda (j7184 k7185 f7186)
-                                                 (letrec ((g8245
+                                                 (letrec ((g8239
                                                            (lambda ()
-                                                             (letrec ((g8246
-                                                                       (letrec ((x8247
+                                                             (letrec ((g8240
+                                                                       (letrec ((x8241
                                                                                  (f7186)))
                                                                          (zombies/c
                                                                           j7184
                                                                           k7185
-                                                                          x8247))))
-                                                               g8246))))
-                                                   g8245))
+                                                                          x8241))))
+                                                               g8240))))
+                                                   g8239))
                                                'module
                                                'importer
                                                new-mt-zombies))
-                                             (g8174
-                                              (letrec ((x8249
+                                             (g8168
+                                              (letrec ((x8243
                                                         ((lambda (j7188
                                                                   k7189
                                                                   f7190)
-                                                           (letrec ((g8250
+                                                           (letrec ((g8244
                                                                      (lambda (g7187)
-                                                                       (letrec ((g8251
-                                                                                 (letrec ((x8252
-                                                                                           (letrec ((x8253
+                                                                       (letrec ((g8245
+                                                                                 (letrec ((x8246
+                                                                                           (letrec ((x8247
                                                                                                      (posn/c
                                                                                                       j7188
                                                                                                       k7189
                                                                                                       g7187)))
                                                                                              (f7190
-                                                                                              x8253))))
+                                                                                              x8247))))
                                                                                    (zombie/c
                                                                                     j7188
                                                                                     k7189
-                                                                                    x8252))))
-                                                                         g8251))))
-                                                             g8250))
+                                                                                    x8246))))
+                                                                         g8245))))
+                                                             g8244))
                                                          'module
                                                          'importer
                                                          new-zombie))
-                                                       (x8248 (input)))
-                                                (x8249 x8248)))
-                                             (g8175
-                                              (letrec ((x8256
+                                                       (x8242 (input)))
+                                                (x8243 x8242)))
+                                             (g8169
+                                              (letrec ((x8250
                                                         ((lambda (j7193
                                                                   k7194
                                                                   f7195)
-                                                           (letrec ((g8257
+                                                           (letrec ((g8251
                                                                      (lambda (g7191
                                                                               g7192)
-                                                                       (letrec ((g8258
-                                                                                 (letrec ((x8259
-                                                                                           (letrec ((x8261
+                                                                       (letrec ((g8252
+                                                                                 (letrec ((x8253
+                                                                                           (letrec ((x8255
                                                                                                      (real?/c
                                                                                                       j7193
                                                                                                       k7194
                                                                                                       g7191))
-                                                                                                    (x8260
+                                                                                                    (x8254
                                                                                                      (real?/c
                                                                                                       j7193
                                                                                                       k7194
                                                                                                       g7192)))
                                                                                              (f7195
-                                                                                              x8261
-                                                                                              x8260))))
+                                                                                              x8255
+                                                                                              x8254))))
                                                                                    (posn/c
                                                                                     j7193
                                                                                     k7194
-                                                                                    x8259))))
-                                                                         g8258))))
-                                                             g8257))
+                                                                                    x8253))))
+                                                                         g8252))))
+                                                             g8251))
                                                          'module
                                                          'importer
                                                          new-posn))
-                                                       (x8255 (input))
-                                                       (x8254 (input)))
-                                                (x8256 x8255 x8254)))
-                                             (g8176
+                                                       (x8249 (input))
+                                                       (x8248 (input)))
+                                                (x8250 x8249 x8248)))
+                                             (g8170
                                               (world/c 'module 'importer w0)))
-                                      g8176))))
+                                      g8170))))
                           g7210))))
               g7208)))
     g7207))

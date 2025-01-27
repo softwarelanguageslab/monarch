@@ -136,12 +136,10 @@ stepEval (Input s) = do
    sym <- allocSym s
    Ap . (`combine` (SymbolicVal $ Variable sym)) <$> lookupModel sym
 stepEval app@(App operator operands _) = do
-      -- liftIO (putStr "{APP}")
-      operator' <- atomicEval operator
-      operands' <- mapM atomicEval operands
-      apply operator' operands' app
+   operator' <- atomicEval operator
+   operands' <- mapM atomicEval operands
+   apply operator' operands' app
 stepEval (Letrec bds bdy _) = do
-   -- liftIO (putStr "{LETREC}")
    ads <- mapM (alloc . spanOf . fst) bds
    ρ'  <- extends (zip (map (name . fst) bds) ads) <$> getEnv
    withEnv (const ρ') $ evalLetrec ads (map snd bds) bdy
