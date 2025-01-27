@@ -13,6 +13,7 @@
    (define orig-vector-ref vector-ref)
    (define orig-vector-set vector-set!)
 
+
    ;; break letrec chain
    '()
 
@@ -22,7 +23,6 @@
    (define number?/c (flat number?))
    (define any/c (flat (lambda (v) #t)))
    (define any?/c (flat (lambda (v) #t)))
-   (define image? any/c) ;; TODO: unsupported, not sure how to support this?
    (define cons?/c (flat pair?))
    (define pair?/c (flat pair?))
    (define integer?/c (flat integer?))
@@ -69,7 +69,7 @@
    (define vector-set! (mon server client (-> vector?/c integer?/c any/c) (lambda (vec i v) (orig-vector-set! vec i v))))
 
    ;; Assertions
-   (define (assert cnd) #t)
+   (define (assert cnd) (if cnd '() (error "assertion failed")))
 
    ;; Other preluded functions
 
@@ -122,7 +122,7 @@
    (define (list-tail x k)
      
      (assert (list? l))
-     (assert (numer? ))
+     (assert (number? ))
      (if (zero? k)
        x
        (list-tail (cdr x) (- k 1))))

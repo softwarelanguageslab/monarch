@@ -1,5 +1,8 @@
 #lang racket
 
+(require racket/runtime-path)
+(require "../utils.rkt")
+
 ;; This module translates expressions from the simpleactor
 ;; language to a Guile Scheme compatible form.
 ;;
@@ -17,6 +20,16 @@
 ;; - process `spawn` and `send` expressions are not supported by Guile 
 ;; scheme and have to be translated to an equivalent thread model.
 
+(define-runtime-path guile-prelude-path "../preludes/guile-prelude.scm")
+
+;; Add Guile's Scheme prelude to the program, this does not 
+;; require that the program is translated to ANF again 
+;; since Guile supports define epressions natively.
+(define (add-prelude e)
+  (let ((input-file (open-input-file guile-prelude-path)))
+  `(begin ,@(read-all input-file) ,e)))
+
+
 ;; Apply a list of transformations to a value
 (define (apply-k ks e)
   (foldr (lambda (k r) (k r)) e ks))
@@ -28,17 +41,18 @@
       (let-values ([(test1 bds1) (translate-pattern v car-exp (cons (lambda (x) `(car ,x)) k))]
                    [(test2 bds2) (translate-pattern v cdr-exp (cons (lambda (x) `(cdr ,x)) k))])
         (values `(and ,test1 ,test2) (append bds1 bds2)))]
-     [(quasiquote ()) (values `(null? ,(k v)) '())]
+     [(quasiquote ()) (values `(null? ,(apply-k k v)) '())]
      [(quasiquote _) (values #t '())]
      [x (if (symbol? x) 
             (values #t (list (list x (apply-k k v))))
             (values `(equal? ,x ,(apply-k k v)) '()))]))
 
+
 ;; Translate a match clause into a equivalent expression 
 ;; in Guile Scheme.
 (define ((translate-match-clause v) clause)
   (let-values ([(test bds) (translate-pattern v (car clause) '())])
-    `(,test (letrec* ,bds ,@(cdr clause)))))
+    `(,test (letrec* ,bds ,@(map translate (cdr clause))))))
 
 
 ;; A match expression is translated into a conditional.
@@ -46,7 +60,7 @@
   (match exp
     [(quasiquote (match ,v ,clauses))
      (let ((xv (gensym "v")))
-     `(letrec* ((,xv ,v))
+     `(letrec* ((,xv ,(translate v)))
         ,(let* ((translated-clauses (map (translate-match-clause xv) clauses)))
            `(cond ,@translated-clauses
               (else (error "no match found"))))))]))
@@ -59,11 +73,14 @@
      `(,(translate operator) ,@(map translate operands))]
     [x x]))
 
+(define (translate-preluded exp)
+  (add-prelude (translate exp)))
+
 
 (module+ main
   (writeln (translate `(match 10 ((x (+ x 1)) (_ 42)))))
   (writeln (translate `(match (cons 10 30) ((10 1) ((pair x 30) x) (_ 3)))))
   (writeln (translate `(match (cons (cons 40 50) 60) ((10 1) ((pair (pair x z) 60) z))))))
 
-(provide translate)
+(provide (rename-out [translate-preluded translate]))
 

@@ -68,7 +68,7 @@
       (let ((names (map car bds))
             (values (map cadr bds)))
 
-      (parameterize [(*defines* '())] `(let ,(map (lambda (name value) `(,name ,(undefine value #f))) names values) 
+      (parameterize [(*defines* '())] `(letrec ,(map (lambda (name value) `(,name ,(undefine value #f))) names values) 
                                             ,@(undefine-sequence bdy #t))))]
      [(quasiquote (let* ,bds ,@bdy))
       (let ((names (map car bds))
