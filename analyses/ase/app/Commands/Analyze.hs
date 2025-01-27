@@ -10,7 +10,7 @@ import qualified ASE.Analyses as Analyses
 analyze :: FileOptions -> IO ()
 analyze (FileOptions { .. }) = do 
    program <- readFile filename
-   let exp = either (error . ("program could not be parsed" ++)) id (parseFromString program)
+   let exp = either (error . ("program could not be parsed: " ++)) id (parseFromString program)
    result <- Analyses.localAnalysis exp 1
    putStrLn "Blame nodes found: "
    print (Analyses.blameNodes result)

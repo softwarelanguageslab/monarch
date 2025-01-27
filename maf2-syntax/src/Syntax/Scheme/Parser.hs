@@ -49,6 +49,7 @@ data SExp =
  | Qua SExp Span       -- ^ quasi quotation
  | Unq SExp Span       -- ^ unquoted expression
  | Uqs SExp Span       -- ^ unquoted spliced expression
+ deriving (Eq, Ord)
 
 smap :: (SExp -> a) -> SExp -> [a]
 smap _ (SNil _) = []

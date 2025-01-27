@@ -6,6 +6,8 @@ module Syntax.Compiler(compile, parseFromString) where
 import Syntax.Scheme.Parser
 import qualified Syntax.Scheme.Parser as SExp
 import Control.Monad.Except
+import qualified Data.Set as Set
+import Data.List ((\\))
 import Syntax.AST
 import Syntax.Span (SpanOf)
 
@@ -16,6 +18,18 @@ pureSpan = pure . spanOf
 
 parseFromString :: String -> Either String Exp
 parseFromString = fmap head . parseSexp >=> compile
+
+-- | Checks whether there are any duplicates in the 
+-- given list of bindings.  If so, an error is raised.
+checkDuplicates :: MonadCompile m => SExp -> m () 
+checkDuplicates e = do 
+      lst <- smapM name e
+      let s = Set.fromList lst
+      if (Set.size s) < (length lst) 
+      then throwError $ "duplicates found at " ++ show (spanOf e) ++ ": " ++ show (lst \\ (Set.toList s))
+      else return ()
+   where name (Atom x _ ::: _) = return x
+         name e = throwError $ "Invalid binding at " ++ show (spanOf e)
 
 compile :: MonadCompile m => SExp -> m Exp
 compile ex@(Atom "lambda" _ ::: args ::: es) =
@@ -29,10 +43,16 @@ compile e@(Atom "lambda" _ ::: _) =
 compile ex@(Atom "spawn^" _ ::: e ::: SNil _) = Spawn <$> compile e <*> pureSpan ex
 compile e@(Atom "spawn^" _ ::: _) =
    throwError $ "invalid syntax for spawn " ++ show e
-compile ex@(Atom "letrec" _ ::: bds ::: e2 ::: SNil _) =
+compile ex@(Atom "letrec" _ ::: bds ::: e2 ::: SNil _) = do
+   checkDuplicates bds
    Letrec <$> smapM compileBdn bds <*> compile e2 <*> pureSpan ex
 compile e@(Atom "letrec" _ ::: _) =
    throwError $ "invalid syntax for letrec " ++ show e
+compile ex@(Atom "letrec*" _ ::: bds ::: e2 ::: SNil _) = do
+   checkDuplicates bds
+   Letrec <$> smapM compileBdn bds <*> compile e2 <*> pureSpan ex
+compile e@(Atom "letrec*" _ ::: _) =
+   throwError $ "invalid syntax for letrec* " ++ show e
 compile ex@(Atom "terminate" _ ::: SNil _) = pure $ Terminate (spanOf ex)
 compile e@(Atom "terminate" _ ::: _) =
    throwError $ "invalid syntax for terminate " ++ show e
