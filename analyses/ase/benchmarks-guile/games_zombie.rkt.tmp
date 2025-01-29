@@ -1,0 +1,3382 @@
+(begin
+  (use-modules (srfi srfi-28))
+  (define (add1 x) (+ x 1))
+  (define (sub1 x) (+ x 1))
+  (set! *random-state* (random-state-from-platform))
+  (define (input) (expt 2 64))
+  (begin
+    (letrec*
+     ((any? (lambda (v) (letrec* ((g7551 #t)) g7551)))
+      (meta (lambda (v) (letrec* ((g7552 v)) g7552)))
+      (member
+       (lambda (v lst)
+         (letrec*
+          ((g7553
+            (letrec*
+             ((g7554
+               (letrec*
+                ((x-e7555 lst))
+                (letrec*
+                 ((v1742 x-e7555))
+                 (cond
+                  ((null? v1742) (letrec* () #f))
+                  ((and #t #t)
+                   (letrec*
+                    ((v1 (car v1742)) (vs (cdr v1742)))
+                    (letrec*
+                     ((x-cnd7556 (eq? v v1)))
+                     (if x-cnd7556 #t (member v vs)))))
+                  (else (error "no match found")))))))
+             g7554)))
+          g7553)))
+      (unconstrained/c #f)
+      (actor?
+       (lambda (k j)
+         (letrec* ((g7557 (lambda (v) (letrec* ((g7558 v)) g7558)))) g7557)))
+      (nonzero?
+       (lambda (v)
+         (letrec* ((g7559 (letrec* ((x7560 (= v 0))) (not x7560)))) g7559))))
+     (letrec*
+      ((g7561
+        (letrec*
+         ((g7562
+           (letrec*
+            ((orig-+ +)
+             (orig-- -)
+             (orig-* *)
+             (orig-/ /)
+             (orig-car car)
+             (orig-cdr cdr)
+             (orig-cons cons)
+             (orig-vector-ref vector-ref)
+             (orig-vector-set vector-set!))
+            (letrec*
+             ((g7563 '())
+              (g7564
+               (letrec*
+                ((empty '())
+                 (real?/c
+                  (lambda (g7258 g7259 g7260)
+                    (letrec*
+                     ((g7565
+                       (letrec*
+                        ((x-cnd7566 (real? g7260)))
+                        (if x-cnd7566 g7260 (blame g7258 'real?)))))
+                     g7565)))
+                 (boolean?/c
+                  (lambda (g7261 g7262 g7263)
+                    (letrec*
+                     ((g7567
+                       (letrec*
+                        ((x-cnd7568 (boolean? g7263)))
+                        (if x-cnd7568 g7263 (blame g7261 'boolean?)))))
+                     g7567)))
+                 (number?/c
+                  (lambda (g7264 g7265 g7266)
+                    (letrec*
+                     ((g7569
+                       (letrec*
+                        ((x-cnd7570 (number? g7266)))
+                        (if x-cnd7570 g7266 (blame g7264 'number?)))))
+                     g7569)))
+                 (any/c
+                  (lambda (g7267 g7268 g7269)
+                    (letrec*
+                     ((g7571
+                       (letrec*
+                        ((x-cnd7572
+                          ((lambda (v) (letrec* ((g7573 #t)) g7573)) g7269)))
+                        (if x-cnd7572 g7269 (blame g7267 '(lambda (v) #t))))))
+                     g7571)))
+                 (any?/c
+                  (lambda (g7270 g7271 g7272)
+                    (letrec*
+                     ((g7574
+                       (letrec*
+                        ((x-cnd7575
+                          ((lambda (v) (letrec* ((g7576 #t)) g7576)) g7272)))
+                        (if x-cnd7575 g7272 (blame g7270 '(lambda (v) #t))))))
+                     g7574)))
+                 (cons?/c
+                  (lambda (g7273 g7274 g7275)
+                    (letrec*
+                     ((g7577
+                       (letrec*
+                        ((x-cnd7578 (pair? g7275)))
+                        (if x-cnd7578 g7275 (blame g7273 'pair?)))))
+                     g7577)))
+                 (pair?/c
+                  (lambda (g7276 g7277 g7278)
+                    (letrec*
+                     ((g7579
+                       (letrec*
+                        ((x-cnd7580 (pair? g7278)))
+                        (if x-cnd7580 g7278 (blame g7276 'pair?)))))
+                     g7579)))
+                 (integer?/c
+                  (lambda (g7279 g7280 g7281)
+                    (letrec*
+                     ((g7581
+                       (letrec*
+                        ((x-cnd7582 (integer? g7281)))
+                        (if x-cnd7582 g7281 (blame g7279 'integer?)))))
+                     g7581)))
+                 (and/c
+                  (lambda (c1 c2)
+                    (letrec*
+                     ((g7583
+                       (lambda (k j v)
+                         (letrec*
+                          ((g7584
+                            (letrec*
+                             ((x-cnd7585 (c1 k j v)))
+                             (if x-cnd7585 (c2 k j v) #f))))
+                          g7584))))
+                     g7583)))
+                 (list-of
+                  (lambda (contract)
+                    (letrec*
+                     ((g7586
+                       (lambda (k j v)
+                         (letrec*
+                          ((g7587
+                            (letrec*
+                             ((x-cnd7588 (null? v)))
+                             (if x-cnd7588
+                               '()
+                               (letrec*
+                                ((x7592
+                                  (letrec*
+                                   ((x7593 (car v)))
+                                   (contract k j x7593)))
+                                 (x7589
+                                  (letrec*
+                                   ((x7591 (list-of contract)) (x7590 (cdr v)))
+                                   (x7591 k j x7590))))
+                                (orig-cons x7592 x7589))))))
+                          g7587))))
+                     g7586)))
+                 (any? (lambda (v) (letrec* ((g7594 #t)) g7594)))
+                 (nonzero?
+                  (lambda (v)
+                    (letrec*
+                     ((g7595 (letrec* ((x7596 (= v 0))) (not x7596))))
+                     g7595)))
+                 (nonzero?/c
+                  (lambda (g7282 g7283 g7284)
+                    (letrec*
+                     ((g7597
+                       (letrec*
+                        ((x-cnd7598
+                          ((lambda (v)
+                             (letrec*
+                              ((g7599 (letrec* ((x7600 (= v 0))) (not x7600))))
+                              g7599))
+                           g7284)))
+                        (if x-cnd7598
+                          g7284
+                          (blame g7282 '(lambda (v) (not (= v 0))))))))
+                     g7597)))
+                 (meta (lambda (v) (letrec* ((g7601 v)) g7601)))
+                 (+
+                  ((lambda (j7287 k7288 f7289)
+                     (letrec*
+                      ((g7603
+                        (lambda (g7285 g7286)
+                          (letrec*
+                           ((g7604
+                             (letrec*
+                              ((x7605
+                                (letrec*
+                                 ((x7607 (number?/c j7287 k7288 g7285))
+                                  (x7606 (number?/c j7287 k7288 g7286)))
+                                 (f7289 x7607 x7606))))
+                              (number?/c j7287 k7288 x7605))))
+                           g7604))))
+                      g7603))
+                   'server
+                   'client
+                   (lambda (a b) (letrec* ((g7602 (orig-+ a b))) g7602))))
+                 (-
+                  ((lambda (j7292 k7293 f7294)
+                     (letrec*
+                      ((g7609
+                        (lambda (g7290 g7291)
+                          (letrec*
+                           ((g7610
+                             (letrec*
+                              ((x7611
+                                (letrec*
+                                 ((x7613 (number?/c j7292 k7293 g7290))
+                                  (x7612 (number?/c j7292 k7293 g7291)))
+                                 (f7294 x7613 x7612))))
+                              (number?/c j7292 k7293 x7611))))
+                           g7610))))
+                      g7609))
+                   'server
+                   'client
+                   (lambda (a b) (letrec* ((g7608 (orig-- a b))) g7608))))
+                 (*
+                  ((lambda (j7297 k7298 f7299)
+                     (letrec*
+                      ((g7615
+                        (lambda (g7295 g7296)
+                          (letrec*
+                           ((g7616
+                             (letrec*
+                              ((x7617
+                                (letrec*
+                                 ((x7619 (number?/c j7297 k7298 g7295))
+                                  (x7618 (number?/c j7297 k7298 g7296)))
+                                 (f7299 x7619 x7618))))
+                              (number?/c j7297 k7298 x7617))))
+                           g7616))))
+                      g7615))
+                   'server
+                   'client
+                   (lambda (a b) (letrec* ((g7614 (orig-* a b))) g7614))))
+                 (/
+                  ((lambda (j7302 k7303 f7304)
+                     (letrec*
+                      ((g7621
+                        (lambda (g7300 g7301)
+                          (letrec*
+                           ((g7622
+                             (letrec*
+                              ((x7623
+                                (letrec*
+                                 ((x7625 (number?/c j7302 k7303 g7300))
+                                  (x7624 (number?/c j7302 k7303 g7301)))
+                                 (f7304 x7625 x7624))))
+                              (number?/c j7302 k7303 x7623))))
+                           g7622))))
+                      g7621))
+                   'server
+                   'client
+                   (lambda (a b) (letrec* ((g7620 (orig-/ a b))) g7620))))
+                 (car
+                  ((lambda (j7306 k7307 f7308)
+                     (letrec*
+                      ((g7627
+                        (lambda (g7305)
+                          (letrec*
+                           ((g7628
+                             (letrec*
+                              ((x7629
+                                (letrec*
+                                 ((x7630 (pair?/c j7306 k7307 g7305)))
+                                 (f7308 x7630))))
+                              (any/c j7306 k7307 x7629))))
+                           g7628))))
+                      g7627))
+                   'server
+                   'client
+                   (lambda (p) (letrec* ((g7626 (orig-car p))) g7626))))
+                 (cdr
+                  ((lambda (j7310 k7311 f7312)
+                     (letrec*
+                      ((g7632
+                        (lambda (g7309)
+                          (letrec*
+                           ((g7633
+                             (letrec*
+                              ((x7634
+                                (letrec*
+                                 ((x7635 (pair?/c j7310 k7311 g7309)))
+                                 (f7312 x7635))))
+                              (any/c j7310 k7311 x7634))))
+                           g7633))))
+                      g7632))
+                   'server
+                   'client
+                   (lambda (p) (letrec* ((g7631 (orig-cdr p))) g7631))))
+                 (cons
+                  ((lambda (j7315 k7316 f7317)
+                     (letrec*
+                      ((g7637
+                        (lambda (g7313 g7314)
+                          (letrec*
+                           ((g7638
+                             (letrec*
+                              ((x7639
+                                (letrec*
+                                 ((x7641 (any/c j7315 k7316 g7313))
+                                  (x7640 (any/c j7315 k7316 g7314)))
+                                 (f7317 x7641 x7640))))
+                              (pair?/c j7315 k7316 x7639))))
+                           g7638))))
+                      g7637))
+                   'server
+                   'client
+                   (lambda (a b) (letrec* ((g7636 (orig-cons a b))) g7636))))
+                 (vector-ref
+                  ((lambda (j7319 k7320 f7321)
+                     (letrec*
+                      ((g7643
+                        (lambda (g7318)
+                          (letrec*
+                           ((g7644
+                             (letrec*
+                              ((x7645
+                                (letrec*
+                                 ((x7646 (vector?/c j7319 k7320 g7318)))
+                                 (f7321 x7646))))
+                              (integer?/c j7319 k7320 x7645))))
+                           g7644))))
+                      g7643))
+                   'server
+                   'client
+                   (lambda (v i)
+                     (letrec* ((g7642 (orig-vector-ref v i))) g7642))))
+                 (vector-set!
+                  ((lambda (j7324 k7325 f7326)
+                     (letrec*
+                      ((g7648
+                        (lambda (g7322 g7323)
+                          (letrec*
+                           ((g7649
+                             (letrec*
+                              ((x7650
+                                (letrec*
+                                 ((x7652 (vector?/c j7324 k7325 g7322))
+                                  (x7651 (integer?/c j7324 k7325 g7323)))
+                                 (f7326 x7652 x7651))))
+                              (any/c j7324 k7325 x7650))))
+                           g7649))))
+                      g7648))
+                   'server
+                   'client
+                   (lambda (vec i v)
+                     (letrec* ((g7647 (orig-vector-set! vec i v))) g7647))))
+                 (assert
+                  (lambda (cnd)
+                    (letrec*
+                     ((g7653 (if cnd '() (error "assertion failed"))))
+                     g7653)))
+                 (cdddr
+                  (lambda (x)
+                    (letrec*
+                     ((g7654
+                       (letrec*
+                        ((x7655 (letrec* ((x7656 (cdr x))) (cdr x7656))))
+                        (cdr x7655))))
+                     g7654)))
+                 (__toplevel_set-car! set-car!)
+                 (map
+                  (lambda (f l)
+                    (letrec*
+                     ((g7657 (letrec* ((x7660 (procedure? f))) (assert x7660)))
+                      (g7658 (letrec* ((x7661 (list? l))) (assert x7661)))
+                      (g7659
+                       (letrec*
+                        ((x-cnd7662 (null? l)))
+                        (if x-cnd7662
+                          '()
+                          (letrec*
+                           ((x7665 (letrec* ((x7666 (car l))) (f x7666)))
+                            (x7663 (letrec* ((x7664 (cdr l))) (map f x7664))))
+                           (cons x7665 x7663))))))
+                     g7659)))
+                 (cdar
+                  (lambda (x)
+                    (letrec*
+                     ((g7667 (letrec* ((x7668 (car x))) (cdr x7668))))
+                     g7667)))
+                 (cadadr
+                  (lambda (x)
+                    (letrec*
+                     ((g7669
+                       (letrec*
+                        ((x7670
+                          (letrec*
+                           ((x7671 (letrec* ((x7672 (cdr x))) (car x7672))))
+                           (cdr x7671))))
+                        (car x7670))))
+                     g7669)))
+                 (cdadar
+                  (lambda (x)
+                    (letrec*
+                     ((g7673
+                       (letrec*
+                        ((x7674
+                          (letrec*
+                           ((x7675 (letrec* ((x7676 (car x))) (cdr x7676))))
+                           (car x7675))))
+                        (cdr x7674))))
+                     g7673)))
+                 (call-with-output-file
+                  (lambda (filename proc)
+                    (letrec*
+                     ((g7677
+                       (letrec* ((x7680 (string? filename))) (assert x7680)))
+                      (g7678
+                       (letrec* ((x7681 (procedure? proc))) (assert x7681)))
+                      (g7679
+                       (letrec*
+                        ((output-port (open-output-file filename))
+                         (res (proc output-port)))
+                        (letrec*
+                         ((g7682 (close-output-port output-port)) (g7683 res))
+                         g7683))))
+                     g7679)))
+                 (caddr
+                  (lambda (x)
+                    (letrec*
+                     ((g7684
+                       (letrec*
+                        ((x7685 (letrec* ((x7686 (cdr x))) (cdr x7686))))
+                        (car x7685))))
+                     g7684)))
+                 (cdaadr
+                  (lambda (x)
+                    (letrec*
+                     ((g7687
+                       (letrec*
+                        ((x7688
+                          (letrec*
+                           ((x7689 (letrec* ((x7690 (cdr x))) (car x7690))))
+                           (car x7689))))
+                        (cdr x7688))))
+                     g7687)))
+                 (assq
+                  (lambda (k l)
+                    (letrec*
+                     ((g7691 (letrec* ((x7693 (list? l))) (assert x7693)))
+                      (g7692
+                       (letrec*
+                        ((x-cnd7694 (null? l)))
+                        (if x-cnd7694
+                          #f
+                          (letrec*
+                           ((x-cnd7695
+                             (letrec* ((x7696 (caar l))) (eq? x7696 k))))
+                           (if x-cnd7695
+                             (car l)
+                             (letrec* ((x7697 (cdr l))) (assq k x7697))))))))
+                     g7692)))
+                 (even?
+                  (lambda (x)
+                    (letrec*
+                     ((g7698 (letrec* ((x7699 (modulo x 2))) (= 0 x7699))))
+                     g7698)))
+                 (list->string
+                  (lambda (l)
+                    (letrec*
+                     ((g7700 (letrec* ((x7702 (list? l))) (assert x7702)))
+                      (g7701
+                       (letrec*
+                        ((x-cnd7703 (null? l)))
+                        (if x-cnd7703
+                          ""
+                          (letrec*
+                           ((x7706
+                             (letrec* ((x7707 (car l))) (char->string x7707)))
+                            (x7704
+                             (letrec* ((x7705 (cdr l))) (list->string x7705))))
+                           (string-append x7706 x7704))))))
+                     g7701)))
+                 (char<=?
+                  (lambda (c1 c2)
+                    (letrec*
+                     ((g7708 (letrec* ((x7711 (char? c1))) (assert x7711)))
+                      (g7709 (letrec* ((x7712 (char? c2))) (assert x7712)))
+                      (g7710
+                       (letrec*
+                        ((val7241 (char<? c1 c2)))
+                        (letrec*
+                         ((g7713 (if val7241 val7241 (char=? c1 c2))))
+                         g7713))))
+                     g7710)))
+                 (cdddar
+                  (lambda (x)
+                    (letrec*
+                     ((g7714
+                       (letrec*
+                        ((x7715
+                          (letrec*
+                           ((x7716 (letrec* ((x7717 (car x))) (cdr x7717))))
+                           (cdr x7716))))
+                        (cdr x7715))))
+                     g7714)))
+                 (list-tail
+                  (lambda (x k)
+                    (letrec*
+                     ((g7718 (letrec* ((x7721 (list? l))) (assert x7721)))
+                      (g7719 (letrec* ((x7722 (number?))) (assert x7722)))
+                      (g7720
+                       (letrec*
+                        ((x-cnd7723 (zero? k)))
+                        (if x-cnd7723
+                          x
+                          (letrec*
+                           ((x7725 (cdr x)) (x7724 (- k 1)))
+                           (list-tail x7725 x7724))))))
+                     g7720)))
+                 (halt (lambda () (letrec* ((g7726 '())) g7726)))
+                 (char-alphabetic?
+                  (lambda (c)
+                    (letrec*
+                     ((g7727
+                       (letrec*
+                        ((x-cnd7728
+                          (letrec* ((x7729 #\a)) (char-ci>=? c x7729))))
+                        (if x-cnd7728
+                          (letrec* ((x7730 #\z)) (char-ci<=? c x7730))
+                          #f))))
+                     g7727)))
+                 (<=
+                  (lambda (x y)
+                    (letrec*
+                     ((g7731 (letrec* ((x7733 (number? x))) (assert x7733)))
+                      (g7732
+                       (letrec*
+                        ((val7242 (< x y)))
+                        (letrec*
+                         ((g7734
+                           (if val7242
+                             val7242
+                             (letrec*
+                              ((val7243 (= x y)))
+                              (letrec*
+                               ((g7735 (if val7243 val7243 #f)))
+                               g7735)))))
+                         g7734))))
+                     g7732)))
+                 (char-whitespace?
+                  (lambda (c)
+                    (letrec*
+                     ((g7736
+                       (letrec*
+                        ((val7244
+                          (letrec* ((x7737 (char->integer c))) (= x7737 9))))
+                        (letrec*
+                         ((g7738
+                           (if val7244
+                             val7244
+                             (letrec*
+                              ((val7245
+                                (letrec*
+                                 ((x7739 (char->integer c)))
+                                 (= x7739 10))))
+                              (letrec*
+                               ((g7740
+                                 (if val7245
+                                   val7245
+                                   (letrec*
+                                    ((x7741 (char->integer c)))
+                                    (= x7741 32)))))
+                               g7740)))))
+                         g7738))))
+                     g7736)))
+                 (cddar
+                  (lambda (x)
+                    (letrec*
+                     ((g7742
+                       (letrec*
+                        ((x7743 (letrec* ((x7744 (car x))) (cdr x7744))))
+                        (cdr x7743))))
+                     g7742)))
+                 (positive?
+                  (lambda (x)
+                    (letrec*
+                     ((g7745 (letrec* ((x7747 (number? x))) (assert x7747)))
+                      (g7746 (> x 0)))
+                     g7746)))
+                 ($pc '())
+                 (ref-set set-car!)
+                 (void (lambda () (letrec* ((g7748 #f)) g7748)))
+                 (cddr
+                  (lambda (x)
+                    (letrec*
+                     ((g7749 (letrec* ((x7750 (cdr x))) (cdr x7750))))
+                     g7749)))
+                 (truncate
+                  (lambda (x)
+                    (letrec*
+                     ((g7751 (letrec* ((x7753 (number? x))) (assert x7753)))
+                      (g7752
+                       (letrec*
+                        ((x-cnd7754 (< x 0)))
+                        (if x-cnd7754 (ceiling x) (floor x)))))
+                     g7752)))
+                 ($cmp '())
+                 (equal?
+                  (lambda (a b)
+                    (letrec*
+                     ((g7755
+                       (letrec*
+                        ((val7246 (eq? a b)))
+                        (letrec*
+                         ((g7756
+                           (if val7246
+                             val7246
+                             (letrec*
+                              ((val7247
+                                (letrec*
+                                 ((x7758 (null? a)) (x7757 (null? b)))
+                                 (and x7758 x7757))))
+                              (letrec*
+                               ((g7759
+                                 (if val7247
+                                   val7247
+                                   (letrec*
+                                    ((val7248
+                                      (letrec*
+                                       ((x7762 (string? a))
+                                        (x7761 (string? b))
+                                        (x7760 (string=? a b)))
+                                       (and x7762 x7761 x7760))))
+                                    (letrec*
+                                     ((g7763
+                                       (if val7248
+                                         val7248
+                                         (letrec*
+                                          ((val7249
+                                            (letrec*
+                                             ((x7771 (pair? a))
+                                              (x7770 (pair? b))
+                                              (x7767
+                                               (letrec*
+                                                ((x7769 (car a))
+                                                 (x7768 (car b)))
+                                                (equal? x7769 x7768)))
+                                              (x7764
+                                               (letrec*
+                                                ((x7766 (cdr a))
+                                                 (x7765 (cdr b)))
+                                                (equal? x7766 x7765))))
+                                             (and x7771 x7770 x7767 x7764))))
+                                          (letrec*
+                                           ((g7772
+                                             (if val7249
+                                               val7249
+                                               (letrec*
+                                                ((x7788 (vector? a))
+                                                 (x7787 (vector? b))
+                                                 (x7773
+                                                  (letrec*
+                                                   ((n (vector-length a)))
+                                                   (letrec*
+                                                    ((g7774
+                                                      (letrec*
+                                                       ((x7785
+                                                         (letrec*
+                                                          ((x7786
+                                                            (vector-length b)))
+                                                          (= x7786 n)))
+                                                        (x7775
+                                                         (letrec*
+                                                          ((loop
+                                                            (lambda (i)
+                                                              (letrec*
+                                                               ((g7776
+                                                                 (letrec*
+                                                                  ((x7783
+                                                                    (= i n))
+                                                                   (x7777
+                                                                    (letrec*
+                                                                     ((x7780
+                                                                       (letrec*
+                                                                        ((x7782
+                                                                          (vector-ref
+                                                                           a
+                                                                           i))
+                                                                         (x7781
+                                                                          (vector-ref
+                                                                           b
+                                                                           i)))
+                                                                        (equal?
+                                                                         x7782
+                                                                         x7781)))
+                                                                      (x7778
+                                                                       (letrec*
+                                                                        ((x7779
+                                                                          (+
+                                                                           i
+                                                                           1)))
+                                                                        (loop
+                                                                         x7779))))
+                                                                     (and x7780
+                                                                          x7778))))
+                                                                  (or x7783
+                                                                      x7777))))
+                                                               g7776))))
+                                                          (letrec*
+                                                           ((g7784 (loop 0)))
+                                                           g7784))))
+                                                       (and x7785 x7775))))
+                                                    g7774))))
+                                                (and x7788 x7787 x7773)))))
+                                           g7772)))))
+                                     g7763)))))
+                               g7759)))))
+                         g7756))))
+                     g7755)))
+                 (cdaaar
+                  (lambda (x)
+                    (letrec*
+                     ((g7789
+                       (letrec*
+                        ((x7790
+                          (letrec*
+                           ((x7791 (letrec* ((x7792 (car x))) (car x7792))))
+                           (car x7791))))
+                        (cdr x7790))))
+                     g7789)))
+                 (caaddr
+                  (lambda (x)
+                    (letrec*
+                     ((g7793
+                       (letrec*
+                        ((x7794
+                          (letrec*
+                           ((x7795 (letrec* ((x7796 (cdr x))) (cdr x7796))))
+                           (car x7795))))
+                        (car x7794))))
+                     g7793)))
+                 (eqv? (lambda (x y) (letrec* ((g7797 (eq? x y))) g7797)))
+                 (>=
+                  (lambda (x y)
+                    (letrec*
+                     ((g7798 (letrec* ((x7800 (number? x))) (assert x7800)))
+                      (g7799
+                       (letrec*
+                        ((val7250 (> x y)))
+                        (letrec*
+                         ((g7801
+                           (if val7250
+                             val7250
+                             (letrec*
+                              ((val7251 (= x y)))
+                              (letrec*
+                               ((g7802 (if val7251 val7251 #f)))
+                               g7802)))))
+                         g7801))))
+                     g7799)))
+                 (call-with-input-file
+                  (lambda (filename proc)
+                    (letrec*
+                     ((g7803
+                       (letrec* ((x7806 (string? filename))) (assert x7806)))
+                      (g7804
+                       (letrec* ((x7807 (procedure? proc))) (assert x7807)))
+                      (g7805
+                       (letrec*
+                        ((input-port (open-input-file filename))
+                         (res (proc input-port)))
+                        (letrec*
+                         ((g7808 (close-input-port input-port)) (g7809 res))
+                         g7809))))
+                     g7805)))
+                 (ref (lambda (x) (letrec* ((g7810 (cons x '()))) g7810)))
+                 (char>=?
+                  (lambda (c1 c2)
+                    (letrec*
+                     ((g7811 (letrec* ((x7814 (char? c1))) (assert x7814)))
+                      (g7812 (letrec* ((x7815 (char? c2))) (assert x7815)))
+                      (g7813
+                       (letrec*
+                        ((val7252 (char>? c1 c2)))
+                        (letrec*
+                         ((g7816 (if val7252 val7252 (char=? c1 c2))))
+                         g7816))))
+                     g7813)))
+                 (cdaar
+                  (lambda (x)
+                    (letrec*
+                     ((g7817
+                       (letrec*
+                        ((x7818 (letrec* ((x7819 (car x))) (car x7819))))
+                        (cdr x7818))))
+                     g7817)))
+                 (cdaddr
+                  (lambda (x)
+                    (letrec*
+                     ((g7820
+                       (letrec*
+                        ((x7821
+                          (letrec*
+                           ((x7822 (letrec* ((x7823 (cdr x))) (cdr x7823))))
+                           (car x7822))))
+                        (cdr x7821))))
+                     g7820)))
+                 (__toplevel_cdr cdr)
+                 (cadar
+                  (lambda (x)
+                    (letrec*
+                     ((g7824
+                       (letrec*
+                        ((x7825 (letrec* ((x7826 (car x))) (cdr x7826))))
+                        (car x7825))))
+                     g7824)))
+                 (caadr
+                  (lambda (x)
+                    (letrec*
+                     ((g7827
+                       (letrec*
+                        ((x7828 (letrec* ((x7829 (cdr x))) (car x7829))))
+                        (car x7828))))
+                     g7827)))
+                 (char-ci>?
+                  (lambda (c1 c2)
+                    (letrec*
+                     ((g7830 (letrec* ((x7833 (char? c1))) (assert x7833)))
+                      (g7831 (letrec* ((x7834 (char? c2))) (assert x7834)))
+                      (g7832
+                       (letrec* ((x7835 (char-ci<=? c1 c2))) (not x7835))))
+                     g7832)))
+                 (__toplevel_set-cdr! set-cdr!)
+                 (caaaar
+                  (lambda (x)
+                    (letrec*
+                     ((g7836
+                       (letrec*
+                        ((x7837
+                          (letrec*
+                           ((x7838 (letrec* ((x7839 (car x))) (car x7839))))
+                           (car x7838))))
+                        (car x7837))))
+                     g7836)))
+                 (negative?
+                  (lambda (x)
+                    (letrec*
+                     ((g7840 (letrec* ((x7842 (number? x))) (assert x7842)))
+                      (g7841 (< x 0)))
+                     g7841)))
+                 (memv (lambda (e l) (letrec* ((g7843 (memq e l))) g7843)))
+                 (caaar
+                  (lambda (x)
+                    (letrec*
+                     ((g7844
+                       (letrec*
+                        ((x7845 (letrec* ((x7846 (car x))) (car x7846))))
+                        (car x7845))))
+                     g7844)))
+                 (debug (lambda (e) (letrec* ((g7847 '())) g7847)))
+                 (reverse
+                  (lambda (l)
+                    (letrec*
+                     ((g7848 (letrec* ((x7850 (list? l))) (assert x7850)))
+                      (g7849
+                       (letrec*
+                        ((x-cnd7851 (null? l)))
+                        (if x-cnd7851
+                          '()
+                          (letrec*
+                           ((x7854 (letrec* ((x7855 (cdr l))) (reverse x7855)))
+                            (x7852 (letrec* ((x7853 (car l))) (list x7853))))
+                           (append x7854 x7852))))))
+                     g7849)))
+                 (caaadr
+                  (lambda (x)
+                    (letrec*
+                     ((g7856
+                       (letrec*
+                        ((x7857
+                          (letrec*
+                           ((x7858 (letrec* ((x7859 (cdr x))) (car x7859))))
+                           (car x7858))))
+                        (car x7857))))
+                     g7856)))
+                 (cddadr
+                  (lambda (x)
+                    (letrec*
+                     ((g7860
+                       (letrec*
+                        ((x7861
+                          (letrec*
+                           ((x7862 (letrec* ((x7863 (cdr x))) (car x7863))))
+                           (cdr x7862))))
+                        (cdr x7861))))
+                     g7860)))
+                 (odd?
+                  (lambda (x)
+                    (letrec*
+                     ((g7864 (letrec* ((x7866 (number? x))) (assert x7866)))
+                      (g7865 (letrec* ((x7867 (modulo x 2))) (= 1 x7867))))
+                     g7865)))
+                 (caadar
+                  (lambda (x)
+                    (letrec*
+                     ((g7868
+                       (letrec*
+                        ((x7869
+                          (letrec*
+                           ((x7870 (letrec* ((x7871 (car x))) (cdr x7871))))
+                           (car x7870))))
+                        (car x7869))))
+                     g7868)))
+                 (apply
+                  (lambda (proc args)
+                    (letrec*
+                     ((g7872
+                       (letrec* ((x7875 (procedure? proc))) (assert x7875)))
+                      (g7873 (letrec* ((x7876 (list? args))) (assert x7876)))
+                      (g7874
+                       (if cnd
+                         (letrec* ((g7877 (proc))) g7877)
+                         (if cnd
+                           (letrec*
+                            ((g7878
+                              (letrec* ((x7879 (car args))) (proc x7879))))
+                            g7878)
+                           (if cnd
+                             (letrec*
+                              ((g7880
+                                (letrec*
+                                 ((x7882 (car args)) (x7881 (cadr args)))
+                                 (proc x7882 x7881))))
+                              g7880)
+                             (if cnd
+                               (letrec*
+                                ((g7883
+                                  (letrec*
+                                   ((x7886 (car args))
+                                    (x7885 (cadr args))
+                                    (x7884 (caddr args)))
+                                   (proc x7886 x7885 x7884))))
+                                g7883)
+                               (if cnd
+                                 (letrec*
+                                  ((g7887
+                                    (letrec*
+                                     ((x7891 (car args))
+                                      (x7890 (cadr args))
+                                      (x7889 (caddr args))
+                                      (x7888 (cadddr args)))
+                                     (proc x7891 x7890 x7889 x7888))))
+                                  g7887)
+                                 (if cnd
+                                   (letrec*
+                                    ((g7892
+                                      (letrec*
+                                       ((x7898 (car args))
+                                        (x7897 (cadr args))
+                                        (x7896 (caddr args))
+                                        (x7895 (cadddr args))
+                                        (x7893
+                                         (letrec*
+                                          ((x7894 (cddddr args)))
+                                          (car x7894))))
+                                       (proc x7898 x7897 x7896 x7895 x7893))))
+                                    g7892)
+                                   (if cnd
+                                     (letrec*
+                                      ((g7899
+                                        (letrec*
+                                         ((x7907 (car args))
+                                          (x7906 (cadr args))
+                                          (x7905 (caddr args))
+                                          (x7904 (cadddr args))
+                                          (x7902
+                                           (letrec*
+                                            ((x7903 (cddddr args)))
+                                            (car x7903)))
+                                          (x7900
+                                           (letrec*
+                                            ((x7901 (cddddr args)))
+                                            (cadr x7901))))
+                                         (proc
+                                          x7907
+                                          x7906
+                                          x7905
+                                          x7904
+                                          x7902
+                                          x7900))))
+                                      g7899)
+                                     (if cnd
+                                       (letrec*
+                                        ((g7908
+                                          (letrec*
+                                           ((x7918 (car args))
+                                            (x7917 (cadr args))
+                                            (x7916 (caddr args))
+                                            (x7915 (cadddr args))
+                                            (x7913
+                                             (letrec*
+                                              ((x7914 (cddddr args)))
+                                              (car x7914)))
+                                            (x7911
+                                             (letrec*
+                                              ((x7912 (cddddr args)))
+                                              (cadr x7912)))
+                                            (x7909
+                                             (letrec*
+                                              ((x7910 (cddddr args)))
+                                              (caddr x7910))))
+                                           (proc
+                                            x7918
+                                            x7917
+                                            x7916
+                                            x7915
+                                            x7913
+                                            x7911
+                                            x7909))))
+                                        g7908)
+                                       (letrec*
+                                        ((g7919 (error "Unsupported call.")))
+                                        g7919)))))))))))
+                     g7874)))
+                 (member
+                  (lambda (e l)
+                    (letrec*
+                     ((g7920 (letrec* ((x7922 (list? l))) (assert x7922)))
+                      (g7921
+                       (letrec*
+                        ((x-cnd7923 (null? l)))
+                        (if x-cnd7923
+                          #f
+                          (letrec*
+                           ((x-cnd7924
+                             (letrec* ((x7925 (car l))) (equal? x7925 e))))
+                           (if x-cnd7924
+                             l
+                             (letrec* ((x7926 (cdr l))) (member e x7926))))))))
+                     g7921)))
+                 (cddddr
+                  (lambda (x)
+                    (letrec*
+                     ((g7927
+                       (letrec*
+                        ((x7928
+                          (letrec*
+                           ((x7929 (letrec* ((x7930 (cdr x))) (cdr x7930))))
+                           (cdr x7929))))
+                        (cdr x7928))))
+                     g7927)))
+                 (cadddr
+                  (lambda (x)
+                    (letrec*
+                     ((g7931
+                       (letrec*
+                        ((x7932
+                          (letrec*
+                           ((x7933 (letrec* ((x7934 (cdr x))) (cdr x7934))))
+                           (cdr x7933))))
+                        (car x7932))))
+                     g7931)))
+                 (int-top (lambda () (letrec* ((g7935 (random 42))) g7935)))
+                 (zero?
+                  (lambda (x)
+                    (letrec*
+                     ((g7936 (letrec* ((x7938 (number? x))) (assert x7938)))
+                      (g7937 (= x 0)))
+                     g7937)))
+                 (string>=?
+                  (lambda (s1 s2)
+                    (letrec*
+                     ((g7939
+                       (letrec*
+                        ((val7253 (string>? s1 s2)))
+                        (letrec*
+                         ((g7940 (if val7253 val7253 (string=? s1 s2))))
+                         g7940))))
+                     g7939)))
+                 (cadr
+                  (lambda (x)
+                    (letrec*
+                     ((g7941 (letrec* ((x7942 (cdr x))) (car x7942))))
+                     g7941)))
+                 (__toplevel_car car)
+                 (list?
+                  (lambda (l)
+                    (letrec*
+                     ((g7943
+                       (letrec*
+                        ((val7254
+                          (letrec*
+                           ((x7946 (pair? l))
+                            (x7944 (letrec* ((x7945 (cdr l))) (list? x7945))))
+                           (and x7946 x7944))))
+                        (letrec*
+                         ((g7947 (if val7254 val7254 (null? l))))
+                         g7947))))
+                     g7943)))
+                 (cddaar
+                  (lambda (x)
+                    (letrec*
+                     ((g7948
+                       (letrec*
+                        ((x7949
+                          (letrec*
+                           ((x7950 (letrec* ((x7951 (car x))) (car x7951))))
+                           (cdr x7950))))
+                        (cdr x7949))))
+                     g7948)))
+                 (char-numeric?
+                  (lambda (c)
+                    (letrec*
+                     ((g7952
+                       (letrec*
+                        ((x-cnd7953 (letrec* ((x7954 #\0)) (char<=? x7954 c))))
+                        (if x-cnd7953
+                          (letrec* ((x7955 #\9)) (char<=? c x7955))
+                          #f))))
+                     g7952)))
+                 (__toplevel_cons cons)
+                 (assv
+                  (lambda (k l)
+                    (letrec*
+                     ((g7956 (letrec* ((x7958 (list? l))) (assert x7958)))
+                      (g7957
+                       (letrec*
+                        ((x-cnd7959 (null? l)))
+                        (if x-cnd7959
+                          #f
+                          (letrec*
+                           ((x-cnd7960
+                             (letrec* ((x7961 (caar l))) (eqv? x7961 k))))
+                           (if x-cnd7960
+                             (car l)
+                             (letrec* ((x7962 (cdr l))) (assq k x7962))))))))
+                     g7957)))
+                 (not (lambda (x) (letrec* ((g7963 (if x #f #t))) g7963)))
+                 (__toplevel_append
+                  (lambda (l1 l2) (letrec* ((g7964 (append l1 l2))) g7964)))
+                 (memq
+                  (lambda (e l)
+                    (letrec*
+                     ((g7965 (letrec* ((x7967 (list? l))) (assert x7967)))
+                      (g7966
+                       (letrec*
+                        ((x-cnd7968 (null? l)))
+                        (if x-cnd7968
+                          #f
+                          (letrec*
+                           ((x-cnd7969
+                             (letrec* ((x7970 (car l))) (eq? x7970 e))))
+                           (if x-cnd7969
+                             l
+                             (letrec* ((x7971 (cdr l))) (memq e x7971))))))))
+                     g7966)))
+                 (cadaar
+                  (lambda (x)
+                    (letrec*
+                     ((g7972
+                       (letrec*
+                        ((x7973
+                          (letrec*
+                           ((x7974 (letrec* ((x7975 (car x))) (car x7975))))
+                           (cdr x7974))))
+                        (car x7973))))
+                     g7972)))
+                 (length
+                  (lambda (l)
+                    (letrec*
+                     ((g7976 (letrec* ((x7978 (list? l))) (assert x7978)))
+                      (g7977
+                       (letrec*
+                        ((rec
+                          (lambda (l)
+                            (letrec*
+                             ((g7979
+                               (letrec*
+                                ((x-cnd7980 (null? l)))
+                                (if x-cnd7980
+                                  0
+                                  (letrec*
+                                   ((x7981
+                                     (letrec* ((x7982 (cdr l))) (rec x7982))))
+                                   (+ 1 x7981))))))
+                             g7979))))
+                        (letrec* ((g7983 (rec l))) g7983))))
+                     g7977)))
+                 (char-ci<=?
+                  (lambda (c1 c2)
+                    (letrec*
+                     ((g7984 (letrec* ((x7987 (char? c1))) (assert x7987)))
+                      (g7985 (letrec* ((x7988 (char? c2))) (assert x7988)))
+                      (g7986
+                       (letrec*
+                        ((val7255 (char-ci<? c1 c2)))
+                        (letrec*
+                         ((g7989 (if val7255 val7255 (char-ci=? c1 c2))))
+                         g7989))))
+                     g7986)))
+                 (string>?
+                  (lambda (s1 s2)
+                    (letrec*
+                     ((g7990
+                       (letrec* ((x7991 (string<=? s1 s2))) (not x7991))))
+                     g7990)))
+                 (cdadr
+                  (lambda (x)
+                    (letrec*
+                     ((g7992
+                       (letrec*
+                        ((x7993 (letrec* ((x7994 (cdr x))) (car x7994))))
+                        (cdr x7993))))
+                     g7992)))
+                 (assoc
+                  (lambda (k l)
+                    (letrec*
+                     ((g7995 (letrec* ((x7997 (list? l))) (assert x7997)))
+                      (g7996
+                       (letrec*
+                        ((x-cnd7998 (null? l)))
+                        (if x-cnd7998
+                          #f
+                          (letrec*
+                           ((x-cnd7999
+                             (letrec* ((x8000 (caar l))) (equal? x8000 k))))
+                           (if x-cnd7999
+                             (car l)
+                             (letrec* ((x8001 (cdr l))) (assoc k x8001))))))))
+                     g7996)))
+                 (caar
+                  (lambda (x)
+                    (letrec*
+                     ((g8002 (letrec* ((x8003 (car x))) (car x8003))))
+                     g8002)))
+                 (char>?
+                  (lambda (c1 c2)
+                    (letrec*
+                     ((g8004 (letrec* ((x8007 (char? c1))) (assert x8007)))
+                      (g8005 (letrec* ((x8008 (char? c2))) (assert x8008)))
+                      (g8006 (letrec* ((x8009 (char<=? c1 c2))) (not x8009))))
+                     g8006)))
+                 (string<=?
+                  (lambda (s1 s2)
+                    (letrec*
+                     ((g8010
+                       (letrec*
+                        ((val7256 (string<? s1 s2)))
+                        (letrec*
+                         ((g8011 (if val7256 val7256 (string=? s1 s2))))
+                         g8011))))
+                     g8010)))
+                 (for-each
+                  (lambda (f l)
+                    (letrec*
+                     ((g8012 (letrec* ((x8015 (procedure? f))) (assert x8015)))
+                      (g8013 (letrec* ((x8016 (list? l))) (assert x8016)))
+                      (g8014
+                       (letrec*
+                        ((x-cnd8017 (null? l)))
+                        (if x-cnd8017
+                          #t
+                          (letrec*
+                           ((x-cnd8018 (pair? l)))
+                           (if x-cnd8018
+                             (letrec*
+                              ((g8019 (letrec* ((x8021 (car l))) (f x8021)))
+                               (g8020
+                                (letrec*
+                                 ((x8022 (cdr l)))
+                                 (for-each f x8022))))
+                              g8020)
+                             '()))))))
+                     g8014)))
+                 (abs
+                  (lambda (x)
+                    (letrec*
+                     ((g8023 (letrec* ((x8025 (number? x))) (assert x8025)))
+                      (g8024
+                       (letrec*
+                        ((x-cnd8026 (< x 0)))
+                        (if x-cnd8026 (- 0 x) x))))
+                     g8024)))
+                 (char-ci>=?
+                  (lambda (c1 c2)
+                    (letrec*
+                     ((g8027 (letrec* ((x8030 (char? c1))) (assert x8030)))
+                      (g8028 (letrec* ((x8031 (char? c2))) (assert x8031)))
+                      (g8029
+                       (letrec*
+                        ((val7257 (char-ci>? c1 c2)))
+                        (letrec*
+                         ((g8032 (if val7257 val7257 (char-ci=? c1 c2))))
+                         g8032))))
+                     g8029)))
+                 (caddar
+                  (lambda (x)
+                    (letrec*
+                     ((g8033
+                       (letrec*
+                        ((x8034
+                          (letrec*
+                           ((x8035 (letrec* ((x8036 (car x))) (cdr x8036))))
+                           (cdr x8035))))
+                        (car x8034))))
+                     g8033)))
+                 (newline (lambda () (letrec* ((g8037 #f)) g8037)))
+                 (lcm
+                  (lambda (m n)
+                    (letrec*
+                     ((g8038
+                       (letrec*
+                        ((x8040 (letrec* ((x8041 (* m n))) (abs x8041)))
+                         (x8039 (gcd m n)))
+                        (/ x8040 x8039))))
+                     g8038)))
+                 (deref car)
+                 (>
+                  (lambda (x y)
+                    (letrec*
+                     ((g8042 (letrec* ((x8044 (number? x))) (assert x8044)))
+                      (g8043 (letrec* ((x8045 (<= x y))) (not x8045))))
+                     g8043)))
+                 (list-ref
+                  (lambda (l index)
+                    (letrec*
+                     ((g8046 (letrec* ((x8050 (list? l))) (assert x8050)))
+                      (g8047
+                       (letrec* ((x8051 (number? index))) (assert x8051)))
+                      (g8048
+                       (letrec*
+                        ((x8052
+                          (letrec* ((x8053 (length l))) (< index x8053))))
+                        (assert x8052)))
+                      (g8049
+                       (letrec*
+                        ((x-cnd8054 (= index 0)))
+                        (if x-cnd8054
+                          (car l)
+                          (letrec*
+                           ((x8056 (cdr l)) (x8055 (- index 1)))
+                           (list-ref x8056 x8055))))))
+                     g8049)))
+                 (gcd
+                  (lambda (a b)
+                    (letrec*
+                     ((g8057
+                       (letrec*
+                        ((x-cnd8058 (= b 0)))
+                        (if x-cnd8058
+                          a
+                          (letrec* ((x8059 (modulo a b))) (gcd b x8059))))))
+                     g8057)))
+                 (image
+                  (lambda () (letrec* ((g8060 (cons 'image '()))) g8060)))
+                 (image?
+                  (lambda (image7550)
+                    (letrec*
+                     ((g8061
+                       (letrec* ((x8062 (car image7550))) (eq? x8062 'image))))
+                     g8061)))
+                 (empty-scene (lambda (w h) (letrec* ((g8063 (image))) g8063)))
+                 (place-image
+                  (lambda (i₁ r c i₂) (letrec* ((g8064 (image))) g8064)))
+                 (circle (lambda (r m c) (letrec* ((g8065 (image))) g8065)))
+                 (min
+                  (lambda (x y)
+                    (letrec*
+                     ((g8066
+                       (letrec* ((x-cnd8067 (<= x y))) (if x-cnd8067 x y))))
+                     g8066)))
+                 (max
+                  (lambda (x y)
+                    (letrec*
+                     ((g8068
+                       (letrec* ((x-cnd8069 (>= x y))) (if x-cnd8069 x y))))
+                     g8068)))
+                 (abs
+                  (lambda (x)
+                    (letrec*
+                     ((g8070
+                       (letrec*
+                        ((x-cnd8071 (>= x 0)))
+                        (if x-cnd8071 x (- 0 x)))))
+                     g8070)))
+                 (sqr (lambda (x) (letrec* ((g8072 (* x x))) g8072)))
+                 (WIDTH 400)
+                 (HEIGHT 400)
+                 (MT-SCENE (empty-scene WIDTH HEIGHT))
+                 (PLAYER-SPEED 4)
+                 (ZOMBIE-SPEED 2)
+                 (ZOMBIE-RADIUS 20)
+                 (PLAYER-RADIUS 20)
+                 (PLAYER-IMG (circle PLAYER-RADIUS "solid" "green"))
+                 (posn/c
+                  (lambda (j7328 k7329 f7330)
+                    (letrec*
+                     ((g8073
+                       (lambda (g7327)
+                         (letrec*
+                          ((g8074
+                            (letrec*
+                             ((x7331
+                               ((lambda (g7335 g7336 g7337)
+                                  (letrec*
+                                   ((g8075
+                                     (letrec*
+                                      ((x-cnd8076
+                                        ((lambda (v7334)
+                                           (letrec*
+                                            ((g8077
+                                              (letrec*
+                                               ((x-cnd8078 (eq? 'x v7334)))
+                                               (if x-cnd8078
+                                                 #t
+                                                 (letrec*
+                                                  ((x-cnd8079 (eq? 'y v7334)))
+                                                  (if x-cnd8079
+                                                    #t
+                                                    (letrec*
+                                                     ((x-cnd8080
+                                                       (eq? 'posn v7334)))
+                                                     (if x-cnd8080
+                                                       #t
+                                                       (letrec*
+                                                        ((x-cnd8081
+                                                          (eq?
+                                                           'move-toward/speed
+                                                           v7334)))
+                                                        (if x-cnd8081
+                                                          #t
+                                                          (letrec*
+                                                           ((x-cnd8082
+                                                             (eq?
+                                                              'draw-on/image
+                                                              v7334)))
+                                                           (if x-cnd8082
+                                                             #t
+                                                             (eq?
+                                                              'dist
+                                                              v7334)))))))))))))
+                                            g8077))
+                                         g7337)))
+                                      (if x-cnd8076
+                                        g7337
+                                        (blame
+                                         g7335
+                                         '(lambda (v7334)
+                                            (if (eq? 'x v7334)
+                                              #t
+                                              (if (eq? 'y v7334)
+                                                #t
+                                                (if (eq? 'posn v7334)
+                                                  #t
+                                                  (if (eq?
+                                                       'move-toward/speed
+                                                       v7334)
+                                                    #t
+                                                    (if (eq?
+                                                         'draw-on/image
+                                                         v7334)
+                                                      #t
+                                                      (eq?
+                                                       'dist
+                                                       v7334))))))))))))
+                                   g8075))
+                                j7328
+                                k7329
+                                g7327)))
+                             (letrec*
+                              ((g8083
+                                (letrec*
+                                 ((x8085
+                                   ((lambda (msg)
+                                      (letrec*
+                                       ((g8086
+                                         (if cnd
+                                           (letrec*
+                                            ((g8087
+                                              (lambda (j7338 k7339 f7340)
+                                                (letrec*
+                                                 ((g8088
+                                                   (lambda ()
+                                                     (letrec*
+                                                      ((g8089
+                                                        (letrec*
+                                                         ((x8090 (f7340)))
+                                                         (real?
+                                                          j7338
+                                                          k7339
+                                                          x8090))))
+                                                      g8089))))
+                                                 g8088))))
+                                            g8087)
+                                           (if cnd
+                                             (letrec*
+                                              ((g8091
+                                                (lambda (j7341 k7342 f7343)
+                                                  (letrec*
+                                                   ((g8092
+                                                     (lambda ()
+                                                       (letrec*
+                                                        ((g8093
+                                                          (letrec*
+                                                           ((x8094 (f7343)))
+                                                           (real?
+                                                            j7341
+                                                            k7342
+                                                            x8094))))
+                                                        g8093))))
+                                                   g8092))))
+                                              g8091)
+                                             (if cnd
+                                               (letrec*
+                                                ((g8095
+                                                  (lambda (j7344 k7345 f7346)
+                                                    (letrec*
+                                                     ((g8096
+                                                       (lambda ()
+                                                         (letrec*
+                                                          ((g8097
+                                                            (letrec*
+                                                             ((x8098 (f7346)))
+                                                             (posn/c
+                                                              j7344
+                                                              k7345
+                                                              x8098))))
+                                                          g8097))))
+                                                     g8096))))
+                                                g8095)
+                                               (if cnd
+                                                 (letrec*
+                                                  ((g8099
+                                                    (lambda (j7349 k7350 f7351)
+                                                      (letrec*
+                                                       ((g8100
+                                                         (lambda (g7347 g7348)
+                                                           (letrec*
+                                                            ((g8101
+                                                              (letrec*
+                                                               ((x8102
+                                                                 (letrec*
+                                                                  ((x8104
+                                                                    (posn/c
+                                                                     j7349
+                                                                     k7350
+                                                                     g7347))
+                                                                   (x8103
+                                                                    (real?
+                                                                     j7349
+                                                                     k7350
+                                                                     g7348)))
+                                                                  (f7351
+                                                                   x8104
+                                                                   x8103))))
+                                                               (posn/c
+                                                                j7349
+                                                                k7350
+                                                                x8102))))
+                                                            g8101))))
+                                                       g8100))))
+                                                  g8099)
+                                                 (if cnd
+                                                   (letrec*
+                                                    ((g8105
+                                                      (lambda (j7354
+                                                               k7355
+                                                               f7356)
+                                                        (letrec*
+                                                         ((g8106
+                                                           (lambda (g7352
+                                                                    g7353)
+                                                             (letrec*
+                                                              ((g8107
+                                                                (letrec*
+                                                                 ((x8108
+                                                                   (letrec*
+                                                                    ((x8110
+                                                                      (image?
+                                                                       j7354
+                                                                       k7355
+                                                                       g7352))
+                                                                     (x8109
+                                                                      (image?
+                                                                       j7354
+                                                                       k7355
+                                                                       g7353)))
+                                                                    (f7356
+                                                                     x8110
+                                                                     x8109))))
+                                                                 (image?
+                                                                  j7354
+                                                                  k7355
+                                                                  x8108))))
+                                                              g8107))))
+                                                         g8106))))
+                                                    g8105)
+                                                   (if cnd
+                                                     (letrec*
+                                                      ((g8111
+                                                        (lambda (j7358
+                                                                 k7359
+                                                                 f7360)
+                                                          (letrec*
+                                                           ((g8112
+                                                             (lambda (g7357)
+                                                               (letrec*
+                                                                ((g8113
+                                                                  (letrec*
+                                                                   ((x8114
+                                                                     (letrec*
+                                                                      ((x8115
+                                                                        (posn/c
+                                                                         j7358
+                                                                         k7359
+                                                                         g7357)))
+                                                                      (f7360
+                                                                       x8115))))
+                                                                   (real?
+                                                                    j7358
+                                                                    k7359
+                                                                    x8114))))
+                                                                g8113))))
+                                                           g8112))))
+                                                      g8111)
+                                                     (letrec*
+                                                      ((g8116 "error"))
+                                                      g8116)))))))))
+                                       g8086))
+                                    x7331))
+                                  (x8084 (f7330 x7331)))
+                                 (x8085 j7328 k7329 x8084))))
+                              g8083))))
+                          g8074))))
+                     g8073)))
+                 (player/c
+                  (lambda (j7362 k7363 f7364)
+                    (letrec*
+                     ((g8117
+                       (lambda (g7361)
+                         (letrec*
+                          ((g8118
+                            (letrec*
+                             ((x7365
+                               ((lambda (g7369 g7370 g7371)
+                                  (letrec*
+                                   ((g8119
+                                     (letrec*
+                                      ((x-cnd8120
+                                        ((lambda (v7368)
+                                           (letrec*
+                                            ((g8121
+                                              (letrec*
+                                               ((x-cnd8122 (eq? 'posn v7368)))
+                                               (if x-cnd8122
+                                                 #t
+                                                 (letrec*
+                                                  ((x-cnd8123
+                                                    (eq? 'move-toward v7368)))
+                                                  (if x-cnd8123
+                                                    #t
+                                                    (eq? 'draw-on v7368)))))))
+                                            g8121))
+                                         g7371)))
+                                      (if x-cnd8120
+                                        g7371
+                                        (blame
+                                         g7369
+                                         '(lambda (v7368)
+                                            (if (eq? 'posn v7368)
+                                              #t
+                                              (if (eq? 'move-toward v7368)
+                                                #t
+                                                (eq? 'draw-on v7368)))))))))
+                                   g8119))
+                                j7362
+                                k7363
+                                g7361)))
+                             (letrec*
+                              ((g8124
+                                (letrec*
+                                 ((x8126
+                                   ((lambda (msg)
+                                      (letrec*
+                                       ((g8127
+                                         (if cnd
+                                           (letrec*
+                                            ((g8128
+                                              (lambda (j7372 k7373 f7374)
+                                                (letrec*
+                                                 ((g8129
+                                                   (lambda ()
+                                                     (letrec*
+                                                      ((g8130
+                                                        (letrec*
+                                                         ((x8131 (f7374)))
+                                                         (posn/c
+                                                          j7372
+                                                          k7373
+                                                          x8131))))
+                                                      g8130))))
+                                                 g8129))))
+                                            g8128)
+                                           (if cnd
+                                             (letrec*
+                                              ((g8132
+                                                (lambda (j7376 k7377 f7378)
+                                                  (letrec*
+                                                   ((g8133
+                                                     (lambda (g7375)
+                                                       (letrec*
+                                                        ((g8134
+                                                          (letrec*
+                                                           ((x8135
+                                                             (letrec*
+                                                              ((x8136
+                                                                (posn/c
+                                                                 j7376
+                                                                 k7377
+                                                                 g7375)))
+                                                              (f7378 x8136))))
+                                                           (player/c
+                                                            j7376
+                                                            k7377
+                                                            x8135))))
+                                                        g8134))))
+                                                   g8133))))
+                                              g8132)
+                                             (if cnd
+                                               (letrec*
+                                                ((g8137
+                                                  (lambda (j7380 k7381 f7382)
+                                                    (letrec*
+                                                     ((g8138
+                                                       (lambda (g7379)
+                                                         (letrec*
+                                                          ((g8139
+                                                            (letrec*
+                                                             ((x8140
+                                                               (letrec*
+                                                                ((x8141
+                                                                  (image?
+                                                                   j7380
+                                                                   k7381
+                                                                   g7379)))
+                                                                (f7382
+                                                                 x8141))))
+                                                             (image?
+                                                              j7380
+                                                              k7381
+                                                              x8140))))
+                                                          g8139))))
+                                                     g8138))))
+                                                g8137)
+                                               (letrec*
+                                                ((g8142 "error"))
+                                                g8142))))))
+                                       g8127))
+                                    x7365))
+                                  (x8125 (f7364 x7365)))
+                                 (x8126 j7362 k7363 x8125))))
+                              g8124))))
+                          g8118))))
+                     g8117)))
+                 (zombie/c
+                  (lambda (j7384 k7385 f7386)
+                    (letrec*
+                     ((g8143
+                       (lambda (g7383)
+                         (letrec*
+                          ((g8144
+                            (letrec*
+                             ((x7387
+                               ((lambda (g7391 g7392 g7393)
+                                  (letrec*
+                                   ((g8145
+                                     (letrec*
+                                      ((x-cnd8146
+                                        ((lambda (v7390)
+                                           (letrec*
+                                            ((g8147
+                                              (letrec*
+                                               ((x-cnd8148 (eq? 'posn v7390)))
+                                               (if x-cnd8148
+                                                 #t
+                                                 (letrec*
+                                                  ((x-cnd8149
+                                                    (eq?
+                                                     'draw-on/color
+                                                     v7390)))
+                                                  (if x-cnd8149
+                                                    #t
+                                                    (letrec*
+                                                     ((x-cnd8150
+                                                       (eq? 'touching? v7390)))
+                                                     (if x-cnd8150
+                                                       #t
+                                                       (eq?
+                                                        'move-toward
+                                                        v7390)))))))))
+                                            g8147))
+                                         g7393)))
+                                      (if x-cnd8146
+                                        g7393
+                                        (blame
+                                         g7391
+                                         '(lambda (v7390)
+                                            (if (eq? 'posn v7390)
+                                              #t
+                                              (if (eq? 'draw-on/color v7390)
+                                                #t
+                                                (if (eq? 'touching? v7390)
+                                                  #t
+                                                  (eq?
+                                                   'move-toward
+                                                   v7390))))))))))
+                                   g8145))
+                                j7384
+                                k7385
+                                g7383)))
+                             (letrec*
+                              ((g8151
+                                (letrec*
+                                 ((x8153
+                                   ((lambda (msg)
+                                      (letrec*
+                                       ((g8154
+                                         (if cnd
+                                           (letrec*
+                                            ((g8155
+                                              (lambda (j7394 k7395 f7396)
+                                                (letrec*
+                                                 ((g8156
+                                                   (lambda ()
+                                                     (letrec*
+                                                      ((g8157
+                                                        (letrec*
+                                                         ((x8158 (f7396)))
+                                                         (posn/c
+                                                          j7394
+                                                          k7395
+                                                          x8158))))
+                                                      g8157))))
+                                                 g8156))))
+                                            g8155)
+                                           (if cnd
+                                             (letrec*
+                                              ((g8159
+                                                (lambda (j7399 k7400 f7401)
+                                                  (letrec*
+                                                   ((g8160
+                                                     (lambda (g7397 g7398)
+                                                       (letrec*
+                                                        ((g8161
+                                                          (letrec*
+                                                           ((x8162
+                                                             (letrec*
+                                                              ((x8164
+                                                                (string?
+                                                                 j7399
+                                                                 k7400
+                                                                 g7397))
+                                                               (x8163
+                                                                (image?
+                                                                 j7399
+                                                                 k7400
+                                                                 g7398)))
+                                                              (f7401
+                                                               x8164
+                                                               x8163))))
+                                                           (image?
+                                                            j7399
+                                                            k7400
+                                                            x8162))))
+                                                        g8161))))
+                                                   g8160))))
+                                              g8159)
+                                             (if cnd
+                                               (letrec*
+                                                ((g8165
+                                                  (lambda (j7403 k7404 f7405)
+                                                    (letrec*
+                                                     ((g8166
+                                                       (lambda (g7402)
+                                                         (letrec*
+                                                          ((g8167
+                                                            (letrec*
+                                                             ((x8168
+                                                               (letrec*
+                                                                ((x8169
+                                                                  (posn/c
+                                                                   j7403
+                                                                   k7404
+                                                                   g7402)))
+                                                                (f7405
+                                                                 x8169))))
+                                                             (boolean?
+                                                              j7403
+                                                              k7404
+                                                              x8168))))
+                                                          g8167))))
+                                                     g8166))))
+                                                g8165)
+                                               (if cnd
+                                                 (letrec*
+                                                  ((g8170
+                                                    (lambda (j7407 k7408 f7409)
+                                                      (letrec*
+                                                       ((g8171
+                                                         (lambda (g7406)
+                                                           (letrec*
+                                                            ((g8172
+                                                              (letrec*
+                                                               ((x8173
+                                                                 (letrec*
+                                                                  ((x8174
+                                                                    (posn/c
+                                                                     j7407
+                                                                     k7408
+                                                                     g7406)))
+                                                                  (f7409
+                                                                   x8174))))
+                                                               (zombie/c
+                                                                j7407
+                                                                k7408
+                                                                x8173))))
+                                                            g8172))))
+                                                       g8171))))
+                                                  g8170)
+                                                 (letrec*
+                                                  ((g8175 "error"))
+                                                  g8175)))))))
+                                       g8154))
+                                    x7387))
+                                  (x8152 (f7386 x7387)))
+                                 (x8153 j7384 k7385 x8152))))
+                              g8151))))
+                          g8144))))
+                     g8143)))
+                 (horde/c
+                  (lambda (j7411 k7412 f7413)
+                    (letrec*
+                     ((g8176
+                       (lambda (g7410)
+                         (letrec*
+                          ((g8177
+                            (letrec*
+                             ((x7414
+                               ((lambda (g7418 g7419 g7420)
+                                  (letrec*
+                                   ((g8178
+                                     (letrec*
+                                      ((x-cnd8179
+                                        ((lambda (v7417)
+                                           (letrec*
+                                            ((g8180
+                                              (letrec*
+                                               ((x-cnd8181 (eq? 'dead v7417)))
+                                               (if x-cnd8181
+                                                 #t
+                                                 (letrec*
+                                                  ((x-cnd8182
+                                                    (eq? 'undead v7417)))
+                                                  (if x-cnd8182
+                                                    #t
+                                                    (letrec*
+                                                     ((x-cnd8183
+                                                       (eq? 'draw-on v7417)))
+                                                     (if x-cnd8183
+                                                       #t
+                                                       (letrec*
+                                                        ((x-cnd8184
+                                                          (eq?
+                                                           'touching?
+                                                           v7417)))
+                                                        (if x-cnd8184
+                                                          #t
+                                                          (letrec*
+                                                           ((x-cnd8185
+                                                             (eq?
+                                                              'move-toward
+                                                              v7417)))
+                                                           (if x-cnd8185
+                                                             #t
+                                                             (eq?
+                                                              'eat-brains
+                                                              v7417)))))))))))))
+                                            g8180))
+                                         g7420)))
+                                      (if x-cnd8179
+                                        g7420
+                                        (blame
+                                         g7418
+                                         '(lambda (v7417)
+                                            (if (eq? 'dead v7417)
+                                              #t
+                                              (if (eq? 'undead v7417)
+                                                #t
+                                                (if (eq? 'draw-on v7417)
+                                                  #t
+                                                  (if (eq? 'touching? v7417)
+                                                    #t
+                                                    (if (eq?
+                                                         'move-toward
+                                                         v7417)
+                                                      #t
+                                                      (eq?
+                                                       'eat-brains
+                                                       v7417))))))))))))
+                                   g8178))
+                                j7411
+                                k7412
+                                g7410)))
+                             (letrec*
+                              ((g8186
+                                (letrec*
+                                 ((x8188
+                                   ((lambda (msg)
+                                      (letrec*
+                                       ((g8189
+                                         (if cnd
+                                           (letrec*
+                                            ((g8190
+                                              (lambda (j7421 k7422 f7423)
+                                                (letrec*
+                                                 ((g8191
+                                                   (lambda ()
+                                                     (letrec*
+                                                      ((g8192
+                                                        (letrec*
+                                                         ((x8193 (f7423)))
+                                                         (zombies/c
+                                                          j7421
+                                                          k7422
+                                                          x8193))))
+                                                      g8192))))
+                                                 g8191))))
+                                            g8190)
+                                           (if cnd
+                                             (letrec*
+                                              ((g8194
+                                                (lambda (j7424 k7425 f7426)
+                                                  (letrec*
+                                                   ((g8195
+                                                     (lambda ()
+                                                       (letrec*
+                                                        ((g8196
+                                                          (letrec*
+                                                           ((x8197 (f7426)))
+                                                           (zombies/c
+                                                            j7424
+                                                            k7425
+                                                            x8197))))
+                                                        g8196))))
+                                                   g8195))))
+                                              g8194)
+                                             (if cnd
+                                               (letrec*
+                                                ((g8198
+                                                  (lambda (j7428 k7429 f7430)
+                                                    (letrec*
+                                                     ((g8199
+                                                       (lambda (g7427)
+                                                         (letrec*
+                                                          ((g8200
+                                                            (letrec*
+                                                             ((x8201
+                                                               (letrec*
+                                                                ((x8202
+                                                                  (image?
+                                                                   j7428
+                                                                   k7429
+                                                                   g7427)))
+                                                                (f7430
+                                                                 x8202))))
+                                                             (image?
+                                                              j7428
+                                                              k7429
+                                                              x8201))))
+                                                          g8200))))
+                                                     g8199))))
+                                                g8198)
+                                               (if cnd
+                                                 (letrec*
+                                                  ((g8203
+                                                    (lambda (j7432 k7433 f7434)
+                                                      (letrec*
+                                                       ((g8204
+                                                         (lambda (g7431)
+                                                           (letrec*
+                                                            ((g8205
+                                                              (letrec*
+                                                               ((x8206
+                                                                 (letrec*
+                                                                  ((x8207
+                                                                    (posn/c
+                                                                     j7432
+                                                                     k7433
+                                                                     g7431)))
+                                                                  (f7434
+                                                                   x8207))))
+                                                               (boolean?
+                                                                j7432
+                                                                k7433
+                                                                x8206))))
+                                                            g8205))))
+                                                       g8204))))
+                                                  g8203)
+                                                 (if cnd
+                                                   (letrec*
+                                                    ((g8208
+                                                      (lambda (j7436
+                                                               k7437
+                                                               f7438)
+                                                        (letrec*
+                                                         ((g8209
+                                                           (lambda (g7435)
+                                                             (letrec*
+                                                              ((g8210
+                                                                (letrec*
+                                                                 ((x8211
+                                                                   (letrec*
+                                                                    ((x8212
+                                                                      (posn/c
+                                                                       j7436
+                                                                       k7437
+                                                                       g7435)))
+                                                                    (f7438
+                                                                     x8212))))
+                                                                 (horde/c
+                                                                  j7436
+                                                                  k7437
+                                                                  x8211))))
+                                                              g8210))))
+                                                         g8209))))
+                                                    g8208)
+                                                   (if cnd
+                                                     (letrec*
+                                                      ((g8213
+                                                        (lambda (j7439
+                                                                 k7440
+                                                                 f7441)
+                                                          (letrec*
+                                                           ((g8214
+                                                             (lambda ()
+                                                               (letrec*
+                                                                ((g8215
+                                                                  (letrec*
+                                                                   ((x8216
+                                                                     (f7441)))
+                                                                   (horde/c
+                                                                    j7439
+                                                                    k7440
+                                                                    x8216))))
+                                                                g8215))))
+                                                           g8214))))
+                                                      g8213)
+                                                     (letrec*
+                                                      ((g8217 "error"))
+                                                      g8217)))))))))
+                                       g8189))
+                                    x7414))
+                                  (x8187 (f7413 x7414)))
+                                 (x8188 j7411 k7412 x8187))))
+                              g8186))))
+                          g8177))))
+                     g8176)))
+                 (zombies/c
+                  (lambda (j7443 k7444 f7445)
+                    (letrec*
+                     ((g8218
+                       (lambda (g7442)
+                         (letrec*
+                          ((g8219
+                            (letrec*
+                             ((x7446
+                               ((lambda (g7450 g7451 g7452)
+                                  (letrec*
+                                   ((g8220
+                                     (letrec*
+                                      ((x-cnd8221
+                                        ((lambda (v7449)
+                                           (letrec*
+                                            ((g8222
+                                              (letrec*
+                                               ((x-cnd8223
+                                                 (eq? 'move-toward v7449)))
+                                               (if x-cnd8223
+                                                 #t
+                                                 (letrec*
+                                                  ((x-cnd8224
+                                                    (eq?
+                                                     'draw-on/color
+                                                     v7449)))
+                                                  (if x-cnd8224
+                                                    #t
+                                                    (letrec*
+                                                     ((x-cnd8225
+                                                       (eq? 'touching? v7449)))
+                                                     (if x-cnd8225
+                                                       #t
+                                                       (eq?
+                                                        'kill-all
+                                                        v7449)))))))))
+                                            g8222))
+                                         g7452)))
+                                      (if x-cnd8221
+                                        g7452
+                                        (blame
+                                         g7450
+                                         '(lambda (v7449)
+                                            (if (eq? 'move-toward v7449)
+                                              #t
+                                              (if (eq? 'draw-on/color v7449)
+                                                #t
+                                                (if (eq? 'touching? v7449)
+                                                  #t
+                                                  (eq?
+                                                   'kill-all
+                                                   v7449))))))))))
+                                   g8220))
+                                j7443
+                                k7444
+                                g7442)))
+                             (letrec*
+                              ((g8226
+                                (letrec*
+                                 ((x8228
+                                   ((lambda (msg)
+                                      (letrec*
+                                       ((g8229
+                                         (if cnd
+                                           (letrec*
+                                            ((g8230
+                                              (lambda (j7454 k7455 f7456)
+                                                (letrec*
+                                                 ((g8231
+                                                   (lambda (g7453)
+                                                     (letrec*
+                                                      ((g8232
+                                                        (letrec*
+                                                         ((x8233
+                                                           (letrec*
+                                                            ((x8234
+                                                              (posn/c
+                                                               j7454
+                                                               k7455
+                                                               g7453)))
+                                                            (f7456 x8234))))
+                                                         (zombies/c
+                                                          j7454
+                                                          k7455
+                                                          x8233))))
+                                                      g8232))))
+                                                 g8231))))
+                                            g8230)
+                                           (if cnd
+                                             (letrec*
+                                              ((g8235
+                                                (lambda (j7459 k7460 f7461)
+                                                  (letrec*
+                                                   ((g8236
+                                                     (lambda (g7457 g7458)
+                                                       (letrec*
+                                                        ((g8237
+                                                          (letrec*
+                                                           ((x8238
+                                                             (letrec*
+                                                              ((x8240
+                                                                (string?
+                                                                 j7459
+                                                                 k7460
+                                                                 g7457))
+                                                               (x8239
+                                                                (image?
+                                                                 j7459
+                                                                 k7460
+                                                                 g7458)))
+                                                              (f7461
+                                                               x8240
+                                                               x8239))))
+                                                           (image?
+                                                            j7459
+                                                            k7460
+                                                            x8238))))
+                                                        g8237))))
+                                                   g8236))))
+                                              g8235)
+                                             (if cnd
+                                               (letrec*
+                                                ((g8241
+                                                  (lambda (j7463 k7464 f7465)
+                                                    (letrec*
+                                                     ((g8242
+                                                       (lambda (g7462)
+                                                         (letrec*
+                                                          ((g8243
+                                                            (letrec*
+                                                             ((x8244
+                                                               (letrec*
+                                                                ((x8245
+                                                                  (posn/c
+                                                                   j7463
+                                                                   k7464
+                                                                   g7462)))
+                                                                (f7465
+                                                                 x8245))))
+                                                             (boolean?
+                                                              j7463
+                                                              k7464
+                                                              x8244))))
+                                                          g8243))))
+                                                     g8242))))
+                                                g8241)
+                                               (if cnd
+                                                 (letrec*
+                                                  ((g8246
+                                                    (lambda (j7467 k7468 f7469)
+                                                      (letrec*
+                                                       ((g8247
+                                                         (lambda (g7466)
+                                                           (letrec*
+                                                            ((g8248
+                                                              (letrec*
+                                                               ((x8249
+                                                                 (letrec*
+                                                                  ((x8250
+                                                                    (zombies/c
+                                                                     j7467
+                                                                     k7468
+                                                                     g7466)))
+                                                                  (f7469
+                                                                   x8250))))
+                                                               (horde/c
+                                                                j7467
+                                                                k7468
+                                                                x8249))))
+                                                            g8248))))
+                                                       g8247))))
+                                                  g8246)
+                                                 (letrec*
+                                                  ((g8251 "error"))
+                                                  g8251)))))))
+                                       g8229))
+                                    x7446))
+                                  (x8227 (f7445 x7446)))
+                                 (x8228 j7443 k7444 x8227))))
+                              g8226))))
+                          g8219))))
+                     g8218)))
+                 (world/c
+                  (lambda (j7471 k7472 f7473)
+                    (letrec*
+                     ((g8252
+                       (lambda (g7470)
+                         (letrec*
+                          ((g8253
+                            (letrec*
+                             ((x7474
+                               ((lambda (g7478 g7479 g7480)
+                                  (letrec*
+                                   ((g8254
+                                     (letrec*
+                                      ((x-cnd8255
+                                        ((lambda (v7477)
+                                           (letrec*
+                                            ((g8256
+                                              (letrec*
+                                               ((x-cnd8257
+                                                 (eq? 'on-mouse v7477)))
+                                               (if x-cnd8257
+                                                 #t
+                                                 (letrec*
+                                                  ((x-cnd8258
+                                                    (eq? 'on-tick v7477)))
+                                                  (if x-cnd8258
+                                                    #t
+                                                    (letrec*
+                                                     ((x-cnd8259
+                                                       (eq? 'to-draw v7477)))
+                                                     (if x-cnd8259
+                                                       #t
+                                                       (eq?
+                                                        'stop-when
+                                                        v7477)))))))))
+                                            g8256))
+                                         g7480)))
+                                      (if x-cnd8255
+                                        g7480
+                                        (blame
+                                         g7478
+                                         '(lambda (v7477)
+                                            (if (eq? 'on-mouse v7477)
+                                              #t
+                                              (if (eq? 'on-tick v7477)
+                                                #t
+                                                (if (eq? 'to-draw v7477)
+                                                  #t
+                                                  (eq?
+                                                   'stop-when
+                                                   v7477))))))))))
+                                   g8254))
+                                j7471
+                                k7472
+                                g7470)))
+                             (letrec*
+                              ((g8260
+                                (letrec*
+                                 ((x8262
+                                   ((lambda (msg)
+                                      (letrec*
+                                       ((g8263
+                                         (if cnd
+                                           (letrec*
+                                            ((g8264
+                                              (lambda (j7484 k7485 f7486)
+                                                (letrec*
+                                                 ((g8265
+                                                   (lambda (g7481 g7482 g7483)
+                                                     (letrec*
+                                                      ((g8266
+                                                        (letrec*
+                                                         ((x8267
+                                                           (letrec*
+                                                            ((x8270
+                                                              (real?
+                                                               j7484
+                                                               k7485
+                                                               g7481))
+                                                             (x8269
+                                                              (real?
+                                                               j7484
+                                                               k7485
+                                                               g7482))
+                                                             (x8268
+                                                              (string?
+                                                               j7484
+                                                               k7485
+                                                               g7483)))
+                                                            (f7486
+                                                             x8270
+                                                             x8269
+                                                             x8268))))
+                                                         (world/c
+                                                          j7484
+                                                          k7485
+                                                          x8267))))
+                                                      g8266))))
+                                                 g8265))))
+                                            g8264)
+                                           (if cnd
+                                             (letrec*
+                                              ((g8271
+                                                (lambda (j7487 k7488 f7489)
+                                                  (letrec*
+                                                   ((g8272
+                                                     (lambda ()
+                                                       (letrec*
+                                                        ((g8273
+                                                          (letrec*
+                                                           ((x8274 (f7489)))
+                                                           (world/c
+                                                            j7487
+                                                            k7488
+                                                            x8274))))
+                                                        g8273))))
+                                                   g8272))))
+                                              g8271)
+                                             (if cnd
+                                               (letrec*
+                                                ((g8275
+                                                  (lambda (j7490 k7491 f7492)
+                                                    (letrec*
+                                                     ((g8276
+                                                       (lambda ()
+                                                         (letrec*
+                                                          ((g8277
+                                                            (letrec*
+                                                             ((x8278 (f7492)))
+                                                             (image?
+                                                              j7490
+                                                              k7491
+                                                              x8278))))
+                                                          g8277))))
+                                                     g8276))))
+                                                g8275)
+                                               (if cnd
+                                                 (letrec*
+                                                  ((g8279
+                                                    (lambda (j7493 k7494 f7495)
+                                                      (letrec*
+                                                       ((g8280
+                                                         (lambda ()
+                                                           (letrec*
+                                                            ((g8281
+                                                              (letrec*
+                                                               ((x8282
+                                                                 (f7495)))
+                                                               (boolean?
+                                                                j7493
+                                                                k7494
+                                                                x8282))))
+                                                            g8281))))
+                                                       g8280))))
+                                                  g8279)
+                                                 (letrec*
+                                                  ((g8283 "error"))
+                                                  g8283)))))))
+                                       g8263))
+                                    x7474))
+                                  (x8261 (f7473 x7474)))
+                                 (x8262 j7471 k7472 x8261))))
+                              g8260))))
+                          g8253))))
+                     g8252)))
+                 (new-world
+                  (lambda (player mouse zombies)
+                    (letrec*
+                     ((g8284
+                       (letrec*
+                        ((x8313 (msg))
+                         (x8285
+                          (if cnd
+                            (letrec*
+                             ((g8286
+                               (letrec*
+                                ((x8291 (x y me))
+                                 (x8287
+                                  (letrec*
+                                   ((x8288
+                                     (letrec*
+                                      ((x-cnd8289 (equal? me "leave")))
+                                      (if x-cnd8289
+                                        (letrec*
+                                         ((x8290 (player 'posn)))
+                                         (x8290))
+                                        (new-posn x y)))))
+                                   (new-world player x8288 zombies))))
+                                (λ x8291 x8287))))
+                             g8286)
+                            (if cnd
+                              (letrec*
+                               ((g8292
+                                 (letrec*
+                                  ((x8293
+                                    (letrec*
+                                     ((x8300
+                                       (letrec*
+                                        ((x8301 (player 'move-toward)))
+                                        (x8301 mouse)))
+                                      (x8294
+                                       (letrec*
+                                        ((x8297
+                                          (letrec*
+                                           ((x8298
+                                             (letrec*
+                                              ((x8299 (zombies 'eat-brains)))
+                                              (x8299))))
+                                           (x8298 'move-toward)))
+                                         (x8295
+                                          (letrec*
+                                           ((x8296 (player 'posn)))
+                                           (x8296))))
+                                        (x8297 x8295))))
+                                     (new-world x8300 mouse x8294))))
+                                  (λ () x8293))))
+                               g8292)
+                              (if cnd
+                                (letrec*
+                                 ((g8302
+                                   (letrec*
+                                    ((x8303
+                                      (letrec*
+                                       ((x8306 (player 'draw-on))
+                                        (x8304
+                                         (letrec*
+                                          ((x8305 (zombies 'draw-on)))
+                                          (x8305 MT-SCENE))))
+                                       (x8306 x8304))))
+                                    (λ () x8303))))
+                                 g8302)
+                                (if cnd
+                                  (letrec*
+                                   ((g8307
+                                     (letrec*
+                                      ((x8308
+                                        (letrec*
+                                         ((x8311 (zombies 'touching?))
+                                          (x8309
+                                           (letrec*
+                                            ((x8310 (player 'posn)))
+                                            (x8310))))
+                                         (x8311 x8309))))
+                                      (λ () x8308))))
+                                   g8307)
+                                  (letrec*
+                                   ((g8312 "unknown message"))
+                                   g8312)))))))
+                        (λ x8313 x8285))))
+                     g8284)))
+                 (new-player
+                  (lambda (p)
+                    (letrec*
+                     ((g8314
+                       (letrec*
+                        ((x8327 (msg))
+                         (x8315
+                          (if cnd
+                            (letrec* ((g8316 (λ () p))) g8316)
+                            (if cnd
+                              (letrec*
+                               ((g8317
+                                 (letrec*
+                                  ((x8321 (q))
+                                   (x8318
+                                    (letrec*
+                                     ((x8319
+                                       (letrec*
+                                        ((x8320 (p 'move-toward/speed)))
+                                        (x8320 q PLAYER-SPEED))))
+                                     (new-player x8319))))
+                                  (λ x8321 x8318))))
+                               g8317)
+                              (if cnd
+                                (letrec*
+                                 ((g8322
+                                   (letrec*
+                                    ((x8325 (scn))
+                                     (x8323
+                                      (letrec*
+                                       ((x8324 (p 'draw-on/image)))
+                                       (x8324 PLAYER-IMG scn))))
+                                    (λ x8325 x8323))))
+                                 g8322)
+                                (letrec*
+                                 ((g8326 "unknown message"))
+                                 g8326))))))
+                        (λ x8327 x8315))))
+                     g8314)))
+                 (new-horde
+                  (lambda (undead dead)
+                    (letrec*
+                     ((g8328
+                       (letrec*
+                        ((x8354 (msg))
+                         (x8329
+                          (if cnd
+                            (letrec* ((g8330 (λ () dead))) g8330)
+                            (if cnd
+                              (letrec* ((g8331 (λ () undead))) g8331)
+                              (if cnd
+                                (letrec*
+                                 ((g8332
+                                   (letrec*
+                                    ((x8337 (scn))
+                                     (x8333
+                                      (letrec*
+                                       ((x8336 (undead 'draw-on/color))
+                                        (x8334
+                                         (letrec*
+                                          ((x8335 (dead 'draw-on/color)))
+                                          (x8335 "black" scn))))
+                                       (x8336 "yellow" x8334))))
+                                    (λ x8337 x8333))))
+                                 g8332)
+                                (if cnd
+                                  (letrec*
+                                   ((g8338
+                                     (letrec*
+                                      ((x8344 (p))
+                                       (x8339
+                                        (letrec*
+                                         ((x8342
+                                           (letrec*
+                                            ((x8343 (undead 'touching?)))
+                                            (x8343 p)))
+                                          (x8340
+                                           (letrec*
+                                            ((x8341 (dead 'touching?)))
+                                            (x8341 p))))
+                                         (or x8342 x8340))))
+                                      (λ x8344 x8339))))
+                                   g8338)
+                                  (if cnd
+                                    (letrec*
+                                     ((g8345
+                                       (letrec*
+                                        ((x8349 (p))
+                                         (x8346
+                                          (letrec*
+                                           ((x8347
+                                             (letrec*
+                                              ((x8348 (undead 'move-toward)))
+                                              (x8348 p))))
+                                           (new-horde x8347 dead))))
+                                        (λ x8349 x8346))))
+                                     g8345)
+                                    (if cnd
+                                      (letrec*
+                                       ((g8350
+                                         (letrec*
+                                          ((x8351
+                                            (letrec*
+                                             ((x8352 (undead 'kill-all)))
+                                             (x8352 dead))))
+                                          (λ () x8351))))
+                                       g8350)
+                                      (letrec*
+                                       ((g8353 "unknown message"))
+                                       g8353)))))))))
+                        (λ x8354 x8329))))
+                     g8328)))
+                 (new-cons-zombies
+                  (lambda (z r)
+                    (letrec*
+                     ((g8355
+                       (letrec*
+                        ((x8403 (msg))
+                         (x8356
+                          (if cnd
+                            (letrec*
+                             ((g8357
+                               (letrec*
+                                ((x8363 (p))
+                                 (x8358
+                                  (letrec*
+                                   ((x8361
+                                     (letrec*
+                                      ((x8362 (z 'move-toward)))
+                                      (x8362 p)))
+                                    (x8359
+                                     (letrec*
+                                      ((x8360 (r 'move-toward)))
+                                      (x8360 p))))
+                                   (new-cons-zombies x8361 x8359))))
+                                (λ x8363 x8358))))
+                             g8357)
+                            (if cnd
+                              (letrec*
+                               ((g8364
+                                 (letrec*
+                                  ((x8369 (c s))
+                                   (x8365
+                                    (letrec*
+                                     ((x8368 (z 'draw-on/color))
+                                      (x8366
+                                       (letrec*
+                                        ((x8367 (r 'draw-on/color)))
+                                        (x8367 c s))))
+                                     (x8368 c x8366))))
+                                  (λ x8369 x8365))))
+                               g8364)
+                              (if cnd
+                                (letrec*
+                                 ((g8370
+                                   (letrec*
+                                    ((x8376 (p))
+                                     (x8371
+                                      (letrec*
+                                       ((x8374
+                                         (letrec*
+                                          ((x8375 (z 'touching?)))
+                                          (x8375 p)))
+                                        (x8372
+                                         (letrec*
+                                          ((x8373 (r 'touching?)))
+                                          (x8373 p))))
+                                       (or x8374 x8372))))
+                                    (λ x8376 x8371))))
+                                 g8370)
+                                (if cnd
+                                  (letrec*
+                                   ((g8377
+                                     (letrec*
+                                      ((x8401 (dead))
+                                       (x8378
+                                        (letrec*
+                                         ((x8388
+                                           (letrec*
+                                            ((x8392
+                                              (letrec*
+                                               ((x8397
+                                                 (letrec*
+                                                  ((x8400 (r 'touching?))
+                                                   (x8398
+                                                    (letrec*
+                                                     ((x8399 (z 'posn)))
+                                                     (x8399))))
+                                                  (x8400 x8398)))
+                                                (x8393
+                                                 (letrec*
+                                                  ((x8396 (dead 'touching?))
+                                                   (x8394
+                                                    (letrec*
+                                                     ((x8395 (z 'posn)))
+                                                     (x8395))))
+                                                  (x8396 x8394))))
+                                               (or x8397 x8393)))
+                                             (x8389
+                                              (letrec*
+                                               ((x8391 (r 'kill-all))
+                                                (x8390
+                                                 (new-cons-zombies z dead)))
+                                               (x8391 x8390))))
+                                            (x8392 x8389)))
+                                          (x8379
+                                           (letrec*
+                                            ((x8380
+                                              (letrec*
+                                               ((res
+                                                 (letrec*
+                                                  ((x8381 (r 'kill-all)))
+                                                  (x8381 dead))))
+                                               (letrec*
+                                                ((g8382
+                                                  (letrec*
+                                                   ((x8385
+                                                     (letrec*
+                                                      ((x8386
+                                                        (letrec*
+                                                         ((x8387
+                                                           (res 'undead)))
+                                                         (x8387))))
+                                                      (new-cons-zombies
+                                                       z
+                                                       x8386)))
+                                                    (x8383
+                                                     (letrec*
+                                                      ((x8384 (res 'dead)))
+                                                      (x8384))))
+                                                   (new-horde x8385 x8383))))
+                                                g8382))))
+                                            (else x8380))))
+                                         (cond x8388 x8379))))
+                                      (λ x8401 x8378))))
+                                   g8377)
+                                  (letrec*
+                                   ((g8402 "unknown message"))
+                                   g8402)))))))
+                        (λ x8403 x8356))))
+                     g8355)))
+                 (new-mt-zombies
+                  (lambda ()
+                    (letrec*
+                     ((g8404
+                       (letrec*
+                        ((x8418 (msg))
+                         (x8405
+                          (if cnd
+                            (letrec*
+                             ((g8406
+                               (letrec*
+                                ((x8408 (p)) (x8407 (new-mt-zombies)))
+                                (λ x8408 x8407))))
+                             g8406)
+                            (if cnd
+                              (letrec*
+                               ((g8409 (letrec* ((x8410 (c s))) (λ x8410 s))))
+                               g8409)
+                              (if cnd
+                                (letrec*
+                                 ((g8411 (letrec* ((x8412 (p))) (λ x8412 #f))))
+                                 g8411)
+                                (if cnd
+                                  (letrec*
+                                   ((g8413
+                                     (letrec*
+                                      ((x8416 (dead))
+                                       (x8414
+                                        (letrec*
+                                         ((x8415 (new-mt-zombies)))
+                                         (new-horde x8415 dead))))
+                                      (λ x8416 x8414))))
+                                   g8413)
+                                  (letrec*
+                                   ((g8417 "unknown message"))
+                                   g8417)))))))
+                        (λ x8418 x8405))))
+                     g8404)))
+                 (new-zombie
+                  (lambda (p)
+                    (letrec*
+                     ((g8419
+                       (letrec*
+                        ((x8438 (msg))
+                         (x8420
+                          (if cnd
+                            (letrec* ((g8421 (λ () p))) g8421)
+                            (if cnd
+                              (letrec*
+                               ((g8422
+                                 (letrec*
+                                  ((x8426 (c s))
+                                   (x8423
+                                    (letrec*
+                                     ((x8425 (p 'draw-on/image))
+                                      (x8424 (circle ZOMBIE-RADIUS "solid" c)))
+                                     (x8425 x8424 s))))
+                                  (λ x8426 x8423))))
+                               g8422)
+                              (if cnd
+                                (letrec*
+                                 ((g8427
+                                   (letrec*
+                                    ((x8431 (q))
+                                     (x8428
+                                      (letrec*
+                                       ((x8429
+                                         (letrec*
+                                          ((x8430 (p 'dist)))
+                                          (x8430 q))))
+                                       (<= x8429 ZOMBIE-RADIUS))))
+                                    (λ x8431 x8428))))
+                                 g8427)
+                                (if cnd
+                                  (letrec*
+                                   ((g8432
+                                     (letrec*
+                                      ((x8436 (q))
+                                       (x8433
+                                        (letrec*
+                                         ((x8434
+                                           (letrec*
+                                            ((x8435 (p 'move-toward/speed)))
+                                            (x8435 q ZOMBIE-SPEED))))
+                                         (new-zombie x8434))))
+                                      (λ x8436 x8433))))
+                                   g8432)
+                                  (letrec*
+                                   ((g8437 "unknown message"))
+                                   g8437)))))))
+                        (λ x8438 x8420))))
+                     g8419)))
+                 (new-posn
+                  (lambda (x y)
+                    (letrec*
+                     ((g8439
+                       (letrec*
+                        ((this
+                          (letrec*
+                           ((x8496 (msg))
+                            (x8440
+                             (if cnd
+                               (letrec* ((g8441 (λ () x))) g8441)
+                               (if cnd
+                                 (letrec* ((g8442 (λ () y))) g8442)
+                                 (if cnd
+                                   (letrec* ((g8443 (λ () this))) g8443)
+                                   (if cnd
+                                     (letrec*
+                                      ((g8444
+                                        (letrec*
+                                         ((x8474 (p speed))
+                                          (x8445
+                                           (letrec*
+                                            ((x8460
+                                              (letrec*
+                                               ((x8470
+                                                 (letrec*
+                                                  ((x8471
+                                                    (letrec*
+                                                     ((x8472
+                                                       (letrec*
+                                                        ((x8473 (p 'x)))
+                                                        (x8473))))
+                                                     (- x8472 x))))
+                                                  (δx x8471)))
+                                                (x8466
+                                                 (letrec*
+                                                  ((x8467
+                                                    (letrec*
+                                                     ((x8468
+                                                       (letrec*
+                                                        ((x8469 (p 'y)))
+                                                        (x8469))))
+                                                     (- x8468 y))))
+                                                  (δy x8467)))
+                                                (x8461
+                                                 (letrec*
+                                                  ((x8462
+                                                    (letrec*
+                                                     ((x8463
+                                                       (letrec*
+                                                        ((x8465 (abs δx))
+                                                         (x8464 (abs δy)))
+                                                        (max x8465 x8464))))
+                                                     (min speed x8463))))
+                                                  (move-distance x8462))))
+                                               (x8470 x8466 x8461)))
+                                             (x8446
+                                              (letrec*
+                                               ((x8452
+                                                 (letrec*
+                                                  ((x8457
+                                                    (letrec*
+                                                     ((x8459 (abs δx))
+                                                      (x8458 (abs δy)))
+                                                     (< x8459 x8458)))
+                                                   (x8453
+                                                    (letrec*
+                                                     ((x8456 (this 'move))
+                                                      (x8454
+                                                       (letrec*
+                                                        ((x-cnd8455
+                                                          (positive? δy)))
+                                                        (if x-cnd8455
+                                                          move-distance
+                                                          (-
+                                                           0
+                                                           move-distance)))))
+                                                     (x8456 0 x8454))))
+                                                  (x8457 x8453)))
+                                                (x8447
+                                                 (letrec*
+                                                  ((x8448
+                                                    (letrec*
+                                                     ((x8451 (this 'move))
+                                                      (x8449
+                                                       (letrec*
+                                                        ((x-cnd8450
+                                                          (positive? δx)))
+                                                        (if x-cnd8450
+                                                          move-distance
+                                                          (-
+                                                           0
+                                                           move-distance)))))
+                                                     (x8451 x8449 0))))
+                                                  (else x8448))))
+                                               (cond x8452 x8447))))
+                                            (let* x8460 x8446))))
+                                         (λ x8474 x8445))))
+                                      g8444)
+                                     (if cnd
+                                       (letrec*
+                                        ((g8475
+                                          (letrec*
+                                           ((x8479 (δx δy))
+                                            (x8476
+                                             (letrec*
+                                              ((x8478 (+ x δx))
+                                               (x8477 (+ y δy)))
+                                              (new-posn x8478 x8477))))
+                                           (λ x8479 x8476))))
+                                        g8475)
+                                       (if cnd
+                                         (letrec*
+                                          ((g8480
+                                            (letrec*
+                                             ((x8482 (img scn))
+                                              (x8481
+                                               (place-image img x y scn)))
+                                             (λ x8482 x8481))))
+                                          g8480)
+                                         (if cnd
+                                           (letrec*
+                                            ((g8483
+                                              (letrec*
+                                               ((x8494 (p))
+                                                (x8484
+                                                 (letrec*
+                                                  ((x8485
+                                                    (letrec*
+                                                     ((x8490
+                                                       (letrec*
+                                                        ((x8491
+                                                          (letrec*
+                                                           ((x8492
+                                                             (letrec*
+                                                              ((x8493 (p 'y)))
+                                                              (x8493))))
+                                                           (- x8492 y))))
+                                                        (sqr x8491)))
+                                                      (x8486
+                                                       (letrec*
+                                                        ((x8487
+                                                          (letrec*
+                                                           ((x8488
+                                                             (letrec*
+                                                              ((x8489 (p 'x)))
+                                                              (x8489))))
+                                                           (- x8488 x))))
+                                                        (sqr x8487))))
+                                                     (+ x8490 x8486))))
+                                                  (sqrt x8485))))
+                                               (λ x8494 x8484))))
+                                            g8483)
+                                           (letrec*
+                                            ((g8495 "unknown message"))
+                                            g8495))))))))))
+                           (λ x8496 x8440))))
+                        (letrec* ((g8497 this)) g8497))))
+                     g8439)))
+                 (w0
+                  (letrec*
+                   ((x8511
+                     (letrec* ((x8512 (new-posn 0 0))) (new-player x8512)))
+                    (x8510 (new-posn 0 0))
+                    (x8498
+                     (letrec*
+                      ((x8503
+                        (letrec*
+                         ((x8508
+                           (letrec*
+                            ((x8509 (new-posn 100 300)))
+                            (new-zombie x8509)))
+                          (x8504
+                           (letrec*
+                            ((x8506
+                              (letrec*
+                               ((x8507 (new-posn 100 200)))
+                               (new-zombie x8507)))
+                             (x8505 (new-mt-zombies)))
+                            (new-cons-zombies x8506 x8505))))
+                         (new-cons-zombies x8508 x8504)))
+                       (x8499
+                        (letrec*
+                         ((x8501
+                           (letrec*
+                            ((x8502 (new-posn 200 200)))
+                            (new-zombie x8502)))
+                          (x8500 (new-mt-zombies)))
+                         (new-cons-zombies x8501 x8500))))
+                      (new-horde x8503 x8499))))
+                   (new-world x8511 x8510 x8498))))
+                (letrec*
+                 ((g8513
+                   (letrec*
+                    ((x8526
+                      ((lambda (j7497 k7498 f7499)
+                         (letrec*
+                          ((g8527
+                            (lambda (g7496)
+                              (letrec*
+                               ((g8528
+                                 (letrec*
+                                  ((x8529
+                                    (letrec*
+                                     ((x8530 (any/c j7497 k7498 g7496)))
+                                     (f7499 x8530))))
+                                  (boolean?/c j7497 k7498 x8529))))
+                               g8528))))
+                          g8527))
+                       'module
+                       'importer
+                       image?))
+                     (x8525 (input)))
+                    (x8526 x8525)))
+                  (g8514
+                   (letrec*
+                    ((x8533
+                      ((lambda (j7502 k7503 f7504)
+                         (letrec*
+                          ((g8534
+                            (lambda (g7500 g7501)
+                              (letrec*
+                               ((g8535
+                                 (letrec*
+                                  ((x8536
+                                    (letrec*
+                                     ((x8538 (real?/c j7502 k7503 g7500))
+                                      (x8537 (real?/c j7502 k7503 g7501)))
+                                     (f7504 x8538 x8537))))
+                                  (image? j7502 k7503 x8536))))
+                               g8535))))
+                          g8534))
+                       'module
+                       'importer
+                       empty-scene))
+                     (x8532 (input))
+                     (x8531 (input)))
+                    (x8533 x8532 x8531)))
+                  (g8515
+                   (letrec*
+                    ((x8543
+                      ((lambda (j7509 k7510 f7511)
+                         (letrec*
+                          ((g8544
+                            (lambda (g7505 g7506 g7507 g7508)
+                              (letrec*
+                               ((g8545
+                                 (letrec*
+                                  ((x8546
+                                    (letrec*
+                                     ((x8550 (image?/c j7509 k7510 g7505))
+                                      (x8549 (real?/c j7509 k7510 g7506))
+                                      (x8548 (real?/c j7509 k7510 g7507))
+                                      (x8547 (image? j7509 k7510 g7508)))
+                                     (f7511 x8550 x8549 x8548 x8547))))
+                                  (image? j7509 k7510 x8546))))
+                               g8545))))
+                          g8544))
+                       'module
+                       'importer
+                       place-image))
+                     (x8542 (input))
+                     (x8541 (input))
+                     (x8540 (input))
+                     (x8539 (input)))
+                    (x8543 x8542 x8541 x8540 x8539)))
+                  (g8516
+                   (letrec*
+                    ((x8554
+                      ((lambda (j7515 k7516 f7517)
+                         (letrec*
+                          ((g8555
+                            (lambda (g7512 g7513 g7514)
+                              (letrec*
+                               ((g8556
+                                 (letrec*
+                                  ((x8557
+                                    (letrec*
+                                     ((x8560 (real?/c j7515 k7516 g7512))
+                                      (x8559 (string?/c j7515 k7516 g7513))
+                                      (x8558 (string?/c j7515 k7516 g7514)))
+                                     (f7517 x8560 x8559 x8558))))
+                                  (image? j7515 k7516 x8557))))
+                               g8556))))
+                          g8555))
+                       'module
+                       'importer
+                       circle))
+                     (x8553 (input))
+                     (x8552 (input))
+                     (x8551 (input)))
+                    (x8554 x8553 x8552 x8551)))
+                  (g8517
+                   (letrec*
+                    ((x8564
+                      ((lambda (j7521 k7522 f7523)
+                         (letrec*
+                          ((g8565
+                            (lambda (g7518 g7519 g7520)
+                              (letrec*
+                               ((g8566
+                                 (letrec*
+                                  ((x8567
+                                    (letrec*
+                                     ((x8570 (player/c j7521 k7522 g7518))
+                                      (x8569 (posn/c j7521 k7522 g7519))
+                                      (x8568 (horde/c j7521 k7522 g7520)))
+                                     (f7523 x8570 x8569 x8568))))
+                                  (world/c j7521 k7522 x8567))))
+                               g8566))))
+                          g8565))
+                       'module
+                       'importer
+                       new-world))
+                     (x8563 (input))
+                     (x8562 (input))
+                     (x8561 (input)))
+                    (x8564 x8563 x8562 x8561)))
+                  (g8518
+                   (letrec*
+                    ((x8572
+                      ((lambda (j7525 k7526 f7527)
+                         (letrec*
+                          ((g8573
+                            (lambda (g7524)
+                              (letrec*
+                               ((g8574
+                                 (letrec*
+                                  ((x8575
+                                    (letrec*
+                                     ((x8576 (posn/c j7525 k7526 g7524)))
+                                     (f7527 x8576))))
+                                  (player/c j7525 k7526 x8575))))
+                               g8574))))
+                          g8573))
+                       'module
+                       'importer
+                       new-player))
+                     (x8571 (input)))
+                    (x8572 x8571)))
+                  (g8519
+                   (letrec*
+                    ((x8579
+                      ((lambda (j7530 k7531 f7532)
+                         (letrec*
+                          ((g8580
+                            (lambda (g7528 g7529)
+                              (letrec*
+                               ((g8581
+                                 (letrec*
+                                  ((x8582
+                                    (letrec*
+                                     ((x8584 (zombies/c j7530 k7531 g7528))
+                                      (x8583 (zombies/c j7530 k7531 g7529)))
+                                     (f7532 x8584 x8583))))
+                                  (horde/c j7530 k7531 x8582))))
+                               g8581))))
+                          g8580))
+                       'module
+                       'importer
+                       new-horde))
+                     (x8578 (input))
+                     (x8577 (input)))
+                    (x8579 x8578 x8577)))
+                  (g8520
+                   (letrec*
+                    ((x8587
+                      ((lambda (j7535 k7536 f7537)
+                         (letrec*
+                          ((g8588
+                            (lambda (g7533 g7534)
+                              (letrec*
+                               ((g8589
+                                 (letrec*
+                                  ((x8590
+                                    (letrec*
+                                     ((x8592 (zombie/c j7535 k7536 g7533))
+                                      (x8591 (zombies/c j7535 k7536 g7534)))
+                                     (f7537 x8592 x8591))))
+                                  (zombies/c j7535 k7536 x8590))))
+                               g8589))))
+                          g8588))
+                       'module
+                       'importer
+                       new-cons-zombies))
+                     (x8586 (input))
+                     (x8585 (input)))
+                    (x8587 x8586 x8585)))
+                  (g8521
+                   ((lambda (j7538 k7539 f7540)
+                      (letrec*
+                       ((g8593
+                         (lambda ()
+                           (letrec*
+                            ((g8594
+                              (letrec*
+                               ((x8595 (f7540)))
+                               (zombies/c j7538 k7539 x8595))))
+                            g8594))))
+                       g8593))
+                    'module
+                    'importer
+                    new-mt-zombies))
+                  (g8522
+                   (letrec*
+                    ((x8597
+                      ((lambda (j7542 k7543 f7544)
+                         (letrec*
+                          ((g8598
+                            (lambda (g7541)
+                              (letrec*
+                               ((g8599
+                                 (letrec*
+                                  ((x8600
+                                    (letrec*
+                                     ((x8601 (posn/c j7542 k7543 g7541)))
+                                     (f7544 x8601))))
+                                  (zombie/c j7542 k7543 x8600))))
+                               g8599))))
+                          g8598))
+                       'module
+                       'importer
+                       new-zombie))
+                     (x8596 (input)))
+                    (x8597 x8596)))
+                  (g8523
+                   (letrec*
+                    ((x8604
+                      ((lambda (j7547 k7548 f7549)
+                         (letrec*
+                          ((g8605
+                            (lambda (g7545 g7546)
+                              (letrec*
+                               ((g8606
+                                 (letrec*
+                                  ((x8607
+                                    (letrec*
+                                     ((x8609 (real?/c j7547 k7548 g7545))
+                                      (x8608 (real?/c j7547 k7548 g7546)))
+                                     (f7549 x8609 x8608))))
+                                  (posn/c j7547 k7548 x8607))))
+                               g8606))))
+                          g8605))
+                       'module
+                       'importer
+                       new-posn))
+                     (x8603 (input))
+                     (x8602 (input)))
+                    (x8604 x8603 x8602)))
+                  (g8524 (world/c 'module 'importer w0)))
+                 g8524))))
+             g7564))))
+         g7562)))
+      g7561))))
