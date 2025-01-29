@@ -1,3 +1,5 @@
+(use-modules (srfi srfi-28))
+
 ;; prelude for Guile Scheme
 
 (define (add1 x) (+ x 1))
@@ -7,4 +9,3 @@
 
 ;; TODO: this should also return other values than just integers
 (define (input) (expt 2 64))
-

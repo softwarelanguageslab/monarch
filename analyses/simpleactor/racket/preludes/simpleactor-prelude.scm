@@ -17,8 +17,11 @@
    ;; break letrec chain
    '()
 
+   ;; Other useful Racket things
+   (define empty '())
+
    ;; Built-in flat contracts
-   (define real/c (flat real?))
+   (define real?/c (flat real?))
    (define boolean?/c (flat boolean?))
    (define number?/c (flat number?))
    (define any/c (flat (lambda (v) #t)))
@@ -33,7 +36,7 @@
      (lambda (k j v)
        (if (null? v)
            '()
-           (cons (contract k j (car v)) ((list-of contract) k j (cdr v))))))
+           (orig-cons (contract k j (car v)) ((list-of contract) k j (cdr v))))))
    (define (any? v) #t)
    (define nonzero? (lambda (v) (not (= v 0))))
    (define nonzero?/c (flat (lambda (v) (not (= v 0)))))
@@ -60,7 +63,7 @@
 
    (define cdr (mon server client (-> pair?/c any/c) (lambda (p) (orig-cdr p))))
 
-   (define cons (mon server client (-> any/c any/c pair?/c) (lambda (a b) (cons a b))))
+   (define cons (mon server client (-> any/c any/c pair?/c) (lambda (a b) (orig-cons a b))))
 
    ;; Vectors
 

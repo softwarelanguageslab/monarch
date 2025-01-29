@@ -82,7 +82,7 @@
     [(blame lbl a) #`(begin 
                    (write (quote #,(list 'blame (syntax->datum #'lbl) (syntax-line exp) (syntax-column exp))))
                    (display "\n")
-                   (error (format "contract violation, blaming ~a~n" lbl)))]
+                   (error (format "contract violation, blaming ~a~%" lbl)))]
     [(input) #'(input)]
     [(cond clause ...)
      (with-syntax
