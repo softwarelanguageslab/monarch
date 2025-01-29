@@ -1,9 +1,8 @@
 #lang racket 
 
-;; This module adds a prelude to the input file
+(require racket/runtime-path)
 
-(define current-path 
-  (path->string (path-only (path->complete-path (find-system-path 'run-file)))))
+;; This module adds a prelude to the input file
 
 (define-runtime-path prelude-path "../preludes/simpleactor-prelude.scm")
 
