@@ -3,6 +3,26 @@ import os
 import subprocess
 import sys
 
+def preprocess_pass(contents, script, additional_argv = []):
+    """
+    Pass the given file to the given Racket processing script,
+    capturing its output to the return value of this function.
+
+    :param contents the contents of the input file 
+    :param script the Racket script to execute 
+    :param additional_argv optional number of additional 
+           command-line arguments.
+    """
+
+    proc = subprocess.Popen(["racket", script] + additional_argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text = True)
+
+    proc.stdin.write("(begin")
+    proc.stdin.writelines(contents)
+    proc.stdin.write(")")
+    proc.stdin.flush()
+
+    return proc.stdout.readlines()
+
 if len(sys.argv) != 3:
     print("Error: wrong number of arguments")
     print("Usage: ")
@@ -14,8 +34,9 @@ else:
 
 
 try:
-    PROGRAMS = open(PROGRAMS_LOCATION).readlines()
+    PROGRAMS = list(filter(lambda file: file[0] != "#", open(PROGRAMS_LOCATION).readlines()))
     OUTPUT_DIR = (Path(__file__).parent.parent / "benchmarks-out")
+    GUILE_DIR = (Path(__file__).parent.parent / "benchmarks-guile")
     WORKING_DIR = BENCHMARK_LOCATION
 
     os.chdir(WORKING_DIR)
@@ -27,26 +48,45 @@ except Exception as e:
 
 
 TRANSLATION_SCRIPT = (Path(__file__).parent.parent.parent / "simpleactor" / "racket" / "run" / "translate-full.rkt").absolute()
+GUILE_SCRIPT = (Path(__file__).parent.parent.parent / "simpleactor" / "racket" / "run" / "translate-guile.rkt").absolute()
+INSTRUMENT_SCRIPT = (Path(__file__).parent.parent.parent / "simpleactor" / "racket" / "run" / "instrument-guile.rkt").absolute()
 
 print("[*] Processing programs ... ")
 #print("[1] Removing #lang racket header")
 
 for program in PROGRAMS: 
     program = program.strip()
-    print(f"[*] Processing {program}")
+    print(f"[*] Processing {program} (1/2)")
     with open(program) as f:
         contents = open(program).readlines()
     
-    output_filename = program.replace("/", "_")
-    proc = subprocess.Popen(["racket", TRANSLATION_SCRIPT], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text = True)
+    # Regular pass
 
-    proc.stdin.write("(begin")
-    proc.stdin.writelines(contents[1:])
-    proc.stdin.write(")")
-    proc.stdin.flush()
-    output = proc.stdout.readlines()
+    output_filename = program.replace("/", "_")
+    output = preprocess_pass(contents[1:], TRANSLATION_SCRIPT)
 
     with open(OUTPUT_DIR / output_filename, "w") as f: 
         f.writelines(output)
     
+    print(f"[*] Processing {program} (2/2)")
+    # Pass for Guile (without instrumentation)
+    output_filename = program.replace("/", "_") + ".tmp"
+    output = preprocess_pass(output, GUILE_SCRIPT)
+    
+    with open(GUILE_DIR / output_filename, "w") as f: 
+        f.writelines(output)
+
+    # Pass for Guile (with instrumentation),
+    # this requires a slightly modified version 
+    # of the preprocess pass since it requires 
+    # the name of a file as a command line argument 
+    # instead of reading from the standard input
+
+
+    input_filename = GUILE_DIR.absolute().as_posix() + "/" + output_filename
+    output_filename = program.replace("/", "_")
+    output = preprocess_pass([], INSTRUMENT_SCRIPT, [input_filename])
+
+    with open(GUILE_DIR / output_filename, "w") as f: 
+        f.writelines(output)
 
