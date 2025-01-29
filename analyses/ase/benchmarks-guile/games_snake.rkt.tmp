@@ -1511,7 +1511,7 @@
                         ((checked7344
                           (letrec*
                            ((x8008 (car v7341)))
-                           (real?/c 'j7342 'k7343 x8008))))
+                           (real?/c j7342 k7343 x8008))))
                         (letrec*
                          ((g8009
                            (letrec*
@@ -1519,7 +1519,7 @@
                               (letrec*
                                ((x8010
                                  (letrec* ((x8011 (cdr v7341))) (car x8011))))
-                               (real?/c 'j7342 'k7343 x8010))))
+                               (real?/c j7342 k7343 x8010))))
                             (letrec*
                              ((g8012
                                (letrec*
@@ -1539,7 +1539,7 @@
                         ((checked7350
                           (letrec*
                            ((x8016 (car v7347)))
-                           (DIR/C 'j7348 'k7349 x8016))))
+                           (DIR/C j7348 k7349 x8016))))
                         (letrec*
                          ((g8017
                            (letrec*
@@ -1551,7 +1551,7 @@
                                   (and/c cons?/c x8021)))
                                 (x8018
                                  (letrec* ((x8019 (cdr v7347))) (car x8019))))
-                               (x8020 'j7348 'k7349 x8018))))
+                               (x8020 j7348 k7349 x8018))))
                             (letrec*
                              ((g8022
                                (letrec*
@@ -1571,7 +1571,7 @@
                         ((checked7356
                           (letrec*
                            ((x8026 (car v7353)))
-                           (SNAKE/C 'j7354 'k7355 x8026))))
+                           (SNAKE/C j7354 k7355 x8026))))
                         (letrec*
                          ((g8027
                            (letrec*
@@ -1579,7 +1579,7 @@
                               (letrec*
                                ((x8028
                                  (letrec* ((x8029 (cdr v7353))) (car x8029))))
-                               (POSN/C 'j7354 'k7355 x8028))))
+                               (POSN/C j7354 k7355 x8028))))
                             (letrec*
                              ((g8030
                                (letrec*

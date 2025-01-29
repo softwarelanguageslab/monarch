@@ -285,7 +285,7 @@
        (let ((checked (gensym "checked")))
           (if (null? fields)
               (consify (reverse checked-v))
-              `(letrec ((,checked (,(translate-aux (car fields)) (quote ,j) (quote ,k) (car ,v))))
+              `(letrec ((,checked (,(translate-aux (car fields)) ,j ,k (car ,v))))
                    ,(gen-field-checks j k (cdr fields) `(cdr ,v) (cons checked checked-v))))))
      (let ((v (gensym "v")) (j (gensym "j")) (k (gensym "k")))
         `(lambda (,j ,k ,v) ,(gen-field-checks j k fields v (list name))))]

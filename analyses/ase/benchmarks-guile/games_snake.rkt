@@ -4003,16 +4003,7 @@
                            (begin
                              (write '(funapp 1514 28))
                              (display "\n")
-                             (real?/c
-                              (begin
-                                (write '(funapp 1514 36))
-                                (display "\n")
-                                'j7342)
-                              (begin
-                                (write '(funapp 1514 43))
-                                (display "\n")
-                                'k7343)
-                              x8008)))))
+                             (real?/c j7342 k7343 x8008)))))
                         (letrec*
                          ((g8009
                            (letrec*
@@ -4032,16 +4023,7 @@
                                (begin
                                  (write '(funapp 1522 32))
                                  (display "\n")
-                                 (real?/c
-                                  (begin
-                                    (write '(funapp 1522 40))
-                                    (display "\n")
-                                    'j7342)
-                                  (begin
-                                    (write '(funapp 1522 47))
-                                    (display "\n")
-                                    'k7343)
-                                  x8010)))))
+                                 (real?/c j7342 k7343 x8010)))))
                             (letrec*
                              ((g8012
                                (letrec*
@@ -4083,16 +4065,7 @@
                            (begin
                              (write '(funapp 1542 28))
                              (display "\n")
-                             (DIR/C
-                              (begin
-                                (write '(funapp 1542 34))
-                                (display "\n")
-                                'j7348)
-                              (begin
-                                (write '(funapp 1542 41))
-                                (display "\n")
-                                'k7349)
-                              x8016)))))
+                             (DIR/C j7348 k7349 x8016)))))
                         (letrec*
                          ((g8017
                            (letrec*
@@ -4123,16 +4096,7 @@
                                (begin
                                  (write '(funapp 1554 32))
                                  (display "\n")
-                                 (x8020
-                                  (begin
-                                    (write '(funapp 1554 38))
-                                    (display "\n")
-                                    'j7348)
-                                  (begin
-                                    (write '(funapp 1554 45))
-                                    (display "\n")
-                                    'k7349)
-                                  x8018)))))
+                                 (x8020 j7348 k7349 x8018)))))
                             (letrec*
                              ((g8022
                                (letrec*
@@ -4174,16 +4138,7 @@
                            (begin
                              (write '(funapp 1574 28))
                              (display "\n")
-                             (SNAKE/C
-                              (begin
-                                (write '(funapp 1574 36))
-                                (display "\n")
-                                'j7354)
-                              (begin
-                                (write '(funapp 1574 43))
-                                (display "\n")
-                                'k7355)
-                              x8026)))))
+                             (SNAKE/C j7354 k7355 x8026)))))
                         (letrec*
                          ((g8027
                            (letrec*
@@ -4203,16 +4158,7 @@
                                (begin
                                  (write '(funapp 1582 32))
                                  (display "\n")
-                                 (POSN/C
-                                  (begin
-                                    (write '(funapp 1582 39))
-                                    (display "\n")
-                                    'j7354)
-                                  (begin
-                                    (write '(funapp 1582 46))
-                                    (display "\n")
-                                    'k7355)
-                                  x8028)))))
+                                 (POSN/C j7354 k7355 x8028)))))
                             (letrec*
                              ((g8030
                                (letrec*
