@@ -33,9 +33,10 @@ library
       ConstraintKinds
       TupleSections
       GADTs
-  ghc-options: -O2
+  ghc-options: -O2 -optc-O3 -funfolding-use-threshold=32 -fspecialise-aggressively -fexpose-all-unfoldings
   build-depends:
-      base >=4.2
+      ansi-terminal
+    , base >=4.2
     , maf2-analysis
     , maf2-domains
     , maf2-scv
@@ -63,9 +64,10 @@ executable ase
       ConstraintKinds
       TupleSections
       GADTs
-  ghc-options: -O2 -rtsopts "-with-rtsopts=-sstderr"
+  ghc-options: -O2 -optc-O3 -funfolding-use-threshold=32 -fspecialise-aggressively -fexpose-all-unfoldings -rtsopts "-with-rtsopts=-sstderr"
   build-depends:
-      ase
+      ansi-terminal
+    , ase
     , base >=4.2
     , maf2-analysis
     , maf2-domains

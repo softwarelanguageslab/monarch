@@ -5,7 +5,7 @@ module ASE.Fixpoint where
 import Lattice.Class
 import RIO hiding (join)
 import qualified RIO.Set as Set
-
+import System.Console.ANSI
 
 -- | Collecting semantics for a given small-step relation
 collect :: (Monad m, MonadIO m, Ord a) => (a -> m (Set a)) -> Set a -> m (Set a)
@@ -23,7 +23,7 @@ compute initial f = loop initial initial
             -- compute the successor states
             nxt' <- Set.filter (not . flip Set.member acc) <$> f nxt 
             let acc' = nxt' `seq` join acc nxt'
-            liftIO (putStrLn $ "current seen state size = " ++ (show $ Set.size acc'))
+            liftIO (putStr $ "current seen state size = " ++ (show $ Set.size acc'))
             if Set.size acc == Set.size acc' 
             -- if the accumulator no longer changes, return the 
             -- result of the computation

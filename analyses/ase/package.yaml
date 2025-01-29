@@ -12,6 +12,7 @@ dependencies:
   - rio
   - mtl
   - random
+  - ansi-terminal
 
 ghc-options:
   - -O2

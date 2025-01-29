@@ -103,7 +103,7 @@ evalLetrec  :: MachineM m => [VAdr K] -> [Exp] -> Exp -> m (Ctrl V K)
 evalLetrec [] [] bdy = Ev bdy <$> getEnv
 evalLetrec ads (exp:exs) bdy = do
    kadr <- alloc (spanOf exp)
-   liftIO . (\s -> putStr $ "{" ++ s ++ "}") . show . Map.size =<<  currentStore @(Map (KAdr K) (Set (KKont K))) @(KAdr K) @(Set (KKont K))
+   --liftIO . (\s -> putStr $ "{" ++ s ++ "}") . show . Map.size =<<  currentStore @(Map (KAdr K) (Set (KKont K))) @(KAdr K) @(Set (KKont K))
    getEnv >>= (\env -> ev exp env kadr (LetK ads exs bdy env))
 
 -- | Evaluate an expression atomically
