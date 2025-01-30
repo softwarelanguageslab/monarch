@@ -23,7 +23,7 @@ compute initial f = loop initial initial
             -- compute the successor states
             nxt' <- Set.filter (not . flip Set.member acc) <$> f nxt 
             let acc' = nxt' `seq` join acc nxt'
-            liftIO (putStr $ "current seen state size = " ++ (show $ Set.size acc'))
+            liftIO (putStrLn $ "current seen state size = " ++ (show $ Set.size acc'))
             if Set.size acc == Set.size acc' 
             -- if the accumulator no longer changes, return the 
             -- result of the computation

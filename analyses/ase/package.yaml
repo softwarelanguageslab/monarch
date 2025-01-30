@@ -15,11 +15,11 @@ dependencies:
   - ansi-terminal
 
 ghc-options:
-  - -O2
-  - -optc-O3
-  - -funfolding-use-threshold=32
-  - -fspecialise-aggressively
-  - -fexpose-all-unfoldings
+  - -O0
+#  - -optc-O3
+#  - -funfolding-use-threshold=32
+#  - -fspecialise-aggressively
+#  - -fexpose-all-unfoldings
 
 default-extensions:
   - LambdaCase

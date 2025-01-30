@@ -15,6 +15,8 @@ library
       ASE.Domain.SymbolicVariable
       ASE.Fixpoint
       ASE.Machine
+      ASE.Machines.FlowSensitive
+      ASE.Machines.Global
       ASE.Machines.Local
       ASE.Semantics
       ASE.Syntax
@@ -33,7 +35,7 @@ library
       ConstraintKinds
       TupleSections
       GADTs
-  ghc-options: -O2 -optc-O3 -funfolding-use-threshold=32 -fspecialise-aggressively -fexpose-all-unfoldings
+  ghc-options: -O0
   build-depends:
       ansi-terminal
     , base >=4.2
@@ -64,7 +66,7 @@ executable ase
       ConstraintKinds
       TupleSections
       GADTs
-  ghc-options: -O2 -optc-O3 -funfolding-use-threshold=32 -fspecialise-aggressively -fexpose-all-unfoldings -rtsopts "-with-rtsopts=-sstderr"
+  ghc-options: -O0 -rtsopts "-with-rtsopts=-sstderr"
   build-depends:
       ansi-terminal
     , ase
