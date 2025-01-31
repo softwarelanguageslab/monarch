@@ -11,6 +11,7 @@ import qualified ASE.Semantics as Semantics
 import ASE.Domain.SymbolicVariable
 import Analysis.Monad.Stack
 import Data.TypeLevel.HList
+import Data.Maybe
 import qualified Analysis.Scheme.Primitives as Primitives
 import Syntax.AST
 import RIO
@@ -133,5 +134,7 @@ flowSensitiveAnalysis e k = AnalysisResult <$> runM cfg (compute initial (FlowSe
 -- Listing of configurations
 ------------------------------------------------------------
 
-
+-- | A mapping from human-readable configuration names to their Haskell functions
+analysesByName :: String -> Analysis
+analysesByName = fromJust . flip Map.lookup (Map.fromList [("local", localAnalysis), ("flow", flowSensitiveAnalysis)])
 

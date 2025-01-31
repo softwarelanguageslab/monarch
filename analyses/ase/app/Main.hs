@@ -13,13 +13,10 @@ import RIO
 -- | Commands
 type Cmd = IO ()
 
--- | Parse options related to input files
-fileOptions :: Parser FileOptions 
-fileOptions = FileOptions <$> (strOption $ long "file" <> short 'f' <> metavar "FILE" <> help "File to analyze")
 
 -- | The command-line interface for analyzing programs "interactively"
 analyzeCmd :: Parser Cmd 
-analyzeCmd = Analyze.analyze <$> fileOptions
+analyzeCmd = Analyze.analyze <$> Analyze.options
 
 -- | Main program parser
 cmdParser :: Parser Cmd 
