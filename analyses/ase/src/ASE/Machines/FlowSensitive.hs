@@ -199,14 +199,14 @@ fromTuple st@(State {..}) (s ::*:: φ ::*:: count ::*:: ksto ::*:: fsto ::*:: vs
             (\s' -> State (Set.singleton s') (kflow' s') (fflow' s') (vflow' s') (pflow' s') (sflow' s') (cflow' s') (φflow' s') (countflow' s'))
             (isEscape (unnest s))
    where -- Construct the new flow-sensitive mappings from the successor state @s'@
-         kflow' s = Map.singleton s ksto 
-         fflow' s = Map.singleton s fsto 
-         vflow' s = Map.singleton s vsto 
-         pflow' s = Map.singleton s psto 
-         sflow' s = Map.singleton s ssto 
-         cflow' s = Map.singleton s csto 
-         φflow' s = Map.singleton s φ 
-         countflow' s = Map.singleton s count
+         kflow' s = Map.insertWith L.join s ksto kflow
+         fflow' s = Map.insertWith L.join s fsto fflow
+         vflow' s = Map.insertWith L.join s vsto vflow
+         pflow' s = Map.insertWith L.join s psto pflow
+         sflow' s = Map.insertWith L.join s ssto sflow
+         cflow' s = Map.insertWith L.join s csto cflow
+         φflow' s = Map.insertWith L.join s φ φflow
+         countflow' s = Map.insertWith L.join s count countflow
          -- Ignore escapes
          isEscape :: HList (Unnest (Val (StackT Identity) (Ctrl V K))) -> Maybe StepState
          isEscape (Value v :+: rest) = Just $ uncons $ v :+: rest
