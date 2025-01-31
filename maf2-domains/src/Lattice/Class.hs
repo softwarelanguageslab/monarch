@@ -1,6 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Lattice.Class (
    Joinable(..), 
    TopLattice(..),
@@ -120,3 +121,15 @@ instance BottomLattice Void where
    bottom = error "void does not have a bottom"
 instance Meetable Void where  
    meet = absurd
+
+------------------------------------------------------------
+-- Useful correspondances to other algebraic structures
+------------------------------------------------------------
+
+-- |  A join lattice is also a @Semigroup@
+instance  {-# OVERLAPPABLE #-} (Joinable a) => Semigroup a where   
+   (<>) = join
+ 
+-- | A structure with a join and a bottom is also a @Monoid@
+instance {-# OVERLAPPABLE #-} (Joinable a, BottomLattice a) => Monoid a where    
+   mempty = bottom

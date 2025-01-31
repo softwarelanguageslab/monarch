@@ -20,7 +20,7 @@ import Analysis.Monad.Cache (MonadCache)
 import Control.Monad.Layer (MonadLayer, upperM)
 import Control.Monad.Join (MonadBottom(..), MonadJoinable, MonadJoin, mjoinMap)
 import Control.Monad.DomainError (DomainError)
-import Control.Monad.Escape (MonadEscape, Esc)
+import Control.Monad.Escape (MonadEscape, Esc, MayEscape)
 import Domain.Core.AbstractCount (AbstractCount (..))
 import Domain.Class (Domain)
 import Domain.Symbolic.Class
@@ -151,6 +151,9 @@ instance (Ord α, MonadBottom m) => MonadAbstractCount α (AbstractCountT α m) 
    countIncrement α = modify (Map.insertWith Lat.join α CountOne)
    currentCount α = gets (Map.lookup α) >>= maybe mzero return
    getCounts = gets CountMap
+-- | Run an @AbstractCountT@ monad transformer with the given abstract count mapping
+runAbstractCountT :: Map α AbstractCount -> AbstractCountT α m a -> m (a, Map α AbstractCount)
+runAbstractCountT st (AbstractCountT m) = runStateT m st
 
 --- XXX: MonadAbstractCount duplicates some of the behavior of AbstractCountM, 
 -- those two should be merged. The major difference between them is that the 
@@ -406,8 +409,11 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
 -- Small-step "conversion"
 ------------------------------------------------------------
 
--- | Type class that transforms a monadic computation into its 
--- corresponding resulting small-step state.
-class MachineStep k v m s | s -> k v where
-   -- | Run the monadic computation and return a small-step machine state
-   run :: m (Ctrl v k) -> s
+-- | For convenience, turns a type that has "MayEscape" it, into a type without one. 
+-- This is particularly useful for turning a "Val StackT" into "Key StackT" which 
+-- is almost exactly the same except for the environment reader component which 
+-- is added easily as it is the final element in the monadic stack.
+type family Unescape (k :: Type) :: Type where  
+   Unescape (MayEscape e v) = v
+   Unescape (a, b) = (Unescape a, Unescape b)
+   Unescape t = t

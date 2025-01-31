@@ -39,6 +39,7 @@ library
   build-depends:
       ansi-terminal
     , base >=4.2
+    , containers
     , maf2-analysis
     , maf2-domains
     , maf2-scv
@@ -71,6 +72,7 @@ executable ase
       ansi-terminal
     , ase
     , base >=4.2
+    , containers
     , maf2-analysis
     , maf2-domains
     , maf2-scv
