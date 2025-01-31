@@ -20,23 +20,29 @@ class FixpointValue v where
    filterSubsumption :: v -- ^ previous value
                      -> v -- ^ current value 
                      -> v
+   -- | Returns true if the partial state has a successor
+   hasSuccessor :: v -> Bool
    -- | Size of the set of seen states
    size :: v -> Int
 
 -- | Generic (inefficient) instance
-instance {-# OVERLAPPABLE #-} (Joinable a, PartialOrder a) => FixpointValue a where   
+instance {-# OVERLAPPABLE #-} (Joinable a, PartialOrder a) => FixpointValue a where
    -- if the previous one subsumes the new one then no changes were made
    isFix = subsumes
    -- no filtering possible in this simple case
    filterSubsumption = const id
    -- size cannot be computed in the general case
    size = const (-1)
+   -- No general way to determine whether a value 
+   -- represents successors
+   hasSuccessor = const True
 
 -- | Trivial instance for sets of successor states
 instance (Ord a, Eq a) => FixpointValue (Set a) where
    isFix a b = Set.size a == Set.size b
    size = Set.size
    filterSubsumption prv = Set.filter (not . (`Set.member` prv))
+   hasSuccessor = (/= Set.empty)
 
 -- | Collecting semantics for a given small-step relation
 collect :: (Monad m, MonadIO m, Ord a) => (a -> m (Set a)) -> Set a -> m (Set a)
@@ -55,7 +61,7 @@ compute initial f = loop initial initial
             nxt' <- filterSubsumption acc <$> f nxt
             let acc' = nxt' `seq` join acc nxt'
             liftIO (putStrLn $ "current seen state size = " ++ show (size acc'))
-            if isFix acc' acc
+            if not (hasSuccessor nxt') || isFix acc acc'
             -- if the accumulator no longer changes, return the 
             -- result of the computation
             then return acc'

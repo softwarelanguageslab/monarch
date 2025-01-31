@@ -167,6 +167,19 @@ instance PartialOrder State where
                        && L.subsumes (countflow a1) (countflow a2)
 
 
+-- | Returns true if the flow information for the given state 
+-- is subsumed by the first argument
+subsumesFlow :: StepState -> State -> State -> Bool
+subsumesFlow s st st' = L.subsumes (lookup s (kflow st)) (lookup s (kflow st'))
+                     && L.subsumes (lookup s (fflow st)) (lookup s (fflow st'))
+                     && L.subsumes (lookup s (vflow st)) (lookup s (vflow st'))
+                     && L.subsumes (lookup s (sflow st)) (lookup s (sflow st'))
+                     && L.subsumes (lookup s (cflow st)) (lookup s (cflow st'))
+                     && L.subsumes (lookup s (φflow st)) (lookup s (φflow st'))
+                     && L.subsumes (lookup s (countflow st)) (lookup s (countflow st'))
+   where lookup :: BottomLattice a => StepState -> Flow a -> a 
+         lookup s = fromMaybe L.bottom . Map.lookup s
+
 type StateTuple = Val (StackT Identity) (Ctrl V K)
               <+> PC
               <+> SymbolicCountMap
@@ -186,14 +199,14 @@ fromTuple st@(State {..}) (s ::*:: φ ::*:: count ::*:: ksto ::*:: fsto ::*:: vs
             (\s' -> State (Set.singleton s') (kflow' s') (fflow' s') (vflow' s') (pflow' s') (sflow' s') (cflow' s') (φflow' s') (countflow' s'))
             (isEscape (unnest s))
    where -- Construct the new flow-sensitive mappings from the successor state @s'@
-         kflow' s = Map.insertWith L.join s ksto kflow
-         fflow' s = Map.insertWith L.join s fsto fflow
-         vflow' s = Map.insertWith L.join s vsto vflow
-         pflow' s = Map.insertWith L.join s psto pflow
-         sflow' s = Map.insertWith L.join s ssto sflow
-         cflow' s = Map.insertWith L.join s csto cflow
-         φflow' s = Map.insertWith L.join s φ φflow
-         countflow' s = Map.insertWith L.join s count countflow
+         kflow' s = Map.singleton s ksto 
+         fflow' s = Map.singleton s fsto 
+         vflow' s = Map.singleton s vsto 
+         pflow' s = Map.singleton s psto 
+         sflow' s = Map.singleton s ssto 
+         cflow' s = Map.singleton s csto 
+         φflow' s = Map.singleton s φ 
+         countflow' s = Map.singleton s count
          -- Ignore escapes
          isEscape :: HList (Unnest (Val (StackT Identity) (Ctrl V K))) -> Maybe StepState
          isEscape (Value v :+: rest) = Just $ uncons $ v :+: rest
@@ -277,6 +290,10 @@ run f s = foldMapM (runStep f s) (stepStates s)
 
 instance FixpointValue State where
    isFix = L.subsumes
-   filterSubsumption = const id
+   filterSubsumption prv nxt = nxt { stepStates = ss' }
+      where ss  = stepStates prv 
+            ss' = Set.filter (not . select) (stepStates nxt)
+            select s = Set.member s ss && subsumesFlow s prv nxt 
    size State {..} = Set.size stepStates
+   hasSuccessor State { .. } = Set.empty /= stepStates
 
