@@ -199,14 +199,14 @@ fromTuple st@(State {..}) (s ::*:: φ ::*:: count ::*:: ksto ::*:: fsto ::*:: vs
             (\s' -> State (Set.singleton s') (kflow' s') (fflow' s') (vflow' s') (pflow' s') (sflow' s') (cflow' s') (φflow' s') (countflow' s'))
             (isEscape (unnest s))
    where -- Construct the new flow-sensitive mappings from the successor state @s'@
-         kflow' s = Map.insertWith L.join s ksto kflow
-         fflow' s = Map.insertWith L.join s fsto fflow
-         vflow' s = Map.insertWith L.join s vsto vflow
-         pflow' s = Map.insertWith L.join s psto pflow
-         sflow' s = Map.insertWith L.join s ssto sflow
-         cflow' s = Map.insertWith L.join s csto cflow
-         φflow' s = Map.insertWith L.join s φ φflow
-         countflow' s = Map.insertWith L.join s count countflow
+         kflow' s = Map.singleton s ksto 
+         fflow' s = Map.singleton s fsto 
+         vflow' s = Map.singleton s vsto 
+         pflow' s = Map.singleton s psto 
+         sflow' s = Map.singleton s ssto 
+         cflow' s = Map.singleton s csto 
+         φflow' s = Map.singleton s φ
+         countflow' s = Map.singleton s count
          -- Ignore escapes
          isEscape :: HList (Unnest (Val (StackT Identity) (Ctrl V K))) -> Maybe StepState
          isEscape (Value v :+: rest) = Just $ uncons $ v :+: rest
@@ -215,10 +215,10 @@ fromTuple st@(State {..}) (s ::*:: φ ::*:: count ::*:: ksto ::*:: fsto ::*:: vs
 
 
 -- | Turn a set of states into a state of sets
-fromSet :: State -- ^ the original state (before stepping)
+fromSet :: State          -- ^ the original state (before stepping)
         -> Set StateTuple -- ^ set of successor states
         -> State
-fromSet state = foldMap (fromTuple state)
+fromSet state = L.join state . foldMap (fromTuple state)
 
 -- | The initial flow sensitive state
 initialState :: Configuration K V -> State 
@@ -277,12 +277,12 @@ runStep f state@State { .. } stepState =
          -- Retrieve the correct abstract count mapping
          count = fromJust $ Map.lookup stepState countflow
          -- Retrieve the correct path condition
-         φ    = fromJust $ Map.lookup stepState φflow
+         φ     = fromJust $ Map.lookup stepState φflow
 
 -- | Run an evaluation function in a flow-sensitive manner and generate its 
 -- successor states.
 run :: Monad m => (Ctrl V K -> StackT m (Ctrl V K)) -> State -> m State
-run f s = foldMapM (runStep f s) (stepStates s)
+run f s = foldM (runStep f) s (stepStates s)
 
 ------------------------------------------------------------
 -- Efficient fixpoint computation

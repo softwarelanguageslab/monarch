@@ -20,6 +20,7 @@ library
       ASE.Machines.Local
       ASE.Semantics
       ASE.Syntax
+      Data.DeltaMap
       Data.Random
       Data.Tuple.Extra
   other-modules:
