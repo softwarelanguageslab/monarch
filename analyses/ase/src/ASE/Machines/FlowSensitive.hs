@@ -32,6 +32,8 @@ import RIO
 import qualified RIO.Set as Set
 import Symbolic.AST (emptyPC)
 import Syntax.Span
+import GHC.IO (unsafePerformIO)
+import Domain.Symbolic.Path (joinPC)
 
 
 ------------------------------------------------------------
@@ -155,10 +157,13 @@ instance Joinable State where
                       (L.join (pflow a1) (pflow a2))
                       (L.join (sflow a1) (sflow a2))
                       (L.join (cflow a1) (cflow a2))
+                      -- (Map.mapWithKey widenedPC (L.join (φflow a1) (φflow a2)))
                       (L.join (φflow a1) (φflow a2))
-                      (L.join (countflow a1) (countflow a2))
+                      countflow'
                       (L.join (modelFlow a1) (modelFlow a2))
                       (L.join (inputFlow a1) (inputFlow a2))
+      where countflow'  = L.join (countflow a1) (countflow a2)
+            widenedPC s = widenPC (fromJust $ Map.lookup s countflow') 
 
 
 -- | State is compareable, i.e., by comparing its constituents
@@ -174,6 +179,8 @@ instance PartialOrder State where
                        && L.subsumes (countflow a1) (countflow a2)
                        && L.subsumes (modelFlow a1) (modelFlow a2)
                        && L.subsumes (inputFlow a1) (inputFlow a2)
+                       -- TODO: use subsumesPC from ASE.Machine for subsumption
+                       -- checking of path constraints
 
 
 -- | Returns true if the flow information for the given state 
@@ -184,12 +191,14 @@ subsumesFlow s st st' = L.subsumes (lookup s (kflow st)) (lookup s (kflow st'))
                      && L.subsumes (lookup s (vflow st)) (lookup s (vflow st'))
                      && L.subsumes (lookup s (sflow st)) (lookup s (sflow st'))
                      && L.subsumes (lookup s (cflow st)) (lookup s (cflow st'))
+                     -- && subsumesPC countflow' (lookup s (φflow st)) (lookup s (φflow st'))
                      && L.subsumes (lookup s (φflow st)) (lookup s (φflow st'))
                      && L.subsumes (lookup s (countflow st)) (lookup s (countflow st'))
                      && L.subsumes (lookup s (modelFlow st)) (lookup s (modelFlow st'))
                      && L.subsumes (lookup s (inputFlow st)) (lookup s (inputFlow st'))
    where lookup :: BottomLattice a => StepState -> Flow a -> a 
-         lookup s = fromMaybe L.bottom . Map.lookup s
+         lookup s   = fromMaybe L.bottom . Map.lookup s
+         countflow' = L.join (lookup s (countflow st)) (lookup s (countflow st'))
 
 type StateTuple = Val (StackT Identity) (Ctrl V K)
               <+> PC

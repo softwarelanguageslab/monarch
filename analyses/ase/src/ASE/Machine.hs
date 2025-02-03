@@ -12,7 +12,7 @@ import qualified Analysis.Environment as Env
 import ASE.Domain.SymbolicVariable (SymbolicVariable, PC)
 import ASE.Syntax
 import Analysis.Monad.Store (StoreM, writeAdr, lookupAdr, StoreM', AbstractCountM(..))
-import Analysis.Monad (EnvM, CtxM (getCtx, withCtx))
+import Analysis.Monad (EnvM, CtxM (getCtx, withCtx), runJoinT)
 import Analysis.Monad.Allocation (AllocM, alloc)
 import Analysis.Symbolic.Monad (MonadPathCondition)
 import Analysis.ASE.Smallstep (State(topFail))
@@ -24,11 +24,14 @@ import Control.Monad.Escape (MonadEscape, Esc, MayEscape)
 import Domain.Core.AbstractCount (AbstractCount (..))
 import Domain.Class (Domain)
 import Domain.Symbolic.Class
+import qualified Domain.Symbolic.Path as Path
 import Data.Kind
 import Data.Random
+import GHC.IO (unsafePerformIO)
 import Lattice.Class
 import qualified Lattice.Class as L
 import qualified Lattice.Class as Lat
+import Lattice.BottomLiftedLattice
 import qualified RIO.Map as Map
 import RIO hiding (mzero) 
 import RIO.State
@@ -39,6 +42,8 @@ import qualified RIO.Set as Set
 import Solver (FormulaSolver, solve)
 import Symbolic.AST (Formula, isSat)
 import qualified Symbolic.AST as Symbolic
+import qualified Symbolic.SMT as SMT
+import Solver.Z3
 import qualified Domain
 import Domain (SchemeDomain)
 
@@ -340,6 +345,24 @@ instance (Monad m, InputFrom v) => MonadInput v (InputT v m) where
 -- Interaction with the model
 ------------------------------------------------------------
 
+-- | Widen a set of formulae into a single one
+widenPC :: Map SymbolicVariable AbstractCount -> PC -> PC
+widenPC count = Set.singleton . foldr1 (\a -> fst . fromBL . join a)
+   where join a b = Path.join a b
+                  & runAbstractCountT count
+                  & runJoinT
+                  & runZ3SolverWithSetup SMT.prelude
+                  & unsafePerformIO
+
+-- | Checks whether one path constraint subsumes the other
+subsumesPC :: Map SymbolicVariable AbstractCount -> PC -> PC -> Bool
+subsumesPC count a =  fromBL . subsumes a
+   where subsumes a b = traceShow a $ Path.subsumesPC a b 
+                      & runAbstractCountT count
+                      & runJoinT 
+                      & runZ3SolverWithSetup SMT.prelude
+                      & unsafePerformIO 
+                      & fmap fst
 
 -- | A monad to interact with the concolic model, parametrized 
 -- by the type of symbolic variable @i@, a program domain @v@, and a 

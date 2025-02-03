@@ -122,7 +122,7 @@ instance FreeVariables Exp where
    fv (App e1 es _) = Set.unions $ fv e1 : map fv es
    fv (Spawn e1 _)  = fv e1
    fv (Letrec bds es _) =
-      Set.difference (fv es) (Set.fromList (map (name . fst) bds))
+      Set.difference (Set.unions $ (fv es) : (map (fv . snd) bds)) (Set.fromList (map (name . fst) bds))
    fv Terminate {}      = Set.empty 
    fv Self {}           = Set.empty
    fv (Pair e1 e2 _)    = Set.unions [fv e1, fv e2] 

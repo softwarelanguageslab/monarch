@@ -1,6 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TypeOperators #-}
+{-# LANGUAGE FlexibleInstances, TypeOperators #-}
 {-# LANGUAGE Strict #-}
 -- | Language semantics, formulated using the generic machine interface, but 
 -- fixes the type of values being used.
@@ -35,6 +35,7 @@ import qualified RIO.Map as Map
 import qualified Lattice.Class as Lat
 import qualified Solver
 import System.IO (stdout)
+import Syntax.FV
 
 
 ------------------------------------------------------------
@@ -88,7 +89,7 @@ applyClo ags e (Lam xs bdy _, ρ) = do
    withCtx (const ctx') $ do
       ads <- mapM (alloc . spanOf) xs
       let prs = map name xs
-      let ρ' = extends (zip prs ads) ρ
+      let ρ' = extends (zip prs ads) (Map.restrictKeys ρ (fv bdy))
       mapM_ (uncurry writeAdr) (zip ads ags)
       return (Ev bdy ρ')
 
@@ -122,6 +123,8 @@ stepEval (Ite cnd csq alt s) = do
    --liftIO (putStr "{IF}")
    vcnd <- atomicEval cnd
    αf <- alloc s
+   pc' <- getPc
+   liftIO (putStrLn $ "size of PC set: " ++ show (Set.size pc'))
    mjoinMap (\pc -> do
       count <- getCounts
       cond (pure vcnd)
@@ -153,7 +156,8 @@ applyContinuation v =
 
 -- | Apply the current continuation
 stepApply :: MachineM m => V -> m (Ctrl V K)
-stepApply = popK . applyContinuation
+stepApply v =
+   topAddress >>= lookupAdr >>= liftIO . putStrLn . ("size of continuation " ++) . show . Set.size >> popK (applyContinuation v)
 
 -- | Restart the machine with the appropriate assignments 
 -- in the model so that the machine explores the path associated 

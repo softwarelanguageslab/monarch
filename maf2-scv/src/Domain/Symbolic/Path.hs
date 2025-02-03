@@ -9,14 +9,14 @@
 -- SMT solver is expected to return the same 
 -- answer given the same query, and could 
 -- be replaced with a pure Haskell implementation.
-module Domain.Symbolic.Path(Atom(..), NormalFormFormula(..), leq, subsumes, joinNF, join, joinPC, formula2nf, nf2formula) where
+module Domain.Symbolic.Path(Atom(..), NormalFormFormula(..), leq, subsumes, subsumesPC, joinNF, join, joinPC, formula2nf, nf2formula) where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Symbolic.AST as Formula
 import Solver
 import Control.Monad (foldM)
-import Control.Monad.Extra (ifM)
+import Control.Monad.Extra (ifM, allM)
 import Analysis.Monad.Store (AbstractCountM)
 
 -- | Normal form used for representing path constraints,
@@ -95,6 +95,10 @@ leq f1 f2 = isCertainlyUnfeasible (Formula.Negation (Formula.Implies f1 f2))
 subsumes :: (AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m Bool
 subsumes = flip leq
 
+-- | Subsumption of sets of formulae
+subsumesPC :: (AbstractCountM i m, FormulaSolver i m) => Formula.PC i -> Formula.PC i -> m Bool
+subsumesPC pc1 pc2 = and <$> sequence [ subsumes f1 f2 | f1 <- Set.toList pc1 , f2 <- Set.toList pc2 ]
+
 -- | The least upper bound of two path constraints is the 
 -- most specific generalized constraint that covers both paths.
 --
@@ -114,10 +118,10 @@ joinNF p q = fmap fromAtoms r
 
 -- | Joins two formulas together by converting them to normal form 
 -- and joining them using @joinNF@.
-join :: (Ord i, AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m (Formula.Formula i) 
+join :: (Ord i, AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m (Formula.Formula i)
 join p1 p2 = nf2formula <$> joinNF (formula2nf p1) (formula2nf p2)
 
 -- | Join two sets of paths together into a singleton set of a single path
 joinPC :: (Ord i, AbstractCountM i m, FormulaSolver i m) => Formula.PC i -> Formula.PC i -> m (Formula.PC i)
-joinPC pc1 = (fmap Set.singleton) . foldM join Formula.emptyFormula . Set.union pc1
+joinPC pc1 = fmap Set.singleton . foldM join Formula.emptyFormula . Set.union pc1
 
