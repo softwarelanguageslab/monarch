@@ -22,6 +22,7 @@ import Domain.Scheme.Class (PaiDom, VecDom, StrDom)
 import Domain.Symbolic.Class
 import Data.Maybe
 import qualified Data.Map as Map
+import Data.Random (RandomSeq)
 import Data.Tuple.Extra
 import Data.TypeLevel.HList
 import qualified Data.Random as Random
@@ -69,17 +70,14 @@ type StackT m = MonadStack '[
          -- Allocation
          AllocT Span K (KAdr K),
          AllocT Span K (FAdr K),
-         AllocT Span K SymbolicVariable,
+         AllocT Span PC SymbolicVariable,
          AllocT Span K (VAdr K),
          AllocT Exp  K (PAdr K),
          AllocT Exp  K (SAdr K),
          AllocT Exp  K (CAdr K),
          -- Context
          SmallstepContextT K,
-         -- Model
-         ModelT SymbolicVariable V,
-         -- Random input
-         InputT (Abstract V),
+         SmallstepContextT PC,
          -- Environment
          EnvT (Env K),
          CacheT,
@@ -93,6 +91,10 @@ type StackT m = MonadStack '[
          StoreT' (PAdr K) (PaiDom V),
          StoreT' (SAdr K) (StrDom V),
          StoreT' (CAdr K) (VecDom V),
+         -- Model
+         ModelT SymbolicVariable V,
+         -- Random input
+         InputT (Abstract V),
          -- Non-determinism
          NonDetT
       ] m
@@ -109,8 +111,7 @@ initialStepState :: Configuration K V -> StepState
 initialStepState cfg =  Ev (e0 cfg) (ρ0 cfg)
                     <+> initialContinuationStack -- continuation 
                     <+> []                       -- context
-                    <+> Map.empty                -- model 
-                    <+> Random.initialSeq        -- infinite random sequence
+                    <+> emptyPC                  -- model context
 
 -- | The entire state including the parts that are widened 
 -- per state (i.e., per StepState)
@@ -126,12 +127,16 @@ data State = State {
       cflow      :: Flow CSto,
       -- | Path constraint per small-step state
       φflow      :: Flow PC,
-      countflow  :: Flow SymbolicCountMap
+      countflow  :: Flow SymbolicCountMap,
+      modelFlow  :: Flow (Map SymbolicVariable (Abstract V)),
+      inputFlow  :: Flow RandomSeq
    } deriving (Ord, Eq, Show)
 
 -- | State has a bottom, i.e., the bottom of its constituents
 instance BottomLattice State where
    bottom = State L.bottom
+                  L.bottom
+                  L.bottom
                   L.bottom
                   L.bottom
                   L.bottom
@@ -152,6 +157,8 @@ instance Joinable State where
                       (L.join (cflow a1) (cflow a2))
                       (L.join (φflow a1) (φflow a2))
                       (L.join (countflow a1) (countflow a2))
+                      (L.join (modelFlow a1) (modelFlow a2))
+                      (L.join (inputFlow a1) (inputFlow a2))
 
 
 -- | State is compareable, i.e., by comparing its constituents
@@ -165,6 +172,8 @@ instance PartialOrder State where
                        && L.subsumes (cflow a1) (cflow a2)
                        && L.subsumes (φflow a1) (φflow a2)
                        && L.subsumes (countflow a1) (countflow a2)
+                       && L.subsumes (modelFlow a1) (modelFlow a2)
+                       && L.subsumes (inputFlow a1) (inputFlow a2)
 
 
 -- | Returns true if the flow information for the given state 
@@ -177,6 +186,8 @@ subsumesFlow s st st' = L.subsumes (lookup s (kflow st)) (lookup s (kflow st'))
                      && L.subsumes (lookup s (cflow st)) (lookup s (cflow st'))
                      && L.subsumes (lookup s (φflow st)) (lookup s (φflow st'))
                      && L.subsumes (lookup s (countflow st)) (lookup s (countflow st'))
+                     && L.subsumes (lookup s (modelFlow st)) (lookup s (modelFlow st'))
+                     && L.subsumes (lookup s (inputFlow st)) (lookup s (inputFlow st'))
    where lookup :: BottomLattice a => StepState -> Flow a -> a 
          lookup s = fromMaybe L.bottom . Map.lookup s
 
@@ -189,14 +200,16 @@ type StateTuple = Val (StackT Identity) (Ctrl V K)
               <+> PSto
               <+> SSto
               <+> CSto
+              <+> Map SymbolicVariable (Abstract V)
+              <+> RandomSeq
 
 -- | Derive a @State@ from its tuple representation 
 fromTuple :: State -> StateTuple -> State
-fromTuple st@(State {..}) (s ::*:: φ ::*:: count ::*:: ksto ::*:: fsto ::*:: vsto ::*:: psto ::*:: ssto ::*:: csto) =
+fromTuple st@(State {..}) (s ::*:: φ ::*:: count ::*:: ksto ::*:: fsto ::*:: vsto ::*:: psto ::*:: ssto ::*:: csto ::*:: model ::*:: seq) =
       -- generate a successor state identical to the input state but with no step successors if an escape 
       -- value is found. Otherwise use the non-escaping value as successor step-state.
       maybe (st { stepStates = Set.empty })
-            (\s' -> State (Set.singleton s') (kflow' s') (fflow' s') (vflow' s') (pflow' s') (sflow' s') (cflow' s') (φflow' s') (countflow' s'))
+            (\s' -> State (Set.singleton s') (kflow' s') (fflow' s') (vflow' s') (pflow' s') (sflow' s') (cflow' s') (φflow' s') (countflow' s') (modelFlow' s') (inputFlow' s'))
             (isEscape (unnest s))
    where -- Construct the new flow-sensitive mappings from the successor state @s'@
          kflow' s = Map.singleton s ksto 
@@ -207,6 +220,8 @@ fromTuple st@(State {..}) (s ::*:: φ ::*:: count ::*:: ksto ::*:: fsto ::*:: vs
          cflow' s = Map.singleton s csto 
          φflow' s = Map.singleton s φ
          countflow' s = Map.singleton s count
+         modelFlow' s = Map.singleton s model
+         inputFlow' s = Map.singleton s seq
          -- Ignore escapes
          isEscape :: HList (Unnest (Val (StackT Identity) (Ctrl V K))) -> Maybe StepState
          isEscape (Value v :+: rest) = Just $ uncons $ v :+: rest
@@ -223,14 +238,16 @@ fromSet state = L.join state . foldMap (fromTuple state)
 -- | The initial flow sensitive state
 initialState :: Configuration K V -> State 
 initialState cfg@Configuration { .. } = State (Set.singleton s0)
-                                              (init Map.empty)
-                                              (init Map.empty)
-                                              (init σ0)
-                                              (init Map.empty)
-                                              (init Map.empty)
-                                              (init Map.empty)
-                                              (init emptyPC)
-                                              (init Map.empty)
+                                              (init Map.empty) -- continuation stores 
+                                              (init Map.empty) -- failure continuation stores 
+                                              (init σ0)        -- value stores (including primitives)
+                                              (init Map.empty) -- pair stores 
+                                              (init Map.empty) -- string stores
+                                              (init Map.empty) -- vector stores
+                                              (init emptyPC)   -- path constraint
+                                              (init Map.empty) -- count mapping
+                                              (init Map.empty) -- model
+                                              (init Random.initialSeq) -- infinite random sequence
    where s0   = initialStepState cfg
          init :: a -> Flow a
          init = Map.singleton s0
@@ -246,7 +263,7 @@ runStep f state@State { .. } stepState =
                    -- Allocation functions
                    & runAlloc KAdr
                    & runAlloc FAdr
-                   & runAlloc (const . SymbolicVariable)
+                   & runAlloc symbolicVariable
                    & runAlloc VAdr
                    & runAlloc PAdr
                    & runAlloc SAdr
@@ -261,6 +278,9 @@ runStep f state@State { .. } stepState =
                    & runStoreT psto
                    & runStoreT ssto
                    & runStoreT csto
+                   -- Model
+                   & runModelT model
+                   & runInputT seq
                    -- Non-determinism 
                    & runNonDetT
                    & fmap (fromSet state . Set.fromList)
@@ -278,6 +298,10 @@ runStep f state@State { .. } stepState =
          count = fromJust $ Map.lookup stepState countflow
          -- Retrieve the correct path condition
          φ     = fromJust $ Map.lookup stepState φflow
+         -- Retrieve the current model
+         model = fromJust $ Map.lookup stepState modelFlow
+         -- Retrieve the current input sequence
+         seq = fromJust $ Map.lookup stepState inputFlow
 
 -- | Run an evaluation function in a flow-sensitive manner and generate its 
 -- successor states.

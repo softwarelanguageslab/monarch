@@ -4,6 +4,7 @@ module Data.Random(RandomSeq, initialSeq, takeSeq) where
 
 import RIO
 import System.Random
+import Lattice (Joinable(..))
 
 -- | Infinite sequence of random program values
 data RandomSeq = RandomSeq {
@@ -58,5 +59,10 @@ randomInteger g = let (i :: Int, g') = uniform g in (toInteger i, g')
 genSeq :: StdGen -> (Integer, StdGen)
 genSeq g = (i, g') where (i, g') = randomInteger g
 
+-- | Two random sequences can be joined together by taking 
+-- the one with the shortest length, assuming that both have 
+-- the same starting seed.
+instance Joinable RandomSeq where   
+   join a b = if seqSize a >= seqSize b then a else b
 
 

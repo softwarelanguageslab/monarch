@@ -27,6 +27,7 @@ import Domain.Symbolic.Class
 import Data.Kind
 import Data.Random
 import Lattice.Class
+import qualified Lattice.Class as L
 import qualified Lattice.Class as Lat
 import qualified RIO.Map as Map
 import RIO hiding (mzero) 
@@ -318,8 +319,6 @@ instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadInput v m) => MonadIn
 
 -- | Dummy instance of @Joinable@ for @RandomSeq@ since they should 
 -- never be joined together
-instance Joinable RandomSeq where   
-   join = error "no \"join\" for \"RandomSeq\": two \"RandomSeq\" values should never be joined"
 instance BottomLattice RandomSeq where   
    bottom = error "no \"bottom\" for \"RandomSeq\""
 
@@ -327,6 +326,10 @@ instance BottomLattice RandomSeq where
 -- sequence of integers in a  state monad
 newtype InputT v m a = InputT (StateT RandomSeq m a)
                      deriving (Applicative, Monad, MonadJoinable, Functor, MonadState RandomSeq, MonadTrans, MonadLayer, MonadCache)
+-- | Run an @InputT@ transformer 
+runInputT :: RandomSeq -> InputT v m a -> m (a, RandomSeq)
+runInputT r (InputT m) = runStateT m r
+
 instance (Monad m, InputFrom v) => MonadInput v (InputT v m) where   
    randomInput = do  
       (x, xs) <- gets takeSeq
@@ -345,7 +348,8 @@ class (SymbolicValue v i) => MonadModel i v m | m -> i v where
    -- | Lookup a symbolic variable from the model, returns only 
    -- the abstract part of the program value.
    lookupModel :: i -> m (Abstract v)
-   -- | Puts a new model instead of the old one
+   -- | Replaces the old model with a new one by joining corresponding
+   -- addresses.
    putModel :: Map i (Abstract v) -> m ()
 
 -- | A layered instance of `MonadModel`
@@ -358,9 +362,13 @@ newtype ModelT i v m a = ModelT (StateT (Map i (Abstract v)) m a)
 
 deriving instance (Joinable (Abstract v), MonadJoinable m, Ord i) => MonadJoinable (ModelT i v m)
 
-instance (SymbolicValue v i, Ord i, MonadBottom m, MonadInput (Abstract v) m) => MonadModel i v (ModelT i v m) where
+-- | Run a @ModelT@ monad transformer
+runModelT :: Map i (Abstract v) -> ModelT i v m a -> m (a, Map i (Abstract v))
+runModelT s (ModelT m) = runStateT m s
+
+instance (SymbolicValue v i, Joinable (Abstract v),  Ord i, MonadBottom m, MonadInput (Abstract v) m) => MonadModel i v (ModelT i v m) where
    lookupModel i = ModelT $ gets (Map.lookup i) >>= maybe (lift randomInput) return
-   putModel = ModelT . put
+   putModel m = ModelT $ modify (Map.unionWith L.join m)
 
 -- | Allocate a symbolic variable
 allocSym :: (AllocM m (Label Exp) SymbolicVariable, MonadAbstractCount SymbolicVariable m) => Label Exp -> m  SymbolicVariable
@@ -397,7 +405,9 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
                            Domain (Esc m) DomainError,
                            -- Context
                            MonadSmallstepContext k m, 
+                           MonadSmallstepContext PC m,
                            CtxM m k,
+                           CtxM m PC,
                            MonadConfiguration k v m,
                            -- Path condition
                            MonadPathCondition SymbolicVariable m v,  
@@ -409,10 +419,7 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
 -- Small-step "conversion"
 ------------------------------------------------------------
 
--- | For convenience, turns a type that has "MayEscape" it, into a type without one. 
--- This is particularly useful for turning a "Val StackT" into "Key StackT" which 
--- is almost exactly the same except for the environment reader component which 
--- is added easily as it is the final element in the monadic stack.
+-- | For convenience, turns a type that has "MayEscape", into a type without one. 
 type family Unescape (k :: Type) :: Type where  
    Unescape (MayEscape e v) = v
    Unescape (a, b) = (Unescape a, Unescape b)

@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE Strict #-}
 -- | A small-step machine where all components are local to the machine's state, this ensures the most precision 
 -- but is also the slowest as it results in an exponentional number of program states.
@@ -11,7 +12,7 @@ module ASE.Machines.Local where
 import ASE.Machine
 import ASE.Semantics
 import Analysis.Monad.Stack
-import ASE.Domain.SymbolicVariable (SymbolicVariable(..))
+import ASE.Domain.SymbolicVariable (SymbolicVariable(..), symbolicVariable, PC)
 import Analysis.Symbolic.Monad (FormulaT)
 import Analysis.Monad.Store (StoreT)
 import qualified Analysis.Monad.Cache as Cache
@@ -49,13 +50,14 @@ type StackT m = MonadStack '[
       -- Allocation
       AllocT Span K (KAdr K),
       AllocT Span K (FAdr K),
-      AllocT Span K SymbolicVariable,
+      AllocT Span PC SymbolicVariable,
       AllocT Span K (VAdr K),
       AllocT Exp  K (PAdr K),
       AllocT Exp  K (SAdr K),
       AllocT Exp  K (CAdr K),
       -- Context
       SmallstepContextT K,
+      SmallstepContextT PC,
       -- Store
       StoreT' (KAdr K) (Set (KKont K)),
       StoreT' (FAdr K) (Set (FKont K)),
@@ -85,9 +87,10 @@ initialState cfg =  Ev (e0 cfg) (ρ0 cfg)
                 <+> emptyPC                  -- formula 
                 <+> Map.empty                -- abstract count
                 <+> initialContext           -- context
+                <+> emptyPC                  -- model context
                 <+> Map.empty                -- continuation store
                 <+> Map.empty                -- failure continuation store 
-                <+> σ0 cfg                 -- value store 
+                <+> σ0 cfg                   -- value store 
                 <+> Map.empty                -- pair store 
                 <+> Map.empty                -- string store
                 <+> Map.empty                -- vector store
@@ -100,7 +103,7 @@ runLocalMachine m k = Cache.run m k'
                     -- Run the allocators
                     & runAlloc KAdr
                     & runAlloc FAdr
-                    & runAlloc (const . SymbolicVariable)
+                    & runAlloc symbolicVariable
                     & runAlloc VAdr
                     & runAlloc PAdr
                     & runAlloc SAdr

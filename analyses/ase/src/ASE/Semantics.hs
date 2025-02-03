@@ -45,7 +45,7 @@ type V = ActorValue' [Span] VAdr PAdr CAdr SAdr SymbolicVariable
 type K = [Span]
 type MachineM m = (MonadIO m, MonadMachine K V m)
 
-instance (v ~ Abstract V) => InputFrom v where 
+instance (v ~ Abstract V) => InputFrom v where
    inputValue i = cases !! (i `mod` length cases)
       where cases = [Domain.inject (toInteger i)]
 
@@ -63,9 +63,9 @@ convertModel = Model . Map.map (Lat.joins . Set.map mapValue) . Symbolic.getMode
          mapValue (Symbolic.Sym a) = Scheme.symbol a
 
 -- | Compute an assignment for the model (if one is available)
-computeModel :: (MonadModel SymbolicVariable V m, FormulaSolver SymbolicVariable m) 
-             => CountMap SymbolicVariable 
-             -> Formula SymbolicVariable 
+computeModel :: (MonadModel SymbolicVariable V m, FormulaSolver SymbolicVariable m)
+             => CountMap SymbolicVariable
+             -> Formula SymbolicVariable
              -> m (Maybe (Model V))
 computeModel c pc = do
       result <- Solver.solve (getCountMap c) pc
@@ -83,8 +83,8 @@ applyPrim vs e nam = maybe mzero (fmap Ap) $ Primitives.run <$> Map.lookup nam P
 
 -- | Apply a user-defined closure
 applyClo :: MachineM m => [V] -> Exp -> (Exp, Env K) -> m (Ctrl V K)
-applyClo ags e (Lam xs bdy _, ρ) = do  
-   ctx' <- getCtx >>= (pushCtx (spanOf e)) 
+applyClo ags e (Lam xs bdy _, ρ) = do
+   ctx' <- getCtx >>= pushCtx (spanOf e)
    withCtx (const ctx') $ do
       ads <- mapM (alloc . spanOf) xs
       let prs = map name xs
@@ -125,11 +125,11 @@ stepEval (Ite cnd csq alt s) = do
    mjoinMap (\pc -> do
       count <- getCounts
       cond (pure vcnd)
-         (  extendPc (assertTrue vcnd)  
-         >> pushF αf (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)) count) 
+         (  extendPc (assertTrue vcnd)
+         >> pushF αf (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)) count)
          >> getEnv <&> Ev csq )
-         (  extendPc (assertFalse vcnd) 
-         >> pushF αf (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)) count) 
+         (  extendPc (assertFalse vcnd)
+         >> pushF αf (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)) count)
          >> getEnv <&> Ev alt) ) =<< getPc
 stepEval (Input s) = do
    -- liftIO (putStr "{IN}")
@@ -148,7 +148,7 @@ stepEval e = error $ "Expression " ++ show e ++ " is not supported by this inter
 
 -- | Apply the given continuation
 applyContinuation :: MachineM m => V -> KFrame K -> m (Ctrl V K)
-applyContinuation v = 
+applyContinuation v =
    \case (LetK (adr:ads) exs bdy ρ) -> writeAdr adr v >> withEnv (const ρ) (evalLetrec ads exs bdy)
 
 -- | Apply the current continuation
@@ -160,12 +160,14 @@ stepApply = popK . applyContinuation
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
 restart = popF selectContinuation
-   where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero restartUsingModel <=< computeModel cnt) pc
-         restartUsingModel model = do 
+   where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero (restartUsingModel pc) <=< computeModel cnt) pc
+         restartUsingModel pc model = do
             -- add the model to the next execution
             putModel (getModel model)
+            -- change the model context of the current state
+            putCtx $ removeContextPC pc
             -- restart the execution ...
-            cfg <- getConfiguration 
+            cfg <- getConfiguration
             -- ... by resetting the store
             putStore @(Map (VAdr K) V) (σ0 cfg)
             -- ... and resetting the continuation store
@@ -186,7 +188,7 @@ step (Ap v) = liftA2 (,) topAddress topFailAddress
     >>= (\case (Hlt, FHlt) -> mzero         -- machine has no continuations, it has reached a halting state 
                (Hlt, top)  -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
                (k, _)      -> stepApply v   -- apply the continuation
-        ) 
+        )
 step (Ev e ρ) =  withEnv (const ρ) (stepEval e)
 
 ------------------------------------------------------------
@@ -197,10 +199,10 @@ step (Ev e ρ) =  withEnv (const ρ) (stepEval e)
 -- can be evaluated in a single step, and if so prevents a continuation 
 -- from being pushed on the continuation stack and applies the continuation
 -- with the evaluated value instead.
-ev :: MachineM m => Exp -> Env K -> KAdr K -> KFrame K -> m (Ctrl V K) 
-ev e ρ α κ 
-      | isAtomic e = withEnv (const ρ) $ (`applyContinuation` κ) =<< (atomicEval e)
-      | otherwise = case e of 
+ev :: MachineM m => Exp -> Env K -> KAdr K -> KFrame K -> m (Ctrl V K)
+ev e ρ α κ
+      | isAtomic e = withEnv (const ρ) $ (`applyContinuation` κ) =<< atomicEval e
+      | otherwise = case e of
                         -- The reason that we select based on the type of expression 
                         -- is to ensure that no redundant work is performed. For instance, 
                         -- an @if@ expression will never result in a value in a single 
@@ -210,7 +212,7 @@ ev e ρ α κ
                         -- withEnv (const ρ) (stepEval e) >>= (\case (Ap v) -> applyContinuation v κ
                         --                                           _ -> pushK α κ >> return (Ev e ρ))
                         Input _   -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
-                        App _ _ _ -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+                        App {}    -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
                         _ -> pushK α κ >> return (Ev e ρ)
    where stepEvalInline (Ap v) = applyContinuation v κ
          stepEvalInline _ = pushK α κ >> return (Ev e ρ)
