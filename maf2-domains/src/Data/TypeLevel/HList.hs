@@ -8,7 +8,9 @@ module Data.TypeLevel.HList(
    Unconses,
    Unnest, 
    unnest, 
-   uncons
+   uncons,
+   HListFMap(..),
+   FMap
 )  where
 
 import Prelude hiding (reverse)
@@ -29,6 +31,24 @@ infixr 6 :+:
 -- | Shorthand for @HNil@
 nil  :: HList '[] 
 nil  = HNil
+
+------------------------------------------------------------
+-- Mapping
+------------------------------------------------------------
+
+-- | Map a functor over the elements of the list
+type family FMap (f :: Type -> Type) (l :: [Type]) where 
+   FMap f '[] = '[]
+   FMap f (a ': as) = f a ': FMap f as
+
+-- | Map a functor over the HList
+class HListFMap l where  
+   hlistFMap :: (forall a . a -> f a) -> HList l -> HList (FMap f l)
+
+instance HListFMap '[] where  
+   hlistFMap _ HNil = HNil
+instance (HListFMap as) => HListFMap (a ': as) where  
+   hlistFMap f (a :+: b) = f a :+: hlistFMap f b
 
 ------------------------------------------------------------
 -- Reversing 

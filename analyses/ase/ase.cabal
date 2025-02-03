@@ -18,6 +18,7 @@ library
       ASE.Machines.FlowSensitive
       ASE.Machines.Global
       ASE.Machines.Local
+      ASE.Machines.Test
       ASE.Semantics
       ASE.Syntax
       Data.DeltaMap
