@@ -35,6 +35,7 @@ import Symbolic.AST (emptyPC)
 import Syntax.Span
 import GHC.IO (unsafePerformIO)
 import Domain.Symbolic.Path (joinPC)
+import Analysis.Monad (runNonDetT)
 
 ------------------------------------------------------------
 -- Utilities
@@ -56,10 +57,6 @@ type PSto = Map (PAdr K) (PaiDom V)
 type SSto = Map (SAdr K) (StrDom V)
 -- | Vector store
 type CSto = Map (CAdr K) (VecDom V)
-
--- | Mapping between a step state and some part of 
--- its state.
--- type Flow s = Map StepState s
 
 ------------------------------------------------------------
 -- Stack
@@ -133,7 +130,8 @@ type family WidenPerState (h :: [Type]) where
 ------------------------------------------------------------
 
 type StepState   = HList (Unnest (Unescape (Val (StackT Identity) (Ctrl V K))))
-type StateKey    = (Unescape (Val (FlowT Identity) StepState))
+type StateKey    = Unescape (Val (FlowT Identity) StepState)
+type StateKey'   = Unescape (Val (FlowT Identity) (Set StepState))
 
 type StateSingle = HList (Unnest StateKey)
 type State       = HList (WidenPerState (Unnest (Unescape (Val (FlowT Identity) (Set StepState)))))
@@ -142,14 +140,30 @@ fromTuple :: StateSingle -- ^ a tuple representing the output of a single run
           -> State
 fromTuple (st :+: s') = Set.singleton st :+: hlistFMap (Map.singleton st) s'
 
+
+fromSet :: State           -- ^ the original state 
+        -> Set StateKey    -- ^ set of successor states
+        -> State           -- ^ the new state including the successor step states
+fromSet = undefined
+
 ------------------------------------------------------------
 -- Running
 ------------------------------------------------------------
 
 -- | Run the evaluation function a single @StepState)
 runStep :: forall m . Monad m => (Ctrl V K -> StackT m (Ctrl V K)) -> State -> StepState -> m State
-runStep f state stepState = Cache.run f stepState'
-                          -- & Cache.run @(FlowT m) return state'
-                          & undefined
-   where stepState' = (HList.uncons stepState, Map.empty)
-         state'     = HList.uncons state
+runStep f (k :+: state) stepState = inter
+  where intra = Cache.run f stepState'
+               & runAlloc KAdr
+               & runAlloc FAdr
+               & runAlloc symbolicVariable
+               & runAlloc VAdr
+               & runAlloc PAdr
+               & runAlloc SAdr
+               & runAlloc CAdr
+        inter = Cache.run @(FlowT m) (const intra) state'
+              & runNonDetT
+              & undefined
+              -- & fmap (fromSet (k :+: state) . Set.fromList)
+        stepState' = (HList.uncons stepState, Map.empty)
+        state' = HList.uncons (k :+: hlistCoFmap (fromMaybe (error "input state should be defined") . Map.lookup stepState) state)
