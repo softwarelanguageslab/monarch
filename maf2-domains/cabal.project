@@ -7,4 +7,5 @@ source-repository-package
 
 packages:
    ../maf2-syntax/
+   ../thirdparty/language-python/language-python/
    ./

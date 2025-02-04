@@ -9,4 +9,5 @@ packages:
    ../maf2-syntax/
    ../maf2-domains/
    ../maf2-analysis/
+   ../thirdparty/language-python/language-python/
    ./
