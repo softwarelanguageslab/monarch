@@ -55,1442 +55,1455 @@
               (g7462
                (letrec*
                 ((empty '())
+                 (listof
+                  (lambda (contract)
+                    (letrec*
+                     ((g7463
+                       (lambda (k j lst)
+                         (letrec*
+                          ((g7464
+                            (map
+                             (lambda (v)
+                               (letrec* ((g7465 (contract k j v))) g7465))
+                             lst)))
+                          g7464))))
+                     g7463)))
                  (real?/c
                   (lambda (g7262 g7263 g7264)
                     (letrec*
-                     ((g7463
+                     ((g7466
                        (letrec*
-                        ((x-cnd7464 (real? g7264)))
-                        (if x-cnd7464 g7264 (blame g7262 'real?)))))
-                     g7463)))
+                        ((x-cnd7467 (real? g7264)))
+                        (if x-cnd7467 g7264 (blame g7262 'real?)))))
+                     g7466)))
                  (boolean?/c
                   (lambda (g7265 g7266 g7267)
                     (letrec*
-                     ((g7465
+                     ((g7468
                        (letrec*
-                        ((x-cnd7466 (boolean? g7267)))
-                        (if x-cnd7466 g7267 (blame g7265 'boolean?)))))
-                     g7465)))
+                        ((x-cnd7469 (boolean? g7267)))
+                        (if x-cnd7469 g7267 (blame g7265 'boolean?)))))
+                     g7468)))
                  (number?/c
                   (lambda (g7268 g7269 g7270)
                     (letrec*
-                     ((g7467
+                     ((g7470
                        (letrec*
-                        ((x-cnd7468 (number? g7270)))
-                        (if x-cnd7468 g7270 (blame g7268 'number?)))))
-                     g7467)))
+                        ((x-cnd7471 (number? g7270)))
+                        (if x-cnd7471 g7270 (blame g7268 'number?)))))
+                     g7470)))
                  (any/c
                   (lambda (g7271 g7272 g7273)
-                    (letrec*
-                     ((g7469
-                       (letrec*
-                        ((x-cnd7470
-                          ((lambda (v) (letrec* ((g7471 #t)) g7471)) g7273)))
-                        (if x-cnd7470 g7273 (blame g7271 '(lambda (v) #t))))))
-                     g7469)))
-                 (any?/c
-                  (lambda (g7274 g7275 g7276)
                     (letrec*
                      ((g7472
                        (letrec*
                         ((x-cnd7473
-                          ((lambda (v) (letrec* ((g7474 #t)) g7474)) g7276)))
-                        (if x-cnd7473 g7276 (blame g7274 '(lambda (v) #t))))))
+                          ((lambda (v) (letrec* ((g7474 #t)) g7474)) g7273)))
+                        (if x-cnd7473 g7273 (blame g7271 '(lambda (v) #t))))))
                      g7472)))
-                 (cons?/c
-                  (lambda (g7277 g7278 g7279)
+                 (any?/c
+                  (lambda (g7274 g7275 g7276)
                     (letrec*
                      ((g7475
                        (letrec*
-                        ((x-cnd7476 (pair? g7279)))
-                        (if x-cnd7476 g7279 (blame g7277 'pair?)))))
+                        ((x-cnd7476
+                          ((lambda (v) (letrec* ((g7477 #t)) g7477)) g7276)))
+                        (if x-cnd7476 g7276 (blame g7274 '(lambda (v) #t))))))
                      g7475)))
+                 (cons?/c
+                  (lambda (g7277 g7278 g7279)
+                    (letrec*
+                     ((g7478
+                       (letrec*
+                        ((x-cnd7479 (pair? g7279)))
+                        (if x-cnd7479 g7279 (blame g7277 'pair?)))))
+                     g7478)))
                  (pair?/c
                   (lambda (g7280 g7281 g7282)
                     (letrec*
-                     ((g7477
+                     ((g7480
                        (letrec*
-                        ((x-cnd7478 (pair? g7282)))
-                        (if x-cnd7478 g7282 (blame g7280 'pair?)))))
-                     g7477)))
+                        ((x-cnd7481 (pair? g7282)))
+                        (if x-cnd7481 g7282 (blame g7280 'pair?)))))
+                     g7480)))
                  (integer?/c
                   (lambda (g7283 g7284 g7285)
                     (letrec*
-                     ((g7479
+                     ((g7482
                        (letrec*
-                        ((x-cnd7480 (integer? g7285)))
-                        (if x-cnd7480 g7285 (blame g7283 'integer?)))))
-                     g7479)))
+                        ((x-cnd7483 (integer? g7285)))
+                        (if x-cnd7483 g7285 (blame g7283 'integer?)))))
+                     g7482)))
                  (and/c
                   (lambda (c1 c2)
-                    (letrec*
-                     ((g7481
-                       (lambda (k j v)
-                         (letrec*
-                          ((g7482
-                            (letrec*
-                             ((x-cnd7483 (c1 k j v)))
-                             (if x-cnd7483 (c2 k j v) #f))))
-                          g7482))))
-                     g7481)))
-                 (list-of
-                  (lambda (contract)
                     (letrec*
                      ((g7484
                        (lambda (k j v)
                          (letrec*
                           ((g7485
                             (letrec*
-                             ((x-cnd7486 (null? v)))
-                             (if x-cnd7486
-                               '()
-                               (letrec*
-                                ((x7490
-                                  (letrec*
-                                   ((x7491 (car v)))
-                                   (contract k j x7491)))
-                                 (x7487
-                                  (letrec*
-                                   ((x7489 (list-of contract)) (x7488 (cdr v)))
-                                   (x7489 k j x7488))))
-                                (orig-cons x7490 x7487))))))
+                             ((x-cnd7486 (c1 k j v)))
+                             (if x-cnd7486 (c2 k j v) #f))))
                           g7485))))
                      g7484)))
-                 (any? (lambda (v) (letrec* ((g7492 #t)) g7492)))
+                 (list-of
+                  (lambda (contract)
+                    (letrec*
+                     ((g7487
+                       (lambda (k j v)
+                         (letrec*
+                          ((g7488
+                            (letrec*
+                             ((x-cnd7489 (null? v)))
+                             (if x-cnd7489
+                               '()
+                               (letrec*
+                                ((x7493
+                                  (letrec*
+                                   ((x7494 (car v)))
+                                   (contract k j x7494)))
+                                 (x7490
+                                  (letrec*
+                                   ((x7492 (list-of contract)) (x7491 (cdr v)))
+                                   (x7492 k j x7491))))
+                                (orig-cons x7493 x7490))))))
+                          g7488))))
+                     g7487)))
+                 (any? (lambda (v) (letrec* ((g7495 #t)) g7495)))
                  (nonzero?
                   (lambda (v)
                     (letrec*
-                     ((g7493 (letrec* ((x7494 (= v 0))) (not x7494))))
-                     g7493)))
+                     ((g7496 (letrec* ((x7497 (= v 0))) (not x7497))))
+                     g7496)))
                  (nonzero?/c
                   (lambda (g7286 g7287 g7288)
                     (letrec*
-                     ((g7495
+                     ((g7498
                        (letrec*
-                        ((x-cnd7496
+                        ((x-cnd7499
                           ((lambda (v)
                              (letrec*
-                              ((g7497 (letrec* ((x7498 (= v 0))) (not x7498))))
-                              g7497))
+                              ((g7500 (letrec* ((x7501 (= v 0))) (not x7501))))
+                              g7500))
                            g7288)))
-                        (if x-cnd7496
+                        (if x-cnd7499
                           g7288
                           (blame g7286 '(lambda (v) (not (= v 0))))))))
-                     g7495)))
-                 (meta (lambda (v) (letrec* ((g7499 v)) g7499)))
+                     g7498)))
+                 (meta (lambda (v) (letrec* ((g7502 v)) g7502)))
                  (+
                   ((lambda (j7291 k7292 f7293)
                      (letrec*
-                      ((g7501
+                      ((g7504
                         (lambda (g7289 g7290)
                           (letrec*
-                           ((g7502
+                           ((g7505
                              (letrec*
-                              ((x7503
+                              ((x7506
                                 (letrec*
-                                 ((x7505 (number?/c j7291 k7292 g7289))
-                                  (x7504 (number?/c j7291 k7292 g7290)))
-                                 (f7293 x7505 x7504))))
-                              (number?/c j7291 k7292 x7503))))
-                           g7502))))
-                      g7501))
+                                 ((x7508 (number?/c j7291 k7292 g7289))
+                                  (x7507 (number?/c j7291 k7292 g7290)))
+                                 (f7293 x7508 x7507))))
+                              (number?/c j7291 k7292 x7506))))
+                           g7505))))
+                      g7504))
                    'server
                    'client
-                   (lambda (a b) (letrec* ((g7500 (orig-+ a b))) g7500))))
+                   (lambda (a b) (letrec* ((g7503 (orig-+ a b))) g7503))))
                  (-
                   ((lambda (j7296 k7297 f7298)
                      (letrec*
-                      ((g7507
+                      ((g7510
                         (lambda (g7294 g7295)
                           (letrec*
-                           ((g7508
+                           ((g7511
                              (letrec*
-                              ((x7509
+                              ((x7512
                                 (letrec*
-                                 ((x7511 (number?/c j7296 k7297 g7294))
-                                  (x7510 (number?/c j7296 k7297 g7295)))
-                                 (f7298 x7511 x7510))))
-                              (number?/c j7296 k7297 x7509))))
-                           g7508))))
-                      g7507))
+                                 ((x7514 (number?/c j7296 k7297 g7294))
+                                  (x7513 (number?/c j7296 k7297 g7295)))
+                                 (f7298 x7514 x7513))))
+                              (number?/c j7296 k7297 x7512))))
+                           g7511))))
+                      g7510))
                    'server
                    'client
-                   (lambda (a b) (letrec* ((g7506 (orig-- a b))) g7506))))
+                   (lambda (a b) (letrec* ((g7509 (orig-- a b))) g7509))))
                  (*
                   ((lambda (j7301 k7302 f7303)
                      (letrec*
-                      ((g7513
+                      ((g7516
                         (lambda (g7299 g7300)
                           (letrec*
-                           ((g7514
+                           ((g7517
                              (letrec*
-                              ((x7515
+                              ((x7518
                                 (letrec*
-                                 ((x7517 (number?/c j7301 k7302 g7299))
-                                  (x7516 (number?/c j7301 k7302 g7300)))
-                                 (f7303 x7517 x7516))))
-                              (number?/c j7301 k7302 x7515))))
-                           g7514))))
-                      g7513))
+                                 ((x7520 (number?/c j7301 k7302 g7299))
+                                  (x7519 (number?/c j7301 k7302 g7300)))
+                                 (f7303 x7520 x7519))))
+                              (number?/c j7301 k7302 x7518))))
+                           g7517))))
+                      g7516))
                    'server
                    'client
-                   (lambda (a b) (letrec* ((g7512 (orig-* a b))) g7512))))
+                   (lambda (a b) (letrec* ((g7515 (orig-* a b))) g7515))))
                  (/
                   ((lambda (j7306 k7307 f7308)
                      (letrec*
-                      ((g7519
+                      ((g7522
                         (lambda (g7304 g7305)
                           (letrec*
-                           ((g7520
+                           ((g7523
                              (letrec*
-                              ((x7521
+                              ((x7524
                                 (letrec*
-                                 ((x7523 (number?/c j7306 k7307 g7304))
-                                  (x7522 (number?/c j7306 k7307 g7305)))
-                                 (f7308 x7523 x7522))))
-                              (number?/c j7306 k7307 x7521))))
-                           g7520))))
-                      g7519))
+                                 ((x7526 (number?/c j7306 k7307 g7304))
+                                  (x7525 (number?/c j7306 k7307 g7305)))
+                                 (f7308 x7526 x7525))))
+                              (number?/c j7306 k7307 x7524))))
+                           g7523))))
+                      g7522))
                    'server
                    'client
-                   (lambda (a b) (letrec* ((g7518 (orig-/ a b))) g7518))))
+                   (lambda (a b) (letrec* ((g7521 (orig-/ a b))) g7521))))
                  (car
                   ((lambda (j7310 k7311 f7312)
                      (letrec*
-                      ((g7525
+                      ((g7528
                         (lambda (g7309)
                           (letrec*
-                           ((g7526
+                           ((g7529
                              (letrec*
-                              ((x7527
+                              ((x7530
                                 (letrec*
-                                 ((x7528 (pair?/c j7310 k7311 g7309)))
-                                 (f7312 x7528))))
-                              (any/c j7310 k7311 x7527))))
-                           g7526))))
-                      g7525))
+                                 ((x7531 (pair?/c j7310 k7311 g7309)))
+                                 (f7312 x7531))))
+                              (any/c j7310 k7311 x7530))))
+                           g7529))))
+                      g7528))
                    'server
                    'client
-                   (lambda (p) (letrec* ((g7524 (orig-car p))) g7524))))
+                   (lambda (p) (letrec* ((g7527 (orig-car p))) g7527))))
                  (cdr
                   ((lambda (j7314 k7315 f7316)
                      (letrec*
-                      ((g7530
+                      ((g7533
                         (lambda (g7313)
                           (letrec*
-                           ((g7531
+                           ((g7534
                              (letrec*
-                              ((x7532
+                              ((x7535
                                 (letrec*
-                                 ((x7533 (pair?/c j7314 k7315 g7313)))
-                                 (f7316 x7533))))
-                              (any/c j7314 k7315 x7532))))
-                           g7531))))
-                      g7530))
+                                 ((x7536 (pair?/c j7314 k7315 g7313)))
+                                 (f7316 x7536))))
+                              (any/c j7314 k7315 x7535))))
+                           g7534))))
+                      g7533))
                    'server
                    'client
-                   (lambda (p) (letrec* ((g7529 (orig-cdr p))) g7529))))
+                   (lambda (p) (letrec* ((g7532 (orig-cdr p))) g7532))))
                  (cons
                   ((lambda (j7319 k7320 f7321)
                      (letrec*
-                      ((g7535
+                      ((g7538
                         (lambda (g7317 g7318)
                           (letrec*
-                           ((g7536
+                           ((g7539
                              (letrec*
-                              ((x7537
+                              ((x7540
                                 (letrec*
-                                 ((x7539 (any/c j7319 k7320 g7317))
-                                  (x7538 (any/c j7319 k7320 g7318)))
-                                 (f7321 x7539 x7538))))
-                              (pair?/c j7319 k7320 x7537))))
-                           g7536))))
-                      g7535))
+                                 ((x7542 (any/c j7319 k7320 g7317))
+                                  (x7541 (any/c j7319 k7320 g7318)))
+                                 (f7321 x7542 x7541))))
+                              (pair?/c j7319 k7320 x7540))))
+                           g7539))))
+                      g7538))
                    'server
                    'client
-                   (lambda (a b) (letrec* ((g7534 (orig-cons a b))) g7534))))
+                   (lambda (a b) (letrec* ((g7537 (orig-cons a b))) g7537))))
                  (vector-ref
                   ((lambda (j7323 k7324 f7325)
                      (letrec*
-                      ((g7541
+                      ((g7544
                         (lambda (g7322)
                           (letrec*
-                           ((g7542
+                           ((g7545
                              (letrec*
-                              ((x7543
+                              ((x7546
                                 (letrec*
-                                 ((x7544 (vector?/c j7323 k7324 g7322)))
-                                 (f7325 x7544))))
-                              (integer?/c j7323 k7324 x7543))))
-                           g7542))))
-                      g7541))
+                                 ((x7547 (vector?/c j7323 k7324 g7322)))
+                                 (f7325 x7547))))
+                              (integer?/c j7323 k7324 x7546))))
+                           g7545))))
+                      g7544))
                    'server
                    'client
                    (lambda (v i)
-                     (letrec* ((g7540 (orig-vector-ref v i))) g7540))))
+                     (letrec* ((g7543 (orig-vector-ref v i))) g7543))))
                  (vector-set!
                   ((lambda (j7328 k7329 f7330)
                      (letrec*
-                      ((g7546
+                      ((g7549
                         (lambda (g7326 g7327)
                           (letrec*
-                           ((g7547
+                           ((g7550
                              (letrec*
-                              ((x7548
+                              ((x7551
                                 (letrec*
-                                 ((x7550 (vector?/c j7328 k7329 g7326))
-                                  (x7549 (integer?/c j7328 k7329 g7327)))
-                                 (f7330 x7550 x7549))))
-                              (any/c j7328 k7329 x7548))))
-                           g7547))))
-                      g7546))
+                                 ((x7553 (vector?/c j7328 k7329 g7326))
+                                  (x7552 (integer?/c j7328 k7329 g7327)))
+                                 (f7330 x7553 x7552))))
+                              (any/c j7328 k7329 x7551))))
+                           g7550))))
+                      g7549))
                    'server
                    'client
                    (lambda (vec i v)
-                     (letrec* ((g7545 (orig-vector-set! vec i v))) g7545))))
+                     (letrec* ((g7548 (orig-vector-set! vec i v))) g7548))))
                  (assert
                   (lambda (cnd)
                     (letrec*
-                     ((g7551 (if cnd '() (error "assertion failed"))))
-                     g7551)))
+                     ((g7554 (if cnd '() (error "assertion failed"))))
+                     g7554)))
                  (cdddr
                   (lambda (x)
                     (letrec*
-                     ((g7552
+                     ((g7555
                        (letrec*
-                        ((x7553 (letrec* ((x7554 (cdr x))) (cdr x7554))))
-                        (cdr x7553))))
-                     g7552)))
+                        ((x7556 (letrec* ((x7557 (cdr x))) (cdr x7557))))
+                        (cdr x7556))))
+                     g7555)))
                  (__toplevel_set-car! set-car!)
                  (map
                   (lambda (f l)
                     (letrec*
-                     ((g7555 (letrec* ((x7558 (procedure? f))) (assert x7558)))
-                      (g7556 (letrec* ((x7559 (list? l))) (assert x7559)))
-                      (g7557
+                     ((g7558 (letrec* ((x7561 (procedure? f))) (assert x7561)))
+                      (g7559 (letrec* ((x7562 (list? l))) (assert x7562)))
+                      (g7560
                        (letrec*
-                        ((x-cnd7560 (null? l)))
-                        (if x-cnd7560
+                        ((x-cnd7563 (null? l)))
+                        (if x-cnd7563
                           '()
                           (letrec*
-                           ((x7563 (letrec* ((x7564 (car l))) (f x7564)))
-                            (x7561 (letrec* ((x7562 (cdr l))) (map f x7562))))
-                           (cons x7563 x7561))))))
-                     g7557)))
+                           ((x7566 (letrec* ((x7567 (car l))) (f x7567)))
+                            (x7564 (letrec* ((x7565 (cdr l))) (map f x7565))))
+                           (cons x7566 x7564))))))
+                     g7560)))
                  (cdar
                   (lambda (x)
                     (letrec*
-                     ((g7565 (letrec* ((x7566 (car x))) (cdr x7566))))
-                     g7565)))
+                     ((g7568 (letrec* ((x7569 (car x))) (cdr x7569))))
+                     g7568)))
                  (cadadr
                   (lambda (x)
                     (letrec*
-                     ((g7567
+                     ((g7570
                        (letrec*
-                        ((x7568
+                        ((x7571
                           (letrec*
-                           ((x7569 (letrec* ((x7570 (cdr x))) (car x7570))))
-                           (cdr x7569))))
-                        (car x7568))))
-                     g7567)))
+                           ((x7572 (letrec* ((x7573 (cdr x))) (car x7573))))
+                           (cdr x7572))))
+                        (car x7571))))
+                     g7570)))
                  (cdadar
                   (lambda (x)
                     (letrec*
-                     ((g7571
+                     ((g7574
                        (letrec*
-                        ((x7572
+                        ((x7575
                           (letrec*
-                           ((x7573 (letrec* ((x7574 (car x))) (cdr x7574))))
-                           (car x7573))))
-                        (cdr x7572))))
-                     g7571)))
+                           ((x7576 (letrec* ((x7577 (car x))) (cdr x7577))))
+                           (car x7576))))
+                        (cdr x7575))))
+                     g7574)))
                  (call-with-output-file
                   (lambda (filename proc)
                     (letrec*
-                     ((g7575
-                       (letrec* ((x7578 (string? filename))) (assert x7578)))
-                      (g7576
-                       (letrec* ((x7579 (procedure? proc))) (assert x7579)))
-                      (g7577
+                     ((g7578
+                       (letrec* ((x7581 (string? filename))) (assert x7581)))
+                      (g7579
+                       (letrec* ((x7582 (procedure? proc))) (assert x7582)))
+                      (g7580
                        (letrec*
                         ((output-port (open-output-file filename))
                          (res (proc output-port)))
                         (letrec*
-                         ((g7580 (close-output-port output-port)) (g7581 res))
-                         g7581))))
-                     g7577)))
+                         ((g7583 (close-output-port output-port)) (g7584 res))
+                         g7584))))
+                     g7580)))
                  (caddr
-                  (lambda (x)
-                    (letrec*
-                     ((g7582
-                       (letrec*
-                        ((x7583 (letrec* ((x7584 (cdr x))) (cdr x7584))))
-                        (car x7583))))
-                     g7582)))
-                 (cdaadr
                   (lambda (x)
                     (letrec*
                      ((g7585
                        (letrec*
-                        ((x7586
-                          (letrec*
-                           ((x7587 (letrec* ((x7588 (cdr x))) (car x7588))))
-                           (car x7587))))
-                        (cdr x7586))))
+                        ((x7586 (letrec* ((x7587 (cdr x))) (cdr x7587))))
+                        (car x7586))))
                      g7585)))
+                 (cdaadr
+                  (lambda (x)
+                    (letrec*
+                     ((g7588
+                       (letrec*
+                        ((x7589
+                          (letrec*
+                           ((x7590 (letrec* ((x7591 (cdr x))) (car x7591))))
+                           (car x7590))))
+                        (cdr x7589))))
+                     g7588)))
                  (assq
                   (lambda (k l)
                     (letrec*
-                     ((g7589 (letrec* ((x7591 (list? l))) (assert x7591)))
-                      (g7590
+                     ((g7592 (letrec* ((x7594 (list? l))) (assert x7594)))
+                      (g7593
                        (letrec*
-                        ((x-cnd7592 (null? l)))
-                        (if x-cnd7592
+                        ((x-cnd7595 (null? l)))
+                        (if x-cnd7595
                           #f
                           (letrec*
-                           ((x-cnd7593
-                             (letrec* ((x7594 (caar l))) (eq? x7594 k))))
-                           (if x-cnd7593
+                           ((x-cnd7596
+                             (letrec* ((x7597 (caar l))) (eq? x7597 k))))
+                           (if x-cnd7596
                              (car l)
-                             (letrec* ((x7595 (cdr l))) (assq k x7595))))))))
-                     g7590)))
+                             (letrec* ((x7598 (cdr l))) (assq k x7598))))))))
+                     g7593)))
                  (even?
                   (lambda (x)
                     (letrec*
-                     ((g7596 (letrec* ((x7597 (modulo x 2))) (= 0 x7597))))
-                     g7596)))
+                     ((g7599 (letrec* ((x7600 (modulo x 2))) (= 0 x7600))))
+                     g7599)))
                  (list->string
                   (lambda (l)
                     (letrec*
-                     ((g7598 (letrec* ((x7600 (list? l))) (assert x7600)))
-                      (g7599
+                     ((g7601 (letrec* ((x7603 (list? l))) (assert x7603)))
+                      (g7602
                        (letrec*
-                        ((x-cnd7601 (null? l)))
-                        (if x-cnd7601
+                        ((x-cnd7604 (null? l)))
+                        (if x-cnd7604
                           ""
                           (letrec*
-                           ((x7604
-                             (letrec* ((x7605 (car l))) (char->string x7605)))
-                            (x7602
-                             (letrec* ((x7603 (cdr l))) (list->string x7603))))
-                           (string-append x7604 x7602))))))
-                     g7599)))
+                           ((x7607
+                             (letrec* ((x7608 (car l))) (char->string x7608)))
+                            (x7605
+                             (letrec* ((x7606 (cdr l))) (list->string x7606))))
+                           (string-append x7607 x7605))))))
+                     g7602)))
                  (char<=?
                   (lambda (c1 c2)
                     (letrec*
-                     ((g7606 (letrec* ((x7609 (char? c1))) (assert x7609)))
-                      (g7607 (letrec* ((x7610 (char? c2))) (assert x7610)))
-                      (g7608
+                     ((g7609 (letrec* ((x7612 (char? c1))) (assert x7612)))
+                      (g7610 (letrec* ((x7613 (char? c2))) (assert x7613)))
+                      (g7611
                        (letrec*
                         ((val7241 (char<? c1 c2)))
                         (letrec*
-                         ((g7611 (if val7241 val7241 (char=? c1 c2))))
-                         g7611))))
-                     g7608)))
+                         ((g7614 (if val7241 val7241 (char=? c1 c2))))
+                         g7614))))
+                     g7611)))
                  (cdddar
                   (lambda (x)
                     (letrec*
-                     ((g7612
+                     ((g7615
                        (letrec*
-                        ((x7613
+                        ((x7616
                           (letrec*
-                           ((x7614 (letrec* ((x7615 (car x))) (cdr x7615))))
-                           (cdr x7614))))
-                        (cdr x7613))))
-                     g7612)))
+                           ((x7617 (letrec* ((x7618 (car x))) (cdr x7618))))
+                           (cdr x7617))))
+                        (cdr x7616))))
+                     g7615)))
                  (list-tail
                   (lambda (x k)
                     (letrec*
-                     ((g7616 (letrec* ((x7619 (list? l))) (assert x7619)))
-                      (g7617 (letrec* ((x7620 (number?))) (assert x7620)))
-                      (g7618
+                     ((g7619 (letrec* ((x7622 (list? l))) (assert x7622)))
+                      (g7620 (letrec* ((x7623 (number?))) (assert x7623)))
+                      (g7621
                        (letrec*
-                        ((x-cnd7621 (zero? k)))
-                        (if x-cnd7621
+                        ((x-cnd7624 (zero? k)))
+                        (if x-cnd7624
                           x
                           (letrec*
-                           ((x7623 (cdr x)) (x7622 (- k 1)))
-                           (list-tail x7623 x7622))))))
-                     g7618)))
-                 (halt (lambda () (letrec* ((g7624 '())) g7624)))
+                           ((x7626 (cdr x)) (x7625 (- k 1)))
+                           (list-tail x7626 x7625))))))
+                     g7621)))
+                 (halt (lambda () (letrec* ((g7627 '())) g7627)))
                  (char-alphabetic?
                   (lambda (c)
                     (letrec*
-                     ((g7625
+                     ((g7628
                        (letrec*
-                        ((x-cnd7626
-                          (letrec* ((x7627 #\a)) (char-ci>=? c x7627))))
-                        (if x-cnd7626
-                          (letrec* ((x7628 #\z)) (char-ci<=? c x7628))
+                        ((x-cnd7629
+                          (letrec* ((x7630 #\a)) (char-ci>=? c x7630))))
+                        (if x-cnd7629
+                          (letrec* ((x7631 #\z)) (char-ci<=? c x7631))
                           #f))))
-                     g7625)))
+                     g7628)))
                  (<=
                   (lambda (x y)
                     (letrec*
-                     ((g7629 (letrec* ((x7631 (number? x))) (assert x7631)))
-                      (g7630
+                     ((g7632 (letrec* ((x7634 (number? x))) (assert x7634)))
+                      (g7633
                        (letrec*
                         ((val7242 (< x y)))
                         (letrec*
-                         ((g7632
+                         ((g7635
                            (if val7242
                              val7242
                              (letrec*
                               ((val7243 (= x y)))
                               (letrec*
-                               ((g7633 (if val7243 val7243 #f)))
-                               g7633)))))
-                         g7632))))
-                     g7630)))
+                               ((g7636 (if val7243 val7243 #f)))
+                               g7636)))))
+                         g7635))))
+                     g7633)))
                  (char-whitespace?
                   (lambda (c)
                     (letrec*
-                     ((g7634
+                     ((g7637
                        (letrec*
                         ((val7244
-                          (letrec* ((x7635 (char->integer c))) (= x7635 9))))
+                          (letrec* ((x7638 (char->integer c))) (= x7638 9))))
                         (letrec*
-                         ((g7636
+                         ((g7639
                            (if val7244
                              val7244
                              (letrec*
                               ((val7245
                                 (letrec*
-                                 ((x7637 (char->integer c)))
-                                 (= x7637 10))))
+                                 ((x7640 (char->integer c)))
+                                 (= x7640 10))))
                               (letrec*
-                               ((g7638
+                               ((g7641
                                  (if val7245
                                    val7245
                                    (letrec*
-                                    ((x7639 (char->integer c)))
-                                    (= x7639 32)))))
-                               g7638)))))
-                         g7636))))
-                     g7634)))
+                                    ((x7642 (char->integer c)))
+                                    (= x7642 32)))))
+                               g7641)))))
+                         g7639))))
+                     g7637)))
                  (cddar
                   (lambda (x)
                     (letrec*
-                     ((g7640
+                     ((g7643
                        (letrec*
-                        ((x7641 (letrec* ((x7642 (car x))) (cdr x7642))))
-                        (cdr x7641))))
-                     g7640)))
+                        ((x7644 (letrec* ((x7645 (car x))) (cdr x7645))))
+                        (cdr x7644))))
+                     g7643)))
                  (positive?
                   (lambda (x)
                     (letrec*
-                     ((g7643 (letrec* ((x7645 (number? x))) (assert x7645)))
-                      (g7644 (> x 0)))
-                     g7644)))
+                     ((g7646 (letrec* ((x7648 (number? x))) (assert x7648)))
+                      (g7647 (> x 0)))
+                     g7647)))
                  ($pc '())
                  (ref-set set-car!)
-                 (void (lambda () (letrec* ((g7646 #f)) g7646)))
+                 (void (lambda () (letrec* ((g7649 #f)) g7649)))
                  (cddr
                   (lambda (x)
                     (letrec*
-                     ((g7647 (letrec* ((x7648 (cdr x))) (cdr x7648))))
-                     g7647)))
+                     ((g7650 (letrec* ((x7651 (cdr x))) (cdr x7651))))
+                     g7650)))
                  (truncate
                   (lambda (x)
                     (letrec*
-                     ((g7649 (letrec* ((x7651 (number? x))) (assert x7651)))
-                      (g7650
+                     ((g7652 (letrec* ((x7654 (number? x))) (assert x7654)))
+                      (g7653
                        (letrec*
-                        ((x-cnd7652 (< x 0)))
-                        (if x-cnd7652 (ceiling x) (floor x)))))
-                     g7650)))
+                        ((x-cnd7655 (< x 0)))
+                        (if x-cnd7655 (ceiling x) (floor x)))))
+                     g7653)))
                  ($cmp '())
                  (equal?
                   (lambda (a b)
                     (letrec*
-                     ((g7653
+                     ((g7656
                        (letrec*
                         ((val7246 (eq? a b)))
                         (letrec*
-                         ((g7654
+                         ((g7657
                            (if val7246
                              val7246
                              (letrec*
                               ((val7247
                                 (letrec*
-                                 ((x7656 (null? a)) (x7655 (null? b)))
-                                 (and x7656 x7655))))
+                                 ((x7659 (null? a)) (x7658 (null? b)))
+                                 (and x7659 x7658))))
                               (letrec*
-                               ((g7657
+                               ((g7660
                                  (if val7247
                                    val7247
                                    (letrec*
                                     ((val7248
                                       (letrec*
-                                       ((x7660 (string? a))
-                                        (x7659 (string? b))
-                                        (x7658 (string=? a b)))
-                                       (and x7660 x7659 x7658))))
+                                       ((x7663 (string? a))
+                                        (x7662 (string? b))
+                                        (x7661 (string=? a b)))
+                                       (and x7663 x7662 x7661))))
                                     (letrec*
-                                     ((g7661
+                                     ((g7664
                                        (if val7248
                                          val7248
                                          (letrec*
                                           ((val7249
                                             (letrec*
-                                             ((x7669 (pair? a))
-                                              (x7668 (pair? b))
+                                             ((x7672 (pair? a))
+                                              (x7671 (pair? b))
+                                              (x7668
+                                               (letrec*
+                                                ((x7670 (car a))
+                                                 (x7669 (car b)))
+                                                (equal? x7670 x7669)))
                                               (x7665
                                                (letrec*
-                                                ((x7667 (car a))
-                                                 (x7666 (car b)))
-                                                (equal? x7667 x7666)))
-                                              (x7662
-                                               (letrec*
-                                                ((x7664 (cdr a))
-                                                 (x7663 (cdr b)))
-                                                (equal? x7664 x7663))))
-                                             (and x7669 x7668 x7665 x7662))))
+                                                ((x7667 (cdr a))
+                                                 (x7666 (cdr b)))
+                                                (equal? x7667 x7666))))
+                                             (and x7672 x7671 x7668 x7665))))
                                           (letrec*
-                                           ((g7670
+                                           ((g7673
                                              (if val7249
                                                val7249
                                                (letrec*
-                                                ((x7686 (vector? a))
-                                                 (x7685 (vector? b))
-                                                 (x7671
+                                                ((x7689 (vector? a))
+                                                 (x7688 (vector? b))
+                                                 (x7674
                                                   (letrec*
                                                    ((n (vector-length a)))
                                                    (letrec*
-                                                    ((g7672
+                                                    ((g7675
                                                       (letrec*
-                                                       ((x7683
+                                                       ((x7686
                                                          (letrec*
-                                                          ((x7684
+                                                          ((x7687
                                                             (vector-length b)))
-                                                          (= x7684 n)))
-                                                        (x7673
+                                                          (= x7687 n)))
+                                                        (x7676
                                                          (letrec*
                                                           ((loop
                                                             (lambda (i)
                                                               (letrec*
-                                                               ((g7674
+                                                               ((g7677
                                                                  (letrec*
-                                                                  ((x7681
+                                                                  ((x7684
                                                                     (= i n))
-                                                                   (x7675
+                                                                   (x7678
                                                                     (letrec*
-                                                                     ((x7678
+                                                                     ((x7681
                                                                        (letrec*
-                                                                        ((x7680
+                                                                        ((x7683
                                                                           (vector-ref
                                                                            a
                                                                            i))
-                                                                         (x7679
+                                                                         (x7682
                                                                           (vector-ref
                                                                            b
                                                                            i)))
                                                                         (equal?
-                                                                         x7680
-                                                                         x7679)))
-                                                                      (x7676
+                                                                         x7683
+                                                                         x7682)))
+                                                                      (x7679
                                                                        (letrec*
-                                                                        ((x7677
+                                                                        ((x7680
                                                                           (+
                                                                            i
                                                                            1)))
                                                                         (loop
-                                                                         x7677))))
-                                                                     (and x7678
-                                                                          x7676))))
-                                                                  (or x7681
-                                                                      x7675))))
-                                                               g7674))))
+                                                                         x7680))))
+                                                                     (and x7681
+                                                                          x7679))))
+                                                                  (or x7684
+                                                                      x7678))))
+                                                               g7677))))
                                                           (letrec*
-                                                           ((g7682 (loop 0)))
-                                                           g7682))))
-                                                       (and x7683 x7673))))
-                                                    g7672))))
-                                                (and x7686 x7685 x7671)))))
-                                           g7670)))))
-                                     g7661)))))
-                               g7657)))))
-                         g7654))))
-                     g7653)))
+                                                           ((g7685 (loop 0)))
+                                                           g7685))))
+                                                       (and x7686 x7676))))
+                                                    g7675))))
+                                                (and x7689 x7688 x7674)))))
+                                           g7673)))))
+                                     g7664)))))
+                               g7660)))))
+                         g7657))))
+                     g7656)))
                  (cdaaar
                   (lambda (x)
                     (letrec*
-                     ((g7687
+                     ((g7690
                        (letrec*
-                        ((x7688
+                        ((x7691
                           (letrec*
-                           ((x7689 (letrec* ((x7690 (car x))) (car x7690))))
-                           (car x7689))))
-                        (cdr x7688))))
-                     g7687)))
+                           ((x7692 (letrec* ((x7693 (car x))) (car x7693))))
+                           (car x7692))))
+                        (cdr x7691))))
+                     g7690)))
                  (caaddr
                   (lambda (x)
                     (letrec*
-                     ((g7691
+                     ((g7694
                        (letrec*
-                        ((x7692
+                        ((x7695
                           (letrec*
-                           ((x7693 (letrec* ((x7694 (cdr x))) (cdr x7694))))
-                           (car x7693))))
-                        (car x7692))))
-                     g7691)))
-                 (eqv? (lambda (x y) (letrec* ((g7695 (eq? x y))) g7695)))
+                           ((x7696 (letrec* ((x7697 (cdr x))) (cdr x7697))))
+                           (car x7696))))
+                        (car x7695))))
+                     g7694)))
+                 (eqv? (lambda (x y) (letrec* ((g7698 (eq? x y))) g7698)))
                  (>=
                   (lambda (x y)
                     (letrec*
-                     ((g7696 (letrec* ((x7698 (number? x))) (assert x7698)))
-                      (g7697
+                     ((g7699 (letrec* ((x7701 (number? x))) (assert x7701)))
+                      (g7700
                        (letrec*
                         ((val7250 (> x y)))
                         (letrec*
-                         ((g7699
+                         ((g7702
                            (if val7250
                              val7250
                              (letrec*
                               ((val7251 (= x y)))
                               (letrec*
-                               ((g7700 (if val7251 val7251 #f)))
-                               g7700)))))
-                         g7699))))
-                     g7697)))
+                               ((g7703 (if val7251 val7251 #f)))
+                               g7703)))))
+                         g7702))))
+                     g7700)))
                  (call-with-input-file
                   (lambda (filename proc)
                     (letrec*
-                     ((g7701
-                       (letrec* ((x7704 (string? filename))) (assert x7704)))
-                      (g7702
-                       (letrec* ((x7705 (procedure? proc))) (assert x7705)))
-                      (g7703
+                     ((g7704
+                       (letrec* ((x7707 (string? filename))) (assert x7707)))
+                      (g7705
+                       (letrec* ((x7708 (procedure? proc))) (assert x7708)))
+                      (g7706
                        (letrec*
                         ((input-port (open-input-file filename))
                          (res (proc input-port)))
                         (letrec*
-                         ((g7706 (close-input-port input-port)) (g7707 res))
-                         g7707))))
-                     g7703)))
-                 (ref (lambda (x) (letrec* ((g7708 (cons x '()))) g7708)))
+                         ((g7709 (close-input-port input-port)) (g7710 res))
+                         g7710))))
+                     g7706)))
+                 (ref (lambda (x) (letrec* ((g7711 (cons x '()))) g7711)))
                  (char>=?
                   (lambda (c1 c2)
                     (letrec*
-                     ((g7709 (letrec* ((x7712 (char? c1))) (assert x7712)))
-                      (g7710 (letrec* ((x7713 (char? c2))) (assert x7713)))
-                      (g7711
+                     ((g7712 (letrec* ((x7715 (char? c1))) (assert x7715)))
+                      (g7713 (letrec* ((x7716 (char? c2))) (assert x7716)))
+                      (g7714
                        (letrec*
                         ((val7252 (char>? c1 c2)))
                         (letrec*
-                         ((g7714 (if val7252 val7252 (char=? c1 c2))))
-                         g7714))))
-                     g7711)))
+                         ((g7717 (if val7252 val7252 (char=? c1 c2))))
+                         g7717))))
+                     g7714)))
                  (cdaar
-                  (lambda (x)
-                    (letrec*
-                     ((g7715
-                       (letrec*
-                        ((x7716 (letrec* ((x7717 (car x))) (car x7717))))
-                        (cdr x7716))))
-                     g7715)))
-                 (cdaddr
                   (lambda (x)
                     (letrec*
                      ((g7718
                        (letrec*
-                        ((x7719
-                          (letrec*
-                           ((x7720 (letrec* ((x7721 (cdr x))) (cdr x7721))))
-                           (car x7720))))
+                        ((x7719 (letrec* ((x7720 (car x))) (car x7720))))
                         (cdr x7719))))
                      g7718)))
+                 (cdaddr
+                  (lambda (x)
+                    (letrec*
+                     ((g7721
+                       (letrec*
+                        ((x7722
+                          (letrec*
+                           ((x7723 (letrec* ((x7724 (cdr x))) (cdr x7724))))
+                           (car x7723))))
+                        (cdr x7722))))
+                     g7721)))
                  (__toplevel_cdr cdr)
                  (cadar
                   (lambda (x)
                     (letrec*
-                     ((g7722
+                     ((g7725
                        (letrec*
-                        ((x7723 (letrec* ((x7724 (car x))) (cdr x7724))))
-                        (car x7723))))
-                     g7722)))
+                        ((x7726 (letrec* ((x7727 (car x))) (cdr x7727))))
+                        (car x7726))))
+                     g7725)))
                  (caadr
                   (lambda (x)
                     (letrec*
-                     ((g7725
+                     ((g7728
                        (letrec*
-                        ((x7726 (letrec* ((x7727 (cdr x))) (car x7727))))
-                        (car x7726))))
-                     g7725)))
+                        ((x7729 (letrec* ((x7730 (cdr x))) (car x7730))))
+                        (car x7729))))
+                     g7728)))
                  (char-ci>?
                   (lambda (c1 c2)
                     (letrec*
-                     ((g7728 (letrec* ((x7731 (char? c1))) (assert x7731)))
-                      (g7729 (letrec* ((x7732 (char? c2))) (assert x7732)))
-                      (g7730
-                       (letrec* ((x7733 (char-ci<=? c1 c2))) (not x7733))))
-                     g7730)))
+                     ((g7731 (letrec* ((x7734 (char? c1))) (assert x7734)))
+                      (g7732 (letrec* ((x7735 (char? c2))) (assert x7735)))
+                      (g7733
+                       (letrec* ((x7736 (char-ci<=? c1 c2))) (not x7736))))
+                     g7733)))
                  (__toplevel_set-cdr! set-cdr!)
                  (caaaar
                   (lambda (x)
                     (letrec*
-                     ((g7734
+                     ((g7737
                        (letrec*
-                        ((x7735
+                        ((x7738
                           (letrec*
-                           ((x7736 (letrec* ((x7737 (car x))) (car x7737))))
-                           (car x7736))))
-                        (car x7735))))
-                     g7734)))
+                           ((x7739 (letrec* ((x7740 (car x))) (car x7740))))
+                           (car x7739))))
+                        (car x7738))))
+                     g7737)))
                  (negative?
                   (lambda (x)
                     (letrec*
-                     ((g7738 (letrec* ((x7740 (number? x))) (assert x7740)))
-                      (g7739 (< x 0)))
-                     g7739)))
-                 (memv (lambda (e l) (letrec* ((g7741 (memq e l))) g7741)))
+                     ((g7741 (letrec* ((x7743 (number? x))) (assert x7743)))
+                      (g7742 (< x 0)))
+                     g7742)))
+                 (memv (lambda (e l) (letrec* ((g7744 (memq e l))) g7744)))
                  (caaar
                   (lambda (x)
                     (letrec*
-                     ((g7742
+                     ((g7745
                        (letrec*
-                        ((x7743 (letrec* ((x7744 (car x))) (car x7744))))
-                        (car x7743))))
-                     g7742)))
-                 (debug (lambda (e) (letrec* ((g7745 '())) g7745)))
+                        ((x7746 (letrec* ((x7747 (car x))) (car x7747))))
+                        (car x7746))))
+                     g7745)))
+                 (debug (lambda (e) (letrec* ((g7748 '())) g7748)))
                  (reverse
                   (lambda (l)
                     (letrec*
-                     ((g7746 (letrec* ((x7748 (list? l))) (assert x7748)))
-                      (g7747
+                     ((g7749 (letrec* ((x7751 (list? l))) (assert x7751)))
+                      (g7750
                        (letrec*
-                        ((x-cnd7749 (null? l)))
-                        (if x-cnd7749
+                        ((x-cnd7752 (null? l)))
+                        (if x-cnd7752
                           '()
                           (letrec*
-                           ((x7752 (letrec* ((x7753 (cdr l))) (reverse x7753)))
-                            (x7750 (letrec* ((x7751 (car l))) (list x7751))))
-                           (append x7752 x7750))))))
-                     g7747)))
+                           ((x7755 (letrec* ((x7756 (cdr l))) (reverse x7756)))
+                            (x7753 (letrec* ((x7754 (car l))) (list x7754))))
+                           (append x7755 x7753))))))
+                     g7750)))
                  (caaadr
                   (lambda (x)
                     (letrec*
-                     ((g7754
+                     ((g7757
                        (letrec*
-                        ((x7755
+                        ((x7758
                           (letrec*
-                           ((x7756 (letrec* ((x7757 (cdr x))) (car x7757))))
-                           (car x7756))))
-                        (car x7755))))
-                     g7754)))
+                           ((x7759 (letrec* ((x7760 (cdr x))) (car x7760))))
+                           (car x7759))))
+                        (car x7758))))
+                     g7757)))
                  (cddadr
                   (lambda (x)
                     (letrec*
-                     ((g7758
+                     ((g7761
                        (letrec*
-                        ((x7759
+                        ((x7762
                           (letrec*
-                           ((x7760 (letrec* ((x7761 (cdr x))) (car x7761))))
-                           (cdr x7760))))
-                        (cdr x7759))))
-                     g7758)))
+                           ((x7763 (letrec* ((x7764 (cdr x))) (car x7764))))
+                           (cdr x7763))))
+                        (cdr x7762))))
+                     g7761)))
                  (odd?
                   (lambda (x)
                     (letrec*
-                     ((g7762 (letrec* ((x7764 (number? x))) (assert x7764)))
-                      (g7763 (letrec* ((x7765 (modulo x 2))) (= 1 x7765))))
-                     g7763)))
+                     ((g7765 (letrec* ((x7767 (number? x))) (assert x7767)))
+                      (g7766 (letrec* ((x7768 (modulo x 2))) (= 1 x7768))))
+                     g7766)))
                  (caadar
                   (lambda (x)
                     (letrec*
-                     ((g7766
+                     ((g7769
                        (letrec*
-                        ((x7767
+                        ((x7770
                           (letrec*
-                           ((x7768 (letrec* ((x7769 (car x))) (cdr x7769))))
-                           (car x7768))))
-                        (car x7767))))
-                     g7766)))
+                           ((x7771 (letrec* ((x7772 (car x))) (cdr x7772))))
+                           (car x7771))))
+                        (car x7770))))
+                     g7769)))
                  (apply
                   (lambda (proc args)
                     (letrec*
-                     ((g7770
-                       (letrec* ((x7773 (procedure? proc))) (assert x7773)))
-                      (g7771 (letrec* ((x7774 (list? args))) (assert x7774)))
-                      (g7772
+                     ((g7773
+                       (letrec* ((x7776 (procedure? proc))) (assert x7776)))
+                      (g7774 (letrec* ((x7777 (list? args))) (assert x7777)))
+                      (g7775
                        (if cnd
-                         (letrec* ((g7775 (proc))) g7775)
+                         (letrec* ((g7778 (proc))) g7778)
                          (if cnd
                            (letrec*
-                            ((g7776
-                              (letrec* ((x7777 (car args))) (proc x7777))))
-                            g7776)
+                            ((g7779
+                              (letrec* ((x7780 (car args))) (proc x7780))))
+                            g7779)
                            (if cnd
                              (letrec*
-                              ((g7778
+                              ((g7781
                                 (letrec*
-                                 ((x7780 (car args)) (x7779 (cadr args)))
-                                 (proc x7780 x7779))))
-                              g7778)
+                                 ((x7783 (car args)) (x7782 (cadr args)))
+                                 (proc x7783 x7782))))
+                              g7781)
                              (if cnd
                                (letrec*
-                                ((g7781
+                                ((g7784
                                   (letrec*
-                                   ((x7784 (car args))
-                                    (x7783 (cadr args))
-                                    (x7782 (caddr args)))
-                                   (proc x7784 x7783 x7782))))
-                                g7781)
+                                   ((x7787 (car args))
+                                    (x7786 (cadr args))
+                                    (x7785 (caddr args)))
+                                   (proc x7787 x7786 x7785))))
+                                g7784)
                                (if cnd
                                  (letrec*
-                                  ((g7785
+                                  ((g7788
                                     (letrec*
-                                     ((x7789 (car args))
-                                      (x7788 (cadr args))
-                                      (x7787 (caddr args))
-                                      (x7786 (cadddr args)))
-                                     (proc x7789 x7788 x7787 x7786))))
-                                  g7785)
+                                     ((x7792 (car args))
+                                      (x7791 (cadr args))
+                                      (x7790 (caddr args))
+                                      (x7789 (cadddr args)))
+                                     (proc x7792 x7791 x7790 x7789))))
+                                  g7788)
                                  (if cnd
                                    (letrec*
-                                    ((g7790
+                                    ((g7793
                                       (letrec*
-                                       ((x7796 (car args))
-                                        (x7795 (cadr args))
-                                        (x7794 (caddr args))
-                                        (x7793 (cadddr args))
-                                        (x7791
+                                       ((x7799 (car args))
+                                        (x7798 (cadr args))
+                                        (x7797 (caddr args))
+                                        (x7796 (cadddr args))
+                                        (x7794
                                          (letrec*
-                                          ((x7792 (cddddr args)))
-                                          (car x7792))))
-                                       (proc x7796 x7795 x7794 x7793 x7791))))
-                                    g7790)
+                                          ((x7795 (cddddr args)))
+                                          (car x7795))))
+                                       (proc x7799 x7798 x7797 x7796 x7794))))
+                                    g7793)
                                    (if cnd
                                      (letrec*
-                                      ((g7797
+                                      ((g7800
                                         (letrec*
-                                         ((x7805 (car args))
-                                          (x7804 (cadr args))
-                                          (x7803 (caddr args))
-                                          (x7802 (cadddr args))
-                                          (x7800
+                                         ((x7808 (car args))
+                                          (x7807 (cadr args))
+                                          (x7806 (caddr args))
+                                          (x7805 (cadddr args))
+                                          (x7803
                                            (letrec*
-                                            ((x7801 (cddddr args)))
-                                            (car x7801)))
-                                          (x7798
+                                            ((x7804 (cddddr args)))
+                                            (car x7804)))
+                                          (x7801
                                            (letrec*
-                                            ((x7799 (cddddr args)))
-                                            (cadr x7799))))
+                                            ((x7802 (cddddr args)))
+                                            (cadr x7802))))
                                          (proc
+                                          x7808
+                                          x7807
+                                          x7806
                                           x7805
-                                          x7804
                                           x7803
-                                          x7802
-                                          x7800
-                                          x7798))))
-                                      g7797)
+                                          x7801))))
+                                      g7800)
                                      (if cnd
                                        (letrec*
-                                        ((g7806
+                                        ((g7809
                                           (letrec*
-                                           ((x7816 (car args))
-                                            (x7815 (cadr args))
-                                            (x7814 (caddr args))
-                                            (x7813 (cadddr args))
-                                            (x7811
+                                           ((x7819 (car args))
+                                            (x7818 (cadr args))
+                                            (x7817 (caddr args))
+                                            (x7816 (cadddr args))
+                                            (x7814
                                              (letrec*
-                                              ((x7812 (cddddr args)))
-                                              (car x7812)))
-                                            (x7809
+                                              ((x7815 (cddddr args)))
+                                              (car x7815)))
+                                            (x7812
                                              (letrec*
-                                              ((x7810 (cddddr args)))
-                                              (cadr x7810)))
-                                            (x7807
+                                              ((x7813 (cddddr args)))
+                                              (cadr x7813)))
+                                            (x7810
                                              (letrec*
-                                              ((x7808 (cddddr args)))
-                                              (caddr x7808))))
+                                              ((x7811 (cddddr args)))
+                                              (caddr x7811))))
                                            (proc
+                                            x7819
+                                            x7818
+                                            x7817
                                             x7816
-                                            x7815
                                             x7814
-                                            x7813
-                                            x7811
-                                            x7809
-                                            x7807))))
-                                        g7806)
+                                            x7812
+                                            x7810))))
+                                        g7809)
                                        (letrec*
-                                        ((g7817 (error "Unsupported call.")))
-                                        g7817)))))))))))
-                     g7772)))
+                                        ((g7820 (error "Unsupported call.")))
+                                        g7820)))))))))))
+                     g7775)))
                  (member
                   (lambda (e l)
                     (letrec*
-                     ((g7818 (letrec* ((x7820 (list? l))) (assert x7820)))
-                      (g7819
+                     ((g7821 (letrec* ((x7823 (list? l))) (assert x7823)))
+                      (g7822
                        (letrec*
-                        ((x-cnd7821 (null? l)))
-                        (if x-cnd7821
+                        ((x-cnd7824 (null? l)))
+                        (if x-cnd7824
                           #f
                           (letrec*
-                           ((x-cnd7822
-                             (letrec* ((x7823 (car l))) (equal? x7823 e))))
-                           (if x-cnd7822
+                           ((x-cnd7825
+                             (letrec* ((x7826 (car l))) (equal? x7826 e))))
+                           (if x-cnd7825
                              l
-                             (letrec* ((x7824 (cdr l))) (member e x7824))))))))
-                     g7819)))
+                             (letrec* ((x7827 (cdr l))) (member e x7827))))))))
+                     g7822)))
                  (cddddr
                   (lambda (x)
                     (letrec*
-                     ((g7825
+                     ((g7828
                        (letrec*
-                        ((x7826
+                        ((x7829
                           (letrec*
-                           ((x7827 (letrec* ((x7828 (cdr x))) (cdr x7828))))
-                           (cdr x7827))))
-                        (cdr x7826))))
-                     g7825)))
+                           ((x7830 (letrec* ((x7831 (cdr x))) (cdr x7831))))
+                           (cdr x7830))))
+                        (cdr x7829))))
+                     g7828)))
                  (cadddr
                   (lambda (x)
                     (letrec*
-                     ((g7829
+                     ((g7832
                        (letrec*
-                        ((x7830
+                        ((x7833
                           (letrec*
-                           ((x7831 (letrec* ((x7832 (cdr x))) (cdr x7832))))
-                           (cdr x7831))))
-                        (car x7830))))
-                     g7829)))
-                 (int-top (lambda () (letrec* ((g7833 (random 42))) g7833)))
+                           ((x7834 (letrec* ((x7835 (cdr x))) (cdr x7835))))
+                           (cdr x7834))))
+                        (car x7833))))
+                     g7832)))
+                 (int-top (lambda () (letrec* ((g7836 (random 42))) g7836)))
                  (zero?
                   (lambda (x)
                     (letrec*
-                     ((g7834 (letrec* ((x7836 (number? x))) (assert x7836)))
-                      (g7835 (= x 0)))
-                     g7835)))
+                     ((g7837 (letrec* ((x7839 (number? x))) (assert x7839)))
+                      (g7838 (= x 0)))
+                     g7838)))
                  (string>=?
                   (lambda (s1 s2)
                     (letrec*
-                     ((g7837
+                     ((g7840
                        (letrec*
                         ((val7253 (string>? s1 s2)))
                         (letrec*
-                         ((g7838 (if val7253 val7253 (string=? s1 s2))))
-                         g7838))))
-                     g7837)))
+                         ((g7841 (if val7253 val7253 (string=? s1 s2))))
+                         g7841))))
+                     g7840)))
                  (cadr
                   (lambda (x)
                     (letrec*
-                     ((g7839 (letrec* ((x7840 (cdr x))) (car x7840))))
-                     g7839)))
+                     ((g7842 (letrec* ((x7843 (cdr x))) (car x7843))))
+                     g7842)))
                  (__toplevel_car car)
                  (list?
                   (lambda (l)
                     (letrec*
-                     ((g7841
+                     ((g7844
                        (letrec*
                         ((val7254
                           (letrec*
-                           ((x7844 (pair? l))
-                            (x7842 (letrec* ((x7843 (cdr l))) (list? x7843))))
-                           (and x7844 x7842))))
+                           ((x7847 (pair? l))
+                            (x7845 (letrec* ((x7846 (cdr l))) (list? x7846))))
+                           (and x7847 x7845))))
                         (letrec*
-                         ((g7845 (if val7254 val7254 (null? l))))
-                         g7845))))
-                     g7841)))
+                         ((g7848 (if val7254 val7254 (null? l))))
+                         g7848))))
+                     g7844)))
                  (cddaar
                   (lambda (x)
                     (letrec*
-                     ((g7846
+                     ((g7849
                        (letrec*
-                        ((x7847
+                        ((x7850
                           (letrec*
-                           ((x7848 (letrec* ((x7849 (car x))) (car x7849))))
-                           (cdr x7848))))
-                        (cdr x7847))))
-                     g7846)))
+                           ((x7851 (letrec* ((x7852 (car x))) (car x7852))))
+                           (cdr x7851))))
+                        (cdr x7850))))
+                     g7849)))
                  (char-numeric?
                   (lambda (c)
                     (letrec*
-                     ((g7850
+                     ((g7853
                        (letrec*
-                        ((x-cnd7851 (letrec* ((x7852 #\0)) (char<=? x7852 c))))
-                        (if x-cnd7851
-                          (letrec* ((x7853 #\9)) (char<=? c x7853))
+                        ((x-cnd7854 (letrec* ((x7855 #\0)) (char<=? x7855 c))))
+                        (if x-cnd7854
+                          (letrec* ((x7856 #\9)) (char<=? c x7856))
                           #f))))
-                     g7850)))
+                     g7853)))
                  (__toplevel_cons cons)
                  (assv
                   (lambda (k l)
                     (letrec*
-                     ((g7854 (letrec* ((x7856 (list? l))) (assert x7856)))
-                      (g7855
+                     ((g7857 (letrec* ((x7859 (list? l))) (assert x7859)))
+                      (g7858
                        (letrec*
-                        ((x-cnd7857 (null? l)))
-                        (if x-cnd7857
+                        ((x-cnd7860 (null? l)))
+                        (if x-cnd7860
                           #f
                           (letrec*
-                           ((x-cnd7858
-                             (letrec* ((x7859 (caar l))) (eqv? x7859 k))))
-                           (if x-cnd7858
+                           ((x-cnd7861
+                             (letrec* ((x7862 (caar l))) (eqv? x7862 k))))
+                           (if x-cnd7861
                              (car l)
-                             (letrec* ((x7860 (cdr l))) (assq k x7860))))))))
-                     g7855)))
-                 (not (lambda (x) (letrec* ((g7861 (if x #f #t))) g7861)))
+                             (letrec* ((x7863 (cdr l))) (assq k x7863))))))))
+                     g7858)))
+                 (not (lambda (x) (letrec* ((g7864 (if x #f #t))) g7864)))
                  (__toplevel_append
-                  (lambda (l1 l2) (letrec* ((g7862 (append l1 l2))) g7862)))
+                  (lambda (l1 l2) (letrec* ((g7865 (append l1 l2))) g7865)))
                  (memq
                   (lambda (e l)
                     (letrec*
-                     ((g7863 (letrec* ((x7865 (list? l))) (assert x7865)))
-                      (g7864
+                     ((g7866 (letrec* ((x7868 (list? l))) (assert x7868)))
+                      (g7867
                        (letrec*
-                        ((x-cnd7866 (null? l)))
-                        (if x-cnd7866
+                        ((x-cnd7869 (null? l)))
+                        (if x-cnd7869
                           #f
                           (letrec*
-                           ((x-cnd7867
-                             (letrec* ((x7868 (car l))) (eq? x7868 e))))
-                           (if x-cnd7867
+                           ((x-cnd7870
+                             (letrec* ((x7871 (car l))) (eq? x7871 e))))
+                           (if x-cnd7870
                              l
-                             (letrec* ((x7869 (cdr l))) (memq e x7869))))))))
-                     g7864)))
+                             (letrec* ((x7872 (cdr l))) (memq e x7872))))))))
+                     g7867)))
                  (cadaar
                   (lambda (x)
                     (letrec*
-                     ((g7870
+                     ((g7873
                        (letrec*
-                        ((x7871
+                        ((x7874
                           (letrec*
-                           ((x7872 (letrec* ((x7873 (car x))) (car x7873))))
-                           (cdr x7872))))
-                        (car x7871))))
-                     g7870)))
+                           ((x7875 (letrec* ((x7876 (car x))) (car x7876))))
+                           (cdr x7875))))
+                        (car x7874))))
+                     g7873)))
                  (length
                   (lambda (l)
                     (letrec*
-                     ((g7874 (letrec* ((x7876 (list? l))) (assert x7876)))
-                      (g7875
+                     ((g7877 (letrec* ((x7879 (list? l))) (assert x7879)))
+                      (g7878
                        (letrec*
                         ((rec
                           (lambda (l)
                             (letrec*
-                             ((g7877
+                             ((g7880
                                (letrec*
-                                ((x-cnd7878 (null? l)))
-                                (if x-cnd7878
+                                ((x-cnd7881 (null? l)))
+                                (if x-cnd7881
                                   0
                                   (letrec*
-                                   ((x7879
-                                     (letrec* ((x7880 (cdr l))) (rec x7880))))
-                                   (+ 1 x7879))))))
-                             g7877))))
-                        (letrec* ((g7881 (rec l))) g7881))))
-                     g7875)))
+                                   ((x7882
+                                     (letrec* ((x7883 (cdr l))) (rec x7883))))
+                                   (+ 1 x7882))))))
+                             g7880))))
+                        (letrec* ((g7884 (rec l))) g7884))))
+                     g7878)))
                  (char-ci<=?
                   (lambda (c1 c2)
                     (letrec*
-                     ((g7882 (letrec* ((x7885 (char? c1))) (assert x7885)))
-                      (g7883 (letrec* ((x7886 (char? c2))) (assert x7886)))
-                      (g7884
+                     ((g7885 (letrec* ((x7888 (char? c1))) (assert x7888)))
+                      (g7886 (letrec* ((x7889 (char? c2))) (assert x7889)))
+                      (g7887
                        (letrec*
                         ((val7255 (char-ci<? c1 c2)))
                         (letrec*
-                         ((g7887 (if val7255 val7255 (char-ci=? c1 c2))))
-                         g7887))))
-                     g7884)))
+                         ((g7890 (if val7255 val7255 (char-ci=? c1 c2))))
+                         g7890))))
+                     g7887)))
                  (string>?
                   (lambda (s1 s2)
                     (letrec*
-                     ((g7888
-                       (letrec* ((x7889 (string<=? s1 s2))) (not x7889))))
-                     g7888)))
+                     ((g7891
+                       (letrec* ((x7892 (string<=? s1 s2))) (not x7892))))
+                     g7891)))
                  (cdadr
                   (lambda (x)
                     (letrec*
-                     ((g7890
+                     ((g7893
                        (letrec*
-                        ((x7891 (letrec* ((x7892 (cdr x))) (car x7892))))
-                        (cdr x7891))))
-                     g7890)))
+                        ((x7894 (letrec* ((x7895 (cdr x))) (car x7895))))
+                        (cdr x7894))))
+                     g7893)))
                  (assoc
                   (lambda (k l)
                     (letrec*
-                     ((g7893 (letrec* ((x7895 (list? l))) (assert x7895)))
-                      (g7894
+                     ((g7896 (letrec* ((x7898 (list? l))) (assert x7898)))
+                      (g7897
                        (letrec*
-                        ((x-cnd7896 (null? l)))
-                        (if x-cnd7896
+                        ((x-cnd7899 (null? l)))
+                        (if x-cnd7899
                           #f
                           (letrec*
-                           ((x-cnd7897
-                             (letrec* ((x7898 (caar l))) (equal? x7898 k))))
-                           (if x-cnd7897
+                           ((x-cnd7900
+                             (letrec* ((x7901 (caar l))) (equal? x7901 k))))
+                           (if x-cnd7900
                              (car l)
-                             (letrec* ((x7899 (cdr l))) (assoc k x7899))))))))
-                     g7894)))
+                             (letrec* ((x7902 (cdr l))) (assoc k x7902))))))))
+                     g7897)))
                  (caar
                   (lambda (x)
                     (letrec*
-                     ((g7900 (letrec* ((x7901 (car x))) (car x7901))))
-                     g7900)))
+                     ((g7903 (letrec* ((x7904 (car x))) (car x7904))))
+                     g7903)))
                  (char>?
                   (lambda (c1 c2)
                     (letrec*
-                     ((g7902 (letrec* ((x7905 (char? c1))) (assert x7905)))
-                      (g7903 (letrec* ((x7906 (char? c2))) (assert x7906)))
-                      (g7904 (letrec* ((x7907 (char<=? c1 c2))) (not x7907))))
-                     g7904)))
+                     ((g7905 (letrec* ((x7908 (char? c1))) (assert x7908)))
+                      (g7906 (letrec* ((x7909 (char? c2))) (assert x7909)))
+                      (g7907 (letrec* ((x7910 (char<=? c1 c2))) (not x7910))))
+                     g7907)))
                  (string<=?
                   (lambda (s1 s2)
                     (letrec*
-                     ((g7908
+                     ((g7911
                        (letrec*
                         ((val7256 (string<? s1 s2)))
                         (letrec*
-                         ((g7909 (if val7256 val7256 (string=? s1 s2))))
-                         g7909))))
-                     g7908)))
+                         ((g7912 (if val7256 val7256 (string=? s1 s2))))
+                         g7912))))
+                     g7911)))
                  (for-each
                   (lambda (f l)
                     (letrec*
-                     ((g7910 (letrec* ((x7913 (procedure? f))) (assert x7913)))
-                      (g7911 (letrec* ((x7914 (list? l))) (assert x7914)))
-                      (g7912
+                     ((g7913 (letrec* ((x7916 (procedure? f))) (assert x7916)))
+                      (g7914 (letrec* ((x7917 (list? l))) (assert x7917)))
+                      (g7915
                        (letrec*
-                        ((x-cnd7915 (null? l)))
-                        (if x-cnd7915
+                        ((x-cnd7918 (null? l)))
+                        (if x-cnd7918
                           #t
                           (letrec*
-                           ((x-cnd7916 (pair? l)))
-                           (if x-cnd7916
+                           ((x-cnd7919 (pair? l)))
+                           (if x-cnd7919
                              (letrec*
-                              ((g7917 (letrec* ((x7919 (car l))) (f x7919)))
-                               (g7918
+                              ((g7920 (letrec* ((x7922 (car l))) (f x7922)))
+                               (g7921
                                 (letrec*
-                                 ((x7920 (cdr l)))
-                                 (for-each f x7920))))
-                              g7918)
+                                 ((x7923 (cdr l)))
+                                 (for-each f x7923))))
+                              g7921)
                              '()))))))
-                     g7912)))
+                     g7915)))
                  (abs
                   (lambda (x)
                     (letrec*
-                     ((g7921 (letrec* ((x7923 (number? x))) (assert x7923)))
-                      (g7922
+                     ((g7924 (letrec* ((x7926 (number? x))) (assert x7926)))
+                      (g7925
                        (letrec*
-                        ((x-cnd7924 (< x 0)))
-                        (if x-cnd7924 (- 0 x) x))))
-                     g7922)))
+                        ((x-cnd7927 (< x 0)))
+                        (if x-cnd7927 (- 0 x) x))))
+                     g7925)))
                  (char-ci>=?
                   (lambda (c1 c2)
                     (letrec*
-                     ((g7925 (letrec* ((x7928 (char? c1))) (assert x7928)))
-                      (g7926 (letrec* ((x7929 (char? c2))) (assert x7929)))
-                      (g7927
+                     ((g7928 (letrec* ((x7931 (char? c1))) (assert x7931)))
+                      (g7929 (letrec* ((x7932 (char? c2))) (assert x7932)))
+                      (g7930
                        (letrec*
                         ((val7257 (char-ci>? c1 c2)))
                         (letrec*
-                         ((g7930 (if val7257 val7257 (char-ci=? c1 c2))))
-                         g7930))))
-                     g7927)))
+                         ((g7933 (if val7257 val7257 (char-ci=? c1 c2))))
+                         g7933))))
+                     g7930)))
                  (caddar
                   (lambda (x)
                     (letrec*
-                     ((g7931
+                     ((g7934
                        (letrec*
-                        ((x7932
+                        ((x7935
                           (letrec*
-                           ((x7933 (letrec* ((x7934 (car x))) (cdr x7934))))
-                           (cdr x7933))))
-                        (car x7932))))
-                     g7931)))
-                 (newline (lambda () (letrec* ((g7935 #f)) g7935)))
+                           ((x7936 (letrec* ((x7937 (car x))) (cdr x7937))))
+                           (cdr x7936))))
+                        (car x7935))))
+                     g7934)))
+                 (newline (lambda () (letrec* ((g7938 #f)) g7938)))
                  (lcm
                   (lambda (m n)
                     (letrec*
-                     ((g7936
+                     ((g7939
                        (letrec*
-                        ((x7938 (letrec* ((x7939 (* m n))) (abs x7939)))
-                         (x7937 (gcd m n)))
-                        (/ x7938 x7937))))
-                     g7936)))
+                        ((x7941 (letrec* ((x7942 (* m n))) (abs x7942)))
+                         (x7940 (gcd m n)))
+                        (/ x7941 x7940))))
+                     g7939)))
                  (deref car)
                  (>
                   (lambda (x y)
                     (letrec*
-                     ((g7940 (letrec* ((x7942 (number? x))) (assert x7942)))
-                      (g7941 (letrec* ((x7943 (<= x y))) (not x7943))))
-                     g7941)))
+                     ((g7943 (letrec* ((x7945 (number? x))) (assert x7945)))
+                      (g7944 (letrec* ((x7946 (<= x y))) (not x7946))))
+                     g7944)))
                  (list-ref
                   (lambda (l index)
                     (letrec*
-                     ((g7944 (letrec* ((x7948 (list? l))) (assert x7948)))
-                      (g7945
-                       (letrec* ((x7949 (number? index))) (assert x7949)))
-                      (g7946
+                     ((g7947 (letrec* ((x7951 (list? l))) (assert x7951)))
+                      (g7948
+                       (letrec* ((x7952 (number? index))) (assert x7952)))
+                      (g7949
                        (letrec*
-                        ((x7950
-                          (letrec* ((x7951 (length l))) (< index x7951))))
-                        (assert x7950)))
-                      (g7947
+                        ((x7953
+                          (letrec* ((x7954 (length l))) (< index x7954))))
+                        (assert x7953)))
+                      (g7950
                        (letrec*
-                        ((x-cnd7952 (= index 0)))
-                        (if x-cnd7952
+                        ((x-cnd7955 (= index 0)))
+                        (if x-cnd7955
                           (car l)
                           (letrec*
-                           ((x7954 (cdr l)) (x7953 (- index 1)))
-                           (list-ref x7954 x7953))))))
-                     g7947)))
+                           ((x7957 (cdr l)) (x7956 (- index 1)))
+                           (list-ref x7957 x7956))))))
+                     g7950)))
                  (gcd
                   (lambda (a b)
                     (letrec*
-                     ((g7955
+                     ((g7958
                        (letrec*
-                        ((x-cnd7956 (= b 0)))
-                        (if x-cnd7956
+                        ((x-cnd7959 (= b 0)))
+                        (if x-cnd7959
                           a
-                          (letrec* ((x7957 (modulo a b))) (gcd b x7957))))))
-                     g7955)))
+                          (letrec* ((x7960 (modulo a b))) (gcd b x7960))))))
+                     g7958)))
                  (image
-                  (lambda () (letrec* ((g7958 (cons 'image '()))) g7958)))
+                  (lambda () (letrec* ((g7961 (cons 'image '()))) g7961)))
                  (image?
                   (lambda (image7433)
                     (letrec*
-                     ((g7959
-                       (letrec* ((x7960 (car image7433))) (eq? x7960 'image))))
-                     g7959)))
+                     ((g7962
+                       (letrec* ((x7963 (car image7433))) (eq? x7963 'image))))
+                     g7962)))
                  (image/c
                   (lambda (j7332 k7333 v7331)
-                    (letrec* ((g7961 (cons image '()))) g7961)))
-                 (circle (lambda (r m c) (letrec* ((g7962 (image))) g7962)))
-                 (empty-scene (lambda (w h) (letrec* ((g7963 (image))) g7963)))
+                    (letrec* ((g7964 (cons image '()))) g7964)))
+                 (circle (lambda (r m c) (letrec* ((g7965 (image))) g7965)))
+                 (empty-scene (lambda (w h) (letrec* ((g7966 (image))) g7966)))
                  (place-image
-                  (lambda (i₁ r c i₂) (letrec* ((g7964 (image))) g7964)))
+                  (lambda (i₁ r c i₂) (letrec* ((g7967 (image))) g7967)))
                  (posn
                   (lambda (x7435 y7436)
                     (letrec*
-                     ((g7965
+                     ((g7968
                        (letrec*
-                        ((x7966
+                        ((x7969
                           (letrec*
-                           ((x7967 (cons y7436 '())))
-                           (cons x7435 x7967))))
-                        (cons 'posn x7966))))
-                     g7965)))
+                           ((x7970 (cons y7436 '())))
+                           (cons x7435 x7970))))
+                        (cons 'posn x7969))))
+                     g7968)))
                  (posn?
                   (lambda (posn7434)
                     (letrec*
-                     ((g7968
-                       (letrec* ((x7969 (car posn7434))) (eq? x7969 'posn))))
-                     g7968)))
+                     ((g7971
+                       (letrec* ((x7972 (car posn7434))) (eq? x7972 'posn))))
+                     g7971)))
                  (posn-x
                   (lambda (posn)
                     (letrec*
-                     ((g7970 (letrec* ((x7971 (cdr posn))) (car x7971))))
-                     g7970)))
+                     ((g7973 (letrec* ((x7974 (cdr posn))) (car x7974))))
+                     g7973)))
                  (posn-y
                   (lambda (posn)
                     (letrec*
-                     ((g7972
+                     ((g7975
                        (letrec*
-                        ((x7973 (letrec* ((x7974 (cdr posn))) (cdr x7974))))
-                        (car x7973))))
-                     g7972)))
+                        ((x7976 (letrec* ((x7977 (cdr posn))) (cdr x7977))))
+                        (car x7976))))
+                     g7975)))
                  (posn=?
                   (lambda (p1 p2)
                     (letrec*
-                     ((g7975
+                     ((g7978
                        (letrec*
-                        ((x-cnd7976
+                        ((x-cnd7979
                           (letrec*
-                           ((x7978 (posn-x p1)) (x7977 (posn-x p2)))
-                           (= x7978 x7977))))
-                        (if x-cnd7976
+                           ((x7981 (posn-x p1)) (x7980 (posn-x p2)))
+                           (= x7981 x7980))))
+                        (if x-cnd7979
                           (letrec*
-                           ((x7980 (posn-y p1)) (x7979 (posn-y p2)))
-                           (= x7980 x7979))
+                           ((x7983 (posn-y p1)) (x7982 (posn-y p2)))
+                           (= x7983 x7982))
                           #f))))
-                     g7975)))
+                     g7978)))
                  (snake
                   (lambda (dir7440 segs7441)
                     (letrec*
-                     ((g7981
+                     ((g7984
                        (letrec*
-                        ((x7982
+                        ((x7985
                           (letrec*
-                           ((x7983 (cons segs7441 '())))
-                           (cons dir7440 x7983))))
-                        (cons 'snake x7982))))
-                     g7981)))
+                           ((x7986 (cons segs7441 '())))
+                           (cons dir7440 x7986))))
+                        (cons 'snake x7985))))
+                     g7984)))
                  (snake?
                   (lambda (snake7439)
                     (letrec*
-                     ((g7984
-                       (letrec* ((x7985 (car snake7439))) (eq? x7985 'snake))))
-                     g7984)))
+                     ((g7987
+                       (letrec* ((x7988 (car snake7439))) (eq? x7988 'snake))))
+                     g7987)))
                  (snake-dir
                   (lambda (snake)
                     (letrec*
-                     ((g7986 (letrec* ((x7987 (cdr snake))) (car x7987))))
-                     g7986)))
+                     ((g7989 (letrec* ((x7990 (cdr snake))) (car x7990))))
+                     g7989)))
                  (snake-segs
                   (lambda (snake)
                     (letrec*
-                     ((g7988
+                     ((g7991
                        (letrec*
-                        ((x7989 (letrec* ((x7990 (cdr snake))) (cdr x7990))))
-                        (car x7989))))
-                     g7988)))
+                        ((x7992 (letrec* ((x7993 (cdr snake))) (cdr x7993))))
+                        (car x7992))))
+                     g7991)))
                  (world
                   (lambda (snake7445 food7446)
                     (letrec*
-                     ((g7991
+                     ((g7994
                        (letrec*
-                        ((x7992
+                        ((x7995
                           (letrec*
-                           ((x7993 (cons food7446 '())))
-                           (cons snake7445 x7993))))
-                        (cons 'world x7992))))
-                     g7991)))
+                           ((x7996 (cons food7446 '())))
+                           (cons snake7445 x7996))))
+                        (cons 'world x7995))))
+                     g7994)))
                  (world?
                   (lambda (world7444)
                     (letrec*
-                     ((g7994
-                       (letrec* ((x7995 (car world7444))) (eq? x7995 'world))))
-                     g7994)))
+                     ((g7997
+                       (letrec* ((x7998 (car world7444))) (eq? x7998 'world))))
+                     g7997)))
                  (world-snake
                   (lambda (world)
                     (letrec*
-                     ((g7996 (letrec* ((x7997 (cdr world))) (car x7997))))
-                     g7996)))
+                     ((g7999 (letrec* ((x8000 (cdr world))) (car x8000))))
+                     g7999)))
                  (world-food
                   (lambda (world)
                     (letrec*
-                     ((g7998
+                     ((g8001
                        (letrec*
-                        ((x7999 (letrec* ((x8000 (cdr world))) (cdr x8000))))
-                        (car x7999))))
-                     g7998)))
+                        ((x8002 (letrec* ((x8003 (cdr world))) (cdr x8003))))
+                        (car x8002))))
+                     g8001)))
                  (DIR/C
                   (lambda (g7338 g7339 g7340)
                     (letrec*
-                     ((g8001
+                     ((g8004
                        (letrec*
-                        ((x-cnd8002
+                        ((x-cnd8005
                           ((lambda (v7337)
                              (letrec*
-                              ((g8003
+                              ((g8006
                                 (letrec*
-                                 ((x-cnd8004 (eq? 'up v7337)))
-                                 (if x-cnd8004
+                                 ((x-cnd8007 (eq? 'up v7337)))
+                                 (if x-cnd8007
                                    #t
                                    (letrec*
-                                    ((x-cnd8005 (eq? 'down v7337)))
-                                    (if x-cnd8005
+                                    ((x-cnd8008 (eq? 'down v7337)))
+                                    (if x-cnd8008
                                       #t
                                       (letrec*
-                                       ((x-cnd8006 (eq? 'left v7337)))
-                                       (if x-cnd8006
+                                       ((x-cnd8009 (eq? 'left v7337)))
+                                       (if x-cnd8009
                                          #t
                                          (eq? 'right v7337)))))))))
-                              g8003))
+                              g8006))
                            g7340)))
-                        (if x-cnd8002
+                        (if x-cnd8005
                           g7340
                           (blame
                            g7338
@@ -1502,95 +1515,95 @@
                                   (if (eq? 'left v7337)
                                     #t
                                     (eq? 'right v7337))))))))))
-                     g8001)))
+                     g8004)))
                  (POSN/C
                   (lambda (j7342 k7343 v7341)
                     (letrec*
-                     ((g8007
+                     ((g8010
                        (letrec*
                         ((checked7344
                           (letrec*
-                           ((x8008 (car v7341)))
-                           (real?/c j7342 k7343 x8008))))
+                           ((x8011 (car v7341)))
+                           (real?/c j7342 k7343 x8011))))
                         (letrec*
-                         ((g8009
+                         ((g8012
                            (letrec*
                             ((checked7345
                               (letrec*
-                               ((x8010
-                                 (letrec* ((x8011 (cdr v7341))) (car x8011))))
-                               (real?/c j7342 k7343 x8010))))
+                               ((x8013
+                                 (letrec* ((x8014 (cdr v7341))) (car x8014))))
+                               (real?/c j7342 k7343 x8013))))
                             (letrec*
-                             ((g8012
+                             ((g8015
                                (letrec*
-                                ((x8013
+                                ((x8016
                                   (letrec*
-                                   ((x8014 (cons checked7345 '())))
-                                   (cons checked7344 x8014))))
-                                (cons posn x8013))))
-                             g8012))))
-                         g8009))))
-                     g8007)))
+                                   ((x8017 (cons checked7345 '())))
+                                   (cons checked7344 x8017))))
+                                (cons posn x8016))))
+                             g8015))))
+                         g8012))))
+                     g8010)))
                  (SNAKE/C
                   (lambda (j7348 k7349 v7347)
                     (letrec*
-                     ((g8015
+                     ((g8018
                        (letrec*
                         ((checked7350
                           (letrec*
-                           ((x8016 (car v7347)))
-                           (DIR/C j7348 k7349 x8016))))
+                           ((x8019 (car v7347)))
+                           (DIR/C j7348 k7349 x8019))))
                         (letrec*
-                         ((g8017
+                         ((g8020
                            (letrec*
                             ((checked7351
                               (letrec*
-                               ((x8020
+                               ((x8023
                                  (letrec*
-                                  ((x8021 (listof POSN/C)))
-                                  (and/c cons?/c x8021)))
-                                (x8018
-                                 (letrec* ((x8019 (cdr v7347))) (car x8019))))
-                               (x8020 j7348 k7349 x8018))))
+                                  ((x8024 (listof POSN/C)))
+                                  (and/c cons?/c x8024)))
+                                (x8021
+                                 (letrec* ((x8022 (cdr v7347))) (car x8022))))
+                               (x8023 j7348 k7349 x8021))))
                             (letrec*
-                             ((g8022
+                             ((g8025
                                (letrec*
-                                ((x8023
+                                ((x8026
                                   (letrec*
-                                   ((x8024 (cons checked7351 '())))
-                                   (cons checked7350 x8024))))
-                                (cons snake x8023))))
-                             g8022))))
-                         g8017))))
-                     g8015)))
+                                   ((x8027 (cons checked7351 '())))
+                                   (cons checked7350 x8027))))
+                                (cons snake x8026))))
+                             g8025))))
+                         g8020))))
+                     g8018)))
                  (WORLD/C
                   (lambda (j7354 k7355 v7353)
                     (letrec*
-                     ((g8025
+                     ((g8028
                        (letrec*
                         ((checked7356
                           (letrec*
-                           ((x8026 (car v7353)))
-                           (SNAKE/C j7354 k7355 x8026))))
+                           ((x8029 (car v7353)))
+                           (SNAKE/C j7354 k7355 x8029))))
                         (letrec*
-                         ((g8027
+                         ((g8030
                            (letrec*
                             ((checked7357
                               (letrec*
-                               ((x8028
-                                 (letrec* ((x8029 (cdr v7353))) (car x8029))))
-                               (POSN/C j7354 k7355 x8028))))
+                               ((x8031
+                                 (letrec* ((x8032 (cdr v7353))) (car x8032))))
+                               (POSN/C j7354 k7355 x8031))))
                             (letrec*
-                             ((g8030
+                             ((g8033
                                (letrec*
-                                ((x8031
+                                ((x8034
                                   (letrec*
-                                   ((x8032 (cons checked7357 '())))
-                                   (cons checked7356 x8032))))
-                                (cons world x8031))))
-                             g8030))))
-                         g8027))))
-                     g8025)))
+                                   ((x8035 (cons checked7357 '())))
+                                   (cons checked7356 x8035))))
+                                (cons world x8034))))
+                             g8033))))
+                         g8030))))
+                     g8028)))
                  (GRID-SIZE 30)
                  (BOARD-HEIGHT 20)
                  (BOARD-WIDTH 30)
@@ -1604,978 +1617,978 @@
                  (FOOD-IMAGE (circle FOOD-RADIUS "solid" "green"))
                  (WORLD
                   (letrec*
-                   ((x8034
+                   ((x8037
                      (letrec*
-                      ((x8035
-                        (letrec* ((x8036 (posn 5 3))) (cons x8036 empty))))
-                      (snake 'right x8035)))
-                    (x8033 (posn 8 12)))
-                   (world x8034 x8033)))
+                      ((x8038
+                        (letrec* ((x8039 (posn 5 3))) (cons x8039 empty))))
+                      (snake 'right x8038)))
+                    (x8036 (posn 8 12)))
+                   (world x8037 x8036)))
                  (snake-wall-collide?
                   (lambda (snk)
                     (letrec*
-                     ((g8037
+                     ((g8040
                        (letrec*
-                        ((x8038
-                          (letrec* ((x8039 (snake-segs snk))) (car x8039))))
-                        (head-collide? x8038))))
-                     g8037)))
+                        ((x8041
+                          (letrec* ((x8042 (snake-segs snk))) (car x8042))))
+                        (head-collide? x8041))))
+                     g8040)))
                  (head-collide?
                   (lambda (p)
                     (letrec*
-                     ((g8040
+                     ((g8043
                        (letrec*
-                        ((val7258 (letrec* ((x8041 (posn-x p))) (<= x8041 0))))
+                        ((val7258 (letrec* ((x8044 (posn-x p))) (<= x8044 0))))
                         (letrec*
-                         ((g8042
+                         ((g8045
                            (if val7258
                              val7258
                              (letrec*
                               ((val7259
                                 (letrec*
-                                 ((x8043 (posn-x p)))
-                                 (>= x8043 BOARD-WIDTH))))
+                                 ((x8046 (posn-x p)))
+                                 (>= x8046 BOARD-WIDTH))))
                               (letrec*
-                               ((g8044
+                               ((g8047
                                  (if val7259
                                    val7259
                                    (letrec*
                                     ((val7260
                                       (letrec*
-                                       ((x8045 (posn-y p)))
-                                       (<= x8045 0))))
+                                       ((x8048 (posn-y p)))
+                                       (<= x8048 0))))
                                     (letrec*
-                                     ((g8046
+                                     ((g8049
                                        (if val7260
                                          val7260
                                          (letrec*
-                                          ((x8047 (posn-y p)))
-                                          (>= x8047 BOARD-HEIGHT)))))
-                                     g8046)))))
-                               g8044)))))
-                         g8042))))
-                     g8040)))
+                                          ((x8050 (posn-y p)))
+                                          (>= x8050 BOARD-HEIGHT)))))
+                                     g8049)))))
+                               g8047)))))
+                         g8045))))
+                     g8043)))
                  (snake-self-collide?
                   (lambda (snk)
                     (letrec*
-                     ((g8048
+                     ((g8051
                        (letrec*
-                        ((x8051
-                          (letrec* ((x8052 (snake-segs snk))) (car x8052)))
-                         (x8049
-                          (letrec* ((x8050 (snake-segs snk))) (cdr x8050))))
-                        (segs-self-collide? x8051 x8049))))
-                     g8048)))
+                        ((x8054
+                          (letrec* ((x8055 (snake-segs snk))) (car x8055)))
+                         (x8052
+                          (letrec* ((x8053 (snake-segs snk))) (cdr x8053))))
+                        (segs-self-collide? x8054 x8052))))
+                     g8051)))
                  (segs-self-collide?
                   (lambda (h segs)
                     (letrec*
-                     ((g8053
+                     ((g8056
                        (if cnd
-                         (letrec* ((g8054 #f)) g8054)
+                         (letrec* ((g8057 #f)) g8057)
                          (letrec*
-                          ((g8055
+                          ((g8058
                             (letrec*
-                             ((x8058
-                               (letrec* ((x8059 (car segs))) (posn=? x8059 h)))
-                              (x8056
+                             ((x8061
+                               (letrec* ((x8062 (car segs))) (posn=? x8062 h)))
+                              (x8059
                                (letrec*
-                                ((x8057 (cdr segs)))
-                                (segs-self-collide? h x8057))))
-                             (or x8058 x8056))))
-                          g8055))))
-                     g8053)))
+                                ((x8060 (cdr segs)))
+                                (segs-self-collide? h x8060))))
+                             (or x8061 x8059))))
+                          g8058))))
+                     g8056)))
                  (cut-tail
                   (lambda (segs)
                     (letrec*
-                     ((g8060
+                     ((g8063
                        (letrec*
                         ((r (cdr segs)))
                         (letrec*
-                         ((g8061
+                         ((g8064
                            (if cnd
-                             (letrec* ((g8062 empty)) g8062)
+                             (letrec* ((g8065 empty)) g8065)
                              (letrec*
-                              ((g8063
+                              ((g8066
                                 (letrec*
-                                 ((x8065 (car segs)) (x8064 (cut-tail r)))
-                                 (cons x8065 x8064))))
-                              g8063))))
-                         g8061))))
-                     g8060)))
+                                 ((x8068 (car segs)) (x8067 (cut-tail r)))
+                                 (cons x8068 x8067))))
+                              g8066))))
+                         g8064))))
+                     g8063)))
                  (next-head
                   (lambda (seg dir)
                     (letrec*
-                     ((g8066
+                     ((g8069
                        (if cnd
                          (letrec*
-                          ((g8067
+                          ((g8070
                             (letrec*
-                             ((x8069
-                               (letrec* ((x8070 (posn-x seg))) (add1 x8070)))
-                              (x8068 (posn-y seg)))
-                             (posn x8069 x8068))))
-                          g8067)
+                             ((x8072
+                               (letrec* ((x8073 (posn-x seg))) (add1 x8073)))
+                              (x8071 (posn-y seg)))
+                             (posn x8072 x8071))))
+                          g8070)
                          (if cnd
                            (letrec*
-                            ((g8071
+                            ((g8074
                               (letrec*
-                               ((x8073
-                                 (letrec* ((x8074 (posn-x seg))) (sub1 x8074)))
-                                (x8072 (posn-y seg)))
-                               (posn x8073 x8072))))
-                            g8071)
+                               ((x8076
+                                 (letrec* ((x8077 (posn-x seg))) (sub1 x8077)))
+                                (x8075 (posn-y seg)))
+                               (posn x8076 x8075))))
+                            g8074)
                            (if cnd
                              (letrec*
-                              ((g8075
+                              ((g8078
                                 (letrec*
-                                 ((x8078 (posn-x seg))
-                                  (x8076
+                                 ((x8081 (posn-x seg))
+                                  (x8079
                                    (letrec*
-                                    ((x8077 (posn-y seg)))
-                                    (sub1 x8077))))
-                                 (posn x8078 x8076))))
-                              g8075)
+                                    ((x8080 (posn-y seg)))
+                                    (sub1 x8080))))
+                                 (posn x8081 x8079))))
+                              g8078)
                              (letrec*
-                              ((g8079
+                              ((g8082
                                 (letrec*
-                                 ((x8082 (posn-x seg))
-                                  (x8080
+                                 ((x8085 (posn-x seg))
+                                  (x8083
                                    (letrec*
-                                    ((x8081 (posn-y seg)))
-                                    (add1 x8081))))
-                                 (posn x8082 x8080))))
-                              g8079))))))
-                     g8066)))
+                                    ((x8084 (posn-y seg)))
+                                    (add1 x8084))))
+                                 (posn x8085 x8083))))
+                              g8082))))))
+                     g8069)))
                  (snake-slither
                   (lambda (snk)
                     (letrec*
-                     ((g8083
+                     ((g8086
                        (letrec*
                         ((d (snake-dir snk)))
                         (letrec*
-                         ((g8084
+                         ((g8087
                            (letrec*
-                            ((x8085
+                            ((x8088
                               (letrec*
-                               ((x8088
+                               ((x8091
                                  (letrec*
-                                  ((x8089
+                                  ((x8092
                                     (letrec*
-                                     ((x8090 (snake-segs snk)))
-                                     (car x8090))))
-                                  (next-head x8089 d)))
-                                (x8086
+                                     ((x8093 (snake-segs snk)))
+                                     (car x8093))))
+                                  (next-head x8092 d)))
+                                (x8089
                                  (letrec*
-                                  ((x8087 (snake-segs snk)))
-                                  (cut-tail x8087))))
-                               (cons x8088 x8086))))
-                            (snake d x8085))))
-                         g8084))))
-                     g8083)))
+                                  ((x8090 (snake-segs snk)))
+                                  (cut-tail x8090))))
+                               (cons x8091 x8089))))
+                            (snake d x8088))))
+                         g8087))))
+                     g8086)))
                  (snake-grow
                   (lambda (snk)
                     (letrec*
-                     ((g8091
+                     ((g8094
                        (letrec*
                         ((d (snake-dir snk)))
                         (letrec*
-                         ((g8092
+                         ((g8095
                            (letrec*
-                            ((x8093
+                            ((x8096
                               (letrec*
-                               ((x8095
+                               ((x8098
                                  (letrec*
-                                  ((x8096
+                                  ((x8099
                                     (letrec*
-                                     ((x8097 (snake-segs snk)))
-                                     (car x8097))))
-                                  (next-head x8096 d)))
-                                (x8094 (snake-segs snk)))
-                               (cons x8095 x8094))))
-                            (snake d x8093))))
-                         g8092))))
-                     g8091)))
+                                     ((x8100 (snake-segs snk)))
+                                     (car x8100))))
+                                  (next-head x8099 d)))
+                                (x8097 (snake-segs snk)))
+                               (cons x8098 x8097))))
+                            (snake d x8096))))
+                         g8095))))
+                     g8094)))
                  (world->world
                   (lambda (w)
                     (letrec*
-                     ((g8098
+                     ((g8101
                        (if cnd
-                         (letrec* ((g8099 (snake-eat w))) g8099)
+                         (letrec* ((g8102 (snake-eat w))) g8102)
                          (letrec*
-                          ((g8100
+                          ((g8103
                             (letrec*
-                             ((x8102
+                             ((x8105
                                (letrec*
-                                ((x8103 (world-snake w)))
-                                (snake-slither x8103)))
-                              (x8101 (world-food w)))
-                             (world x8102 x8101))))
-                          g8100))))
-                     g8098)))
+                                ((x8106 (world-snake w)))
+                                (snake-slither x8106)))
+                              (x8104 (world-food w)))
+                             (world x8105 x8104))))
+                          g8103))))
+                     g8101)))
                  (eating?
                   (lambda (w)
                     (letrec*
-                     ((g8104
+                     ((g8107
                        (letrec*
-                        ((x8108 (world-food w))
-                         (x8105
+                        ((x8111 (world-food w))
+                         (x8108
                           (letrec*
-                           ((x8106
+                           ((x8109
                              (letrec*
-                              ((x8107 (world-snake w)))
-                              (snake-segs x8107))))
-                           (car x8106))))
-                        (posn=? x8108 x8105))))
-                     g8104)))
+                              ((x8110 (world-snake w)))
+                              (snake-segs x8110))))
+                           (car x8109))))
+                        (posn=? x8111 x8108))))
+                     g8107)))
                  (snake-change-direction
                   (lambda (snk dir)
                     (letrec*
-                     ((g8109
-                       (letrec* ((x8110 (snake-segs snk))) (snake dir x8110))))
-                     g8109)))
+                     ((g8112
+                       (letrec* ((x8113 (snake-segs snk))) (snake dir x8113))))
+                     g8112)))
                  (world-change-dir
                   (lambda (w dir)
                     (letrec*
-                     ((g8111
+                     ((g8114
                        (letrec*
-                        ((x8113
+                        ((x8116
                           (letrec*
-                           ((x8114 (world-snake w)))
-                           (snake-change-direction x8114 dir)))
-                         (x8112 (world-food w)))
-                        (world x8113 x8112))))
-                     g8111)))
+                           ((x8117 (world-snake w)))
+                           (snake-change-direction x8117 dir)))
+                         (x8115 (world-food w)))
+                        (world x8116 x8115))))
+                     g8114)))
                  (snake-eat
                   (lambda (w)
                     (letrec*
-                     ((g8115
+                     ((g8118
                        (letrec*
-                        ((x8119
+                        ((x8122
                           (letrec*
-                           ((x8120 (world-snake w)))
-                           (snake-grow x8120)))
-                         (x8116
+                           ((x8123 (world-snake w)))
+                           (snake-grow x8123)))
+                         (x8119
                           (letrec*
-                           ((x8118 (- BOARD-WIDTH 1))
-                            (x8117 (- BOARD-HEIGHT 1)))
-                           (posn x8118 x8117))))
-                        (world x8119 x8116))))
-                     g8115)))
+                           ((x8121 (- BOARD-WIDTH 1))
+                            (x8120 (- BOARD-HEIGHT 1)))
+                           (posn x8121 x8120))))
+                        (world x8122 x8119))))
+                     g8118)))
                  (handle-key
                   (lambda (w ke)
                     (letrec*
-                     ((g8121
+                     ((g8124
                        (if cnd
-                         (letrec* ((g8122 (world-change-dir w 'up))) g8122)
+                         (letrec* ((g8125 (world-change-dir w 'up))) g8125)
                          (if cnd
-                           (letrec* ((g8123 (world-change-dir w 'down))) g8123)
+                           (letrec* ((g8126 (world-change-dir w 'down))) g8126)
                            (if cnd
                              (letrec*
-                              ((g8124 (world-change-dir w 'left)))
-                              g8124)
+                              ((g8127 (world-change-dir w 'left)))
+                              g8127)
                              (if cnd
                                (letrec*
-                                ((g8125 (world-change-dir w 'right)))
-                                g8125)
-                               (letrec* ((g8126 w)) g8126)))))))
-                     g8121)))
+                                ((g8128 (world-change-dir w 'right)))
+                                g8128)
+                               (letrec* ((g8129 w)) g8129)))))))
+                     g8124)))
                  (game-over?
                   (lambda (w)
                     (letrec*
-                     ((g8127
+                     ((g8130
                        (letrec*
                         ((val7261
                           (letrec*
-                           ((x8128 (world-snake w)))
-                           (snake-wall-collide? x8128))))
+                           ((x8131 (world-snake w)))
+                           (snake-wall-collide? x8131))))
                         (letrec*
-                         ((g8129
+                         ((g8132
                            (if val7261
                              val7261
                              (letrec*
-                              ((x8130 (world-snake w)))
-                              (snake-self-collide? x8130)))))
-                         g8129))))
-                     g8127)))
+                              ((x8133 (world-snake w)))
+                              (snake-self-collide? x8133)))))
+                         g8132))))
+                     g8130)))
                  (world->scene
                   (lambda (w)
                     (letrec*
-                     ((g8131
+                     ((g8134
                        (letrec*
-                        ((x8134 (world-snake w))
-                         (x8132
+                        ((x8137 (world-snake w))
+                         (x8135
                           (letrec*
-                           ((x8133 (world-food w)))
-                           (food+scene x8133 BACKGROUND))))
-                        (snake+scene x8134 x8132))))
-                     g8131)))
+                           ((x8136 (world-food w)))
+                           (food+scene x8136 BACKGROUND))))
+                        (snake+scene x8137 x8135))))
+                     g8134)))
                  (food+scene
                   (lambda (f scn)
                     (letrec*
-                     ((g8135
+                     ((g8138
                        (letrec*
-                        ((x8137 (posn-x f)) (x8136 (posn-y f)))
-                        (place-image-on-grid FOOD-IMAGE x8137 x8136 scn))))
-                     g8135)))
+                        ((x8140 (posn-x f)) (x8139 (posn-y f)))
+                        (place-image-on-grid FOOD-IMAGE x8140 x8139 scn))))
+                     g8138)))
                  (place-image-on-grid
                   (lambda (img x y scn)
                     (letrec*
-                     ((g8138
+                     ((g8141
                        (letrec*
-                        ((x8141 (* GRID-SIZE x))
-                         (x8139
+                        ((x8144 (* GRID-SIZE x))
+                         (x8142
                           (letrec*
-                           ((x8140 (* GRID-SIZE y)))
-                           (- BOARD-HEIGHT-PIXELS x8140))))
-                        (place-image img x8141 x8139 scn))))
-                     g8138)))
+                           ((x8143 (* GRID-SIZE y)))
+                           (- BOARD-HEIGHT-PIXELS x8143))))
+                        (place-image img x8144 x8142 scn))))
+                     g8141)))
                  (snake+scene
                   (lambda (snk scn)
                     (letrec*
-                     ((g8142
+                     ((g8145
                        (letrec*
-                        ((x8143 (snake-segs snk)))
-                        (segments+scene x8143 scn))))
-                     g8142)))
+                        ((x8146 (snake-segs snk)))
+                        (segments+scene x8146 scn))))
+                     g8145)))
                  (segments+scene
                   (lambda (segs scn)
                     (letrec*
-                     ((g8144
+                     ((g8147
                        (if cnd
-                         (letrec* ((g8145 scn)) g8145)
+                         (letrec* ((g8148 scn)) g8148)
                          (letrec*
-                          ((g8146
+                          ((g8149
                             (letrec*
-                             ((x8149 (cdr segs))
-                              (x8147
+                             ((x8152 (cdr segs))
+                              (x8150
                                (letrec*
-                                ((x8148 (car segs)))
-                                (segment+scene x8148 scn))))
-                             (segments+scene x8149 x8147))))
-                          g8146))))
-                     g8144)))
+                                ((x8151 (car segs)))
+                                (segment+scene x8151 scn))))
+                             (segments+scene x8152 x8150))))
+                          g8149))))
+                     g8147)))
                  (segment+scene
                   (lambda (seg scn)
                     (letrec*
-                     ((g8150
+                     ((g8153
                        (letrec*
-                        ((x8152 (posn-x seg)) (x8151 (posn-y seg)))
-                        (place-image-on-grid SEGMENT-IMAGE x8152 x8151 scn))))
-                     g8150))))
+                        ((x8155 (posn-x seg)) (x8154 (posn-y seg)))
+                        (place-image-on-grid SEGMENT-IMAGE x8155 x8154 scn))))
+                     g8153))))
                 (letrec*
-                 ((g8153
+                 ((g8156
                    (letrec*
-                    ((x8187
+                    ((x8190
                       ((lambda (j7361 k7362 f7363)
                          (letrec*
-                          ((g8188
+                          ((g8191
                             (lambda (g7359 g7360)
                               (letrec*
-                               ((g8189
+                               ((g8192
                                  (letrec*
-                                  ((x8190
+                                  ((x8193
                                     (letrec*
-                                     ((x8192 (POSN/C j7361 k7362 g7359))
-                                      (x8191 (POSN/C j7361 k7362 g7360)))
-                                     (f7363 x8192 x8191))))
-                                  (boolean?/c j7361 k7362 x8190))))
-                               g8189))))
-                          g8188))
+                                     ((x8195 (POSN/C j7361 k7362 g7359))
+                                      (x8194 (POSN/C j7361 k7362 g7360)))
+                                     (f7363 x8195 x8194))))
+                                  (boolean?/c j7361 k7362 x8193))))
+                               g8192))))
+                          g8191))
                        'module
                        'importer
                        posn=?))
-                     (x8182
+                     (x8185
                       (letrec*
-                       ((x8183
+                       ((x8186
                          (letrec*
-                          ((x8186 (input))
-                           (x8184
-                            (letrec* ((x8185 (input))) (cons x8185 '()))))
-                          (cons x8186 x8184))))
-                       (cons 'posn x8183)))
-                     (x8177
+                          ((x8189 (input))
+                           (x8187
+                            (letrec* ((x8188 (input))) (cons x8188 '()))))
+                          (cons x8189 x8187))))
+                       (cons 'posn x8186)))
+                     (x8180
                       (letrec*
-                       ((x8178
+                       ((x8181
                          (letrec*
-                          ((x8181 (input))
-                           (x8179
-                            (letrec* ((x8180 (input))) (cons x8180 '()))))
-                          (cons x8181 x8179))))
-                       (cons 'posn x8178))))
-                    (x8187 x8182 x8177)))
-                  (g8154 (WORLD/C 'module 'importer WORLD))
-                  (g8155 (image/c 'module 'importer BACKGROUND))
-                  (g8156 (image/c 'module 'importer FOOD-IMAGE))
-                  (g8157 (image/c 'module 'importer SEGMENT-IMAGE))
-                  (g8158 (real? 'module 'importer GRID-SIZE))
-                  (g8159 (real? 'module 'importer BOARD-HEIGHT-PIXELS))
-                  (g8160 (real? 'module 'importer BOARD-WIDTH))
-                  (g8161 (real? 'module 'importer BOARD-HEIGHT))
-                  (g8162
+                          ((x8184 (input))
+                           (x8182
+                            (letrec* ((x8183 (input))) (cons x8183 '()))))
+                          (cons x8184 x8182))))
+                       (cons 'posn x8181))))
+                    (x8190 x8185 x8180)))
+                  (g8157 (WORLD/C 'module 'importer WORLD))
+                  (g8158 (image/c 'module 'importer BACKGROUND))
+                  (g8159 (image/c 'module 'importer FOOD-IMAGE))
+                  (g8160 (image/c 'module 'importer SEGMENT-IMAGE))
+                  (g8161 (real? 'module 'importer GRID-SIZE))
+                  (g8162 (real? 'module 'importer BOARD-HEIGHT-PIXELS))
+                  (g8163 (real? 'module 'importer BOARD-WIDTH))
+                  (g8164 (real? 'module 'importer BOARD-HEIGHT))
+                  (g8165
                    (letrec*
-                    ((x8198
+                    ((x8201
                       ((lambda (j7365 k7366 f7367)
                          (letrec*
-                          ((g8199
+                          ((g8202
                             (lambda (g7364)
                               (letrec*
-                               ((g8200
+                               ((g8203
                                  (letrec*
-                                  ((x8201
+                                  ((x8204
                                     (letrec*
-                                     ((x8202 (SNAKE/C j7365 k7366 g7364)))
-                                     (f7367 x8202))))
-                                  (boolean?/c j7365 k7366 x8201))))
-                               g8200))))
-                          g8199))
+                                     ((x8205 (SNAKE/C j7365 k7366 g7364)))
+                                     (f7367 x8205))))
+                                  (boolean?/c j7365 k7366 x8204))))
+                               g8203))))
+                          g8202))
                        'module
                        'importer
                        snake-wall-collide?))
-                     (x8193
+                     (x8196
                       (letrec*
-                       ((x8194
+                       ((x8197
                          (letrec*
-                          ((x8197 (input))
-                           (x8195
-                            (letrec* ((x8196 (input))) (cons x8196 '()))))
-                          (cons x8197 x8195))))
-                       (cons 'snake x8194))))
-                    (x8198 x8193)))
-                  (g8163
+                          ((x8200 (input))
+                           (x8198
+                            (letrec* ((x8199 (input))) (cons x8199 '()))))
+                          (cons x8200 x8198))))
+                       (cons 'snake x8197))))
+                    (x8201 x8196)))
+                  (g8166
                    (letrec*
-                    ((x8208
+                    ((x8211
                       ((lambda (j7369 k7370 f7371)
                          (letrec*
-                          ((g8209
+                          ((g8212
                             (lambda (g7368)
                               (letrec*
-                               ((g8210
+                               ((g8213
                                  (letrec*
-                                  ((x8211
+                                  ((x8214
                                     (letrec*
-                                     ((x8212 (SNAKE/C j7369 k7370 g7368)))
-                                     (f7371 x8212))))
-                                  (boolean?/c j7369 k7370 x8211))))
-                               g8210))))
-                          g8209))
+                                     ((x8215 (SNAKE/C j7369 k7370 g7368)))
+                                     (f7371 x8215))))
+                                  (boolean?/c j7369 k7370 x8214))))
+                               g8213))))
+                          g8212))
                        'module
                        'importer
                        snake-self-collide?))
-                     (x8203
+                     (x8206
                       (letrec*
-                       ((x8204
+                       ((x8207
                          (letrec*
-                          ((x8207 (input))
-                           (x8205
-                            (letrec* ((x8206 (input))) (cons x8206 '()))))
-                          (cons x8207 x8205))))
-                       (cons 'snake x8204))))
-                    (x8208 x8203)))
-                  (g8164
+                          ((x8210 (input))
+                           (x8208
+                            (letrec* ((x8209 (input))) (cons x8209 '()))))
+                          (cons x8210 x8208))))
+                       (cons 'snake x8207))))
+                    (x8211 x8206)))
+                  (g8167
                    (letrec*
-                    ((x8214
+                    ((x8217
                       ((lambda (j7373 k7374 f7375)
                          (letrec*
-                          ((g8215
+                          ((g8218
                             (lambda (g7372)
                               (letrec*
-                               ((g8216
+                               ((g8219
                                  (letrec*
-                                  ((x8221 (listof POSN/C))
-                                   (x8217
+                                  ((x8224 (listof POSN/C))
+                                   (x8220
                                     (letrec*
-                                     ((x8218
+                                     ((x8221
                                        (letrec*
-                                        ((x8219
+                                        ((x8222
                                           (letrec*
-                                           ((x8220 (listof POSN/C)))
-                                           (and/c cons?/c x8220))))
-                                        (x8219 j7373 k7374 g7372))))
-                                     (f7375 x8218))))
-                                  (x8221 j7373 k7374 x8217))))
-                               g8216))))
-                          g8215))
+                                           ((x8223 (listof POSN/C)))
+                                           (and/c cons?/c x8223))))
+                                        (x8222 j7373 k7374 g7372))))
+                                     (f7375 x8221))))
+                                  (x8224 j7373 k7374 x8220))))
+                               g8219))))
+                          g8218))
                        'module
                        'importer
                        cut-tail))
-                     (x8213 (input)))
-                    (x8214 x8213)))
-                  (g8165
+                     (x8216 (input)))
+                    (x8217 x8216)))
+                  (g8168
                    (letrec*
-                    ((x8227
+                    ((x8230
                       ((lambda (j7377 k7378 f7379)
                          (letrec*
-                          ((g8228
+                          ((g8231
                             (lambda (g7376)
                               (letrec*
-                               ((g8229
+                               ((g8232
                                  (letrec*
-                                  ((x8230
+                                  ((x8233
                                     (letrec*
-                                     ((x8231 (SNAKE/C j7377 k7378 g7376)))
-                                     (f7379 x8231))))
-                                  (SNAKE/C j7377 k7378 x8230))))
-                               g8229))))
-                          g8228))
+                                     ((x8234 (SNAKE/C j7377 k7378 g7376)))
+                                     (f7379 x8234))))
+                                  (SNAKE/C j7377 k7378 x8233))))
+                               g8232))))
+                          g8231))
                        'module
                        'importer
                        snake-slither))
-                     (x8222
+                     (x8225
                       (letrec*
-                       ((x8223
+                       ((x8226
                          (letrec*
-                          ((x8226 (input))
-                           (x8224
-                            (letrec* ((x8225 (input))) (cons x8225 '()))))
-                          (cons x8226 x8224))))
-                       (cons 'snake x8223))))
-                    (x8227 x8222)))
-                  (g8166
+                          ((x8229 (input))
+                           (x8227
+                            (letrec* ((x8228 (input))) (cons x8228 '()))))
+                          (cons x8229 x8227))))
+                       (cons 'snake x8226))))
+                    (x8230 x8225)))
+                  (g8169
                    (letrec*
-                    ((x8237
+                    ((x8240
                       ((lambda (j7381 k7382 f7383)
                          (letrec*
-                          ((g8238
+                          ((g8241
                             (lambda (g7380)
                               (letrec*
-                               ((g8239
+                               ((g8242
                                  (letrec*
-                                  ((x8240
+                                  ((x8243
                                     (letrec*
-                                     ((x8241 (SNAKE/C j7381 k7382 g7380)))
-                                     (f7383 x8241))))
-                                  (SNAKE/C j7381 k7382 x8240))))
-                               g8239))))
-                          g8238))
+                                     ((x8244 (SNAKE/C j7381 k7382 g7380)))
+                                     (f7383 x8244))))
+                                  (SNAKE/C j7381 k7382 x8243))))
+                               g8242))))
+                          g8241))
                        'module
                        'importer
                        snake-grow))
-                     (x8232
+                     (x8235
                       (letrec*
-                       ((x8233
+                       ((x8236
                          (letrec*
-                          ((x8236 (input))
-                           (x8234
-                            (letrec* ((x8235 (input))) (cons x8235 '()))))
-                          (cons x8236 x8234))))
-                       (cons 'snake x8233))))
-                    (x8237 x8232)))
-                  (g8167
+                          ((x8239 (input))
+                           (x8237
+                            (letrec* ((x8238 (input))) (cons x8238 '()))))
+                          (cons x8239 x8237))))
+                       (cons 'snake x8236))))
+                    (x8240 x8235)))
+                  (g8170
                    (letrec*
-                    ((x8256
+                    ((x8259
                       ((lambda (j7386 k7387 f7388)
                          (letrec*
-                          ((g8257
+                          ((g8260
                             (lambda (g7384 g7385)
                               (letrec*
-                               ((g8258
+                               ((g8261
                                  (letrec*
-                                  ((x8259
+                                  ((x8262
                                     (letrec*
-                                     ((x8261 (WORLD/C j7386 k7387 g7384))
-                                      (x8260 (DIR/C j7386 k7387 g7385)))
-                                     (f7388 x8261 x8260))))
-                                  (WORLD/C j7386 k7387 x8259))))
-                               g8258))))
-                          g8257))
+                                     ((x8264 (WORLD/C j7386 k7387 g7384))
+                                      (x8263 (DIR/C j7386 k7387 g7385)))
+                                     (f7388 x8264 x8263))))
+                                  (WORLD/C j7386 k7387 x8262))))
+                               g8261))))
+                          g8260))
                        'module
                        'importer
                        world-change-dir))
-                     (x8243
+                     (x8246
                       (letrec*
-                       ((x8244
+                       ((x8247
                          (letrec*
-                          ((x8251
+                          ((x8254
                             (letrec*
-                             ((x8252
+                             ((x8255
                                (letrec*
-                                ((x8255 (input))
-                                 (x8253
+                                ((x8258 (input))
+                                 (x8256
                                   (letrec*
-                                   ((x8254 (input)))
-                                   (cons x8254 '()))))
-                                (cons x8255 x8253))))
-                             (cons 'snake x8252)))
-                           (x8245
+                                   ((x8257 (input)))
+                                   (cons x8257 '()))))
+                                (cons x8258 x8256))))
+                             (cons 'snake x8255)))
+                           (x8248
                             (letrec*
-                             ((x8246
+                             ((x8249
                                (letrec*
-                                ((x8247
+                                ((x8250
                                   (letrec*
-                                   ((x8250 (input))
-                                    (x8248
+                                   ((x8253 (input))
+                                    (x8251
                                      (letrec*
-                                      ((x8249 (input)))
-                                      (cons x8249 '()))))
-                                   (cons x8250 x8248))))
-                                (cons 'posn x8247))))
-                             (cons x8246 '()))))
-                          (cons x8251 x8245))))
-                       (cons 'world x8244)))
-                     (x8242 (input)))
-                    (x8256 x8243 x8242)))
-                  (g8168
+                                      ((x8252 (input)))
+                                      (cons x8252 '()))))
+                                   (cons x8253 x8251))))
+                                (cons 'posn x8250))))
+                             (cons x8249 '()))))
+                          (cons x8254 x8248))))
+                       (cons 'world x8247)))
+                     (x8245 (input)))
+                    (x8259 x8246 x8245)))
+                  (g8171
                    (letrec*
-                    ((x8275
+                    ((x8278
                       ((lambda (j7390 k7391 f7392)
                          (letrec*
-                          ((g8276
+                          ((g8279
                             (lambda (g7389)
                               (letrec*
-                               ((g8277
+                               ((g8280
                                  (letrec*
-                                  ((x8278
+                                  ((x8281
                                     (letrec*
-                                     ((x8279 (WORLD/C j7390 k7391 g7389)))
-                                     (f7392 x8279))))
-                                  (WORLD/C j7390 k7391 x8278))))
-                               g8277))))
-                          g8276))
+                                     ((x8282 (WORLD/C j7390 k7391 g7389)))
+                                     (f7392 x8282))))
+                                  (WORLD/C j7390 k7391 x8281))))
+                               g8280))))
+                          g8279))
                        'module
                        'importer
                        world->world))
-                     (x8262
+                     (x8265
                       (letrec*
-                       ((x8263
+                       ((x8266
                          (letrec*
-                          ((x8270
+                          ((x8273
                             (letrec*
-                             ((x8271
+                             ((x8274
                                (letrec*
-                                ((x8274 (input))
-                                 (x8272
+                                ((x8277 (input))
+                                 (x8275
                                   (letrec*
-                                   ((x8273 (input)))
-                                   (cons x8273 '()))))
-                                (cons x8274 x8272))))
-                             (cons 'snake x8271)))
-                           (x8264
+                                   ((x8276 (input)))
+                                   (cons x8276 '()))))
+                                (cons x8277 x8275))))
+                             (cons 'snake x8274)))
+                           (x8267
                             (letrec*
-                             ((x8265
+                             ((x8268
                                (letrec*
-                                ((x8266
+                                ((x8269
                                   (letrec*
-                                   ((x8269 (input))
-                                    (x8267
+                                   ((x8272 (input))
+                                    (x8270
                                      (letrec*
-                                      ((x8268 (input)))
-                                      (cons x8268 '()))))
-                                   (cons x8269 x8267))))
-                                (cons 'posn x8266))))
-                             (cons x8265 '()))))
-                          (cons x8270 x8264))))
-                       (cons 'world x8263))))
-                    (x8275 x8262)))
-                  (g8169
+                                      ((x8271 (input)))
+                                      (cons x8271 '()))))
+                                   (cons x8272 x8270))))
+                                (cons 'posn x8269))))
+                             (cons x8268 '()))))
+                          (cons x8273 x8267))))
+                       (cons 'world x8266))))
+                    (x8278 x8265)))
+                  (g8172
                    (letrec*
-                    ((x8294
+                    ((x8297
                       ((lambda (j7395 k7396 f7397)
                          (letrec*
-                          ((g8295
+                          ((g8298
                             (lambda (g7393 g7394)
                               (letrec*
-                               ((g8296
+                               ((g8299
                                  (letrec*
-                                  ((x8297
+                                  ((x8300
                                     (letrec*
-                                     ((x8299 (WORLD/C j7395 k7396 g7393))
-                                      (x8298 (string?/c j7395 k7396 g7394)))
-                                     (f7397 x8299 x8298))))
-                                  (WORLD/C j7395 k7396 x8297))))
-                               g8296))))
-                          g8295))
+                                     ((x8302 (WORLD/C j7395 k7396 g7393))
+                                      (x8301 (string?/c j7395 k7396 g7394)))
+                                     (f7397 x8302 x8301))))
+                                  (WORLD/C j7395 k7396 x8300))))
+                               g8299))))
+                          g8298))
                        'module
                        'importer
                        handle-key))
-                     (x8281
+                     (x8284
                       (letrec*
-                       ((x8282
+                       ((x8285
                          (letrec*
-                          ((x8289
+                          ((x8292
                             (letrec*
-                             ((x8290
+                             ((x8293
                                (letrec*
-                                ((x8293 (input))
-                                 (x8291
+                                ((x8296 (input))
+                                 (x8294
                                   (letrec*
-                                   ((x8292 (input)))
-                                   (cons x8292 '()))))
-                                (cons x8293 x8291))))
-                             (cons 'snake x8290)))
-                           (x8283
+                                   ((x8295 (input)))
+                                   (cons x8295 '()))))
+                                (cons x8296 x8294))))
+                             (cons 'snake x8293)))
+                           (x8286
                             (letrec*
-                             ((x8284
+                             ((x8287
                                (letrec*
-                                ((x8285
+                                ((x8288
                                   (letrec*
-                                   ((x8288 (input))
-                                    (x8286
+                                   ((x8291 (input))
+                                    (x8289
                                      (letrec*
-                                      ((x8287 (input)))
-                                      (cons x8287 '()))))
-                                   (cons x8288 x8286))))
-                                (cons 'posn x8285))))
-                             (cons x8284 '()))))
-                          (cons x8289 x8283))))
-                       (cons 'world x8282)))
-                     (x8280 (input)))
-                    (x8294 x8281 x8280)))
-                  (g8170
+                                      ((x8290 (input)))
+                                      (cons x8290 '()))))
+                                   (cons x8291 x8289))))
+                                (cons 'posn x8288))))
+                             (cons x8287 '()))))
+                          (cons x8292 x8286))))
+                       (cons 'world x8285)))
+                     (x8283 (input)))
+                    (x8297 x8284 x8283)))
+                  (g8173
                    (letrec*
-                    ((x8313
+                    ((x8316
                       ((lambda (j7399 k7400 f7401)
                          (letrec*
-                          ((g8314
+                          ((g8317
                             (lambda (g7398)
                               (letrec*
-                               ((g8315
+                               ((g8318
                                  (letrec*
-                                  ((x8316
+                                  ((x8319
                                     (letrec*
-                                     ((x8317 (WORLD/C j7399 k7400 g7398)))
-                                     (f7401 x8317))))
-                                  (boolean?/c j7399 k7400 x8316))))
-                               g8315))))
-                          g8314))
+                                     ((x8320 (WORLD/C j7399 k7400 g7398)))
+                                     (f7401 x8320))))
+                                  (boolean?/c j7399 k7400 x8319))))
+                               g8318))))
+                          g8317))
                        'module
                        'importer
                        game-over?))
-                     (x8300
+                     (x8303
                       (letrec*
-                       ((x8301
+                       ((x8304
                          (letrec*
-                          ((x8308
+                          ((x8311
                             (letrec*
-                             ((x8309
+                             ((x8312
                                (letrec*
-                                ((x8312 (input))
-                                 (x8310
+                                ((x8315 (input))
+                                 (x8313
                                   (letrec*
-                                   ((x8311 (input)))
-                                   (cons x8311 '()))))
-                                (cons x8312 x8310))))
-                             (cons 'snake x8309)))
-                           (x8302
+                                   ((x8314 (input)))
+                                   (cons x8314 '()))))
+                                (cons x8315 x8313))))
+                             (cons 'snake x8312)))
+                           (x8305
                             (letrec*
-                             ((x8303
+                             ((x8306
                                (letrec*
-                                ((x8304
+                                ((x8307
                                   (letrec*
-                                   ((x8307 (input))
-                                    (x8305
+                                   ((x8310 (input))
+                                    (x8308
                                      (letrec*
-                                      ((x8306 (input)))
-                                      (cons x8306 '()))))
-                                   (cons x8307 x8305))))
-                                (cons 'posn x8304))))
-                             (cons x8303 '()))))
-                          (cons x8308 x8302))))
-                       (cons 'world x8301))))
-                    (x8313 x8300)))
-                  (g8171
+                                      ((x8309 (input)))
+                                      (cons x8309 '()))))
+                                   (cons x8310 x8308))))
+                                (cons 'posn x8307))))
+                             (cons x8306 '()))))
+                          (cons x8311 x8305))))
+                       (cons 'world x8304))))
+                    (x8316 x8303)))
+                  (g8174
                    (letrec*
-                    ((x8331
+                    ((x8334
                       ((lambda (j7403 k7404 f7405)
                          (letrec*
-                          ((g8332
+                          ((g8335
                             (lambda (g7402)
                               (letrec*
-                               ((g8333
+                               ((g8336
                                  (letrec*
-                                  ((x8334
+                                  ((x8337
                                     (letrec*
-                                     ((x8335 (WORLD/C j7403 k7404 g7402)))
-                                     (f7405 x8335))))
-                                  (image/c j7403 k7404 x8334))))
-                               g8333))))
-                          g8332))
+                                     ((x8338 (WORLD/C j7403 k7404 g7402)))
+                                     (f7405 x8338))))
+                                  (image/c j7403 k7404 x8337))))
+                               g8336))))
+                          g8335))
                        'module
                        'importer
                        world->scene))
-                     (x8318
+                     (x8321
                       (letrec*
-                       ((x8319
+                       ((x8322
                          (letrec*
-                          ((x8326
+                          ((x8329
                             (letrec*
-                             ((x8327
+                             ((x8330
                                (letrec*
-                                ((x8330 (input))
-                                 (x8328
+                                ((x8333 (input))
+                                 (x8331
                                   (letrec*
-                                   ((x8329 (input)))
-                                   (cons x8329 '()))))
-                                (cons x8330 x8328))))
-                             (cons 'snake x8327)))
-                           (x8320
+                                   ((x8332 (input)))
+                                   (cons x8332 '()))))
+                                (cons x8333 x8331))))
+                             (cons 'snake x8330)))
+                           (x8323
                             (letrec*
-                             ((x8321
+                             ((x8324
                                (letrec*
-                                ((x8322
+                                ((x8325
                                   (letrec*
-                                   ((x8325 (input))
-                                    (x8323
+                                   ((x8328 (input))
+                                    (x8326
                                      (letrec*
-                                      ((x8324 (input)))
-                                      (cons x8324 '()))))
-                                   (cons x8325 x8323))))
-                                (cons 'posn x8322))))
-                             (cons x8321 '()))))
-                          (cons x8326 x8320))))
-                       (cons 'world x8319))))
-                    (x8331 x8318)))
-                  (g8172
+                                      ((x8327 (input)))
+                                      (cons x8327 '()))))
+                                   (cons x8328 x8326))))
+                                (cons 'posn x8325))))
+                             (cons x8324 '()))))
+                          (cons x8329 x8323))))
+                       (cons 'world x8322))))
+                    (x8334 x8321)))
+                  (g8175
                    (letrec*
-                    ((x8342
+                    ((x8345
                       ((lambda (j7408 k7409 f7410)
                          (letrec*
-                          ((g8343
+                          ((g8346
                             (lambda (g7406 g7407)
                               (letrec*
-                               ((g8344
+                               ((g8347
                                  (letrec*
-                                  ((x8345
+                                  ((x8348
                                     (letrec*
-                                     ((x8347 (POSN/C j7408 k7409 g7406))
-                                      (x8346 (image/c j7408 k7409 g7407)))
-                                     (f7410 x8347 x8346))))
-                                  (image/c j7408 k7409 x8345))))
-                               g8344))))
-                          g8343))
+                                     ((x8350 (POSN/C j7408 k7409 g7406))
+                                      (x8349 (image/c j7408 k7409 g7407)))
+                                     (f7410 x8350 x8349))))
+                                  (image/c j7408 k7409 x8348))))
+                               g8347))))
+                          g8346))
                        'module
                        'importer
                        food+scene))
-                     (x8337
+                     (x8340
                       (letrec*
-                       ((x8338
+                       ((x8341
                          (letrec*
-                          ((x8341 (input))
-                           (x8339
-                            (letrec* ((x8340 (input))) (cons x8340 '()))))
-                          (cons x8341 x8339))))
-                       (cons 'posn x8338)))
-                     (x8336 (cons 'image '())))
-                    (x8342 x8337 x8336)))
-                  (g8173
+                          ((x8344 (input))
+                           (x8342
+                            (letrec* ((x8343 (input))) (cons x8343 '()))))
+                          (cons x8344 x8342))))
+                       (cons 'posn x8341)))
+                     (x8339 (cons 'image '())))
+                    (x8345 x8340 x8339)))
+                  (g8176
                    (letrec*
-                    ((x8352
+                    ((x8355
                       ((lambda (j7415 k7416 f7417)
                          (letrec*
-                          ((g8353
+                          ((g8356
                             (lambda (g7411 g7412 g7413 g7414)
                               (letrec*
-                               ((g8354
+                               ((g8357
                                  (letrec*
-                                  ((x8355
+                                  ((x8358
                                     (letrec*
-                                     ((x8359 (image/c j7415 k7416 g7411))
-                                      (x8358 (real?/c j7415 k7416 g7412))
-                                      (x8357 (real?/c j7415 k7416 g7413))
-                                      (x8356 (image/c j7415 k7416 g7414)))
-                                     (f7417 x8359 x8358 x8357 x8356))))
-                                  (image/c j7415 k7416 x8355))))
-                               g8354))))
-                          g8353))
+                                     ((x8362 (image/c j7415 k7416 g7411))
+                                      (x8361 (real?/c j7415 k7416 g7412))
+                                      (x8360 (real?/c j7415 k7416 g7413))
+                                      (x8359 (image/c j7415 k7416 g7414)))
+                                     (f7417 x8362 x8361 x8360 x8359))))
+                                  (image/c j7415 k7416 x8358))))
+                               g8357))))
+                          g8356))
                        'module
                        'importer
                        place-image-on-grid))
-                     (x8351 (cons 'image '()))
-                     (x8350 (input))
-                     (x8349 (input))
-                     (x8348 (cons 'image '())))
-                    (x8352 x8351 x8350 x8349 x8348)))
-                  (g8174
+                     (x8354 (cons 'image '()))
+                     (x8353 (input))
+                     (x8352 (input))
+                     (x8351 (cons 'image '())))
+                    (x8355 x8354 x8353 x8352 x8351)))
+                  (g8177
                    (letrec*
-                    ((x8366
+                    ((x8369
                       ((lambda (j7420 k7421 f7422)
                          (letrec*
-                          ((g8367
+                          ((g8370
                             (lambda (g7418 g7419)
                               (letrec*
-                               ((g8368
+                               ((g8371
                                  (letrec*
-                                  ((x8369
+                                  ((x8372
                                     (letrec*
-                                     ((x8371 (SNAKE/C j7420 k7421 g7418))
-                                      (x8370 (image/c j7420 k7421 g7419)))
-                                     (f7422 x8371 x8370))))
-                                  (image/c j7420 k7421 x8369))))
-                               g8368))))
-                          g8367))
+                                     ((x8374 (SNAKE/C j7420 k7421 g7418))
+                                      (x8373 (image/c j7420 k7421 g7419)))
+                                     (f7422 x8374 x8373))))
+                                  (image/c j7420 k7421 x8372))))
+                               g8371))))
+                          g8370))
                        'module
                        'importer
                        snake+scene))
-                     (x8361
+                     (x8364
                       (letrec*
-                       ((x8362
+                       ((x8365
                          (letrec*
-                          ((x8365 (input))
-                           (x8363
-                            (letrec* ((x8364 (input))) (cons x8364 '()))))
-                          (cons x8365 x8363))))
-                       (cons 'snake x8362)))
-                     (x8360 (cons 'image '())))
-                    (x8366 x8361 x8360)))
-                  (g8175
+                          ((x8368 (input))
+                           (x8366
+                            (letrec* ((x8367 (input))) (cons x8367 '()))))
+                          (cons x8368 x8366))))
+                       (cons 'snake x8365)))
+                     (x8363 (cons 'image '())))
+                    (x8369 x8364 x8363)))
+                  (g8178
                    (letrec*
-                    ((x8374
+                    ((x8377
                       ((lambda (j7425 k7426 f7427)
                          (letrec*
-                          ((g8375
+                          ((g8378
                             (lambda (g7423 g7424)
                               (letrec*
-                               ((g8376
+                               ((g8379
                                  (letrec*
-                                  ((x8377
+                                  ((x8380
                                     (letrec*
-                                     ((x8379
+                                     ((x8382
                                        (letrec*
-                                        ((x8380 (listof POSN/C)))
-                                        (x8380 j7425 k7426 g7423)))
-                                      (x8378 (image/c j7425 k7426 g7424)))
-                                     (f7427 x8379 x8378))))
-                                  (image/c j7425 k7426 x8377))))
-                               g8376))))
-                          g8375))
+                                        ((x8383 (listof POSN/C)))
+                                        (x8383 j7425 k7426 g7423)))
+                                      (x8381 (image/c j7425 k7426 g7424)))
+                                     (f7427 x8382 x8381))))
+                                  (image/c j7425 k7426 x8380))))
+                               g8379))))
+                          g8378))
                        'module
                        'importer
                        segments+scene))
-                     (x8373 (input))
-                     (x8372 (cons 'image '())))
-                    (x8374 x8373 x8372)))
-                  (g8176
+                     (x8376 (input))
+                     (x8375 (cons 'image '())))
+                    (x8377 x8376 x8375)))
+                  (g8179
                    (letrec*
-                    ((x8387
+                    ((x8390
                       ((lambda (j7430 k7431 f7432)
                          (letrec*
-                          ((g8388
+                          ((g8391
                             (lambda (g7428 g7429)
                               (letrec*
-                               ((g8389
+                               ((g8392
                                  (letrec*
-                                  ((x8390
+                                  ((x8393
                                     (letrec*
-                                     ((x8392 (POSN/C j7430 k7431 g7428))
-                                      (x8391 (image/c j7430 k7431 g7429)))
-                                     (f7432 x8392 x8391))))
-                                  (image/c j7430 k7431 x8390))))
-                               g8389))))
-                          g8388))
+                                     ((x8395 (POSN/C j7430 k7431 g7428))
+                                      (x8394 (image/c j7430 k7431 g7429)))
+                                     (f7432 x8395 x8394))))
+                                  (image/c j7430 k7431 x8393))))
+                               g8392))))
+                          g8391))
                        'module
                        'importer
                        segment+scene))
-                     (x8382
+                     (x8385
                       (letrec*
-                       ((x8383
+                       ((x8386
                          (letrec*
-                          ((x8386 (input))
-                           (x8384
-                            (letrec* ((x8385 (input))) (cons x8385 '()))))
-                          (cons x8386 x8384))))
-                       (cons 'posn x8383)))
-                     (x8381 (cons 'image '())))
-                    (x8387 x8382 x8381))))
-                 g8176))))
+                          ((x8389 (input))
+                           (x8387
+                            (letrec* ((x8388 (input))) (cons x8388 '()))))
+                          (cons x8389 x8387))))
+                       (cons 'posn x8386)))
+                     (x8384 (cons 'image '())))
+                    (x8390 x8385 x8384))))
+                 g8179))))
              g7462))))
          g7460)))
       g7459))))

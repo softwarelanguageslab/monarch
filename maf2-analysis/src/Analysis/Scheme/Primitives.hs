@@ -116,7 +116,7 @@ allPrimitives = [
    fix1 "string?" (return .  isStrPtr),
    -- fix2 "substring" todo, 
    -- fix1 "symbol->string" todo, 
-   -- fix1 "symbol?" todo, 
+   fix1 "symbol?" (return . isSymbol), 
    fix1 "tan" Domain.tan,
    -- fix2 "make-vector" todo,
    -- varg "vector" todo, 

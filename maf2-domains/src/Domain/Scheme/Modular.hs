@@ -481,6 +481,7 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
    isUnsp    = hasType UnspKey
    isNil     = hasType NilKey
    isPrim    = hasType PrimKey
+   isSymbol  = hasType SymKey
 
 ------------------------------------------------------------
 -- Original implementation

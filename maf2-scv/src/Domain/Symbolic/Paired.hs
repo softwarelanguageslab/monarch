@@ -188,6 +188,7 @@ instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAd
    isChar    = const $ inject False
    isVecPtr  = const $ inject False
    isStrPtr  = const $ inject False
+   isSymbol  = const $ inject False
    isPaiPtr  = const $ inject False
    isClo     = const $ inject False
    isBool    = const $ inject False

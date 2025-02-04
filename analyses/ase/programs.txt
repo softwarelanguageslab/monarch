@@ -1,5 +1,5 @@
 games_snake.rkt          
-#games_tetris.rkt         
+games_tetris.rkt         
 #games_zombie.rkt         
 #mochi_fold-div.rkt       
 #mochi_hors.rkt           

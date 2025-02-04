@@ -21,6 +21,10 @@
    (define empty '())
 
    ;; Built-in flat contracts
+   (define (listof contract) 
+     (lambda (k j lst) 
+       (map (lambda (v) (contract k j v)) lst)))
+
    (define real?/c (flat real?))
    (define boolean?/c (flat boolean?))
    (define number?/c (flat number?))

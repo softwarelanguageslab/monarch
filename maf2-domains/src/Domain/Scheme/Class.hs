@@ -85,6 +85,7 @@ class (RealDomain v,
   isVecPtr  :: (BottomLattice b, BoolDomain b) => v -> b
   isStrPtr  :: (BottomLattice b, BoolDomain b) => v -> b
   isPaiPtr  :: (BottomLattice b, BoolDomain b) => v -> b
+  isSymbol  :: (BottomLattice b, BoolDomain b) => v -> b
   isClo     :: (BottomLattice b, BoolDomain b) => v -> b
   isBool    :: (BottomLattice b, BoolDomain b) => v -> b
   isNil     :: (BottomLattice b, BoolDomain b) => v -> b

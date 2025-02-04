@@ -245,6 +245,7 @@ instance (-- both subdomains should talk about the same environment
    isChar (SchemePairedValue (l, r))    = or (isChar l) (isChar r)
    isVecPtr (SchemePairedValue (l, r))  = or (isVecPtr l) (isVecPtr r)
    isStrPtr (SchemePairedValue (l, r))  = or (isStrPtr l) (isStrPtr r)
+   isSymbol (SchemePairedValue (l, r))  = or (isSymbol l) (isSymbol r)
    isPaiPtr (SchemePairedValue (l, r))  = or (isPaiPtr l) (isPaiPtr r)
    isClo (SchemePairedValue (l, r))     = or (isClo l) (isClo r)
    isBool (SchemePairedValue (l, r))    = or (isBool l) (isBool r)

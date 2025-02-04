@@ -71,9 +71,9 @@
   (cond [(null? xs) #t]
         [else (and (p? (car xs)) (andmap p? (cdr xs)))]))
 
-(define (map f xs)
-  (cond [(null? xs) null]
-        [else (cons (f (car xs)) (map f (cdr xs)))]))
+;(define (map f xs)
+;  (cond [(null? xs) null]
+;        [else (cons (f (car xs)) (map f (cdr xs)))]))
 
 (define (filter p? xs)
   (cond [(null? xs) null]
@@ -84,9 +84,9 @@
   (cond [(null? l) r]
         [else (cons (car l) (append (cdr l) r))]))
 
-(define (length xs)
-  (cond [(null? xs) 0]
-        [else (+ 1 (length (cdr xs)))]))
+;(define (length xs)
+;  (cond [(null? xs) 0]
+;        [else (+ 1 (length (cdr xs)))]))
 
 (define (foldr f a xs)
   (cond [(null? xs) a]
