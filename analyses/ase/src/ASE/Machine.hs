@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving, StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, StandaloneDeriving, DeriveGeneric #-}
 {-# LANGUAGE Strict #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
@@ -53,7 +53,8 @@ import Domain (SchemeDomain)
 
 -- | The control component for the abstract machine
 data Ctrl v k = Ev !Exp !(Env k) | Ap !v
-              deriving (Eq, Ord, Show)
+              deriving (Eq, Ord, Show, Generic)
+instance (NFData v, NFData k) => NFData (Ctrl v k)
 
 instance Joinable (Ctrl v k) where    
    join = error "\"join\" not defined for Ctrl but should never be called"
@@ -65,7 +66,8 @@ type Env k = Map String (VAdr k)
 
 -- | Map mapping abstract symbolic variables to an abstract count
 newtype CountMap a = CountMap { getCountMap :: (Map a AbstractCount) }
-              deriving (Ord, Eq, Show)
+              deriving (Ord, Eq, Show, Generic)
+instance NFData a => NFData (CountMap a)
 
 -- | A model is a mapping from symbolic variables to program values 
 newtype Model v = Model { getModel :: Map SymbolicVariable (Abstract v) }
@@ -78,19 +80,23 @@ newtype Model v = Model { getModel :: Map SymbolicVariable (Abstract v) }
 -- variable (based on the location in the AST of the expression of the variable)
 -- or a primitive.
 data VAdr k = VAdr !(Label Exp) !k | PrimAdr !String
-            deriving (Eq, Ord, Show)
+            deriving (Eq, Ord, Show, Generic)
+instance NFData k => NFData (VAdr k)
 
 -- | Type of pair addresses
 data PAdr k = PAdr Exp !k
-            deriving (Eq, Ord, Show)
+            deriving (Eq, Ord, Show, Generic)
+instance NFData k => NFData (PAdr k)
 
 -- | Type of vector addresses
 data CAdr k = CAdr Exp !k
-            deriving (Eq, Ord, Show)
+            deriving (Eq, Ord, Show, Generic)
+instance NFData k => NFData (CAdr k)
 
 -- | Type of string addresses
 data SAdr k = SAdr Exp !k
-            deriving (Eq, Ord, Show)
+            deriving (Eq, Ord, Show, Generic)
+instance NFData k => NFData (SAdr k)
 
 ------------------------------------------------------------
 -- Continuations
@@ -103,29 +109,34 @@ data KFrame k = LetK ![VAdr k]     -- ^ the list of remaining addresses to store
                      ![Exp]        -- ^ list of remaining bindings 
                      !Exp          -- ^ body
                      !(Env k)      -- ^ the environment in which the let expression has to be evaluated
-              deriving (Eq, Ord, Show)
+              deriving (Eq, Ord, Show, Generic)
+instance NFData k => NFData (KFrame k)
 
 -- | Failure continuation
 data FFrame = Branch !PC !(CountMap SymbolicVariable)
-            deriving (Eq, Ord, Show)
-
+            deriving (Eq, Ord, Show, Generic)
+instance NFData FFrame
 
 -- | Continuation address
 data KAdr k = KAdr !(Label Exp) !k | Hlt
-               deriving (Eq, Ord, Show)
+               deriving (Eq, Ord, Show, Generic)
+instance NFData k => NFData (KAdr k)
 
 -- | Failure continuation address
 data FAdr k = FAdr !(Label Exp) !k | FHlt
-            deriving (Ord, Eq, Show)
+            deriving (Ord, Eq, Show, Generic)
+instance NFData k => NFData (FAdr k)
 
 -- | A continuation combines a continuation frame with a continuation 
 -- address.
 data KKont k = KKont !(KFrame k) !(KAdr k)
-          deriving (Eq, Ord, Show)
+          deriving (Eq, Ord, Show, Generic)
+instance NFData k => NFData (KKont k)
 
 -- | A failure continuation combines a continuation frame with a continuation address
 data FKont k = FKont !FFrame !(FAdr k)
-            deriving (Eq, Ord, Show)
+            deriving (Eq, Ord, Show, Generic)
+instance NFData k => NFData (FKont k)
 
 ------------------------------------------------------------
 -- Abstract count monad
@@ -206,7 +217,8 @@ instance {-# OVERLAPPABLE #-} (MonadContinuation k m, MonadLayer t, Monad (t m),
 data ContinuationState k =  ContinuationState {
       stateTopAddress :: KAdr k,
       stateTopFailAddress :: FAdr k
-   } deriving (Ord, Eq, Show)
+   } deriving (Ord, Eq, Show, Generic)
+instance (NFData k) => NFData (ContinuationState k)
 -- | Initial contents of the continuation stack
 initialContinuationStack :: ContinuationState k 
 initialContinuationStack = ContinuationState Hlt FHlt 

@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric #-}
 module ASE.Machines.FlowSensitive where
 
 import ASE.Domain.SymbolicVariable
@@ -132,7 +133,8 @@ data State = State {
       countflow  :: Flow SymbolicCountMap,
       modelFlow  :: Flow (Map SymbolicVariable (Abstract V)),
       inputFlow  :: Flow RandomSeq
-   } deriving (Ord, Eq, Show)
+   } deriving (Ord, Eq, Show, Generic)
+instance NFData State
 
 -- | State has a bottom, i.e., the bottom of its constituents
 instance BottomLattice State where

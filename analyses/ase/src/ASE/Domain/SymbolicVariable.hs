@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module ASE.Domain.SymbolicVariable(SymbolicVariable(..), symbolicVariable, adaptModel, discardContext, removeContextPC, PC, SymbolicCountMap) where
 
 import Syntax.Span
@@ -11,7 +12,8 @@ import qualified RIO.Map as Map
 -- | A symbolic variable is derived from the location of @input@ expressions
 -- and an optional context based on the model it has been sovled for.
 data SymbolicVariable = SymbolicVariable Span PC
-   deriving (Ord, Eq, Show)
+   deriving (Ord, Eq, Show, Generic)
+instance NFData SymbolicVariable
 
 -- | Create a symbolic variable with the given context
 symbolicVariable :: Span -> PC -> SymbolicVariable 

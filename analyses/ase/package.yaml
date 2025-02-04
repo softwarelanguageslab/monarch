@@ -41,6 +41,7 @@ executable:
   dependencies:
     - optparse-applicative
     - ase
+    - time
   ghc-options:
   - -rtsopts
   - '"-with-rtsopts=-sstderr"'

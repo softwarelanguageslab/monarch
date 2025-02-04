@@ -56,6 +56,7 @@ executable ase
   main-is: Main.hs
   other-modules:
       Commands.Analyze
+      Commands.Benchmark
       Options
       Paths_ase
   hs-source-dirs:
@@ -84,4 +85,5 @@ executable ase
     , random
     , rio
     , simpleactor
+    , time
   default-language: Haskell2010

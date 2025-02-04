@@ -1,5 +1,5 @@
 -- | Instantiations of the ASE analysis
-{-# LANGUAGE DataKinds, FlexibleInstances #-}
+{-# LANGUAGE DataKinds, FlexibleInstances, GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE Strict #-}
 module ASE.Analyses where
 
@@ -48,18 +48,23 @@ runM cfg = runZ3SolverWithSetup SMT.prelude . runCachedSolver . runConfiguration
 ------------------------------------------------------------
 
 -- | Class of types representing analysis results
-class IsAnalysisResult a where
+class (NFData a) => IsAnalysisResult a where
    -- | Returns the set of reachable blame AST nodes detected 
    -- by the analysis
    blameNodes' :: a -> Set Span
    -- | Returns the set of values in halting program states
    values' :: a -> Set Semantics.V
+   -- | Returns the number states in the visited set
+   visitedSize' :: a -> Int
 
 -- | A "dynamically" typed analysis result, this can be 
 -- used in automated benchmarks to run an analysis 
 -- and obtained specific parts of its analysis result.
 data AnalysisResult where
    AnalysisResult :: IsAnalysisResult a => a -> AnalysisResult
+
+instance NFData AnalysisResult where
+   rnf (AnalysisResult a) = rnf a
 
 -- | Obtain the set of reachable blame nodes for any analysis result
 blameNodes :: AnalysisResult -> Set Span
@@ -69,6 +74,10 @@ blameNodes (AnalysisResult a) = blameNodes' a
 -- for any analysis result
 values :: AnalysisResult -> Set Semantics.V
 values (AnalysisResult a) = values' a
+
+-- | Obtain the size of the visited set for the given 
+-- program result.
+visitedSize (AnalysisResult a) = visitedSize' a
 
 ------------------------------------------------------------
 -- Initial configurations
@@ -89,7 +98,7 @@ initialConfiguration e k =
 ------------------------------------------------------------
 
 -- | Result from the local machine analysis
-newtype LocalAnalysisResult = LocalAnalysisResult { getLocalAnalysisResult :: Set LocalMachine.State }
+newtype LocalAnalysisResult = LocalAnalysisResult { getLocalAnalysisResult :: Set LocalMachine.State } deriving (NFData)
 
 -- | The local machine result is an analysis result
 instance IsAnalysisResult LocalAnalysisResult where
@@ -103,6 +112,7 @@ instance IsAnalysisResult LocalAnalysisResult where
       where extract :: HList (Unnest LocalMachine.State) -> Maybe Semantics.V
             extract (Ap v :+: (ContinuationState Hlt _) :+: _) = Just v
             extract _ = Nothing
+   visitedSize' = Set.size . getLocalAnalysisResult
 
 -- | Local analysis
 localAnalysis :: Analysis
@@ -123,10 +133,11 @@ instance IsAnalysisResult FlowSensitive.State where
       where extract :: HList (Unnest FlowSensitive.StepState) -> Maybe Semantics.V
             extract (Ap v :+: (ContinuationState Hlt _) :+: _) = Just v
             extract _ = Nothing
+   visitedSize' = Set.size . FlowSensitive.stepStates
 
 flowSensitiveAnalysis :: Analysis
 flowSensitiveAnalysis e k = AnalysisResult <$> runM cfg (compute initial (FlowSensitive.run Semantics.step))
-   where cfg = initialConfiguration e k 
+   where cfg = initialConfiguration e k
          initial = FlowSensitive.initialState cfg
 
 
@@ -134,7 +145,11 @@ flowSensitiveAnalysis e k = AnalysisResult <$> runM cfg (compute initial (FlowSe
 -- Listing of configurations
 ------------------------------------------------------------
 
+analyses :: Map String Analysis
+analyses = 
+   Map.fromList [("local", localAnalysis), ("flow", flowSensitiveAnalysis)]
+
+
 -- | A mapping from human-readable configuration names to their Haskell functions
 analysesByName :: String -> Analysis
-analysesByName = fromJust . flip Map.lookup (Map.fromList [("local", localAnalysis), ("flow", flowSensitiveAnalysis)])
-
+analysesByName = fromJust . flip Map.lookup analyses
