@@ -1,11 +1,8 @@
 {
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
-
--- For legacy reasons
-#if __GLASGOW_HASKELL__ < 901 
-#undef __GLASGOW_HASKELL__
-#define __GLASGOW_HASKELL__ 709
-#endif
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnboxedTuples #-}
 
 -----------------------------------------------------------------------------
 -- |
