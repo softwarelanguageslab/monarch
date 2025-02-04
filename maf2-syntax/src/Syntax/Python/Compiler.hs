@@ -11,6 +11,7 @@ module Syntax.Python.Compiler(compile, parse, lexical, PyLoc(..), PyTag(..), tag
 import Syntax.Python.AST
 import Data.Functor
 import Data.Maybe
+import Control.Monad
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State

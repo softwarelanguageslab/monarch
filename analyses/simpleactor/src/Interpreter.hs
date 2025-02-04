@@ -8,6 +8,7 @@ import Syntax.AST
 import Control.Monad.Reader
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Control.Monad ((>=>), void, join, when, foldM)
 import Control.Monad.State
 import Control.Concurrent.Classy hiding (catch)
 import Control.Monad.Extra

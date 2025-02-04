@@ -12,7 +12,7 @@ import qualified Text.ParserCombinators.Parsec.Token as Token
 import Text.Printf
 import Syntax.Span
 import Data.Functor.Identity (Identity)
-import Control.Monad.Error
+import Control.Monad.Except
 
 -- | Location information
 fromSourcePos :: SourcePos -> Span

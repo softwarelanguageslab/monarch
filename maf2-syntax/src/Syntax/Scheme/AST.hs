@@ -11,6 +11,7 @@ import Text.Printf
 import qualified Syntax.Scheme.Parser as SExp
 import Syntax.Scheme.Parser (SExp, pattern (:::))
 import Syntax.Span
+import Control.Monad ((>=>), forever)
 import Control.Applicative
 import Control.Monad.Reader
 import Control.DeepSeq

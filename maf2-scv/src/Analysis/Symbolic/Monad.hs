@@ -23,10 +23,11 @@ module Analysis.Symbolic.Monad(
 import Solver (FormulaSolver, isFeasible)
 import Symbolic.AST
 import qualified Domain.Symbolic.Path as Path
+import Control.Monad ((>=>))
 import Control.Monad.Layer
 import Control.Monad.Join
 import Control.Monad.State.IntPool
-import Control.Monad.State (StateT(..), MonadState (put), modify, get, (>=>), runStateT)
+import Control.Monad.State (StateT(..), MonadState (put), modify, get, runStateT)
 import Domain
 import Domain.Symbolic
 import Lattice (Joinable(..))

@@ -24,7 +24,7 @@ import Lattice (Joinable)
 import Control.Monad (ap)
 import Data.Functor ((<&>))
 import Control.Monad.Escape
-import Control.Monad.List (MonadTrans(..))
+import Control.Monad.Trans.Class
 
 ------------------------------------------------------------
 --- The TaintM typeclass
@@ -76,7 +76,7 @@ newtype MayEscapeTaintedT t e (m :: Type -> Type) a = MayEscapeTaintedT { runMay
 instance (Monad m) => Functor (MayEscapeTaintedT t e m) where
     fmap f (MayEscapeTaintedT ma) = MayEscapeTaintedT $ fmap (fmap f) ma
 
-instance (TaintM t m, Joinable e) => Applicative (MayEscapeTaintedT t e m) where
+instance (TaintM t m, Monad m, Joinable e) => Applicative (MayEscapeTaintedT t e m) where
     pure = MayEscapeTaintedT . return . Value
     (<*>) = ap
 
@@ -95,12 +95,11 @@ instance (TaintM t m, MonadJoin m, Joinable e) => MonadEscape (MayEscapeTaintedT
             handle suc@(Value _)            = return suc
             handle (MayBoth v e)            = handle (Value v) `mjoin` handle (Escape e)
 
-instance (Eq e, Joinable e, MonadJoin m, TaintM t m) => MonadJoinable (MayEscapeTaintedT t e m) where
+instance (TaintM t m, Eq e, Joinable e, Joinable t, MonadJoin m) => MonadJoinable (MayEscapeTaintedT t e m) where
     mjoin (MayEscapeTaintedT ma) (MayEscapeTaintedT mb) = MayEscapeTaintedT (mjoin ma mb)
-
-instance MonadTrans (MayEscapeTaintedT t e) where
-    lift = MayEscapeTaintedT . fmap Value
 
 instance MonadLayer (MayEscapeTaintedT t e) where
    lowerM f m = MayEscapeTaintedT $ f (runMayEscapeTainted m)
+   upperM = MayEscapeTaintedT . fmap Value
+
     

@@ -14,13 +14,10 @@ import ListT
 import Control.Monad.Escape
 import Control.Monad.Join (MonadBottom(..))
 
-class (MonadTrans t) => MonadLayer t where
-
+class MonadLayer t where
    lowerM :: (forall b . m b -> m b) -> t m a -> t m a
-   
    upperM :: Monad m => m a -> t m a
-   upperM = lift
-   {-# INLINE upperM #-}
+   {-# MINIMAL lowerM, upperM #-}
 
 instance {-# OVERLAPPABLE #-} (MonadIO m, Monad (t m), MonadLayer t) => MonadIO (t m) where
    liftIO = upperM . liftIO
@@ -37,33 +34,39 @@ instance {-# OVERLAPPABLE #-} (Monad (t m), MonadReader r m, MonadLayer t) => Mo
 -- | StateT instance
 instance MonadLayer (StateT s) where
    lowerM f m = StateT (f . runStateT m)
+   upperM = lift
    {-# INLINE lowerM #-}
 
 -- | ReaderT instance
 instance MonadLayer (ReaderT s) where
    lowerM f m = ReaderT (f . runReaderT m)
+   upperM = lift
    {-# INLINE lowerM #-}
 
 -- WriterT instance
 instance (Monoid w) => MonadLayer (WriterT w) where
    lowerM f m = WriterT (f $ runWriterT m)
+   upperM = lift
    {-# INLINE lowerM #-}
 
 
 -- MaybeT instance
 instance MonadLayer MaybeT where
    lowerM f m = MaybeT (f $ runMaybeT m)
+   upperM = lift
    {-# INLINE lowerM #-}
 
 -- IdentityT instance (trivial)
 instance MonadLayer IdentityT where
    lowerM f m = IdentityT $ f (runIdentityT m)
+   upperM = lift
    {-# INLINE lowerM #-}
 
 
 -- Instance for MayEscapeT 
 instance (Joinable e) => MonadLayer (MayEscapeT e) where
    lowerM f m = MayEscapeT $ f (runMayEscape m)
+   upperM = lift
    {-# INLINE lowerM #-}
 
 -- Instance for ListT

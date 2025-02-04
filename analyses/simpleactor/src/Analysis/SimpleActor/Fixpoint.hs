@@ -16,6 +16,7 @@ import Analysis.Monad hiding (eval)
 import Syntax.AST
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Monad.Fix
+import Control.Monad (void)
 import Control.Monad.Escape
 import Data.Set (Set)
 import Domain.Scheme.Actors (Pid(..))

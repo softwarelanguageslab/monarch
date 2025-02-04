@@ -7,6 +7,7 @@ module Analysis.Monad.DependencyTracking (
     runWithDependencyTracking,
 ) where
 
+import Control.Monad ((>=>))
 import Data.Set (Set)
 import qualified Data.Set as Set 
 import Data.Map (Map)

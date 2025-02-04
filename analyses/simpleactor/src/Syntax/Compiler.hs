@@ -3,6 +3,7 @@
 -- | Compiles S-expression syntax to a SimpleActor AST
 module Syntax.Compiler(compile, parseFromString) where
 
+import Control.Monad ((>=>))
 import Syntax.Scheme.Parser
 import qualified Syntax.Scheme.Parser as SExp
 import Control.Monad.Except

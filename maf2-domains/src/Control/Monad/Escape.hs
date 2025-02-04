@@ -126,7 +126,7 @@ instance (Eq e, Joinable e, MonadJoinable m) => MonadJoinable (MayEscapeT e m) w
 instance (Joinable e, MonadBottom m) => MonadBottom (MayEscapeT e m) where 
     mzero = MayEscapeT mzero
 
-instance MonadTrans (MayEscapeT e) where  
+instance (Joinable e) => MonadTrans (MayEscapeT e) where  
    lift = MayEscapeT . fmap Value
 
 instance (Joinable e) => MonadTransControl (MayEscapeT e) where  

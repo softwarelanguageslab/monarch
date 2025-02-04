@@ -16,6 +16,7 @@ import Domain.Actor
 import Analysis.SimpleActor.Monad
 import Analysis.Actors.Monad
 
+import Control.Monad ((>=>), foldM)
 import Control.Monad.Escape
 import Control.Monad.Join
 import Data.Functor (($>))

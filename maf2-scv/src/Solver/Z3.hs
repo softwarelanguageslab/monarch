@@ -6,7 +6,8 @@ module Solver.Z3(Z3Solver, runZ3Solver, runZ3SolverWithSetup)  where
 import System.Process
 import System.IO
 import Text.Printf
-import Control.Monad.State hiding (mzero)
+import Control.Monad.State 
+import Control.Monad ((>=>), when)
 import Data.Maybe
 
 import Solver

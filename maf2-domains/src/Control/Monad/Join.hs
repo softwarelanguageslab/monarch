@@ -26,6 +26,7 @@ import Lattice.MaybeLattice()
 import Lattice.ProductLattice()
 import Domain.Core.BoolDomain
 
+import Control.Monad (ap, mplus)
 import Control.Monad.Reader hiding (mzero, join)
 import Control.Monad.Writer hiding (mzero, join)
 import Control.Monad.State hiding (mzero, join)

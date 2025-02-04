@@ -17,6 +17,7 @@ import Control.Monad.Join
 import Control.Monad.Layer
 import ListT
 
+import Control.Monad (ap, mplus)
 import Control.Monad.Identity hiding (mzero, join)
 import qualified Control.Monad as C
 import Control.Applicative

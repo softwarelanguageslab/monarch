@@ -18,7 +18,7 @@ import Control.Monad.State
 import Domain.Core.AbstractCount (AbstractCount(..))
 import Lattice.Class (leq)
 import Data.Maybe (fromJust, fromMaybe)
-import Control.Monad.Error
+import Control.Monad.Except
 import qualified Syntax.Scheme.Parser as SExp
 import Syntax.Scheme.Parser (pattern (:::))
 import Data.Monoid (Sum(..))

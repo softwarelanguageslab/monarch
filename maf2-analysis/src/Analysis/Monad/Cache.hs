@@ -10,6 +10,7 @@ module Analysis.Monad.Cache (
     runCacheT,
 ) where
 
+import Control.Monad ((>=>))
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.Writer
@@ -17,7 +18,7 @@ import Control.Monad.State hiding (get, put)
 import Control.Monad.Escape
 import Control.Monad.Lift
 import Lattice
-import Control.Monad.Layer (MonadLayer)
+import Control.Monad.Layer (MonadLayer(..))
 import Control.Monad.Trans.Maybe
 import Analysis.Monad.Map
 import ListT
@@ -54,8 +55,8 @@ instance MonadCache m => MonadCache (IdentityT m) where
     type Key (IdentityT m) k = Key m k
     type Val (IdentityT m) v = Val m v
     type Base (IdentityT m) = Base m
-    key = lift . key
-    val = lift . val
+    key = upperM . key
+    val = upperM . val
     {-# INLINE run #-}
     run f = run (runIdentityT . f)
 
@@ -63,7 +64,7 @@ instance MonadCache m => MonadCache (MaybeT m) where
     type Key (MaybeT m) k = Key m k
     type Val (MaybeT m) v = Val m (Maybe v)
     type Base (MaybeT m) = Base m
-    key = lift . key
+    key = upperM . key
     val = MaybeT . val
     {-# INLINE run #-}
     run f = run (runMaybeT . f)
@@ -81,7 +82,7 @@ instance (Joinable e, MonadCache m) => MonadCache (MayEscapeT e m) where
     type Key (MayEscapeT e m) k = Key m k
     type Val (MayEscapeT e m) v = Val m (MayEscape e v)
     type Base (MayEscapeT e m) = Base m
-    key = lift . key
+    key = upperM . key
     val = MayEscapeT . val
     {-# INLINE run #-}
     run f = run (runMayEscape . f)
@@ -90,7 +91,7 @@ instance (TaintM t m, Joinable e, MonadCache m) => MonadCache (MayEscapeTaintedT
     type Key (MayEscapeTaintedT t e m) k = Key m k
     type Val (MayEscapeTaintedT t e m) v = Val m (MayEscape (Tainted t e) v)
     type Base (MayEscapeTaintedT t e m) = Base m
-    key = lift . key 
+    key = upperM . key 
     val = MayEscapeTaintedT . val 
     {-# INLINE run #-}
     run f = run (runMayEscapeTainted . f)
@@ -108,7 +109,7 @@ instance (MonadCache m, Monoid w) => MonadCache (WriterT w m) where
     type Key (WriterT w m) k = Key m k
     type Val (WriterT w m) v = Val m (v, w)
     type Base (WriterT w m) = Base m
-    key = lift . key
+    key = upperM . key
     val = WriterT . val
     {-# INLINE run #-}
     run f = run (runWriterT . f)
@@ -117,7 +118,7 @@ instance MonadCache m => MonadCache (ListT m) where
     type Key (ListT m) k = Key m k
     type Val (ListT m) v = Val m [v]
     type Base (ListT m) = Base m
-    key = lift . key
+    key = upperM . key
     val :: forall v . Val (ListT m) v -> ListT m v
     val v = ListT (val @m @[v] v >>= uncons . ListT.fromFoldable)
     {-# INLINE run #-}

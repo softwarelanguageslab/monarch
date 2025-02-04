@@ -27,7 +27,7 @@ dependencies:
 - HUnit
 - containers
 - data-default
-- mtl >= 2.2 && <2.3
+- mtl >= 2.3 && <2.4
 - transformers
 - lens
 - criterion

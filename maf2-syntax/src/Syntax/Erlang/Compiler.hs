@@ -7,7 +7,7 @@ module Syntax.Erlang.Compiler(compile, compileString) where
 import Syntax.Erlang.AST
 import Syntax.Erlang.Parser (Term, Loc)
 import qualified Syntax.Erlang.Parser as T
-
+import Control.Monad ((>=>))
 import Control.Monad.Except
 import Control.Applicative (liftA2)
 
