@@ -171,7 +171,7 @@ effAnalysis e k = AnalysisResult . (uncurry EffectDrivenResult) <$> runM cfg (Ef
 analyses :: Map String Analysis
 analyses = 
    Map.fromList [("local", localAnalysis), 
-                ("flow", flowSensitiveAnalysis),
+                --("flow", flowSensitiveAnalysis),
                 ("effect", effAnalysis)]
 
 
