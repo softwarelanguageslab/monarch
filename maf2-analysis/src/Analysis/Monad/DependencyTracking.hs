@@ -2,7 +2,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Analysis.Monad.DependencyTracking (
-    DependencyTrackingM(..),  
+    DependencyTrackingM(..),
+    DependencyTrackingT,
     trigger,
     runWithDependencyTracking,
 ) where

@@ -32,6 +32,7 @@ import Analysis.Monad.Fix (runFixT, lfp)
 import Analysis.Monad hiding (eval)
 import qualified  Analysis.Scheme.Primitives as P
 import Debug.Trace (traceShow)
+import Data.Typeable
 import Lattice.Class (BottomLattice)
 
 -----------------------------------------
@@ -126,6 +127,7 @@ analyze exp = let ((((((), varSto), paiSto), strSto), vecSto), resMap) =
 
 -- | Scheme Domain constraints
 type InstSchemeDomain var v = (
+          Typeable v,
           Show v,
           SchemeValue v,
           Adr v ~ var,

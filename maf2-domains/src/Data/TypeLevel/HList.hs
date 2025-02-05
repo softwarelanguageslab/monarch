@@ -14,10 +14,13 @@ module Data.TypeLevel.HList(
    FMap,
    CoFMap,
    HListCoFMap(..),
+   Head,
+   Tail
 )  where
 
 import Prelude hiding (reverse)
 import Data.Kind
+import Control.DeepSeq
 
 ------------------------------------------------------------
 -- HList Definition
@@ -119,6 +122,24 @@ type UnnestPair p = (UnnestPair' p, ReverseList (Unnest' p) (Unnest' p) '[])
 -- | Turns tuples of, e.g., ((a, b), c) into '[a, b, c]
 unnest :: forall p . (UnnestPair p) => p -> HList (Reverse (Unnest' p))
 unnest p = reverse @(Unnest' p) (unnest' p) nil
+
+------------------------------------------------------------
+-- Type-level auxilary functions
+------------------------------------------------------------
+
+type family Head (t :: [Type]) where 
+   Head (t ': _) = t
+type family Tail (t :: [Type]) where 
+   Tail (_ ': ts) = ts
+
+------------------------------------------------------------
+-- NFData instance
+------------------------------------------------------------
+
+instance NFData (HList '[]) where 
+   rnf = const ()
+instance (NFData (HList ts)) => NFData (HList (t ': ts)) where   
+   rnf (t :+: ts) = t `seq` (rnf ts) `seq` ()
 
 ------------------------------------------------------------
 -- Uncons

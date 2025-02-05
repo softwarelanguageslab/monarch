@@ -1,11 +1,12 @@
 -- | Instantiations of the ASE analysis
-{-# LANGUAGE DataKinds, FlexibleInstances, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DataKinds, FlexibleInstances, GeneralizedNewtypeDeriving, DeriveGeneric #-}
 {-# LANGUAGE Strict #-}
 module ASE.Analyses where
 
 import ASE.Fixpoint
 import qualified ASE.Machines.Local as LocalMachine
 import qualified ASE.Machines.FlowSensitive as FlowSensitive
+import qualified ASE.Machines.Test as Eff
 import ASE.Machine
 import qualified ASE.Semantics as Semantics
 import ASE.Domain.SymbolicVariable
@@ -140,6 +141,28 @@ flowSensitiveAnalysis e k = AnalysisResult <$> runM cfg (compute initial (FlowSe
    where cfg = initialConfiguration e k
          initial = FlowSensitive.initialState cfg
 
+------------------------------------------------------------
+-- Effect-driven analysis widened per state
+------------------------------------------------------------
+
+data EffectDrivenResult = EffectDrivenResult (Set Eff.StepState) Eff.FlowOutput
+                        deriving (Ord, Eq, Generic)
+instance NFData EffectDrivenResult
+
+instance IsAnalysisResult EffectDrivenResult where 
+   blameNodes' (EffectDrivenResult seen _) = Set.fromList $ mapMaybe (extract . unnest . Eff.stepState) $ Set.toList seen 
+      where extract :: HList (Unnest Eff.StepState') -> Maybe Span
+            extract (Ev (Blame _ s) _ :+: _) = Just s
+            extract _ = Nothing
+   values' (EffectDrivenResult seen _) = Set.fromList $ mapMaybe (extract . unnest . Eff.stepState) $ Set.toList seen
+      where extract :: HList (Unnest Eff.StepState') -> Maybe Semantics.V
+            extract (Ap v :+: (ContinuationState Hlt _)  :+: _) = Just v
+            extract _ = Nothing
+   visitedSize' (EffectDrivenResult seen _) = Set.size seen
+
+effAnalysis :: Analysis 
+effAnalysis e k = AnalysisResult . (uncurry EffectDrivenResult) <$> runM cfg (Eff.analyze Semantics.step cfg)
+   where cfg = initialConfiguration e k
 
 ------------------------------------------------------------
 -- Listing of configurations
@@ -147,7 +170,9 @@ flowSensitiveAnalysis e k = AnalysisResult <$> runM cfg (compute initial (FlowSe
 
 analyses :: Map String Analysis
 analyses = 
-   Map.fromList [("local", localAnalysis), ("flow", flowSensitiveAnalysis)]
+   Map.fromList [("local", localAnalysis), 
+                ("flow", flowSensitiveAnalysis),
+                ("effect", effAnalysis)]
 
 
 -- | A mapping from human-readable configuration names to their Haskell functions

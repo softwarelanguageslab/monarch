@@ -63,7 +63,8 @@ type AnalysisM m obj = (PyDomain obj PyRef,
                         DependencyTrackingM m PyCmp PyCmpStoreIn,
                         DependencyTrackingM m PyCmp PyCmpStoreOut,
                         GraphM (CP String) (CP Bool) m,
-                        WorkListM m PyCmp)
+                        WorkListM m PyCmp
+                        )
 
 newtype PyCmpTaint = PyCmpTaint PyCmp
     deriving (Eq, Ord, Show)
@@ -110,7 +111,7 @@ inter prg = do ((), initialStore) <- runWithStore @(Store obj) @ObjAdr @obj init
                iterateWL (intra @obj)                                              -- start the analysis 
                Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
 
-analyze :: forall obj . PyDomain obj PyRef => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool))
+analyze :: forall obj . (PyDomain obj PyRef) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool))
 analyze prg = (rsto, osto, graph)
     where ((osto, graph), rsto) = inter @obj prg
                                     & runWithGraph @(SimpleGraph (CP String) (CP Bool))

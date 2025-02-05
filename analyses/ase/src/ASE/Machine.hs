@@ -402,7 +402,10 @@ runModelT :: Map i (Abstract v) -> ModelT i v m a -> m (a, Map i (Abstract v))
 runModelT s (ModelT m) = runStateT m s
 
 instance (SymbolicValue v i, Joinable (Abstract v),  Ord i, MonadBottom m, MonadInput (Abstract v) m) => MonadModel i v (ModelT i v m) where
-   lookupModel i = ModelT $ gets (Map.lookup i) >>= maybe (lift randomInput) return
+   lookupModel i = do 
+      v <- ModelT $ gets (Map.lookup i) >>= maybe (lift randomInput) return
+      ModelT $ modify (Map.insertWith L.join i v)
+      return v
    putModel m = ModelT $ modify (Map.unionWith L.join m)
 
 -- | Allocate a symbolic variable

@@ -1,7 +1,7 @@
 -- | Utilities for widening parts of the monadic 
 -- stack to specific parts of the state space.
 {-# LANGUAGE FlexibleInstances, AllowAmbiguousTypes, ScopedTypeVariables #-}
-module Analysis.Monad.Widen(AllMapM, AllMapT, PutAll(..), WidenedT, State, joinWithAllTuple, runWidenedT) where
+module Analysis.Monad.Widen(AllMapM, AllMapT, PutAll(..), GetAll(..), WidenedT, State, joinWithAllTuple, runWidenedT) where
 
 import Analysis.Monad.Map
 import Analysis.Monad.Cache (CacheT, MonadCache)
@@ -30,6 +30,16 @@ instance PutAll s '[] where
    joinWithAll _ HNil = return ()
 instance (Joinable t, PutAll s ts) => PutAll s (t ': ts) where  
    joinWithAll s (t :+: ts) = joinWith s t >> joinWithAll s ts
+-- | Get all elements from the cache and put them in an HList
+class GetAll s l where  
+   getAll :: (Monad m, AllMapM s l m) => s -> m (Maybe (HList l))
+instance GetAll s '[] where   
+   getAll _ = return (Just HNil)
+instance (GetAll s ts) => GetAll s (t ': ts) where   
+   getAll s = do 
+      t'  <- get @_ @t s 
+      ts' <- getAll @_ @ts s
+      return (liftA2 (:+:) t' ts')
 
 -- | Same as @joinWithAll@ but works on left-nested tuples
 joinWithAllTuple :: (UnnestPair p, PutAll s (Unnest p), AllMapM s (Unnest p) m, Monad m) => s -> p -> m ()

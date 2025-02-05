@@ -7,6 +7,7 @@ module Analysis.Monad.ComponentTracking (
     has,
     call,
     runWithComponentTracking,
+    execWithComponentTracking
 ) where
 
 import Control.Monad.Layer
@@ -51,5 +52,10 @@ instance (ComponentTrackingM m cmp, Monad (t m), MonadLayer t) => ComponentTrack
     components = upperM components
 
 runWithComponentTracking :: forall cmp m a . Monad m => ComponentTrackingT cmp m a -> m a
-runWithComponentTracking (ComponentTrackingT m) = fst <$> runStateT m Set.empty
+runWithComponentTracking (ComponentTrackingT m) = evalStateT m Set.empty
+
+-- | Same as @runWithComponentTracking@ but returns the visited set instead
+execWithComponentTracking :: forall cmp m a . Monad m => ComponentTrackingT cmp m a -> m (Set cmp)
+execWithComponentTracking (ComponentTrackingT m) = execStateT m Set.empty
+
 

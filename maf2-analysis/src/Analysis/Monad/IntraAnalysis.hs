@@ -15,6 +15,8 @@ import Analysis.Monad.DependencyTracking
 import Analysis.Monad.Store
 import Control.Monad.Cond
 import Analysis.Monad.Map
+import Data.Typeable
+import Debug.Trace
 
 ---
 --- IntraAnalysis monad layer 

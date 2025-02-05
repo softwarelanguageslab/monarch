@@ -6,6 +6,7 @@ module Analysis.Monad.WorkList (
     WorkListT,
     runWithWorkList,
     iterateWL,
+    iterateWL'
 ) where
 
 import Control.Fixpoint.WorkList (WorkList)
@@ -52,3 +53,6 @@ runWithWorkList (WorkListT m) = fst <$> runStateT m WL.empty
 
 iterateWL :: WorkListM m cmp => (cmp -> m a) -> m ()
 iterateWL f = unlessM done (pop >>= f >> iterateWL f)
+
+iterateWL' :: WorkListM m cmp => cmp -> (cmp -> m a) -> m ()
+iterateWL' initial f = add initial >> iterateWL f

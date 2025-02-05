@@ -4,7 +4,7 @@
 
 module Analysis.Monad.Map (
     MapM(..),
-    MapT,
+    MapT(..),
     getOrBot,
     put',
     joinWith',

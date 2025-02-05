@@ -135,6 +135,8 @@ instance (MonadJoinable m) => MonadJoinable (CacheT m) where
    mjoin (CacheT ma) (CacheT mb) = CacheT $ IdentityT $ mjoin (runIdentityT ma) (runIdentityT mb)
 
 
+deriving instance MonadCache m => MonadCache (MapT k v m)
+
 -- ---
 -- --- CacheT instance
 -- ---
