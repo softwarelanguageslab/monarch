@@ -6,6 +6,7 @@ module Data.TypeLevel.HList(
    UnnestPair,
    Uncons,
    Unconses,
+   Unconses',
    Unnest,
    unnest,
    uncons,

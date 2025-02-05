@@ -8,6 +8,8 @@ module Analysis.Monad.Cache (
     cached,
     CacheT,
     runCacheT,
+    CachedVal, 
+    CachedKey
 ) where
 
 import Control.Monad ((>=>))
@@ -46,6 +48,10 @@ cache k f = run f k >>= put k
 
 cached :: forall m k v . (MonadCache m, MapM (Key m k) (Val m v) m) => Key m k -> m (Maybe v)
 cached = get >=> Prelude.traverse val
+
+-- | Computes the type of the value being cached for the given transformer
+type CachedVal t a = Val (t Identity) a
+type CachedKey t a = Key (t Identity) a
 
 ---
 --- MonadCache instances for standard monad transformers
