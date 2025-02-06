@@ -1,6 +1,6 @@
 -- | Benchmark command. Reads the input filenames from 
 -- standard input.
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, ScopedTypeVariables #-}
 module Commands.Benchmark(options, runBenchmarks) where 
 
 import qualified ASE.Analyses as ASE
@@ -26,6 +26,36 @@ data BenchmarkOptions =
 
 options :: Parser BenchmarkOptions
 options = BenchmarkOptions <$> option str (short 'o' <> help "The location of the results")
+
+------------------------------------------------------------
+-- Constants
+------------------------------------------------------------
+
+-- | The maximum number of iterations
+maxIterations :: Int 
+maxIterations = 20
+
+-- | The maximum k-value
+maxK :: Int
+maxK = 5
+
+-- | Default timeout of 10 minutes.
+defaultTimeout :: Int 
+defaultTimeout = 300*1000*1000*1000
+
+------------------------------------------------------------
+-- Exceptions & Timeout
+------------------------------------------------------------
+
+-- | The collection of benchmark exceptions
+data BenchmarkException = TimeoutException String deriving (Ord, Eq, Show)
+
+instance Exception BenchmarkException
+
+-- | Run the given IO action until a timeout is, 
+-- when such timeout is reached a @TimeoutException@ is raised.
+timeoutThrow :: String -> IO a -> IO a 
+timeoutThrow nam = maybe (throwIO $ TimeoutException nam) return <=< (timeout defaultTimeout)
 
 ------------------------------------------------------------
 -- Analysis configurations 
@@ -74,19 +104,36 @@ writeResult hdl nam cfg res elapsed = do
                 ++ (show $ ASE.visitedSize res)
    hFlush hdl
 
+-- | Write that the given benchmark has failed
+writeFail :: Handle -- ^ the output file handle 
+          -> String -- ^ the name of the analyzed file
+          -> String -- ^ the name of the configuration 
+          -> IO ()
+writeFail hdl nam cfg = do 
+   hPutStrLn hdl $ nam ++   ";" 
+                ++ cfg ++   ";" 
+                ++ "t;" 
+                ++ ";" ++ ";"
+
 -- | Run a single benchmark program on all configurations
 -- and write the output in CSV format to the handle.
 runSingle :: Handle -- ^ the handle 
           -> String -- ^ the name of the program to analyze
           -> Exp    -- ^ the program to analyze
           -> IO ()
-runSingle hdl nam prg = mapM_ run configurations
-   where run (cfgNam, cfg) = do    
-            start  <- getTime 
-            res <-  cfg prg 
-            end <- res `deepseq` getTime 
-            let elapsed = end - start
-            writeResult hdl nam cfgNam res elapsed
+runSingle hdl nam prg = (mapM_ run configurations') `catches` handleExc
+   where run ((cfgNam, cfg), i) = do    
+            (res, elapsed) <- timeoutThrow  cfgNam $ do
+               start  <- getTime 
+               res <-  cfg prg 
+               end <- res `deepseq` getTime
+               let elapsed = end - start
+               return $ end `deepseq` (res, elapsed)
+
+            writeResult hdl (nam ++ ":" ++ show i) cfgNam res elapsed
+         configurations' = [(cfg, iter) | cfg <- configurations, iter <- [0..maxIterations]]
+         handleExc = [Handler (\(TimeoutException cfgNam :: BenchmarkException) -> writeFail hdl nam cfgNam),
+                      Handler (\(e :: SomeException) -> putStrLn $ "Error " ++ show e) ]
 
 ------------------------------------------------------------
 -- Entrypoint
