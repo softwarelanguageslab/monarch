@@ -60,7 +60,7 @@ compute initial f = loop initial initial
             -- compute the successor states
             nxt' <- filterSubsumption acc <$> f nxt
             let acc' = nxt' `seq` join acc nxt'
-            liftIO (putStrLn $ "current seen state size = " ++ show (size acc') ++ ", successor size = " ++ show (size nxt'))
+            -- liftIO (putStrLn $ "current seen state size = " ++ show (size acc') ++ ", successor size = " ++ show (size nxt'))
             if not (hasSuccessor nxt')  
             -- if the accumulator no longer changes, return the 
             -- result of the computation

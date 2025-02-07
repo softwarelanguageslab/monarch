@@ -221,7 +221,7 @@ type FlowOutput = State StepState FlowList
 status :: (MonadIO m, ComponentTrackingM m StepState) => a -> m a
 status a =  do
    seen <- components
-   liftIO $ putStrLn $ "seen set size : " ++ show (Set.size seen)
+   -- liftIO $ putStrLn $ "seen set size : " ++ show (Set.size seen)
    return a
 
 analyze :: forall m . (MonadIO m, Monad m) => (Ctrl V K -> AnalysisT m (Ctrl V K)) -> Configuration K V -> m (Set StepState, FlowOutput)

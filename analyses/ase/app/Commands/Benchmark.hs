@@ -41,7 +41,7 @@ maxK = 5
 
 -- | Default timeout of 10 minutes.
 defaultTimeout :: Int 
-defaultTimeout = 300*1000*1000*1000
+defaultTimeout = 10*60*1000*1000
 
 ------------------------------------------------------------
 -- Exceptions & Timeout
@@ -62,7 +62,7 @@ timeoutThrow nam = maybe (throwIO $ TimeoutException nam) return <=< (timeout de
 ------------------------------------------------------------
 
 configurations :: [(String, Exp -> IO ASE.AnalysisResult)]
-configurations = map (\((nam, f), i) -> (nam ++ ":" ++ show i, flip f i)) (zip (Map.toList ASE.analyses) [0..5])
+configurations = map (\((nam, f), i) -> (nam ++ ":" ++ show i, flip f i)) [(cfg, k) | cfg <-  (Map.toList ASE.analyses), k <- [0..5]]
 
 ------------------------------------------------------------
 -- File utilities
@@ -110,6 +110,7 @@ writeFail :: Handle -- ^ the output file handle
           -> String -- ^ the name of the configuration 
           -> IO ()
 writeFail hdl nam cfg = do 
+   putStrLn $ "[-] Timeout for " ++ cfg ++ " on " ++ nam
    hPutStrLn hdl $ nam ++   ";" 
                 ++ cfg ++   ";" 
                 ++ "t;" 
@@ -121,17 +122,18 @@ runSingle :: Handle -- ^ the handle
           -> String -- ^ the name of the program to analyze
           -> Exp    -- ^ the program to analyze
           -> IO ()
-runSingle hdl nam prg = (mapM_ run configurations') `catches` handleExc
-   where run ((cfgNam, cfg), i) = do    
+runSingle hdl nam prg = mapM_ repeated configurations
+   where repeated cfg = mapM_ (run . (cfg,)) [1..maxIterations] `catches` handleExc
+         run ((cfgNam, cfg), i) = do    
+            putStrLn $ "[*] Running configuration " ++ cfgNam ++ " on " ++ nam ++ " (" ++ show i ++ "/" ++ show maxIterations ++ ")"
             (res, elapsed) <- timeoutThrow  cfgNam $ do
                start  <- getTime 
                res <-  cfg prg 
                end <- res `deepseq` getTime
                let elapsed = end - start
                return $ end `deepseq` (res, elapsed)
-
+            putStrLn $ "[*] Finished running " ++ cfgNam ++ " on " ++ nam ++ " without timeout"
             writeResult hdl (nam ++ ":" ++ show i) cfgNam res elapsed
-         configurations' = [(cfg, iter) | cfg <- configurations, iter <- [0..maxIterations]]
          handleExc = [Handler (\(TimeoutException cfgNam :: BenchmarkException) -> writeFail hdl nam cfgNam),
                       Handler (\(e :: SomeException) -> putStrLn $ "Error " ++ show e) ]
 

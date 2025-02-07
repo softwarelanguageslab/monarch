@@ -124,7 +124,7 @@ stepEval (Ite cnd csq alt s) = do
    vcnd <- atomicEval cnd
    αf <- alloc s
    pc' <- getPc
-   liftIO (putStrLn $ "size of PC set: " ++ show (Set.size pc'))
+   -- liftIO (putStrLn $ "size of PC set: " ++ show (Set.size pc'))
    mjoinMap (\pc -> do
       count <- getCounts
       cond (pure vcnd)
@@ -156,8 +156,7 @@ applyContinuation v =
 
 -- | Apply the current continuation
 stepApply :: MachineM m => V -> m (Ctrl V K)
-stepApply v =
-   topAddress >>= lookupAdr >>= liftIO . putStrLn . ("size of continuation " ++) . show . Set.size >> popK (applyContinuation v)
+stepApply = popK . applyContinuation
 
 -- | Restart the machine with the appropriate assignments 
 -- in the model so that the machine explores the path associated 
