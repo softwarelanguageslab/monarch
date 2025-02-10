@@ -288,7 +288,7 @@
               `(letrec ((,checked (,(translate-aux (car fields)) ,j ,k (car ,v))))
                    ,(gen-field-checks j k (cdr fields) `(cdr ,v) (cons checked checked-v))))))
      (let ((v (gensym "v")) (j (gensym "j")) (k (gensym "k")))
-        `(lambda (,j ,k ,v) ,(gen-field-checks j k fields v (list name))))]
+        `(lambda (,j ,k ,v) ,(gen-field-checks j k fields `(cdr ,v) (list name))))]
     [(quasiquote (receive ,pats))
      `(receive ,(append pats (enhanced-receive-patterns pats)))]
     [(quasiquote (,es ...))
