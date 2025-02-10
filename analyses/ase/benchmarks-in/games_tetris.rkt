@@ -8,7 +8,7 @@
 (struct tetra (center blocks))
 (struct world (tetra blocks))
 (struct posn (x y))
-(define COLOR/C symbol?)
+(define COLOR/C symbol?/c)
 (define POSN/C (struct/c posn real?/c real?/c))
 (define BLOCK/C (struct/c block real?/c real?/c COLOR/C))
 (define BSET/C (listof BLOCK/C))
@@ -412,9 +412,9 @@
   [WORLD/C any/c]
   [BSET/C any/c]
   ;; consts
-  [block-size integer?]
-  [board-width integer?]
-  [board-height integer?]
+  [block-size integer?/c]
+  [board-width integer?/c]
+  [board-height integer?/c]
   ;; block
   [block-rotate-ccw (-> POSN/C BLOCK/C BLOCK/C)]
   [block-rotate-cw (-> POSN/C BLOCK/C BLOCK/C)]
