@@ -15,7 +15,6 @@ import Analysis.Monad.Store (StoreM, writeAdr, lookupAdr, StoreM', AbstractCount
 import Analysis.Monad (EnvM, CtxM (getCtx, withCtx), runJoinT)
 import Analysis.Monad.Allocation (AllocM, alloc)
 import Analysis.Symbolic.Monad (MonadPathCondition)
-import Analysis.ASE.Smallstep (State(topFail))
 import Analysis.Monad.Cache (MonadCache)
 import Control.Monad.Layer (MonadLayer, upperM)
 import Control.Monad.Join (MonadBottom(..), MonadJoinable, MonadJoin, mjoinMap)
