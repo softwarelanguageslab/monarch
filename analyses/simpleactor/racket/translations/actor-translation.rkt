@@ -22,16 +22,16 @@
 (define (translate-and conditions)
   (cond 
     ((null? conditions) #f)
-    ((null? (cdr conditions)) (car conditions))
-    (else `(if ,(car conditions) ,(translate-and (cdr conditions)) #f))))
+    ((null? (cdr conditions)) (translate (car conditions)))
+    (else `(if ,(translate (car conditions)) ,(translate-and (cdr conditions)) #f))))
 
 (define (translate-or conditions)
   (cond 
     ((null? conditions) #t)
-    ((null? (cdr conditions)) (car conditions))
+    ((null? (cdr conditions)) (translate (car conditions)))
     (else 
       (let ((val (gensym "val")))
-      `(letrec ((,val ,(car conditions)))
+      `(letrec ((,val ,(translate (car conditions))))
          (if ,val
              ,val
              ,(translate-or (cdr conditions))))))))
