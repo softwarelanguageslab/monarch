@@ -15,7 +15,7 @@
              (bdy (cdr clause)))
         (if (eq? cnd 'else)
           `(begin ,@bdy)
-          `(if cnd 
+          `(if ,cnd 
                (begin ,@bdy)
                ,(translate-cond (cdr clauses)))))))
 

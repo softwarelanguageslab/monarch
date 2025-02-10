@@ -3,6 +3,8 @@ import os
 import subprocess
 import sys
 
+GUILE_ENABLED = False
+
 def preprocess_pass(contents, script, additional_argv = []):
     """
     Pass the given file to the given Racket processing script,
@@ -16,10 +18,11 @@ def preprocess_pass(contents, script, additional_argv = []):
 
     proc = subprocess.Popen(["racket", script] + additional_argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text = True)
 
-    proc.stdin.write("(begin")
+    #proc.stdin.write("(begin")
     proc.stdin.writelines(contents)
-    proc.stdin.write(")")
+    #proc.stdin.write(")")
     proc.stdin.flush()
+    proc.stdin.close()
 
     return proc.stdout.readlines()
 
@@ -69,6 +72,9 @@ for program in PROGRAMS:
         f.writelines(output)
     
     print(f"[*] Processing {program} (2/2)")
+    if not GUILE_ENABLED:
+        continue
+
     # Pass for Guile (without instrumentation)
     output_filename = program.replace("/", "_") + ".tmp"
     output = preprocess_pass(output, GUILE_SCRIPT)

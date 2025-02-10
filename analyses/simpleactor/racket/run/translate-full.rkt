@@ -9,6 +9,7 @@
 (require (prefix-in ac: "../translations/actor-translation.rkt"))
 (require (prefix-in co: "../translations/contract-out-translation.rkt"))
 (require (prefix-in ap: "../translations/add-prelude.scm"))
+(require "../utils.rkt")
 
 ;; A full translation from Racket actors 
 ;; with their contracts to λα/c
@@ -25,6 +26,8 @@
 ;; n ∈ ℕ       b ∈ 𝔹 ::= true | false
 ;;
 
+(define (read-input)
+  `(begin ,@(read-all (current-input-port))))
 
 ;(pretty-display 
 ;  (un:undefine-single
@@ -33,7 +36,8 @@
 ;           #:meta #f
 ;           (ac:translate (ap:translate (co:translate (read))))))))
 ; (pretty-display (st:translate (ap:translate (co:translate (read)))))
-(pretty-write (an:translate (un:undefine-single (st:translate (cc:translate #:meta #f (ac:translate (ap:translate (co:translate (read)))))))))
+(pretty-write (an:translate (un:undefine-single (st:translate (cc:translate #:meta #f (ac:translate (ap:translate (co:translate (read-input)))))))))
+;(pretty-write (st:translate (cc:translate #:meta #f (ac:translate (co:translate `(begin ,@(read-all (current-input-port))))))))
 ;(pretty-write (an:translate (un:undefine-single (st:translate (cc:translate #:meta #f (ac:translate (co:translate (read))))))))
 ;(pretty-write (un:undefine-single (st:translate (cc:translate #:meta #f (ac:translate (ap:translate (co:translate (read))))))))
 ;(pretty-write (co:translate (read)))
