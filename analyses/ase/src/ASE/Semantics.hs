@@ -162,11 +162,9 @@ stepApply = popK . applyContinuation
 -- in the model so that the machine explores the path associated 
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
-restart = liftIO (putStrLn "R") >> popF selectContinuation
-   where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero (restartUsingModel pc) <=< computeModel cnt) (traceShowId pc)
+restart = popF selectContinuation
+   where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero (restartUsingModel pc) <=< computeModel cnt) pc
          restartUsingModel pc model = do
-            liftIO $ putStrLn (show pc)
-            liftIO $ putStrLn (show $ getModel model)
             -- add the model to the next execution
             putModel (getModel model)
             -- change the model context of the current state
