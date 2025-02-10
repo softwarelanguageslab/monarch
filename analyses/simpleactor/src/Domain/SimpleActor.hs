@@ -9,6 +9,7 @@ import Lattice.ConstantPropagationLattice
 import Domain.Scheme hiding (Exp, Env)
 import Domain.Scheme.Store hiding (Env)
 import Domain.Symbolic.Paired
+import Domain.Core.BoolDomain.Class (BoolFor)
 import Domain.Core.VectorDomain.PIVector
 import Domain.Core.PairDomain
 import Domain.Core.StringDomain
@@ -36,12 +37,13 @@ type family ForAllAdr (c :: [Type -> Constraint]) v :: Constraint where
    ForAllAdr '[] v = () 
    ForAllAdr (c ': cs) v = (c (Adr v), c (PAdr v), c (SAdr v), c (VAdr v), ForAllAdr cs v)
 
+type instance BoolFor (SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)) = ActorValue' k adr padr vadr sadr sym
+
 -- TODO: this is actually from `maf2-scv` in `Domain.Symbolic.CPDomain` which 
 -- reflects `ActorValue` perhaps we should use that instead.
 instance (Show k, Ord k, Eq sym, Ord sym, ForAllAdr '[Show, Eq, Ord] (ActorValue' k adr padr vadr sadr sym)) => StringDomain (SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)) where
    type IntS (SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)) = ActorValue' k adr padr vadr sadr sym
    type ChaS (SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)) = ActorValue' k adr padr vadr sadr sym
-   type BooS (SchemeString (CP String) (ActorValue' k adr padr vadr sadr sym)) = ActorValue' k adr padr vadr sadr sym
    length = (length . sconst) >=> (return . mkLeft . insertInt)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = mkLeft . insertChar <$> (ref (sconst s) =<< integers (leftValue i))

@@ -16,7 +16,7 @@ type SchemeDomainPre v =
     IntDomain v,
     CharDomain v,
     BoolDomain v,
-    Boo v ~ v)
+    BoolFor v ~ v)
 
 
 -- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
@@ -24,13 +24,14 @@ class (RealDomain v,
        IntDomain v,
        CharDomain v,
        BoolDomain v,
+       BoolDomain (BoolFor v),
        -- all address type families should satisfy the address typeclass
        Address (PAdr v),
        Address (VAdr v),
        Address (SAdr v),
        Address (Adr v),
        -- booleans in the number domain should link back to the values in the scheme domain
-       Boo v ~ v) => SchemeDomain v
+       BoolFor v ~ v) => SchemeDomain v
   where
   -- types of addresses to variables
   type Adr v :: Type
@@ -79,19 +80,19 @@ class (RealDomain v,
 
   -- | Differentiate between values
   -- Note that these predicates ought to be overapproximating, so they should return `True` if it could be a value of the given type
-  isInteger :: (BottomLattice b, BoolDomain b) => v -> b
-  isReal    :: (BottomLattice b, BoolDomain b) => v -> b
-  isChar    :: (BottomLattice b, BoolDomain b) => v -> b
-  isVecPtr  :: (BottomLattice b, BoolDomain b) => v -> b
-  isStrPtr  :: (BottomLattice b, BoolDomain b) => v -> b
-  isPaiPtr  :: (BottomLattice b, BoolDomain b) => v -> b
-  isSymbol  :: (BottomLattice b, BoolDomain b) => v -> b
-  isClo     :: (BottomLattice b, BoolDomain b) => v -> b
-  isBool    :: (BottomLattice b, BoolDomain b) => v -> b
-  isNil     :: (BottomLattice b, BoolDomain b) => v -> b
-  isUnsp    :: (BottomLattice b, BoolDomain b) => v -> b
-  isPrim    :: (BottomLattice b, BoolDomain b) => v -> b
-  isProc    :: (BottomLattice b, BoolDomain b) => v -> b
+  isInteger :: v -> BoolFor v
+  isReal    :: v -> BoolFor v
+  isChar    :: v -> BoolFor v
+  isVecPtr  :: v -> BoolFor v
+  isStrPtr  :: v -> BoolFor v
+  isPaiPtr  :: v -> BoolFor v
+  isSymbol  :: v -> BoolFor v
+  isClo     :: v -> BoolFor v
+  isBool    :: v -> BoolFor v
+  isNil     :: v -> BoolFor v
+  isUnsp    :: v -> BoolFor v
+  isPrim    :: v -> BoolFor v
+  isProc    :: v -> BoolFor v
   isProc v = or (isPrim v) (isClo v)
 
 -- | Types of values assigned to variables

@@ -10,6 +10,7 @@ import Lattice.ConstantPropagationLattice
 
 import Domain.Symbolic (PairedSymbolic)
 import Domain.Scheme.Class hiding (Exp, Env)
+import Domain.Core.BoolDomain.Class (BoolFor)
 import Domain.Core (SimplePair, PIVector, StringDomain(..))
 import Prelude hiding (length)
 import Domain.Scheme.Derived.Pair (mkLeft, leftValue)
@@ -25,10 +26,11 @@ type instance PaiDom (V k) = SimplePair (V k)
 type instance VecDom (V k) = PIVector (V k) (V k)
 type instance StrDom (V k) = SchemeString (CP String) (V k)
 
+type instance BoolFor (SchemeString (CP String) (V k)) = V k
+
 instance (Ord k, Show k) => StringDomain (SchemeString (CP String) (V k)) where
    type IntS (SchemeString (CP String) (V k)) = V k
    type ChaS (SchemeString (CP String) (V k)) = V k
-   type BooS (SchemeString (CP String) (V k)) = V k
    length = (length . sconst) >=> (return . mkLeft . insertInt)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = mkLeft . insertChar <$> (ref (sconst s) =<< integers (leftValue i))

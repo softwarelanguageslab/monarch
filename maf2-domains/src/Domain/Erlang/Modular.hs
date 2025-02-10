@@ -89,7 +89,7 @@ type IsErlValue c =
     AllAtKey1 PartialOrder  (ErlMapping c),
     KeyIs1 IntDomain  (ErlMapping c) IntKey,
     KeyIs1 BoolDomain (ErlMapping c) BooKey,
-    Boo (Assoc IntKey (ErlMapping c)) ~ Assoc BooKey (ErlMapping c))
+    BoolFor (Assoc IntKey (ErlMapping c)) ~ Assoc BooKey (ErlMapping c))
 
 newtype ErlValue c = ErlValue { getValue :: HMap (ErlMapping c) }
 
@@ -117,8 +117,8 @@ instance (IsErlValue c) => BoolDomain (ErlValue c) where
 instance (IsErlValue c) => Domain (ErlValue c) Integer where
    inject = ErlValue . singleton @IntKey . inject
 
+type instance BoolFor (ErlValue c) = ErlValue c
 instance (IsErlValue c) => NumberDomain (ErlValue c) where
-   type Boo (ErlValue c) = ErlValue c
    isZero = mjoins . HMap.mapList select . getValue
       where select :: forall m (kt :: ValueKey) . AbstractM m => Sing kt -> Assoc kt (ErlMapping c) -> m (ErlValue c)
             select SIntKey i = ErlValue <$> (singleton @BooKey <$> isZero i)

@@ -7,8 +7,10 @@ import Lattice (EqualLattice(..))
 import Domain
 import Control.Monad.Join
 import Data.Map (Map)
+import qualified Data.List as List
 import Symbolic.AST
 import Syntax.Span
+import Domain.Core.BoolDomain.Class (BoolFor)
 import Domain.Symbolic.Class
 import Domain.Contract.Behavior
 import Domain.Contract (ContractDomain(..))
@@ -54,8 +56,9 @@ instance Meetable (SymbolicVal exp k i v) where
 -- NumberDomain instance
 ------------------------------------------------------------
 
+type instance BoolFor (SymbolicVal exp k i v) = (SymbolicVal exp k i v)
+
 instance (Eq i) => NumberDomain (SymbolicVal exp k i v) where
-   type Boo (SymbolicVal exp k i v) = (SymbolicVal exp k i v)
    isZero (SymbolicVal n) = return $ SymbolicVal $ Predicate "zero?/v" [n]
    random _ = return $ SymbolicVal Fresh
    plus (SymbolicVal n1) (SymbolicVal n2) =
@@ -183,18 +186,18 @@ instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAd
    prim      = SymbolicVal . Function . (++"/v")
    prims     = const bottom
    withProc  = const . const mzero
-   isInteger = const $ inject False
-   isReal    = const $ inject False
-   isChar    = const $ inject False
-   isVecPtr  = const $ inject False
-   isStrPtr  = const $ inject False
-   isSymbol  = const $ inject False
-   isPaiPtr  = const $ inject False
-   isClo     = const $ inject False
-   isBool    = const $ inject False
-   isNil     = const $ inject False
-   isUnsp    = const $ inject False
-   isPrim    = const $ inject False
+   isInteger = SymbolicVal . Predicate "integer?/v" . List.singleton . proposition 
+   isReal    = SymbolicVal . Predicate "real?/v" . List.singleton . proposition 
+   isChar    = SymbolicVal . Predicate "character?/v" . List.singleton . proposition 
+   isVecPtr  = SymbolicVal . Predicate "vector?/v" . List.singleton . proposition 
+   isStrPtr  = SymbolicVal . Predicate "string?/v" . List.singleton . proposition 
+   isSymbol  = SymbolicVal . Predicate "symbol?/v" . List.singleton . proposition 
+   isPaiPtr  = SymbolicVal . Predicate "pair?/v" . List.singleton . proposition 
+   isClo     = SymbolicVal . Predicate "closure?/v" . List.singleton . proposition 
+   isBool    = SymbolicVal . Predicate "boolean?/v" . List.singleton . proposition 
+   isNil     = SymbolicVal . Predicate "null?/v" . List.singleton . proposition 
+   isUnsp    = SymbolicVal . Predicate "unsp?/v" . List.singleton . proposition 
+   isPrim    = SymbolicVal . Predicate "primitive?/v" . List.singleton . proposition 
    symbols   = const bottom
    symbol    = SymbolicVal . Literal . Sym
 

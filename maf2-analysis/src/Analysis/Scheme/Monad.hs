@@ -29,7 +29,6 @@ type SchemeDomainM e v m = (
    MonadEscape m,
    Domain (Esc m) DomainError,
    VarDom v ~ v,
-   Boo v    ~ v,
    EqualLattice v,
    -- Store interactions
    StoreM (PAdr v) (PaiDom v) m,

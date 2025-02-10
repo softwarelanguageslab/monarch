@@ -3,28 +3,28 @@ module Domain.Core.NumberDomain.Class (NumberDomain(..), IntDomain(..), RealDoma
 import Lattice.Class
 import Domain.Class 
 import Control.Monad.AbstractM
+import Domain.Core.BoolDomain.Class (BoolFor)
 import qualified Domain.Core.BoolDomain.Class as Bool
 
 import Data.Kind 
 
-class (Joinable n, Bool.BoolDomain (Boo n)) => NumberDomain n where
-   type Boo n :: Type
-   isZero :: AbstractM m => n -> m (Boo n)
+class (Joinable n, Bool.BoolDomain (BoolFor n)) => NumberDomain n where
+   isZero :: AbstractM m => n -> m (BoolFor n)
    random :: AbstractM m => n -> m n
    plus :: AbstractM m => n -> n -> m n
    minus :: AbstractM m => n -> n -> m n
    times :: AbstractM m => n -> n -> m n
    div :: AbstractM m => n -> n -> m n
    expt :: AbstractM m => n -> n -> m n
-   eq :: AbstractM m => n -> n -> m (Boo n)
-   ne :: AbstractM m => n -> n -> m (Boo n)
+   eq :: AbstractM m => n -> n -> m (BoolFor n)
+   ne :: AbstractM m => n -> n -> m (BoolFor n)
    ne a b = Bool.not <$> eq a b 
-   lt :: AbstractM m => n -> n -> m (Boo n)
-   gt :: AbstractM m => n -> n -> m (Boo n)
+   lt :: AbstractM m => n -> n -> m (BoolFor n)
+   gt :: AbstractM m => n -> n -> m (BoolFor n)
    gt = flip lt 
-   ge :: AbstractM m => n -> n -> m (Boo n)
+   ge :: AbstractM m => n -> n -> m (BoolFor n)
    ge a b = Bool.not <$> lt a b 
-   le :: AbstractM m => n -> n -> m (Boo n)
+   le :: AbstractM m => n -> n -> m (BoolFor n)
    le a b = Bool.not <$> gt a b 
 
 class (Domain i Integer, NumberDomain i) => IntDomain i where

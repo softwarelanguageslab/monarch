@@ -23,9 +23,6 @@ source-repository head
 
 library
   exposed-modules:
-      Analysis.ASE.Common
-      Analysis.ASE.Smallstep
-      Analysis.ASE.WidenedStates
       Analysis.SimpleActor
       Analysis.SimpleActor.Fixpoint
       Analysis.SimpleActor.Monad

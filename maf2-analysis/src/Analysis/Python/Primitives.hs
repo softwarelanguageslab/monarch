@@ -196,7 +196,7 @@ intBinop' :: forall pyM obj vlu . (PyM pyM obj vlu)
 intBinop' f = intBinop @IntPrm @ReaPrm f f
 
 intBinop'' :: forall r pyM obj vlu . (PyM pyM obj vlu, SingI r)
-          => (forall d . (NumberDomain d, Domain.Boo d ~ Abs obj BlnPrm) => d -> d -> pyM (Abs obj r)) -- another common case
+          => (forall d . (NumberDomain d, Domain.BoolFor d ~ Abs obj BlnPrm) => d -> d -> pyM (Abs obj r)) -- another common case
           -> obj -> obj -> pyM obj
 intBinop'' f = intBinop @r @r f f
 

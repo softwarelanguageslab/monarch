@@ -35,6 +35,17 @@ import qualified Data.Set as Set
 import Text.Printf (printf)
 import Control.DeepSeq
 
+-- | Conditional without `mjoin`
+condId :: (BoolDomain a, BottomLattice c, Joinable c) => a -> c -> c -> c
+condId cnd csq alt = join t f 
+   where t = if isTrue cnd then csq else bottom 
+         f = if isFalse cnd then alt else bottom
+
+-- | `or` operator that works any values of two different types
+-- and returns a value type chosen by the caller
+hetOr :: (BoolDomain a, BoolDomain b, BoolDomain c, BottomLattice c) => a -> b -> c 
+hetOr a b = condId a (inject True) (condId b (inject True) (inject False))
+
 ------------------------------------------------------------
 -- Declaration
 ------------------------------------------------------------
@@ -75,8 +86,9 @@ instance (BottomLattice l, BottomLattice r) => BottomLattice (SchemePairedValue 
 -- NumberDomain instance
 ------------------------------------------------------------
 
+type instance BoolFor (SchemePairedValue l r) = SchemePairedValue (BoolFor l) (BoolFor r)
+
 instance (NumberDomain l, NumberDomain r) => NumberDomain (SchemePairedValue l r) where
-   type Boo (SchemePairedValue l r) = SchemePairedValue (Boo l) (Boo r)
    isZero (SchemePairedValue (l, r)) =
       pairedValue <$> isZero l <*> isZero r
    random (SchemePairedValue (l, r)) =
@@ -204,7 +216,9 @@ instance (-- both subdomains should talk about the same environment
           PAdr l ~ PAdr r,
           -- set-specific constraints
           Ord (Exp l),
-          Ord (Env l)
+          Ord (Env l),
+          BottomLattice (BoolFor l),
+          BottomLattice (BoolFor r)
    ) => SchemeDomain (SchemePairedValue l r) where
 
    type Adr (SchemePairedValue l r)  = Adr l
@@ -240,18 +254,18 @@ instance (-- both subdomains should talk about the same environment
    withProc f (SchemePairedValue (l, r)) = 
       mjoin (withProc f l) (withProc f r)
 
-   isInteger (SchemePairedValue (l, r)) = or (isInteger l) (isInteger r)
-   isReal (SchemePairedValue (l, r))    = or (isReal l) (isReal r)
-   isChar (SchemePairedValue (l, r))    = or (isChar l) (isChar r)
-   isVecPtr (SchemePairedValue (l, r))  = or (isVecPtr l) (isVecPtr r)
-   isStrPtr (SchemePairedValue (l, r))  = or (isStrPtr l) (isStrPtr r)
-   isSymbol (SchemePairedValue (l, r))  = or (isSymbol l) (isSymbol r)
-   isPaiPtr (SchemePairedValue (l, r))  = or (isPaiPtr l) (isPaiPtr r)
-   isClo (SchemePairedValue (l, r))     = or (isClo l) (isClo r)
-   isBool (SchemePairedValue (l, r))    = or (isBool l) (isBool r)
-   isNil (SchemePairedValue (l, r))     = or (isNil l)  (isNil r)
-   isUnsp (SchemePairedValue (l, r))    = or (isUnsp l) (isUnsp r)
-   isPrim (SchemePairedValue (l, r))    = or (isPrim l) (isPrim r)
+   isInteger (SchemePairedValue (l, r)) = (curry SchemePairedValue) (isInteger l) (isInteger r)
+   isReal (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isReal l) (isReal r)
+   isChar (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isChar l) (isChar r)
+   isVecPtr (SchemePairedValue (l, r))  = (curry SchemePairedValue) (isVecPtr l) (isVecPtr r)
+   isStrPtr (SchemePairedValue (l, r))  = (curry SchemePairedValue) (isStrPtr l) (isStrPtr r)
+   isSymbol (SchemePairedValue (l, r))  = (curry SchemePairedValue) (isSymbol l) (isSymbol r)
+   isPaiPtr (SchemePairedValue (l, r))  = (curry SchemePairedValue) (isPaiPtr l) (isPaiPtr r)
+   isClo (SchemePairedValue (l, r))     = (curry SchemePairedValue) (isClo l) (isClo r)
+   isBool (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isBool l) (isBool r)
+   isNil (SchemePairedValue (l, r))     = (curry SchemePairedValue) (isNil l)  (isNil r)
+   isUnsp (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isUnsp l) (isUnsp r)
+   isPrim (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isPrim l) (isPrim r)
 
    symbol s  = SchemePairedValue (symbol s, symbol s)
    symbols v = Set.union (symbols $ leftValue v) (symbols $ rightValue v)

@@ -59,21 +59,21 @@ class (
     Abs obj PrmPrm ~ Set (Either PyPrim XPyPrim), 
     Abs obj CloPrm ~ Set (Clo obj),
     Abs obj BndPrm ~ Map (Adr obj) (Ref obj),   -- TODO: this can be generalised  
-    SeqDomain     (Abs obj LstPrm),
-    SeqDomain.Vlu (Abs obj LstPrm) ~ Ref obj, 
-    SeqDomain.Idx (Abs obj LstPrm) ~ Abs obj IntPrm, 
-    SeqDomain     (Abs obj TupPrm),
-    SeqDomain.Vlu (Abs obj TupPrm) ~ Ref obj, 
-    IntDomain     (Abs obj IntPrm),
-    Domain.Boo    (Abs obj IntPrm) ~ Abs obj BlnPrm, 
-    Domain.Rea    (Abs obj IntPrm) ~ Abs obj ReaPrm,
-    Domain.Str    (Abs obj IntPrm) ~ Abs obj StrPrm, 
-    RealDomain    (Abs obj ReaPrm),
-    Domain.Boo    (Abs obj ReaPrm) ~ Abs obj BlnPrm,
-    StringDomain  (Abs obj StrPrm),
+    SeqDomain      (Abs obj LstPrm),
+    SeqDomain.Vlu  (Abs obj LstPrm) ~ Ref obj, 
+    SeqDomain.Idx  (Abs obj LstPrm) ~ Abs obj IntPrm, 
+    SeqDomain      (Abs obj TupPrm),
+    SeqDomain.Vlu  (Abs obj TupPrm) ~ Ref obj, 
+    IntDomain      (Abs obj IntPrm),
+    Domain.BoolFor (Abs obj IntPrm) ~ Abs obj BlnPrm, 
+    Domain.Rea     (Abs obj IntPrm) ~ Abs obj ReaPrm,
+    Domain.Str     (Abs obj IntPrm) ~ Abs obj StrPrm, 
+    RealDomain     (Abs obj ReaPrm),
+    Domain.BoolFor (Abs obj ReaPrm) ~ Abs obj BlnPrm,
+    StringDomain   (Abs obj StrPrm),
     DictionaryDomain (Abs obj DctPrm),
-    DKey          (Abs obj DctPrm) ~ Abs obj StrPrm,
-    DVlu          (Abs obj DctPrm) ~ Ref obj  
+    DKey           (Abs obj DctPrm) ~ Abs obj StrPrm,
+    DVlu           (Abs obj DctPrm) ~ Ref obj  
   ) 
   => 
   PyObj obj where

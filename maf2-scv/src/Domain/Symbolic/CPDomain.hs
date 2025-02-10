@@ -23,10 +23,11 @@ type instance PaiDom (CPSymbolicValue pai vec str var k) = SimplePair (CPSymboli
 type instance VecDom (CPSymbolicValue pai vec str var k) = PIVector (CPSymbolicValue pai vec str var k) (CPSymbolicValue pai vec str var k)
 type instance StrDom (CPSymbolicValue pai vec str var k) = SchemeString (CP String) (CPSymbolicValue pai vec str var k)
 
+type instance BoolFor (SchemeString (CP String) (CPSymbolicValue pai vec str var k)) = CPSymbolicValue pai vec str var k
+
 instance (Ord k, Address (pai k), Address (vec k), Address (str k), Address (var k)) => StringDomain (SchemeString (CP String) (CPSymbolicValue pai vec str var k)) where
    type IntS (SchemeString (CP String) (CPSymbolicValue pai vec str var k)) = CPSymbolicValue pai vec str var k
    type ChaS (SchemeString (CP String) (CPSymbolicValue pai vec str var k)) = CPSymbolicValue pai vec str var k
-   type BooS (SchemeString (CP String) (CPSymbolicValue pai vec str var k)) = CPSymbolicValue pai vec str var k
    length = (length . sconst) >=> (return . mkLeft . insertInt)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    ref s i = mkLeft . insertChar <$> (ref (sconst s) =<< integers (leftValue i))

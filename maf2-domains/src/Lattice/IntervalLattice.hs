@@ -64,9 +64,9 @@ instance (Ord a) => Meetable (Interval a) where
    meet _ _ = BottomInterval
    
 
+type instance BoolFor (Interval Integer) = CP Bool
+
 instance NumberDomain (Interval Integer) where  
-   -- TODO: implement isZero, random, plus, minus,times, div, expt
-   type Boo (Interval Integer) = CP Bool
    random = const $ return top
    eq BottomInterval _ = mzero 
    eq _ BottomInterval = mzero

@@ -29,6 +29,7 @@ import Lattice
 import Domain.Address
 import Domain.Class
 import Domain.Core
+import Domain.Core.BoolDomain.Class (BoolFor)
 import Domain.Scheme.Class
 import Control.Monad.Join
 import Control.Monad.DomainError
@@ -172,8 +173,8 @@ type IsSchemeValue m =
     KeyIs1 CharDomain (Values m) CharKey,
     -- relations between subdomains
     IntC (Assoc CharKey (Values m)) ~ Assoc IntKey (Values m),
-    Boo (Assoc IntKey (Values m)) ~ Boo (Assoc RealKey (Values m)),
-    Boo (Assoc RealKey (Values m)) ~ Assoc BoolConf m,
+    BoolFor (Assoc IntKey (Values m)) ~ BoolFor (Assoc RealKey (Values m)),
+    BoolFor (Assoc RealKey (Values m)) ~ Assoc BoolConf m,
     Rea (Assoc IntKey (Values m)) ~ Assoc RealKey (Values m),
     IntR (Assoc RealKey (Values m)) ~ Assoc IntKey (Values m),
     -- addresses
@@ -338,8 +339,9 @@ prim2 :: (IsSchemeValue m, AbstractM schemeM)
       -> SchemeVal m -> SchemeVal m -> schemeM (SchemeVal m)
 prim2 f (SchemeVal hm1) (SchemeVal hm2) = mjoins $ map (uncurry f) $ liftA2 (,) (HMap.toList hm1) (HMap.toList hm2)
 
+type instance BoolFor (SchemeVal m) = SchemeVal m
+
 instance (IsSchemeValue m) => NumberDomain (SchemeVal m) where
-   type Boo (SchemeVal m) = SchemeVal m
    isZero = mjoins . HMap.mapList select  . getSchemeVal
       where select :: forall (kt :: SchemeKey) schemeM .  (AbstractM schemeM) => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
             select SIntKey v  = SchemeVal <$> HMap.singleton @BoolKey <$> isZero v
@@ -508,9 +510,12 @@ type ModularSchemeValue r i c b pai vec str var exp env = SchemeVal '[
 
 type IsSchemeString s m = (
    StringDomain s,
+   -- booleans should refer back to the Scheme value
+   BoolFor s ~ Assoc BoolKey (Values m),
    Assoc CharKey (Values m) ~ ChaS s,
-   Assoc IntKey (Values m)  ~ IntS s,
-   Assoc BoolKey (Values m) ~ BooS s)
+   Assoc IntKey (Values m)  ~ IntS s)
+
+type instance BoolFor (SchemeString s v) = v
 
 newtype SchemeString s v = SchemeString { sconst :: s } deriving (Show, Eq, Ord, Generic, NFData)
 
@@ -524,7 +529,6 @@ instance (StringDomain s) => Domain (SchemeString s v) String where
 instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s (SchemeVal m)) where
    type IntS (SchemeString s (SchemeVal m)) = SchemeVal m
    type ChaS (SchemeString s (SchemeVal m)) = SchemeVal m
-   type BooS (SchemeString s (SchemeVal m)) = SchemeVal m
 
    length = (length . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
    append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)

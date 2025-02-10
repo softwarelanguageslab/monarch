@@ -123,8 +123,8 @@ trySend ref p =
 
 apply :: EvalM v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
 apply rec e v vs = choices
-   [(fromBL $  isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
-    (fromBL $ isPrim v, mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
+   [(pure (isClo v), mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
+    (pure (isPrim v), mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape InvalidArgument)
 applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e (lam@(Lam prs _ _), env) rec vs =

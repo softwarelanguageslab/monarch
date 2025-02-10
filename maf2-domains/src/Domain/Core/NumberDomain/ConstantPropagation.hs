@@ -5,6 +5,7 @@ module Domain.Core.NumberDomain.ConstantPropagation where
 
 import Lattice 
 import Domain.Core.NumberDomain.Class 
+import Domain.Core.BoolDomain.Class (BoolFor)
 import Domain.Core.BoolDomain.ConstantPropagation () -- for CP Bool instance
 
 import Control.Applicative
@@ -16,8 +17,9 @@ import Control.Monad.AbstractM
 --- Integers
 ------------------------------------------------------------
 
+type instance BoolFor (CP Integer) = CP Bool
+
 instance NumberDomain (CP Integer) where
-   type Boo (CP Integer) = CP Bool
    isZero = return . liftA2 (==) (Constant 0)
    random = return . const Top
    plus a b = return $ liftA2 (+) a b
@@ -45,8 +47,9 @@ instance IntDomain (CP Integer) where
 between :: Ord a => a -> a -> a -> Bool
 between a b c = a <= c && c <= b
 
+type instance BoolFor (CP Double) = CP Bool
+
 instance NumberDomain (CP Double) where
-   type Boo (CP Double) = CP Bool
    isZero = return . liftA2 (==) (Constant 0)
    random = return . const Top
    plus a b = return $ liftA2 (+) a b
