@@ -8,4 +8,4 @@
    (else t)))
 
 (provide (contract-out
-  (subst* (-> any? any? any? any?))))
+  (subst* (-> any?/c any?/c any?/c any?/c))))

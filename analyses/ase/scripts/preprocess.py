@@ -3,7 +3,7 @@ import os
 import subprocess
 import sys
 
-GUILE_ENABLED = False
+GUILE_ENABLED = True
 
 def preprocess_pass(contents, script, additional_argv = []):
     """
