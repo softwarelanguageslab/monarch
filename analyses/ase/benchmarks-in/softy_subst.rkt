@@ -1,3 +1,5 @@
+#lang racket
+
 (define (subst* new old t)
   (cond
    ((equal? old t) new)
