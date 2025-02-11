@@ -189,6 +189,8 @@ parseLiteral (SExp.Atom "VBool" _ ::: SExp.Atom truthValue _ ::: SExp.SNil _)
    | otherwise = throwError $ "invalid boolean literal " ++ truthValue
 parseLiteral (SExp.Atom "VSymbol" _ ::: SExp.Atom n _ ::: SExp.SNil _) =
    return $ Sym n
+parseLiteral (SExp.Atom "VNil" _) = 
+   return $ Nil
 parseLiteral l = throwError $ "unsupported literal = "  ++ show l ++ ";"
 
 -- | Parse the S-expression to a model

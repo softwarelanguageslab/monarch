@@ -45,6 +45,9 @@ data Literal
   | Nil
   | Unsp
   | Actor !(Maybe Span)
+  -- | A type marker for a pair, can be used by an analysis 
+  -- to render a "top pair" value.
+  | Pair 
   deriving (Eq, Ord, Generic)
 
 instance NFData Literal

@@ -9,6 +9,7 @@
                    ((V (VInteger (unwrap-VInteger Int))
                        (VReal    (unwrap-VReal    Real))
                        (VNil)
+                       (VPair) ;; type marker only, since hepa is not modelled
                        (VBool    (unwrap-bool     Bool))
                        (VString  (unwrap-string String))
                        (VSymbol  (unwrap-symbol String))
@@ -25,6 +26,9 @@
 
 (define-fun null?/v ((n V)) V
             (VBool (is-VNil n)))
+
+(define-fun pair?/v ((p V)) V
+            (VBool (is-VPair p)))
 
 ;; XXX: re-enable these functions
 ; (declare-fun fresh () V)
