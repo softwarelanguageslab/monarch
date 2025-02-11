@@ -83,7 +83,8 @@ data VAdr k = VAdr !(Label Exp) !k | PrimAdr !String
 instance NFData k => NFData (VAdr k)
 
 -- | Type of pair addresses
-data PAdr k = PAdr Exp !k
+data PAdr k = PAdr Exp !k -- ^ regular pair addresses 
+            | TAdr        -- ^ address for the "top" pair value
             deriving (Eq, Ord, Show, Generic)
 instance NFData k => NFData (PAdr k)
 

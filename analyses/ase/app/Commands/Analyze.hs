@@ -28,6 +28,7 @@ options = Options <$> fileOptions <*> analysisOptions
 -- | Analyze a program with the given options
 analyze :: Options -> IO ()
 analyze (Options (FileOptions { .. }) (AnalysisOptions { .. })) = do 
+   putStrLn $ "Analyzing \"" ++ filename ++ "\" using configuration \"" ++ optAnalysis ++ "\""
    program <- readFile filename
    let exp = either (error . ("program could not be parsed: " ++)) id (parseFromString program)
    let analysis = flip (Analyses.analysesByName optAnalysis) optK

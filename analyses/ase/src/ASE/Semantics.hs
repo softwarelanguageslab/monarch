@@ -62,6 +62,9 @@ convertModel = Model . Map.map (Lat.joins . Set.map mapValue) . Symbolic.getMode
          mapValue (Symbolic.Boo b) = Domain.inject b
          mapValue (Symbolic.Cha c) = Domain.inject c
          mapValue (Symbolic.Sym a) = Scheme.symbol a
+         mapValue Symbolic.Nil     = Scheme.nil
+         mapValue Symbolic.Pair    = Scheme.pptr TAdr
+         -- todo: map a pair
 
 -- | Compute an assignment for the model (if one is available)
 computeModel :: (MonadModel SymbolicVariable V m, FormulaSolver SymbolicVariable m)
