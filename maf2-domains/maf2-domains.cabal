@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -57,6 +57,7 @@ library
       Domain.Core.NumberDomain
       Domain.Core.NumberDomain.Class
       Domain.Core.NumberDomain.ConstantPropagation
+      Domain.Core.NumberDomain.TopLifted
       Domain.Core.PairDomain
       Domain.Core.PairDomain.Class
       Domain.Core.PairDomain.SimplePair
@@ -95,6 +96,7 @@ library
       Domain.Scheme.CPDomain
       Domain.Scheme.Derived
       Domain.Scheme.Derived.Pair
+      Domain.Scheme.Derived.Top
       Domain.Scheme.Modular
       Domain.Scheme.Store
       Lattice
