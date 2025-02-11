@@ -44,9 +44,11 @@ library
       Domain.Core.BoolDomain.BottomLifted
       Domain.Core.BoolDomain.Class
       Domain.Core.BoolDomain.ConstantPropagation
+      Domain.Core.BoolDomain.TopLifted
       Domain.Core.CharDomain
       Domain.Core.CharDomain.Class
       Domain.Core.CharDomain.ConstantPropagation
+      Domain.Core.CharDomain.TopLifted
       Domain.Core.DictionaryDomain
       Domain.Core.DictionaryDomain.Class
       Domain.Core.DictionaryDomain.CPDict
@@ -61,6 +63,7 @@ library
       Domain.Core.PairDomain
       Domain.Core.PairDomain.Class
       Domain.Core.PairDomain.SimplePair
+      Domain.Core.PairDomain.TopLifted
       Domain.Core.SeqDomain
       Domain.Core.SeqDomain.BoundedList
       Domain.Core.SeqDomain.Class

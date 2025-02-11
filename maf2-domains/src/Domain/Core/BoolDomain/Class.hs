@@ -14,6 +14,7 @@ type family BoolFor (t :: Type) :: Type
 ------------------------------------------------------------
 
 class (Joinable b, Domain b Bool) => BoolDomain b where
+   {-# MINIMAL not, and, or #-}
    -- default implementations for convenience (can all be overriden with more efficient implementations)
    true :: b
    true = inject True
