@@ -15,8 +15,7 @@ type SchemeDomainPre v =
   ( RealDomain v,
     IntDomain v,
     CharDomain v,
-    BoolDomain v,
-    BoolFor v ~ v)
+    BoolDomain v)
 
 
 -- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
@@ -30,7 +29,6 @@ class (RealDomain v,
        Address (VAdr v),
        Address (SAdr v),
        Address (Adr v),
-       -- booleans in the number domain should link back to the values in the scheme domain
        BoolFor v ~ v) => SchemeDomain v
   where
   -- types of addresses to variables

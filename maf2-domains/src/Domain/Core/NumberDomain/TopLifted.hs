@@ -12,8 +12,7 @@ import Lattice.Class
 type instance BoolFor (TopLifted a) = BoolFor a
 
 instance (NumberDomain a) => NumberDomain (TopLifted a) where    
-   isZero = \case Top     -> pure $ boolTop
-                  Value v -> isZero v 
+   isZero  = fmap (fromTL boolTop) . sequenceA . fmap isZero 
    random  = sequenceA . fmap random
    plus  a = sequenceA . liftA2 plus a 
    minus a = sequenceA . liftA2 minus a
