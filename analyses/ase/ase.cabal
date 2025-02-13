@@ -70,7 +70,7 @@ executable ase
       ConstraintKinds
       TupleSections
       GADTs
-  ghc-options: -O0 -rtsopts "-with-rtsopts=-sstderr"
+  ghc-options: -O0
   build-depends:
       ansi-terminal
     , ase

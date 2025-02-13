@@ -11,6 +11,8 @@ import RIO
 import qualified RIO.Map as Map
 import qualified RIO.Set as Set
 import Data.Char (isSpace)
+import qualified RIO.Text as T
+import qualified RIO.Text.Partial as TP
 import Data.Time
 import Data.Time.Clock.System
 import Data.Time.Format.ISO8601
@@ -21,11 +23,12 @@ import System.IO (Handle, hPutStrLn, IOMode(WriteMode))
 ------------------------------------------------------------
 
 data BenchmarkOptions = 
-      BenchmarkOptions { outputCsv :: String }
+      BenchmarkOptions { outputCsv :: String, dumpConfiguration :: Bool }
    deriving (Ord, Eq, Show)
 
 options :: Parser BenchmarkOptions
 options = BenchmarkOptions <$> option str (short 'o' <> help "The location of the results")
+                           <*> switch (short 'd' <> help "Dump the available configurations")
 
 ------------------------------------------------------------
 -- Constants
@@ -61,8 +64,22 @@ timeoutThrow nam = maybe (throwIO $ TimeoutException nam) return <=< (timeout de
 -- Analysis configurations 
 ------------------------------------------------------------
 
-configurations :: [(String, Exp -> IO ASE.AnalysisResult)]
+type Configuration = Exp -> IO ASE.AnalysisResult
+
+configurations :: [(String, Configuration)]
 configurations = map (\((nam, f), i) -> (nam ++ ":" ++ show i, flip f i)) [(cfg, k) | cfg <-  (Map.toList ASE.analyses), k <- [0..5]]
+
+-- | Configurations indexed by their name
+configurationsByName :: Map String Configuration
+configurationsByName = Map.fromList configurations 
+
+-- | Lookup a configuration by its name
+lookupConfiguration :: String -> (String, Configuration)
+lookupConfiguration nam = (nam, fromMaybe (error $ "no such configuration " ++ nam) (Map.lookup nam configurationsByName))
+
+-- | Dump the available configurations as a string
+configurationNames :: [String] 
+configurationNames = map fst configurations
 
 ------------------------------------------------------------
 -- File utilities
@@ -122,17 +139,29 @@ runSingle :: Handle -- ^ the handle
           -> String -- ^ the name of the program to analyze
           -> Exp    -- ^ the program to analyze
           -> IO ()
-runSingle hdl nam prg = mapM_ repeated configurations
+runSingle hdl nam prg = mapM_ (runSingleConfiguration hdl nam prg) configurationNames
+
+-- | Run a single benchmark on a single configuration
+runSingleConfiguration :: Handle 
+                       -> String -- ^ the name of the program to analyze 
+                       -> Exp    -- ^ the program to analyze 
+                       -> String -- ^ the name of the configuration to use for the analysis (given as a key within @configurations@)
+                       -> IO ()
+runSingleConfiguration hdl nam prg cfgNam = do 
+      repeated (lookupConfiguration cfgNam)
+      putStrLn $ "[D] Finished configuration " ++ cfgNam ++ "on " ++ nam
    where repeated cfg = mapM_ (run . (cfg,)) [1..maxIterations] `catches` handleExc
          run ((cfgNam, cfg), i) = do    
-            putStrLn $ "[*] Running configuration " ++ cfgNam ++ " on " ++ nam ++ " (" ++ show i ++ "/" ++ show maxIterations ++ ")"
+            putStrLn $ "[R] Running configuration " ++ cfgNam ++ " on " ++ nam ++ " (" ++ show i ++ "/" ++ show maxIterations ++ ")"
+            hFlush stdout
             (res, elapsed) <- timeoutThrow  cfgNam $ do
                start  <- getTime 
                res <-  cfg prg 
                end <- res `deepseq` getTime
                let elapsed = end - start
                return $ end `deepseq` (res, elapsed)
-            putStrLn $ "[*] Finished running " ++ cfgNam ++ " on " ++ nam ++ " without timeout"
+            putStrLn $ "[F] Finished running " ++ cfgNam ++ " on " ++ nam ++ " without timeout"
+            hFlush stdout
             writeResult hdl (nam ++ ":" ++ show i) cfgNam res elapsed
          handleExc = [Handler (\(TimeoutException cfgNam :: BenchmarkException) -> writeFail hdl nam cfgNam),
                       Handler (\(e :: SomeException) -> putStrLn $ "Error " ++ show e) ]
@@ -141,12 +170,22 @@ runSingle hdl nam prg = mapM_ repeated configurations
 -- Entrypoint
 ------------------------------------------------------------
 
+parseInput :: Handle  -- ^ the output (CSV) handle
+           -> String  -- ^ the input just read 
+           -> IO ()     
+parseInput hdl inn = do 
+      exp <- readInputFile program_name
+      runSingleConfiguration hdl program_name exp configuration
+   where [configuration, program_name] = map T.unpack (TP.splitOn (T.pack ";") (T.pack inn))
+   
+
 -- | Run the benchmark
 runBenchmarks :: BenchmarkOptions -> IO () 
-runBenchmarks BenchmarkOptions { .. } = do   
-   putStrLn "[*] Running benchmarks"
-   outputHandle <- openFile outputCsv WriteMode
-   inputs <- readInputFiles
-   putStrLn "[*] Input files read"
-   mapM_ (uncurry $ runSingle outputHandle) inputs
-   hClose outputHandle
+runBenchmarks BenchmarkOptions { .. } =  
+      if dumpConfiguration then 
+         mapM_ putStrLn configurationNames
+      else do
+         hFlush stdout
+         outputHandle <- openFile outputCsv WriteMode
+         mapM_ (parseInput outputHandle) =<< (fmap lines getContents)
+         hClose outputHandle
