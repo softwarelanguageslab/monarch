@@ -57,7 +57,8 @@ instance (v ~ Abstract V) => InputFrom v where
 -- | Convert an SMT model to a ASE model
 convertModel :: Symbolic.Model SymbolicVariable -> Model V
 convertModel = Model . Map.map (Lat.joins . Set.map mapValue) . Symbolic.getModel
-   where mapValue (Symbolic.Num n) = Domain.inject n
+   where mapValue :: Symbolic.Literal -> Abstract V
+         mapValue (Symbolic.Num n) = Domain.inject n
          mapValue (Symbolic.Rea r) = Domain.inject r
          mapValue (Symbolic.Boo b) = Domain.inject b
          mapValue (Symbolic.Cha c) = Domain.inject c

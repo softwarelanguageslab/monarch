@@ -191,6 +191,8 @@ parseLiteral (SExp.Atom "VSymbol" _ ::: SExp.Atom n _ ::: SExp.SNil _) =
    return $ Sym n
 parseLiteral (SExp.Atom "VNil" _) = 
    return $ Nil
+parseLiteral (SExp.Atom "VPair" _) = 
+   return $ Pair
 parseLiteral l = throwError $ "unsupported literal = "  ++ show l ++ ";"
 
 -- | Parse the S-expression to a model

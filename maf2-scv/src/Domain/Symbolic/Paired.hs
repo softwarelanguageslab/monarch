@@ -49,6 +49,9 @@ instance (Eq i) => PartialOrder (SymbolicVal exp k i v) where
    subsumes _ (SymbolicVal Bottom) = True
    subsumes (SymbolicVal p1) (SymbolicVal p2) = p1 == p2
 
+instance TopLattice (SymbolicVal exp k n v) where  
+   top = SymbolicVal Fresh
+
 instance Meetable (SymbolicVal exp k i v) where 
    meet = error "TODO: meet is not implemented"
 

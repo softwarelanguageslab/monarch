@@ -115,13 +115,13 @@ instance (NumberDomain l, NumberDomain r) => NumberDomain (SchemePairedValue l r
 instance (Domain l Integer, Domain r Integer) => Domain (SchemePairedValue l r) Integer where
    inject i = pairedValue (inject i) (inject i)
 
-instance (IntDomain l, IntDomain r, Str l ~ Str r, Joinable (Str r)) => IntDomain (SchemePairedValue l r) where
-   type Str (SchemePairedValue l r) = Str l
+instance (IntDomain l, IntDomain r, Joinable (Str r)) => IntDomain (SchemePairedValue l r) where
+   type Str (SchemePairedValue l r) = SchemePairedValue (Str l) (Str r)
    type Rea (SchemePairedValue l r) = SchemePairedValue (Rea l) (Rea r)
    toReal (SchemePairedValue (l, r)) =
       pairedValue <$> toReal l <*> toReal r
    toString (SchemePairedValue (l, r)) =
-      join <$> toString l <*> toString r
+      (curry SchemePairedValue) <$> toString l <*> toString r
    quotient (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       pairedValue <$> quotient l1 l2 <*> quotient r1 r2
    modulo (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
@@ -192,6 +192,14 @@ instance (CharDomain l, CharDomain r) => CharDomain (SchemePairedValue l r) wher
    charLtCI (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) = 
       join <$> charLtCI l1 l2 <*> charLtCI  r1 r2
 
+
+------------------------------------------------------------
+-- TopLattice instance
+------------------------------------------------------------
+
+instance (TopLattice a, TopLattice b) => TopLattice (SchemePairedValue a b) where   
+   top = SchemePairedValue (top, top)
+
 ------------------------------------------------------------
 -- SchemeDomain instance
 ------------------------------------------------------------
@@ -204,7 +212,6 @@ instance (-- both subdomains should talk about the same environment
           SchemeDomain l, 
           SchemeDomain r,
           Joinable (Str r),
-          Str l ~ Str r,
           -- both subdomains should use the same pointers,
           -- consequently if `SchemeValue` is used 
           -- they will both point to the combined

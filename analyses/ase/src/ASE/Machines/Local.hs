@@ -91,7 +91,7 @@ initialState cfg =  Ev (e0 cfg) (ρ0 cfg)
                 <+> Map.empty                -- continuation store
                 <+> Map.empty                -- failure continuation store 
                 <+> σ0 cfg                   -- value store 
-                <+> Map.empty                -- pair store 
+                <+> initialHeapSto           -- pair store 
                 <+> Map.empty                -- string store
                 <+> Map.empty                -- vector store
                 <+> Map.empty                -- model 

@@ -159,7 +159,7 @@ initialState step cfg@Configuration { .. } =
                       :+: (init Map.empty)         -- continuation stores 
                       :+: (init Map.empty)         -- failure continuation stores 
                       :+: (init σ0)                -- value stores (including primitives)
-                      :+: (init Map.empty)         -- pair stores 
+                      :+: (init initialHeapSto)    -- pair stores 
                       :+: (init Map.empty)         -- string stores
                       :+: (init Map.empty)         -- vector stores
                       :+: (init Map.empty)         -- model

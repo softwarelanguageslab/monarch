@@ -37,9 +37,9 @@ data EnvAdr ctx = EnvAdr Ide ctx
 -- | Addresses parametrized by the type of expression 
 -- so that any expression type can be used in the 
 -- abstract domain for Scheme.
-data PaiAdrE e ctx = PaiAdr e ctx deriving (Eq, Ord, Show, Generic, NFData)
-data StrAdrE e ctx = StrAdr e ctx deriving (Eq, Ord, Show, Generic, NFData)
-data VecAdrE e ctx = VecAdr e ctx deriving (Eq, Ord, Show, Generic, NFData)
+data PaiAdrE e ctx = PaiAdr e ctx | PaiTop deriving (Eq, Ord, Show, Generic, NFData)
+data StrAdrE e ctx = StrAdr e ctx | StrTop deriving (Eq, Ord, Show, Generic, NFData)
+data VecAdrE e ctx = VecAdr e ctx | VecTop deriving (Eq, Ord, Show, Generic, NFData)
 
 -- For convenience, addresses initialized to Scheme expressions ...
 type PaiAdr ctx = PaiAdrE Scheme.Exp ctx

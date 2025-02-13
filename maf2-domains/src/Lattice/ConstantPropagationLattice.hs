@@ -24,6 +24,9 @@ instance (Show a, Ord a) => PartialOrder (CP a) where
     subsumes _ Top = False 
     subsumes (Constant x1) (Constant x2) = x1 == x2
 
+instance TopLattice (CP a) where    
+   top = Top
+
 instance (Show a, Ord a) => Domain (CP a) a where
    inject = Constant
 

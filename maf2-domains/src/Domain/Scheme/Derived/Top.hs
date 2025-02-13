@@ -1,9 +1,10 @@
 -- | Instance of @TopLifted@ for Scheme domains
-{-# LANGUAGE UndecidableInstances, DeriveTraversable #-}
+{-# LANGUAGE UndecidableInstances, DeriveTraversable, DeriveGeneric #-}
 module Domain.Scheme.Derived.Top where
 
 import Prelude hiding (div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not, and, or)
 
+import Control.DeepSeq
 import Domain.Class
 import Domain.Scheme.Class
 import Domain.Core.BoolDomain.Class 
@@ -13,15 +14,18 @@ import Domain.Core.BoolDomain (boolTop)
 import Domain.Core.BoolDomain.TopLifted ()
 import Domain.Core.NumberDomain.Class 
 import Domain.Core.CharDomain.Class
-
+import GHC.Generics
 import Lattice.Class
+import Lattice.Equal
 import Lattice.TopLiftedLattice (TopLifted(..), fromTL)
 
 import qualified Data.Set as Set
 
 -- | Lifts a value @a@ from the Scheme domain into a @TopLifted@ value so that all Scheme values have a synthetic top element
 newtype SchemeTopLifted a = SchemeTopLifted { getTopLifted :: (TopLifted a) }
-                     deriving (Ord, Eq, Show, Joinable, PartialOrder, Applicative, Foldable, Traversable, Functor)
+                     deriving (Ord, Eq, Show, Joinable, PartialOrder, Applicative, Foldable, Traversable, Functor, BottomLattice, EqualLattice, Generic)
+
+instance NFData a => NFData (SchemeTopLifted a)
 
 type instance BoolFor (SchemeTopLifted a) = SchemeTopLifted (BoolFor a)
 
@@ -62,7 +66,7 @@ instance (NumberDomain a) => NumberDomain (SchemeTopLifted a) where
    eq    a = sequenceA . liftA2 eq a
    lt    a = sequenceA . liftA2 lt a
 
-instance (IntDomain a, TopLattice (Rea a), TopLattice (Str a)) => IntDomain (SchemeTopLifted a) where
+instance (IntDomain a) => IntDomain (SchemeTopLifted a) where
    type Str (SchemeTopLifted a) = SchemeTopLifted (Str a)
    type Rea (SchemeTopLifted a) = SchemeTopLifted (Rea a)
 
@@ -72,7 +76,7 @@ instance (IntDomain a, TopLattice (Rea a), TopLattice (Str a)) => IntDomain (Sch
    modulo    a = sequenceA . liftA2 modulo a
    remainder a = sequenceA . liftA2 remainder a
 
-instance (RealDomain a, TopLattice (IntR a)) => RealDomain (SchemeTopLifted a) where
+instance (RealDomain a) => RealDomain (SchemeTopLifted a) where
    type IntR (SchemeTopLifted a) = SchemeTopLifted (IntR a)
    toInt   = sequenceA . fmap toInt
    ceiling = sequenceA . fmap ceiling
@@ -88,10 +92,6 @@ instance (RealDomain a, TopLattice (IntR a)) => RealDomain (SchemeTopLifted a) w
    sqrt    = sequenceA . fmap sqrt
 
 instance (SchemeDomain a, 
-          TopLattice (IntR a),
-          TopLattice (Str a), 
-          TopLattice (IntC a), 
-          TopLattice (Rea a),
           TopLattice (VAdr a), 
           TopLattice (SAdr a),
           TopLattice (PAdr a)
