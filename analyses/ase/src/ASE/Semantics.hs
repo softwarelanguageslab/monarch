@@ -63,7 +63,7 @@ convertModel = Model . Map.map (Lat.joins . Set.map mapValue) . Symbolic.getMode
          mapValue (Symbolic.Cha c) = Domain.inject c
          mapValue (Symbolic.Sym a) = Scheme.symbol a
          mapValue Symbolic.Nil     = Scheme.nil
-         mapValue Symbolic.Pair    = Scheme.pptr TAdr
+         mapValue Symbolic.Pair    = Scheme.pptr PTAdr
          -- todo: map a pair
 
 -- | Compute an assignment for the model (if one is available)

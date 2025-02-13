@@ -84,19 +84,33 @@ instance NFData k => NFData (VAdr k)
 
 -- | Type of pair addresses
 data PAdr k = PAdr Exp !k -- ^ regular pair addresses 
-            | TAdr        -- ^ address for the "top" pair value
+            | PTAdr       -- ^ address for the "top" pair value
             deriving (Eq, Ord, Show, Generic)
 instance NFData k => NFData (PAdr k)
+instance TopLattice (PAdr k) where top = PTAdr
 
 -- | Type of vector addresses
-data CAdr k = CAdr Exp !k
+data CAdr k = CAdr Exp !k  -- ^ regular veCtor addresses
+            | CTAdr        -- ^ address for the "top" vector value
             deriving (Eq, Ord, Show, Generic)
 instance NFData k => NFData (CAdr k)
+instance TopLattice (CAdr k) where top = CTAdr
 
 -- | Type of string addresses
-data SAdr k = SAdr Exp !k
+data SAdr k = SAdr Exp !k  -- ^ regular string addresses
+            | STAdr        -- ^ address for the "top" string value
             deriving (Eq, Ord, Show, Generic)
 instance NFData k => NFData (SAdr k)
+instance TopLattice (SAdr k) where top = STAdr
+
+------------------------------------------------------------
+-- Initial heaps
+------------------------------------------------------------
+
+-- | An initial heap store is initially empty except for a 
+-- special "top" address which points to a "top" value.
+initialHeapSto :: (TopLattice adr, TopLattice v) => Map adr v
+initialHeapSto = Map.singleton top top
 
 ------------------------------------------------------------
 -- Continuations
