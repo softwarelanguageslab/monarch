@@ -17,6 +17,8 @@ import Domain.Core.CharDomain.Class
 import Lattice.Class
 import Lattice.TopLiftedLattice (TopLifted(..), fromTL)
 
+import qualified Data.Set as Set
+
 -- | Lifts a value @a@ from the Scheme domain into a @TopLifted@ value so that all Scheme values have a synthetic top element
 newtype SchemeTopLifted a = SchemeTopLifted { getTopLifted :: (TopLifted a) }
                      deriving (Ord, Eq, Show, Joinable, PartialOrder, Applicative, Foldable, Traversable, Functor)
@@ -85,7 +87,16 @@ instance (RealDomain a, TopLattice (IntR a)) => RealDomain (SchemeTopLifted a) w
    atan    = sequenceA . fmap atan
    sqrt    = sequenceA . fmap sqrt
 
-instance (SchemeDomain a, TopLattice (IntR a), TopLattice (Str a), TopLattice (IntC a), TopLattice (Rea a)) => SchemeDomain (SchemeTopLifted a) where 
+instance (SchemeDomain a, 
+          TopLattice (IntR a),
+          TopLattice (Str a), 
+          TopLattice (IntC a), 
+          TopLattice (Rea a),
+          TopLattice (VAdr a), 
+          TopLattice (SAdr a),
+          TopLattice (PAdr a)
+         ) => SchemeDomain (SchemeTopLifted a) where 
+
    type Adr  (SchemeTopLifted a) = Adr a
    type VAdr (SchemeTopLifted a) = VAdr a
    type SAdr (SchemeTopLifted a) = SAdr a
@@ -100,23 +111,23 @@ instance (SchemeDomain a, TopLattice (IntR a), TopLattice (Str a), TopLattice (I
    
    -- Pointer extractions
    pptrs (SchemeTopLifted (Value v)) = pptrs v
-   pptrs (SchemeTopLifted Top)       = undefined -- TODO
+   pptrs (SchemeTopLifted Top)       = return $ Set.singleton top
    sptrs (SchemeTopLifted (Value v)) = sptrs v
-   sptrs (SchemeTopLifted Top)       = undefined -- TODO
+   sptrs (SchemeTopLifted Top)       = return $ Set.singleton top
    vptrs (SchemeTopLifted (Value v)) = vptrs v
-   vptrs (SchemeTopLifted Top)       = undefined -- TODO
+   vptrs (SchemeTopLifted Top)       = return $ Set.singleton top
 
    -- Symbols
    symbol = SchemeTopLifted . Value . symbol
    symbols (SchemeTopLifted (Value v)) = symbols v
    -- XXX: is the definition of `symbols` actually possible 
    -- here? This set is actually infinite.
-   symbols (SchemeTopLifted Top)       = undefined -- TODO
+   symbols (SchemeTopLifted Top)     = undefined -- TODO
 
    -- Closures
    injectClo = SchemeTopLifted . Value . injectClo
-   clos (SchemeTopLifted (Value v)) = clos v
-   clos (SchemeTopLifted Top) = undefined -- TODO
+   clos (SchemeTopLifted (Value v))  = clos v
+   clos (SchemeTopLifted Top)        = undefined -- TODO
 
    -- Nil
    nil = SchemeTopLifted $ Value $ nil
