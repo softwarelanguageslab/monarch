@@ -31,6 +31,7 @@
    (define any/c (flat (lambda (v) #t)))
    (define any?/c (flat (lambda (v) #t)))
    (define cons?/c (flat pair?))
+   (define cons/c cons?/c)
    (define pair?/c (flat pair?))
    (define integer?/c (flat integer?))
    (define symbol?/c (flat symbol?))
