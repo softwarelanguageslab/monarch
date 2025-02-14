@@ -150,6 +150,7 @@ runSingleConfiguration :: Handle
 runSingleConfiguration hdl nam prg cfgNam = do 
       repeated (lookupConfiguration cfgNam)
       putStrLn $ "[D] Finished configuration " ++ cfgNam ++ "on " ++ nam
+      hFlush stdout
    where repeated cfg = mapM_ (run . (cfg,)) [1..maxIterations] `catches` handleExc
          run ((cfgNam, cfg), i) = do    
             putStrLn $ "[R] Running configuration " ++ cfgNam ++ " on " ++ nam ++ " (" ++ show i ++ "/" ++ show maxIterations ++ ")"
