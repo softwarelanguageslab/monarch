@@ -4,6 +4,7 @@ from multiprocessing import cpu_count
 from threading import Thread
 from queue import Queue
 from itertools import product
+import time
 
 def retrieve_configurations(): 
     """
@@ -21,7 +22,8 @@ class Worker():
         self.__process = None
 
     def start(self, name):
-         self.__process = subprocess.Popen(["cabal", "run", ".", "--", "benchmark", "-o", f"output-2025-02-13-{name}.csv"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding = "utf8")
+         benchmark_output_name = time.strftime("%Y-%m-%d")
+         self.__process = subprocess.Popen(["cabal", "run", ".", "--", "benchmark", "-o", f"output/output-{benchmark_output_name}-{name}.csv"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding = "utf8")
 
     def submit_task(self, program_name, configuration):
         """
