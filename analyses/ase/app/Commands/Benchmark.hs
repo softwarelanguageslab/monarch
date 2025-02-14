@@ -131,7 +131,7 @@ writeFail hdl nam cfg = do
    hPutStrLn hdl $ nam ++   ";" 
                 ++ cfg ++   ";" 
                 ++ "t;" 
-                ++ ";" ++ ";"
+                ++ ";"
 
 -- | Run a single benchmark program on all configurations
 -- and write the output in CSV format to the handle.
