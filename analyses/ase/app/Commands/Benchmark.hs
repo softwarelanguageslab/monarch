@@ -128,7 +128,7 @@ writeFail :: Handle -- ^ the output file handle
           -> IO ()
 writeFail hdl nam cfg = do 
    putStrLn $ "[-] Timeout for " ++ cfg ++ " on " ++ nam
-   hPutStrLn hdl $ nam ++   ";" 
+   hPutStrLn hdl $ nam ++   ":0;" 
                 ++ cfg ++   ";" 
                 ++ "t;" 
                 ++ ";"
