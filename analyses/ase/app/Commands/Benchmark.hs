@@ -103,7 +103,7 @@ readInputFiles = mapM (\n -> (n,) <$> readInputFile n) =<< (map trimSuffix . lin
 getTime :: IO Integer
 getTime = do
    currentTime <- getSystemTime
-   return $ fromIntegral (systemSeconds currentTime) * 1000 * 1000 * 10000 + fromIntegral (systemNanoseconds currentTime)
+   return $ (fromIntegral (systemSeconds currentTime) * 1000 * 1000 * 1000) + fromIntegral (systemNanoseconds currentTime)
 
 -- | Write the result of the given benchmark in CSV format
 --  to the given file handle.
