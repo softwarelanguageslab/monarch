@@ -21,7 +21,7 @@ class Worker():
         self.__process = None
 
     def start(self, name):
-         self.__process = subprocess.Popen(["cabal", "run", ".", "--", "benchmark", "-o", f"output-{name}.csv"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding = "utf8")
+         self.__process = subprocess.Popen(["cabal", "run", ".", "--", "benchmark", "-o", f"output-2025-02-13-{name}.csv"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding = "utf8")
 
     def submit_task(self, program_name, configuration):
         """
@@ -101,4 +101,3 @@ pool.start()
 for (program, config) in product(PROGRAMS, config): 
     print(f"[*] Running analysis on {program} with {config}")
     pool.submit_task(program, config)
-
