@@ -28,7 +28,9 @@ data BenchmarkOptions = BenchmarkOptions {
       -- |  Whether only the ocnfigurations should be printed and no benchmarks should be run
       dumpConfiguration :: Bool,
       -- | The number of iterations for each (benchmark, configuration) pair (default is 20)
-      iterations :: Int
+      iterations :: Int,
+      -- | Whether to run all configurations, or receive the configurations from standard input
+      runAllConfigurations :: Bool
    }
    deriving (Ord, Eq, Show)
 
@@ -36,6 +38,7 @@ options :: Parser BenchmarkOptions
 options = BenchmarkOptions <$> option str (short 'o' <> help "The location of the results")
                            <*> switch (short 'd' <> help "Dump the available configurations")
                            <*> option auto (short 'i' <> help "Maximum number of iterations of each (benchmark, configuration) pair" <> value maxIterations)
+                           <*> switch (short 'a' <> help "Run all configurations on each benchmark")
 
 ------------------------------------------------------------
 -- Constants
@@ -143,24 +146,26 @@ writeFail hdl nam cfg = do
 -- | Run a single benchmark program on all configurations
 -- and write the output in CSV format to the handle.
 runSingle :: Handle -- ^ the handle 
+          -> Int    -- ^ the number of iterations to run
           -> String -- ^ the name of the program to analyze
           -> Exp    -- ^ the program to analyze
           -> IO ()
-runSingle hdl nam prg = mapM_ (runSingleConfiguration hdl nam prg) configurationNames
+runSingle hdl iter nam prg = mapM_ (runSingleConfiguration hdl iter nam prg) configurationNames
 
 -- | Run a single benchmark on a single configuration
 runSingleConfiguration :: Handle 
+                       -> Int    -- ^ the number of iterations to run
                        -> String -- ^ the name of the program to analyze 
                        -> Exp    -- ^ the program to analyze 
                        -> String -- ^ the name of the configuration to use for the analysis (given as a key within @configurations@)
                        -> IO ()
-runSingleConfiguration hdl nam prg cfgNam = do 
+runSingleConfiguration hdl iter nam prg cfgNam = do 
       repeated (lookupConfiguration cfgNam)
       putStrLn $ "[D] Finished configuration " ++ cfgNam ++ "on " ++ nam
       hFlush stdout
-   where repeated cfg = mapM_ (run . (cfg,)) [1..maxIterations] `catches` handleExc
+   where repeated cfg = mapM_ (run . (cfg,)) [1..iter] `catches` handleExc
          run ((cfgNam, cfg), i) = do    
-            putStrLn $ "[R] Running configuration " ++ cfgNam ++ " on " ++ nam ++ " (" ++ show i ++ "/" ++ show maxIterations ++ ")"
+            putStrLn $ "[R] Running configuration " ++ cfgNam ++ " on " ++ nam ++ " (" ++ show i ++ "/" ++ show iter ++ ")"
             hFlush stdout
             (res, elapsed) <- timeoutThrow  cfgNam $ do
                start  <- getTime 
@@ -179,13 +184,21 @@ runSingleConfiguration hdl nam prg cfgNam = do
 ------------------------------------------------------------
 
 parseInput :: Handle  -- ^ the output (CSV) handle
+           -> Int     -- ^ number of iterations ot run
+           -> Bool    -- ^ whether to run all configurations or just a single one
            -> String  -- ^ the input just read 
            -> IO ()     
-parseInput hdl inn = do 
-      exp <- readInputFile program_name
-      runSingleConfiguration hdl program_name exp configuration
-   where [configuration, program_name] = map T.unpack (TP.splitOn (T.pack ";") (T.pack inn))
-   
+parseInput hdl iter all inn = do 
+      if all then
+         let programName = inn 
+         in do 
+            exp <- readInputFile programName
+            runSingle hdl iter programName exp
+      else 
+         let [configuration, programName] = map T.unpack (TP.splitOn (T.pack ";") (T.pack inn))
+         in do 
+            exp <- readInputFile programName
+            runSingleConfiguration hdl iter programName exp configuration
 
 -- | Run the benchmark
 runBenchmarks :: BenchmarkOptions -> IO () 
@@ -195,5 +208,5 @@ runBenchmarks BenchmarkOptions { .. } =
       else do
          hFlush stdout
          outputHandle <- openFile outputCsv WriteMode
-         mapM_ (parseInput outputHandle) =<< (fmap lines getContents)
+         mapM_ (parseInput outputHandle iterations runAllConfigurations) =<< (fmap lines getContents)
          hClose outputHandle
