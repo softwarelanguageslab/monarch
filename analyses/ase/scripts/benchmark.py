@@ -1,4 +1,5 @@
 import subprocess 
+import math
 from multiprocessing import cpu_count
 #import psutil
 from threading import Thread
@@ -23,7 +24,7 @@ class Worker():
 
     def start(self, name):
          benchmark_output_name = time.strftime("%Y-%m-%d")
-         self.__process = subprocess.Popen(["cabal", "run", ".", "--", "benchmark", "-o", f"output/output-{benchmark_output_name}-{name}.csv"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding = "utf8")
+         self.__process = subprocess.Popen(["tuna", "run", "-c", str(name),  " ".join(["cabal", "run", ".", "--", "benchmark", "-o", f"output/output-{benchmark_output_name}-worker-{name}.csv"])], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, encoding = "utf8")
 
     def submit_task(self, program_name, configuration):
         """
@@ -63,11 +64,11 @@ class WorkerPool():
         self.__available_workers = Queue(maxsize=num_workers)
     
     def start(self):
-        for n in range(0, self.__num_workers): 
+        for n in range(1, self.__num_workers+1): 
             worker = Worker()
             self.__available_workers.put(worker)
             self.__workers.append(worker)
-            worker.start(f"worker-{n}")
+            worker.start(f"{n}")
 
 
     def submit_task(self, program_name, configuration):
@@ -89,7 +90,7 @@ class WorkerPool():
         for worker in self.__workers: 
             worker.wait()
 
-NUM_WORKERS = cpu_count()
+NUM_WORKERS = 1
 PROGRAMS = [ l.strip() for l in open("benchmarks.txt").readlines() ]
 
 print("[*] Booting ... ")
