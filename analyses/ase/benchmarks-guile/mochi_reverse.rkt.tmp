@@ -117,6 +117,7 @@
                       ((x-cnd7365 (pair? g7276)))
                       (if x-cnd7365 g7276 (blame g7274 'pair?)))))
                    g7364)))
+               (cons/c cons?/c)
                (pair?/c
                 (lambda (g7277 g7278 g7279)
                   (letrec*

@@ -130,6 +130,7 @@
                                                              g7276
                                                              'pair?)))))
                                                 g7377)))
+                                           (cons/c cons?/c)
                                            (pair?/c
                                             (lambda (g7279 g7280 g7281)
                                               (letrec ((g7379
