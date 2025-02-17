@@ -18,6 +18,9 @@
                        (VMon)
                        (VError))))
 
+(define-fun symbol?/v ((a V)) V
+            (VBool (is-VBool a)))
+
 (define-fun actor?/v ((a V)) V
             (VBool (is-VActor a)))
 

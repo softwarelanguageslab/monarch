@@ -82,6 +82,11 @@ convertModel = Model . Map.map (singletonOrTop . Set.map mapValue) . Symbolic.ge
          mapValue Symbolic.Pair    = Scheme.pptr PTAdr
          -- todo: map a pair
 
+
+-- | Replace the given set of under constrained variables with top values
+replaceUnderconstrained :: (Ord a, TopLattice v) => Set a -> Map a v -> Map a v
+replaceUnderconstrained s = flip (Set.foldr (flip Map.insert Lat.top)) s
+
 -- | Compute an assignment for the model (if one is available)
 computeModel :: (MonadModel SymbolicVariable V m, FormulaSolver SymbolicVariable m)
              => CountMap SymbolicVariable
@@ -90,8 +95,9 @@ computeModel :: (MonadModel SymbolicVariable V m, FormulaSolver SymbolicVariable
 computeModel c pc = do
       result <- Solver.solve (getCountMap c) pc
       if isSat result then
-         Just . convertModel <$> Solver.getModel @SymbolicVariable (getCountMap c) pc
+         Just . Model . replaceUnderconstrained underconstrainedVariables . getModel .  convertModel <$> Solver.getModel @SymbolicVariable (getCountMap c) pc
       else return Nothing
+   where underconstrainedVariables = Map.keysSet (getCountMap c) `Set.difference` Symbolic.variables pc
 
 ------------------------------------------------------------
 -- Semantics
@@ -153,6 +159,11 @@ stepEval (Ite cnd csq alt s) = do
          (  extendPc (assertFalse vcnd)
          >> pushF αf (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)) count)
          >> getEnv <&> Ev alt) ) =<< getPc
+stepEval (Fresh s) = do
+   -- Same as `input` but associates `fresh` as the symbolic representation rather 
+   -- than the generated variable.
+   sym <- allocSym s
+   Ap . (`combine` (SymbolicVal $ Symbolic.Fresh)) <$> lookupModel sym
 stepEval (Input s) = do
    -- liftIO (putStr "{IN}")
    sym <- allocSym s

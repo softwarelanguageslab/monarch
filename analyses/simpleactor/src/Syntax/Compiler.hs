@@ -94,6 +94,9 @@ compile ex@(Atom "parametrize" _ ::: bds ::: bdy ::: SNil _) =
    Parametrize <$> smapM compileBdn bds <*> compile bdy <*> pureSpan ex
 compile e@(Atom "blame" _ ::: _) =
    throwError $ "invalid syntax for blame " ++ show e
+compile e@(Atom "fresh" _ ::: SNil _) = return $ Fresh (spanOf e)
+compile e@(Atom "fresh" _ ::: _) = 
+   throwError $ "invalid syntax for fresh " ++ show e
 compile ex@(op ::: oprs) =
    App <$> compile op <*> smapM compile oprs <*> pureSpan ex
 

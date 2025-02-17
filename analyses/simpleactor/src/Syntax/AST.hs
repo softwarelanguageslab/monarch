@@ -12,25 +12,26 @@ import Control.DeepSeq
 import GHC.Generics
 
 -- | An expression
-data Exp = Lam [Ide] Exp Span
-         | App Exp [Exp] Span
-         | Spawn Exp Span
-         | Letrec [Binding] Exp Span
-         | Terminate Span
-         | Self Span
-         | Pair Exp Exp Span
-         | Parametrize [Binding] Exp Span
-         | Blame Exp Span
-         | Receive [(Pat, Exp)] Span
-         | Match Exp [(Pat, Exp)] Span
-         | Literal Lit Span
-         | Ite  Exp Exp Exp Span
-         | Var Ide
-         | DynVar Ide
-         | Begin [Exp] Span
-         | Meta Exp Span
-         | Error String Span
-         | Input Span
+data Exp = Lam [Ide] Exp Span                -- ^ λ (x*) . e 
+         | App Exp [Exp] Span                -- ^ e(e*)
+         | Spawn Exp Span                    -- ^ spawn e 
+         | Letrec [Binding] Exp Span         -- ^ letrec { (x := e)* } in e
+         | Terminate Span                    -- ^ terminate
+         | Self Span                         -- ^ self
+         | Pair Exp Exp Span                 -- ^ (e, e)
+         | Parametrize [Binding] Exp Span    -- ^ parametrize { (x := e)* } in e
+         | Blame Exp Span                    -- ^ blame e 
+         | Receive [(Pat, Exp)] Span         -- ^ receive { (p => e)* } 
+         | Match Exp [(Pat, Exp)] Span       -- ^ match { (p => e)* }
+         | Literal Lit Span                  -- ^ l 
+         | Ite  Exp Exp Exp Span             -- ^ if e e e 
+         | Var Ide                           -- ^ x 
+         | DynVar Ide                        -- ^ $x
+         | Begin [Exp] Span                  -- ^ { e (; e)* }
+         | Meta Exp Span                     -- ^ meta e
+         | Error String Span                 -- ^ error str
+         | Input Span                        -- ^ input
+         | Fresh Span                        -- ^ fresh (only for debugging, generates a "fresh" symbolic value)
          deriving (Eq, Ord, Generic)
 
 instance NFData Exp
@@ -83,6 +84,7 @@ instance SpanOf Exp where
                (Match _ _ s) -> s
                (Error _ s)   -> s
                (Input s) -> s
+               (Fresh s) -> s
 
 
 instance Show Exp where
@@ -107,6 +109,7 @@ instance Show Exp where
             (Meta e _)        -> printf "(meta %s)" (show e)
             (Input _)         -> "(input)"
             (Error e _)       -> printf "(error %s)" (show e)
+            (Fresh _)         -> printf "(fresh)"
 
 
 variables :: Pat -> Set String 
@@ -138,3 +141,4 @@ instance FreeVariables Exp where
    fv (Meta e _)        = fv e
    fv (Error _ _)       = Set.empty
    fv (Input _)         = Set.empty
+   fv (Fresh _)         = Set.empty
