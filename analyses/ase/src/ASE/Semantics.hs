@@ -32,6 +32,7 @@ import qualified Domain.Class as Domain
 import qualified Domain.Scheme as Scheme
 import qualified Symbolic.AST
 import qualified RIO.Map as Map
+import Lattice.Class (TopLattice)
 import qualified Lattice.Class as Lat
 import qualified Solver
 import System.IO (stdout)
@@ -54,9 +55,23 @@ instance (v ~ Abstract V) => InputFrom v where
 -- Solving for the model
 ------------------------------------------------------------
 
+-- | Convert a value to a top value if the set contains 
+-- more than one value.
+singletonOrTop :: (TopLattice v) => Set v -> v
+singletonOrTop s 
+   | Set.size s == 1 = head $ Set.elems s
+   | otherwise = Lat.top
+
 -- | Convert an SMT model to a ASE model
 convertModel :: Symbolic.Model SymbolicVariable -> Model V
-convertModel = Model . Map.map (Lat.joins . Set.map mapValue) . Symbolic.getModel
+-- XXX: we use `singletonOrTop` here for soundness, since the number of values 
+-- returned from the model might not cover all possible values. In the future
+-- this should be handled by the model solver itself, and should be made more 
+-- precise. However, in this case, we "give up" if we notice that there are 
+-- more than one possible value in the model.
+-- In practice, we should be able to distinguinish at least possible types,
+-- but this is currently not possible.
+convertModel = Model . Map.map (singletonOrTop . Set.map mapValue) . Symbolic.getModel
    where mapValue :: Symbolic.Literal -> Abstract V
          mapValue (Symbolic.Num n) = Domain.inject n
          mapValue (Symbolic.Rea r) = Domain.inject r
