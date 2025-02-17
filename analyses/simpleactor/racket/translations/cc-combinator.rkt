@@ -268,7 +268,11 @@
             (lambda (,v)
               ,(instrument-meta `(,(translate-aux κ2) ,j ,k (,f ,(instrument-meta `(,(translate-aux κ1) ,k ,j ,v)))))))))]
     [(quasiquote (mon ,j ,k ,κ ,v))
-     (instrument-meta `(,(translate-aux κ) (quote ,j) (quote ,k) ,(translate-aux v)))]
+     (let ((xj (gensym "xj"))
+           (xk (gensym "xk")))
+     `(letrec ((,xj ,(if (symbol? j) `(quote ,j) j))
+               (,xk ,(if (symbol? k) `(quote ,k) k)))
+       ,(instrument-meta `(,(translate-aux κ) ,xj ,xk ,(translate-aux v)))))]
     [(quasiquote (behavior/c ,@messages))
      (translate-behavior/c e)]
     [(quasiquote (one-of/c ,@options))

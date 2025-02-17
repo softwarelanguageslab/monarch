@@ -32,6 +32,7 @@ data Exp = Lam [Ide] Exp Span                -- ^ λ (x*) . e
          | Error String Span                 -- ^ error str
          | Input Span                        -- ^ input
          | Fresh Span                        -- ^ fresh (only for debugging, generates a "fresh" symbolic value)
+         | Loc Span                          -- ^ a special-form that returns its span as a value when evaluated
          deriving (Eq, Ord, Generic)
 
 instance NFData Exp
@@ -85,6 +86,7 @@ instance SpanOf Exp where
                (Error _ s)   -> s
                (Input s) -> s
                (Fresh s) -> s
+               (Loc s)  -> s
 
 
 instance Show Exp where
@@ -110,6 +112,7 @@ instance Show Exp where
             (Input _)         -> "(input)"
             (Error e _)       -> printf "(error %s)" (show e)
             (Fresh _)         -> printf "(fresh)"
+            (Loc _)           -> printf "(loc)"
 
 
 variables :: Pat -> Set String 
@@ -142,3 +145,4 @@ instance FreeVariables Exp where
    fv (Error _ _)       = Set.empty
    fv (Input _)         = Set.empty
    fv (Fresh _)         = Set.empty
+   fv (Loc _)           = Set.empty

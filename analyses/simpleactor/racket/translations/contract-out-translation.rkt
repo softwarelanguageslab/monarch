@@ -50,7 +50,7 @@
 (define (translate-contract contract)
   (match contract
     [(quasiquote (,identifier ,contract))
-     (let ((monitor `(mon module importer ,contract ,identifier))
+     (let ((monitor `(mon (cons (quote module) (loc)) (cons (quote importer) (loc)) ,contract ,identifier))
            (arity (contract-arity contract)))
        (if (= arity 0)
            monitor
