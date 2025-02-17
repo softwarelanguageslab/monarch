@@ -22,13 +22,20 @@ import System.IO (Handle, hPutStrLn, IOMode(WriteMode))
 -- Command-line interface
 ------------------------------------------------------------
 
-data BenchmarkOptions = 
-      BenchmarkOptions { outputCsv :: String, dumpConfiguration :: Bool }
+data BenchmarkOptions = BenchmarkOptions { 
+      -- | The name of the file the output of the benchmarks should be written to
+      outputCsv :: String, 
+      -- |  Whether only the ocnfigurations should be printed and no benchmarks should be run
+      dumpConfiguration :: Bool,
+      -- | The number of iterations for each (benchmark, configuration) pair (default is 20)
+      iterations :: Int
+   }
    deriving (Ord, Eq, Show)
 
 options :: Parser BenchmarkOptions
 options = BenchmarkOptions <$> option str (short 'o' <> help "The location of the results")
                            <*> switch (short 'd' <> help "Dump the available configurations")
+                           <*> option auto (short 'i' <> help "Maximum number of iterations of each (benchmark, configuration) pair" <> value maxIterations)
 
 ------------------------------------------------------------
 -- Constants
