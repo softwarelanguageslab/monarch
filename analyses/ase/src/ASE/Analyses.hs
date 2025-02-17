@@ -52,7 +52,7 @@ runM cfg = runZ3SolverWithSetup SMT.prelude . runCachedSolver . runConfiguration
 class (NFData a) => IsAnalysisResult a where
    -- | Returns the set of reachable blame AST nodes detected 
    -- by the analysis
-   blameNodes' :: a -> Set Span
+   blameNodes' :: a -> Set (Semantics.V, Span)
    -- | Returns the set of values in halting program states
    values' :: a -> Set Semantics.V
    -- | Returns the number states in the visited set
@@ -68,7 +68,7 @@ instance NFData AnalysisResult where
    rnf (AnalysisResult a) = rnf a
 
 -- | Obtain the set of reachable blame nodes for any analysis result
-blameNodes :: AnalysisResult -> Set Span
+blameNodes :: AnalysisResult -> Set (Semantics.V, Span)
 blameNodes (AnalysisResult a) = blameNodes' a
 
 -- | Obtain the set of program values in halting program states 
@@ -106,8 +106,8 @@ instance IsAnalysisResult LocalAnalysisResult where
    -- To extract the nodes relating to a blame error, we need to traverse the set of 
    -- reachable states and only select those that relate to the evaluation of a blame AST node.
    blameNodes' = Set.fromList . mapMaybe (extract . unnest) . Set.toList . getLocalAnalysisResult
-      where extract :: HList (Unnest LocalMachine.State) -> Maybe Span
-            extract (Ev (Blame _ s) _ :+: _) = Just s
+      where extract :: HList (Unnest LocalMachine.State) -> Maybe (Semantics.V, Span)
+            extract (Blm v s :+: _) = Just (v, s)
             extract _ = Nothing
    values' = Set.fromList . mapMaybe (extract . unnest) . Set.toList . getLocalAnalysisResult
       where extract :: HList (Unnest LocalMachine.State) -> Maybe Semantics.V
@@ -127,8 +127,8 @@ localAnalysis e k = AnalysisResult . LocalAnalysisResult <$> runM cfg (compute i
 
 instance IsAnalysisResult FlowSensitive.State where
    blameNodes' = Set.fromList . mapMaybe (extract . unnest) . Set.toList . FlowSensitive.stepStates
-      where extract :: HList (Unnest FlowSensitive.StepState) -> Maybe Span
-            extract (Ev (Blame _ s) _ :+: _) = Just s
+      where extract :: HList (Unnest FlowSensitive.StepState) -> Maybe (Semantics.V, Span)
+            extract (Blm v s :+: _) = Just (v, s)
             extract _ = Nothing
    values' =  Set.fromList . mapMaybe (extract . unnest) . Set.toList . FlowSensitive.stepStates
       where extract :: HList (Unnest FlowSensitive.StepState) -> Maybe Semantics.V
@@ -151,8 +151,8 @@ instance NFData EffectDrivenResult
 
 instance IsAnalysisResult EffectDrivenResult where 
    blameNodes' (EffectDrivenResult seen _) = Set.fromList $ mapMaybe (extract . unnest . Eff.stepState) $ Set.toList seen 
-      where extract :: HList (Unnest Eff.StepState') -> Maybe Span
-            extract (Ev (Blame _ s) _ :+: _) = Just s
+      where extract :: HList (Unnest Eff.StepState') -> Maybe (Semantics.V, Span)
+            extract (Blm v s :+: _) = Just (v, s)
             extract _ = Nothing
    values' (EffectDrivenResult seen _) = Set.fromList $ mapMaybe (extract . unnest . Eff.stepState) $ Set.toList seen
       where extract :: HList (Unnest Eff.StepState') -> Maybe Semantics.V

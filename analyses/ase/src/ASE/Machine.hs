@@ -51,7 +51,7 @@ import Domain (SchemeDomain)
 ------------------------------------------------------------
 
 -- | The control component for the abstract machine
-data Ctrl v k = Ev !Exp !(Env k) | Ap !v
+data Ctrl v k = Ev !Exp !(Env k) | Ap !v | Blm !v !Span
               deriving (Eq, Ord, Show, Generic)
 instance (NFData v, NFData k) => NFData (Ctrl v k)
 

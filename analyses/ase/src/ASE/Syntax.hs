@@ -17,6 +17,7 @@ isAtomic e = case e of
                Self {}     -> False
                Literal {}  -> True
                Var {}      -> True
+               Loc {}      -> True
                _           -> False
 
 

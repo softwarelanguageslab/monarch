@@ -16,6 +16,7 @@ import Analysis.Monad.Allocation (AllocM(alloc))
 import qualified Analysis.Scheme.Primitives as Primitives
 import Control.Monad (ap)
 import Control.Monad.Join
+import qualified Domain.Scheme.Class as Scheme
 import Domain.Scheme.Class (SchemeDomain(injectClo, withProc))
 import Domain.SimpleActor (ActorValue')
 import Symbolic.AST (Proposition(Variable), conjunction, Formula (Atomic), isSat, emptyPC)
@@ -137,6 +138,7 @@ atomicEval :: MachineM m => Exp -> m V
 atomicEval (Literal l _)   = return $ injectLit l
 atomicEval (Var (Ide x _)) = lookupEnv x >>= lookupAdr
 atomicEval lam@(Lam {})    = getEnv <&> injectClo . (lam,)
+atomicEval (Loc s)         = return $ Scheme.symbol (show s)
 atomicEval exp             = error $ "expression " ++ show exp ++ " is not an atomic expression"
 
 -- | Evaluation part of the @step@ping function, dispatches
@@ -176,7 +178,7 @@ stepEval (Letrec bds bdy _) = do
    ads <- mapM (alloc . spanOf . fst) bds
    ρ'  <- extends (zip (map (name . fst) bds) ads) <$> getEnv
    withEnv (const ρ') $ evalLetrec ads (map snd bds) bdy
-stepEval (Blame _ _) = mzero
+stepEval (Blame e s) = Blm <$> atomicEval e <*> pure s
 stepEval e = error $ "Expression " ++ show e ++ " is not supported by this interpreter"
 
 -- | Apply the given continuation
@@ -223,6 +225,7 @@ step (Ap v) = liftA2 (,) topAddress topFailAddress
                (k, _)      -> stepApply v   -- apply the continuation
         )
 step (Ev e ρ) =  withEnv (const ρ) (stepEval e)
+step (Blm _ _) = mzero
 
 ------------------------------------------------------------
 -- Optimisations
