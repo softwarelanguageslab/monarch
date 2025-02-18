@@ -473,7 +473,7 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
 
    -- Predicates
    isInteger = hasType IntKey
-   isReal    = hasType RealKey
+   isReal  v = Domain.Core.or (hasType RealKey v) (hasType IntKey v)
    isChar    = hasType CharKey
    isPaiPtr  = hasType PaiKey
    isVecPtr  = hasType VecKey

@@ -126,7 +126,7 @@ translateAtomic (Predicate nam props) =
 translateAtomic (Application f1 []) = translateAtomic f1
 translateAtomic (Application f1 f2) =
    printf "(%s %s)" <$> translateAtomic f1 <*> (unwords <$> mapM translateAtomic f2)
-translateAtomic Bottom = return "(VError)"
+translateAtomic Bottom = fresh -- return "(VError)"
 translateAtomic Tautology = return "true"
 translateAtomic Fresh = fresh
 -- translateAtomic (Choice a b) = 

@@ -6,15 +6,19 @@ module Analysis.Monad.WorkList (
     WorkListT,
     runWithWorkList,
     iterateWL,
-    iterateWL'
+    iterateWL',
+    iterateWLDebug
 ) where
 
+import Analysis.Monad.ComponentTracking
 import Control.Fixpoint.WorkList (WorkList)
 import qualified Control.Fixpoint.WorkList as WL
 import Control.Monad.Layer
 
 import Control.Monad.State
 import Data.Maybe (fromMaybe)
+import qualified Data.Set as Set
+import Control.Monad (when)
 import Control.Monad.Cond (unlessM)
 import Data.Functor (($>))
 
@@ -56,3 +60,10 @@ iterateWL f = unlessM done (pop >>= f >> iterateWL f)
 
 iterateWL' :: WorkListM m cmp => cmp -> (cmp -> m a) -> m ()
 iterateWL' initial f = add initial >> iterateWL f
+
+iterateWLDebug :: (ComponentTrackingM m cmp, MonadIO m, WorkListM m cmp) => cmp -> (cmp -> m a) -> m ()
+iterateWLDebug initial f = add initial >> loop 0
+   where loop i = unlessM done (runNext i)
+         runNext i = do 
+            when (i > 100) (components >>= liftIO . putStrLn . ("Number of seen states " ++) . show .  Set.size)
+            pop >>= f >> (loop (if i <= 100 then i+1 else 0))

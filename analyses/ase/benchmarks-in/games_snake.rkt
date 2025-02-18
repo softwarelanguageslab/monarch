@@ -217,39 +217,39 @@
   ;[SNAKE/C contract?]
   ;[WORLD/C contract?]
   ;[struct posn ([x real?] [y real?])]
-  [posn=? (-> POSN/C POSN/C  boolean?/c)]
+  ;; DISABLED [posn=? (-> POSN/C POSN/C  boolean?/c)]
   ;[struct snake ([dir DIR/C] [segs (and/c cons? (listof POSN/C))])]
   ;[struct world ([snake SNAKE/C] [food POSN/C])]
   ;; const
   [WORLD WORLD/C]
-  [BACKGROUND image/c]
-  [FOOD-IMAGE image/c]
-  [SEGMENT-IMAGE image/c]
-  [GRID-SIZE real?/c]
-  [BOARD-HEIGHT-PIXELS real?/c]
-  [BOARD-WIDTH real?/c]
-  [BOARD-HEIGHT real?/c]
-  ;; collide
-  [snake-wall-collide? (-> SNAKE/C boolean?/c)]
-  [snake-self-collide? (-> SNAKE/C boolean?/c)]
-  ;; cut-tail
-  [cut-tail (-> (and/c cons?/c (listof POSN/C)) (listof POSN/C))]
-  ;; motion-help
-  [snake-slither (-> SNAKE/C SNAKE/C)]
-  [snake-grow (-> SNAKE/C SNAKE/C)]
-  ;; motion
-  [world-change-dir (-> WORLD/C DIR/C WORLD/C)]
-  [world->world (-> WORLD/C WORLD/C)]
-  ;; handlers
-  [handle-key (-> WORLD/C string?/c WORLD/C)]
-  [game-over? (-> WORLD/C boolean?/c)]
-  ;; scenes
-  [world->scene (-> WORLD/C image/c)]
-  [food+scene (-> POSN/C image/c image/c)]
-  [place-image-on-grid (-> image/c real?/c real?/c image/c image/c)]
-  [snake+scene (-> SNAKE/C image/c  image/c)]
-  [segments+scene (-> (listof POSN/C) image/c image/c)]
-  [segment+scene (-> POSN/C image/c  image/c)]
+  ;; DISABLED [BACKGROUND image/c]
+  ;; DISABLED [FOOD-IMAGE image/c]
+  ;; DISABLED [SEGMENT-IMAGE image/c]
+  ;; DISABLED [GRID-SIZE real?/c]
+  ;; DISABLED [BOARD-HEIGHT-PIXELS real?/c]
+  ;; DISABLED [BOARD-WIDTH real?/c]
+  ;; DISABLED [BOARD-HEIGHT real?/c]
+  ;; DISABLED ;; collide
+  ;; DISABLED [snake-wall-collide? (-> SNAKE/C boolean?/c)]
+  ;; DISABLED [snake-self-collide? (-> SNAKE/C boolean?/c)]
+  ;; DISABLED ;; cut-tail
+  ;; DISABLED [cut-tail (-> (and/c cons?/c (listof POSN/C)) (listof POSN/C))]
+  ;; DISABLED ;; motion-help
+  ;; DISABLED [snake-slither (-> SNAKE/C SNAKE/C)]
+  ;; DISABLED [snake-grow (-> SNAKE/C SNAKE/C)]
+  ;; DISABLED ;; motion
+  ;; DISABLED [world-change-dir (-> WORLD/C DIR/C WORLD/C)]
+  ;; DISABLED [world->world (-> WORLD/C WORLD/C)]
+  ;; DISABLED ;; handlers
+  ;; DISABLED [handle-key (-> WORLD/C string?/c WORLD/C)]
+  ;; DISABLED [game-over? (-> WORLD/C boolean?/c)]
+  ;; DISABLED ;; scenes
+  ;; DISABLED [world->scene (-> WORLD/C image/c)]
+  ;; DISABLED [food+scene (-> POSN/C image/c image/c)]
+  ;; DISABLED [place-image-on-grid (-> image/c real?/c real?/c image/c image/c)]
+  ;; DISABLED [snake+scene (-> SNAKE/C image/c  image/c)]
+  ;; DISABLED [segments+scene (-> (listof POSN/C) image/c image/c)]
+  ;; DISABLED [segment+scene (-> POSN/C image/c  image/c)]
   ))
 
 

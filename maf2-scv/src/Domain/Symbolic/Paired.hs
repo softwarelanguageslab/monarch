@@ -61,22 +61,36 @@ instance Meetable (SymbolicVal exp k i v) where
 
 type instance BoolFor (SymbolicVal exp k i v) = (SymbolicVal exp k i v)
 
+simplifyArith :: (Eq i) => String -> (forall a . Num a => a -> a -> a) -> Proposition i -> Proposition i -> Proposition i
+simplifyArith _ f (Literal (Num n1)) (Literal (Num n2)) = Literal $ Num $ f n1 n2
+simplifyArith _ f (Literal (Rea n1)) (Literal (Rea n2)) = Literal $ Rea $ f n1 n2
+simplifyArith _ f (Literal (Rea n1)) (Literal (Num n2)) = Literal $ Rea $ f n1 (fromInteger n2)
+simplifyArith _ f (Literal (Num n1)) (Literal (Rea n2)) = Literal $ Rea $ f (fromInteger n1) n2
+simplifyArith op f n1 n2 = Predicate op [n1, n2]
+
+simplifyBool :: (Eq i) => String -> (forall a . (Ord a, Num a) => a -> a -> Bool) -> Proposition i -> Proposition i -> Proposition i
+simplifyBool _ f (Literal (Num n1)) (Literal (Num n2)) = Literal $ Boo $ f n1 n2
+simplifyBool _ f (Literal (Rea n1)) (Literal (Rea n2)) = Literal $ Boo $ f n1 n2
+simplifyBool _ f (Literal (Rea n1)) (Literal (Num n2)) = Literal $ Boo $ f n1 (fromInteger n2)
+simplifyBool _ f (Literal (Num n1)) (Literal (Rea n2)) = Literal $ Boo $ f (fromInteger n1) n2
+simplifyBool op f n1 n2 = Predicate op [n1, n2]
+
 instance (Eq i) => NumberDomain (SymbolicVal exp k i v) where
    isZero (SymbolicVal n) = return $ SymbolicVal $ Predicate "zero?/v" [n]
    random _ = return $ SymbolicVal Fresh
    plus (SymbolicVal n1) (SymbolicVal n2) =
-      return $ SymbolicVal $ Predicate "+/v" [n1, n2]
+      return $ SymbolicVal $ simplifyArith "+/v" (+) n1 n2
    minus (SymbolicVal n1) (SymbolicVal n2) =
-      return $ SymbolicVal $ Predicate "-/v" [n1, n2]
+      return $ SymbolicVal $ simplifyArith "-/v" (-) n1 n2
    times (SymbolicVal n1) (SymbolicVal n2) =
-      return $ SymbolicVal $ Predicate "*/v" [n1, n2]
+      return $ SymbolicVal $ simplifyArith "*/v" (*) n1 n2
    div (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ Predicate "//v" [n1, n2]
    expt = error "unsupported"
    lt (SymbolicVal n1) (SymbolicVal n2) =
-      return $ SymbolicVal $ Predicate "</v" [n1, n2]
+      return $ SymbolicVal $ simplifyBool "</v" (<) n1 n2
    eq (SymbolicVal n1) (SymbolicVal n2) =
-      return $ SymbolicVal $ Predicate "=/v" [n1, n2]
+      return $ SymbolicVal $ simplifyBool ">/v" (>) n1 n2
 
 ------------------------------------------------------------
 -- IntDomain instance
@@ -136,8 +150,8 @@ instance Eq i => BoolDomain (SymbolicVal exp k i v) where
    isTrue  = const False -- unknown status of whether it is fale or true, so neither is
    isFalse = const False
    not (SymbolicVal v) = SymbolicVal $ Predicate "not/v" [v]
-   or  (SymbolicVal a) (SymbolicVal b)  = SymbolicVal $ Predicate "or?/v" [a, b]
-   and (SymbolicVal a) (SymbolicVal b) = SymbolicVal $ Predicate "and?/v"  [a, b]
+   or  (SymbolicVal a) (SymbolicVal b)  = SymbolicVal $ simplify $ Predicate "or?/v" [a, b]
+   and (SymbolicVal a) (SymbolicVal b) = SymbolicVal $ simplify $ Predicate "and?/v"  [a, b]
    boolTop = SymbolicVal Fresh
 
 
@@ -189,18 +203,18 @@ instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAd
    prim      = SymbolicVal . Function . (++"/v")
    prims     = const bottom
    withProc  = const . const mzero
-   isInteger = SymbolicVal . Predicate "integer?/v" . List.singleton . proposition 
-   isReal    = SymbolicVal . Predicate "real?/v" . List.singleton . proposition 
-   isChar    = SymbolicVal . Predicate "character?/v" . List.singleton . proposition 
-   isVecPtr  = SymbolicVal . Predicate "vector?/v" . List.singleton . proposition 
-   isStrPtr  = SymbolicVal . Predicate "string?/v" . List.singleton . proposition 
-   isSymbol  = SymbolicVal . Predicate "symbol?/v" . List.singleton . proposition 
-   isPaiPtr  = SymbolicVal . Predicate "pair?/v" . List.singleton . proposition 
-   isClo     = SymbolicVal . Predicate "closure?/v" . List.singleton . proposition 
-   isBool    = SymbolicVal . Predicate "boolean?/v" . List.singleton . proposition 
-   isNil     = SymbolicVal . Predicate "null?/v" . List.singleton . proposition 
-   isUnsp    = SymbolicVal . Predicate "unsp?/v" . List.singleton . proposition 
-   isPrim    = SymbolicVal . Predicate "primitive?/v" . List.singleton . proposition 
+   isInteger = SymbolicVal . simplify . Predicate "integer?/v" . List.singleton . proposition 
+   isReal    = SymbolicVal . simplify . Predicate "real?/v" . List.singleton . proposition 
+   isChar    = SymbolicVal . simplify . Predicate "character?/v" . List.singleton . proposition 
+   isVecPtr  = SymbolicVal . simplify . Predicate "vector?/v" . List.singleton . proposition 
+   isStrPtr  = SymbolicVal . simplify . Predicate "string?/v" . List.singleton . proposition 
+   isSymbol  = SymbolicVal . simplify . Predicate "symbol?/v" . List.singleton . proposition 
+   isPaiPtr  = SymbolicVal . simplify . Predicate "pair?/v" . List.singleton . proposition 
+   isClo     = SymbolicVal . simplify . Predicate "closure?/v" . List.singleton . proposition 
+   isBool    = SymbolicVal . simplify . Predicate "boolean?/v" . List.singleton . proposition 
+   isNil     = SymbolicVal . simplify . Predicate "null?/v" . List.singleton . proposition 
+   isUnsp    = SymbolicVal . simplify . Predicate "unsp?/v" . List.singleton . proposition 
+   isPrim    = SymbolicVal . simplify . Predicate "primitive?/v" . List.singleton . proposition 
    symbols   = const bottom
    symbol    = SymbolicVal . Literal . Sym
 
@@ -292,9 +306,9 @@ instance (EqualLattice v, BottomLattice v, BoolDomain v, SchemeValue (PairedSymb
    ap f ags res =
       SchemePairedValue (leftValue res, SymbolicVal $ Application (proposition $ rightValue f) (map (proposition . rightValue) ags))
    assertTrue (SchemePairedValue (l, SymbolicVal r)) =
-      SchemePairedValue (l, SymbolicVal $ IsTrue r)
+      SchemePairedValue (l, SymbolicVal $ simplify $ IsTrue r)
    assertFalse (SchemePairedValue (l, SymbolicVal r)) =
-      SchemePairedValue (l, SymbolicVal $ IsFalse r)
+      SchemePairedValue (l, SymbolicVal $ simplify $ IsFalse r)
    symbolic (SchemePairedValue (_, SymbolicVal r)) = r
    var idx vlu =
       SchemePairedValue (leftValue vlu, SymbolicVal $ Variable idx)

@@ -60,7 +60,7 @@ allPrimitives = [
    fix2 "/" Domain.div, -- todo: vararg
    fix1 "acos" Domain.acos,
    fix1 "atan" Domain.atan,
-   -- fix1 "boolean?" (return . isBool),
+   fix1 "boolean?" (return . isBool),
    fix1 "true?" return,
    fix1 "false?" (return . Domain.not),
    fix1 "car" (pptrs >=> deref (const (return . car))),

@@ -2,6 +2,7 @@
   (use-modules (srfi srfi-28))
   (define (add1 x) (+ x 1))
   (define (sub1 x) (+ x 1))
+  (define (loc x) x)
   (set! *random-state* (random-state-from-platform))
   (define (input) (expt 2 64))
   (letrec*
@@ -1467,7 +1468,8 @@
                         a
                         (letrec* ((x8129 (modulo a b))) (gcd b x8129))))))
                    g8127)))
-               (image (lambda () (letrec* ((g8130 (cons 'image '()))) g8130)))
+               (image
+                (lambda () (letrec* ((g8130 (orig-cons 'image '()))) g8130)))
                (image?
                 (lambda (image7596)
                   (letrec*
@@ -3391,340 +3393,318 @@
                  (letrec*
                   ((x8655
                     (letrec*
-                     ((xj7518 (letrec* ((x8656 (loc))) (cons 'module x8656)))
-                      (xk7519
-                       (letrec* ((x8657 (loc))) (cons 'importer x8657))))
+                     ((xj7518 (loc 'module)) (xk7519 (loc 'importer)))
                      (letrec*
-                      ((g8658
+                      ((g8656
                         ((lambda (j7521 k7522 f7523)
                            (letrec*
-                            ((g8659
+                            ((g8657
                               (lambda (g7520)
                                 (letrec*
-                                 ((g8660
+                                 ((g8658
                                    (letrec*
-                                    ((x8661
+                                    ((x8659
                                       (letrec*
-                                       ((x8662 (any/c j7521 k7522 g7520)))
-                                       (f7523 x8662))))
-                                    (boolean?/c j7521 k7522 x8661))))
-                                 g8660))))
-                            g8659))
+                                       ((x8660 (any/c j7521 k7522 g7520)))
+                                       (f7523 x8660))))
+                                    (boolean?/c j7521 k7522 x8659))))
+                                 g8658))))
+                            g8657))
                          xj7518
                          xk7519
                          image?)))
-                      g8658)))
+                      g8656)))
                    (x8654 (input)))
                   (x8655 x8654)))
                 (g8643
                  (letrec*
-                  ((x8665
+                  ((x8663
                     (letrec*
-                     ((xj7524 (letrec* ((x8666 (loc))) (cons 'module x8666)))
-                      (xk7525
-                       (letrec* ((x8667 (loc))) (cons 'importer x8667))))
+                     ((xj7524 (loc 'module)) (xk7525 (loc 'importer)))
                      (letrec*
-                      ((g8668
+                      ((g8664
                         ((lambda (j7528 k7529 f7530)
                            (letrec*
-                            ((g8669
+                            ((g8665
                               (lambda (g7526 g7527)
                                 (letrec*
-                                 ((g8670
+                                 ((g8666
                                    (letrec*
-                                    ((x8671
+                                    ((x8667
                                       (letrec*
-                                       ((x8673 (real?/c j7528 k7529 g7526))
-                                        (x8672 (real?/c j7528 k7529 g7527)))
-                                       (f7530 x8673 x8672))))
-                                    (image? j7528 k7529 x8671))))
-                                 g8670))))
-                            g8669))
+                                       ((x8669 (real?/c j7528 k7529 g7526))
+                                        (x8668 (real?/c j7528 k7529 g7527)))
+                                       (f7530 x8669 x8668))))
+                                    (image? j7528 k7529 x8667))))
+                                 g8666))))
+                            g8665))
                          xj7524
                          xk7525
                          empty-scene)))
-                      g8668)))
-                   (x8664 (input))
-                   (x8663 (input)))
-                  (x8665 x8664 x8663)))
+                      g8664)))
+                   (x8662 (input))
+                   (x8661 (input)))
+                  (x8663 x8662 x8661)))
                 (g8644
                  (letrec*
-                  ((x8678
+                  ((x8674
                     (letrec*
-                     ((xj7531 (letrec* ((x8679 (loc))) (cons 'module x8679)))
-                      (xk7532
-                       (letrec* ((x8680 (loc))) (cons 'importer x8680))))
+                     ((xj7531 (loc 'module)) (xk7532 (loc 'importer)))
                      (letrec*
-                      ((g8681
+                      ((g8675
                         ((lambda (j7537 k7538 f7539)
                            (letrec*
-                            ((g8682
+                            ((g8676
                               (lambda (g7533 g7534 g7535 g7536)
                                 (letrec*
-                                 ((g8683
+                                 ((g8677
                                    (letrec*
-                                    ((x8684
+                                    ((x8678
                                       (letrec*
-                                       ((x8688 (image?/c j7537 k7538 g7533))
-                                        (x8687 (real?/c j7537 k7538 g7534))
-                                        (x8686 (real?/c j7537 k7538 g7535))
-                                        (x8685 (image? j7537 k7538 g7536)))
-                                       (f7539 x8688 x8687 x8686 x8685))))
-                                    (image? j7537 k7538 x8684))))
-                                 g8683))))
-                            g8682))
+                                       ((x8682 (image?/c j7537 k7538 g7533))
+                                        (x8681 (real?/c j7537 k7538 g7534))
+                                        (x8680 (real?/c j7537 k7538 g7535))
+                                        (x8679 (image? j7537 k7538 g7536)))
+                                       (f7539 x8682 x8681 x8680 x8679))))
+                                    (image? j7537 k7538 x8678))))
+                                 g8677))))
+                            g8676))
                          xj7531
                          xk7532
                          place-image)))
-                      g8681)))
-                   (x8677 (input))
-                   (x8676 (input))
-                   (x8675 (input))
-                   (x8674 (input)))
-                  (x8678 x8677 x8676 x8675 x8674)))
+                      g8675)))
+                   (x8673 (input))
+                   (x8672 (input))
+                   (x8671 (input))
+                   (x8670 (input)))
+                  (x8674 x8673 x8672 x8671 x8670)))
                 (g8645
                  (letrec*
-                  ((x8692
+                  ((x8686
                     (letrec*
-                     ((xj7540 (letrec* ((x8693 (loc))) (cons 'module x8693)))
-                      (xk7541
-                       (letrec* ((x8694 (loc))) (cons 'importer x8694))))
+                     ((xj7540 (loc 'module)) (xk7541 (loc 'importer)))
                      (letrec*
-                      ((g8695
+                      ((g8687
                         ((lambda (j7545 k7546 f7547)
                            (letrec*
-                            ((g8696
+                            ((g8688
                               (lambda (g7542 g7543 g7544)
                                 (letrec*
-                                 ((g8697
+                                 ((g8689
                                    (letrec*
-                                    ((x8698
+                                    ((x8690
                                       (letrec*
-                                       ((x8701 (real?/c j7545 k7546 g7542))
-                                        (x8700 (string?/c j7545 k7546 g7543))
-                                        (x8699 (string?/c j7545 k7546 g7544)))
-                                       (f7547 x8701 x8700 x8699))))
-                                    (image? j7545 k7546 x8698))))
-                                 g8697))))
-                            g8696))
+                                       ((x8693 (real?/c j7545 k7546 g7542))
+                                        (x8692 (string?/c j7545 k7546 g7543))
+                                        (x8691 (string?/c j7545 k7546 g7544)))
+                                       (f7547 x8693 x8692 x8691))))
+                                    (image? j7545 k7546 x8690))))
+                                 g8689))))
+                            g8688))
                          xj7540
                          xk7541
                          circle)))
-                      g8695)))
-                   (x8691 (input))
-                   (x8690 (input))
-                   (x8689 (input)))
-                  (x8692 x8691 x8690 x8689)))
+                      g8687)))
+                   (x8685 (input))
+                   (x8684 (input))
+                   (x8683 (input)))
+                  (x8686 x8685 x8684 x8683)))
                 (g8646
                  (letrec*
-                  ((x8705
+                  ((x8697
                     (letrec*
-                     ((xj7548 (letrec* ((x8706 (loc))) (cons 'module x8706)))
-                      (xk7549
-                       (letrec* ((x8707 (loc))) (cons 'importer x8707))))
+                     ((xj7548 (loc 'module)) (xk7549 (loc 'importer)))
                      (letrec*
-                      ((g8708
+                      ((g8698
                         ((lambda (j7553 k7554 f7555)
                            (letrec*
-                            ((g8709
+                            ((g8699
                               (lambda (g7550 g7551 g7552)
                                 (letrec*
-                                 ((g8710
+                                 ((g8700
                                    (letrec*
-                                    ((x8711
+                                    ((x8701
                                       (letrec*
-                                       ((x8714 (player/c j7553 k7554 g7550))
-                                        (x8713 (posn/c j7553 k7554 g7551))
-                                        (x8712 (horde/c j7553 k7554 g7552)))
-                                       (f7555 x8714 x8713 x8712))))
-                                    (world/c j7553 k7554 x8711))))
-                                 g8710))))
-                            g8709))
+                                       ((x8704 (player/c j7553 k7554 g7550))
+                                        (x8703 (posn/c j7553 k7554 g7551))
+                                        (x8702 (horde/c j7553 k7554 g7552)))
+                                       (f7555 x8704 x8703 x8702))))
+                                    (world/c j7553 k7554 x8701))))
+                                 g8700))))
+                            g8699))
                          xj7548
                          xk7549
                          new-world)))
-                      g8708)))
-                   (x8704 (input))
-                   (x8703 (input))
-                   (x8702 (input)))
-                  (x8705 x8704 x8703 x8702)))
+                      g8698)))
+                   (x8696 (input))
+                   (x8695 (input))
+                   (x8694 (input)))
+                  (x8697 x8696 x8695 x8694)))
                 (g8647
                  (letrec*
-                  ((x8716
+                  ((x8706
                     (letrec*
-                     ((xj7556 (letrec* ((x8717 (loc))) (cons 'module x8717)))
-                      (xk7557
-                       (letrec* ((x8718 (loc))) (cons 'importer x8718))))
+                     ((xj7556 (loc 'module)) (xk7557 (loc 'importer)))
                      (letrec*
-                      ((g8719
+                      ((g8707
                         ((lambda (j7559 k7560 f7561)
                            (letrec*
-                            ((g8720
+                            ((g8708
                               (lambda (g7558)
                                 (letrec*
-                                 ((g8721
+                                 ((g8709
                                    (letrec*
-                                    ((x8722
+                                    ((x8710
                                       (letrec*
-                                       ((x8723 (posn/c j7559 k7560 g7558)))
-                                       (f7561 x8723))))
-                                    (player/c j7559 k7560 x8722))))
-                                 g8721))))
-                            g8720))
+                                       ((x8711 (posn/c j7559 k7560 g7558)))
+                                       (f7561 x8711))))
+                                    (player/c j7559 k7560 x8710))))
+                                 g8709))))
+                            g8708))
                          xj7556
                          xk7557
                          new-player)))
-                      g8719)))
-                   (x8715 (input)))
-                  (x8716 x8715)))
+                      g8707)))
+                   (x8705 (input)))
+                  (x8706 x8705)))
                 (g8648
                  (letrec*
-                  ((x8726
+                  ((x8714
                     (letrec*
-                     ((xj7562 (letrec* ((x8727 (loc))) (cons 'module x8727)))
-                      (xk7563
-                       (letrec* ((x8728 (loc))) (cons 'importer x8728))))
+                     ((xj7562 (loc 'module)) (xk7563 (loc 'importer)))
                      (letrec*
-                      ((g8729
+                      ((g8715
                         ((lambda (j7566 k7567 f7568)
                            (letrec*
-                            ((g8730
+                            ((g8716
                               (lambda (g7564 g7565)
                                 (letrec*
-                                 ((g8731
+                                 ((g8717
                                    (letrec*
-                                    ((x8732
+                                    ((x8718
                                       (letrec*
-                                       ((x8734 (zombies/c j7566 k7567 g7564))
-                                        (x8733 (zombies/c j7566 k7567 g7565)))
-                                       (f7568 x8734 x8733))))
-                                    (horde/c j7566 k7567 x8732))))
-                                 g8731))))
-                            g8730))
+                                       ((x8720 (zombies/c j7566 k7567 g7564))
+                                        (x8719 (zombies/c j7566 k7567 g7565)))
+                                       (f7568 x8720 x8719))))
+                                    (horde/c j7566 k7567 x8718))))
+                                 g8717))))
+                            g8716))
                          xj7562
                          xk7563
                          new-horde)))
-                      g8729)))
-                   (x8725 (input))
-                   (x8724 (input)))
-                  (x8726 x8725 x8724)))
+                      g8715)))
+                   (x8713 (input))
+                   (x8712 (input)))
+                  (x8714 x8713 x8712)))
                 (g8649
                  (letrec*
-                  ((x8737
+                  ((x8723
                     (letrec*
-                     ((xj7569 (letrec* ((x8738 (loc))) (cons 'module x8738)))
-                      (xk7570
-                       (letrec* ((x8739 (loc))) (cons 'importer x8739))))
+                     ((xj7569 (loc 'module)) (xk7570 (loc 'importer)))
                      (letrec*
-                      ((g8740
+                      ((g8724
                         ((lambda (j7573 k7574 f7575)
                            (letrec*
-                            ((g8741
+                            ((g8725
                               (lambda (g7571 g7572)
                                 (letrec*
-                                 ((g8742
+                                 ((g8726
                                    (letrec*
-                                    ((x8743
+                                    ((x8727
                                       (letrec*
-                                       ((x8745 (zombie/c j7573 k7574 g7571))
-                                        (x8744 (zombies/c j7573 k7574 g7572)))
-                                       (f7575 x8745 x8744))))
-                                    (zombies/c j7573 k7574 x8743))))
-                                 g8742))))
-                            g8741))
+                                       ((x8729 (zombie/c j7573 k7574 g7571))
+                                        (x8728 (zombies/c j7573 k7574 g7572)))
+                                       (f7575 x8729 x8728))))
+                                    (zombies/c j7573 k7574 x8727))))
+                                 g8726))))
+                            g8725))
                          xj7569
                          xk7570
                          new-cons-zombies)))
-                      g8740)))
-                   (x8736 (input))
-                   (x8735 (input)))
-                  (x8737 x8736 x8735)))
+                      g8724)))
+                   (x8722 (input))
+                   (x8721 (input)))
+                  (x8723 x8722 x8721)))
                 (g8650
                  (letrec*
-                  ((xj7576 (letrec* ((x8746 (loc))) (cons 'module x8746)))
-                   (xk7577 (letrec* ((x8747 (loc))) (cons 'importer x8747))))
+                  ((xj7576 (loc 'module)) (xk7577 (loc 'importer)))
                   (letrec*
-                   ((g8748
+                   ((g8730
                      ((lambda (j7578 k7579 f7580)
                         (letrec*
-                         ((g8749
+                         ((g8731
                            (lambda ()
                              (letrec*
-                              ((g8750
+                              ((g8732
                                 (letrec*
-                                 ((x8751 (f7580)))
-                                 (zombies/c j7578 k7579 x8751))))
-                              g8750))))
-                         g8749))
+                                 ((x8733 (f7580)))
+                                 (zombies/c j7578 k7579 x8733))))
+                              g8732))))
+                         g8731))
                       xj7576
                       xk7577
                       new-mt-zombies)))
-                   g8748)))
+                   g8730)))
                 (g8651
                  (letrec*
-                  ((x8753
+                  ((x8735
                     (letrec*
-                     ((xj7581 (letrec* ((x8754 (loc))) (cons 'module x8754)))
-                      (xk7582
-                       (letrec* ((x8755 (loc))) (cons 'importer x8755))))
+                     ((xj7581 (loc 'module)) (xk7582 (loc 'importer)))
                      (letrec*
-                      ((g8756
+                      ((g8736
                         ((lambda (j7584 k7585 f7586)
                            (letrec*
-                            ((g8757
+                            ((g8737
                               (lambda (g7583)
                                 (letrec*
-                                 ((g8758
+                                 ((g8738
                                    (letrec*
-                                    ((x8759
+                                    ((x8739
                                       (letrec*
-                                       ((x8760 (posn/c j7584 k7585 g7583)))
-                                       (f7586 x8760))))
-                                    (zombie/c j7584 k7585 x8759))))
-                                 g8758))))
-                            g8757))
+                                       ((x8740 (posn/c j7584 k7585 g7583)))
+                                       (f7586 x8740))))
+                                    (zombie/c j7584 k7585 x8739))))
+                                 g8738))))
+                            g8737))
                          xj7581
                          xk7582
                          new-zombie)))
-                      g8756)))
-                   (x8752 (input)))
-                  (x8753 x8752)))
+                      g8736)))
+                   (x8734 (input)))
+                  (x8735 x8734)))
                 (g8652
                  (letrec*
-                  ((x8763
+                  ((x8743
                     (letrec*
-                     ((xj7587 (letrec* ((x8764 (loc))) (cons 'module x8764)))
-                      (xk7588
-                       (letrec* ((x8765 (loc))) (cons 'importer x8765))))
+                     ((xj7587 (loc 'module)) (xk7588 (loc 'importer)))
                      (letrec*
-                      ((g8766
+                      ((g8744
                         ((lambda (j7591 k7592 f7593)
                            (letrec*
-                            ((g8767
+                            ((g8745
                               (lambda (g7589 g7590)
                                 (letrec*
-                                 ((g8768
+                                 ((g8746
                                    (letrec*
-                                    ((x8769
+                                    ((x8747
                                       (letrec*
-                                       ((x8771 (real?/c j7591 k7592 g7589))
-                                        (x8770 (real?/c j7591 k7592 g7590)))
-                                       (f7593 x8771 x8770))))
-                                    (posn/c j7591 k7592 x8769))))
-                                 g8768))))
-                            g8767))
+                                       ((x8749 (real?/c j7591 k7592 g7589))
+                                        (x8748 (real?/c j7591 k7592 g7590)))
+                                       (f7593 x8749 x8748))))
+                                    (posn/c j7591 k7592 x8747))))
+                                 g8746))))
+                            g8745))
                          xj7587
                          xk7588
                          new-posn)))
-                      g8766)))
-                   (x8762 (input))
-                   (x8761 (input)))
-                  (x8763 x8762 x8761)))
+                      g8744)))
+                   (x8742 (input))
+                   (x8741 (input)))
+                  (x8743 x8742 x8741)))
                 (g8653
                  (letrec*
-                  ((xj7594 (letrec* ((x8772 (loc))) (cons 'module x8772)))
-                   (xk7595 (letrec* ((x8773 (loc))) (cons 'importer x8773))))
-                  (letrec* ((g8774 (world/c xj7594 xk7595 w0))) g8774))))
+                  ((xj7594 (loc 'module)) (xk7595 (loc 'importer)))
+                  (letrec* ((g8750 (world/c xj7594 xk7595 w0))) g8750))))
                g8653))))
            g7610))))
        g7608)))

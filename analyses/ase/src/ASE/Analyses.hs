@@ -152,7 +152,7 @@ instance NFData EffectDrivenResult
 instance IsAnalysisResult EffectDrivenResult where 
    blameNodes' (EffectDrivenResult seen _) = Set.fromList $ mapMaybe (extract . unnest . Eff.stepState) $ Set.toList seen 
       where extract :: HList (Unnest Eff.StepState') -> Maybe (Semantics.V, Span)
-            extract (Blm v s :+: _) = Just (v, s)
+            extract (Blm v s :+: cnt :+: _) = Just (v, s)
             extract _ = Nothing
    values' (EffectDrivenResult seen _) = Set.fromList $ mapMaybe (extract . unnest . Eff.stepState) $ Set.toList seen
       where extract :: HList (Unnest Eff.StepState') -> Maybe Semantics.V

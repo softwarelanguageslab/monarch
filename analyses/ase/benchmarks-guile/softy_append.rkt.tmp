@@ -2,6 +2,7 @@
   (use-modules (srfi srfi-28))
   (define (add1 x) (+ x 1))
   (define (sub1 x) (+ x 1))
+  (define (loc x) x)
   (set! *random-state* (random-state-from-platform))
   (define (input) (expt 2 64))
   (letrec*
@@ -1486,37 +1487,35 @@
                  (letrec*
                   ((x7897
                     (letrec*
-                     ((xj7349 (letrec* ((x7898 (loc))) (cons 'module x7898)))
-                      (xk7350
-                       (letrec* ((x7899 (loc))) (cons 'importer x7899))))
+                     ((xj7349 (loc 'module)) (xk7350 (loc 'importer)))
                      (letrec*
-                      ((g7900
+                      ((g7898
                         ((lambda (j7353 k7354 f7355)
                            (letrec*
-                            ((g7901
+                            ((g7899
                               (lambda (g7351 g7352)
                                 (letrec*
-                                 ((g7902
+                                 ((g7900
                                    (letrec*
-                                    ((x7908 (listof any/c))
-                                     (x7903
+                                    ((x7906 (listof any/c))
+                                     (x7901
                                       (letrec*
-                                       ((x7906
-                                         (letrec*
-                                          ((x7907 (listof any/c)))
-                                          (x7907 j7353 k7354 g7351)))
-                                        (x7904
+                                       ((x7904
                                          (letrec*
                                           ((x7905 (listof any/c)))
-                                          (x7905 j7353 k7354 g7352))))
-                                       (f7355 x7906 x7904))))
-                                    (x7908 j7353 k7354 x7903))))
-                                 g7902))))
-                            g7901))
+                                          (x7905 j7353 k7354 g7351)))
+                                        (x7902
+                                         (letrec*
+                                          ((x7903 (listof any/c)))
+                                          (x7903 j7353 k7354 g7352))))
+                                       (f7355 x7904 x7902))))
+                                    (x7906 j7353 k7354 x7901))))
+                                 g7900))))
+                            g7899))
                          xj7349
                          xk7350
                          append)))
-                      g7900)))
+                      g7898)))
                    (x7896 (input))
                    (x7895 (input)))
                   (x7897 x7896 x7895))))

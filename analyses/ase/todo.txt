@@ -1,8 +1,9 @@
 ASE TODO
 ---------
 
-- [ ] allocate the TAdr in the store, same for VAdr and SAdr
-- [ ] Create a TopLifted instance of the Scheme lattice, this 
+- [X] allocate the TAdr in the store, same for VAdr and SAdr
+- [X] Create a TopLifted instance of the Scheme lattice, this 
 will help us in achieving the most generic values that could 
 be returned from the model in our symbolic solver
-
+- [ ] check why `freshmodel.scm` does not seem to terminate on the local variant 
+of the analysis.

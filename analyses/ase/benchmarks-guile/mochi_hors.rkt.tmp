@@ -2,6 +2,7 @@
   (use-modules (srfi srfi-28))
   (define (add1 x) (+ x 1))
   (define (sub1 x) (+ x 1))
+  (define (loc x) x)
   (set! *random-state* (random-state-from-platform))
   (define (input) (expt 2 64))
   (letrec*
@@ -1509,29 +1510,27 @@
                  (letrec*
                   ((x7907
                     (letrec*
-                     ((xj7349 (letrec* ((x7908 (loc))) (cons 'module x7908)))
-                      (xk7350
-                       (letrec* ((x7909 (loc))) (cons 'importer x7909))))
+                     ((xj7349 (loc 'module)) (xk7350 (loc 'importer)))
                      (letrec*
-                      ((g7910
+                      ((g7908
                         ((lambda (j7352 k7353 f7354)
                            (letrec*
-                            ((g7911
+                            ((g7909
                               (lambda (g7351)
                                 (letrec*
-                                 ((g7912
+                                 ((g7910
                                    (letrec*
-                                    ((x7913
+                                    ((x7911
                                       (letrec*
-                                       ((x7914 (integer?/c j7352 k7353 g7351)))
-                                       (f7354 x7914))))
-                                    (any/c j7352 k7353 x7913))))
-                                 g7912))))
-                            g7911))
+                                       ((x7912 (integer?/c j7352 k7353 g7351)))
+                                       (f7354 x7912))))
+                                    (any/c j7352 k7353 x7911))))
+                                 g7910))))
+                            g7909))
                          xj7349
                          xk7350
                          main)))
-                      g7910)))
+                      g7908)))
                    (x7906 (input)))
                   (x7907 x7906))))
                g7905))))

@@ -138,7 +138,14 @@ atomicEval :: MachineM m => Exp -> m V
 atomicEval (Literal l _)   = return $ injectLit l
 atomicEval (Var (Ide x _)) = lookupEnv x >>= lookupAdr
 atomicEval lam@(Lam {})    = getEnv <&> injectClo . (lam,)
-atomicEval (Loc s)         = return $ Scheme.symbol (show s)
+atomicEval (Loc e s)       = return $ Scheme.symbol (show e ++ "@" ++ show s)
+atomicEval (Trace e s)     = traceInfo =<< (atomicEval e)
+   where traceInfo v = do 
+               liftIO $ putStr $ "TRACE[" ++ show s ++ "]"
+               liftIO $ putStrLn (show v)
+               pc <- getPc
+               liftIO $ putStrLn (show pc)
+               return v
 atomicEval exp             = error $ "expression " ++ show exp ++ " is not an atomic expression"
 
 -- | Evaluation part of the @step@ping function, dispatches
@@ -146,21 +153,25 @@ atomicEval exp             = error $ "expression " ++ show exp ++ " is not an at
 stepEval :: MachineM m => Exp -> m (Ctrl V K)
 stepEval e
    | isAtomic e = Ap <$> atomicEval e
-stepEval (Ite cnd csq alt s) = do
-   --liftIO (putStr "{IF}")
-   vcnd <- atomicEval cnd
-   αf <- alloc s
-   pc' <- getPc
-   -- liftIO (putStrLn $ "size of PC set: " ++ show (Set.size pc'))
-   mjoinMap (\pc -> do
-      count <- getCounts
-      cond (pure vcnd)
-         (  extendPc (assertTrue vcnd)
-         >> pushF αf (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)) count)
-         >> getEnv <&> Ev csq )
-         (  extendPc (assertFalse vcnd)
-         >> pushF αf (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)) count)
-         >> getEnv <&> Ev alt) ) =<< getPc
+stepEval (Ite cnd csq alt _) = do
+      --liftIO (putStr "{IF}")
+      vcnd <- atomicEval cnd
+      αf1 <- alloc (spanOf csq)
+      αf2 <- alloc (spanOf alt)
+      pc' <- getPc
+      -- XXX: this is currently an overapproximation since it considers both @branch True@ 
+      -- and @branch False@ at the same time.
+      mjoin (branch vcnd αf1 αf2 True) (branch vcnd αf1 αf2 False)
+   where branch vcnd αf1 αf2 doPush =
+               mjoinMap (\pc -> do
+                  count <- getCounts
+                  cond (pure vcnd)
+                     (  extendPc (assertTrue vcnd)
+                     >> (if doPush then (pushF αf1 (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)) count)) else return ())
+                     >> getEnv <&> Ev csq )
+                     (  extendPc (assertFalse vcnd)
+                     >> (if doPush then (pushF αf2 (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)) count)) else return ())
+                     >> getEnv <&> Ev alt) ) =<< getPc
 stepEval (Fresh s) = do
    -- Same as `input` but associates `fresh` as the symbolic representation rather 
    -- than the generated variable.
@@ -195,8 +206,9 @@ stepApply = popK . applyContinuation
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
 restart = popF selectContinuation
-   where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero (restartUsingModel pc) <=< computeModel cnt) pc
+   where selectContinuation (Branch pc cnt) = mjoinMap (maybe (liftIO (putStrLn $ "unsat " ++ show pc) >> mzero) (restartUsingModel pc) <=< computeModel cnt) pc
          restartUsingModel pc model = do
+            --liftIO (putStr "R" >> hFlush stdout)
             -- add the model to the next execution
             putModel (getModel model)
             -- change the model context of the current state
@@ -220,7 +232,7 @@ restart = popF selectContinuation
 -- the empty computation so that no successor states are generated.
 step :: MachineM m => Ctrl V K -> m (Ctrl V K)
 step (Ap v) = liftA2 (,) topAddress topFailAddress
-    >>= (\case (Hlt, FHlt) -> mzero         -- machine has no continuations, it has reached a halting state 
+    >>= (\case (Hlt, FHlt) -> liftIO (putStr "D" >> hFlush stdout) >> mzero         -- machine has no continuations, it has reached a halting state 
                (Hlt, top)  -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
                (k, _)      -> stepApply v   -- apply the continuation
         )

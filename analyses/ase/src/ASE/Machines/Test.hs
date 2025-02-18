@@ -190,14 +190,16 @@ runStep f step@StepState { .. } = (fromMaybe (error "initial state should be pre
         inter :: HList FlowList -> m (Set StepState)
         inter st = (Cache.run @(FlowT m) (const intra) (uncons (() :+: st)) >>= putWidened . unnest)
                  & runNonDetT
-                 & fmap Set.fromList
+                 & fmap setFromList
+        setFromList [] = traceShow ("no successors for " ++ show step) Set.empty 
+        setFromList xs = Set.fromList xs
         stepState' = (stepState, Map.empty)
         putWidened :: forall m . (PutAll StepState FlowList, AllMapM StepState FlowList m) => HList (StepState ': FlowList) -> m StepState 
         putWidened (step' :+: st') = joinWithAll step' st' >> return step'
         isEscape :: forall m . MonadBottom m => HList (Unnest (Val (StackT m) (Ctrl V K))) -> m StepState
         isEscape (Value v :+: rest) = return $ StepState $ uncons $ v :+: rest
         isEscape (MayBoth v _ :+: rest) = return $ StepState $ uncons $ v :+: rest
-        isEscape v = mzero
+        isEscape (Escape e :+: rest) = {- traceShow ("bottom " ++ show e ++ " for " ++ show step) $ -} mzero
 
 -- | Standard @collect@ function for flow sensitive analysis
 run ::  forall m . (GetAll StepState FlowList, PutAll StepState FlowList, AllMapM StepState FlowList m, Monad m)
@@ -225,7 +227,7 @@ status a =  do
    return a
 
 analyze :: forall m . (MonadIO m, Monad m) => (Ctrl V K -> AnalysisT m (Ctrl V K)) -> Configuration K V -> m (Set StepState, FlowOutput)
-analyze f cfg = iterateWL' step0 (\st -> (runStep f st >>= mapM_ spawn >>= status)
+analyze f cfg = iterateWLDebug step0 (\st -> (runStep f st >>= mapM_ spawn >>= status)
                                         & runIntraAnalysis st)
               & runWithDependencyTracking 
               & execWithComponentTracking 

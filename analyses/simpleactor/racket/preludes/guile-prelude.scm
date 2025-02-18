@@ -4,6 +4,7 @@
 
 (define (add1 x) (+ x 1))
 (define (sub1 x) (+ x 1))
+(define (loc x) x)
 
 (set! *random-state* (random-state-from-platform))
 

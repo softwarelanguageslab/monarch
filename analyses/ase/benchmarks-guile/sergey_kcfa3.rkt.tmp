@@ -2,6 +2,7 @@
   (use-modules (srfi srfi-28))
   (define (add1 x) (+ x 1))
   (define (sub1 x) (+ x 1))
+  (define (loc x) x)
   (set! *random-state* (random-state-from-platform))
   (define (input) (expt 2 64))
   (letrec*

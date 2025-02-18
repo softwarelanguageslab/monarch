@@ -18,7 +18,8 @@ module Symbolic.AST
     emptyFormula,
     PC,
     Model(..),
-    mapVariables
+    mapVariables, 
+    Simplification(..),
   )
 where
 
@@ -231,3 +232,28 @@ instance MapVariables Formula where
    mapVariables f (Negation prop) = Negation (mapVariables f prop)
    mapVariables f (Atomic prop) = Atomic (mapVariables f prop)
    mapVariables _ Empty = Empty
+
+------------------------------------------------------------
+-- Simplifications
+------------------------------------------------------------
+
+class Simplification v where  
+   simplify :: v -> v
+
+instance (Eq i) => Simplification (Proposition i) where  
+   simplify (Predicate "real?/v" [Literal (Rea v)]) = Literal $ Boo True
+   simplify (Predicate "real?/v" [Literal (Num v)]) = Literal $ Boo True
+   simplify (Predicate "integer?/v" [Literal (Num v)]) = Literal $ Boo True
+   simplify (Predicate "integer?/v" [Literal _]) = Literal $ Boo False
+   simplify (Predicate "or?/v" [Literal (Boo a), Literal (Boo b)]) = Literal $ Boo (a || b)
+   simplify (Predicate "and?/v" [Literal (Boo a), Literal (Boo b)]) = Literal $ Boo (a && b)
+   simplify (IsTrue prop) = case simplify prop of 
+                               Literal (Boo True) -> Tautology
+                               simpl -> IsTrue simpl
+   simplify (IsFalse prop) = case simplify prop of 
+                               Literal (Boo False) -> Tautology
+                               simpl -> IsFalse simpl
+   simplify v = v
+   
+
+

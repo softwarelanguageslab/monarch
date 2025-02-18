@@ -33,16 +33,19 @@ instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp
 instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM m cmp a, WorkListM m cmp)
         => StoreM a v (IntraAnalysisT cmp m) where
     lookupAdr a = currentCmp >>= upperM . register a >> upperM (lookupAdr a)
-    writeAdr a v = whenM (upperM $ writeAdr' a v) (upperM $ trigger a)
-    updateAdr a v = whenM (upperM $ updateAdr' a v) (upperM $ trigger a)
+    writeAdr a v = whenM (upperM $ writeAdr' a v) (trace ("updated " ++ show a) (upperM $ trigger a))
+    updateAdr a v = whenM (upperM $ updateAdr' a v) (trace ("updated " ++ show a) (upperM $ trigger a))
     updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger a)
     hasAdr = upperM . hasAdr
 
-instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM m cmp k, WorkListM m cmp)
+instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM m cmp k, WorkListM m cmp, Show k, Typeable v)
     => MapM k v (IntraAnalysisT cmp m) where
         get k = currentCmp >>= upperM . register k >> upperM (get k)
-        put k v = whenM (upperM $ put' k v) (upperM $ trigger k)
-        joinWith k v = whenM (upperM $ joinWith' k v) (upperM $ trigger k)
+        put k v = whenM (upperM $ put' k v) (notrace ("updated " ++ show (typeOf v)) $ upperM $ trigger k)
+        joinWith k v = whenM (upperM $ joinWith' k v) (notrace ("updated" ++ show (typeOf v)) $ upperM $ trigger k)
+
+notrace :: String -> v -> v
+notrace = const id
 
 -- | Convenience function for retrieving the component current being analyzed
 currentCmp :: Monad m => IntraAnalysisT cmp m cmp

@@ -11,14 +11,14 @@
   (define (gen-car i of)
     (if (= i -1)
         of 
-        `(cdr ,(gen-car (- i 1) of))))
+        `(orig-cdr ,(gen-car (- i 1) of))))
 
   (let
     ((getter (string->symbol (string-append (symbol->string structname) "-" (symbol->string fieldname))))
      (structVar (gensym structname)))
 
   `(define (,getter ,structname)
-      (car ,(gen-car i structname)))))
+      (orig-car ,(gen-car i structname)))))
 
 ;; Generate a constructor for the given struct name with the given number of fields
 (define (translate-constructor structname fields)
@@ -30,11 +30,11 @@
   (define (generate-conses parameters)
     (if (null? parameters)
         ''()
-        `(cons ,(car parameters) ,(generate-conses (cdr parameters)))))
+        `(orig-cons ,(car parameters) ,(generate-conses (cdr parameters)))))
 
   (define parameters (generate-parameters fields))
   `(define (,structname ,@parameters)
-     ,`(cons (quote ,structname) ,(generate-conses parameters))))
+     ,`(orig-cons (quote ,structname) ,(generate-conses parameters))))
    
 
 (define (field-name field)
