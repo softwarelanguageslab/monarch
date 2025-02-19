@@ -70,6 +70,7 @@ type CSto = Map (CAdr K) (VecDom V)
 ------------------------------------------------------------
 
 type FlowT m = MonadStack '[
+         VisitedT PC,
          -- Symbolic execution
          FormulaT SymbolicVariable V,
          AbstractCountT SymbolicVariable,
@@ -110,6 +111,7 @@ type StackT m = MonadStack '[
          ----------------------------------------
          -- Copy of @FlowT@ due to Haskell limitations
          ----------------------------------------
+         VisitedT PC,
          -- Symbolic execution
          FormulaT SymbolicVariable V,
          AbstractCountT SymbolicVariable,
@@ -154,7 +156,8 @@ initialStepState cfg =  StepState $
 -- | The initial contents of widened state components 
 initialState :: StepState -> Configuration K V -> State StepState FlowList
 initialState step cfg@Configuration { .. } =  
-                          (init emptyPC)           -- path constraint
+                          (init emptyVisited)      -- visited set
+                      :+: (init emptyPC)           -- path constraint
                       :+: (init Map.empty)         -- count mapping
                       :+: (init Map.empty)         -- continuation stores 
                       :+: (init Map.empty)         -- failure continuation stores 

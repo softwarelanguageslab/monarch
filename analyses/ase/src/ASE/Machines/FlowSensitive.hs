@@ -81,8 +81,11 @@ type StackT m = MonadStack '[
          -- Context
          SmallstepContextT K,
          SmallstepContextT PC,
+         -- Visited set 
+         VisitedT PC,
          -- Environment
          EnvT (Env K),
+         -- Caching
          CacheT,
          -- Symbolic execution
          FormulaT SymbolicVariable V,
@@ -115,6 +118,7 @@ initialStepState cfg =  Ev (e0 cfg) (ρ0 cfg)
                     <+> initialContinuationStack -- continuation 
                     <+> []                       -- context
                     <+> emptyPC                  -- model context
+                    <+> emptyVisited
 
 -- | The entire state including the parts that are widened 
 -- per state (i.e., per StepState)

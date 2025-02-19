@@ -67,6 +67,7 @@ type StackT m = MonadStack '[
       StoreT' (CAdr K) (VecDom V),
       -- Model
       ModelT SymbolicVariable V,
+      VisitedT PC,
       -- Random input
       InputT (Abstract V),
       -- Environment
@@ -95,6 +96,7 @@ initialState cfg =  Ev (e0 cfg) (ρ0 cfg)
                 <+> Map.empty                -- string store
                 <+> Map.empty                -- vector store
                 <+> Map.empty                -- model 
+                <+> emptyVisited
                 <+> Random.initialSeq        -- infinite random sequence
 
 -- | Run a single step of the local machine and produce a local machine state

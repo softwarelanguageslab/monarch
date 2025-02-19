@@ -41,8 +41,8 @@ instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM m cmp a, W
 instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM m cmp k, WorkListM m cmp, Show k, Typeable v)
     => MapM k v (IntraAnalysisT cmp m) where
         get k = currentCmp >>= upperM . register k >> upperM (get k)
-        put k v = whenM (upperM $ put' k v) (notrace ("updated " ++ show (typeOf v)) $ upperM $ trigger k)
-        joinWith k v = whenM (upperM $ joinWith' k v) (notrace ("updated" ++ show (typeOf v)) $ upperM $ trigger k)
+        put k v = whenM (upperM $ put' k v) (notrace ("put " ++ show (typeOf v)) $ upperM $ trigger k)
+        joinWith k v = whenM (upperM $ joinWith' k v) (notrace ("joinWith" ++ show (typeOf v)) $ upperM $ trigger k)
 
 notrace :: String -> v -> v
 notrace = const id

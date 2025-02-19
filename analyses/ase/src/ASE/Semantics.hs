@@ -10,7 +10,7 @@ import ASE.Syntax
 import ASE.Machine
 import ASE.Domain.SymbolicVariable
 import Analysis.Monad.Environment (EnvM(lookupEnv, getEnv, withExtendedEnv, withEnv))
-import Analysis.Monad (StoreM(lookupAdr, writeAdr), StoreM' (putStore), withCtx, getCtx, currentStore)
+import Analysis.Monad (StoreM(hasAdr, lookupAdr, writeAdr), StoreM' (putStore), withCtx, getCtx, currentStore)
 import Analysis.SimpleActor.Semantics (injectLit)
 import Analysis.Monad.Allocation (AllocM(alloc))
 import qualified Analysis.Scheme.Primitives as Primitives
@@ -81,8 +81,6 @@ convertModel = Model . Map.map (singletonOrTop . Set.map mapValue) . Symbolic.ge
          mapValue (Symbolic.Sym a) = Scheme.symbol a
          mapValue Symbolic.Nil     = Scheme.nil
          mapValue Symbolic.Pair    = Scheme.pptr PTAdr
-         -- todo: map a pair
-
 
 -- | Replace the given set of under constrained variables with top values
 replaceUnderconstrained :: (Ord a, TopLattice v) => Set a -> Map a v -> Map a v
@@ -158,20 +156,24 @@ stepEval (Ite cnd csq alt _) = do
       vcnd <- atomicEval cnd
       αf1 <- alloc (spanOf csq)
       αf2 <- alloc (spanOf alt)
+      --whenM (hasAdr αf1) (do
+      --   bs <- lookupAdr αf1
+      --   liftIO $ putStrLn ("Branch size" ++ show (Set.size bs) ++ " at " ++ show αf1))
       pc' <- getPc
-      -- XXX: this is currently an overapproximation since it considers both @branch True@ 
+      -- liftIO $ putStrLn ("PC size " ++ show (Set.size pc'))
       -- and @branch False@ at the same time.
-      mjoin (branch vcnd αf1 αf2 True) (branch vcnd αf1 αf2 False)
-   where branch vcnd αf1 αf2 doPush =
-               mjoinMap (\pc -> do
-                  count <- getCounts
-                  cond (pure vcnd)
-                     (  extendPc (assertTrue vcnd)
-                     >> (if doPush then (pushF αf1 (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)) count)) else return ())
-                     >> getEnv <&> Ev csq )
-                     (  extendPc (assertFalse vcnd)
-                     >> (if doPush then (pushF αf2 (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)) count)) else return ())
-                     >> getEnv <&> Ev alt) ) =<< getPc
+      mjoinMap (\pc -> do
+         count <- getCounts
+         let bt = (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)) count)
+         let bf = (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)) count)
+
+         cond (pure vcnd)
+            (  extendPc (assertTrue vcnd)
+            >> (condCP (isVisited (branchPC bt)) (return ()) (addVisited (branchPC bt) >> pushF αf1 bt))
+            >> getEnv <&> Ev csq )
+            (  extendPc (assertFalse vcnd)
+            >> (condCP (isVisited (branchPC bf)) (return ()) (addVisited (branchPC bf) >> pushF αf2 bf))
+            >> getEnv <&> Ev alt)) =<< getPc
 stepEval (Fresh s) = do
    -- Same as `input` but associates `fresh` as the symbolic representation rather 
    -- than the generated variable.

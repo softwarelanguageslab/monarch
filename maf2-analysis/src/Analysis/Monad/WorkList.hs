@@ -62,8 +62,8 @@ iterateWL' :: WorkListM m cmp => cmp -> (cmp -> m a) -> m ()
 iterateWL' initial f = add initial >> iterateWL f
 
 iterateWLDebug :: (ComponentTrackingM m cmp, MonadIO m, WorkListM m cmp) => cmp -> (cmp -> m a) -> m ()
-iterateWLDebug initial f = add initial >> loop 0
-   where loop i = unlessM done (runNext i)
-         runNext i = do 
-            when (i > 100) (components >>= liftIO . putStrLn . ("Number of seen states " ++) . show .  Set.size)
-            pop >>= f >> (loop (if i <= 100 then i+1 else 0))
+iterateWLDebug initial f = add initial >> loop 0 
+   where loop total = unlessM done (runNext total)
+         runNext total = do 
+            when (total `mod` 100 == 0) (components >>= liftIO . putStrLn . (\v -> "Number of seen states " ++ v ++ " iterations count " ++ show total) . show .  Set.size)
+            pop >>= f >> (loop $ total+1)

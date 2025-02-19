@@ -20,6 +20,8 @@ import Control.Monad.Layer (MonadLayer, upperM)
 import Control.Monad.Join (MonadBottom(..), MonadJoinable, MonadJoin, mjoinMap)
 import Control.Monad.DomainError (DomainError)
 import Control.Monad.Escape (MonadEscape, Esc, MayEscape)
+import qualified Domain.Class as Domain
+import Domain.Core.BoolDomain.Class
 import Domain.Core.AbstractCount (AbstractCount (..))
 import Domain.Class (Domain)
 import Domain.Symbolic.Class
@@ -127,9 +129,10 @@ data KFrame k = LetK ![VAdr k]     -- ^ the list of remaining addresses to store
 instance NFData k => NFData (KFrame k)
 
 -- | Failure continuation
-data FFrame = Branch !PC !(CountMap SymbolicVariable)
+data FFrame = Branch { branchPC :: !PC, branchCountMap :: !(CountMap SymbolicVariable) }
             deriving (Eq, Ord, Show, Generic)
 instance NFData FFrame
+
 
 -- | Continuation address
 data KAdr k = KAdr !(Label Exp) !k | Hlt
@@ -430,6 +433,65 @@ allocSym ℓ = do
    return adr
 
 ------------------------------------------------------------
+-- Visited set 
+------------------------------------------------------------
+
+-- | Monad to keep track of the visited set
+class MonadVisitedSet e m | m -> e where 
+   -- | Add an element to the visited set.
+   addVisited :: e -> m ()
+   -- | Checks whether the element is in the visited set, 
+   -- can be @top@
+   isVisited :: BoolDomain b => e -> m b
+
+-- | Trivial layered instance of @MonadVisitedSet@
+instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadVisitedSet e m) => MonadVisitedSet e (t m) where 
+   addVisited = upperM . addVisited 
+   isVisited  = upperM . isVisited
+
+-- | An abstract data structure that keeps track of a visited set. 
+-- Concretely, it is implemented as two sets: one for the elements 
+-- that are visited, and another for elements that **might** be visited.
+--
+-- The former set contains the elements that are added with @addVisited@
+-- while the latter set contains the elements result from joining two 
+-- visited sets together since their might be elements that are in one 
+-- visited set but not in the other.
+data VisitedSet e = VisitedSet { visited :: Set e, mayVisited :: Set e }
+                  deriving (Ord, Eq, Show, Generic)
+
+-- | Insert an element into a the visited set
+insertVisited :: Ord e => e -> VisitedSet e -> VisitedSet e
+insertVisited e v = v { visited = Set.insert e (visited v) }
+
+-- | Check whether an element is in the visited set
+containsVisited :: Ord e => BoolDomain b => e -> VisitedSet e -> b
+containsVisited e v 
+   | Set.member e (mayVisited v) = boolTop 
+   | otherwise = Domain.inject (Set.member e (visited v))
+
+-- | Returns an empty visited set
+emptyVisited :: VisitedSet e
+emptyVisited = VisitedSet Set.empty Set.empty
+
+instance NFData e => NFData (VisitedSet e)
+instance Ord e => BottomLattice (VisitedSet e) where 
+   bottom = emptyVisited
+instance Ord e => Joinable (VisitedSet e) where    
+   join (VisitedSet a1 b1) (VisitedSet a2 b2) = VisitedSet (Set.intersection a1 a2) -- the elements visited in both sets   
+                                                           ((Set.union a1 a2) `Set.difference` (Set.intersection a1 a2) `Set.union` (Set.union b1 b2))
+instance (Eq e, Ord e) => PartialOrder (VisitedSet e) where   
+   leq (VisitedSet a1 b1) (VisitedSet a2 b2) = (a1 == a2) && (leq b1 b2)
+
+-- | Trivial instance of @MonadVisitedSet@ based on the state monad
+newtype VisitedT e m a = VisitedT { getVisitedT :: StateT (VisitedSet e) m a } 
+                     deriving (Applicative, Functor, Monad, MonadState (VisitedSet e), MonadCache, MonadLayer, MonadJoinable)
+
+instance (Ord e, Monad m) => MonadVisitedSet e (VisitedT e m) where 
+   addVisited e = modify (insertVisited e)
+   isVisited e = gets (containsVisited e)
+
+------------------------------------------------------------
 -- Machine interface
 ------------------------------------------------------------
 
@@ -464,6 +526,7 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
                            -- Path condition
                            MonadPathCondition SymbolicVariable m v,  
                            FormulaSolver SymbolicVariable m,
+                           MonadVisitedSet PC m,
                            -- Environment monad
                            EnvM m (VAdr k) (Env k))
 
