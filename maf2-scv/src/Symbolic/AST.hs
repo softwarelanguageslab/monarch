@@ -85,10 +85,10 @@ data Proposition i
   | Application !(Proposition i) ![Proposition i]
   -- | A statement that is always true
   | Tautology
+  -- | All assertions fail automatically
+  | Fail
    -- | Generate an unquantified fresh variable
   | Fresh
-   -- | Representation of the bottom value, nothing can be derived from this and a
-   -- all assertions fail
   | Bottom
   deriving (Eq, Ord, Generic)
 
@@ -121,10 +121,13 @@ data Formula i
 instance NFData i => NFData (Formula i)
 
 -- | Create a conjunction of two formulas
-conjunction :: Ord i => Formula i -> Formula i -> Formula i
-conjunction (Conjunction f1) (Conjunction f2) = Conjunction $ Set.union f1 f2
-conjunction f1 (Conjunction f2) = Conjunction $ Set.union (Set.singleton f1) f2
-conjunction f1 f2 = Conjunction $ Set.fromList [f1, f2]
+conjunction' :: Ord i => Formula i -> Formula i -> Formula i
+conjunction' (Conjunction f1) (Conjunction f2) = Conjunction $ Set.union f1 f2
+conjunction' f1 (Conjunction f2) = Conjunction $ Set.union (Set.singleton f1) f2
+conjunction' f1 f2 = Conjunction $ Set.fromList [f1, f2]
+
+conjunction :: Ord i => Formula i -> Formula i -> Formula i 
+conjunction f1 f2 = simplify $ conjunction' f1 f2
 
 -- | Create a disjunction of two formulas
 disjunction :: Ord i => Formula i -> Formula i -> Formula i
@@ -249,11 +252,18 @@ instance (Eq i) => Simplification (Proposition i) where
    simplify (Predicate "and?/v" [Literal (Boo a), Literal (Boo b)]) = Literal $ Boo (a && b)
    simplify (IsTrue prop) = case simplify prop of 
                                Literal (Boo True) -> Tautology
+                               Literal (Boo False) -> Fail
                                simpl -> IsTrue simpl
    simplify (IsFalse prop) = case simplify prop of 
                                Literal (Boo False) -> Tautology
+                               Literal (Boo True)  -> Fail
                                simpl -> IsFalse simpl
    simplify v = v
-   
 
-
+instance (Eq i, Ord i) => Simplification (Formula i) where 
+   simplify (Conjunction cs)  
+      -- sat(False /\ _) = False
+      | Set.member (Atomic Fail) cs = Atomic Fail
+      -- sat(True /\ x) = sat(x)
+      | otherwise = Conjunction $ Set.filter (not . (== Atomic Tautology)) cs
+   simplify f = f 

@@ -12,6 +12,7 @@ import Data.Maybe
 
 import Solver
 import Symbolic.SMT
+import Symbolic.AST
 import qualified Syntax.Scheme.Parser as SExp
 import Data.Functor
 import qualified Data.Map as Map
@@ -141,6 +142,7 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       where (_, _, assgn) = translate count script
             assgn' = Map.fromList $ concatMap (\(key, values) -> map (,key) (Set.toList values)) $ Map.toList assgn
 
+   solve _ (Atomic Fail) = return Unsat
    solve count script   = do
       restoreCheckpoint
       -- Z3Solver $ liftIO $ putStrLn $ "trying to translate script " ++ show script
