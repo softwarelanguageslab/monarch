@@ -128,7 +128,7 @@ translateAtomic (Application f1 f2) =
    printf "(%s %s)" <$> translateAtomic f1 <*> (unwords <$> mapM translateAtomic f2)
 translateAtomic Bottom = fresh -- return "(VError)"
 translateAtomic Tautology = return "true"
-translateAtomic Fresh = fresh
+translateAtomic (Fresh _) = fresh
 -- translateAtomic (Choice a b) = 
 --    -- we currently do not have good support for joins 
 --    -- in the symbolic representation, hence we simply return a fresh 

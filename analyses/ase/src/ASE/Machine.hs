@@ -197,6 +197,10 @@ runAbstractCountT st (AbstractCountT m) = runStateT m st
 instance (Ord α, MonadBottom m) => AbstractCountM α (AbstractCountT α m) where  
    count = fmap getCountMap getCounts
 
+-- | Restrict the count mapping according to the variables in the path condition
+restrictCountMap :: Ord i => Symbolic.PC i -> CountMap i -> CountMap i
+restrictCountMap pc = CountMap . flip Map.restrictKeys (Set.unions (Set.map Symbolic.variables pc)) . getCountMap
+
 -- | A monad that manages the continuation stack, it stores the 
 -- continuation in the continuation store.
 class (StoreM (KAdr k) (Set (KKont k)) m,

@@ -1,5 +1,6 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE PolyKinds #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 -- | Symbolic version of the Scheme domain
 module Domain.Symbolic.Paired where
 
@@ -10,13 +11,13 @@ import Data.Map (Map)
 import qualified Data.List as List
 import Symbolic.AST
 import Syntax.Span
-import Domain.Core.BoolDomain.Class (BoolFor)
 import Domain.Symbolic.Class
 import Domain.Contract.Behavior
 import Domain.Contract (ContractDomain(..))
 import Domain.Contract.Communication
 import Lattice.Class
 import Data.Kind
+import qualified Data.Set as Set
 import Domain.Actor
 import Control.DeepSeq
 
@@ -35,12 +36,12 @@ instance Show i => Show (SymbolicVal exp k i v) where
 -- Lattice instances
 --------------------------------------------------
 
-instance (Eq i) => Joinable (SymbolicVal exp k i v) where
+instance (Ord i, Eq i) => Joinable (SymbolicVal exp k i v) where
    join (SymbolicVal Bottom) (SymbolicVal p2) = SymbolicVal p2
    join (SymbolicVal p1) (SymbolicVal Bottom) = SymbolicVal p1
    join (SymbolicVal p1) (SymbolicVal p2) 
       | p1 == p2 = SymbolicVal p1 
-      | otherwise = SymbolicVal Fresh 
+      | otherwise = SymbolicVal (Fresh (Set.union (variables p1) (variables p2)))
 
 instance BottomLattice (SymbolicVal exp k n v) where
    bottom = SymbolicVal Bottom
@@ -50,7 +51,7 @@ instance (Eq i) => PartialOrder (SymbolicVal exp k i v) where
    subsumes (SymbolicVal p1) (SymbolicVal p2) = p1 == p2
 
 instance TopLattice (SymbolicVal exp k n v) where  
-   top = SymbolicVal Fresh
+   top = SymbolicVal (Fresh Set.empty)
 
 instance Meetable (SymbolicVal exp k i v) where 
    meet = error "TODO: meet is not implemented"
@@ -61,23 +62,23 @@ instance Meetable (SymbolicVal exp k i v) where
 
 type instance BoolFor (SymbolicVal exp k i v) = (SymbolicVal exp k i v)
 
-simplifyArith :: (Eq i) => String -> (forall a . Num a => a -> a -> a) -> Proposition i -> Proposition i -> Proposition i
+simplifyArith :: String -> (forall a . Num a => a -> a -> a) -> Proposition i -> Proposition i -> Proposition i
 simplifyArith _ f (Literal (Num n1)) (Literal (Num n2)) = Literal $ Num $ f n1 n2
 simplifyArith _ f (Literal (Rea n1)) (Literal (Rea n2)) = Literal $ Rea $ f n1 n2
 simplifyArith _ f (Literal (Rea n1)) (Literal (Num n2)) = Literal $ Rea $ f n1 (fromInteger n2)
 simplifyArith _ f (Literal (Num n1)) (Literal (Rea n2)) = Literal $ Rea $ f (fromInteger n1) n2
-simplifyArith op f n1 n2 = Predicate op [n1, n2]
+simplifyArith op _ n1 n2 = Predicate op [n1, n2]
 
-simplifyBool :: (Eq i) => String -> (forall a . (Ord a, Num a) => a -> a -> Bool) -> Proposition i -> Proposition i -> Proposition i
+simplifyBool :: String -> (forall a . (Ord a, Num a) => a -> a -> Bool) -> Proposition i -> Proposition i -> Proposition i
 simplifyBool _ f (Literal (Num n1)) (Literal (Num n2)) = Literal $ Boo $ f n1 n2
 simplifyBool _ f (Literal (Rea n1)) (Literal (Rea n2)) = Literal $ Boo $ f n1 n2
 simplifyBool _ f (Literal (Rea n1)) (Literal (Num n2)) = Literal $ Boo $ f n1 (fromInteger n2)
 simplifyBool _ f (Literal (Num n1)) (Literal (Rea n2)) = Literal $ Boo $ f (fromInteger n1) n2
-simplifyBool op f n1 n2 = Predicate op [n1, n2]
+simplifyBool op _ n1 n2 = Predicate op [n1, n2]
 
-instance (Eq i) => NumberDomain (SymbolicVal exp k i v) where
+instance (Eq i, Ord i) => NumberDomain (SymbolicVal exp k i v) where
    isZero (SymbolicVal n) = return $ SymbolicVal $ Predicate "zero?/v" [n]
-   random _ = return $ SymbolicVal Fresh
+   random _ = return $ SymbolicVal (Fresh Set.empty)
    plus (SymbolicVal n1) (SymbolicVal n2) =
       return $ SymbolicVal $ simplifyArith "+/v" (+) n1 n2
    minus (SymbolicVal n1) (SymbolicVal n2) =
@@ -96,10 +97,10 @@ instance (Eq i) => NumberDomain (SymbolicVal exp k i v) where
 -- IntDomain instance
 ------------------------------------------------------------
 
-instance Eq i => Domain (SymbolicVal exp k i v) Integer where
+instance (Ord i, Eq i) => Domain (SymbolicVal exp k i v) Integer where
    inject = SymbolicVal . Literal . Num
 
-instance Eq i => IntDomain (SymbolicVal exp k i v) where
+instance (Eq i, Ord i) => IntDomain (SymbolicVal exp k i v) where
    type Str (SymbolicVal exp k i v) = ()
    -- TODO: Str SymbolicVal is problematic here since it needs to refer 
    -- to something that actually implements the string domain, perhaps
@@ -121,10 +122,10 @@ instance Eq i => IntDomain (SymbolicVal exp k i v) where
 -- RealDomain instance
 ------------------------------------------------------------
 
-instance Eq i => Domain (SymbolicVal exp k i v) Double where
+instance (Eq i, Ord i) => Domain (SymbolicVal exp k i v) Double where
    inject n = SymbolicVal $ Literal (Rea n)
 
-instance Eq i => RealDomain (SymbolicVal exp k i v) where
+instance (Eq i, Ord i) => RealDomain (SymbolicVal exp k i v) where
    type IntR (SymbolicVal exp k i v) = SymbolicVal exp k i v
    toInt (SymbolicVal n1)   = return $ SymbolicVal $ Predicate "as-int/v"   [n1]
    ceiling (SymbolicVal n1) = return $ SymbolicVal $ Predicate "ceiling/v"  [n1]
@@ -143,26 +144,26 @@ instance Eq i => RealDomain (SymbolicVal exp k i v) where
 -- BoolDomain instance
 ------------------------------------------------------------
 
-instance Eq i => Domain (SymbolicVal exp k i v) Bool where
+instance (Eq i, Ord i) => Domain (SymbolicVal exp k i v) Bool where
    inject n = SymbolicVal $ Literal (Boo n)
 
-instance Eq i => BoolDomain (SymbolicVal exp k i v) where
+instance (Eq i, Ord i) => BoolDomain (SymbolicVal exp k i v) where
    isTrue  = const False -- unknown status of whether it is fale or true, so neither is
    isFalse = const False
    not (SymbolicVal v) = SymbolicVal $ Predicate "not/v" [v]
    or  (SymbolicVal a) (SymbolicVal b)  = SymbolicVal $ simplify $ Predicate "or?/v" [a, b]
    and (SymbolicVal a) (SymbolicVal b) = SymbolicVal $ simplify $ Predicate "and?/v"  [a, b]
-   boolTop = SymbolicVal Fresh
+   boolTop = SymbolicVal (Fresh Set.empty)
 
 
 ------------------------------------------------------------
 -- CharDomain instance
 ------------------------------------------------------------
 
-instance Eq i => Domain (SymbolicVal exp k i v) Char where
+instance (Eq i, Ord i) => Domain (SymbolicVal exp k i v) Char where
    inject c = SymbolicVal $ Literal (Cha c)
 
-instance Eq i => CharDomain (SymbolicVal exp k i v) where
+instance (Eq i, Ord i) => CharDomain (SymbolicVal exp k i v) where
    type IntC (SymbolicVal exp k i v) = SymbolicVal exp k i v
    downcase  (SymbolicVal c) = return $ SymbolicVal $ Predicate "downcase/v" [c]
    upcase    (SymbolicVal c) = return $ SymbolicVal $ Predicate "upcase/v"   [c]
@@ -181,7 +182,7 @@ instance Eq i => CharDomain (SymbolicVal exp k i v) where
 
 type ForAllAdress (c :: Type -> Constraint) v = (c (Adr v), c (PAdr v), c (SAdr v), c (VAdr v))
 
-instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAdress Eq v, ForAllAdress Ord v, Show k, Eq i) => SchemeDomain (SymbolicVal exp k i v) where
+instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAdress Eq v, ForAllAdress Ord v, Show k, Eq i, Ord i) => SchemeDomain (SymbolicVal exp k i v) where
    type Adr  (SymbolicVal exp k i v) = Adr v
    type PAdr (SymbolicVal exp k i v) = PAdr v
    type SAdr (SymbolicVal exp k i v) = SAdr v
@@ -315,7 +316,7 @@ instance (EqualLattice v, BottomLattice v, BoolDomain v, SchemeValue (PairedSymb
    equal a b = 
       SchemePairedValue (eql (leftValue a) (leftValue b), SymbolicVal (Predicate "equal?/v" [proposition $ rightValue a, proposition $ rightValue b]))
    unsymbolic (SchemePairedValue (v, _)) = 
-      SchemePairedValue (v, SymbolicVal Fresh)
+      SchemePairedValue (v, SymbolicVal (Fresh Set.empty)) 
 
 ------------------------------------------------------------
 -- Equality

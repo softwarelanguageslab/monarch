@@ -59,7 +59,7 @@ instance (v ~ Abstract V) => InputFrom v where
 -- | Convert a value to a top value if the set contains 
 -- more than one value.
 singletonOrTop :: (TopLattice v) => Set v -> v
-singletonOrTop s 
+singletonOrTop s
    | Set.size s == 1 = head $ Set.elems s
    | otherwise = Lat.top
 
@@ -84,7 +84,7 @@ convertModel = Model . Map.map (singletonOrTop . Set.map mapValue) . Symbolic.ge
 
 -- | Replace the given set of under constrained variables with top values
 replaceUnderconstrained :: (Ord a, TopLattice v) => Set a -> Map a v -> Map a v
-replaceUnderconstrained s = flip (Set.foldr (flip Map.insert Lat.top)) s
+replaceUnderconstrained = flip (Set.foldr (`Map.insert` Lat.top))
 
 -- | Compute an assignment for the model (if one is available)
 computeModel :: (MonadModel SymbolicVariable V m, FormulaSolver SymbolicVariable m)
@@ -96,7 +96,7 @@ computeModel c pc = do
       if isSat result then
          Just . Model . replaceUnderconstrained underconstrainedVariables . getModel .  convertModel <$> Solver.getModel @SymbolicVariable (getCountMap c) pc
       else return Nothing
-   where underconstrainedVariables = Map.keysSet (getCountMap c) `Set.difference` Symbolic.variables pc
+   where underconstrainedVariables = Map.keysSet (getCountMap c) `Set.difference` Symbolic.strictVariables pc
 
 ------------------------------------------------------------
 -- Semantics
@@ -137,12 +137,12 @@ atomicEval (Literal l _)   = return $ injectLit l
 atomicEval (Var (Ide x _)) = lookupEnv x >>= lookupAdr
 atomicEval lam@(Lam {})    = getEnv <&> injectClo . (lam,)
 atomicEval (Loc e s)       = return $ Scheme.symbol (show e ++ "@" ++ show s)
-atomicEval (Trace e s)     = traceInfo =<< (atomicEval e)
-   where traceInfo v = do 
+atomicEval (Trace e s)     = traceInfo =<< atomicEval e
+   where traceInfo v = do
                liftIO $ putStr $ "TRACE[" ++ show s ++ "]"
-               liftIO $ putStrLn (show v)
+               liftIO $ print v
                pc <- getPc
-               liftIO $ putStrLn (show pc)
+               liftIO $ print pc
                return v
 atomicEval exp             = error $ "expression " ++ show exp ++ " is not an atomic expression"
 
@@ -164,21 +164,21 @@ stepEval (Ite cnd csq alt _) = do
       -- and @branch False@ at the same time.
       mjoinMap (\pc -> do
          count <- getCounts
-         let bt = (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)) count)
-         let bf = (Branch (Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)) count)
-
+         let bt = Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)
+         let bf = Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)
+         liftIO $ print (restrictCountMap bt count)
          cond (pure vcnd)
             (  extendPc (assertTrue vcnd)
-            >> (condCP (isVisited (branchPC bt)) (return ()) (addVisited (branchPC bt) >> pushF αf1 bt))
+            >> condCP (isVisited bt) (return ()) (addVisited bt >> pushF αf1 (Branch bt (restrictCountMap bt count)))
             >> getEnv <&> Ev csq )
             (  extendPc (assertFalse vcnd)
-            >> (condCP (isVisited (branchPC bf)) (return ()) (addVisited (branchPC bf) >> pushF αf2 bf))
+            >> condCP (isVisited bf) (return ()) (addVisited bf >> pushF αf2 (Branch bf (restrictCountMap bf count)))
             >> getEnv <&> Ev alt)) =<< getPc
 stepEval (Fresh s) = do
    -- Same as `input` but associates `fresh` as the symbolic representation rather 
    -- than the generated variable.
    sym <- allocSym s
-   Ap . (`combine` (SymbolicVal $ Symbolic.Fresh)) <$> lookupModel sym
+   Ap . (`combine` (SymbolicVal $ Symbolic.Fresh (Set.singleton sym))) <$> lookupModel sym
 stepEval (Input s) = do
    -- liftIO (putStr "{IN}")
    sym <- allocSym s

@@ -26,25 +26,14 @@ module Domain.Scheme.Derived.Pair(SchemePairedValue(..), leftValue, rightValue, 
 
 import Prelude hiding (and, or, div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt, not)
 
-import Lattice 
+import Lattice
 import Domain.Core
-import Domain.Class 
+import Domain.Class
 import Domain.Scheme.Class
 import Control.Monad.Join
 import qualified Data.Set as Set
 import Text.Printf (printf)
 import Control.DeepSeq
-
--- | Conditional without `mjoin`
-condId :: (BoolDomain a, BottomLattice c, Joinable c) => a -> c -> c -> c
-condId cnd csq alt = join t f 
-   where t = if isTrue cnd then csq else bottom 
-         f = if isFalse cnd then alt else bottom
-
--- | `or` operator that works any values of two different types
--- and returns a value type chosen by the caller
-hetOr :: (BoolDomain a, BoolDomain b, BoolDomain c, BottomLattice c) => a -> b -> c 
-hetOr a b = condId a (inject True) (condId b (inject True) (inject False))
 
 ------------------------------------------------------------
 -- Declaration
@@ -52,17 +41,17 @@ hetOr a b = condId a (inject True) (condId b (inject True) (inject False))
 
 newtype SchemePairedValue l r = SchemePairedValue (l, r) deriving (Eq, Ord, NFData)
 
-instance (Show l, Show r) => Show (SchemePairedValue l r) where  
+instance (Show l, Show r) => Show (SchemePairedValue l r) where
    show (SchemePairedValue (l, r)) = printf "(%s, %s)" (show l) (show r)
 
-leftValue :: SchemePairedValue l r -> l 
+leftValue :: SchemePairedValue l r -> l
 leftValue (SchemePairedValue (l, _)) = l
 rightValue :: SchemePairedValue l r -> r
 rightValue (SchemePairedValue (_, r)) = r
 
-mkLeft :: (Lattice r) => l -> SchemePairedValue l r 
+mkLeft :: (Lattice r) => l -> SchemePairedValue l r
 mkLeft = SchemePairedValue . (,bottom)
-mkRight :: (Lattice l) => r -> SchemePairedValue l r 
+mkRight :: (Lattice l) => r -> SchemePairedValue l r
 mkRight = SchemePairedValue . (bottom,)
 
 -- | Curried constructor of SchemePairedValue
@@ -121,7 +110,7 @@ instance (IntDomain l, IntDomain r, Joinable (Str r)) => IntDomain (SchemePaired
    toReal (SchemePairedValue (l, r)) =
       pairedValue <$> toReal l <*> toReal r
    toString (SchemePairedValue (l, r)) =
-      (curry SchemePairedValue) <$> toString l <*> toString r
+      curry SchemePairedValue <$> toString l <*> toString r
    quotient (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       pairedValue <$> quotient l1 l2 <*> quotient r1 r2
    modulo (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
@@ -162,9 +151,9 @@ instance (BoolDomain l, BoolDomain r) => BoolDomain (SchemePairedValue l r) wher
    isTrue (SchemePairedValue (l, r))  = isTrue l || isTrue r
    isFalse (SchemePairedValue (l, r)) = isFalse l || isFalse r
    not (SchemePairedValue (l, r))     = pairedValue (not l) (not r)
-   or (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) = 
+   or (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       pairedValue (or l1 l2) (or r1 r2)
-   and (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) = 
+   and (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       pairedValue (and l1 l2) (and r1 r2)
    boolTop                            = pairedValue boolTop boolTop
 
@@ -183,13 +172,13 @@ instance (CharDomain l, CharDomain r) => CharDomain (SchemePairedValue l r) wher
    charToInt (SchemePairedValue (l, r)) = pairedValue <$> charToInt l <*> charToInt r
    isLower (SchemePairedValue (l, r))   = join <$> isLower l <*> isLower r
    isUpper (SchemePairedValue (l, r))   = join <$> isUpper l <*> isUpper r
-   charEq (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) = 
+   charEq (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       join <$> charEq l1 l2 <*> charEq  r1 r2
-   charLt (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) = 
+   charLt (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       join <$> charLt l1 l2 <*> charLt  r1 r2
-   charEqCI (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) = 
+   charEqCI (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       join <$> charEqCI l1 l2 <*> charEqCI  r1 r2
-   charLtCI (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) = 
+   charLtCI (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       join <$> charLtCI l1 l2 <*> charLtCI  r1 r2
 
 
@@ -197,7 +186,7 @@ instance (CharDomain l, CharDomain r) => CharDomain (SchemePairedValue l r) wher
 -- TopLattice instance
 ------------------------------------------------------------
 
-instance (TopLattice a, TopLattice b) => TopLattice (SchemePairedValue a b) where   
+instance (TopLattice a, TopLattice b) => TopLattice (SchemePairedValue a b) where
    top = SchemePairedValue (top, top)
 
 ------------------------------------------------------------
@@ -206,10 +195,10 @@ instance (TopLattice a, TopLattice b) => TopLattice (SchemePairedValue a b) wher
 
 instance (-- both subdomains should talk about the same environment
           -- expressions.
-          Env l ~ Env r, 
+          Env l ~ Env r,
           Exp l ~ Exp r,
           -- both subdomains should be scheme domains
-          SchemeDomain l, 
+          SchemeDomain l,
           SchemeDomain r,
           Joinable (Str r),
           -- both subdomains should use the same pointers,
@@ -218,7 +207,7 @@ instance (-- both subdomains should talk about the same environment
           -- value and not their seperate values,
           -- making integration easier.
           Adr l  ~ Adr r,
-          VAdr l ~ VAdr r, 
+          VAdr l ~ VAdr r,
           SAdr l ~ SAdr r,
           PAdr l ~ PAdr r,
           -- set-specific constraints
@@ -235,44 +224,44 @@ instance (-- both subdomains should talk about the same environment
 
    type Env (SchemePairedValue l r) = Env l
    type Exp (SchemePairedValue l r) = Exp l
-   
+
    pptr p = pairedValue (pptr p) (pptr p)
    vptr p = pairedValue (vptr p) (vptr p)
    sptr p = pairedValue (sptr p) (sptr p)
 
-   pptrs (SchemePairedValue (l,r)) = 
+   pptrs (SchemePairedValue (l,r)) =
       join <$> pptrs l <*> pptrs r
-   vptrs (SchemePairedValue (l,r)) = 
+   vptrs (SchemePairedValue (l,r)) =
       join <$> vptrs l <*> vptrs r
-   sptrs (SchemePairedValue (l,r)) = 
+   sptrs (SchemePairedValue (l,r)) =
       join <$> sptrs l <*> sptrs r
 
-   injectClo clo = 
+   injectClo clo =
       SchemePairedValue (injectClo clo, injectClo clo)
    clos (SchemePairedValue (l,r)) =
       join (clos l) (clos r)
-   
+
    nil  = pairedValue nil nil
    unsp = pairedValue unsp unsp
    prim s = pairedValue (prim s) (prim s)
-   prims (SchemePairedValue (l, r)) = 
+   prims (SchemePairedValue (l, r)) =
       join (prims l) (prims r)
 
-   withProc f (SchemePairedValue (l, r)) = 
+   withProc f (SchemePairedValue (l, r)) =
       mjoin (withProc f l) (withProc f r)
 
-   isInteger (SchemePairedValue (l, r)) = (curry SchemePairedValue) (isInteger l) (isInteger r)
-   isReal (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isReal l) (isReal r)
-   isChar (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isChar l) (isChar r)
-   isVecPtr (SchemePairedValue (l, r))  = (curry SchemePairedValue) (isVecPtr l) (isVecPtr r)
-   isStrPtr (SchemePairedValue (l, r))  = (curry SchemePairedValue) (isStrPtr l) (isStrPtr r)
-   isSymbol (SchemePairedValue (l, r))  = (curry SchemePairedValue) (isSymbol l) (isSymbol r)
-   isPaiPtr (SchemePairedValue (l, r))  = (curry SchemePairedValue) (isPaiPtr l) (isPaiPtr r)
-   isClo (SchemePairedValue (l, r))     = (curry SchemePairedValue) (isClo l) (isClo r)
-   isBool (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isBool l) (isBool r)
-   isNil (SchemePairedValue (l, r))     = (curry SchemePairedValue) (isNil l)  (isNil r)
-   isUnsp (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isUnsp l) (isUnsp r)
-   isPrim (SchemePairedValue (l, r))    = (curry SchemePairedValue) (isPrim l) (isPrim r)
+   isInteger (SchemePairedValue (l, r)) = curry SchemePairedValue (isInteger l) (isInteger r)
+   isReal (SchemePairedValue (l, r))    = curry SchemePairedValue (isReal l) (isReal r)
+   isChar (SchemePairedValue (l, r))    = curry SchemePairedValue (isChar l) (isChar r)
+   isVecPtr (SchemePairedValue (l, r))  = curry SchemePairedValue (isVecPtr l) (isVecPtr r)
+   isStrPtr (SchemePairedValue (l, r))  = curry SchemePairedValue (isStrPtr l) (isStrPtr r)
+   isSymbol (SchemePairedValue (l, r))  = curry SchemePairedValue (isSymbol l) (isSymbol r)
+   isPaiPtr (SchemePairedValue (l, r))  = curry SchemePairedValue (isPaiPtr l) (isPaiPtr r)
+   isClo (SchemePairedValue (l, r))     = curry SchemePairedValue (isClo l) (isClo r)
+   isBool (SchemePairedValue (l, r))    = curry SchemePairedValue (isBool l) (isBool r)
+   isNil (SchemePairedValue (l, r))     = curry SchemePairedValue (isNil l)  (isNil r)
+   isUnsp (SchemePairedValue (l, r))    = curry SchemePairedValue (isUnsp l) (isUnsp r)
+   isPrim (SchemePairedValue (l, r))    = curry SchemePairedValue (isPrim l) (isPrim r)
 
    symbol s  = SchemePairedValue (symbol s, symbol s)
    symbols v = Set.union (symbols $ leftValue v) (symbols $ rightValue v)

@@ -1,8 +1,10 @@
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-partial-fields #-}
 module Domain.Contract.Message(ContractMessageDomain(..), isEnhancedMessageCP) where 
 
 import Data.Kind
 import Domain (BoolDomain, inject)
-import Lattice (CP, BottomLattice(bottom))
+import Lattice (CP)
 import Lattice.Class
 import Domain.Scheme.Actors.Message
 

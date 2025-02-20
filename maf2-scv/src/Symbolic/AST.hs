@@ -11,6 +11,7 @@ module Symbolic.AST
     Proposition (..),
     Literal (..),
     SelectVariable (..),
+    StrictSelectVariable(..),
     isSat,
     isUnsat,
     isUnknown,
@@ -18,7 +19,7 @@ module Symbolic.AST
     emptyFormula,
     PC,
     Model(..),
-    mapVariables, 
+    mapVariables,
     Simplification(..),
   )
 where
@@ -30,6 +31,7 @@ import qualified Data.Set as Set
 import GHC.Generics
 import Control.DeepSeq
 import Data.Map (Map)
+import Control.Lens (strict)
 
 -- | A literal as they appear in a source program
 data Literal
@@ -48,7 +50,7 @@ data Literal
   | Actor !(Maybe Span)
   -- | A type marker for a pair, can be used by an analysis 
   -- to render a "top pair" value.
-  | Pair 
+  | Pair
   deriving (Eq, Ord, Generic)
 
 instance NFData Literal
@@ -65,6 +67,7 @@ instance Show Literal where
    show Nil = "()"
    show Unsp = "#u"
    show (Actor _) = "α"
+   show Pair = "pai"
 
 -- | A proposition consists of an
 -- application of a primitive predicate,
@@ -88,7 +91,9 @@ data Proposition i
   -- | All assertions fail automatically
   | Fail
    -- | Generate an unquantified fresh variable
-  | Fresh
+   -- while keeping track of the supposed set 
+   -- of variables it might include.
+  | Fresh (Set i)
   | Bottom
   deriving (Eq, Ord, Generic)
 
@@ -101,11 +106,12 @@ instance (Show i) => Show (Proposition i) where
    show (Literal lit) = show lit
    show (IsTrue p)    = "true?/v(" ++ show p ++ ")"
    show (IsFalse p)   = "false?/v(" ++ show p ++ ")"
-   show Fresh         = "fresh"
+   show (Fresh _)     = "fresh"
    show Tautology     = "true"
    show Bottom        = "⊥"
    show (Predicate nam p) = nam ++ "(" ++ intercalate "," (map show p) ++")"
    show (Application p1 p2) = show p1 ++ "(" ++ intercalate "," (map show p2) ++ ")#"
+   show Fail = "fail"
 
 -- | Inductively defined formulae, these include
 -- conjunction, disjunction negation and atomic formulas.
@@ -126,7 +132,7 @@ conjunction' (Conjunction f1) (Conjunction f2) = Conjunction $ Set.union f1 f2
 conjunction' f1 (Conjunction f2) = Conjunction $ Set.union (Set.singleton f1) f2
 conjunction' f1 f2 = Conjunction $ Set.fromList [f1, f2]
 
-conjunction :: Ord i => Formula i -> Formula i -> Formula i 
+conjunction :: Ord i => Formula i -> Formula i -> Formula i
 conjunction f1 f2 = simplify $ conjunction' f1 f2
 
 -- | Create a disjunction of two formulas
@@ -154,7 +160,7 @@ instance (Show i) => Show (Formula i) where
    show (Atomic p) = "(" ++ show p ++ ")"
    show Empty = "ϵ"
 
--- | Select all variables in the formula
+-- | Select all variables that may be in the formula
 class SelectVariable v i |  v -> i where
   variables :: v -> Set i
 
@@ -175,10 +181,38 @@ instance (Ord i) => SelectVariable (Proposition i) i where
   variables (Predicate _ props) = mconcat (map variables props)
   variables (Literal _) = Set.empty
   variables Tautology = Set.empty
-  variables Fresh = Set.empty
+  variables (Fresh vrs) = vrs
   variables Bottom = Set.empty
   variables (Application p1 p2) = variables p1 `Set.union` mconcat (map variables p2)
   variables (Function _) = Set.empty
+  variables Fail = Set.empty
+
+-- | Select all variables that certainly are in the formula
+class StrictSelectVariable v i | v -> i where
+   strictVariables :: v -> Set i
+-- | For formulas @strictVariables@ is the same as @variables@
+instance Ord i => StrictSelectVariable (Formula i) i where
+  strictVariables (Conjunction fs) = Set.unions (Set.map strictVariables fs)
+  strictVariables (Disjunction fs) = Set.unions (Set.map strictVariables fs)
+  strictVariables (Negation f) = strictVariables f
+  strictVariables (Implies f1 f2) = strictVariables f1 `Set.union` strictVariables f2
+  strictVariables (Atomic prop) = strictVariables prop
+  strictVariables Empty = Set.empty
+-- | For proposition @strictVariables@ is mostly the same as @variables@ but returns 
+-- the empty set for the fresh proposition since no real variables occur in fresh 
+-- propositions.
+instance (Ord i) => StrictSelectVariable (Proposition i) i where
+  strictVariables (Variable nam) = Set.singleton nam
+  strictVariables (IsTrue prop) = strictVariables prop
+  strictVariables (IsFalse prop) = strictVariables prop
+  strictVariables (Predicate _ props) = mconcat (map strictVariables props)
+  strictVariables (Literal _) = Set.empty
+  strictVariables Tautology = Set.empty
+  strictVariables (Fresh _) = Set.empty
+  strictVariables Bottom = Set.empty
+  strictVariables (Application p1 p2) = strictVariables p1 `Set.union` mconcat (map strictVariables p2)
+  strictVariables (Function _) = Set.empty
+  strictVariables Fail = Set.empty
 
 ------------------------------------------------------------
 -- Solver results
@@ -215,22 +249,23 @@ isUnknown _ = False
 class MapVariables e where
    mapVariables :: Ord i => (i -> i ) -> e i -> e i
 
-instance MapVariables Proposition where   
+instance MapVariables Proposition where
    mapVariables f (Variable i) = Variable (f i)
    mapVariables _ fun@(Function _) = fun
-   mapVariables _ lit@(Literal _) = lit 
-   mapVariables f (IsTrue prop) = IsTrue (mapVariables f prop) 
-   mapVariables f (IsFalse prop) = IsFalse (mapVariables f prop) 
+   mapVariables _ lit@(Literal _) = lit
+   mapVariables f (IsTrue prop) = IsTrue (mapVariables f prop)
+   mapVariables f (IsFalse prop) = IsFalse (mapVariables f prop)
    mapVariables f (Predicate nam props) = Predicate nam (map (mapVariables f) props)
    mapVariables f (Application operator operands) = Application (mapVariables f operator) (map (mapVariables f) operands)
-   mapVariables _ Tautology = Tautology 
-   mapVariables _ Fresh = Fresh 
+   mapVariables _ Tautology = Tautology
+   mapVariables f (Fresh vrs) = Fresh (Set.map f vrs)
    mapVariables _ Bottom = Bottom
+   mapVariables _ Fail = Fail
 
 
-instance MapVariables Formula where 
+instance MapVariables Formula where
    mapVariables f (Conjunction fs) = Conjunction $ Set.map (mapVariables f) fs
-   mapVariables f (Disjunction fs) = Disjunction $ Set.map (mapVariables f) fs 
+   mapVariables f (Disjunction fs) = Disjunction $ Set.map (mapVariables f) fs
    mapVariables f (Implies f1 f2)  = Implies (mapVariables f f1) (mapVariables f f2)
    mapVariables f (Negation prop) = Negation (mapVariables f prop)
    mapVariables f (Atomic prop) = Atomic (mapVariables f prop)
@@ -240,30 +275,30 @@ instance MapVariables Formula where
 -- Simplifications
 ------------------------------------------------------------
 
-class Simplification v where  
+class Simplification v where
    simplify :: v -> v
 
-instance (Eq i) => Simplification (Proposition i) where  
-   simplify (Predicate "real?/v" [Literal (Rea v)]) = Literal $ Boo True
-   simplify (Predicate "real?/v" [Literal (Num v)]) = Literal $ Boo True
-   simplify (Predicate "integer?/v" [Literal (Num v)]) = Literal $ Boo True
+instance (Eq i) => Simplification (Proposition i) where
+   simplify (Predicate "real?/v" [Literal (Rea _)]) = Literal $ Boo True
+   simplify (Predicate "real?/v" [Literal (Num _)]) = Literal $ Boo True
+   simplify (Predicate "integer?/v" [Literal (Num _)]) = Literal $ Boo True
    simplify (Predicate "integer?/v" [Literal _]) = Literal $ Boo False
    simplify (Predicate "or?/v" [Literal (Boo a), Literal (Boo b)]) = Literal $ Boo (a || b)
    simplify (Predicate "and?/v" [Literal (Boo a), Literal (Boo b)]) = Literal $ Boo (a && b)
-   simplify (IsTrue prop) = case simplify prop of 
+   simplify (IsTrue prop) = case simplify prop of
                                Literal (Boo True) -> Tautology
                                Literal (Boo False) -> Fail
                                simpl -> IsTrue simpl
-   simplify (IsFalse prop) = case simplify prop of 
+   simplify (IsFalse prop) = case simplify prop of
                                Literal (Boo False) -> Tautology
                                Literal (Boo True)  -> Fail
                                simpl -> IsFalse simpl
    simplify v = v
 
-instance (Eq i, Ord i) => Simplification (Formula i) where 
-   simplify (Conjunction cs)  
+instance (Eq i, Ord i) => Simplification (Formula i) where
+   simplify (Conjunction cs)
       -- sat(False /\ _) = False
       | Set.member (Atomic Fail) cs = Atomic Fail
       -- sat(True /\ x) = sat(x)
-      | otherwise = Conjunction $ Set.filter (not . (== Atomic Tautology)) cs
-   simplify f = f 
+      | otherwise = Conjunction $ Set.filter (/= Atomic Tautology) cs
+   simplify f = f
