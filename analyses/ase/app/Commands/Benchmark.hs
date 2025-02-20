@@ -142,6 +142,7 @@ writeFail hdl nam cfg = do
                 ++ cfg ++   ";" 
                 ++ "t;" 
                 ++ ";"
+   hFlush hdl
 
 -- | Run a single benchmark program on all configurations
 -- and write the output in CSV format to the handle.
