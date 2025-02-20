@@ -36,7 +36,8 @@ dependencies:
 - lens
 - deepseq
 
-ghc-options:
+ghc-options: 
+- -O3
 - -Wall
 - -Wcompat
 - -Widentities

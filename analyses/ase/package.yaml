@@ -15,12 +15,12 @@ dependencies:
   - random
   - ansi-terminal
 
-ghc-options:
-  - -O0
-#  - -optc-O3
-#  - -funfolding-use-threshold=32
-#  - -fspecialise-aggressively
-#  - -fexpose-all-unfoldings
+#ghc-options:
+  #- -O2
+  #- -optc-O3
+  #- -funfolding-use-threshold=32
+  #- -fspecialise-aggressively
+  #- -fexpose-all-unfoldings
 
 default-extensions:
   - LambdaCase

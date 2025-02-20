@@ -53,7 +53,7 @@ instance (MonadLayer t, Monad (t m), WorkListM m cmp) => WorkListM (t m) cmp whe
     add = upperM . add
 
 runWithWorkList :: forall w cmp m a . (Monad m, WorkList w cmp) => WorkListT w m a -> m a
-runWithWorkList (WorkListT m) = fst <$> runStateT m WL.empty 
+runWithWorkList (WorkListT m) = fst <$> runStateT m WL.empty
 
 iterateWL :: WorkListM m cmp => (cmp -> m a) -> m ()
 iterateWL f = unlessM done (pop >>= f >> iterateWL f)
@@ -62,8 +62,8 @@ iterateWL' :: WorkListM m cmp => cmp -> (cmp -> m a) -> m ()
 iterateWL' initial f = add initial >> iterateWL f
 
 iterateWLDebug :: (ComponentTrackingM m cmp, MonadIO m, WorkListM m cmp) => cmp -> (cmp -> m a) -> m ()
-iterateWLDebug initial f = add initial >> loop 0 
+iterateWLDebug initial f = add initial >> loop 0
    where loop total = unlessM done (runNext total)
-         runNext total = do 
+         runNext total = do
             when (total `mod` 100 == 0) (components >>= liftIO . putStrLn . (\v -> "Number of seen states " ++ v ++ " iterations count " ++ show total) . show .  Set.size)
-            pop >>= f >> (loop $ total+1)
+            pop >>= f >> loop (total+1)

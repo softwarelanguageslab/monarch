@@ -17,6 +17,8 @@ import Analysis.Monad.Environment (EnvT)
 import Analysis.Monad.Store (StoreT, runStoreT)
 import Analysis.Monad.Join (NonDetT, runNonDetT)
 import Control.Monad.Join(MonadBottom(mzero))
+import Control.Fixpoint.WorkList
+    ( FIFOWorkList )
 import Analysis.Monad.WorkList
 import Analysis.Monad.DependencyTracking
 import Analysis.Monad.ComponentTracking
@@ -70,7 +72,6 @@ type CSto = Map (CAdr K) (VecDom V)
 ------------------------------------------------------------
 
 type FlowT m = MonadStack '[
-         VisitedT PC,
          -- Symbolic execution
          FormulaT SymbolicVariable V,
          AbstractCountT SymbolicVariable,
@@ -111,7 +112,6 @@ type StackT m = MonadStack '[
          ----------------------------------------
          -- Copy of @FlowT@ due to Haskell limitations
          ----------------------------------------
-         VisitedT PC,
          -- Symbolic execution
          FormulaT SymbolicVariable V,
          AbstractCountT SymbolicVariable,
@@ -146,8 +146,8 @@ type FlowState a    = Val (FlowT Identity) a
 type FlowList       = Tail (Unnest (FlowState ()))
 
 -- | The initial step state
-initialStepState :: Configuration K V -> StepState 
-initialStepState cfg =  StepState $ 
+initialStepState :: Configuration K V -> StepState
+initialStepState cfg =  StepState $
                         Ev (e0 cfg) (ρ0 cfg)
                     <+> initialContinuationStack -- continuation 
                     <+> []                       -- context
@@ -155,18 +155,17 @@ initialStepState cfg =  StepState $
 
 -- | The initial contents of widened state components 
 initialState :: StepState -> Configuration K V -> State StepState FlowList
-initialState step cfg@Configuration { .. } =  
-                          (init emptyVisited)      -- visited set
-                      :+: (init emptyPC)           -- path constraint
-                      :+: (init Map.empty)         -- count mapping
-                      :+: (init Map.empty)         -- continuation stores 
-                      :+: (init Map.empty)         -- failure continuation stores 
-                      :+: (init σ0)                -- value stores (including primitives)
-                      :+: (init initialHeapSto)    -- pair stores 
-                      :+: (init Map.empty)         -- string stores
-                      :+: (init Map.empty)         -- vector stores
-                      :+: (init Map.empty)         -- model
-                      :+: (init Random.initialSeq) -- infinite random sequence
+initialState step cfg@Configuration { .. } =
+                          init emptyPC           -- path constraint
+                      :+: init Map.empty         -- count mapping
+                      :+: init Map.empty         -- continuation stores 
+                      :+: init Map.empty         -- failure continuation stores 
+                      :+: init σ0                -- value stores (including primitives)
+                      :+: init initialHeapSto    -- pair stores 
+                      :+: init Map.empty         -- string stores
+                      :+: init Map.empty         -- vector stores
+                      :+: init Map.empty         -- model
+                      :+: init Random.initialSeq -- infinite random sequence
                       :+: nil
    where s0   = step
          init :: a -> Map StepState a
@@ -178,26 +177,26 @@ initialState step cfg@Configuration { .. } =
 
 -- | Run the evaluation function a single @StepState)
 runStep :: forall m . (GetAll StepState FlowList, PutAll StepState FlowList, AllMapM StepState FlowList m, Monad m)
-        => (Ctrl V K -> StackT m (Ctrl V K)) 
-        -> StepState 
+        => (Ctrl V K -> StackT m (Ctrl V K))
+        -> StepState
         -> m (Set StepState)
-runStep f step@StepState { .. } = (fromMaybe (error "initial state should be present")) <$> getAll step >>= inter
-  where intra = ( Cache.run f stepState'
+runStep f step@StepState { .. } = getAll step >>= inter . fromMaybe (error "initial state should be present")
+  where intra = Cache.run f stepState'
                  & runAlloc KAdr
                  & runAlloc FAdr
                  & runAlloc symbolicVariable
                  & runAlloc VAdr
                  & runAlloc PAdr
                  & runAlloc SAdr
-                 & runAlloc CAdr ) >>= (isEscape . unnest)
+                 & runAlloc CAdr >>= isEscape . unnest
         inter :: HList FlowList -> m (Set StepState)
-        inter st = (Cache.run @(FlowT m) (const intra) (uncons (() :+: st)) >>= putWidened . unnest)
+        inter st = Cache.run @(FlowT m) (const intra) (uncons (() :+: st)) >>= putWidened . unnest
                  & runNonDetT
                  & fmap setFromList
-        setFromList [] = traceShow ("no successors for " ++ show step) Set.empty 
+        setFromList [] = traceShow ("no successors for " ++ show step) Set.empty
         setFromList xs = Set.fromList xs
         stepState' = (stepState, Map.empty)
-        putWidened :: forall m . (PutAll StepState FlowList, AllMapM StepState FlowList m) => HList (StepState ': FlowList) -> m StepState 
+        putWidened :: forall m . (PutAll StepState FlowList, AllMapM StepState FlowList m) => HList (StepState ': FlowList) -> m StepState
         putWidened (step' :+: st') = joinWithAll step' st' >> return step'
         isEscape :: forall m . MonadBottom m => HList (Unnest (Val (StackT m) (Ctrl V K))) -> m StepState
         isEscape (Value v :+: rest) = return $ StepState $ uncons $ v :+: rest
@@ -206,8 +205,8 @@ runStep f step@StepState { .. } = (fromMaybe (error "initial state should be pre
 
 -- | Standard @collect@ function for flow sensitive analysis
 run ::  forall m . (GetAll StepState FlowList, PutAll StepState FlowList, AllMapM StepState FlowList m, Monad m)
-        => (Ctrl V K -> StackT m (Ctrl V K)) 
-        -> Set StepState 
+        => (Ctrl V K -> StackT m (Ctrl V K))
+        -> Set StepState
         -> m (Set StepState)
 run f = foldMapM (runStep f)
 
@@ -216,10 +215,11 @@ run f = foldMapM (runStep f)
 ------------------------------------------------------------
 
 type AnalysisT m = StackT (MonadStack '[
-                              IntraAnalysisT StepState, 
+                              IntraAnalysisT StepState,
                               DependencyTrackingT StepState StepState,
-                              ComponentTrackingT StepState, 
-                              WorkListT (Set StepState)
+                              ComponentTrackingT StepState,
+                              WorkListT (Set StepState),
+                              VisitedT PC
                            ] (WidenedT StepState FlowList m))
 type FlowOutput = State StepState FlowList
 
@@ -230,11 +230,12 @@ status a =  do
    return a
 
 analyze :: forall m . (MonadIO m, Monad m) => (Ctrl V K -> AnalysisT m (Ctrl V K)) -> Configuration K V -> m (Set StepState, FlowOutput)
-analyze f cfg = iterateWLDebug step0 (\st -> (runStep f st >>= mapM_ spawn >>= status)
+analyze f cfg = iterateWLDebug step0 (\st -> runStep f st >>= mapM_ spawn >>= status
                                         & runIntraAnalysis st)
-              & runWithDependencyTracking 
-              & execWithComponentTracking 
-              & runWithWorkList 
-              & runWidenedT @StepState @FlowList state0 
+              & runWithDependencyTracking
+              & execWithComponentTracking
+              & runWithWorkList
+              & runVisitedT
+              & runWidenedT @StepState @FlowList state0
    where step0  = initialStepState cfg
          state0 = initialState step0 cfg

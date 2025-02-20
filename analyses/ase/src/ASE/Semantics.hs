@@ -140,9 +140,7 @@ atomicEval (Loc e s)       = return $ Scheme.symbol (show e ++ "@" ++ show s)
 atomicEval (Trace e s)     = traceInfo =<< atomicEval e
    where traceInfo v = do
                liftIO $ putStr $ "TRACE[" ++ show s ++ "]"
-               liftIO $ print v
                pc <- getPc
-               liftIO $ print pc
                return v
 atomicEval exp             = error $ "expression " ++ show exp ++ " is not an atomic expression"
 
@@ -156,17 +154,11 @@ stepEval (Ite cnd csq alt _) = do
       vcnd <- atomicEval cnd
       αf1 <- alloc (spanOf csq)
       αf2 <- alloc (spanOf alt)
-      --whenM (hasAdr αf1) (do
-      --   bs <- lookupAdr αf1
-      --   liftIO $ putStrLn ("Branch size" ++ show (Set.size bs) ++ " at " ++ show αf1))
       pc' <- getPc
-      -- liftIO $ putStrLn ("PC size " ++ show (Set.size pc'))
-      -- and @branch False@ at the same time.
       mjoinMap (\pc -> do
          count <- getCounts
          let bt = Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)
          let bf = Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)
-         liftIO $ print (restrictCountMap bt count)
          cond (pure vcnd)
             (  extendPc (assertTrue vcnd)
             >> condCP (isVisited bt) (return ()) (addVisited bt >> pushF αf1 (Branch bt (restrictCountMap bt count)))
@@ -208,9 +200,9 @@ stepApply = popK . applyContinuation
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
 restart = popF selectContinuation
-   where selectContinuation (Branch pc cnt) = mjoinMap (maybe (liftIO (putStrLn $ "unsat " ++ show pc) >> mzero) (restartUsingModel pc) <=< computeModel cnt) pc
+   where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero (restartUsingModel pc) <=< computeModel cnt) pc
          restartUsingModel pc model = do
-            --liftIO (putStr "R" >> hFlush stdout)
+            -- liftIO (putStr "R" >> hFlush stdout)
             -- add the model to the next execution
             putModel (getModel model)
             -- change the model context of the current state
@@ -234,7 +226,7 @@ restart = popF selectContinuation
 -- the empty computation so that no successor states are generated.
 step :: MachineM m => Ctrl V K -> m (Ctrl V K)
 step (Ap v) = liftA2 (,) topAddress topFailAddress
-    >>= (\case (Hlt, FHlt) -> liftIO (putStr "D" >> hFlush stdout) >> mzero         -- machine has no continuations, it has reached a halting state 
+    >>= (\case (Hlt, FHlt) -> mzero         -- machine has no continuations, it has reached a halting state 
                (Hlt, top)  -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
                (k, _)      -> stepApply v   -- apply the continuation
         )

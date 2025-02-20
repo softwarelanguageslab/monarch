@@ -491,6 +491,9 @@ instance (Eq e, Ord e) => PartialOrder (VisitedSet e) where
 newtype VisitedT e m a = VisitedT { getVisitedT :: StateT (VisitedSet e) m a } 
                      deriving (Applicative, Functor, Monad, MonadState (VisitedSet e), MonadCache, MonadLayer, MonadJoinable)
 
+runVisitedT :: Monad m => VisitedT e m a -> m a
+runVisitedT (VisitedT m) = evalStateT m emptyVisited
+
 instance (Ord e, Monad m) => MonadVisitedSet e (VisitedT e m) where 
    addVisited e = modify (insertVisited e)
    isVisited e = gets (containsVisited e)

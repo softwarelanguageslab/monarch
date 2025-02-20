@@ -37,7 +37,6 @@ library
       ConstraintKinds
       TupleSections
       GADTs
-  ghc-options: -O0
   build-depends:
       ansi-terminal
     , base >=4.2
@@ -70,7 +69,6 @@ executable ase
       ConstraintKinds
       TupleSections
       GADTs
-  ghc-options: -O0
   build-depends:
       ansi-terminal
     , ase
