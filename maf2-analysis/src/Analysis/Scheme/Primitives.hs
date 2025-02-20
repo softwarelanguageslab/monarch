@@ -86,6 +86,7 @@ allPrimitives = [
    -- fix1 "number->string" todo, 
    -- fix2 "make-string" todo, 
    fix1 "number?" (\v -> return $ or (isReal v) (isInteger v)),
+   fix1 "integer?" (return . isInteger),
    fix1 "pair?" (return .  isPaiPtr),
    fix1 "procedure?" (return . Domain.isProc),
    fix2 "quotient" quotient,
