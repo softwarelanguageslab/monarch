@@ -12,6 +12,7 @@ import Analysis.Environment (Environment)
 import qualified Analysis.Environment as Env
 import ASE.Domain.SymbolicVariable (SymbolicVariable, PC)
 import ASE.Syntax
+import ASE.Monad
 import Analysis.Monad.Store (StoreM, writeAdr, lookupAdr, StoreM', AbstractCountM(..))
 import Analysis.Monad (EnvM, CtxM (getCtx, withCtx), runJoinT)
 import Analysis.Monad.Allocation (AllocM, alloc)
@@ -67,11 +68,6 @@ instance BottomLattice (Ctrl v k) where
 
 -- | The environment
 type Env k = Map String (VAdr k)
-
--- | Map mapping abstract symbolic variables to an abstract count
-newtype CountMap a = CountMap { getCountMap :: (Map a AbstractCount) }
-              deriving (Ord, Eq, Show, Generic)
-instance NFData a => NFData (CountMap a)
 
 -- | A model is a mapping from symbolic variables to program values 
 newtype Model v = Model { getModel :: Map SymbolicVariable (Abstract v) }
@@ -164,52 +160,6 @@ type KKont k = Kont (KFrame k) (KAdr k)
 type FKont k = Kont FFrame (FAdr k)
 
 ------------------------------------------------------------
--- Abstract count monad
-------------------------------------------------------------
-
--- | A monad for managing the abstract count of the specified 
--- address type @a@.
-class MonadAbstractCount a m | m -> a where
-   -- | Increments the abstract count of the given address 
-   -- in the abstract count mapping
-   countIncrement :: a -> m ()
-   -- | Returns the current count of the given addres 
-   -- in the abstract count mapping.
-   currentCount :: a -> m AbstractCount
-   -- | Returns the entire abstract count mapping
-   getCounts :: m (CountMap a)
-
--- | Layered instance
-instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadAbstractCount a m) =>  MonadAbstractCount a (t m) where
-   countIncrement = upperM . countIncrement
-   currentCount = upperM . currentCount
-   getCounts = upperM getCounts
-
--- | Trivial instance of the @MonadAbstractCount@ type class 
--- as a state monad managing an abstract count mapping.
-newtype AbstractCountT α m a = AbstractCountT (StateT (Map α AbstractCount) m a)
-               deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer, MonadCache, MonadJoinable, MonadState (Map α AbstractCount))
-instance (Ord α, MonadBottom m) => MonadAbstractCount α (AbstractCountT α m) where
-   countIncrement α = modify (Map.insertWith Lat.join α CountOne)
-   currentCount α = gets (Map.lookup α) >>= maybe mzero return
-   getCounts = gets CountMap
--- | Run an @AbstractCountT@ monad transformer with the given abstract count mapping
-runAbstractCountT :: Map α AbstractCount -> AbstractCountT α m a -> m (a, Map α AbstractCount)
-runAbstractCountT st (AbstractCountT m) = runStateT m st
-
---- XXX: MonadAbstractCount duplicates some of the behavior of AbstractCountM, 
--- those two should be merged. The major difference between them is that the 
--- former is meant to put constraints on a store with values, while the other 
--- is independent of whether the things counted are addresses in a store 
--- or something else.
-instance (Ord α, MonadBottom m) => AbstractCountM α (AbstractCountT α m) where
-   count = fmap getCountMap getCounts
-
--- | Restrict the count mapping according to the variables in the path condition
-restrictCountMap :: Ord i => Symbolic.PC i -> CountMap i -> CountMap i
-restrictCountMap pc = CountMap . flip Map.restrictKeys (Set.unions (Set.map Symbolic.variables pc)) . getCountMap
-
-------------------------------------------------------------
 -- Continuations
 ------------------------------------------------------------
 
@@ -294,6 +244,15 @@ instance (Monad m) => MonadContinuationStack adr frm (StackContinuationStackT ad
                       (h:_) -> Just h)
    push _ frm = modify (frm:)
    pop = do { top <- gets head ; modify tail ; return top }
+
+------------------------------------------------------------
+-- Abstract counts
+------------------------------------------------------------
+
+-- | Restrict the count mapping according to the variables in the path condition
+restrictCountMap :: (Ord i) => Symbolic.PC i -> CountMap i -> CountMap i
+restrictCountMap pc = CountMap . flip Map.restrictKeys (Set.unions (Set.map Symbolic.variables pc)) . getCountMap
+
 
 ------------------------------------------------------------
 -- Small-step interface to the context

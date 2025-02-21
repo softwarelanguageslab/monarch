@@ -7,6 +7,7 @@ import ASE.Fixpoint
 import ASE.Semantics
 import ASE.Syntax
 import ASE.Machine
+import ASE.Monad
 import Analysis.Monad.Stack
 import Analysis.Symbolic.Monad (FormulaT, runWithFormulaT)
 import Analysis.Monad.Allocation (AllocT, runAlloc)

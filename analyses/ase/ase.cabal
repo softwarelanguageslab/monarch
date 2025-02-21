@@ -19,6 +19,8 @@ library
       ASE.Machines.Global
       ASE.Machines.Local
       ASE.Machines.Test
+      ASE.Monad
+      ASE.PC
       ASE.Semantics
       ASE.Syntax
       Data.DeltaMap

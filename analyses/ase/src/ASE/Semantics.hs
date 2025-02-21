@@ -8,6 +8,7 @@ module ASE.Semantics where
 
 import ASE.Syntax
 import ASE.Machine
+import ASE.Monad
 import ASE.Domain.SymbolicVariable
 import Analysis.Monad.Environment (EnvM(lookupEnv, getEnv, withExtendedEnv, withEnv))
 import Analysis.Monad (StoreM(hasAdr, lookupAdr, writeAdr), StoreM' (putStore), withCtx, getCtx, currentStore)

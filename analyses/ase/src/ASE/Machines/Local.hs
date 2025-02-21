@@ -10,6 +10,7 @@
 module ASE.Machines.Local where
 
 import ASE.Machine
+import ASE.Monad
 import ASE.Semantics
 import Analysis.Monad.Stack
 import ASE.Domain.SymbolicVariable (SymbolicVariable(..), symbolicVariable, PC)
