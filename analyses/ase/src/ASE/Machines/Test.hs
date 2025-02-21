@@ -38,7 +38,8 @@ import qualified Data.TypeLevel.HList as HList
 import qualified Data.Random as Random
 import Lattice.Class (Joinable, BottomLattice, PartialOrder)
 import qualified Lattice.Class as L
-import RIO hiding (mzero)
+import RIO hiding (mzero, traceShow)
+import Debug.Trace
 import qualified RIO.Set as Set
 import Symbolic.AST (emptyPC)
 import Syntax.Span
@@ -194,7 +195,7 @@ runStep f step@StepState { .. } = getAll step >>= inter . fromMaybe (error "init
         inter :: HList FlowList -> m (Set StepState)
         inter st = Cache.run @(FlowT m) (const intra) (uncons (() :+: st)) >>= putWidened . unnest
                  & runNonDetT
-                 & fmap setFromList
+                 & fmap (setFromList . traceShowWith length)
         setFromList [] = traceShow ("no successors for " ++ show step) Set.empty
         setFromList xs = Set.fromList xs
         stepState' = (stepState, Map.empty)
