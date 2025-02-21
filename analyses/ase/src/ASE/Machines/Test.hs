@@ -74,7 +74,6 @@ type CSto = Map (CAdr K) (VecDom V)
 
 type FlowT m = MonadStack '[
          -- Symbolic execution
-         FormulaT SymbolicVariable V,
          AbstractCountT SymbolicVariable,
          -- Store
          StoreT' (KAdr K) (Set (KKont K)),
@@ -96,6 +95,7 @@ type FlowT m = MonadStack '[
 type StackT m = MonadStack '[
          MayEscapeT (Set DomainError),
          StoreContinuationStackT (KAdr K) (KFrame K),
+         FormulaT SymbolicVariable V,
          --StoreContinuationStackT (FAdr K) FFrame,
          -- Allocation
          AllocT Span K (KAdr K),
@@ -115,7 +115,7 @@ type StackT m = MonadStack '[
          -- Copy of @FlowT@ due to Haskell limitations
          ----------------------------------------
          -- Symbolic execution
-         FormulaT SymbolicVariable V,
+         --FormulaT SymbolicVariable V,
          AbstractCountT SymbolicVariable,
          -- Store
          StoreT' (KAdr K) (Set (KKont K)),
@@ -153,14 +153,15 @@ initialStepState cfg =  StepState $
                         Ev (e0 cfg) (ρ0 cfg)
                     <+> initialContinuationStack -- continuation  (regular)
                     -- <+> initialContinuationStack -- continuation  (failures)
+                    <+> emptyPC
                     <+> []                       -- context
                     <+> emptyPC                  -- model context
 
 -- | The initial contents of widened state components 
 initialState :: StepState -> Configuration K V -> State StepState FlowList
 initialState step cfg@Configuration { .. } =
-                          init emptyPC           -- path constraint
-                      :+: init Map.empty         -- count mapping
+                      --    init emptyPC           -- path constraint
+                          init Map.empty         -- count mapping
                       :+: init Map.empty         -- continuation stores 
                       -- :+: init Map.empty         -- failure continuation stores 
                       :+: init σ0                -- value stores (including primitives)
