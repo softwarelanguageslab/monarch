@@ -69,7 +69,8 @@ type Flow s = Map StepState s
 -- | The monadic stack for the flow sensitive configuration of the machine
 type StackT m = MonadStack '[
          MayEscapeT (Set DomainError),
-         ContinuationT K,
+         StoreContinuationStackT (KAdr K) (KFrame K),
+         StoreContinuationStackT (FAdr K) FFrame,
          -- Allocation
          AllocT Span K (KAdr K),
          AllocT Span K (FAdr K),
@@ -115,7 +116,8 @@ type StepState = Unescape (Val (StackT Identity) (Ctrl V K))
 -- | The initial step-state
 initialStepState :: Configuration K V -> StepState 
 initialStepState cfg =  Ev (e0 cfg) (ρ0 cfg)
-                    <+> initialContinuationStack -- continuation 
+                    <+> initialContinuationStack -- continuation  (regular)
+                    <+> initialContinuationStack -- continuation  (failure)
                     <+> []                       -- context
                     <+> emptyPC                  -- model context
                     <+> emptyVisited

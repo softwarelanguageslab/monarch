@@ -1,9 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving, StandaloneDeriving, DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, StandaloneDeriving, DeriveGeneric, AllowAmbiguousTypes, TypeApplications, ScopedTypeVariables, PatternSynonyms #-}
 {-# LANGUAGE Strict #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
+{-# LANGUAGE RankNTypes #-}
 -- | Generic machine components
 module ASE.Machine where
 
@@ -20,6 +21,7 @@ import Control.Monad.Layer (MonadLayer, upperM)
 import Control.Monad.Join (MonadBottom(..), MonadJoinable, MonadJoin, mjoinMap)
 import Control.Monad.DomainError (DomainError)
 import Control.Monad.Escape (MonadEscape, Esc, MayEscape)
+import Data.Maybe
 import qualified Domain.Class as Domain
 import Domain.Core.BoolDomain.Class
 import Domain.Core.AbstractCount (AbstractCount (..))
@@ -34,7 +36,7 @@ import qualified Lattice.Class as L
 import qualified Lattice.Class as Lat
 import Lattice.BottomLiftedLattice
 import qualified RIO.Map as Map
-import RIO hiding (mzero) 
+import RIO hiding (mzero)
 import RIO.State
 import Syntax.AST hiding (Label)
 import qualified Symbolic.AST
@@ -47,26 +49,27 @@ import qualified Symbolic.SMT as SMT
 import Solver.Z3
 import qualified Domain
 import Domain (SchemeDomain)
+import Control.Monad.Join (mjoins)
 
 ------------------------------------------------------------
 -- Machine components
 ------------------------------------------------------------
 
 -- | The control component for the abstract machine
-data Ctrl v k = Ev !Exp !(Env k) | Ap !v | Blm !v !Span
+data Ctrl v k = Ev !Exp !(Env k) | Ap !v | Blm !v !Span
               deriving (Eq, Ord, Show, Generic)
 instance (NFData v, NFData k) => NFData (Ctrl v k)
 
-instance Joinable (Ctrl v k) where    
+instance Joinable (Ctrl v k) where
    join = error "\"join\" not defined for Ctrl but should never be called"
-instance BottomLattice (Ctrl v k) where  
+instance BottomLattice (Ctrl v k) where
    bottom = error "\"bottom\" not defined for Ctrl but should never be called"
 
 -- | The environment
 type Env k = Map String (VAdr k)
 
 -- | Map mapping abstract symbolic variables to an abstract count
-newtype CountMap a = CountMap { getCountMap :: (Map a AbstractCount) }
+newtype CountMap a = CountMap { getCountMap :: (Map a AbstractCount) }
               deriving (Ord, Eq, Show, Generic)
 instance NFData a => NFData (CountMap a)
 
@@ -127,11 +130,15 @@ data KFrame k = LetK ![VAdr k]     -- ^ the list of remaining addresses to store
                      !(Env k)      -- ^ the environment in which the let expression has to be evaluated
               deriving (Eq, Ord, Show, Generic)
 instance NFData k => NFData (KFrame k)
+instance Joinable (KFrame k) where  
+   join = error "join not implemented for KFrame"
 
 -- | Failure continuation
 data FFrame = Branch { branchPC :: !PC, branchCountMap :: !(CountMap SymbolicVariable) }
             deriving (Eq, Ord, Show, Generic)
 instance NFData FFrame
+instance Joinable FFrame where  
+   join = error "join not implemented for FFrame"
 
 
 -- | Continuation address
@@ -144,16 +151,17 @@ data FAdr k = FAdr !(Label Exp) !k | FHlt
             deriving (Ord, Eq, Show, Generic)
 instance NFData k => NFData (FAdr k)
 
+-- | A continuation, indexed by the type of continuation frame and address
+data Kont frm adr = Kont {getFrm :: !frm, getNxt :: !(Maybe adr) }
+                  deriving (Eq, Ord, Show, Generic)
+instance (NFData frm, NFData adr) => NFData (Kont frm adr)
+
 -- | A continuation combines a continuation frame with a continuation 
 -- address.
-data KKont k = KKont !(KFrame k) !(KAdr k)
-          deriving (Eq, Ord, Show, Generic)
-instance NFData k => NFData (KKont k)
+type KKont k = Kont (KFrame k) (KAdr k)
 
 -- | A failure continuation combines a continuation frame with a continuation address
-data FKont k = FKont !FFrame !(FAdr k)
-            deriving (Eq, Ord, Show, Generic)
-instance NFData k => NFData (FKont k)
+type FKont k = Kont FFrame (FAdr k)
 
 ------------------------------------------------------------
 -- Abstract count monad
@@ -170,7 +178,7 @@ class MonadAbstractCount a m | m -> a where
    currentCount :: a -> m AbstractCount
    -- | Returns the entire abstract count mapping
    getCounts :: m (CountMap a)
-   
+
 -- | Layered instance
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadAbstractCount a m) =>  MonadAbstractCount a (t m) where
    countIncrement = upperM . countIncrement
@@ -179,7 +187,7 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadAbstractCount a m) =>
 
 -- | Trivial instance of the @MonadAbstractCount@ type class 
 -- as a state monad managing an abstract count mapping.
-newtype AbstractCountT α m a = AbstractCountT (StateT (Map α AbstractCount) m a) 
+newtype AbstractCountT α m a = AbstractCountT (StateT (Map α AbstractCount) m a)
                deriving (Monad, Applicative, Functor, MonadTrans, MonadLayer, MonadCache, MonadJoinable, MonadState (Map α AbstractCount))
 instance (Ord α, MonadBottom m) => MonadAbstractCount α (AbstractCountT α m) where
    countIncrement α = modify (Map.insertWith Lat.join α CountOne)
@@ -194,71 +202,90 @@ runAbstractCountT st (AbstractCountT m) = runStateT m st
 -- former is meant to put constraints on a store with values, while the other 
 -- is independent of whether the things counted are addresses in a store 
 -- or something else.
-instance (Ord α, MonadBottom m) => AbstractCountM α (AbstractCountT α m) where  
+instance (Ord α, MonadBottom m) => AbstractCountM α (AbstractCountT α m) where
    count = fmap getCountMap getCounts
 
 -- | Restrict the count mapping according to the variables in the path condition
 restrictCountMap :: Ord i => Symbolic.PC i -> CountMap i -> CountMap i
 restrictCountMap pc = CountMap . flip Map.restrictKeys (Set.unions (Set.map Symbolic.variables pc)) . getCountMap
 
--- | A monad that manages the continuation stack, it stores the 
--- continuation in the continuation store.
-class (StoreM (KAdr k) (Set (KKont k)) m,
-       StoreM (FAdr k) (Set (FKont k)) m) => MonadContinuation k m | m -> k where
-   -- | Lookup the address of the top of the continuation stack
-   topAddress :: m (KAdr k)
-   -- | Lookup the top address of the failure continuation stack
-   topFailAddress :: m (FAdr k)
-   -- | Change the top address of the continuation stack
-   putTopAddress :: KAdr k -> m ()
-   -- | Change the top address of the failure continuation stack
-   putFailAddress :: FAdr k -> m ()
-   -- | Push a continuation on the continuation stack
-   pushK :: KAdr k -> KFrame k -> m ()
-   pushK adr frm = {-# SCC "PUSHK" #-} topAddress >>= (writeAdr adr . Set.singleton  .KKont frm) >> putTopAddress adr
-   -- | Push a failure continuation on the failure continuatuion stack
-   pushF :: FAdr k -> FFrame -> m ()
-   pushF adr frm = {-# SCC "PUSHF" #-} topFailAddress >>= (writeAdr adr . Set.singleton . FKont frm) >> putFailAddress adr
-   -- | Pop a continuation frame from the continuation stack
-   popK :: (Joinable a, BottomLattice a, MonadBottom m, MonadJoin m) => (KFrame k -> m a) -> m a
-   popK f = topAddress >>= lookupAdr >>= mjoinMap linkAndExecute  
-      where linkAndExecute (KKont frm nxt) = putTopAddress nxt >> f frm
-   -- | Pop a continuation frame from the failure continuation stack
-   popF :: (Joinable a, BottomLattice a, MonadBottom m, MonadJoin m) => (FFrame -> m a) -> m a
-   popF f = topFailAddress >>= lookupAdr >>= mjoinMap linkAndExecute
-      where linkAndExecute (FKont frm nxt) = putFailAddress nxt >> f frm
+------------------------------------------------------------
+-- Continuations
+------------------------------------------------------------
 
--- | Layered instance of @MonadContinuation@
-instance {-# OVERLAPPABLE #-} (MonadContinuation k m, MonadLayer t, Monad (t m), Monad m) => MonadContinuation k (t m) where  
-   topAddress = upperM topAddress
-   topFailAddress = upperM topFailAddress
-   putTopAddress = upperM . putTopAddress
-   putFailAddress = upperM . putFailAddress
--- | The state for keeping track of the current top continuation and top failure continuation
-data ContinuationState k =  ContinuationState {
-      stateTopAddress :: KAdr k,
-      stateTopFailAddress :: FAdr k
-   } deriving (Ord, Eq, Show, Generic)
-instance (NFData k) => NFData (ContinuationState k)
--- | Initial contents of the continuation stack
-initialContinuationStack :: ContinuationState k 
-initialContinuationStack = ContinuationState Hlt FHlt 
+-- | Continuation stack, indexed by type of continuation address,
+-- and the type of continuation frame
+class Monad m => MonadContinuationStack a frm m | m a -> frm where
+   -- | Read the top frame of the continuation stack
+   peek :: m (Maybe frm)
+   -- | Push a continuation on the continuation stack
+   push :: a -> frm -> m ()
+   -- | Pop a continuation from the continuation stack 
+   pop :: m frm
 
--- | Dummy instance of @Joinable@ and @BottomLattice@ for @ContinuationState@
-instance Joinable (ContinuationState k) where 
-   join = error "no \"join\" implement for \"ContinuationState\": continuation states should not be joined together"
-instance BottomLattice (ContinuationState k) where 
-   bottom = error "no \"bottom\" implement for \"ContinuationState\": continuation states should not be bottomed"
+-- | Pop a continuation frame from the continuation stack 
+-- and execute the given function.
+popExec :: forall adr frm m a . (MonadJoinable m, MonadBottom m, MonadContinuationStack adr frm m, Joinable a) => (frm -> m a) -> m a
+popExec f  = pop @adr >>= f
 
--- | State monad intepretation of the @MonadContinuation@ type class
-newtype ContinuationT k m a = ContinuationT (StateT (ContinuationState k) m a)
-                          deriving (Functor, Applicative, MonadJoinable, MonadBottom, Monad, MonadTrans, MonadLayer, MonadCache, MonadState (ContinuationState k)) 
-instance ( StoreM (KAdr k) (Set (KKont k)) m,
-           StoreM (FAdr k) (Set (FKont k)) m ) => MonadContinuation k (ContinuationT k m) where
-   topAddress = gets stateTopAddress
-   topFailAddress = gets stateTopFailAddress
-   putTopAddress α = modify (\st -> st { stateTopAddress = α })
-   putFailAddress α = modify (\st -> st { stateTopFailAddress = α })
+-- | Layered instance of @MonadContinuationStack@
+instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad (t m), MonadContinuationStack a frm m) => MonadContinuationStack a frm (t m) where
+   peek = upperM (peek @a)
+   push adr = upperM . push @a adr
+   pop = upperM (pop @a)
+
+------------------------------
+-- Store based continuations
+------------------------------
+
+-- | @MonadContinuationStack@ implementation based on a combination of a top address 
+-- and an underlying store
+newtype StoreContinuationStackT adr frm m a = ContinuationStackT (StateT (StoreContinuationState adr) m a)
+                                            deriving (Applicative, Functor, Monad, MonadState (StoreContinuationState adr), MonadJoinable, MonadBottom, MonadCache, MonadLayer)
+
+-- | The type of state kept for keeping track of the top of the continuation stack
+newtype StoreContinuationState adr = StoreContinuationState { topContinuationAddress :: Maybe adr }
+                                   deriving (Eq, Ord, Show, Generic)
+instance (NFData adr) => NFData (StoreContinuationState adr)
+
+-- | Initial contents of a store based continuation stack
+initialContinuationStack :: StoreContinuationState k
+initialContinuationStack = StoreContinuationState Nothing
+
+-- | Pattern that matches when the continuation stack is a halting continuation
+pattern KHlt <- StoreContinuationState Nothing
+
+instance Joinable (StoreContinuationState adr) where
+   join = error "no join implemented for @StoreContinuationState@"
+instance BottomLattice (StoreContinuationState adr) where
+   bottom = StoreContinuationState Nothing
+
+instance (StoreM adr (Set (Kont frm adr)) m, Monad m, MonadJoin m, Ord adr, Ord frm, Joinable frm) => MonadContinuationStack adr frm (StoreContinuationStackT adr frm m) where
+   peek = gets topContinuationAddress >>= (traverse (mjoinMap (return . getFrm) <=< lookupAdr))
+   push adr' frm = do
+      adr <- gets topContinuationAddress
+      put (StoreContinuationState (Just adr'))
+      writeAdr adr' (Set.singleton $ Kont frm adr)
+   pop = do
+      adr <- gets (fromJust . topContinuationAddress)
+      knt <- lookupAdr adr
+      mjoinMap (\knt -> do
+         put (StoreContinuationState (getNxt knt))
+         return (getFrm knt)) (Set.toList knt)
+
+----------------------------------------
+-- Stack based continuations
+----------------------------------------
+
+-- | A simpler version of the @MonadContinuationStack@ which actually uses a stack internally
+-- use only in combination with a visited set, and a finite number of continuations!
+newtype StackContinuationStackT adr frm m a = StackContinuationStackT (StateT [frm] m a)
+                                            deriving (Applicative, Functor, Monad, MonadState [frm], MonadLayer, MonadCache)
+instance (Monad m) => MonadContinuationStack adr frm (StackContinuationStackT adr frm m) where
+   peek = gets (\case [] -> Nothing
+                      (h:_) -> Just h)
+   push _ frm = modify (frm:)
+   pop = do { top <- gets head ; modify tail ; return top }
 
 ------------------------------------------------------------
 -- Small-step interface to the context
@@ -272,28 +299,28 @@ instance ( StoreM (KAdr k) (Set (KKont k)) m,
 -- return the next state to be executed. Hence, the context 
 -- should behave more as a @State@ monad where it can be 
 -- imperatively updated and returned from the stepping function.
-class MonadSmallstepContext k m | m -> k where    
+class MonadSmallstepContext k m | m -> k where
    -- | Change the current context
    putCtx :: k -> m ()
 
 -- | A layered instance of the @MonadSmallstepContext@ type class
-instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSmallstepContext k m) => MonadSmallstepContext k (t m) where   
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSmallstepContext k m) => MonadSmallstepContext k (t m) where
    putCtx = upperM . putCtx
 
 -- | A trivial instance of @MonadSmallstepContext@ using a state monad
-newtype SmallstepContextT k m a = SmallstepContextT (StateT k m a) 
+newtype SmallstepContextT k m a = SmallstepContextT (StateT k m a)
                            deriving (Applicative, Monad, Functor, MonadCache, MonadJoinable, MonadTrans, MonadLayer, MonadState k)
-instance (Monad m) => MonadSmallstepContext k (SmallstepContextT k m) where 
+instance (Monad m) => MonadSmallstepContext k (SmallstepContextT k m) where
    putCtx = put
-instance (Monad m) => CtxM (SmallstepContextT k m) k where  
-   withCtx f m = fmap f getCtx >>= putCtx >> m
+instance (Monad m) => CtxM (SmallstepContextT k m) k where
+   withCtx f m = (getCtx >>= putCtx . f) >> m
    getCtx = get
 
 -- Dummy instance of @Joinable@ and @BottomLattice@ for [Span] 
 -- so that @MonadJoinable@ can be derrived for @SmallstepContextT@
-instance {-# OVERLAPPING #-} Joinable [Span] where   
+instance {-# OVERLAPPING #-} Joinable [Span] where
    join = error "no \"join\" for \"Span\""
-instance {-# OVERLAPPING #-} BottomLattice [Span] where   
+instance {-# OVERLAPPING #-} BottomLattice [Span] where
    bottom = error "no \"bottom\" for \"Span\""
 
 ------------------------------------------------------------
@@ -304,36 +331,36 @@ instance {-# OVERLAPPING #-} BottomLattice [Span] where
 -- parameters such as the "k" for k-CFA
 data Configuration k v = Configuration {
       k  :: Int,
-      e0 :: Exp, 
+      e0 :: Exp,
       σ0 :: Map (VAdr k) v,
       ρ0 :: Env k
    } deriving (Ord, Eq, Show)
 
 -- | The configuration is passed down in a reader-like fashion
-class Monad m => MonadConfiguration k v m | m -> k v where    
+class Monad m => MonadConfiguration k v m | m -> k v where
    getK :: m Int
    getConfiguration :: m (Configuration k v)
 
-instance {-# OVERLAPPABLE #-} (MonadLayer t,  Monad m, Monad (t m), MonadConfiguration k v m, Monad m) => MonadConfiguration k v (t m) where   
+instance {-# OVERLAPPABLE #-} (MonadLayer t,  Monad m, Monad (t m), MonadConfiguration k v m, Monad m) => MonadConfiguration k v (t m) where
    getK = upperM getK
    getConfiguration = upperM getConfiguration
 -- | Trivial instance of the @MonadConfiguration@ type class using the reader monad transformer
 newtype ConfigurationT k v m a = ConfigurationT { runConfigurationT' ::  (ReaderT (Configuration k v) m a)  }
-      deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer, MonadReader (Configuration k v)) 
-instance (Monad m) => MonadConfiguration k v (ConfigurationT k v m) where  
+      deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer, MonadReader (Configuration k v))
+instance (Monad m) => MonadConfiguration k v (ConfigurationT k v m) where
    getK = asks k
    getConfiguration = ask
 
 -- | Run a computation inside the @ConfigurationT@ monad
 runConfigurationT :: Configuration k v -> ConfigurationT k v m a -> m a
-runConfigurationT cfg = flip runReaderT cfg . runConfigurationT' 
+runConfigurationT cfg = flip runReaderT cfg . runConfigurationT'
 
 ------------------------------------------------------------
 -- K-cfa
 ------------------------------------------------------------
 
 pushCtx :: MonadConfiguration k v m => e -> [e] -> m [e]
-pushCtx e es = do   
+pushCtx e es = do
    k' <- getK
    return (take k' (e : es))
 
@@ -348,16 +375,16 @@ class (InputFrom v) => MonadInput v m | m -> v where
 
 -- | Values from which a value can be taken based on some
 -- unbounded random integer
-class InputFrom v where    
+class InputFrom v where
    inputValue :: Int -> v
 
 -- | Layered instance of the @MonadInput@ type class
-instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadInput v m) => MonadInput v (t m) where  
+instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadInput v m) => MonadInput v (t m) where
    randomInput = upperM randomInput
 
 -- | Dummy instance of @Joinable@ for @RandomSeq@ since they should 
 -- never be joined together
-instance BottomLattice RandomSeq where   
+instance BottomLattice RandomSeq where
    bottom = error "no \"bottom\" for \"RandomSeq\""
 
 -- | Trivial instane based on carrying around a `Data.Random` infinite 
@@ -368,10 +395,10 @@ newtype InputT v m a = InputT (StateT RandomSeq m a)
 runInputT :: RandomSeq -> InputT v m a -> m (a, RandomSeq)
 runInputT r (InputT m) = runStateT m r
 
-instance (Monad m, InputFrom v) => MonadInput v (InputT v m) where   
-   randomInput = do  
+instance (Monad m, InputFrom v) => MonadInput v (InputT v m) where
+   randomInput = do
       (x, xs) <- gets takeSeq
-      put xs 
+      put xs
       return (inputValue (fromIntegral x))
 
 ------------------------------------------------------------
@@ -390,11 +417,11 @@ widenPC count = Set.singleton . foldr1 (\a -> fst . fromBL . join a)
 -- | Checks whether one path constraint subsumes the other
 subsumesPC :: Map SymbolicVariable AbstractCount -> PC -> PC -> Bool
 subsumesPC count a =  fromBL . subsumes a
-   where subsumes a b = traceShow a $ Path.subsumesPC a b 
+   where subsumes a b = traceShow a $ Path.subsumesPC a b
                       & runAbstractCountT count
-                      & runJoinT 
+                      & runJoinT
                       & runZ3SolverWithSetup SMT.prelude
-                      & unsafePerformIO 
+                      & unsafePerformIO
                       & fmap fst
 
 -- | A monad to interact with the concolic model, parametrized 
@@ -423,7 +450,7 @@ runModelT :: Map i (Abstract v) -> ModelT i v m a -> m (a, Map i (Abstract v))
 runModelT s (ModelT m) = runStateT m s
 
 instance (SymbolicValue v i, Joinable (Abstract v),  Ord i, MonadBottom m, MonadInput (Abstract v) m) => MonadModel i v (ModelT i v m) where
-   lookupModel i = do 
+   lookupModel i = do
       v <- ModelT $ gets (Map.lookup i) >>= maybe (lift randomInput) return
       ModelT $ modify (Map.insertWith L.join i v)
       return v
@@ -431,8 +458,8 @@ instance (SymbolicValue v i, Joinable (Abstract v),  Ord i, MonadBottom m, Monad
 
 -- | Allocate a symbolic variable
 allocSym :: (AllocM m (Label Exp) SymbolicVariable, MonadAbstractCount SymbolicVariable m) => Label Exp -> m  SymbolicVariable
-allocSym ℓ = do 
-   adr <- alloc ℓ 
+allocSym ℓ = do
+   adr <- alloc ℓ
    countIncrement adr
    return adr
 
@@ -441,7 +468,7 @@ allocSym ℓ = do
 ------------------------------------------------------------
 
 -- | Monad to keep track of the visited set
-class MonadVisitedSet e m | m -> e where 
+class MonadVisitedSet e m | m -> e where
    -- | Add an element to the visited set.
    addVisited :: e -> m ()
    -- | Checks whether the element is in the visited set, 
@@ -449,8 +476,8 @@ class MonadVisitedSet e m | m -> e where
    isVisited :: BoolDomain b => e -> m b
 
 -- | Trivial layered instance of @MonadVisitedSet@
-instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadVisitedSet e m) => MonadVisitedSet e (t m) where 
-   addVisited = upperM . addVisited 
+instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadVisitedSet e m) => MonadVisitedSet e (t m) where
+   addVisited = upperM . addVisited
    isVisited  = upperM . isVisited
 
 -- | An abstract data structure that keeps track of a visited set. 
@@ -470,31 +497,31 @@ insertVisited e v = v { visited = Set.insert e (visited v) }
 
 -- | Check whether an element is in the visited set
 containsVisited :: Ord e => BoolDomain b => e -> VisitedSet e -> b
-containsVisited e v 
-   | Set.member e (mayVisited v) = boolTop 
-   | otherwise = Domain.inject (Set.member e (visited v))
+containsVisited e v
+   | Set.member e (mayVisited v) = boolTop
+   | otherwise = Domain.inject (Set.member e (visited v))
 
 -- | Returns an empty visited set
 emptyVisited :: VisitedSet e
 emptyVisited = VisitedSet Set.empty Set.empty
 
 instance NFData e => NFData (VisitedSet e)
-instance Ord e => BottomLattice (VisitedSet e) where 
+instance Ord e => BottomLattice (VisitedSet e) where
    bottom = emptyVisited
-instance Ord e => Joinable (VisitedSet e) where    
+instance Ord e => Joinable (VisitedSet e) where
    join (VisitedSet a1 b1) (VisitedSet a2 b2) = VisitedSet (Set.intersection a1 a2) -- the elements visited in both sets   
                                                            ((Set.union a1 a2) `Set.difference` (Set.intersection a1 a2) `Set.union` (Set.union b1 b2))
-instance (Eq e, Ord e) => PartialOrder (VisitedSet e) where   
+instance (Eq e, Ord e) => PartialOrder (VisitedSet e) where
    leq (VisitedSet a1 b1) (VisitedSet a2 b2) = (a1 == a2) && (leq b1 b2)
 
 -- | Trivial instance of @MonadVisitedSet@ based on the state monad
-newtype VisitedT e m a = VisitedT { getVisitedT :: StateT (VisitedSet e) m a } 
+newtype VisitedT e m a = VisitedT { getVisitedT :: StateT (VisitedSet e) m a }
                      deriving (Applicative, Functor, Monad, MonadState (VisitedSet e), MonadCache, MonadLayer, MonadJoinable)
 
 runVisitedT :: Monad m => VisitedT e m a -> m a
 runVisitedT (VisitedT m) = evalStateT m emptyVisited
 
-instance (Ord e, Monad m) => MonadVisitedSet e (VisitedT e m) where 
+instance (Ord e, Monad m) => MonadVisitedSet e (VisitedT e m) where
    addVisited e = modify (insertVisited e)
    isVisited e = gets (containsVisited e)
 
@@ -503,21 +530,22 @@ instance (Ord e, Monad m) => MonadVisitedSet e (VisitedT e m) where
 ------------------------------------------------------------
 
 type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
-                           MonadModel SymbolicVariable v m, 
-                           MonadContinuation k m, 
+                           MonadModel SymbolicVariable v m,
+                           MonadContinuationStack (FAdr k) FFrame m,
+                           MonadContinuationStack (KAdr k) (KFrame k) m,
                            -- Store interactions
                            StoreM (VAdr k) v m,
                            StoreM (PAdr k) (Domain.PaiDom v) m,
-                           StoreM (SAdr k) (Domain.StrDom v) m, 
-                           StoreM (CAdr k) (Domain.VecDom v) m, 
+                           StoreM (SAdr k) (Domain.StrDom v) m,
+                           StoreM (CAdr k) (Domain.VecDom v) m,
                            StoreM' (Map (VAdr k) v) (VAdr k) v m,
                            StoreM' (Map (KAdr k) (Set (KKont k))) (KAdr k) (Set (KKont k)) m,
                            -- Non-determinism monad
                            MonadJoin m,
                            -- Allocation monads
-                           AllocM m (Label Exp) (KAdr k), 
-                           AllocM m (Label Exp) (FAdr k), 
-                           AllocM m (Label Exp) SymbolicVariable, 
+                           AllocM m (Label Exp) (KAdr k),
+                           AllocM m (Label Exp) (FAdr k),
+                           AllocM m (Label Exp) SymbolicVariable,
                            AllocM m (Label Exp) (VAdr k),
                            AllocM m Exp (PAdr k),
                            AllocM m Exp (SAdr k),
@@ -525,13 +553,13 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
                            MonadEscape m,
                            Domain (Esc m) DomainError,
                            -- Context
-                           MonadSmallstepContext k m, 
+                           MonadSmallstepContext k m,
                            MonadSmallstepContext PC m,
                            CtxM m k,
                            CtxM m PC,
                            MonadConfiguration k v m,
                            -- Path condition
-                           MonadPathCondition SymbolicVariable m v,  
+                           MonadPathCondition SymbolicVariable m v,
                            FormulaSolver SymbolicVariable m,
                            MonadVisitedSet PC m,
                            -- Environment monad
@@ -542,7 +570,7 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
 ------------------------------------------------------------
 
 -- | For convenience, turns a type that has "MayEscape", into a type without one. 
-type family Unescape (k :: Type) :: Type where  
+type family Unescape (k :: Type) :: Type where
    Unescape (MayEscape e v) = v
    Unescape (a, b) = (Unescape a, Unescape b)
    Unescape t = t

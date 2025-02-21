@@ -52,6 +52,12 @@ instance (v ~ Abstract V) => InputFrom v where
    inputValue i = cases !! (i `mod` length cases)
       where cases = [Domain.inject (toInteger i)]
 
+pushF :: MonadContinuationStack (FAdr K) FFrame m => FAdr K -> FFrame -> m ()
+pushF = push
+
+pushK :: MonadContinuationStack (KAdr K) (KFrame K) m => KAdr K -> KFrame K -> m ()
+pushK = push
+
 ------------------------------------------------------------
 -- Solving for the model
 ------------------------------------------------------------
@@ -193,13 +199,13 @@ applyContinuation v =
 
 -- | Apply the current continuation
 stepApply :: MachineM m => V -> m (Ctrl V K)
-stepApply = popK . applyContinuation
+stepApply = popExec @(KAdr K) . applyContinuation
 
 -- | Restart the machine with the appropriate assignments 
 -- in the model so that the machine explores the path associated 
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
-restart = popF selectContinuation
+restart = popExec @(FAdr K) selectContinuation
    where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero (restartUsingModel pc) <=< computeModel cnt) pc
          restartUsingModel pc model = do
             -- liftIO (putStr "R" >> hFlush stdout)
@@ -225,10 +231,10 @@ restart = popF selectContinuation
 -- If the machine halts it returns @mzero@ denoting 
 -- the empty computation so that no successor states are generated.
 step :: MachineM m => Ctrl V K -> m (Ctrl V K)
-step (Ap v) = liftA2 (,) topAddress topFailAddress
-    >>= (\case (Hlt, FHlt) -> mzero         -- machine has no continuations, it has reached a halting state 
-               (Hlt, top)  -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
-               (k, _)      -> stepApply v   -- apply the continuation
+step (Ap v) = liftA2 (,) (peek @(KAdr K)) (peek @(FAdr K))
+    >>= (\case (Nothing, Nothing) -> mzero         -- machine has no continuations, it has reached a halting state 
+               (Nothing, top)     -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
+               (k, _)             -> stepApply v   -- apply the continuation
         )
 step (Ev e ρ) =  withEnv (const ρ) (stepEval e)
 step (Blm _ _) = mzero
@@ -255,7 +261,7 @@ ev e ρ α κ
                         --                                           _ -> pushK α κ >> return (Ev e ρ))
                         Input _   -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
                         App {}    -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
-                        _ -> pushK α κ >> return (Ev e ρ)
+                        _ -> push α κ >> return (Ev e ρ)
    where stepEvalInline (Ap v) = applyContinuation v κ
-         stepEvalInline _ = pushK α κ >> return (Ev e ρ)
+         stepEvalInline _ = push α κ >> return (Ev e ρ)
 

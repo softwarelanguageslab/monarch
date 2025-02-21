@@ -44,7 +44,8 @@ type StoreT' adr v = StoreT (Map adr v) adr v
 -- | The local machine's monadic stack
 type StackT m = MonadStack '[
       MayEscapeT (Set DomainError),
-      ContinuationT K,
+      StoreContinuationStackT (KAdr K) (KFrame K),
+      StoreContinuationStackT (FAdr K) FFrame,
       FormulaT SymbolicVariable V,
       AbstractCountT SymbolicVariable,
       -- Allocation
@@ -84,7 +85,8 @@ initialContext = []
 -- |  The initial state of the local machine
 initialState :: Configuration K V -> State
 initialState cfg =  Ev (e0 cfg) (ρ0 cfg)
-                <+> initialContinuationStack -- continuation 
+                <+> initialContinuationStack -- continuation (regular)
+                <+> initialContinuationStack -- continuation (failures)
                 <+> emptyPC                  -- formula 
                 <+> Map.empty                -- abstract count
                 <+> initialContext           -- context
