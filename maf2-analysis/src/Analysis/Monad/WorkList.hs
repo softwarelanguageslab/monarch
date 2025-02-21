@@ -14,6 +14,7 @@ import Analysis.Monad.ComponentTracking
 import Control.Fixpoint.WorkList (WorkList)
 import qualified Control.Fixpoint.WorkList as WL
 import Control.Monad.Layer
+import Control.Monad.Cond
 
 import Control.Monad.State
 import Data.Maybe (fromMaybe)
@@ -63,7 +64,9 @@ iterateWL' initial f = add initial >> iterateWL f
 
 iterateWLDebug :: (ComponentTrackingM m cmp, MonadIO m, WorkListM m cmp) => cmp -> (cmp -> m a) -> m ()
 iterateWLDebug initial f = add initial >> loop 0
-   where loop total = unlessM done (runNext total)
+   where loop total = ifM done (debug total) (runNext total)
          runNext total = do
-            when (total `mod` 100 == 0) (components >>= liftIO . putStrLn . (\v -> "Number of seen states " ++ v ++ " iterations count " ++ show total) . show .  Set.size)
+            when (total `mod` 100 == 0) (debug total)
             pop >>= f >> loop (total+1)
+         debug total = components >>= liftIO . putStrLn . (\v -> "Number of seen states " ++ v ++ " iterations count " ++ show total) . show .  Set.size
+
