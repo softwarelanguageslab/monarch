@@ -78,7 +78,7 @@ type FlowT m = MonadStack '[
          AbstractCountT SymbolicVariable,
          -- Store
          StoreT' (KAdr K) (Set (KKont K)),
-         StoreT' (FAdr K) (Set (FKont K)),
+         --StoreT' (FAdr K) (Set (FKont K)),
          StoreT' (VAdr K) V,
          StoreT' (PAdr K) (PaiDom V),
          StoreT' (SAdr K) (StrDom V),
@@ -96,7 +96,7 @@ type FlowT m = MonadStack '[
 type StackT m = MonadStack '[
          MayEscapeT (Set DomainError),
          StoreContinuationStackT (KAdr K) (KFrame K),
-         StoreContinuationStackT (FAdr K) FFrame,
+         --StoreContinuationStackT (FAdr K) FFrame,
          -- Allocation
          AllocT Span K (KAdr K),
          AllocT Span K (FAdr K),
@@ -119,7 +119,7 @@ type StackT m = MonadStack '[
          AbstractCountT SymbolicVariable,
          -- Store
          StoreT' (KAdr K) (Set (KKont K)),
-         StoreT' (FAdr K) (Set (FKont K)),
+         --StoreT' (FAdr K) (Set (FKont K)),
          StoreT' (VAdr K) V,
          StoreT' (PAdr K) (PaiDom V),
          StoreT' (SAdr K) (StrDom V),
@@ -152,7 +152,7 @@ initialStepState :: Configuration K V -> StepState
 initialStepState cfg =  StepState $
                         Ev (e0 cfg) (ρ0 cfg)
                     <+> initialContinuationStack -- continuation  (regular)
-                    <+> initialContinuationStack -- continuation  (failures)
+                    -- <+> initialContinuationStack -- continuation  (failures)
                     <+> []                       -- context
                     <+> emptyPC                  -- model context
 
@@ -162,7 +162,7 @@ initialState step cfg@Configuration { .. } =
                           init emptyPC           -- path constraint
                       :+: init Map.empty         -- count mapping
                       :+: init Map.empty         -- continuation stores 
-                      :+: init Map.empty         -- failure continuation stores 
+                      -- :+: init Map.empty         -- failure continuation stores 
                       :+: init σ0                -- value stores (including primitives)
                       :+: init initialHeapSto    -- pair stores 
                       :+: init Map.empty         -- string stores
@@ -195,8 +195,8 @@ runStep f step@StepState { .. } = getAll step >>= inter . fromMaybe (error "init
         inter :: HList FlowList -> m (Set StepState)
         inter st = Cache.run @(FlowT m) (const intra) (uncons (() :+: st)) >>= putWidened . unnest
                  & runNonDetT
-                 & fmap (setFromList . traceShowWith length)
-        setFromList [] = traceShow ("no successors for " ++ show step) Set.empty
+                 & fmap setFromList
+        setFromList [] =  Set.empty
         setFromList xs = Set.fromList xs
         stepState' = (stepState, Map.empty)
         putWidened :: forall m . (PutAll StepState FlowList, AllMapM StepState FlowList m) => HList (StepState ': FlowList) -> m StepState
@@ -222,7 +222,8 @@ type AnalysisT m = StackT (MonadStack '[
                               DependencyTrackingT StepState StepState,
                               ComponentTrackingT StepState,
                               WorkListT (Set StepState),
-                              VisitedT PC
+                              VisitedT PC,
+                              StackContinuationStackT (FAdr K) FFrame
                            ] (WidenedT StepState FlowList m))
 type FlowOutput = State StepState FlowList
 
@@ -239,6 +240,7 @@ analyze f cfg = iterateWLDebug step0 (\st -> runStep f st >>= mapM_ spawn >>= st
               & execWithComponentTracking
               & runWithWorkList
               & runVisitedT
+              & runWithStackContinuationT
               & runWidenedT @StepState @FlowList state0
    where step0  = initialStepState cfg
          state0 = initialState step0 cfg

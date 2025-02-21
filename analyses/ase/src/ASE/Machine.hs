@@ -216,6 +216,8 @@ restrictCountMap pc = CountMap . flip Map.restrictKeys (Set.unions (Set.map Symb
 -- | Continuation stack, indexed by type of continuation address,
 -- and the type of continuation frame
 class Monad m => MonadContinuationStack a frm m | m a -> frm where
+   -- | Checks whether there is an element on top of the stack 
+   stackEmpty :: m Bool
    -- | Read the top frame of the continuation stack
    peek :: m (Maybe frm)
    -- | Push a continuation on the continuation stack
@@ -230,6 +232,7 @@ popExec f  = pop @adr >>= f
 
 -- | Layered instance of @MonadContinuationStack@
 instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad (t m), MonadContinuationStack a frm m) => MonadContinuationStack a frm (t m) where
+   stackEmpty = upperM (stackEmpty @a)
    peek = upperM (peek @a)
    push adr = upperM . push @a adr
    pop = upperM (pop @a)
@@ -261,6 +264,7 @@ instance BottomLattice (StoreContinuationState adr) where
    bottom = StoreContinuationState Nothing
 
 instance (StoreM adr (Set (Kont frm adr)) m, Monad m, MonadJoin m, Ord adr, Ord frm, Joinable frm) => MonadContinuationStack adr frm (StoreContinuationStackT adr frm m) where
+   stackEmpty = gets (isNothing . topContinuationAddress)
    peek = gets topContinuationAddress >>= (traverse (mjoinMap (return . getFrm) <=< lookupAdr))
    push adr' frm = do
       adr <- gets topContinuationAddress
@@ -281,7 +285,11 @@ instance (StoreM adr (Set (Kont frm adr)) m, Monad m, MonadJoin m, Ord adr, Ord 
 -- use only in combination with a visited set, and a finite number of continuations!
 newtype StackContinuationStackT adr frm m a = StackContinuationStackT (StateT [frm] m a)
                                             deriving (Applicative, Functor, Monad, MonadState [frm], MonadLayer, MonadCache)
+runWithStackContinuationT :: Monad m => StackContinuationStackT adr frm m a -> m a  
+runWithStackContinuationT (StackContinuationStackT m) = evalStateT m []
+
 instance (Monad m) => MonadContinuationStack adr frm (StackContinuationStackT adr frm m) where
+   stackEmpty = gets null
    peek = gets (\case [] -> Nothing
                       (h:_) -> Just h)
    push _ frm = modify (frm:)

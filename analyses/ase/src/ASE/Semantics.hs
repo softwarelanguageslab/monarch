@@ -231,10 +231,10 @@ restart = popExec @(FAdr K) selectContinuation
 -- If the machine halts it returns @mzero@ denoting 
 -- the empty computation so that no successor states are generated.
 step :: MachineM m => Ctrl V K -> m (Ctrl V K)
-step (Ap v) = liftA2 (,) (peek @(KAdr K)) (peek @(FAdr K))
-    >>= (\case (Nothing, Nothing) -> mzero         -- machine has no continuations, it has reached a halting state 
-               (Nothing, top)     -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
-               (k, _)             -> stepApply v   -- apply the continuation
+step (Ap v) = liftA2 (,) (stackEmpty @(KAdr K)) (stackEmpty @(FAdr K))
+    >>= (\case (True, True) -> mzero         -- machine has no continuations, it has reached a halting state 
+               (True, _)    -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
+               (_, _)       -> stepApply v   -- apply the continuation
         )
 step (Ev e ρ) =  withEnv (const ρ) (stepEval e)
 step (Blm _ _) = mzero

@@ -156,7 +156,7 @@ instance IsAnalysisResult EffectDrivenResult where
             extract _ = Nothing
    values' (EffectDrivenResult seen _) = Set.fromList $ mapMaybe (extract . unnest . Eff.stepState) $ Set.toList seen
       where extract :: HList (Unnest Eff.StepState') -> Maybe Semantics.V
-            extract (Ap v :+: KHlt  :+: KHlt :+: _) = Just v
+            extract (Ap v :+: KHlt  :+: _) = Just v
             extract _ = Nothing
    visitedSize' (EffectDrivenResult seen _) = Set.size seen
 
