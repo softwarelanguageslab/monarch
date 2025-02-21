@@ -83,6 +83,7 @@ allPrimitives = [
    -- fix1 "integer->char" todo, 
    fix1 "log" Domain.log,
    fix1 "null?" (return . isNil),
+   fix1 "empty?" (return . isNil),
    -- fix1 "number->string" todo, 
    -- fix2 "make-string" todo, 
    fix1 "number?" (\v -> return $ or (isReal v) (isInteger v)),
