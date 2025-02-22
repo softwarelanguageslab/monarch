@@ -5,6 +5,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
 {-# LANGUAGE RankNTypes #-}
+{-# HLINT ignore "Use newtype instead of data" #-}
 -- | Generic machine components
 module ASE.Machine where
 
@@ -51,6 +52,7 @@ import Solver.Z3
 import qualified Domain
 import Domain (SchemeDomain)
 import Control.Monad.Join (mjoins)
+import ASE.PC (MonadSnapshotPathCondition)
 
 ------------------------------------------------------------
 -- Machine components
@@ -130,7 +132,7 @@ instance Joinable (KFrame k) where
    join = error "join not implemented for KFrame"
 
 -- | Failure continuation
-data FFrame = Branch { branchPC :: !PC, branchCountMap :: !(CountMap SymbolicVariable) }
+newtype FFrame = Branch { branchPC :: PC }
             deriving (Eq, Ord, Show, Generic)
 instance NFData FFrame
 instance Joinable FFrame where  
@@ -372,25 +374,6 @@ instance (Monad m, InputFrom v) => MonadInput v (InputT v m) where
 -- Interaction with the model
 ------------------------------------------------------------
 
--- | Widen a set of formulae into a single one
-widenPC :: Map SymbolicVariable AbstractCount -> PC -> PC
-widenPC count = Set.singleton . foldr1 (\a -> fst . fromBL . join a)
-   where join a b = Path.join a b
-                  & runAbstractCountT count
-                  & runJoinT
-                  & runZ3SolverWithSetup SMT.prelude
-                  & unsafePerformIO
-
--- | Checks whether one path constraint subsumes the other
-subsumesPC :: Map SymbolicVariable AbstractCount -> PC -> PC -> Bool
-subsumesPC count a =  fromBL . subsumes a
-   where subsumes a b = traceShow a $ Path.subsumesPC a b
-                      & runAbstractCountT count
-                      & runJoinT
-                      & runZ3SolverWithSetup SMT.prelude
-                      & unsafePerformIO
-                      & fmap fst
-
 -- | A monad to interact with the concolic model, parametrized 
 -- by the type of symbolic variable @i@, a program domain @v@, and a 
 -- monad @m@
@@ -527,6 +510,7 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
                            MonadConfiguration k v m,
                            -- Path condition
                            MonadPathCondition SymbolicVariable m v,
+                           MonadSnapshotPathCondition SymbolicVariable m,
                            FormulaSolver SymbolicVariable m,
                            MonadVisitedSet PC m,
                            -- Environment monad

@@ -9,7 +9,8 @@ module ASE.Semantics where
 import ASE.Syntax
 import ASE.Machine
 import ASE.Monad
-import ASE.Domain.SymbolicVariable
+import ASE.PC
+import ASE.Domain.SymbolicVariable hiding (PC)
 import Analysis.Monad.Environment (EnvM(lookupEnv, getEnv, withExtendedEnv, withEnv))
 import Analysis.Monad (StoreM(hasAdr, lookupAdr, writeAdr), StoreM' (putStore), withCtx, getCtx, currentStore)
 import Analysis.SimpleActor.Semantics (injectLit)
@@ -39,6 +40,7 @@ import qualified Lattice.Class as Lat
 import qualified Solver
 import System.IO (stdout)
 import Syntax.FV
+import ASE.Domain.SymbolicVariable (SymbolicCountMap)
 
 
 ------------------------------------------------------------
@@ -95,15 +97,14 @@ replaceUnderconstrained = flip (Set.foldr (`Map.insert` Lat.top))
 
 -- | Compute an assignment for the model (if one is available)
 computeModel :: (MonadModel SymbolicVariable V m, FormulaSolver SymbolicVariable m)
-             => CountMap SymbolicVariable
-             -> Formula SymbolicVariable
+             => PC SymbolicVariable
              -> m (Maybe (Model V))
-computeModel c pc = do
-      result <- Solver.solve (getCountMap c) pc
+computeModel pc = do
+      result <- Solver.solve (countPC pc) (formulaPC pc)
       if isSat result then
-         Just . Model . replaceUnderconstrained underconstrainedVariables . getModel .  convertModel <$> Solver.getModel @SymbolicVariable (getCountMap c) pc
+         Just . Model . replaceUnderconstrained underconstrainedVariables . getModel .  convertModel <$> Solver.getModel @SymbolicVariable (countPC pc) (formulaPC pc)
       else return Nothing
-   where underconstrainedVariables = Map.keysSet (getCountMap c) `Set.difference` Symbolic.strictVariables pc
+   where underconstrainedVariables = (Map.keysSet (countPC pc) `Set.difference` Symbolic.strictVariables pc) `Set.union` underconstrainedPC pc
 
 ------------------------------------------------------------
 -- Semantics
@@ -161,18 +162,15 @@ stepEval (Ite cnd csq alt _) = do
       vcnd <- atomicEval cnd
       αf1 <- alloc (spanOf csq)
       αf2 <- alloc (spanOf alt)
-      pc' <- getPc
-      mjoinMap (\pc -> do
-         count <- getCounts
-         let bt = Set.singleton (conjunction (Atomic $ symbolic $ assertFalse vcnd) pc)
-         let bf = Set.singleton (conjunction (Atomic $ symbolic $ assertTrue vcnd) pc)
-         cond (pure vcnd)
-            (  extendPc (assertTrue vcnd)
-            >> condCP (isVisited bt) (return ()) (addVisited bt >> pushF αf1 (Branch bt (restrictCountMap bt count)))
-            >> getEnv <&> Ev csq )
-            (  extendPc (assertFalse vcnd)
-            >> condCP (isVisited bf) (return ()) (addVisited bf >> pushF αf2 (Branch bf (restrictCountMap bf count)))
-            >> getEnv <&> Ev alt)) =<< getPc
+      cond (pure vcnd)
+         (  extendPc (assertTrue vcnd)
+         >> snapshotPC
+         >>= (\bt -> condCP (isVisited bt) (return ()) (addVisited bt >> pushF αf1 (Branch bt)))
+         >> getEnv <&> Ev csq )
+         (  extendPc (assertFalse vcnd)
+         >> snapshotPC
+         >>= (\bf -> condCP (isVisited bf) (return ()) (addVisited bf >> pushF αf2 (Branch bf)))
+         >> getEnv <&> Ev alt )
 stepEval (Fresh s) = do
    -- Same as `input` but associates `fresh` as the symbolic representation rather 
    -- than the generated variable.
@@ -207,13 +205,13 @@ stepApply = popExec @(KAdr K) . applyContinuation
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
 restart = popExec @(FAdr K) selectContinuation
-   where selectContinuation (Branch pc cnt) = mjoinMap (maybe mzero (restartUsingModel pc) <=< computeModel cnt) pc
+   where selectContinuation (Branch pc) = maybe mzero (restartUsingModel pc) =<< computeModel pc
          restartUsingModel pc model = do
             -- liftIO (putStr "R" >> hFlush stdout)
             -- add the model to the next execution
             putModel (getModel model)
             -- change the model context of the current state
-            putCtx $ removeContextPC pc
+            -- putCtx $ removeContextPC pc
             -- restart the execution ...
             cfg <- getConfiguration
             -- ... by resetting the store
@@ -221,7 +219,7 @@ restart = popExec @(FAdr K) selectContinuation
             -- ... and resetting the continuation store
             putStore @(Map (KAdr K) (Set (KKont K))) @(KAdr K) @(Set (KKont K)) Map.empty
             -- ... and resetting the path condition
-            putPc emptyPC
+            resetPC
             -- ... and by evaluating the initial program expression
             return (Ev (e0 cfg) (ρ0 cfg))
 

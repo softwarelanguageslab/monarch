@@ -8,8 +8,8 @@ import ASE.Semantics
 import ASE.Syntax
 import ASE.Machine
 import ASE.Monad
+import ASE.PC hiding (PC)
 import Analysis.Monad.Stack
-import Analysis.Symbolic.Monad (FormulaT, runWithFormulaT)
 import Analysis.Monad.Allocation (AllocT, runAlloc)
 import Analysis.Monad.Cache (CacheT, Val, CachedVal, run)
 import Analysis.Monad.Map (MapM(joinWith), MapT)
@@ -42,7 +42,6 @@ import qualified Lattice.Class as L
 import RIO hiding (mzero, traceShow)
 import Debug.Trace
 import qualified RIO.Set as Set
-import Symbolic.AST (emptyPC)
 import Syntax.Span
 import GHC.IO (unsafePerformIO)
 import Domain.Symbolic.Path (joinPC)
@@ -75,7 +74,7 @@ type CSto = Map (CAdr K) (VecDom V)
 
 type FlowT m = MonadStack '[
          -- Symbolic execution
-         AbstractCountT SymbolicVariable,
+         FormulaT SymbolicVariable V,
          -- Store
          StoreT' (KAdr K) (Set (KKont K)),
          --StoreT' (FAdr K) (Set (FKont K)),
@@ -96,7 +95,7 @@ type FlowT m = MonadStack '[
 type StackT m = MonadStack '[
          MayEscapeT (Set DomainError),
          StoreContinuationStackT (KAdr K) (KFrame K),
-         FormulaT SymbolicVariable V,
+         -- FormulaT SymbolicVariable V,
          --StoreContinuationStackT (FAdr K) FFrame,
          -- Allocation
          AllocT Span K (KAdr K),
@@ -116,8 +115,7 @@ type StackT m = MonadStack '[
          -- Copy of @FlowT@ due to Haskell limitations
          ----------------------------------------
          -- Symbolic execution
-         --FormulaT SymbolicVariable V,
-         AbstractCountT SymbolicVariable,
+         FormulaT SymbolicVariable V,
          -- Store
          StoreT' (KAdr K) (Set (KKont K)),
          --StoreT' (FAdr K) (Set (FKont K)),
@@ -154,15 +152,14 @@ initialStepState cfg =  StepState $
                         Ev (e0 cfg) (ρ0 cfg)
                     <+> initialContinuationStack -- continuation  (regular)
                     -- <+> initialContinuationStack -- continuation  (failures)
-                    <+> emptyPC
+                    -- <+> emptyPC
                     <+> []                       -- context
                     <+> emptyPC                  -- model context
 
 -- | The initial contents of widened state components 
 initialState :: StepState -> Configuration K V -> State StepState FlowList
 initialState step cfg@Configuration { .. } =
-                      --    init emptyPC           -- path constraint
-                          init Map.empty         -- count mapping
+                          init emptyPC           -- path constraint
                       :+: init Map.empty         -- continuation stores 
                       -- :+: init Map.empty         -- failure continuation stores 
                       :+: init σ0                -- value stores (including primitives)

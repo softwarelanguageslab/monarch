@@ -24,7 +24,7 @@ class Worker():
 
     def start(self, name):
          benchmark_output_name = time.strftime("%Y-%m-%d")
-         self.__process = subprocess.Popen(["tuna", "run", "-c", str(name),  " ".join(["cabal", "run", ".", "--", "benchmark", "-o", f"output/output-{benchmark_output_name}-worker-{name}.csv"])], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, encoding = "utf8")
+         self.__process = subprocess.Popen(["tuna", "run", "-c", str(name),  " ".join(["cabal", "run", ".", "--", "benchmark","-i", "1", "-o", f"output/output-{benchmark_output_name}-worker-{name}.csv"])], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, encoding = "utf8")
 
     def submit_task(self, program_name, configuration):
         """
@@ -90,7 +90,7 @@ class WorkerPool():
         for worker in self.__workers: 
             worker.wait()
 
-NUM_WORKERS = 1
+NUM_WORKERS = 15
 PROGRAMS = [ l.strip() for l in open("benchmarks.txt").readlines() ]
 
 print("[*] Booting ... ")

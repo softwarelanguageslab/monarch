@@ -107,6 +107,20 @@ eval query = do
 command :: String -> Z3Solver i () 
 command = eval >=> ensureAtom "success"
 
+-- | Exits the solver
+exit :: Z3Solver i ()
+exit = do
+   hin <- gets (inputHandle . fromJust)
+   hout <- gets (outputHandle . fromJust)
+   pid <- gets (processHandle . fromJust)
+   Z3Solver $ lift $ hPutStrLn hin "(exit)"
+   Z3Solver $ lift $ hFlush hin
+   Z3Solver $ lift $ hClose hin
+   Z3Solver $ lift $ hClose hout
+   Z3Solver $ lift $ terminateProcess pid
+   void $ Z3Solver $ lift $ waitForProcess pid
+
+
 -- | Creates a checkpoint at the current point in evaluation
 checkpoint :: Z3Solver i ()
 checkpoint = command "(push 1)"
@@ -118,10 +132,10 @@ restoreCheckpoint =
 
 -- | Run the Z3Solver
 runZ3Solver :: Z3Solver i a -> IO a
-runZ3Solver (Z3Solver m) = evalStateT m Nothing
+runZ3Solver m  = evalStateT (getZ3Solver $ m <* exit) Nothing
 
 runZ3SolverWithSetup :: Show i => Ord i => String -> Z3Solver i a -> IO a
-runZ3SolverWithSetup setupCode' m = evalStateT (getZ3Solver $ setup setupCode' >> m) Nothing
+runZ3SolverWithSetup setupCode' m = evalStateT (getZ3Solver $ setup setupCode' >> m <* exit) Nothing
 
 -- TODO: ShowableVariable is no longer used remove
 instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) where

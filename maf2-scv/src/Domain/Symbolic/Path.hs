@@ -9,15 +9,18 @@
 -- SMT solver is expected to return the same 
 -- answer given the same query, and could 
 -- be replaced with a pure Haskell implementation.
-module Domain.Symbolic.Path(Atom(..), NormalFormFormula(..), leq, subsumes, subsumesPC, joinNF, join, joinPC, formula2nf, nf2formula) where
+module Domain.Symbolic.Path(Atom(..), NormalFormFormula(..), leq, subsumes, subsumesPC, joinNF, join, joinPC, formula2nf, nf2formula, joinLessConstrained) where
 
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Symbolic.AST as Formula
 import Solver
 import Control.Monad (foldM)
-import Control.Monad.Extra (ifM, allM)
+import Control.Monad.Extra (ifM)
 import Analysis.Monad.Store (AbstractCountM)
+import Control.Monad.RWS (MonadWriter (tell))
+import Control.Monad.Trans.Writer (WriterT(runWriterT))
+import Symbolic.AST (SelectVariable (variables), StrictSelectVariable (strictVariables))
 
 -- | Normal form used for representing path constraints,
 -- it is a more restricted form of CNF that disallows disjunctions
@@ -25,6 +28,13 @@ data Atom i = Atom (Formula.Proposition i) | Negation (Formula.Proposition i) de
 data NormalFormFormula i =
      Conjunction (Atom i) (NormalFormFormula i)
    | Empty deriving (Eq, Ord, Show)
+
+instance Ord i => SelectVariable (Atom i) i where
+   variables (Atom f) = variables f
+   variables (Negation f) = variables f
+instance Ord i => StrictSelectVariable (Atom i) i where
+   strictVariables (Atom f) = strictVariables f
+   strictVariables (Negation f) = strictVariables f
 
 -- | Create a formula in normal form from a set of atoms
 fromAtoms :: Set (Atom i) -> NormalFormFormula i
@@ -106,22 +116,25 @@ subsumesPC pc1 pc2 = and <$> sequence [ subsumes f1 f2 | f1 <- Set.toList pc1 , 
 --
 -- let r = join p q for path constraints p and q 
 -- such that p \/ q |= r
-joinNF :: (Ord i, AbstractCountM i m, FormulaSolver i m) => NormalFormFormula i -> NormalFormFormula i -> m (NormalFormFormula i)
+joinNF :: (Ord i, AbstractCountM i m, FormulaSolver i m, MonadWriter (Set (Atom i)) m) => NormalFormFormula i -> NormalFormFormula i -> m (NormalFormFormula i)
 joinNF p q = fmap fromAtoms r
    where as = Set.union (atoms p) (atoms q)
          c  = Formula.disjunction (nf2formula p) (nf2formula q)
          r  = foldM (\s a -> ifM (leq c (nf2formula (fromAtoms (Set.insert a s))))
                                  (return $ Set.insert a s)
-                                 (return s))
+                                 (tell (Set.singleton a) >> return s))
                     Set.empty
                     as
 
 -- | Joins two formulas together by converting them to normal form 
 -- and joining them using @joinNF@.
 join :: (Ord i, AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m (Formula.Formula i)
-join p1 p2 = nf2formula <$> joinNF (formula2nf p1) (formula2nf p2)
+join p1 = fmap fst . joinLessConstrained p1
+
+-- | Join and return the variables that became less constraint while doing so
+joinLessConstrained :: (Ord i, AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m (Formula.Formula i, Set i)
+joinLessConstrained p1 p2 = fmap (foldMap variables) <$> runWriterT (nf2formula <$> joinNF (formula2nf p1) (formula2nf p2))
 
 -- | Join two sets of paths together into a singleton set of a single path
 joinPC :: (Ord i, AbstractCountM i m, FormulaSolver i m) => Formula.PC i -> Formula.PC i -> m (Formula.PC i)
 joinPC pc1 = fmap Set.singleton . foldM join Formula.emptyFormula . Set.union pc1
-

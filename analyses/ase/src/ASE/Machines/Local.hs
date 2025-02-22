@@ -14,7 +14,7 @@ import ASE.Monad
 import ASE.Semantics
 import Analysis.Monad.Stack
 import ASE.Domain.SymbolicVariable (SymbolicVariable(..), symbolicVariable, PC)
-import Analysis.Symbolic.Monad (FormulaT)
+import ASE.PC hiding (PC)
 import Analysis.Monad.Store (StoreT)
 import qualified Analysis.Monad.Cache as Cache
 import Analysis.Monad.Cache (CacheT, MonadCache (Key, Val))
@@ -37,7 +37,6 @@ import qualified RIO.Set as Set
 import qualified RIO.Map as Map
 import Syntax.AST
 import Solver
-import Symbolic.AST (emptyPC)
 
 -- | Store that always uses a map for its backing storage
 type StoreT' adr v = StoreT (Map adr v) adr v
@@ -48,7 +47,6 @@ type StackT m = MonadStack '[
       StoreContinuationStackT (KAdr K) (KFrame K),
       StoreContinuationStackT (FAdr K) FFrame,
       FormulaT SymbolicVariable V,
-      AbstractCountT SymbolicVariable,
       -- Allocation
       AllocT Span K (KAdr K),
       AllocT Span K (FAdr K),
@@ -89,7 +87,6 @@ initialState cfg =  Ev (e0 cfg) (ρ0 cfg)
                 <+> initialContinuationStack -- continuation (regular)
                 <+> initialContinuationStack -- continuation (failures)
                 <+> emptyPC                  -- formula 
-                <+> Map.empty                -- abstract count
                 <+> initialContext           -- context
                 <+> emptyPC                  -- model context
                 <+> Map.empty                -- continuation store

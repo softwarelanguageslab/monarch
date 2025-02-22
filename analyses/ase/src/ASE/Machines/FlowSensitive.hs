@@ -10,8 +10,8 @@ import ASE.Semantics
 import ASE.Syntax
 import ASE.Machine
 import ASE.Monad
+import ASE.PC hiding (PC)
 import Analysis.Monad.Stack
-import Analysis.Symbolic.Monad (FormulaT, runWithFormulaT)
 import Analysis.Monad.Allocation (AllocT, runAlloc)
 import Analysis.Monad.Cache (CacheT, Val, run)
 import qualified Analysis.Monad.Cache as Cache
@@ -32,7 +32,6 @@ import Lattice.Class (Joinable, BottomLattice, PartialOrder)
 import qualified Lattice.Class as L
 import RIO
 import qualified RIO.Set as Set
-import Symbolic.AST (emptyPC)
 import Syntax.Span
 import GHC.IO (unsafePerformIO)
 import Domain.Symbolic.Path (joinPC)
@@ -91,7 +90,6 @@ type StackT m = MonadStack '[
          CacheT,
          -- Symbolic execution
          FormulaT SymbolicVariable V,
-         AbstractCountT SymbolicVariable,
          -- Store
          StoreT' (KAdr K) (Set (KKont K)),
          StoreT' (FAdr K) (Set (FKont K)),
@@ -137,7 +135,6 @@ data State = State {
       cflow      :: Flow CSto,
       -- | Path constraint per small-step state
       φflow      :: Flow PC,
-      countflow  :: Flow SymbolicCountMap,
       modelFlow  :: Flow (Map SymbolicVariable (Abstract V)),
       inputFlow  :: Flow RandomSeq
    } deriving (Ord, Eq, Show, Generic)
@@ -146,7 +143,6 @@ instance NFData State
 -- | State has a bottom, i.e., the bottom of its constituents
 instance BottomLattice State where
    bottom = State L.bottom
-                  L.bottom
                   L.bottom
                   L.bottom
                   L.bottom
@@ -168,12 +164,8 @@ instance Joinable State where
                       (L.join (cflow a1) (cflow a2))
                       -- (Map.mapWithKey widenedPC (L.join (φflow a1) (φflow a2)))
                       (L.join (φflow a1) (φflow a2))
-                      countflow'
                       (L.join (modelFlow a1) (modelFlow a2))
                       (L.join (inputFlow a1) (inputFlow a2))
-      where countflow'  = L.join (countflow a1) (countflow a2)
-            widenedPC s = widenPC (fromJust $ Map.lookup s countflow') 
-
 
 -- | State is compareable, i.e., by comparing its constituents
 instance PartialOrder State where
@@ -185,7 +177,6 @@ instance PartialOrder State where
                        && L.subsumes (sflow a1) (sflow a2)
                        && L.subsumes (cflow a1) (cflow a2)
                        && L.subsumes (φflow a1) (φflow a2)
-                       && L.subsumes (countflow a1) (countflow a2)
                        && L.subsumes (modelFlow a1) (modelFlow a2)
                        && L.subsumes (inputFlow a1) (inputFlow a2)
                        -- TODO: use subsumesPC from ASE.Machine for subsumption
@@ -202,16 +193,13 @@ subsumesFlow s st st' = L.subsumes (lookup s (kflow st)) (lookup s (kflow st'))
                      && L.subsumes (lookup s (cflow st)) (lookup s (cflow st'))
                      -- && subsumesPC countflow' (lookup s (φflow st)) (lookup s (φflow st'))
                      && L.subsumes (lookup s (φflow st)) (lookup s (φflow st'))
-                     && L.subsumes (lookup s (countflow st)) (lookup s (countflow st'))
                      && L.subsumes (lookup s (modelFlow st)) (lookup s (modelFlow st'))
                      && L.subsumes (lookup s (inputFlow st)) (lookup s (inputFlow st'))
    where lookup :: BottomLattice a => StepState -> Flow a -> a 
          lookup s   = fromMaybe L.bottom . Map.lookup s
-         countflow' = L.join (lookup s (countflow st)) (lookup s (countflow st'))
 
 type StateTuple = Val (StackT Identity) (Ctrl V K)
               <+> PC
-              <+> SymbolicCountMap
               <+> KSto
               <+> FSto
               <+> VSto
@@ -223,11 +211,11 @@ type StateTuple = Val (StackT Identity) (Ctrl V K)
 
 -- | Derive a @State@ from its tuple representation 
 fromTuple :: State -> StateTuple -> State
-fromTuple st@(State {..}) (s ::*:: φ ::*:: count ::*:: ksto ::*:: fsto ::*:: vsto ::*:: psto ::*:: ssto ::*:: csto ::*:: model ::*:: seq) =
+fromTuple st@(State {..}) (s ::*:: φ ::*:: ksto ::*:: fsto ::*:: vsto ::*:: psto ::*:: ssto ::*:: csto ::*:: model ::*:: seq) =
       -- generate a successor state identical to the input state but with no step successors if an escape 
       -- value is found. Otherwise use the non-escaping value as successor step-state.
       maybe (st { stepStates = Set.empty })
-            (\s' -> State (Set.singleton s') (kflow' s') (fflow' s') (vflow' s') (pflow' s') (sflow' s') (cflow' s') (φflow' s') (countflow' s') (modelFlow' s') (inputFlow' s'))
+            (\s' -> State (Set.singleton s') (kflow' s') (fflow' s') (vflow' s') (pflow' s') (sflow' s') (cflow' s') (φflow' s') (modelFlow' s') (inputFlow' s'))
             (isEscape (unnest s))
    where -- Construct the new flow-sensitive mappings from the successor state @s'@
          kflow' s = Map.singleton s ksto 
@@ -237,7 +225,6 @@ fromTuple st@(State {..}) (s ::*:: φ ::*:: count ::*:: ksto ::*:: fsto ::*:: vs
          sflow' s = Map.singleton s ssto 
          cflow' s = Map.singleton s csto 
          φflow' s = Map.singleton s φ
-         countflow' s = Map.singleton s count
          modelFlow' s = Map.singleton s model
          inputFlow' s = Map.singleton s seq
          -- Ignore escapes
@@ -263,7 +250,6 @@ initialState cfg@Configuration { .. } = State (Set.singleton s0)
                                               (init Map.empty) -- string stores
                                               (init Map.empty) -- vector stores
                                               (init emptyPC)   -- path constraint
-                                              (init Map.empty) -- count mapping
                                               (init Map.empty) -- model
                                               (init Random.initialSeq) -- infinite random sequence
    where s0   = initialStepState cfg
@@ -288,7 +274,6 @@ runStep f state@State { .. } stepState =
                    & runAlloc CAdr
                    -- Formulas
                    & runWithFormulaT φ
-                   & runAbstractCountT count
                    -- Stores
                    & runStoreT ksto
                    & runStoreT fsto
@@ -312,8 +297,6 @@ runStep f state@State { .. } stepState =
          psto  = fromJust $ Map.lookup stepState pflow
          ssto  = fromJust $ Map.lookup stepState sflow
          csto  = fromJust $ Map.lookup stepState cflow
-         -- Retrieve the correct abstract count mapping
-         count = fromJust $ Map.lookup stepState countflow
          -- Retrieve the correct path condition
          φ     = fromJust $ Map.lookup stepState φflow
          -- Retrieve the current model
