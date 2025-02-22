@@ -23,7 +23,11 @@ import qualified Data.Set as Set
 
 -- | Lifts a value @a@ from the Scheme domain into a @TopLifted@ value so that all Scheme values have a synthetic top element
 newtype SchemeTopLifted a = SchemeTopLifted { getTopLifted :: (TopLifted a) }
-                     deriving (Ord, Eq, Show, Joinable, PartialOrder, Applicative, Foldable, Traversable, Functor, BottomLattice, EqualLattice, Generic)
+                     deriving (Ord, Eq, Joinable, PartialOrder, Applicative, Foldable, Traversable, Functor, BottomLattice, EqualLattice, Generic)
+
+instance Show a => Show (SchemeTopLifted a) where   
+   show (SchemeTopLifted Top) = "⊤"
+   show (SchemeTopLifted (Value v)) = show v
 
 instance NFData a => NFData (SchemeTopLifted a)
 
