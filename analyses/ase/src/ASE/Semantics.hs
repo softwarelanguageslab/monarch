@@ -189,6 +189,8 @@ stepEval (Letrec bds bdy _) = do
    ρ'  <- extends (zip (map (name . fst) bds) ads) <$> getEnv
    withEnv (const ρ') $ evalLetrec ads (map snd bds) bdy
 stepEval (Blame e s) = Blm <$> atomicEval e <*> pure s
+-- Parallel execution of the given expressions
+stepEval (Parallel es span) = mjoinMap (\e -> Ev e <$> getEnv) es
 stepEval e = error $ "Expression " ++ show e ++ " is not supported by this interpreter"
 
 -- | Apply the given continuation

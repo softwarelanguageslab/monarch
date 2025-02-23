@@ -17,18 +17,15 @@ import Data.Set (Set)
 import Control.Monad.State
 import Domain.Core.AbstractCount (AbstractCount(..))
 import Lattice.Class (leq)
-import Data.Maybe (fromJust, fromMaybe)
+import Data.Maybe (fromMaybe)
 import Control.Monad.Except
 import qualified Syntax.Scheme.Parser as SExp
 import Syntax.Scheme.Parser (pattern (:::))
-import Data.Monoid (Sum(..))
-import Debug.Trace
-import Control.Monad.Writer
 import Control.Lens.TH
 import Control.Lens (over, view)
 import Data.Functor
-import Control.Applicative
 import Data.Foldable (Foldable(toList, fold))
+import Debug.Trace
 
 --------------------------------------------------
 -- Translation monad
@@ -159,8 +156,8 @@ translate' Empty = return "true"
 -- and can occur in multiple constraints.
 translate :: (Ord i, Show i) => Map i AbstractCount -> Formula i -> (String, Set String, Map i (Set String))
 translate count formula = (t, allVariables', mappedVariables')
-   where vars = filter countOne $ Set.toList $ variables formula
-         countOne var = leq (fromMaybe (error $ "variable " ++ show var ++ " not found in the abstract count map") $ Map.lookup var count) CountOne
+   where vars = filter countOne $ Set.toList $ strictVariables formula
+         countOne var = leq (fromMaybe (error $ "variable " ++ show var ++ " not found in the abstract count map for " ++ show formula) $ Map.lookup var count) CountOne
          syms = Map.fromList (zip vars (map (("x" ++) . show) [0..length vars]))
          (t, TranslationMappingState { .. }) = runState (runReaderT (translate' formula) syms) initialMappingState
          -- some variables will be unconstrained (e.g., because of abstraction) but they still need to get values 

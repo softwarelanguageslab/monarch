@@ -105,6 +105,8 @@ compile e@(Atom "trace" _ ::: ex ::: SNil _) =
    Trace <$> compile ex <*> pure (spanOf e)
 compile e@(Atom "trace" _ ::: _) = 
    throwError $ "invalid syntax for trace " ++ show e
+compile ex@(Atom "parallel" _ ::: es) =
+   Parallel <$> smapM compile es <*> pure (spanOf ex)
 compile ex@(op ::: oprs) =
    App <$> compile op <*> smapM compile oprs <*> pureSpan ex
 

@@ -29,6 +29,8 @@
 (define (read-input)
   `(begin ,@(read-all (current-input-port))))
 
+(define (identity e) e)
+
 ;(pretty-display 
 ;  (un:undefine-single
 ;     (st:translate

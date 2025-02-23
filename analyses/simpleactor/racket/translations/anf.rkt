@@ -73,6 +73,8 @@ e ::= ae | if ae e e | let x = e in e | ae ae ... | match ae with (pat => e) ..
         `(letrec ((,x-e ,(translate e)))
            (match ,x-e ,(map (lambda (clause) (list (car clause) (translate (cadr clause)))) clauses))))]
 
+    [(quasiquote (parallel ,@es))
+     `(parallel ,@(map translate es))]
     ;[(quasiquote (parametrize ,@xs)) (error "translate: parametrize not implemented")]
     [(quasiquote (,operator ,@operands))
 

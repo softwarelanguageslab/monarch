@@ -59,7 +59,7 @@
 
 ;; Translate a list of contracts
 (define (translate-contracts contracts)
-  `(begin ,@(map translate-contract contracts)))
+  `(parallel ,@(map translate-contract contracts)))
 
 ;; Contract definitions for structs represented as an association 
 ;; list mapping the names of the contract to the fields of the contract
@@ -78,7 +78,7 @@
     [(quasiquote (contract-out ,@contracts))
      (translate-contracts contracts)]
     [(quasiquote (provide ,@exports))
-     `(begin ,@(map translate exports))]
+     `(parallel ,@(map translate exports))]
     [(quasiquote (,exp1 ,@exs))
      `(,(translate exp1) ,@(map translate exs))]
     [literal literal]))

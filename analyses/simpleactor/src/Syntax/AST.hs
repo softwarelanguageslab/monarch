@@ -12,7 +12,8 @@ import Control.DeepSeq
 import GHC.Generics
 
 -- | An expression
-data Exp = Lam [Ide] Exp Span                -- ^ λ (x*) . e 
+data Exp = -- Program Semantics
+           Lam [Ide] Exp Span                -- ^ λ (x*) . e 
          | App Exp [Exp] Span                -- ^ e(e*)
          | Spawn Exp Span                    -- ^ spawn e 
          | Letrec [Binding] Exp Span         -- ^ letrec { (x := e)* } in e
@@ -28,12 +29,15 @@ data Exp = Lam [Ide] Exp Span                -- ^ λ (x*) . e
          | Var Ide                           -- ^ x 
          | DynVar Ide                        -- ^ $x
          | Begin [Exp] Span                  -- ^ { e (; e)* }
-         | Meta Exp Span                     -- ^ meta e
          | Error String Span                 -- ^ error str
          | Input Span                        -- ^ input
+         | Parallel [Exp] Span               -- ^ parallel { e (; e)* }
+         -- Debugging analyses
          | Fresh Span                        -- ^ fresh (only for debugging, generates a "fresh" symbolic value)
-         | Loc String Span                   -- ^ a special-form that returns its span as a value when evaluated
          | Trace Exp Span                    -- ^ a trace expression, used for debugging
+         | Loc String Span                   -- ^ a special-form that returns its span as a value when evaluated
+         -- Analysis-specific
+         | Meta Exp Span                     -- ^ meta e
          deriving (Eq, Ord, Generic)
 
 instance NFData Exp
@@ -88,7 +92,8 @@ instance SpanOf Exp where
                (Input s) -> s
                (Fresh s) -> s
                (Loc _ s)  -> s
-               (Trace e s) -> s
+               (Trace _ s) -> s
+               (Parallel _ s) -> s
 
 
 instance Show Exp where
@@ -116,6 +121,7 @@ instance Show Exp where
             (Fresh _)         -> printf "(fresh)"
             (Loc _ _)         -> printf "(loc)"
             (Trace e _)       -> printf "(trace %s)" (show e)
+            (Parallel es _)   -> printf "(parallel %s)" (show es)
 
 
 variables :: Pat -> Set String 
@@ -150,3 +156,4 @@ instance FreeVariables Exp where
    fv (Fresh _)         = Set.empty
    fv (Loc _ _)         = Set.empty
    fv (Trace e _)       = fv e
+   fv (Parallel es _)   = foldMap fv es
