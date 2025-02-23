@@ -14,20 +14,22 @@ import Control.Monad.Identity (IdentityT (runIdentityT))
 import qualified Data.Map as Map
 import Analysis.Monad.Store (AbstractCountM(..))
 import Domain.Core.AbstractCount (AbstractCount(CountOne))
+import Control.Monad.Trans.Writer (WriterT(..))
+import Data.Set (Set)
 
-newtype EmptyCountT i m a = EmptyCountT (IdentityT m a) 
+newtype EmptyCountT i m a = EmptyCountT (IdentityT m a)
                         deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer)
 
 runEmptyCountT :: EmptyCountT i m a -> m a
 runEmptyCountT (EmptyCountT m) = runIdentityT m
 
-instance (Monad m) => AbstractCountM String (EmptyCountT i m) where 
+instance (Monad m) => AbstractCountM String (EmptyCountT i m) where
    count = return $ Map.fromList (map (,CountOne) pool)
       -- A pool a variables allocated up to 100 variables
       where pool = map (("x" ++) . show) [(0 :: Integer) .. 100]
 
-withSolver :: EmptyCountT i (Z3Solver String) a -> IO a
-withSolver ma = runZ3Solver $ runEmptyCountT (setup SMT.prelude >> ma)
+withSolver :: Ord i => WriterT (Set (P.Atom i)) (EmptyCountT i (Z3Solver String)) a -> IO a
+withSolver ma = runZ3Solver $ runEmptyCountT (fst <$> runWriterT (setup SMT.prelude >> ma))
 
 formulaJoinTests :: Spec
 formulaJoinTests =
