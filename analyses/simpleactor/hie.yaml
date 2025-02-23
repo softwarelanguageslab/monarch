@@ -1,10 +1,67 @@
 cradle:
   cabal:
     - path: "./src"
-      component: "lib:interpreter"
+      component: "lib:simpleactor"
 
     - path: "./app/Main.hs"
-      component: "interpreter:exe:interpreter-exe"
+      component: "simpleactor:exe:simpleactor-exe"
+
+    - path: "./app/ASE/Benchmark.hs"
+      component: "simpleactor:exe:simpleactor-exe"
 
     - path: "./test"
-      component: "interpreter:test:interpreter-test"
+      component: "simpleactor:test:simpleactor-tests"
+
+    - path: "../../maf2-analysis/src"
+      component: "lib:maf2-analysis"
+
+    - path: "../../maf2-analysis/app/Main.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "../../maf2-analysis/app/Entrypoints.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "../../maf2-analysis/app/Run/Actor.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "../../maf2-analysis/app/Run/Erlang.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "../../maf2-analysis/app/Run/Interpreter.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "../../maf2-analysis/app/Run/Python.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "../../maf2-analysis/app/Run/Scheme.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "../../maf2-analysis/app/Paths_maf2_analysis.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "../../maf2-analysis/test"
+      component: "maf2-analysis:test:maf2-analysis-test"
+
+    - path: "../../maf2-domains/src"
+      component: "lib:maf2-domains"
+
+    - path: "../../maf2-domains/test"
+      component: "maf2-domains:test:maf2-domains-test"
+
+    - path: "../../maf2-scv/src"
+      component: "lib:maf2-scv"
+
+    - path: "../../maf2-scv/app/Main.hs"
+      component: "maf2-scv:exe:maf2-scv-exe"
+
+    - path: "../../maf2-scv/test"
+      component: "maf2-scv:test:maf2-scv-test"
+
+    - path: "../../maf2-syntax/src"
+      component: "lib:maf2-syntax"
+
+    - path: "../../maf2-syntax/test"
+      component: "maf2-syntax:test:maf2-syntax-test"
+
+    - path: "../../thirdparty/language-python/language-python/src"
+      component: "lib:language-python"
