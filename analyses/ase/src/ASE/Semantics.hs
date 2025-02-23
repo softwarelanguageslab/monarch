@@ -213,7 +213,7 @@ restart = popExec @(FAdr K) selectContinuation
             -- add the model to the next execution
             putModel (getModel model)
             -- change the model context of the current state
-            -- putCtx $ removeContextPC pc
+            putCtx $ removeContextPC pc
             -- restart the execution ...
             cfg <- getConfiguration
             -- ... by resetting the store

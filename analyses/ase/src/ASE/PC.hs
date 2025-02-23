@@ -18,7 +18,8 @@ module ASE.PC
     MonadSnapshotPathCondition (..),
     emptyPC,
     mapFormula,
-    discardCount
+    discardCount,
+    discardUnderconstrained
   )
 where
 
@@ -90,8 +91,13 @@ instance Ord i => SelectVariable (PC i) i where
 instance Ord i => StrictSelectVariable (PC i) i where 
    strictVariables = strictVariables . formulaPC
 
+-- | Discards the count from the path condition
 discardCount :: PC i -> PC i 
 discardCount pc = pc { countPC = Map.empty }
+
+-- | Discards the underconstrained variables from the path condition
+discardUnderconstrained :: PC i -> PC i
+discardUnderconstrained pc = pc { underconstrainedPC = Set.empty }
 
 ------------------------------------------------------------
 -- Lattice instance

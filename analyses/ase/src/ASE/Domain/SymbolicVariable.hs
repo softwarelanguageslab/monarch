@@ -31,7 +31,7 @@ addContext (SymbolicVariable s _) = SymbolicVariable s . removeContextPC
 
 -- | Remove the context from symbolic variables in the path constraint
 removeContextPC :: PC -> PC 
-removeContextPC = ASE.PC.discardCount . ASE.PC.mapFormula (Symbolic.AST.mapVariables discardContext)
+removeContextPC = ASE.PC.discardUnderconstrained . ASE.PC.discardCount . ASE.PC.mapFormula (Symbolic.AST.mapVariables discardContext)
 
 -- | Adapt a model so that the symbolic variables share the given context
 adaptModel :: PC -> Map SymbolicVariable v -> Map SymbolicVariable v

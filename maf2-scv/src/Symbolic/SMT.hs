@@ -25,7 +25,6 @@ import Control.Lens.TH
 import Control.Lens (over, view)
 import Data.Functor
 import Data.Foldable (Foldable(toList, fold))
-import Debug.Trace
 
 --------------------------------------------------
 -- Translation monad
