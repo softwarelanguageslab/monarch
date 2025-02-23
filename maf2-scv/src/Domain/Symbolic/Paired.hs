@@ -215,7 +215,7 @@ instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAd
    isBool    = SymbolicVal . simplify . Predicate "boolean?/v" . List.singleton . proposition 
    isNil     = SymbolicVal . simplify . Predicate "null?/v" . List.singleton . proposition 
    isUnsp    = SymbolicVal . simplify . Predicate "unsp?/v" . List.singleton . proposition 
-   isPrim    = SymbolicVal . simplify . Predicate "primitive?/v" . List.singleton . proposition 
+   isPrim    = const bottom -- SymbolicVal . simplify . Predicate "primitive?/v" . List.singleton . proposition 
    symbols   = const bottom
    symbol    = SymbolicVal . Literal . Sym
 
