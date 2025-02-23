@@ -157,6 +157,7 @@ atomicEval exp             = error $ "expression " ++ show exp ++ " is not an at
 stepEval :: MachineM m => Exp -> m (Ctrl V K)
 stepEval e
    | isAtomic e = Ap <$> atomicEval e
+stepEval (Error _ _) = mzero -- TODO: make an actual state here
 stepEval (Ite cnd csq alt _) = do
       --liftIO (putStr "{IF}")
       vcnd <- atomicEval cnd

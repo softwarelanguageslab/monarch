@@ -29,9 +29,9 @@ data Exp = -- Program Semantics
          | Var Ide                           -- ^ x 
          | DynVar Ide                        -- ^ $x
          | Begin [Exp] Span                  -- ^ { e (; e)* }
-         | Error String Span                 -- ^ error str
          | Input Span                        -- ^ input
          | Parallel [Exp] Span               -- ^ parallel { e (; e)* }
+         | Error Exp Span                    -- ^ error e
          -- Debugging analyses
          | Fresh Span                        -- ^ fresh (only for debugging, generates a "fresh" symbolic value)
          | Trace Exp Span                    -- ^ a trace expression, used for debugging
@@ -88,12 +88,12 @@ instance SpanOf Exp where
                (Begin _ s) -> s
                (Meta _ s) -> s
                (Match _ _ s) -> s
-               (Error _ s)   -> s
                (Input s) -> s
                (Fresh s) -> s
                (Loc _ s)  -> s
                (Trace _ s) -> s
                (Parallel _ s) -> s
+               (Error  _ s) -> s
 
 
 instance Show Exp where
@@ -117,11 +117,11 @@ instance Show Exp where
             (Begin es _)      -> printf "(begin %s)" (unwords (map show es))
             (Meta e _)        -> printf "(meta %s)" (show e)
             (Input _)         -> "(input)"
-            (Error e _)       -> printf "(error %s)" (show e)
             (Fresh _)         -> printf "(fresh)"
             (Loc _ _)         -> printf "(loc)"
             (Trace e _)       -> printf "(trace %s)" (show e)
             (Parallel es _)   -> printf "(parallel %s)" (show es)
+            (Error e _)       -> printf "(error %s)" (show e)
 
 
 variables :: Pat -> Set String 
@@ -151,9 +151,9 @@ instance FreeVariables Exp where
    fv (DynVar _)        = Set.empty
    fv (Begin es _)      = Set.unions (map fv es)
    fv (Meta e _)        = fv e
-   fv (Error _ _)       = Set.empty
    fv (Input _)         = Set.empty
    fv (Fresh _)         = Set.empty
    fv (Loc _ _)         = Set.empty
    fv (Trace e _)       = fv e
    fv (Parallel es _)   = foldMap fv es
+   fv (Error e _)       = fv e
