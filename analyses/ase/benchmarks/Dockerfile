@@ -10,4 +10,8 @@ ADD . /app
 WORKDIR /app/analyses/ase/
 
 RUN cabal build
+# Sanity so that no additional logging is produced when trying to run the binary
+# during the benchmarks
+RUN cabal run
+
 VOLUME /output
