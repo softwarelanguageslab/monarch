@@ -40,6 +40,8 @@ instance (Domain a b) => Domain (SchemeTopLifted a) b where
    inject = SchemeTopLifted . Value . inject
 
 instance (BoolDomain a) => BoolDomain (SchemeTopLifted a) where
+   isTrue (SchemeTopLifted v) = isTrue v
+   isFalse (SchemeTopLifted v) = isFalse v
    not = fmap not
    and = liftA2 and 
    or  = liftA2 or

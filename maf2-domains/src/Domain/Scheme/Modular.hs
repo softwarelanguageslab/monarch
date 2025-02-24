@@ -55,6 +55,7 @@ import Data.List (intercalate)
 import Text.Printf (printf)
 import Lattice.CSetLattice (CSet (CSet))
 import qualified Lattice.CSetLattice as CSet
+import Debug.Trace
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
