@@ -7,11 +7,16 @@
    (define orig-- -)
    (define orig-* *)
    (define orig-/ /)
+   (define orig-> >)
+   (define orig-< <)
+   (define orig->= >=)
+   (define orig-<= <=)
    (define orig-car car)
    (define orig-cdr cdr)
    (define orig-cons cons)
    (define orig-vector-ref vector-ref)
    (define orig-vector-set vector-set!)
+
 
 
    ;; break letrec chain
@@ -46,11 +51,11 @@
    (define (any? v) #t)
    (define nonzero? (lambda (v) (not (= v 0))))
    (define nonzero?/c (flat (lambda (v) (not (= v 0)))))
-   (define (>=/c n) (flat (lambda (v) (>= v n))))
-   (define (>/c n) (flat (lambda (v) (> v n))))
-   (define (</c n) (flat (lambda (v) (< v n))))
-   (define (<=/c n) (flat (lambda (v) (<= v n))))
-   (define (=/c n) (flat (lambda (v) (= v n))))
+   (define (>=/c n) (flat (lambda (v) (orig->= v n))))
+   (define (>/c n) (flat (lambda (v) (orig-> v n))))
+   (define (</c n) (flat (lambda (v) (orig-< v n))))
+   (define (<=/c n) (flat (lambda (v) (orig-<= v n))))
+   (define (=/c n) (flat (lambda (v) (orig-= v n))))
 
    ;; Other utility functionsa
 
@@ -64,6 +69,10 @@
    (define - (mon server client (-> number?/c number?/c number?/c) (lambda (a b) (orig-- a b))))
 
    (define * (mon server client (-> number?/c number?/c number?/c) (lambda (a b) (orig-* a b))))
+   (define < (mon server client (-> number?/c number?/c boolean?/c) (lambda (a b) (orig-< a b))))
+   (define > (mon server client (-> number?/c number?/c boolean?/c) (lambda (a b) (orig-> a b))))
+   (define <= (mon server client (-> number?/c number?/c boolean?/c) (lambda (a b) (orig-<= a b))))
+   (define >= (mon server client (-> number?/c number?/c boolean?/c) (lambda (a b) (orig->= a b))))
 
    (define / (mon server client (-> number?/c number?/c number?/c) (lambda (a b) (orig-/ a b))))
 
