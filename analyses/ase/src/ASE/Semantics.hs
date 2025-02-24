@@ -41,6 +41,7 @@ import qualified Solver
 import System.IO (stdout)
 import Syntax.FV
 import ASE.Domain.SymbolicVariable (SymbolicCountMap)
+import Domain (BoolDomain(isTrue), isFalse)
 
 
 ------------------------------------------------------------
@@ -126,7 +127,7 @@ applyClo ags e (Lam xs bdy _, ρ) = do
       let prs = map name xs
       let ρ' = extends (zip prs ads) (Map.restrictKeys ρ (fv bdy))
       mapM_ (uncurry writeAdr) (zip ads ags)
-      return (Ev bdy ρ')
+      return (NonAtomic bdy ρ')
 
 
 -- | Apply the given function using the given operands
@@ -166,14 +167,15 @@ stepEval (Ite cnd csq alt _) = do
       vcnd <- atomicEval cnd
       αf1 <- alloc (spanOf csq)
       αf2 <- alloc (spanOf alt)
+      bt <- snapshotPC <&> simplifyPC . addConstraint (symbolic (assertFalse vcnd))
+      bf <- snapshotPC <&> simplifyPC . addConstraint (symbolic (assertTrue vcnd))
+
       cond (pure vcnd)
          (  extendPc (assertTrue vcnd)
-         >> snapshotPC
-         >>= (\bt -> condCP (isVisited bt) (return ()) (addVisited bt >> pushF αf1 (Branch bt)))
+         >> condCP (isVisited bt) (return ()) (addVisited bt >> pushF αf1 (Branch bt))
          >> getEnv <&> Ev csq )
          (  extendPc (assertFalse vcnd)
-         >> snapshotPC
-         >>= (\bf -> condCP (isVisited bf) (return ()) (addVisited bf >> pushF αf2 (Branch bf)))
+         >> condCP (isVisited bf) (return ()) (addVisited bf >> pushF αf2 (Branch bf))
          >> getEnv <&> Ev alt )
 stepEval (Fresh s) = do
    -- Same as `input` but associates `fresh` as the symbolic representation rather 
@@ -229,7 +231,7 @@ restart = popExec @(FAdr K) selectContinuation
             -- ... and resetting the path condition
             resetPC
             -- ... and by evaluating the initial program expression
-            return (Ev (e0 cfg) (ρ0 cfg))
+            return (NonAtomic (e0 cfg) (ρ0 cfg))
 
 -- | Let the semantics make a single step, 
 -- returns @Ctrl v@ values that denote 
@@ -237,14 +239,30 @@ restart = popExec @(FAdr K) selectContinuation
 --
 -- If the machine halts it returns @mzero@ denoting 
 -- the empty computation so that no successor states are generated.
-step :: MachineM m => Ctrl V K -> m (Ctrl V K)
-step (Ap v) = liftA2 (,) (stackEmpty @(KAdr K)) (stackEmpty @(FAdr K))
-    >>= (\case (True, True) -> mzero         -- machine has no continuations, it has reached a halting state 
-               (True, _)    -> restart       -- machine has reached the end of the program but still needs to restart using the failure continuation
-               (_, _)       -> stepApply v   -- apply the continuation
+step' :: MachineM m => Ctrl V K -> m (Ctrl V K)
+step' (Ap v) = liftA2 (,) (stackEmpty @(KAdr K)) (stackEmpty @(FAdr K))
+    >>= (\case (True, True) -> return (Res v)        -- machine has no continuations, it has reached a halting state 
+               (True, _)    -> mjoin (return (Res v))
+                                     restart         -- machine has reached the end of the program but still needs to restart using the failure continuation
+               (_, _)       -> stepApply v           -- apply the continuation
         )
-step (Ev e ρ) =  withEnv (const ρ) (stepEval e)
-step (Blm _ _) = mzero
+step' (Ev e ρ)        = withEnv (const ρ) (stepEval e)
+step' (NonAtomic e ρ) = withEnv (const ρ) (stepEval e)
+step' (Blm _ _)       = mzero
+step' (Res _)         = mzero
+
+-- | Step until a call state has been discovered
+stepAtomic :: MachineM m => Ctrl V K -> m (Ctrl V K)
+stepAtomic = step' >=> loop
+   where loop :: MachineM m => Ctrl V K -> m (Ctrl V K)
+         loop ato@(NonAtomic {}) = return ato
+         loop blm@(Blm _ _)      = return blm
+         loop res@(Res _)        = return res
+         loop ctrl               = loop =<< step' ctrl
+
+-- | Single (atomic) step of the machine
+step :: MachineM m => Ctrl V K -> m (Ctrl V K)
+step = stepAtomic
 
 ------------------------------------------------------------
 -- Optimisations
@@ -256,19 +274,20 @@ step (Blm _ _) = mzero
 -- with the evaluated value instead.
 ev :: MachineM m => Exp -> Env K -> KAdr K -> KFrame K -> m (Ctrl V K)
 ev e ρ α κ
-      | isAtomic e = withEnv (const ρ) $ (`applyContinuation` κ) =<< atomicEval e
-      | otherwise = case e of
-                        -- The reason that we select based on the type of expression 
-                        -- is to ensure that no redundant work is performed. For instance, 
-                        -- an @if@ expression will never result in a value in a single 
-                        -- step, as such we don't pass such expressions to "stepEval".
-                        -- 
-                        -- However, conceptually this is equivalent to:
-                        -- withEnv (const ρ) (stepEval e) >>= (\case (Ap v) -> applyContinuation v κ
-                        --                                           _ -> pushK α κ >> return (Ev e ρ))
-                        Input _   -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
-                        App {}    -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
-                        _ -> push α κ >> return (Ev e ρ)
+       = withEnv (const ρ) $ stepEvalInline =<< stepEval e
+      -- | otherwise = case e of
+      --                   -- The reason that we select based on the type of expression 
+      --                   -- is to ensure that no redundant work is performed. For instance, 
+      --                   -- an @if@ expression will never result in a value in a single 
+      --                   -- step, as such we don't pass such expressions to "stepEval".
+      --                   -- 
+      --                   -- However, conceptually this is equivalent to:
+      --                   -- withEnv (const ρ) (stepEval e) >>= (\case (Ap v) -> applyContinuation v κ
+      --                   --                                           _ -> pushK α κ >> return (Ev e ρ))
+      --                   Input _   -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+      --                   App {}    -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+      --                   _ -> push α κ >> return (Ev e ρ)
    where stepEvalInline (Ap v) = applyContinuation v κ
-         stepEvalInline _ = push α κ >> return (Ev e ρ)
+         stepEvalInline (Ev expr env) = ev expr env α κ
+         stepEvalInline ctrl = push α κ >> return ctrl
 

@@ -33,8 +33,8 @@ instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp
 instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM m cmp a, WorkListM m cmp)
         => StoreM a v (IntraAnalysisT cmp m) where
     lookupAdr a = currentCmp >>= upperM . register a >> upperM (lookupAdr a)
-    writeAdr a v = whenM (upperM $ writeAdr' a v) (trace ("updated " ++ show a) (upperM $ trigger a))
-    updateAdr a v = whenM (upperM $ updateAdr' a v) (trace ("updated " ++ show a) (upperM $ trigger a))
+    writeAdr a v = whenM (upperM $ writeAdr' a v) (notrace ("updated " ++ show a) (upperM $ trigger a))
+    updateAdr a v = whenM (upperM $ updateAdr' a v) (notrace ("updated " ++ show a) (upperM $ trigger a))
     updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger a)
     hasAdr = upperM . hasAdr
 

@@ -61,7 +61,11 @@ import ASE.PC (MonadSnapshotPathCondition)
 ------------------------------------------------------------
 
 -- | The control component for the abstract machine
-data Ctrl v k = Ev !Exp !(Env k) | Ap !v | Blm !v !Span
+data Ctrl v k = Ev !Exp !(Env k)        -- ^ expression evaluation
+              | NonAtomic !Exp !(Env k) -- ^ same as @Ev@ but signals that the action is non-atomic
+              | Ap !v                   -- ^ apply continuation
+              | Blm !v !Span            -- ^ generate blame
+              | Res !v                  -- ^ final result state
               deriving (Eq, Ord, Show, Generic)
 instance (NFData v, NFData k) => NFData (Ctrl v k)
 

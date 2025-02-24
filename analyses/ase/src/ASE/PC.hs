@@ -19,7 +19,9 @@ module ASE.PC
     emptyPC,
     mapFormula,
     discardCount,
-    discardUnderconstrained
+    discardUnderconstrained,
+    simplifyPC,
+    addConstraint
   )
 where
 
@@ -99,6 +101,10 @@ discardCount pc = pc { countPC = Map.empty }
 discardUnderconstrained :: PC i -> PC i
 discardUnderconstrained pc = pc { underconstrainedPC = Set.empty }
 
+-- | Restrict the key of the count the variables in the path condition (minor optimalisation)
+simplifyPC :: Ord i => PC i -> PC i
+simplifyPC pc = updateCount (`Map.restrictKeys` variables (formulaPC pc)) pc
+
 ------------------------------------------------------------
 -- Lattice instance
 ------------------------------------------------------------
@@ -174,5 +180,5 @@ instance {-# OVERLAPPABLE #-} (MonadSnapshotPathCondition i m, MonadLayer t, Mon
   resetPC = upperM resetPC
 
 instance (Ord i, Monad m) => MonadSnapshotPathCondition i (FormulaT i v m) where
-  snapshotPC = gets (\pc -> updateCount (`Map.restrictKeys` variables (formulaPC pc)) pc)
+  snapshotPC = get
   resetPC = put emptyPC

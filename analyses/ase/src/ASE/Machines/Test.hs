@@ -40,7 +40,6 @@ import qualified Data.Random as Random
 import Lattice.Class (Joinable, BottomLattice, PartialOrder)
 import qualified Lattice.Class as L
 import RIO hiding (mzero, traceShow)
-import Debug.Trace
 import qualified RIO.Set as Set
 import Syntax.Span
 import GHC.IO (unsafePerformIO)
@@ -233,7 +232,7 @@ status a =  do
    return a
 
 analyze :: forall m . (MonadIO m, Monad m) => (Ctrl V K -> AnalysisT m (Ctrl V K)) -> Configuration K V -> m (Set StepState, FlowOutput)
-analyze f cfg = iterateWLDebug step0 (\st -> runStep f st >>= mapM_ spawn >>= status
+analyze f cfg = iterateWLDebug step0 (\st -> runStep f st >>= mapM_ (spawn . traceShowId) >>= status
                                         & runIntraAnalysis st)
               & runWithDependencyTracking
               & execWithComponentTracking

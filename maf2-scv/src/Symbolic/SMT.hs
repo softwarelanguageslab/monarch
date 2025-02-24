@@ -104,7 +104,7 @@ translateAtomic (Literal (Str s)) =
 translateAtomic (Literal (Boo b)) =
    return $ printf "(VBool %s)" (if b then "true" else "false")
 translateAtomic (Literal (Sym s)) =
-   return $ printf "(VSymbol %s)" s
+   return $ printf "(VSymbol \"%s\")" s
 translateAtomic (Literal Beh) = return "(VBeh)"
 translateAtomic (Literal Mon) = return "(VMon)"
 translateAtomic (Literal (Actor (Just actorSpan)))  =
