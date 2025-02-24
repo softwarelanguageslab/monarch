@@ -211,7 +211,7 @@ instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAd
    isStrPtr  = SymbolicVal . simplify . Predicate "string?/v" . List.singleton . proposition 
    isSymbol  = SymbolicVal . simplify . Predicate "symbol?/v" . List.singleton . proposition 
    isPaiPtr  = SymbolicVal . simplify . Predicate "pair?/v" . List.singleton . proposition 
-   isClo     = SymbolicVal . simplify . Predicate "closure?/v" . List.singleton . proposition 
+   isClo     = const bottom -- SymbolicVal . simplify . Predicate "closure?/v" . List.singleton . proposition 
    isBool    = SymbolicVal . simplify . Predicate "boolean?/v" . List.singleton . proposition 
    isNil     = SymbolicVal . simplify . Predicate "null?/v" . List.singleton . proposition 
    isUnsp    = SymbolicVal . simplify . Predicate "unsp?/v" . List.singleton . proposition 
@@ -334,4 +334,4 @@ instance (EqualLattice v) => EqualLattice (PairedSymbolic v exp k i) where
 -- Pairing with other Scheme value
 ------------------------------------------------------------
 
-type PairedSymbolic v exp k i = SchemePairedValue v (SymbolicVal exp k i v)
+type PairedSymbolic v expr k i = SchemePairedValue v (SymbolicVal expr k i v)
