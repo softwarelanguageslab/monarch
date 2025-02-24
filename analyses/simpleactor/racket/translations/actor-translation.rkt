@@ -15,8 +15,8 @@
              (bdy (cdr clause)))
         (if (eq? cnd 'else)
           `(begin ,@bdy)
-          `(if ,cnd 
-               (begin ,@bdy)
+          `(if ,(translate cnd) 
+               (begin ,@(map translate bdy))
                ,(translate-cond (cdr clauses)))))))
 
 (define (translate-and conditions)
@@ -68,6 +68,8 @@
     `(letrec ,(map (lambda (bdn) (list (car bdn) (translate (cadr bdn)))) bds) ,@(map translate bdy))]
    [(quasiquote (let* ,bds ,@bdy))
     `(letrec ,(map (lambda (bdn) (list (car bdn) (translate (cadr bdn)))) bds) ,@(map translate bdy))]
+   [(quasiquote (letrec ,bds ,@bdy))
+    `(letrec ,(map (lambda (bdn) (list (car bdn) (translate (cadr bdn)))) bds) ,@(map translate bdy))]
    [(quasiquote (cond ,@clauses))
     (translate-cond clauses)]
    [(quasiquote (and ,@conditions))
@@ -76,8 +78,8 @@
     (translate-or conditions)]
    [(quasiquote self)
     '(dyn self)]
-   [(quasiquote (,es ...))
-     `(,@(map translate es))]
+   [(quasiquote (,e ,@es))
+     `(,(translate e) ,@(map translate es))]
    [x x]))
 
 

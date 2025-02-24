@@ -232,7 +232,7 @@ status a =  do
    return a
 
 analyze :: forall m . (MonadIO m, Monad m) => (Ctrl V K -> AnalysisT m (Ctrl V K)) -> Configuration K V -> m (Set StepState, FlowOutput)
-analyze f cfg = iterateWLDebug step0 (\st -> runStep f st >>= mapM_ (spawn . traceShowId) >>= status
+analyze f cfg = iterateWLDebug step0 (\st -> runStep f st >>= mapM_ spawn >>= status
                                         & runIntraAnalysis st)
               & runWithDependencyTracking
               & execWithComponentTracking

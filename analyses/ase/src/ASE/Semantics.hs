@@ -213,7 +213,7 @@ stepApply = popExec @(KAdr K) . applyContinuation
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
 restart = popExec @(FAdr K) selectContinuation
-   where selectContinuation (Branch pc) = maybe mzero (restartUsingModel pc) =<< computeModel pc
+   where selectContinuation (Branch pc) = liftIO (print pc) >> (maybe mzero (restartUsingModel pc) =<< computeModel pc)
          restartUsingModel pc model = do
             -- Compute the new context for the symbolic variables
             let modelCtx' = removeContextPC pc

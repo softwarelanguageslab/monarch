@@ -120,7 +120,7 @@ compile ex@(Quo (SNil _) _) = return $ Literal Nil (spanOf ex)
 -- TODO: strings are not symbols!
 compile ex@(Str str _) = return $ Literal (Symbol str) (spanOf ex)
 compile ex@(Cha c _) = return $ Literal  (Character c) (spanOf ex)
-compile e = throwError $ "invalid syntax " ++ show e
+compile e = throwError $ "invalid syntax " ++ show e ++ " at " ++ show (spanOf e)
 
 compileBdn :: MonadError String m => SExp -> m (Ide, Exp)
 compileBdn ((Atom x s) ::: e ::: SNil _) =
