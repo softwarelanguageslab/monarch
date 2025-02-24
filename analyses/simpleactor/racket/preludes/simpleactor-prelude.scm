@@ -1,7 +1,11 @@
 ;; This module does not contain executable code. Instead it contains a prelude for the simple actor language.
 ;; It has to be compiled to SimpleActor since SimpleActor does not understand `flat` neither does is understand `define`.
 
-(begin 
+(begin
+   (define (>= x y)  (assert (number? x)) (or (> x y) (= x y) #f))
+   (define (<= x y)  (assert (number? x)) (or (< x y) (= x y) #f))
+   (define (> x y)  (assert (number? x)) (not (<= x y)))
+
    ;; Original functions
    (define orig-+ +)
    (define orig-- -)
@@ -151,7 +155,6 @@
        (list-tail (cdr x) (- k 1))))
    (define (halt) '())
    (define (char-alphabetic? c)  (and (char-ci>=? c #\a) (char-ci<=? c #\z)))
-   (define (<= x y)  (assert (number? x)) (or (< x y) (= x y) #f))
    (define (char-whitespace? c)  (or (= (char->integer c) 9) (= (char->integer c) 10) (= (char->integer c) 32)))
    (define (cddar x)  (cdr (cdr (car x))))
    (define (positive? x)  (assert (number? x)) (> x 0))
@@ -201,7 +204,6 @@
    (define (cdaaar x)  (cdr (car (car (car x)))))
    (define (caaddr x)  (car (car (cdr (cdr x)))))
    (define (eqv? x y)  (eq? x y))
-   (define (>= x y)  (assert (number? x)) (or (> x y) (= x y) #f))
    (define (call-with-input-file filename proc)
      (assert (string? filename))
      (assert (procedure? proc))
@@ -364,7 +366,6 @@
    (define (newline)  #f)
    (define (lcm m n)  (/ (abs (* m n)) (gcd m n)))
    (define deref car)
-   (define (> x y)  (assert (number? x)) (not (<= x y)))
    ; (define (list . args) args)
    (define (list-ref l index)
      
