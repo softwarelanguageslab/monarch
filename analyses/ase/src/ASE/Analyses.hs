@@ -111,7 +111,7 @@ instance IsAnalysisResult LocalAnalysisResult where
             extract _ = Nothing
    values' = Set.fromList . mapMaybe (extract . unnest) . Set.toList . getLocalAnalysisResult
       where extract :: HList (Unnest LocalMachine.State) -> Maybe Semantics.V
-            extract (Ap v :+: KHlt :+: KHlt :+: _) = Just v
+            extract (Ap v :+: KHlt :+: _ :+: _) = Just v
             extract _ = Nothing
    visitedSize' = Set.size . getLocalAnalysisResult
 
@@ -132,7 +132,7 @@ instance IsAnalysisResult FlowSensitive.State where
             extract _ = Nothing
    values' =  Set.fromList . mapMaybe (extract . unnest) . Set.toList . FlowSensitive.stepStates
       where extract :: HList (Unnest FlowSensitive.StepState) -> Maybe Semantics.V
-            extract (Ap v :+: KHlt :+: KHlt :+: _) = Just v
+            extract (Ap v :+: KHlt :+: _ :+: _) = Just v
             extract _ = Nothing
    visitedSize' = Set.size . FlowSensitive.stepStates
 

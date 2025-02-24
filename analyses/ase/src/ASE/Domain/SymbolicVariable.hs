@@ -13,9 +13,11 @@ import qualified RIO.Map as Map
 -- | A symbolic variable is derived from the location of @input@ expressions
 -- and an optional context based on the model it has been sovled for.
 data SymbolicVariable = SymbolicVariable Span PC
-   deriving (Ord, Eq, Show, Generic)
+   deriving (Ord, Eq, Generic)
 instance NFData SymbolicVariable
-
+instance Show SymbolicVariable where
+   show (SymbolicVariable span _) = "x@" ++ show span
+   
 -- | Create a symbolic variable with the given context
 symbolicVariable :: Span -> PC -> SymbolicVariable 
 symbolicVariable x = SymbolicVariable x . removeContextPC
@@ -42,4 +44,5 @@ type PC = ASE.PC.PC SymbolicVariable
 
 -- | Type of mapping of symbolic variables to their abstract counts
 type SymbolicCountMap = Map SymbolicVariable AbstractCount
+
 
