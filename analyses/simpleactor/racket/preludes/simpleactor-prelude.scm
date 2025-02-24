@@ -2,6 +2,8 @@
 ;; It has to be compiled to SimpleActor since SimpleActor does not understand `flat` neither does is understand `define`.
 
 (begin
+   ;; Assertions
+   (define (assert cnd) (if cnd '() (error "assertion failed")))
    (define (>= x y)  (assert (number? x)) (or (> x y) (= x y) #f))
    (define (<= x y)  (assert (number? x)) (or (< x y) (= x y) #f))
    (define (> x y)  (assert (number? x)) (not (<= x y)))
@@ -44,6 +46,7 @@
    (define pair?/c (flat pair?))
    (define integer?/c (flat integer?))
    (define symbol?/c (flat symbol?))
+   (define string?/c (flat string?))
    (define (and/c c1 c2)
       (lambda (k j v) 
            (and (c1 k j v) (c2 k j v))))
@@ -95,8 +98,6 @@
 
    (define vector-set! (mon server client (-> vector?/c integer?/c any/c) (lambda (vec i v) (orig-vector-set! vec i v))))
 
-   ;; Assertions
-   (define (assert cnd) (if cnd '() (error "assertion failed")))
 
    ;; Other preluded functions
 
