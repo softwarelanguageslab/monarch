@@ -174,5 +174,5 @@ instance {-# OVERLAPPABLE #-} (MonadSnapshotPathCondition i m, MonadLayer t, Mon
   resetPC = upperM resetPC
 
 instance (Ord i, Monad m) => MonadSnapshotPathCondition i (FormulaT i v m) where
-  snapshotPC = modify (\pc -> updateCount (`Map.restrictKeys` variables (formulaPC pc)) pc) >> get
+  snapshotPC = gets (\pc -> updateCount (`Map.restrictKeys` variables (formulaPC pc)) pc)
   resetPC = put emptyPC

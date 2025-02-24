@@ -25,6 +25,7 @@ import Control.Lens.TH
 import Control.Lens (over, view)
 import Data.Functor
 import Data.Foldable (Foldable(toList, fold))
+import Debug.Trace
 
 --------------------------------------------------
 -- Translation monad
@@ -111,7 +112,7 @@ translateAtomic (Literal (Actor (Just actorSpan)))  =
 translateAtomic (Literal (Actor _)) =
    return $ printf "(UnknownSpan)"
 translateAtomic (Literal Nil) =
-   return $ printf "(VNil)"
+   return $ printf "VNil"
 translateAtomic (Literal v) = error $ "unsupported literal" ++ show v
 translateAtomic (IsTrue prop) =
    printf "(true?/v %s)" <$> translateAtomic prop

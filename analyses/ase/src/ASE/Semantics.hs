@@ -106,6 +106,9 @@ computeModel pc = do
       else return Nothing
    where underconstrainedVariables = (Map.keysSet (countPC pc) `Set.difference` Symbolic.strictVariables pc) `Set.union` underconstrainedPC pc
 
+-- | Adapt the context of the variables in the model so that they include the given context
+adaptModelCtx :: PC SymbolicVariable -> Model V -> Model V
+adaptModelCtx pc = Model . adaptModel pc . getModel
 ------------------------------------------------------------
 -- Semantics
 ------------------------------------------------------------
@@ -210,11 +213,13 @@ restart :: MachineM m => m (Ctrl V K)
 restart = popExec @(FAdr K) selectContinuation
    where selectContinuation (Branch pc) = maybe mzero (restartUsingModel pc) =<< computeModel pc
          restartUsingModel pc model = do
-            -- liftIO (putStr "R" >> hFlush stdout)
+            -- Compute the new context for the symbolic variables
+            let modelCtx' = removeContextPC pc
+            let model' = adaptModelCtx modelCtx' model
             -- add the model to the next execution
-            putModel (getModel model)
+            putModel (getModel model')
             -- change the model context of the current state
-            putCtx $ removeContextPC pc
+            putCtx modelCtx'
             -- restart the execution ...
             cfg <- getConfiguration
             -- ... by resetting the store
