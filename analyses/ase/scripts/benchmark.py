@@ -15,7 +15,7 @@ def retrieve_configurations():
     Boot a worker and asks its available configurations
     """
 
-    p = subprocess.Popen(["cabal", "run", ".", "--", "benchmark", "-o", "dummy.csv", "-d"], stdin = subprocess.DEVNULL, stdout=subprocess.PIPE, encoding = "utf8")
+    p = subprocess.Popen(["cabal", "run", ".", "--", "benchmark", "-o", "dummy.csv", "-d"], stdin = subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, encoding = "utf8")
     configurations = p.stdout.readlines()
     p.wait()
     return [ c.strip() for c in configurations ]
