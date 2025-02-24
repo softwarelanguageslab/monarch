@@ -46,7 +46,7 @@
    (define (any? v) #t)
    (define nonzero? (lambda (v) (not (= v 0))))
    (define nonzero?/c (flat (lambda (v) (not (= v 0)))))
-   (define (>=/c n) (flat (lambda (v) (>= v n)))
+   (define (>=/c n) (flat (lambda (v) (>= v n))))
    (define (>/c n) (flat (lambda (v) (> v n))))
    (define (</c n) (flat (lambda (v) (< v n))))
    (define (<=/c n) (flat (lambda (v) (<= v n))))

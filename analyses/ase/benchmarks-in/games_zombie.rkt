@@ -5,6 +5,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (struct image ())
+(define image/c (struct/c image))
 (define (empty-scene w h) (image))
 (define (place-image i₁ r c i₂) (image))
 (define (circle r m c) (image))
@@ -16,7 +17,6 @@
 
 (define (min x y) (if (<= x y) x y))
 (define (max x y) (if (>= x y) x y))
-(define (abs x) (if (>= x 0) x (- 0 x)))
 (define (sqr x) (* x x))
 
 

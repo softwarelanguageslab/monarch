@@ -56,6 +56,8 @@
     `(,(translate rcv) ,(uncurry (cons `(quote ,tag) (translate payload))))]
    [(quasiquote (send ,@es))
     (invalid-syntax "send" e)]
+   [(quasiquote (λ ,xs ,@bdy))
+    `(lambda ,xs ,@(map translate bdy))]
    [(quasiquote (spawn ,beh ,@ags))
     `(letrec ((act (spawn^ (,beh ,@ags))))
       (lambda (msg) 

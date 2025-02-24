@@ -340,6 +340,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (struct image ())
+(define image/c (struct/c image))
 (define (overlay i₁ i₂) (image))
 (define (circle r m c) (image))
 (define (rectangle w h m c) (image))

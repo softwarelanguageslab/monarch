@@ -110,6 +110,8 @@ translateAtomic (Literal (Actor (Just actorSpan)))  =
    return $ printf "(KnownSpan %s %s)" (show (line (startPosition actorSpan))) (show (column (startPosition actorSpan)))
 translateAtomic (Literal (Actor _)) =
    return $ printf "(UnknownSpan)"
+translateAtomic (Literal Nil) =
+   return $ printf "(VNil)"
 translateAtomic (Literal v) = error $ "unsupported literal" ++ show v
 translateAtomic (IsTrue prop) =
    printf "(true?/v %s)" <$> translateAtomic prop
@@ -124,6 +126,7 @@ translateAtomic (Application f1 f2) =
    printf "(%s %s)" <$> translateAtomic f1 <*> (unwords <$> mapM translateAtomic f2)
 translateAtomic Bottom = fresh -- return "(VError)"
 translateAtomic Tautology = return "true"
+translateAtomic Fail = return "false"
 translateAtomic (Fresh _) = fresh
 -- translateAtomic (Choice a b) = 
 --    -- we currently do not have good support for joins 
