@@ -6,6 +6,7 @@
 {-# HLINT ignore "Redundant bracket" #-}
 {-# LANGUAGE RankNTypes #-}
 {-# HLINT ignore "Use newtype instead of data" #-}
+{-# LANGUAGE TemplateHaskell #-}
 -- | Generic machine components
 module ASE.Machine where
 
@@ -23,6 +24,7 @@ import Control.Monad.Layer (MonadLayer, upperM)
 import Control.Monad.Join (MonadBottom(..), MonadJoinable, MonadJoin, mjoinMap)
 import Control.Monad.DomainError (DomainError)
 import Control.Monad.Escape (MonadEscape, Esc, MayEscape)
+import Control.Lens.TH
 import Data.Maybe
 import qualified Domain.Class as Domain
 import Domain.Core.BoolDomain.Class
@@ -514,7 +516,8 @@ type MonadMachine k v m = (MonadAbstractCount SymbolicVariable m,
                            FormulaSolver SymbolicVariable m,
                            MonadVisitedSet PC m,
                            -- Environment monad
-                           EnvM m (VAdr k) (Env k))
+                           EnvM m (VAdr k) (Env k)
+                           )
 
 ------------------------------------------------------------
 -- Small-step "conversion"
@@ -527,3 +530,29 @@ type family Unescape (k :: Type) :: Type where
    Unescape t = t
 
 
+------------------------------------------------------------
+-- Analysis metrics
+------------------------------------------------------------
+
+-- | Keeps track of some key analysis metrics that are outside the state representation
+class MonadAnalysisMetric m where
+   -- |  Increment the number of times the @step@ function has been executed
+   incStep :: m ()
+   
+-- | Trivial layered instance of @MonadAnaysisMetric@ 
+instance (MonadLayer t, Monad m, MonadAnalysisMetric m) => MonadAnalysisMetric (t m) where
+   incStep = upperM incStep
+
+data AnalysisMetrics = AnalysisMetrics { _stepCount :: Int }
+
+$(makeLenses ''AnalysisMetrics)
+
+-- | State transformer based instance of @MonadAnalysisMetric@
+newtype AnalysisMetricT m a = AnalysisMetricT { getAnalysisMetricT :: StateT AnalysisMetrics m a }
+                              deriving (Functor, Applicative, Monad, MonadLayer, MonadTrans, MonadState AnalysisMetrics)
+
+instance Monad m => MonadAnalysisMetric (AnalysisMetricT m) where
+    incStep = modify (over stepCount (+1))  
+                  
+runAnalysisMetricT :: Monad m => AnalysisMetricT m a -> m (a, AnalysisMetrics) 
+runAnalysisMetricT (AnalysisMetricT m) = runStateT m (AnalysisMetrics 0)

@@ -14,6 +14,7 @@ dependencies:
   - mtl
   - random
   - ansi-terminal
+  - lens
 
 #ghc-options:
   #- -O2

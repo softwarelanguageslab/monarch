@@ -43,6 +43,7 @@ library
       ansi-terminal
     , base >=4.2
     , containers
+    , lens
     , maf2-analysis
     , maf2-domains
     , maf2-scv
@@ -76,6 +77,7 @@ executable ase
     , ase
     , base >=4.2
     , containers
+    , lens
     , maf2-analysis
     , maf2-domains
     , maf2-scv
