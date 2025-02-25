@@ -9,6 +9,13 @@ import time
 
 # Whether to run Tuna for core affinity
 TUNA_SHEDULER = False
+
+# Run the analysis executable code once so that any spurious cabal output
+# is no longer returned.
+exit_code = subprocess.run(["cabal", "run", "."])
+if exit_code == 0:
+    print("Initial run of cabal produced unexpected output. ")
+    sys.exit(1)
  
 def retrieve_configurations(): 
     """
