@@ -7,18 +7,18 @@
     (begin (write '(funapp 6 24)) (display "\n") (random-state-from-platform)))
   (define (input) (begin (write '(funapp 7 19)) (display "\n") (expt 2 64)))
   (letrec*
-   ((any? (lambda (v) (letrec* ((g7398 #t)) g7398)))
-    (meta (lambda (v) (letrec* ((g7399 v)) g7399)))
+   ((any? (lambda (v) (letrec* ((g7402 #t)) g7402)))
+    (meta (lambda (v) (letrec* ((g7403 v)) g7403)))
     (member
      (lambda (v lst)
        (letrec*
-        ((g7400
+        ((g7404
           (letrec*
-           ((g7401
+           ((g7405
              (letrec*
-              ((x-e7402 lst))
+              ((x-e7406 lst))
               (letrec*
-               ((v1742 x-e7402))
+               ((v1742 x-e7406))
                (cond
                 ((begin (write '(funapp 22 18)) (display "\n") (null? v1742))
                  (letrec* () #f))
@@ -32,12 +32,12 @@
                       (display "\n")
                       (cdr v1742))))
                   (letrec*
-                   ((x-cnd7403
+                   ((x-cnd7407
                      (begin
                        (write '(funapp 27 32))
                        (display "\n")
                        (eq? v v1))))
-                   (if x-cnd7403
+                   (if x-cnd7407
                      #t
                      (begin
                        (write '(funapp 28 37))
@@ -48,42 +48,42 @@
                    (write '(funapp 29 23))
                    (display "\n")
                    (error "no match found"))))))))
-           g7401)))
-        g7400)))
+           g7405)))
+        g7404)))
     (unconstrained/c #f)
     (actor?
      (lambda (k j)
-       (letrec* ((g7404 (lambda (v) (letrec* ((g7405 v)) g7405)))) g7404)))
+       (letrec* ((g7408 (lambda (v) (letrec* ((g7409 v)) g7409)))) g7408)))
     (nonzero?
      (lambda (v)
        (letrec*
-        ((g7406
+        ((g7410
           (letrec*
-           ((x7407 (begin (write '(funapp 38 42)) (display "\n") (= v 0))))
-           (begin (write '(funapp 38 52)) (display "\n") (not x7407)))))
-        g7406))))
+           ((x7411 (begin (write '(funapp 38 42)) (display "\n") (= v 0))))
+           (begin (write '(funapp 38 52)) (display "\n") (not x7411)))))
+        g7410))))
    (letrec*
-    ((g7408
+    ((g7412
       (letrec*
-       ((g7409
+       ((g7413
          (letrec*
           ((assert
             (lambda (cnd)
               (letrec*
-               ((g7410
+               ((g7414
                  (if cnd
                    (begin (write '(funapp 47 31)) (display "\n") '())
                    (begin
                      (write '(funapp 47 36))
                      (display "\n")
                      (error "assertion failed")))))
-               g7410)))
+               g7414)))
            (>=
             (lambda (x y)
               (letrec*
-               ((g7411
+               ((g7415
                  (letrec*
-                  ((x7413
+                  ((x7417
                     (begin
                       (write '(funapp 52 41))
                       (display "\n")
@@ -91,13 +91,13 @@
                   (begin
                     (write '(funapp 52 55))
                     (display "\n")
-                    (assert x7413))))
-                (g7412
+                    (assert x7417))))
+                (g7416
                  (letrec*
                   ((val7244
                     (begin (write '(funapp 55 29)) (display "\n") (> x y))))
                   (letrec*
-                   ((g7414
+                   ((g7418
                      (if val7244
                        val7244
                        (letrec*
@@ -106,15 +106,15 @@
                             (write '(funapp 61 35))
                             (display "\n")
                             (= x y))))
-                        (letrec* ((g7415 (if val7245 val7245 #f))) g7415)))))
-                   g7414))))
-               g7412)))
+                        (letrec* ((g7419 (if val7245 val7245 #f))) g7419)))))
+                   g7418))))
+               g7416)))
            (<=
             (lambda (x y)
               (letrec*
-               ((g7416
+               ((g7420
                  (letrec*
-                  ((x7418
+                  ((x7422
                     (begin
                       (write '(funapp 68 41))
                       (display "\n")
@@ -122,13 +122,13 @@
                   (begin
                     (write '(funapp 68 55))
                     (display "\n")
-                    (assert x7418))))
-                (g7417
+                    (assert x7422))))
+                (g7421
                  (letrec*
                   ((val7246
                     (begin (write '(funapp 71 29)) (display "\n") (< x y))))
                   (letrec*
-                   ((g7419
+                   ((g7423
                      (if val7246
                        val7246
                        (letrec*
@@ -137,15 +137,15 @@
                             (write '(funapp 77 35))
                             (display "\n")
                             (= x y))))
-                        (letrec* ((g7420 (if val7247 val7247 #f))) g7420)))))
-                   g7419))))
-               g7417)))
+                        (letrec* ((g7424 (if val7247 val7247 #f))) g7424)))))
+                   g7423))))
+               g7421)))
            (>
             (lambda (x y)
               (letrec*
-               ((g7421
+               ((g7425
                  (letrec*
-                  ((x7423
+                  ((x7427
                     (begin
                       (write '(funapp 84 41))
                       (display "\n")
@@ -153,13 +153,13 @@
                   (begin
                     (write '(funapp 84 55))
                     (display "\n")
-                    (assert x7423))))
-                (g7422
+                    (assert x7427))))
+                (g7426
                  (letrec*
-                  ((x7424
+                  ((x7428
                     (begin (write '(funapp 85 41)) (display "\n") (<= x y))))
-                  (begin (write '(funapp 85 52)) (display "\n") (not x7424)))))
-               g7422)))
+                  (begin (write '(funapp 85 52)) (display "\n") (not x7428)))))
+               g7426)))
            (orig-+ +)
            (orig-- -)
            (orig-* *)
@@ -174,1265 +174,1245 @@
            (orig-vector-ref vector-ref)
            (orig-vector-set vector-set!))
           (letrec*
-           ((g7425 (begin (write '(funapp 101 19)) (display "\n") '()))
-            (g7426
+           ((g7429 (begin (write '(funapp 101 19)) (display "\n") '()))
+            (g7430
              (letrec*
               ((empty (begin (write '(funapp 104 22)) (display "\n") '()))
                (listof
                 (lambda (contract)
                   (letrec*
-                   ((g7427
+                   ((g7431
                      (lambda (k j lst)
                        (letrec*
-                        ((g7428
+                        ((g7432
                           (begin
                             (write '(funapp 112 27))
                             (display "\n")
                             (map
                              (lambda (v)
                                (letrec*
-                                ((g7429
+                                ((g7433
                                   (begin
                                     (write '(funapp 114 47))
                                     (display "\n")
                                     (contract k j v))))
-                                g7429))
+                                g7433))
                              lst))))
-                        g7428))))
-                   g7427)))
+                        g7432))))
+                   g7431)))
                (real?/c
-                (lambda (g7262 g7263 g7264)
-                  (letrec*
-                   ((g7430
-                     (letrec*
-                      ((x-cnd7431
-                        (begin
-                          (write '(funapp 123 35))
-                          (display "\n")
-                          (real? g7264))))
-                      (if x-cnd7431
-                        g7264
-                        (begin
-                          (write '(blame g7262 124 42))
-                          (display "\n")
-                          (error
-                           (format
-                            "contract violation, blaming ~a~%"
-                            g7262)))))))
-                   g7430)))
-               (boolean?/c
-                (lambda (g7265 g7266 g7267)
-                  (letrec*
-                   ((g7432
-                     (letrec*
-                      ((x-cnd7433
-                        (begin
-                          (write '(funapp 131 35))
-                          (display "\n")
-                          (boolean? g7267))))
-                      (if x-cnd7433
-                        g7267
-                        (begin
-                          (write '(blame g7265 132 42))
-                          (display "\n")
-                          (error
-                           (format
-                            "contract violation, blaming ~a~%"
-                            g7265)))))))
-                   g7432)))
-               (number?/c
-                (lambda (g7268 g7269 g7270)
+                (lambda (g7263 g7264 g7265)
                   (letrec*
                    ((g7434
                      (letrec*
                       ((x-cnd7435
                         (begin
-                          (write '(funapp 139 35))
+                          (write '(funapp 123 35))
                           (display "\n")
-                          (number? g7270))))
+                          (real? g7265))))
                       (if x-cnd7435
-                        g7270
+                        g7265
                         (begin
-                          (write '(blame g7268 140 42))
+                          (write '(blame g7263 124 42))
                           (display "\n")
                           (error
                            (format
                             "contract violation, blaming ~a~%"
-                            g7268)))))))
+                            g7263)))))))
                    g7434)))
-               (any/c
-                (lambda (g7271 g7272 g7273)
+               (boolean?/c
+                (lambda (g7266 g7267 g7268)
                   (letrec*
                    ((g7436
                      (letrec*
                       ((x-cnd7437
                         (begin
-                          (write '(funapp 148 25))
+                          (write '(funapp 131 35))
                           (display "\n")
-                          ((lambda (v) (letrec* ((g7438 #t)) g7438)) g7273))))
+                          (boolean? g7268))))
                       (if x-cnd7437
-                        g7273
+                        g7268
                         (begin
-                          (write '(blame g7271 149 42))
+                          (write '(blame g7266 132 42))
                           (display "\n")
                           (error
                            (format
                             "contract violation, blaming ~a~%"
-                            g7271)))))))
+                            g7266)))))))
                    g7436)))
-               (any?/c
-                (lambda (g7274 g7275 g7276)
+               (number?/c
+                (lambda (g7269 g7270 g7271)
                   (letrec*
-                   ((g7439
+                   ((g7438
                      (letrec*
-                      ((x-cnd7440
+                      ((x-cnd7439
+                        (begin
+                          (write '(funapp 139 35))
+                          (display "\n")
+                          (number? g7271))))
+                      (if x-cnd7439
+                        g7271
+                        (begin
+                          (write '(blame g7269 140 42))
+                          (display "\n")
+                          (error
+                           (format
+                            "contract violation, blaming ~a~%"
+                            g7269)))))))
+                   g7438)))
+               (any/c
+                (lambda (g7272 g7273 g7274)
+                  (letrec*
+                   ((g7440
+                     (letrec*
+                      ((x-cnd7441
+                        (begin
+                          (write '(funapp 148 25))
+                          (display "\n")
+                          ((lambda (v) (letrec* ((g7442 #t)) g7442)) g7274))))
+                      (if x-cnd7441
+                        g7274
+                        (begin
+                          (write '(blame g7272 149 42))
+                          (display "\n")
+                          (error
+                           (format
+                            "contract violation, blaming ~a~%"
+                            g7272)))))))
+                   g7440)))
+               (any?/c
+                (lambda (g7275 g7276 g7277)
+                  (letrec*
+                   ((g7443
+                     (letrec*
+                      ((x-cnd7444
                         (begin
                           (write '(funapp 157 25))
                           (display "\n")
-                          ((lambda (v) (letrec* ((g7441 #t)) g7441)) g7276))))
-                      (if x-cnd7440
-                        g7276
+                          ((lambda (v) (letrec* ((g7445 #t)) g7445)) g7277))))
+                      (if x-cnd7444
+                        g7277
                         (begin
-                          (write '(blame g7274 158 42))
+                          (write '(blame g7275 158 42))
                           (display "\n")
                           (error
                            (format
                             "contract violation, blaming ~a~%"
-                            g7274)))))))
-                   g7439)))
+                            g7275)))))))
+                   g7443)))
                (cons?/c
-                (lambda (g7277 g7278 g7279)
-                  (letrec*
-                   ((g7442
-                     (letrec*
-                      ((x-cnd7443
-                        (begin
-                          (write '(funapp 165 35))
-                          (display "\n")
-                          (pair? g7279))))
-                      (if x-cnd7443
-                        g7279
-                        (begin
-                          (write '(blame g7277 166 42))
-                          (display "\n")
-                          (error
-                           (format
-                            "contract violation, blaming ~a~%"
-                            g7277)))))))
-                   g7442)))
-               (cons/c cons?/c)
-               (pair?/c
-                (lambda (g7280 g7281 g7282)
-                  (letrec*
-                   ((g7444
-                     (letrec*
-                      ((x-cnd7445
-                        (begin
-                          (write '(funapp 174 35))
-                          (display "\n")
-                          (pair? g7282))))
-                      (if x-cnd7445
-                        g7282
-                        (begin
-                          (write '(blame g7280 175 42))
-                          (display "\n")
-                          (error
-                           (format
-                            "contract violation, blaming ~a~%"
-                            g7280)))))))
-                   g7444)))
-               (integer?/c
-                (lambda (g7283 g7284 g7285)
+                (lambda (g7278 g7279 g7280)
                   (letrec*
                    ((g7446
                      (letrec*
                       ((x-cnd7447
                         (begin
-                          (write '(funapp 182 35))
+                          (write '(funapp 165 35))
                           (display "\n")
-                          (integer? g7285))))
+                          (pair? g7280))))
                       (if x-cnd7447
-                        g7285
+                        g7280
                         (begin
-                          (write '(blame g7283 183 42))
+                          (write '(blame g7278 166 42))
                           (display "\n")
                           (error
                            (format
                             "contract violation, blaming ~a~%"
-                            g7283)))))))
+                            g7278)))))))
                    g7446)))
-               (symbol?/c
-                (lambda (g7286 g7287 g7288)
+               (cons/c
+                (lambda (k1 k2)
                   (letrec*
                    ((g7448
-                     (letrec*
-                      ((x-cnd7449
-                        (begin
-                          (write '(funapp 190 35))
-                          (display "\n")
-                          (symbol? g7288))))
-                      (if x-cnd7449
-                        g7288
-                        (begin
-                          (write '(blame g7286 191 42))
-                          (display "\n")
-                          (error
-                           (format
-                            "contract violation, blaming ~a~%"
-                            g7286)))))))
+                     (lambda (k j v)
+                       (letrec*
+                        ((g7449
+                          (letrec*
+                           ((x7452
+                             (letrec*
+                              ((x7453
+                                (begin
+                                  (write '(funapp 176 53))
+                                  (display "\n")
+                                  (car v))))
+                              (begin
+                                (write '(funapp 176 63))
+                                (display "\n")
+                                (k1 k j x7453))))
+                            (x7450
+                             (letrec*
+                              ((x7451
+                                (begin
+                                  (write '(funapp 177 53))
+                                  (display "\n")
+                                  (cdr v))))
+                              (begin
+                                (write '(funapp 177 63))
+                                (display "\n")
+                                (k2 k j x7451)))))
+                           (begin
+                             (write '(funapp 178 28))
+                             (display "\n")
+                             (cons x7452 x7450)))))
+                        g7449))))
                    g7448)))
-               (string?/c
-                (lambda (g7289 g7290 g7291)
+               (pair?/c
+                (lambda (g7281 g7282 g7283)
                   (letrec*
-                   ((g7450
+                   ((g7454
                      (letrec*
-                      ((x-cnd7451
+                      ((x-cnd7455
                         (begin
-                          (write '(funapp 198 35))
+                          (write '(funapp 186 35))
                           (display "\n")
-                          (string? g7291))))
-                      (if x-cnd7451
-                        g7291
+                          (pair? g7283))))
+                      (if x-cnd7455
+                        g7283
                         (begin
-                          (write '(blame g7289 199 42))
+                          (write '(blame g7281 187 42))
                           (display "\n")
                           (error
                            (format
                             "contract violation, blaming ~a~%"
-                            g7289)))))))
-                   g7450)))
+                            g7281)))))))
+                   g7454)))
+               (integer?/c
+                (lambda (g7284 g7285 g7286)
+                  (letrec*
+                   ((g7456
+                     (letrec*
+                      ((x-cnd7457
+                        (begin
+                          (write '(funapp 194 35))
+                          (display "\n")
+                          (integer? g7286))))
+                      (if x-cnd7457
+                        g7286
+                        (begin
+                          (write '(blame g7284 195 42))
+                          (display "\n")
+                          (error
+                           (format
+                            "contract violation, blaming ~a~%"
+                            g7284)))))))
+                   g7456)))
+               (symbol?/c
+                (lambda (g7287 g7288 g7289)
+                  (letrec*
+                   ((g7458
+                     (letrec*
+                      ((x-cnd7459
+                        (begin
+                          (write '(funapp 202 35))
+                          (display "\n")
+                          (symbol? g7289))))
+                      (if x-cnd7459
+                        g7289
+                        (begin
+                          (write '(blame g7287 203 42))
+                          (display "\n")
+                          (error
+                           (format
+                            "contract violation, blaming ~a~%"
+                            g7287)))))))
+                   g7458)))
+               (string?/c
+                (lambda (g7290 g7291 g7292)
+                  (letrec*
+                   ((g7460
+                     (letrec*
+                      ((x-cnd7461
+                        (begin
+                          (write '(funapp 210 35))
+                          (display "\n")
+                          (string? g7292))))
+                      (if x-cnd7461
+                        g7292
+                        (begin
+                          (write '(blame g7290 211 42))
+                          (display "\n")
+                          (error
+                           (format
+                            "contract violation, blaming ~a~%"
+                            g7290)))))))
+                   g7460)))
                (and/c
                 (lambda (c1 c2)
                   (letrec*
-                   ((g7452
+                   ((g7462
                      (lambda (k j v)
                        (letrec*
-                        ((g7453
+                        ((g7463
                           (letrec*
-                           ((x-cnd7454
-                             (begin
-                               (write '(funapp 209 40))
-                               (display "\n")
-                               (c1 k j v))))
-                           (if x-cnd7454
-                             (begin
-                               (write '(funapp 210 42))
-                               (display "\n")
-                               (c2 k j v))
-                             #f))))
-                        g7453))))
-                   g7452)))
-               (list-of
-                (lambda (contract)
-                  (letrec*
-                   ((g7455
-                     (lambda (k j v)
-                       (letrec*
-                        ((g7456
-                          (letrec*
-                           ((x-cnd7457
+                           ((x-cnd7464
                              (begin
                                (write '(funapp 221 40))
                                (display "\n")
-                               (null? v))))
-                           (if x-cnd7457
+                               (c1 k j v))))
+                           (if x-cnd7464
                              (begin
-                               (write '(funapp 223 29))
+                               (write '(funapp 222 42))
                                (display "\n")
-                               '())
-                             (letrec*
-                              ((x7461
-                                (letrec*
-                                 ((x7462
-                                   (begin
-                                     (write '(funapp 227 42))
-                                     (display "\n")
-                                     (car v))))
-                                 (begin
-                                   (write '(funapp 228 34))
-                                   (display "\n")
-                                   (contract k j x7462))))
-                               (x7458
-                                (letrec*
-                                 ((x7460
-                                   (begin
-                                     (write '(funapp 231 42))
-                                     (display "\n")
-                                     (list-of contract)))
-                                  (x7459
-                                   (begin
-                                     (write '(funapp 231 69))
-                                     (display "\n")
-                                     (cdr v))))
-                                 (begin
-                                   (write '(funapp 232 34))
-                                   (display "\n")
-                                   (x7460 k j x7459)))))
-                              (begin
-                                (write '(funapp 233 31))
-                                (display "\n")
-                                (orig-cons x7461 x7458)))))))
-                        g7456))))
-                   g7455)))
-               (any? (lambda (v) (letrec* ((g7463 #t)) g7463)))
-               (nonzero?
-                (lambda (v)
+                               (c2 k j v))
+                             #f))))
+                        g7463))))
+                   g7462)))
+               (or/c
+                (lambda (c1 c2)
                   (letrec*
-                   ((g7464
-                     (letrec*
-                      ((x7465
-                        (begin
-                          (write '(funapp 240 45))
-                          (display "\n")
-                          (= v 0))))
-                      (begin
-                        (write '(funapp 240 55))
-                        (display "\n")
-                        (not x7465)))))
-                   g7464)))
-               (nonzero?/c
-                (lambda (g7292 g7293 g7294)
+                   ((g7465
+                     (lambda (k j v)
+                       (letrec*
+                        ((g7466
+                          (letrec*
+                           ((val7248
+                             (begin
+                               (write '(funapp 233 38))
+                               (display "\n")
+                               (c1 k j v))))
+                           (letrec*
+                            ((g7467
+                              (if val7248
+                                val7248
+                                (begin
+                                  (write '(funapp 235 57))
+                                  (display "\n")
+                                  (c2 k j v)))))
+                            g7467))))
+                        g7466))))
+                   g7465)))
+               (null?/c
+                (lambda (g7293 g7294 g7295)
                   (letrec*
-                   ((g7466
+                   ((g7468
                      (letrec*
-                      ((x-cnd7467
+                      ((x-cnd7469
                         (begin
-                          (write '(funapp 248 25))
+                          (write '(funapp 244 35))
                           (display "\n")
-                          ((lambda (v)
-                             (letrec*
-                              ((g7468
-                                (letrec*
-                                 ((x7469
-                                   (begin
-                                     (write '(funapp 250 54))
-                                     (display "\n")
-                                     (= v 0))))
-                                 (begin
-                                   (write '(funapp 250 64))
-                                   (display "\n")
-                                   (not x7469)))))
-                              g7468))
-                           g7294))))
-                      (if x-cnd7467
-                        g7294
+                          (null? g7295))))
+                      (if x-cnd7469
+                        g7295
                         (begin
-                          (write '(blame g7292 255 24))
+                          (write '(blame g7293 245 42))
                           (display "\n")
                           (error
                            (format
                             "contract violation, blaming ~a~%"
-                            g7292)))))))
-                   g7466)))
-               (>=/c
-                (lambda (n)
+                            g7293)))))))
+                   g7468)))
+               (list-of
+                (lambda (contract)
                   (letrec*
                    ((g7470
-                     (lambda (g7295 g7296 g7297)
+                     (lambda (k j v)
                        (letrec*
                         ((g7471
                           (letrec*
                            ((x-cnd7472
                              (begin
-                               (write '(funapp 266 30))
+                               (write '(funapp 255 40))
                                (display "\n")
-                               ((lambda (v)
-                                  (letrec*
-                                   ((g7473
-                                     (begin
-                                       (write '(funapp 267 50))
-                                       (display "\n")
-                                       (orig->= v n))))
-                                   g7473))
-                                g7297))))
+                               (null? v))))
                            (if x-cnd7472
-                             g7297
                              (begin
-                               (write '(blame g7295 271 29))
+                               (write '(funapp 257 29))
                                (display "\n")
-                               (error
-                                (format
-                                 "contract violation, blaming ~a~%"
-                                 g7295)))))))
+                               '())
+                             (letrec*
+                              ((x7476
+                                (letrec*
+                                 ((x7477
+                                   (begin
+                                     (write '(funapp 261 42))
+                                     (display "\n")
+                                     (car v))))
+                                 (begin
+                                   (write '(funapp 262 34))
+                                   (display "\n")
+                                   (contract k j x7477))))
+                               (x7473
+                                (letrec*
+                                 ((x7475
+                                   (begin
+                                     (write '(funapp 265 42))
+                                     (display "\n")
+                                     (list-of contract)))
+                                  (x7474
+                                   (begin
+                                     (write '(funapp 265 69))
+                                     (display "\n")
+                                     (cdr v))))
+                                 (begin
+                                   (write '(funapp 266 34))
+                                   (display "\n")
+                                   (x7475 k j x7474)))))
+                              (begin
+                                (write '(funapp 267 31))
+                                (display "\n")
+                                (orig-cons x7476 x7473)))))))
                         g7471))))
                    g7470)))
-               (>/c
+               (any? (lambda (v) (letrec* ((g7478 #t)) g7478)))
+               (nonzero?
+                (lambda (v)
+                  (letrec*
+                   ((g7479
+                     (letrec*
+                      ((x7480
+                        (begin
+                          (write '(funapp 274 45))
+                          (display "\n")
+                          (= v 0))))
+                      (begin
+                        (write '(funapp 274 55))
+                        (display "\n")
+                        (not x7480)))))
+                   g7479)))
+               (nonzero?/c
+                (lambda (g7296 g7297 g7298)
+                  (letrec*
+                   ((g7481
+                     (letrec*
+                      ((x-cnd7482
+                        (begin
+                          (write '(funapp 282 25))
+                          (display "\n")
+                          ((lambda (v)
+                             (letrec*
+                              ((g7483
+                                (letrec*
+                                 ((x7484
+                                   (begin
+                                     (write '(funapp 284 54))
+                                     (display "\n")
+                                     (= v 0))))
+                                 (begin
+                                   (write '(funapp 284 64))
+                                   (display "\n")
+                                   (not x7484)))))
+                              g7483))
+                           g7298))))
+                      (if x-cnd7482
+                        g7298
+                        (begin
+                          (write '(blame g7296 289 24))
+                          (display "\n")
+                          (error
+                           (format
+                            "contract violation, blaming ~a~%"
+                            g7296)))))))
+                   g7481)))
+               (>=/c
                 (lambda (n)
                   (letrec*
-                   ((g7474
-                     (lambda (g7298 g7299 g7300)
+                   ((g7485
+                     (lambda (g7299 g7300 g7301)
                        (letrec*
-                        ((g7475
+                        ((g7486
                           (letrec*
-                           ((x-cnd7476
-                             (begin
-                               (write '(funapp 283 30))
-                               (display "\n")
-                               ((lambda (v)
-                                  (letrec*
-                                   ((g7477
-                                     (begin
-                                       (write '(funapp 284 50))
-                                       (display "\n")
-                                       (orig-> v n))))
-                                   g7477))
-                                g7300))))
-                           (if x-cnd7476
-                             g7300
-                             (begin
-                               (write '(blame g7298 288 29))
-                               (display "\n")
-                               (error
-                                (format
-                                 "contract violation, blaming ~a~%"
-                                 g7298)))))))
-                        g7475))))
-                   g7474)))
-               (</c
-                (lambda (n)
-                  (letrec*
-                   ((g7478
-                     (lambda (g7301 g7302 g7303)
-                       (letrec*
-                        ((g7479
-                          (letrec*
-                           ((x-cnd7480
+                           ((x-cnd7487
                              (begin
                                (write '(funapp 300 30))
                                (display "\n")
                                ((lambda (v)
                                   (letrec*
-                                   ((g7481
+                                   ((g7488
                                      (begin
                                        (write '(funapp 301 50))
                                        (display "\n")
-                                       (orig-< v n))))
-                                   g7481))
-                                g7303))))
-                           (if x-cnd7480
-                             g7303
+                                       (orig->= v n))))
+                                   g7488))
+                                g7301))))
+                           (if x-cnd7487
+                             g7301
                              (begin
-                               (write '(blame g7301 305 29))
+                               (write '(blame g7299 305 29))
                                (display "\n")
                                (error
                                 (format
                                  "contract violation, blaming ~a~%"
-                                 g7301)))))))
-                        g7479))))
-                   g7478)))
-               (<=/c
+                                 g7299)))))))
+                        g7486))))
+                   g7485)))
+               (>/c
                 (lambda (n)
                   (letrec*
-                   ((g7482
-                     (lambda (g7304 g7305 g7306)
+                   ((g7489
+                     (lambda (g7302 g7303 g7304)
                        (letrec*
-                        ((g7483
+                        ((g7490
                           (letrec*
-                           ((x-cnd7484
+                           ((x-cnd7491
                              (begin
                                (write '(funapp 317 30))
                                (display "\n")
                                ((lambda (v)
                                   (letrec*
-                                   ((g7485
+                                   ((g7492
                                      (begin
                                        (write '(funapp 318 50))
                                        (display "\n")
-                                       (orig-<= v n))))
-                                   g7485))
-                                g7306))))
-                           (if x-cnd7484
-                             g7306
+                                       (orig-> v n))))
+                                   g7492))
+                                g7304))))
+                           (if x-cnd7491
+                             g7304
                              (begin
-                               (write '(blame g7304 322 29))
+                               (write '(blame g7302 322 29))
                                (display "\n")
                                (error
                                 (format
                                  "contract violation, blaming ~a~%"
-                                 g7304)))))))
-                        g7483))))
-                   g7482)))
-               (=/c
+                                 g7302)))))))
+                        g7490))))
+                   g7489)))
+               (</c
                 (lambda (n)
                   (letrec*
-                   ((g7486
-                     (lambda (g7307 g7308 g7309)
+                   ((g7493
+                     (lambda (g7305 g7306 g7307)
                        (letrec*
-                        ((g7487
+                        ((g7494
                           (letrec*
-                           ((x-cnd7488
+                           ((x-cnd7495
                              (begin
                                (write '(funapp 334 30))
                                (display "\n")
                                ((lambda (v)
                                   (letrec*
-                                   ((g7489
+                                   ((g7496
                                      (begin
                                        (write '(funapp 335 50))
                                        (display "\n")
-                                       (orig-= v n))))
-                                   g7489))
-                                g7309))))
-                           (if x-cnd7488
-                             g7309
+                                       (orig-< v n))))
+                                   g7496))
+                                g7307))))
+                           (if x-cnd7495
+                             g7307
                              (begin
-                               (write '(blame g7307 339 29))
+                               (write '(blame g7305 339 29))
                                (display "\n")
                                (error
                                 (format
                                  "contract violation, blaming ~a~%"
-                                 g7307)))))))
-                        g7487))))
-                   g7486)))
-               (meta (lambda (v) (letrec* ((g7490 v)) g7490)))
+                                 g7305)))))))
+                        g7494))))
+                   g7493)))
+               (<=/c
+                (lambda (n)
+                  (letrec*
+                   ((g7497
+                     (lambda (g7308 g7309 g7310)
+                       (letrec*
+                        ((g7498
+                          (letrec*
+                           ((x-cnd7499
+                             (begin
+                               (write '(funapp 351 30))
+                               (display "\n")
+                               ((lambda (v)
+                                  (letrec*
+                                   ((g7500
+                                     (begin
+                                       (write '(funapp 352 50))
+                                       (display "\n")
+                                       (orig-<= v n))))
+                                   g7500))
+                                g7310))))
+                           (if x-cnd7499
+                             g7310
+                             (begin
+                               (write '(blame g7308 356 29))
+                               (display "\n")
+                               (error
+                                (format
+                                 "contract violation, blaming ~a~%"
+                                 g7308)))))))
+                        g7498))))
+                   g7497)))
+               (=/c
+                (lambda (n)
+                  (letrec*
+                   ((g7501
+                     (lambda (g7311 g7312 g7313)
+                       (letrec*
+                        ((g7502
+                          (letrec*
+                           ((x-cnd7503
+                             (begin
+                               (write '(funapp 368 30))
+                               (display "\n")
+                               ((lambda (v)
+                                  (letrec*
+                                   ((g7504
+                                     (begin
+                                       (write '(funapp 369 50))
+                                       (display "\n")
+                                       (orig-= v n))))
+                                   g7504))
+                                g7313))))
+                           (if x-cnd7503
+                             g7313
+                             (begin
+                               (write '(blame g7311 373 29))
+                               (display "\n")
+                               (error
+                                (format
+                                 "contract violation, blaming ~a~%"
+                                 g7311)))))))
+                        g7502))))
+                   g7501)))
+               (meta (lambda (v) (letrec* ((g7505 v)) g7505)))
                (+
                 (letrec*
-                 ((xj7310
-                   (begin (write '(funapp 345 26)) (display "\n") 'server))
-                  (xk7311
-                   (begin (write '(funapp 345 43)) (display "\n") 'client)))
+                 ((xj7314
+                   (begin (write '(funapp 379 26)) (display "\n") 'server))
+                  (xk7315
+                   (begin (write '(funapp 379 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7491
+                  ((g7506
                     (begin
-                      (write '(funapp 348 21))
+                      (write '(funapp 382 21))
                       (display "\n")
-                      ((lambda (j7314 k7315 f7316)
+                      ((lambda (j7318 k7319 f7320)
                          (letrec*
-                          ((g7493
-                            (lambda (g7312 g7313)
+                          ((g7508
+                            (lambda (g7316 g7317)
                               (letrec*
-                               ((g7494
+                               ((g7509
                                  (letrec*
-                                  ((x7495
+                                  ((x7510
                                     (letrec*
-                                     ((x7497
+                                     ((x7512
                                        (begin
-                                         (write '(funapp 357 44))
+                                         (write '(funapp 391 44))
                                          (display "\n")
-                                         (number?/c j7314 k7315 g7312)))
-                                      (x7496
+                                         (number?/c j7318 k7319 g7316)))
+                                      (x7511
                                        (begin
-                                         (write '(funapp 358 44))
+                                         (write '(funapp 392 44))
                                          (display "\n")
-                                         (number?/c j7314 k7315 g7313))))
+                                         (number?/c j7318 k7319 g7317))))
                                      (begin
-                                       (write '(funapp 359 36))
+                                       (write '(funapp 393 36))
                                        (display "\n")
-                                       (f7316 x7497 x7496)))))
+                                       (f7320 x7512 x7511)))))
                                   (begin
-                                    (write '(funapp 360 33))
+                                    (write '(funapp 394 33))
                                     (display "\n")
-                                    (number?/c j7314 k7315 x7495)))))
-                               g7494))))
-                          g7493))
-                       xj7310
-                       xk7311
+                                    (number?/c j7318 k7319 x7510)))))
+                               g7509))))
+                          g7508))
+                       xj7314
+                       xk7315
                        (lambda (a b)
-                         (letrec*
-                          ((g7492
-                            (begin
-                              (write '(funapp 365 53))
-                              (display "\n")
-                              (orig-+ a b))))
-                          g7492))))))
-                  g7491)))
-               (-
-                (letrec*
-                 ((xj7317
-                   (begin (write '(funapp 369 26)) (display "\n") 'server))
-                  (xk7318
-                   (begin (write '(funapp 369 43)) (display "\n") 'client)))
-                 (letrec*
-                  ((g7498
-                    (begin
-                      (write '(funapp 372 21))
-                      (display "\n")
-                      ((lambda (j7321 k7322 f7323)
-                         (letrec*
-                          ((g7500
-                            (lambda (g7319 g7320)
-                              (letrec*
-                               ((g7501
-                                 (letrec*
-                                  ((x7502
-                                    (letrec*
-                                     ((x7504
-                                       (begin
-                                         (write '(funapp 381 44))
-                                         (display "\n")
-                                         (number?/c j7321 k7322 g7319)))
-                                      (x7503
-                                       (begin
-                                         (write '(funapp 382 44))
-                                         (display "\n")
-                                         (number?/c j7321 k7322 g7320))))
-                                     (begin
-                                       (write '(funapp 383 36))
-                                       (display "\n")
-                                       (f7323 x7504 x7503)))))
-                                  (begin
-                                    (write '(funapp 384 33))
-                                    (display "\n")
-                                    (number?/c j7321 k7322 x7502)))))
-                               g7501))))
-                          g7500))
-                       xj7317
-                       xk7318
-                       (lambda (a b)
-                         (letrec*
-                          ((g7499
-                            (begin
-                              (write '(funapp 389 53))
-                              (display "\n")
-                              (orig-- a b))))
-                          g7499))))))
-                  g7498)))
-               (*
-                (letrec*
-                 ((xj7324
-                   (begin (write '(funapp 393 26)) (display "\n") 'server))
-                  (xk7325
-                   (begin (write '(funapp 393 43)) (display "\n") 'client)))
-                 (letrec*
-                  ((g7505
-                    (begin
-                      (write '(funapp 396 21))
-                      (display "\n")
-                      ((lambda (j7328 k7329 f7330)
                          (letrec*
                           ((g7507
-                            (lambda (g7326 g7327)
-                              (letrec*
-                               ((g7508
-                                 (letrec*
-                                  ((x7509
-                                    (letrec*
-                                     ((x7511
-                                       (begin
-                                         (write '(funapp 405 44))
-                                         (display "\n")
-                                         (number?/c j7328 k7329 g7326)))
-                                      (x7510
-                                       (begin
-                                         (write '(funapp 406 44))
-                                         (display "\n")
-                                         (number?/c j7328 k7329 g7327))))
-                                     (begin
-                                       (write '(funapp 407 36))
-                                       (display "\n")
-                                       (f7330 x7511 x7510)))))
-                                  (begin
-                                    (write '(funapp 408 33))
-                                    (display "\n")
-                                    (number?/c j7328 k7329 x7509)))))
-                               g7508))))
-                          g7507))
-                       xj7324
-                       xk7325
-                       (lambda (a b)
-                         (letrec*
-                          ((g7506
                             (begin
-                              (write '(funapp 413 53))
+                              (write '(funapp 399 53))
                               (display "\n")
-                              (orig-* a b))))
-                          g7506))))))
-                  g7505)))
-               (<
+                              (orig-+ a b))))
+                          g7507))))))
+                  g7506)))
+               (-
                 (letrec*
-                 ((xj7331
-                   (begin (write '(funapp 417 26)) (display "\n") 'server))
-                  (xk7332
-                   (begin (write '(funapp 417 43)) (display "\n") 'client)))
+                 ((xj7321
+                   (begin (write '(funapp 403 26)) (display "\n") 'server))
+                  (xk7322
+                   (begin (write '(funapp 403 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7512
+                  ((g7513
                     (begin
-                      (write '(funapp 420 21))
+                      (write '(funapp 406 21))
                       (display "\n")
-                      ((lambda (j7335 k7336 f7337)
+                      ((lambda (j7325 k7326 f7327)
+                         (letrec*
+                          ((g7515
+                            (lambda (g7323 g7324)
+                              (letrec*
+                               ((g7516
+                                 (letrec*
+                                  ((x7517
+                                    (letrec*
+                                     ((x7519
+                                       (begin
+                                         (write '(funapp 415 44))
+                                         (display "\n")
+                                         (number?/c j7325 k7326 g7323)))
+                                      (x7518
+                                       (begin
+                                         (write '(funapp 416 44))
+                                         (display "\n")
+                                         (number?/c j7325 k7326 g7324))))
+                                     (begin
+                                       (write '(funapp 417 36))
+                                       (display "\n")
+                                       (f7327 x7519 x7518)))))
+                                  (begin
+                                    (write '(funapp 418 33))
+                                    (display "\n")
+                                    (number?/c j7325 k7326 x7517)))))
+                               g7516))))
+                          g7515))
+                       xj7321
+                       xk7322
+                       (lambda (a b)
                          (letrec*
                           ((g7514
-                            (lambda (g7333 g7334)
-                              (letrec*
-                               ((g7515
-                                 (letrec*
-                                  ((x7516
-                                    (letrec*
-                                     ((x7518
-                                       (begin
-                                         (write '(funapp 429 44))
-                                         (display "\n")
-                                         (number?/c j7335 k7336 g7333)))
-                                      (x7517
-                                       (begin
-                                         (write '(funapp 430 44))
-                                         (display "\n")
-                                         (number?/c j7335 k7336 g7334))))
-                                     (begin
-                                       (write '(funapp 431 36))
-                                       (display "\n")
-                                       (f7337 x7518 x7517)))))
-                                  (begin
-                                    (write '(funapp 432 33))
-                                    (display "\n")
-                                    (boolean?/c j7335 k7336 x7516)))))
-                               g7515))))
-                          g7514))
-                       xj7331
-                       xk7332
-                       (lambda (a b)
-                         (letrec*
-                          ((g7513
                             (begin
-                              (write '(funapp 437 53))
+                              (write '(funapp 423 53))
                               (display "\n")
-                              (orig-< a b))))
-                          g7513))))))
-                  g7512)))
-               (>
+                              (orig-- a b))))
+                          g7514))))))
+                  g7513)))
+               (*
                 (letrec*
-                 ((xj7338
-                   (begin (write '(funapp 441 26)) (display "\n") 'server))
-                  (xk7339
-                   (begin (write '(funapp 441 43)) (display "\n") 'client)))
+                 ((xj7328
+                   (begin (write '(funapp 427 26)) (display "\n") 'server))
+                  (xk7329
+                   (begin (write '(funapp 427 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7519
+                  ((g7520
                     (begin
-                      (write '(funapp 444 21))
+                      (write '(funapp 430 21))
                       (display "\n")
-                      ((lambda (j7342 k7343 f7344)
+                      ((lambda (j7332 k7333 f7334)
+                         (letrec*
+                          ((g7522
+                            (lambda (g7330 g7331)
+                              (letrec*
+                               ((g7523
+                                 (letrec*
+                                  ((x7524
+                                    (letrec*
+                                     ((x7526
+                                       (begin
+                                         (write '(funapp 439 44))
+                                         (display "\n")
+                                         (number?/c j7332 k7333 g7330)))
+                                      (x7525
+                                       (begin
+                                         (write '(funapp 440 44))
+                                         (display "\n")
+                                         (number?/c j7332 k7333 g7331))))
+                                     (begin
+                                       (write '(funapp 441 36))
+                                       (display "\n")
+                                       (f7334 x7526 x7525)))))
+                                  (begin
+                                    (write '(funapp 442 33))
+                                    (display "\n")
+                                    (number?/c j7332 k7333 x7524)))))
+                               g7523))))
+                          g7522))
+                       xj7328
+                       xk7329
+                       (lambda (a b)
                          (letrec*
                           ((g7521
-                            (lambda (g7340 g7341)
-                              (letrec*
-                               ((g7522
-                                 (letrec*
-                                  ((x7523
-                                    (letrec*
-                                     ((x7525
-                                       (begin
-                                         (write '(funapp 453 44))
-                                         (display "\n")
-                                         (number?/c j7342 k7343 g7340)))
-                                      (x7524
-                                       (begin
-                                         (write '(funapp 454 44))
-                                         (display "\n")
-                                         (number?/c j7342 k7343 g7341))))
-                                     (begin
-                                       (write '(funapp 455 36))
-                                       (display "\n")
-                                       (f7344 x7525 x7524)))))
-                                  (begin
-                                    (write '(funapp 456 33))
-                                    (display "\n")
-                                    (boolean?/c j7342 k7343 x7523)))))
-                               g7522))))
-                          g7521))
-                       xj7338
-                       xk7339
-                       (lambda (a b)
-                         (letrec*
-                          ((g7520
                             (begin
-                              (write '(funapp 461 53))
+                              (write '(funapp 447 53))
                               (display "\n")
-                              (orig-> a b))))
-                          g7520))))))
-                  g7519)))
-               (<=
+                              (orig-* a b))))
+                          g7521))))))
+                  g7520)))
+               (<
                 (letrec*
-                 ((xj7345
-                   (begin (write '(funapp 465 26)) (display "\n") 'server))
-                  (xk7346
-                   (begin (write '(funapp 465 43)) (display "\n") 'client)))
+                 ((xj7335
+                   (begin (write '(funapp 451 26)) (display "\n") 'server))
+                  (xk7336
+                   (begin (write '(funapp 451 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7526
+                  ((g7527
                     (begin
-                      (write '(funapp 468 21))
+                      (write '(funapp 454 21))
                       (display "\n")
-                      ((lambda (j7349 k7350 f7351)
+                      ((lambda (j7339 k7340 f7341)
+                         (letrec*
+                          ((g7529
+                            (lambda (g7337 g7338)
+                              (letrec*
+                               ((g7530
+                                 (letrec*
+                                  ((x7531
+                                    (letrec*
+                                     ((x7533
+                                       (begin
+                                         (write '(funapp 463 44))
+                                         (display "\n")
+                                         (number?/c j7339 k7340 g7337)))
+                                      (x7532
+                                       (begin
+                                         (write '(funapp 464 44))
+                                         (display "\n")
+                                         (number?/c j7339 k7340 g7338))))
+                                     (begin
+                                       (write '(funapp 465 36))
+                                       (display "\n")
+                                       (f7341 x7533 x7532)))))
+                                  (begin
+                                    (write '(funapp 466 33))
+                                    (display "\n")
+                                    (boolean?/c j7339 k7340 x7531)))))
+                               g7530))))
+                          g7529))
+                       xj7335
+                       xk7336
+                       (lambda (a b)
                          (letrec*
                           ((g7528
-                            (lambda (g7347 g7348)
-                              (letrec*
-                               ((g7529
-                                 (letrec*
-                                  ((x7530
-                                    (letrec*
-                                     ((x7532
-                                       (begin
-                                         (write '(funapp 477 44))
-                                         (display "\n")
-                                         (number?/c j7349 k7350 g7347)))
-                                      (x7531
-                                       (begin
-                                         (write '(funapp 478 44))
-                                         (display "\n")
-                                         (number?/c j7349 k7350 g7348))))
-                                     (begin
-                                       (write '(funapp 479 36))
-                                       (display "\n")
-                                       (f7351 x7532 x7531)))))
-                                  (begin
-                                    (write '(funapp 480 33))
-                                    (display "\n")
-                                    (boolean?/c j7349 k7350 x7530)))))
-                               g7529))))
-                          g7528))
-                       xj7345
-                       xk7346
-                       (lambda (a b)
-                         (letrec*
-                          ((g7527
                             (begin
-                              (write '(funapp 485 53))
+                              (write '(funapp 471 53))
                               (display "\n")
-                              (orig-<= a b))))
-                          g7527))))))
-                  g7526)))
-               (>=
+                              (orig-< a b))))
+                          g7528))))))
+                  g7527)))
+               (>
                 (letrec*
-                 ((xj7352
-                   (begin (write '(funapp 489 26)) (display "\n") 'server))
-                  (xk7353
-                   (begin (write '(funapp 489 43)) (display "\n") 'client)))
+                 ((xj7342
+                   (begin (write '(funapp 475 26)) (display "\n") 'server))
+                  (xk7343
+                   (begin (write '(funapp 475 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7533
+                  ((g7534
                     (begin
-                      (write '(funapp 492 21))
+                      (write '(funapp 478 21))
                       (display "\n")
-                      ((lambda (j7356 k7357 f7358)
+                      ((lambda (j7346 k7347 f7348)
+                         (letrec*
+                          ((g7536
+                            (lambda (g7344 g7345)
+                              (letrec*
+                               ((g7537
+                                 (letrec*
+                                  ((x7538
+                                    (letrec*
+                                     ((x7540
+                                       (begin
+                                         (write '(funapp 487 44))
+                                         (display "\n")
+                                         (number?/c j7346 k7347 g7344)))
+                                      (x7539
+                                       (begin
+                                         (write '(funapp 488 44))
+                                         (display "\n")
+                                         (number?/c j7346 k7347 g7345))))
+                                     (begin
+                                       (write '(funapp 489 36))
+                                       (display "\n")
+                                       (f7348 x7540 x7539)))))
+                                  (begin
+                                    (write '(funapp 490 33))
+                                    (display "\n")
+                                    (boolean?/c j7346 k7347 x7538)))))
+                               g7537))))
+                          g7536))
+                       xj7342
+                       xk7343
+                       (lambda (a b)
                          (letrec*
                           ((g7535
-                            (lambda (g7354 g7355)
-                              (letrec*
-                               ((g7536
-                                 (letrec*
-                                  ((x7537
-                                    (letrec*
-                                     ((x7539
-                                       (begin
-                                         (write '(funapp 501 44))
-                                         (display "\n")
-                                         (number?/c j7356 k7357 g7354)))
-                                      (x7538
-                                       (begin
-                                         (write '(funapp 502 44))
-                                         (display "\n")
-                                         (number?/c j7356 k7357 g7355))))
-                                     (begin
-                                       (write '(funapp 503 36))
-                                       (display "\n")
-                                       (f7358 x7539 x7538)))))
-                                  (begin
-                                    (write '(funapp 504 33))
-                                    (display "\n")
-                                    (boolean?/c j7356 k7357 x7537)))))
-                               g7536))))
-                          g7535))
-                       xj7352
-                       xk7353
-                       (lambda (a b)
-                         (letrec*
-                          ((g7534
                             (begin
-                              (write '(funapp 509 53))
+                              (write '(funapp 495 53))
                               (display "\n")
-                              (orig->= a b))))
-                          g7534))))))
-                  g7533)))
-               (/
+                              (orig-> a b))))
+                          g7535))))))
+                  g7534)))
+               (<=
                 (letrec*
-                 ((xj7359
-                   (begin (write '(funapp 513 26)) (display "\n") 'server))
-                  (xk7360
-                   (begin (write '(funapp 513 43)) (display "\n") 'client)))
+                 ((xj7349
+                   (begin (write '(funapp 499 26)) (display "\n") 'server))
+                  (xk7350
+                   (begin (write '(funapp 499 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7540
+                  ((g7541
                     (begin
-                      (write '(funapp 516 21))
+                      (write '(funapp 502 21))
                       (display "\n")
-                      ((lambda (j7363 k7364 f7365)
+                      ((lambda (j7353 k7354 f7355)
+                         (letrec*
+                          ((g7543
+                            (lambda (g7351 g7352)
+                              (letrec*
+                               ((g7544
+                                 (letrec*
+                                  ((x7545
+                                    (letrec*
+                                     ((x7547
+                                       (begin
+                                         (write '(funapp 511 44))
+                                         (display "\n")
+                                         (number?/c j7353 k7354 g7351)))
+                                      (x7546
+                                       (begin
+                                         (write '(funapp 512 44))
+                                         (display "\n")
+                                         (number?/c j7353 k7354 g7352))))
+                                     (begin
+                                       (write '(funapp 513 36))
+                                       (display "\n")
+                                       (f7355 x7547 x7546)))))
+                                  (begin
+                                    (write '(funapp 514 33))
+                                    (display "\n")
+                                    (boolean?/c j7353 k7354 x7545)))))
+                               g7544))))
+                          g7543))
+                       xj7349
+                       xk7350
+                       (lambda (a b)
                          (letrec*
                           ((g7542
-                            (lambda (g7361 g7362)
-                              (letrec*
-                               ((g7543
-                                 (letrec*
-                                  ((x7544
-                                    (letrec*
-                                     ((x7546
-                                       (begin
-                                         (write '(funapp 525 44))
-                                         (display "\n")
-                                         (number?/c j7363 k7364 g7361)))
-                                      (x7545
-                                       (begin
-                                         (write '(funapp 526 44))
-                                         (display "\n")
-                                         (number?/c j7363 k7364 g7362))))
-                                     (begin
-                                       (write '(funapp 527 36))
-                                       (display "\n")
-                                       (f7365 x7546 x7545)))))
-                                  (begin
-                                    (write '(funapp 528 33))
-                                    (display "\n")
-                                    (number?/c j7363 k7364 x7544)))))
-                               g7543))))
-                          g7542))
-                       xj7359
-                       xk7360
-                       (lambda (a b)
-                         (letrec*
-                          ((g7541
                             (begin
-                              (write '(funapp 533 53))
+                              (write '(funapp 519 53))
                               (display "\n")
-                              (orig-/ a b))))
-                          g7541))))))
-                  g7540)))
-               (car
+                              (orig-<= a b))))
+                          g7542))))))
+                  g7541)))
+               (>=
                 (letrec*
-                 ((xj7366
-                   (begin (write '(funapp 537 26)) (display "\n") 'server))
-                  (xk7367
-                   (begin (write '(funapp 537 43)) (display "\n") 'client)))
+                 ((xj7356
+                   (begin (write '(funapp 523 26)) (display "\n") 'server))
+                  (xk7357
+                   (begin (write '(funapp 523 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7547
+                  ((g7548
                     (begin
-                      (write '(funapp 540 21))
+                      (write '(funapp 526 21))
                       (display "\n")
-                      ((lambda (j7369 k7370 f7371)
+                      ((lambda (j7360 k7361 f7362)
+                         (letrec*
+                          ((g7550
+                            (lambda (g7358 g7359)
+                              (letrec*
+                               ((g7551
+                                 (letrec*
+                                  ((x7552
+                                    (letrec*
+                                     ((x7554
+                                       (begin
+                                         (write '(funapp 535 44))
+                                         (display "\n")
+                                         (number?/c j7360 k7361 g7358)))
+                                      (x7553
+                                       (begin
+                                         (write '(funapp 536 44))
+                                         (display "\n")
+                                         (number?/c j7360 k7361 g7359))))
+                                     (begin
+                                       (write '(funapp 537 36))
+                                       (display "\n")
+                                       (f7362 x7554 x7553)))))
+                                  (begin
+                                    (write '(funapp 538 33))
+                                    (display "\n")
+                                    (boolean?/c j7360 k7361 x7552)))))
+                               g7551))))
+                          g7550))
+                       xj7356
+                       xk7357
+                       (lambda (a b)
                          (letrec*
                           ((g7549
-                            (lambda (g7368)
-                              (letrec*
-                               ((g7550
-                                 (letrec*
-                                  ((x7551
-                                    (letrec*
-                                     ((x7552
-                                       (begin
-                                         (write '(funapp 549 44))
-                                         (display "\n")
-                                         (pair?/c j7369 k7370 g7368))))
-                                     (begin
-                                       (write '(funapp 550 36))
-                                       (display "\n")
-                                       (f7371 x7552)))))
-                                  (begin
-                                    (write '(funapp 551 33))
-                                    (display "\n")
-                                    (any/c j7369 k7370 x7551)))))
-                               g7550))))
-                          g7549))
-                       xj7366
-                       xk7367
-                       (lambda (p)
-                         (letrec*
-                          ((g7548
                             (begin
-                              (write '(funapp 556 51))
+                              (write '(funapp 543 53))
                               (display "\n")
-                              (orig-car p))))
-                          g7548))))))
-                  g7547)))
-               (cdr
+                              (orig->= a b))))
+                          g7549))))))
+                  g7548)))
+               (/
                 (letrec*
-                 ((xj7372
-                   (begin (write '(funapp 560 26)) (display "\n") 'server))
-                  (xk7373
-                   (begin (write '(funapp 560 43)) (display "\n") 'client)))
+                 ((xj7363
+                   (begin (write '(funapp 547 26)) (display "\n") 'server))
+                  (xk7364
+                   (begin (write '(funapp 547 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7553
+                  ((g7555
                     (begin
-                      (write '(funapp 563 21))
+                      (write '(funapp 550 21))
                       (display "\n")
-                      ((lambda (j7375 k7376 f7377)
+                      ((lambda (j7367 k7368 f7369)
                          (letrec*
-                          ((g7555
-                            (lambda (g7374)
+                          ((g7557
+                            (lambda (g7365 g7366)
                               (letrec*
-                               ((g7556
+                               ((g7558
                                  (letrec*
-                                  ((x7557
+                                  ((x7559
                                     (letrec*
-                                     ((x7558
+                                     ((x7561
                                        (begin
-                                         (write '(funapp 572 44))
+                                         (write '(funapp 559 44))
                                          (display "\n")
-                                         (pair?/c j7375 k7376 g7374))))
+                                         (number?/c j7367 k7368 g7365)))
+                                      (x7560
+                                       (begin
+                                         (write '(funapp 560 44))
+                                         (display "\n")
+                                         (number?/c j7367 k7368 g7366))))
                                      (begin
-                                       (write '(funapp 573 36))
+                                       (write '(funapp 561 36))
                                        (display "\n")
-                                       (f7377 x7558)))))
+                                       (f7369 x7561 x7560)))))
                                   (begin
-                                    (write '(funapp 574 33))
+                                    (write '(funapp 562 33))
                                     (display "\n")
-                                    (any/c j7375 k7376 x7557)))))
-                               g7556))))
-                          g7555))
-                       xj7372
-                       xk7373
-                       (lambda (p)
-                         (letrec*
-                          ((g7554
-                            (begin
-                              (write '(funapp 579 51))
-                              (display "\n")
-                              (orig-cdr p))))
-                          g7554))))))
-                  g7553)))
-               (cons
-                (letrec*
-                 ((xj7378
-                   (begin (write '(funapp 583 26)) (display "\n") 'server))
-                  (xk7379
-                   (begin (write '(funapp 583 43)) (display "\n") 'client)))
-                 (letrec*
-                  ((g7559
-                    (begin
-                      (write '(funapp 586 21))
-                      (display "\n")
-                      ((lambda (j7382 k7383 f7384)
-                         (letrec*
-                          ((g7561
-                            (lambda (g7380 g7381)
-                              (letrec*
-                               ((g7562
-                                 (letrec*
-                                  ((x7563
-                                    (letrec*
-                                     ((x7565
-                                       (begin
-                                         (write '(funapp 595 44))
-                                         (display "\n")
-                                         (any/c j7382 k7383 g7380)))
-                                      (x7564
-                                       (begin
-                                         (write '(funapp 596 44))
-                                         (display "\n")
-                                         (any/c j7382 k7383 g7381))))
-                                     (begin
-                                       (write '(funapp 597 36))
-                                       (display "\n")
-                                       (f7384 x7565 x7564)))))
-                                  (begin
-                                    (write '(funapp 598 33))
-                                    (display "\n")
-                                    (pair?/c j7382 k7383 x7563)))))
-                               g7562))))
-                          g7561))
-                       xj7378
-                       xk7379
+                                    (number?/c j7367 k7368 x7559)))))
+                               g7558))))
+                          g7557))
+                       xj7363
+                       xk7364
                        (lambda (a b)
                          (letrec*
-                          ((g7560
+                          ((g7556
                             (begin
-                              (write '(funapp 604 41))
+                              (write '(funapp 567 53))
+                              (display "\n")
+                              (orig-/ a b))))
+                          g7556))))))
+                  g7555)))
+               (car
+                (letrec*
+                 ((xj7370
+                   (begin (write '(funapp 571 26)) (display "\n") 'server))
+                  (xk7371
+                   (begin (write '(funapp 571 43)) (display "\n") 'client)))
+                 (letrec*
+                  ((g7562
+                    (begin
+                      (write '(funapp 574 21))
+                      (display "\n")
+                      ((lambda (j7373 k7374 f7375)
+                         (letrec*
+                          ((g7564
+                            (lambda (g7372)
+                              (letrec*
+                               ((g7565
+                                 (letrec*
+                                  ((x7566
+                                    (letrec*
+                                     ((x7567
+                                       (begin
+                                         (write '(funapp 583 44))
+                                         (display "\n")
+                                         (pair?/c j7373 k7374 g7372))))
+                                     (begin
+                                       (write '(funapp 584 36))
+                                       (display "\n")
+                                       (f7375 x7567)))))
+                                  (begin
+                                    (write '(funapp 585 33))
+                                    (display "\n")
+                                    (any/c j7373 k7374 x7566)))))
+                               g7565))))
+                          g7564))
+                       xj7370
+                       xk7371
+                       (lambda (p)
+                         (letrec*
+                          ((g7563
+                            (begin
+                              (write '(funapp 590 51))
+                              (display "\n")
+                              (orig-car p))))
+                          g7563))))))
+                  g7562)))
+               (cdr
+                (letrec*
+                 ((xj7376
+                   (begin (write '(funapp 594 26)) (display "\n") 'server))
+                  (xk7377
+                   (begin (write '(funapp 594 43)) (display "\n") 'client)))
+                 (letrec*
+                  ((g7568
+                    (begin
+                      (write '(funapp 597 21))
+                      (display "\n")
+                      ((lambda (j7379 k7380 f7381)
+                         (letrec*
+                          ((g7570
+                            (lambda (g7378)
+                              (letrec*
+                               ((g7571
+                                 (letrec*
+                                  ((x7572
+                                    (letrec*
+                                     ((x7573
+                                       (begin
+                                         (write '(funapp 606 44))
+                                         (display "\n")
+                                         (pair?/c j7379 k7380 g7378))))
+                                     (begin
+                                       (write '(funapp 607 36))
+                                       (display "\n")
+                                       (f7381 x7573)))))
+                                  (begin
+                                    (write '(funapp 608 33))
+                                    (display "\n")
+                                    (any/c j7379 k7380 x7572)))))
+                               g7571))))
+                          g7570))
+                       xj7376
+                       xk7377
+                       (lambda (p)
+                         (letrec*
+                          ((g7569
+                            (begin
+                              (write '(funapp 613 51))
+                              (display "\n")
+                              (orig-cdr p))))
+                          g7569))))))
+                  g7568)))
+               (cons
+                (letrec*
+                 ((xj7382
+                   (begin (write '(funapp 617 26)) (display "\n") 'server))
+                  (xk7383
+                   (begin (write '(funapp 617 43)) (display "\n") 'client)))
+                 (letrec*
+                  ((g7574
+                    (begin
+                      (write '(funapp 620 21))
+                      (display "\n")
+                      ((lambda (j7386 k7387 f7388)
+                         (letrec*
+                          ((g7576
+                            (lambda (g7384 g7385)
+                              (letrec*
+                               ((g7577
+                                 (letrec*
+                                  ((x7578
+                                    (letrec*
+                                     ((x7580
+                                       (begin
+                                         (write '(funapp 629 44))
+                                         (display "\n")
+                                         (any/c j7386 k7387 g7384)))
+                                      (x7579
+                                       (begin
+                                         (write '(funapp 630 44))
+                                         (display "\n")
+                                         (any/c j7386 k7387 g7385))))
+                                     (begin
+                                       (write '(funapp 631 36))
+                                       (display "\n")
+                                       (f7388 x7580 x7579)))))
+                                  (begin
+                                    (write '(funapp 632 33))
+                                    (display "\n")
+                                    (pair?/c j7386 k7387 x7578)))))
+                               g7577))))
+                          g7576))
+                       xj7382
+                       xk7383
+                       (lambda (a b)
+                         (letrec*
+                          ((g7575
+                            (begin
+                              (write '(funapp 638 41))
                               (display "\n")
                               (orig-cons a b))))
-                          g7560))))))
-                  g7559)))
+                          g7575))))))
+                  g7574)))
                (vector-ref
                 (letrec*
-                 ((xj7385
-                   (begin (write '(funapp 608 26)) (display "\n") 'server))
-                  (xk7386
-                   (begin (write '(funapp 608 43)) (display "\n") 'client)))
+                 ((xj7389
+                   (begin (write '(funapp 642 26)) (display "\n") 'server))
+                  (xk7390
+                   (begin (write '(funapp 642 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7566
+                  ((g7581
                     (begin
-                      (write '(funapp 611 21))
+                      (write '(funapp 645 21))
                       (display "\n")
-                      ((lambda (j7388 k7389 f7390)
+                      ((lambda (j7392 k7393 f7394)
                          (letrec*
-                          ((g7568
-                            (lambda (g7387)
+                          ((g7583
+                            (lambda (g7391)
                               (letrec*
-                               ((g7569
+                               ((g7584
                                  (letrec*
-                                  ((x7570
+                                  ((x7585
                                     (letrec*
-                                     ((x7571
+                                     ((x7586
                                        (begin
-                                         (write '(funapp 620 44))
+                                         (write '(funapp 654 44))
                                          (display "\n")
-                                         (vector?/c j7388 k7389 g7387))))
+                                         (vector?/c j7392 k7393 g7391))))
                                      (begin
-                                       (write '(funapp 621 36))
+                                       (write '(funapp 655 36))
                                        (display "\n")
-                                       (f7390 x7571)))))
+                                       (f7394 x7586)))))
                                   (begin
-                                    (write '(funapp 622 33))
+                                    (write '(funapp 656 33))
                                     (display "\n")
-                                    (integer?/c j7388 k7389 x7570)))))
-                               g7569))))
-                          g7568))
-                       xj7385
-                       xk7386
+                                    (integer?/c j7392 k7393 x7585)))))
+                               g7584))))
+                          g7583))
+                       xj7389
+                       xk7390
                        (lambda (v i)
                          (letrec*
-                          ((g7567
+                          ((g7582
                             (begin
-                              (write '(funapp 628 41))
+                              (write '(funapp 662 41))
                               (display "\n")
                               (orig-vector-ref v i))))
-                          g7567))))))
-                  g7566)))
+                          g7582))))))
+                  g7581)))
                (vector-set!
                 (letrec*
-                 ((xj7391
-                   (begin (write '(funapp 632 26)) (display "\n") 'server))
-                  (xk7392
-                   (begin (write '(funapp 632 43)) (display "\n") 'client)))
+                 ((xj7395
+                   (begin (write '(funapp 666 26)) (display "\n") 'server))
+                  (xk7396
+                   (begin (write '(funapp 666 43)) (display "\n") 'client)))
                  (letrec*
-                  ((g7572
+                  ((g7587
                     (begin
-                      (write '(funapp 635 21))
+                      (write '(funapp 669 21))
                       (display "\n")
-                      ((lambda (j7395 k7396 f7397)
+                      ((lambda (j7399 k7400 f7401)
                          (letrec*
-                          ((g7574
-                            (lambda (g7393 g7394)
+                          ((g7589
+                            (lambda (g7397 g7398)
                               (letrec*
-                               ((g7575
+                               ((g7590
                                  (letrec*
-                                  ((x7576
+                                  ((x7591
                                     (letrec*
-                                     ((x7578
+                                     ((x7593
                                        (begin
-                                         (write '(funapp 644 44))
+                                         (write '(funapp 678 44))
                                          (display "\n")
-                                         (vector?/c j7395 k7396 g7393)))
-                                      (x7577
+                                         (vector?/c j7399 k7400 g7397)))
+                                      (x7592
                                        (begin
-                                         (write '(funapp 645 44))
+                                         (write '(funapp 679 44))
                                          (display "\n")
-                                         (integer?/c j7395 k7396 g7394))))
+                                         (integer?/c j7399 k7400 g7398))))
                                      (begin
-                                       (write '(funapp 646 36))
+                                       (write '(funapp 680 36))
                                        (display "\n")
-                                       (f7397 x7578 x7577)))))
+                                       (f7401 x7593 x7592)))))
                                   (begin
-                                    (write '(funapp 647 33))
+                                    (write '(funapp 681 33))
                                     (display "\n")
-                                    (any/c j7395 k7396 x7576)))))
-                               g7575))))
-                          g7574))
-                       xj7391
-                       xk7392
+                                    (any/c j7399 k7400 x7591)))))
+                               g7590))))
+                          g7589))
+                       xj7395
+                       xk7396
                        (lambda (vec i v)
                          (letrec*
-                          ((g7573
+                          ((g7588
                             (begin
-                              (write '(funapp 653 41))
+                              (write '(funapp 687 41))
                               (display "\n")
                               (orig-vector-set! vec i v))))
-                          g7573))))))
-                  g7572)))
+                          g7588))))))
+                  g7587)))
                (cdddr
-                (lambda (x)
-                  (letrec*
-                   ((g7579
-                     (letrec*
-                      ((x7580
-                        (letrec*
-                         ((x7581
-                           (begin
-                             (write '(funapp 660 48))
-                             (display "\n")
-                             (cdr x))))
-                         (begin
-                           (write '(funapp 660 58))
-                           (display "\n")
-                           (cdr x7581)))))
-                      (begin
-                        (write '(funapp 661 23))
-                        (display "\n")
-                        (cdr x7580)))))
-                   g7579)))
-               (__toplevel_set-car! set-car!)
-               (map
-                (lambda (f l)
-                  (letrec*
-                   ((g7582
-                     (letrec*
-                      ((x7585
-                        (begin
-                          (write '(funapp 667 45))
-                          (display "\n")
-                          (procedure? f))))
-                      (begin
-                        (write '(funapp 667 62))
-                        (display "\n")
-                        (assert x7585))))
-                    (g7583
-                     (letrec*
-                      ((x7586
-                        (begin
-                          (write '(funapp 668 45))
-                          (display "\n")
-                          (list? l))))
-                      (begin
-                        (write '(funapp 668 57))
-                        (display "\n")
-                        (assert x7586))))
-                    (g7584
-                     (letrec*
-                      ((x-cnd7587
-                        (begin
-                          (write '(funapp 671 35))
-                          (display "\n")
-                          (null? l))))
-                      (if x-cnd7587
-                        (begin (write '(funapp 673 24)) (display "\n") '())
-                        (letrec*
-                         ((x7590
-                           (letrec*
-                            ((x7591
-                              (begin
-                                (write '(funapp 675 51))
-                                (display "\n")
-                                (car l))))
-                            (begin
-                              (write '(funapp 675 61))
-                              (display "\n")
-                              (f x7591))))
-                          (x7588
-                           (letrec*
-                            ((x7589
-                              (begin
-                                (write '(funapp 676 51))
-                                (display "\n")
-                                (cdr l))))
-                            (begin
-                              (write '(funapp 676 61))
-                              (display "\n")
-                              (map f x7589)))))
-                         (begin
-                           (write '(funapp 677 26))
-                           (display "\n")
-                           (cons x7590 x7588)))))))
-                   g7584)))
-               (cdar
-                (lambda (x)
-                  (letrec*
-                   ((g7592
-                     (letrec*
-                      ((x7593
-                        (begin
-                          (write '(funapp 682 45))
-                          (display "\n")
-                          (car x))))
-                      (begin
-                        (write '(funapp 682 55))
-                        (display "\n")
-                        (cdr x7593)))))
-                   g7592)))
-               (cadadr
                 (lambda (x)
                   (letrec*
                    ((g7594
@@ -1440,99 +1420,98 @@
                       ((x7595
                         (letrec*
                          ((x7596
-                           (letrec*
-                            ((x7597
-                              (begin
-                                (write '(funapp 691 51))
-                                (display "\n")
-                                (cdr x))))
-                            (begin
-                              (write '(funapp 691 61))
-                              (display "\n")
-                              (car x7597)))))
+                           (begin
+                             (write '(funapp 694 48))
+                             (display "\n")
+                             (cdr x))))
                          (begin
-                           (write '(funapp 692 26))
+                           (write '(funapp 694 58))
                            (display "\n")
                            (cdr x7596)))))
                       (begin
-                        (write '(funapp 693 23))
+                        (write '(funapp 695 23))
                         (display "\n")
-                        (car x7595)))))
+                        (cdr x7595)))))
                    g7594)))
-               (cdadar
+               (__toplevel_set-car! set-car!)
+               (map
+                (lambda (f l)
+                  (letrec*
+                   ((g7597
+                     (letrec*
+                      ((x7600
+                        (begin
+                          (write '(funapp 701 45))
+                          (display "\n")
+                          (procedure? f))))
+                      (begin
+                        (write '(funapp 701 62))
+                        (display "\n")
+                        (assert x7600))))
+                    (g7598
+                     (letrec*
+                      ((x7601
+                        (begin
+                          (write '(funapp 702 45))
+                          (display "\n")
+                          (list? l))))
+                      (begin
+                        (write '(funapp 702 57))
+                        (display "\n")
+                        (assert x7601))))
+                    (g7599
+                     (letrec*
+                      ((x-cnd7602
+                        (begin
+                          (write '(funapp 705 35))
+                          (display "\n")
+                          (null? l))))
+                      (if x-cnd7602
+                        (begin (write '(funapp 707 24)) (display "\n") '())
+                        (letrec*
+                         ((x7605
+                           (letrec*
+                            ((x7606
+                              (begin
+                                (write '(funapp 709 51))
+                                (display "\n")
+                                (car l))))
+                            (begin
+                              (write '(funapp 709 61))
+                              (display "\n")
+                              (f x7606))))
+                          (x7603
+                           (letrec*
+                            ((x7604
+                              (begin
+                                (write '(funapp 710 51))
+                                (display "\n")
+                                (cdr l))))
+                            (begin
+                              (write '(funapp 710 61))
+                              (display "\n")
+                              (map f x7604)))))
+                         (begin
+                           (write '(funapp 711 26))
+                           (display "\n")
+                           (cons x7605 x7603)))))))
+                   g7599)))
+               (cdar
                 (lambda (x)
                   (letrec*
-                   ((g7598
+                   ((g7607
                      (letrec*
-                      ((x7599
-                        (letrec*
-                         ((x7600
-                           (letrec*
-                            ((x7601
-                              (begin
-                                (write '(funapp 702 51))
-                                (display "\n")
-                                (car x))))
-                            (begin
-                              (write '(funapp 702 61))
-                              (display "\n")
-                              (cdr x7601)))))
-                         (begin
-                           (write '(funapp 703 26))
-                           (display "\n")
-                           (car x7600)))))
+                      ((x7608
+                        (begin
+                          (write '(funapp 716 45))
+                          (display "\n")
+                          (car x))))
                       (begin
-                        (write '(funapp 704 23))
+                        (write '(funapp 716 55))
                         (display "\n")
-                        (cdr x7599)))))
-                   g7598)))
-               (call-with-output-file
-                (lambda (filename proc)
-                  (letrec*
-                   ((g7602
-                     (letrec*
-                      ((x7605
-                        (begin
-                          (write '(funapp 710 39))
-                          (display "\n")
-                          (string? filename))))
-                      (begin
-                        (write '(funapp 710 60))
-                        (display "\n")
-                        (assert x7605))))
-                    (g7603
-                     (letrec*
-                      ((x7606
-                        (begin
-                          (write '(funapp 712 39))
-                          (display "\n")
-                          (procedure? proc))))
-                      (begin
-                        (write '(funapp 712 59))
-                        (display "\n")
-                        (assert x7606))))
-                    (g7604
-                     (letrec*
-                      ((output-port
-                        (begin
-                          (write '(funapp 715 37))
-                          (display "\n")
-                          (open-output-file filename)))
-                       (res
-                        (begin
-                          (write '(funapp 716 29))
-                          (display "\n")
-                          (proc output-port))))
-                      (letrec*
-                       ((g7607
-                         (begin
-                           (write '(funapp 718 32))
-                           (display "\n")
-                           (close-output-port output-port)))
-                        (g7608 res))
-                       g7608))))
-                   g7604)))
-               (caddr
+                        (cdr x7608)))))
+                   g7607)))
+               (cadadr
                 (lambda (x)
                   (letrec*
                    ((g7609
@@ -1540,12 +1519,18 @@
                       ((x7610
                         (letrec*
                          ((x7611
-                           (begin
-                             (write '(funapp 726 48))
-                             (display "\n")
-                             (cdr x))))
+                           (letrec*
+                            ((x7612
+                              (begin
+                                (write '(funapp 725 51))
+                                (display "\n")
+                                (cdr x))))
+                            (begin
+                              (write '(funapp 725 61))
+                              (display "\n")
+                              (car x7612)))))
                          (begin
-                           (write '(funapp 726 58))
+                           (write '(funapp 726 26))
                            (display "\n")
                            (cdr x7611)))))
                       (begin
@@ -1553,603 +1538,706 @@
                         (display "\n")
                         (car x7610)))))
                    g7609)))
-               (cdaadr
+               (cdadar
                 (lambda (x)
                   (letrec*
-                   ((g7612
+                   ((g7613
                      (letrec*
-                      ((x7613
+                      ((x7614
                         (letrec*
-                         ((x7614
+                         ((x7615
                            (letrec*
-                            ((x7615
+                            ((x7616
                               (begin
                                 (write '(funapp 736 51))
                                 (display "\n")
-                                (cdr x))))
+                                (car x))))
                             (begin
                               (write '(funapp 736 61))
                               (display "\n")
-                              (car x7615)))))
+                              (cdr x7616)))))
                          (begin
                            (write '(funapp 737 26))
                            (display "\n")
-                           (car x7614)))))
+                           (car x7615)))))
                       (begin
                         (write '(funapp 738 23))
                         (display "\n")
-                        (cdr x7613)))))
-                   g7612)))
-               (assq
-                (lambda (k l)
+                        (cdr x7614)))))
+                   g7613)))
+               (call-with-output-file
+                (lambda (filename proc)
                   (letrec*
-                   ((g7616
+                   ((g7617
                      (letrec*
-                      ((x7618
+                      ((x7620
                         (begin
-                          (write '(funapp 743 45))
+                          (write '(funapp 744 39))
                           (display "\n")
-                          (list? l))))
+                          (string? filename))))
                       (begin
-                        (write '(funapp 743 57))
+                        (write '(funapp 744 60))
                         (display "\n")
-                        (assert x7618))))
-                    (g7617
+                        (assert x7620))))
+                    (g7618
                      (letrec*
-                      ((x-cnd7619
+                      ((x7621
                         (begin
-                          (write '(funapp 746 35))
+                          (write '(funapp 746 39))
                           (display "\n")
-                          (null? l))))
-                      (if x-cnd7619
-                        #f
-                        (letrec*
-                         ((x-cnd7620
-                           (letrec*
-                            ((x7621
-                              (begin
-                                (write '(funapp 751 45))
-                                (display "\n")
-                                (caar l))))
-                            (begin
-                              (write '(funapp 751 56))
-                              (display "\n")
-                              (eq? x7621 k)))))
-                         (if x-cnd7620
-                           (begin
-                             (write '(funapp 753 28))
-                             (display "\n")
-                             (car l))
-                           (letrec*
-                            ((x7622
-                              (begin
-                                (write '(funapp 754 45))
-                                (display "\n")
-                                (cdr l))))
-                            (begin
-                              (write '(funapp 754 55))
-                              (display "\n")
-                              (assq k x7622)))))))))
-                   g7617)))
-               (even?
+                          (procedure? proc))))
+                      (begin
+                        (write '(funapp 746 59))
+                        (display "\n")
+                        (assert x7621))))
+                    (g7619
+                     (letrec*
+                      ((output-port
+                        (begin
+                          (write '(funapp 749 37))
+                          (display "\n")
+                          (open-output-file filename)))
+                       (res
+                        (begin
+                          (write '(funapp 750 29))
+                          (display "\n")
+                          (proc output-port))))
+                      (letrec*
+                       ((g7622
+                         (begin
+                           (write '(funapp 752 32))
+                           (display "\n")
+                           (close-output-port output-port)))
+                        (g7623 res))
+                       g7623))))
+                   g7619)))
+               (caddr
                 (lambda (x)
                   (letrec*
-                   ((g7623
+                   ((g7624
                      (letrec*
-                      ((x7624
-                        (begin
-                          (write '(funapp 759 45))
-                          (display "\n")
-                          (modulo x 2))))
-                      (begin
-                        (write '(funapp 759 60))
-                        (display "\n")
-                        (= 0 x7624)))))
-                   g7623)))
-               (list->string
-                (lambda (l)
-                  (letrec*
-                   ((g7625
-                     (letrec*
-                      ((x7627
-                        (begin
-                          (write '(funapp 764 45))
-                          (display "\n")
-                          (list? l))))
-                      (begin
-                        (write '(funapp 764 57))
-                        (display "\n")
-                        (assert x7627))))
-                    (g7626
-                     (letrec*
-                      ((x-cnd7628
-                        (begin
-                          (write '(funapp 767 35))
-                          (display "\n")
-                          (null? l))))
-                      (if x-cnd7628
-                        ""
+                      ((x7625
                         (letrec*
-                         ((x7631
-                           (letrec*
-                            ((x7632
-                              (begin
-                                (write '(funapp 772 45))
-                                (display "\n")
-                                (car l))))
-                            (begin
-                              (write '(funapp 772 55))
-                              (display "\n")
-                              (char->string x7632))))
-                          (x7629
+                         ((x7626
+                           (begin
+                             (write '(funapp 760 48))
+                             (display "\n")
+                             (cdr x))))
+                         (begin
+                           (write '(funapp 760 58))
+                           (display "\n")
+                           (cdr x7626)))))
+                      (begin
+                        (write '(funapp 761 23))
+                        (display "\n")
+                        (car x7625)))))
+                   g7624)))
+               (cdaadr
+                (lambda (x)
+                  (letrec*
+                   ((g7627
+                     (letrec*
+                      ((x7628
+                        (letrec*
+                         ((x7629
                            (letrec*
                             ((x7630
                               (begin
-                                (write '(funapp 774 45))
+                                (write '(funapp 770 51))
                                 (display "\n")
-                                (cdr l))))
+                                (cdr x))))
                             (begin
-                              (write '(funapp 774 55))
+                              (write '(funapp 770 61))
                               (display "\n")
-                              (list->string x7630)))))
+                              (car x7630)))))
                          (begin
-                           (write '(funapp 775 26))
+                           (write '(funapp 771 26))
                            (display "\n")
-                           (string-append x7631 x7629)))))))
-                   g7626)))
-               (char<=?
-                (lambda (c1 c2)
-                  (letrec*
-                   ((g7633
-                     (letrec*
-                      ((x7636
-                        (begin
-                          (write '(funapp 780 45))
-                          (display "\n")
-                          (char? c1))))
+                           (car x7629)))))
                       (begin
-                        (write '(funapp 780 58))
+                        (write '(funapp 772 23))
                         (display "\n")
-                        (assert x7636))))
-                    (g7634
-                     (letrec*
-                      ((x7637
-                        (begin
-                          (write '(funapp 781 45))
-                          (display "\n")
-                          (char? c2))))
-                      (begin
-                        (write '(funapp 781 58))
-                        (display "\n")
-                        (assert x7637))))
-                    (g7635
-                     (letrec*
-                      ((val7248
-                        (begin
-                          (write '(funapp 784 33))
-                          (display "\n")
-                          (char<? c1 c2))))
-                      (letrec*
-                       ((g7638
-                         (if val7248
-                           val7248
-                           (begin
-                             (write '(funapp 786 52))
-                             (display "\n")
-                             (char=? c1 c2)))))
-                       g7638))))
-                   g7635)))
-               (cdddar
-                (lambda (x)
+                        (cdr x7628)))))
+                   g7627)))
+               (assq
+                (lambda (k l)
                   (letrec*
-                   ((g7639
+                   ((g7631
                      (letrec*
-                      ((x7640
-                        (letrec*
-                         ((x7641
-                           (letrec*
-                            ((x7642
-                              (begin
-                                (write '(funapp 796 51))
-                                (display "\n")
-                                (car x))))
-                            (begin
-                              (write '(funapp 796 61))
-                              (display "\n")
-                              (cdr x7642)))))
-                         (begin
-                           (write '(funapp 797 26))
-                           (display "\n")
-                           (cdr x7641)))))
-                      (begin
-                        (write '(funapp 798 23))
-                        (display "\n")
-                        (cdr x7640)))))
-                   g7639)))
-               (list-tail
-                (lambda (x k)
-                  (letrec*
-                   ((g7643
-                     (letrec*
-                      ((x7646
+                      ((x7633
                         (begin
-                          (write '(funapp 803 45))
+                          (write '(funapp 777 45))
                           (display "\n")
                           (list? l))))
                       (begin
-                        (write '(funapp 803 57))
+                        (write '(funapp 777 57))
                         (display "\n")
-                        (assert x7646))))
-                    (g7644
+                        (assert x7633))))
+                    (g7632
                      (letrec*
-                      ((x7647
+                      ((x-cnd7634
                         (begin
-                          (write '(funapp 804 45))
+                          (write '(funapp 780 35))
+                          (display "\n")
+                          (null? l))))
+                      (if x-cnd7634
+                        #f
+                        (letrec*
+                         ((x-cnd7635
+                           (letrec*
+                            ((x7636
+                              (begin
+                                (write '(funapp 785 45))
+                                (display "\n")
+                                (caar l))))
+                            (begin
+                              (write '(funapp 785 56))
+                              (display "\n")
+                              (eq? x7636 k)))))
+                         (if x-cnd7635
+                           (begin
+                             (write '(funapp 787 28))
+                             (display "\n")
+                             (car l))
+                           (letrec*
+                            ((x7637
+                              (begin
+                                (write '(funapp 788 45))
+                                (display "\n")
+                                (cdr l))))
+                            (begin
+                              (write '(funapp 788 55))
+                              (display "\n")
+                              (assq k x7637)))))))))
+                   g7632)))
+               (even?
+                (lambda (x)
+                  (letrec*
+                   ((g7638
+                     (letrec*
+                      ((x7639
+                        (begin
+                          (write '(funapp 793 45))
+                          (display "\n")
+                          (modulo x 2))))
+                      (begin
+                        (write '(funapp 793 60))
+                        (display "\n")
+                        (= 0 x7639)))))
+                   g7638)))
+               (list->string
+                (lambda (l)
+                  (letrec*
+                   ((g7640
+                     (letrec*
+                      ((x7642
+                        (begin
+                          (write '(funapp 798 45))
+                          (display "\n")
+                          (list? l))))
+                      (begin
+                        (write '(funapp 798 57))
+                        (display "\n")
+                        (assert x7642))))
+                    (g7641
+                     (letrec*
+                      ((x-cnd7643
+                        (begin
+                          (write '(funapp 801 35))
+                          (display "\n")
+                          (null? l))))
+                      (if x-cnd7643
+                        ""
+                        (letrec*
+                         ((x7646
+                           (letrec*
+                            ((x7647
+                              (begin
+                                (write '(funapp 806 45))
+                                (display "\n")
+                                (car l))))
+                            (begin
+                              (write '(funapp 806 55))
+                              (display "\n")
+                              (char->string x7647))))
+                          (x7644
+                           (letrec*
+                            ((x7645
+                              (begin
+                                (write '(funapp 808 45))
+                                (display "\n")
+                                (cdr l))))
+                            (begin
+                              (write '(funapp 808 55))
+                              (display "\n")
+                              (list->string x7645)))))
+                         (begin
+                           (write '(funapp 809 26))
+                           (display "\n")
+                           (string-append x7646 x7644)))))))
+                   g7641)))
+               (char<=?
+                (lambda (c1 c2)
+                  (letrec*
+                   ((g7648
+                     (letrec*
+                      ((x7651
+                        (begin
+                          (write '(funapp 814 45))
+                          (display "\n")
+                          (char? c1))))
+                      (begin
+                        (write '(funapp 814 58))
+                        (display "\n")
+                        (assert x7651))))
+                    (g7649
+                     (letrec*
+                      ((x7652
+                        (begin
+                          (write '(funapp 815 45))
+                          (display "\n")
+                          (char? c2))))
+                      (begin
+                        (write '(funapp 815 58))
+                        (display "\n")
+                        (assert x7652))))
+                    (g7650
+                     (letrec*
+                      ((val7249
+                        (begin
+                          (write '(funapp 818 33))
+                          (display "\n")
+                          (char<? c1 c2))))
+                      (letrec*
+                       ((g7653
+                         (if val7249
+                           val7249
+                           (begin
+                             (write '(funapp 820 52))
+                             (display "\n")
+                             (char=? c1 c2)))))
+                       g7653))))
+                   g7650)))
+               (cdddar
+                (lambda (x)
+                  (letrec*
+                   ((g7654
+                     (letrec*
+                      ((x7655
+                        (letrec*
+                         ((x7656
+                           (letrec*
+                            ((x7657
+                              (begin
+                                (write '(funapp 830 51))
+                                (display "\n")
+                                (car x))))
+                            (begin
+                              (write '(funapp 830 61))
+                              (display "\n")
+                              (cdr x7657)))))
+                         (begin
+                           (write '(funapp 831 26))
+                           (display "\n")
+                           (cdr x7656)))))
+                      (begin
+                        (write '(funapp 832 23))
+                        (display "\n")
+                        (cdr x7655)))))
+                   g7654)))
+               (list-tail
+                (lambda (x k)
+                  (letrec*
+                   ((g7658
+                     (letrec*
+                      ((x7661
+                        (begin
+                          (write '(funapp 837 45))
+                          (display "\n")
+                          (list? l))))
+                      (begin
+                        (write '(funapp 837 57))
+                        (display "\n")
+                        (assert x7661))))
+                    (g7659
+                     (letrec*
+                      ((x7662
+                        (begin
+                          (write '(funapp 838 45))
                           (display "\n")
                           (number?))))
                       (begin
-                        (write '(funapp 804 57))
+                        (write '(funapp 838 57))
                         (display "\n")
-                        (assert x7647))))
-                    (g7645
+                        (assert x7662))))
+                    (g7660
                      (letrec*
-                      ((x-cnd7648
+                      ((x-cnd7663
                         (begin
-                          (write '(funapp 807 35))
+                          (write '(funapp 841 35))
                           (display "\n")
                           (zero? k))))
-                      (if x-cnd7648
+                      (if x-cnd7663
                         x
                         (letrec*
-                         ((x7650
+                         ((x7665
                            (begin
-                             (write '(funapp 811 34))
+                             (write '(funapp 845 34))
                              (display "\n")
                              (cdr x)))
-                          (x7649
+                          (x7664
                            (begin
-                             (write '(funapp 811 50))
+                             (write '(funapp 845 50))
                              (display "\n")
                              (- k 1))))
                          (begin
-                           (write '(funapp 812 26))
+                           (write '(funapp 846 26))
                            (display "\n")
-                           (list-tail x7650 x7649)))))))
-                   g7645)))
+                           (list-tail x7665 x7664)))))))
+                   g7660)))
                (halt
                 (lambda ()
                   (letrec*
-                   ((g7651
-                     (begin (write '(funapp 814 49)) (display "\n") '())))
-                   g7651)))
+                   ((g7666
+                     (begin (write '(funapp 848 49)) (display "\n") '())))
+                   g7666)))
                (char-alphabetic?
                 (lambda (c)
                   (letrec*
-                   ((g7652
+                   ((g7667
                      (letrec*
-                      ((x-cnd7653
+                      ((x-cnd7668
                         (letrec*
-                         ((x7654 #\a))
+                         ((x7669 #\a))
                          (begin
-                           (write '(funapp 821 48))
+                           (write '(funapp 855 48))
                            (display "\n")
-                           (char-ci>=? c x7654)))))
-                      (if x-cnd7653
+                           (char-ci>=? c x7669)))))
+                      (if x-cnd7668
                         (letrec*
-                         ((x7655 #\z))
+                         ((x7670 #\z))
                          (begin
-                           (write '(funapp 823 48))
+                           (write '(funapp 857 48))
                            (display "\n")
-                           (char-ci<=? c x7655)))
+                           (char-ci<=? c x7670)))
                         #f))))
-                   g7652)))
+                   g7667)))
                (char-whitespace?
                 (lambda (c)
                   (letrec*
-                   ((g7656
+                   ((g7671
                      (letrec*
-                      ((val7249
+                      ((val7250
                         (letrec*
-                         ((x7657
+                         ((x7672
                            (begin
-                             (write '(funapp 832 42))
+                             (write '(funapp 866 42))
                              (display "\n")
                              (char->integer c))))
                          (begin
-                           (write '(funapp 832 62))
+                           (write '(funapp 866 62))
                            (display "\n")
-                           (= x7657 9)))))
+                           (= x7672 9)))))
                       (letrec*
-                       ((g7658
-                         (if val7249
-                           val7249
+                       ((g7673
+                         (if val7250
+                           val7250
                            (letrec*
-                            ((val7250
+                            ((val7251
                               (letrec*
-                               ((x7659
+                               ((x7674
                                  (begin
-                                   (write '(funapp 840 40))
+                                   (write '(funapp 874 40))
                                    (display "\n")
                                    (char->integer c))))
                                (begin
-                                 (write '(funapp 841 32))
+                                 (write '(funapp 875 32))
                                  (display "\n")
-                                 (= x7659 10)))))
+                                 (= x7674 10)))))
                             (letrec*
-                             ((g7660
-                               (if val7250
-                                 val7250
+                             ((g7675
+                               (if val7251
+                                 val7251
                                  (letrec*
-                                  ((x7661
+                                  ((x7676
                                     (begin
-                                      (write '(funapp 847 43))
+                                      (write '(funapp 881 43))
                                       (display "\n")
                                       (char->integer c))))
                                   (begin
-                                    (write '(funapp 848 35))
+                                    (write '(funapp 882 35))
                                     (display "\n")
-                                    (= x7661 32))))))
-                             g7660)))))
-                       g7658))))
-                   g7656)))
+                                    (= x7676 32))))))
+                             g7675)))))
+                       g7673))))
+                   g7671)))
                (cddar
                 (lambda (x)
                   (letrec*
-                   ((g7662
+                   ((g7677
                      (letrec*
-                      ((x7663
+                      ((x7678
                         (letrec*
-                         ((x7664
+                         ((x7679
                            (begin
-                             (write '(funapp 857 48))
+                             (write '(funapp 891 48))
                              (display "\n")
                              (car x))))
                          (begin
-                           (write '(funapp 857 58))
+                           (write '(funapp 891 58))
                            (display "\n")
-                           (cdr x7664)))))
+                           (cdr x7679)))))
                       (begin
-                        (write '(funapp 858 23))
+                        (write '(funapp 892 23))
                         (display "\n")
-                        (cdr x7663)))))
-                   g7662)))
+                        (cdr x7678)))))
+                   g7677)))
                (positive?
                 (lambda (x)
                   (letrec*
-                   ((g7665
+                   ((g7680
                      (letrec*
-                      ((x7667
+                      ((x7682
                         (begin
-                          (write '(funapp 863 45))
+                          (write '(funapp 897 45))
                           (display "\n")
                           (number? x))))
                       (begin
-                        (write '(funapp 863 59))
+                        (write '(funapp 897 59))
                         (display "\n")
-                        (assert x7667))))
-                    (g7666
-                     (begin (write '(funapp 864 28)) (display "\n") (> x 0))))
-                   g7666)))
-               ($pc (begin (write '(funapp 866 20)) (display "\n") '()))
+                        (assert x7682))))
+                    (g7681
+                     (begin (write '(funapp 898 28)) (display "\n") (> x 0))))
+                   g7681)))
+               (string=?
+                (lambda (s1 s2)
+                  (letrec*
+                   ((g7683
+                     (begin
+                       (write '(funapp 900 59))
+                       (display "\n")
+                       (bool-top))))
+                   g7683)))
+               ($pc (begin (write '(funapp 901 20)) (display "\n") '()))
                (ref-set set-car!)
-               (void (lambda () (letrec* ((g7668 #f)) g7668)))
+               (void (lambda () (letrec* ((g7684 #f)) g7684)))
                (cddr
                 (lambda (x)
                   (letrec*
-                   ((g7669
+                   ((g7685
                      (letrec*
-                      ((x7670
+                      ((x7686
                         (begin
-                          (write '(funapp 872 45))
+                          (write '(funapp 907 45))
                           (display "\n")
                           (cdr x))))
                       (begin
-                        (write '(funapp 872 55))
+                        (write '(funapp 907 55))
                         (display "\n")
-                        (cdr x7670)))))
-                   g7669)))
+                        (cdr x7686)))))
+                   g7685)))
                (truncate
                 (lambda (x)
                   (letrec*
-                   ((g7671
+                   ((g7687
                      (letrec*
-                      ((x7673
+                      ((x7689
                         (begin
-                          (write '(funapp 877 45))
+                          (write '(funapp 912 45))
                           (display "\n")
                           (number? x))))
                       (begin
-                        (write '(funapp 877 59))
+                        (write '(funapp 912 59))
                         (display "\n")
-                        (assert x7673))))
-                    (g7672
+                        (assert x7689))))
+                    (g7688
                      (letrec*
-                      ((x-cnd7674
+                      ((x-cnd7690
                         (begin
-                          (write '(funapp 880 35))
+                          (write '(funapp 915 35))
                           (display "\n")
                           (< x 0))))
-                      (if x-cnd7674
+                      (if x-cnd7690
                         (begin
-                          (write '(funapp 881 37))
+                          (write '(funapp 916 37))
                           (display "\n")
                           (ceiling x))
                         (begin
-                          (write '(funapp 881 49))
+                          (write '(funapp 916 49))
                           (display "\n")
                           (floor x))))))
-                   g7672)))
-               ($cmp (begin (write '(funapp 883 21)) (display "\n") '()))
+                   g7688)))
+               ($cmp (begin (write '(funapp 918 21)) (display "\n") '()))
                (equal?
                 (lambda (a b)
                   (letrec*
-                   ((g7675
+                   ((g7691
                      (letrec*
-                      ((val7251
+                      ((val7252
                         (begin
-                          (write '(funapp 889 33))
+                          (write '(funapp 924 33))
                           (display "\n")
                           (eq? a b))))
                       (letrec*
-                       ((g7676
-                         (if val7251
-                           val7251
+                       ((g7692
+                         (if val7252
+                           val7252
                            (letrec*
-                            ((val7252
+                            ((val7253
                               (letrec*
-                               ((x-cnd7677
+                               ((x-cnd7693
                                  (begin
-                                   (write '(funapp 897 44))
+                                   (write '(funapp 932 44))
                                    (display "\n")
                                    (null? a))))
-                               (if x-cnd7677
+                               (if x-cnd7693
                                  (begin
-                                   (write '(funapp 898 46))
+                                   (write '(funapp 933 46))
                                    (display "\n")
                                    (null? b))
                                  #f))))
                             (letrec*
-                             ((g7678
-                               (if val7252
-                                 val7252
+                             ((g7694
+                               (if val7253
+                                 val7253
                                  (letrec*
-                                  ((val7253
+                                  ((val7254
                                     (letrec*
-                                     ((x-cnd7679
+                                     ((x-cnd7695
                                        (begin
-                                         (write '(funapp 906 50))
+                                         (write '(funapp 941 50))
                                          (display "\n")
                                          (string? a))))
-                                     (if x-cnd7679
+                                     (if x-cnd7695
                                        (letrec*
-                                        ((x-cnd7680
+                                        ((x-cnd7696
                                           (begin
-                                            (write '(funapp 909 53))
+                                            (write '(funapp 944 53))
                                             (display "\n")
                                             (string? b))))
-                                        (if x-cnd7680
+                                        (if x-cnd7696
                                           (begin
-                                            (write '(funapp 910 55))
+                                            (write '(funapp 945 55))
                                             (display "\n")
                                             (string=? a b))
                                           #f))
                                        #f))))
                                   (letrec*
-                                   ((g7681
-                                     (if val7253
-                                       val7253
+                                   ((g7697
+                                     (if val7254
+                                       val7254
                                        (letrec*
-                                        ((val7254
+                                        ((val7255
                                           (letrec*
-                                           ((x-cnd7682
+                                           ((x-cnd7698
                                              (begin
-                                               (write '(funapp 919 56))
+                                               (write '(funapp 954 56))
                                                (display "\n")
                                                (pair? a))))
-                                           (if x-cnd7682
+                                           (if x-cnd7698
                                              (letrec*
-                                              ((x-cnd7683
+                                              ((x-cnd7699
                                                 (begin
-                                                  (write '(funapp 922 59))
+                                                  (write '(funapp 957 59))
                                                   (display "\n")
                                                   (pair? b))))
-                                              (if x-cnd7683
+                                              (if x-cnd7699
                                                 (letrec*
-                                                 ((x-cnd7684
+                                                 ((x-cnd7700
                                                    (letrec*
-                                                    ((x7686
+                                                    ((x7702
                                                       (begin
                                                         (write
-                                                         '(funapp 927 61))
+                                                         '(funapp 962 61))
                                                         (display "\n")
                                                         (car a)))
-                                                     (x7685
+                                                     (x7701
                                                       (begin
                                                         (write
-                                                         '(funapp 928 61))
+                                                         '(funapp 963 61))
                                                         (display "\n")
                                                         (car b))))
                                                     (begin
-                                                      (write '(funapp 929 53))
+                                                      (write '(funapp 964 53))
                                                       (display "\n")
-                                                      (equal? x7686 x7685)))))
-                                                 (if x-cnd7684
+                                                      (equal? x7702 x7701)))))
+                                                 (if x-cnd7700
                                                    (letrec*
-                                                    ((x7688
+                                                    ((x7704
                                                       (begin
                                                         (write
-                                                         '(funapp 932 61))
+                                                         '(funapp 967 61))
                                                         (display "\n")
                                                         (cdr a)))
-                                                     (x7687
+                                                     (x7703
                                                       (begin
                                                         (write
-                                                         '(funapp 933 61))
+                                                         '(funapp 968 61))
                                                         (display "\n")
                                                         (cdr b))))
                                                     (begin
-                                                      (write '(funapp 934 53))
+                                                      (write '(funapp 969 53))
                                                       (display "\n")
-                                                      (equal? x7688 x7687)))
+                                                      (equal? x7704 x7703)))
                                                    #f))
                                                 #f))
                                              #f))))
                                         (letrec*
-                                         ((g7689
-                                           (if val7254
-                                             val7254
+                                         ((g7705
+                                           (if val7255
+                                             val7255
                                              (letrec*
-                                              ((x-cnd7690
+                                              ((x-cnd7706
                                                 (begin
-                                                  (write '(funapp 943 59))
+                                                  (write '(funapp 978 59))
                                                   (display "\n")
                                                   (vector? a))))
-                                              (if x-cnd7690
+                                              (if x-cnd7706
                                                 (letrec*
-                                                 ((x-cnd7691
+                                                 ((x-cnd7707
                                                    (begin
-                                                     (write '(funapp 946 62))
+                                                     (write '(funapp 981 62))
                                                      (display "\n")
                                                      (vector? b))))
-                                                 (if x-cnd7691
+                                                 (if x-cnd7707
                                                    (letrec*
                                                     ((n
                                                       (begin
                                                         (write
-                                                         '(funapp 949 57))
+                                                         '(funapp 984 57))
                                                         (display "\n")
                                                         (vector-length a))))
                                                     (letrec*
-                                                     ((g7692
+                                                     ((g7708
                                                        (letrec*
-                                                        ((x-cnd7693
+                                                        ((x-cnd7709
                                                           (letrec*
-                                                           ((x7694
+                                                           ((x7710
                                                              (begin
                                                                (write
                                                                 '(funapp
-                                                                  956
+                                                                  991
                                                                   62))
                                                                (display "\n")
                                                                (vector-length
                                                                 b))))
                                                            (begin
                                                              (write
-                                                              '(funapp 958 60))
+                                                              '(funapp 993 60))
                                                              (display "\n")
-                                                             (= x7694 n)))))
-                                                        (if x-cnd7693
+                                                             (= x7710 n)))))
+                                                        (if x-cnd7709
                                                           (letrec*
                                                            ((loop
                                                              (lambda (i)
                                                                (letrec*
-                                                                ((g7695
+                                                                ((g7711
                                                                   (letrec*
-                                                                   ((val7255
+                                                                   ((val7256
                                                                      (begin
                                                                        (write
                                                                         '(funapp
-                                                                          967
+                                                                          1002
                                                                           70))
                                                                        (display
                                                                         "\n")
@@ -2157,28 +2245,28 @@
                                                                         i
                                                                         n))))
                                                                    (letrec*
-                                                                    ((g7696
-                                                                      (if val7255
-                                                                        val7255
+                                                                    ((g7712
+                                                                      (if val7256
+                                                                        val7256
                                                                         (letrec*
-                                                                         ((x-cnd7697
+                                                                         ((x-cnd7713
                                                                            (letrec*
-                                                                            ((x7699
+                                                                            ((x7715
                                                                               (begin
                                                                                 (write
                                                                                  '(funapp
-                                                                                   976
+                                                                                   1011
                                                                                    79))
                                                                                 (display
                                                                                  "\n")
                                                                                 (vector-ref
                                                                                  a
                                                                                  i)))
-                                                                             (x7698
+                                                                             (x7714
                                                                               (begin
                                                                                 (write
                                                                                  '(funapp
-                                                                                   980
+                                                                                   1015
                                                                                    79))
                                                                                 (display
                                                                                  "\n")
@@ -2188,20 +2276,20 @@
                                                                             (begin
                                                                               (write
                                                                                '(funapp
-                                                                                 983
+                                                                                 1018
                                                                                  77))
                                                                               (display
                                                                                "\n")
                                                                               (equal?
-                                                                               x7699
-                                                                               x7698)))))
-                                                                         (if x-cnd7697
+                                                                               x7715
+                                                                               x7714)))))
+                                                                         (if x-cnd7713
                                                                            (letrec*
-                                                                            ((x7700
+                                                                            ((x7716
                                                                               (begin
                                                                                 (write
                                                                                  '(funapp
-                                                                                   989
+                                                                                   1024
                                                                                    79))
                                                                                 (display
                                                                                  "\n")
@@ -2211,329 +2299,221 @@
                                                                             (begin
                                                                               (write
                                                                                '(funapp
-                                                                                 992
+                                                                                 1027
                                                                                  77))
                                                                               (display
                                                                                "\n")
                                                                               (loop
-                                                                               x7700)))
+                                                                               x7716)))
                                                                            #f)))))
-                                                                    g7696))))
-                                                                g7695))))
+                                                                    g7712))))
+                                                                g7711))))
                                                            (letrec*
-                                                            ((g7701
+                                                            ((g7717
                                                               (begin
                                                                 (write
                                                                  '(funapp
-                                                                   998
+                                                                   1033
                                                                    69))
                                                                 (display "\n")
                                                                 (loop 0))))
-                                                            g7701))
+                                                            g7717))
                                                           #f))))
-                                                     g7692))
+                                                     g7708))
                                                    #f))
                                                 #f)))))
-                                         g7689)))))
-                                   g7681)))))
-                             g7678)))))
-                       g7676))))
-                   g7675)))
+                                         g7705)))))
+                                   g7697)))))
+                             g7694)))))
+                       g7692))))
+                   g7691)))
                (cdaaar
                 (lambda (x)
                   (letrec*
-                   ((g7702
+                   ((g7718
                      (letrec*
-                      ((x7703
+                      ((x7719
                         (letrec*
-                         ((x7704
+                         ((x7720
                            (letrec*
-                            ((x7705
+                            ((x7721
                               (begin
-                                (write '(funapp 1016 51))
+                                (write '(funapp 1051 51))
                                 (display "\n")
                                 (car x))))
                             (begin
-                              (write '(funapp 1016 61))
+                              (write '(funapp 1051 61))
                               (display "\n")
-                              (car x7705)))))
+                              (car x7721)))))
                          (begin
-                           (write '(funapp 1017 26))
+                           (write '(funapp 1052 26))
                            (display "\n")
-                           (car x7704)))))
+                           (car x7720)))))
                       (begin
-                        (write '(funapp 1018 23))
+                        (write '(funapp 1053 23))
                         (display "\n")
-                        (cdr x7703)))))
-                   g7702)))
+                        (cdr x7719)))))
+                   g7718)))
                (caaddr
                 (lambda (x)
                   (letrec*
-                   ((g7706
+                   ((g7722
                      (letrec*
-                      ((x7707
+                      ((x7723
                         (letrec*
-                         ((x7708
+                         ((x7724
                            (letrec*
-                            ((x7709
+                            ((x7725
                               (begin
-                                (write '(funapp 1027 51))
+                                (write '(funapp 1062 51))
                                 (display "\n")
                                 (cdr x))))
                             (begin
-                              (write '(funapp 1027 61))
+                              (write '(funapp 1062 61))
                               (display "\n")
-                              (cdr x7709)))))
+                              (cdr x7725)))))
                          (begin
-                           (write '(funapp 1028 26))
+                           (write '(funapp 1063 26))
                            (display "\n")
-                           (car x7708)))))
+                           (car x7724)))))
                       (begin
-                        (write '(funapp 1029 23))
+                        (write '(funapp 1064 23))
                         (display "\n")
-                        (car x7707)))))
-                   g7706)))
+                        (car x7723)))))
+                   g7722)))
                (eqv?
                 (lambda (x y)
                   (letrec*
-                   ((g7710
+                   ((g7726
                      (begin
-                       (write '(funapp 1031 53))
+                       (write '(funapp 1066 53))
                        (display "\n")
                        (eq? x y))))
-                   g7710)))
+                   g7726)))
                (call-with-input-file
                 (lambda (filename proc)
                   (letrec*
-                   ((g7711
+                   ((g7727
                      (letrec*
-                      ((x7714
+                      ((x7730
                         (begin
-                          (write '(funapp 1036 39))
+                          (write '(funapp 1071 39))
                           (display "\n")
                           (string? filename))))
                       (begin
-                        (write '(funapp 1036 60))
+                        (write '(funapp 1071 60))
                         (display "\n")
-                        (assert x7714))))
-                    (g7712
+                        (assert x7730))))
+                    (g7728
                      (letrec*
-                      ((x7715
+                      ((x7731
                         (begin
-                          (write '(funapp 1038 39))
+                          (write '(funapp 1073 39))
                           (display "\n")
                           (procedure? proc))))
                       (begin
-                        (write '(funapp 1038 59))
+                        (write '(funapp 1073 59))
                         (display "\n")
-                        (assert x7715))))
-                    (g7713
+                        (assert x7731))))
+                    (g7729
                      (letrec*
                       ((input-port
                         (begin
-                          (write '(funapp 1041 36))
+                          (write '(funapp 1076 36))
                           (display "\n")
                           (open-input-file filename)))
                        (res
                         (begin
-                          (write '(funapp 1042 29))
+                          (write '(funapp 1077 29))
                           (display "\n")
                           (proc input-port))))
                       (letrec*
-                       ((g7716
+                       ((g7732
                          (begin
-                           (write '(funapp 1044 32))
+                           (write '(funapp 1079 32))
                            (display "\n")
                            (close-input-port input-port)))
-                        (g7717 res))
-                       g7717))))
-                   g7713)))
+                        (g7733 res))
+                       g7733))))
+                   g7729)))
                (ref
                 (lambda (x)
                   (letrec*
-                   ((g7718
+                   ((g7734
                      (begin
-                       (write '(funapp 1047 50))
+                       (write '(funapp 1082 50))
                        (display "\n")
                        (cons
                         x
                         (begin
-                          (write '(funapp 1047 57))
+                          (write '(funapp 1082 57))
                           (display "\n")
                           '())))))
-                   g7718)))
+                   g7734)))
                (char>=?
                 (lambda (c1 c2)
                   (letrec*
-                   ((g7719
+                   ((g7735
                      (letrec*
-                      ((x7722
+                      ((x7738
                         (begin
-                          (write '(funapp 1051 45))
+                          (write '(funapp 1086 45))
                           (display "\n")
                           (char? c1))))
                       (begin
-                        (write '(funapp 1051 58))
+                        (write '(funapp 1086 58))
                         (display "\n")
-                        (assert x7722))))
-                    (g7720
+                        (assert x7738))))
+                    (g7736
                      (letrec*
-                      ((x7723
+                      ((x7739
                         (begin
-                          (write '(funapp 1052 45))
+                          (write '(funapp 1087 45))
                           (display "\n")
                           (char? c2))))
                       (begin
-                        (write '(funapp 1052 58))
+                        (write '(funapp 1087 58))
                         (display "\n")
-                        (assert x7723))))
-                    (g7721
+                        (assert x7739))))
+                    (g7737
                      (letrec*
-                      ((val7256
+                      ((val7257
                         (begin
-                          (write '(funapp 1055 33))
+                          (write '(funapp 1090 33))
                           (display "\n")
                           (char>? c1 c2))))
                       (letrec*
-                       ((g7724
-                         (if val7256
-                           val7256
+                       ((g7740
+                         (if val7257
+                           val7257
                            (begin
-                             (write '(funapp 1057 52))
+                             (write '(funapp 1092 52))
                              (display "\n")
                              (char=? c1 c2)))))
-                       g7724))))
-                   g7721)))
+                       g7740))))
+                   g7737)))
                (cdaar
                 (lambda (x)
                   (letrec*
-                   ((g7725
-                     (letrec*
-                      ((x7726
-                        (letrec*
-                         ((x7727
-                           (begin
-                             (write '(funapp 1065 48))
-                             (display "\n")
-                             (car x))))
-                         (begin
-                           (write '(funapp 1065 58))
-                           (display "\n")
-                           (car x7727)))))
-                      (begin
-                        (write '(funapp 1066 23))
-                        (display "\n")
-                        (cdr x7726)))))
-                   g7725)))
-               (cdaddr
-                (lambda (x)
-                  (letrec*
-                   ((g7728
-                     (letrec*
-                      ((x7729
-                        (letrec*
-                         ((x7730
-                           (letrec*
-                            ((x7731
-                              (begin
-                                (write '(funapp 1075 51))
-                                (display "\n")
-                                (cdr x))))
-                            (begin
-                              (write '(funapp 1075 61))
-                              (display "\n")
-                              (cdr x7731)))))
-                         (begin
-                           (write '(funapp 1076 26))
-                           (display "\n")
-                           (car x7730)))))
-                      (begin
-                        (write '(funapp 1077 23))
-                        (display "\n")
-                        (cdr x7729)))))
-                   g7728)))
-               (__toplevel_cdr cdr)
-               (cadar
-                (lambda (x)
-                  (letrec*
-                   ((g7732
-                     (letrec*
-                      ((x7733
-                        (letrec*
-                         ((x7734
-                           (begin
-                             (write '(funapp 1085 48))
-                             (display "\n")
-                             (car x))))
-                         (begin
-                           (write '(funapp 1085 58))
-                           (display "\n")
-                           (cdr x7734)))))
-                      (begin
-                        (write '(funapp 1086 23))
-                        (display "\n")
-                        (car x7733)))))
-                   g7732)))
-               (caadr
-                (lambda (x)
-                  (letrec*
-                   ((g7735
-                     (letrec*
-                      ((x7736
-                        (letrec*
-                         ((x7737
-                           (begin
-                             (write '(funapp 1093 48))
-                             (display "\n")
-                             (cdr x))))
-                         (begin
-                           (write '(funapp 1093 58))
-                           (display "\n")
-                           (car x7737)))))
-                      (begin
-                        (write '(funapp 1094 23))
-                        (display "\n")
-                        (car x7736)))))
-                   g7735)))
-               (char-ci>?
-                (lambda (c1 c2)
-                  (letrec*
-                   ((g7738
-                     (letrec*
-                      ((x7741
-                        (begin
-                          (write '(funapp 1099 45))
-                          (display "\n")
-                          (char? c1))))
-                      (begin
-                        (write '(funapp 1099 58))
-                        (display "\n")
-                        (assert x7741))))
-                    (g7739
+                   ((g7741
                      (letrec*
                       ((x7742
-                        (begin
-                          (write '(funapp 1100 45))
-                          (display "\n")
-                          (char? c2))))
+                        (letrec*
+                         ((x7743
+                           (begin
+                             (write '(funapp 1100 48))
+                             (display "\n")
+                             (car x))))
+                         (begin
+                           (write '(funapp 1100 58))
+                           (display "\n")
+                           (car x7743)))))
                       (begin
-                        (write '(funapp 1100 58))
+                        (write '(funapp 1101 23))
                         (display "\n")
-                        (assert x7742))))
-                    (g7740
-                     (letrec*
-                      ((x7743
-                        (begin
-                          (write '(funapp 1101 45))
-                          (display "\n")
-                          (char-ci<=? c1 c2))))
-                      (begin
-                        (write '(funapp 1101 66))
-                        (display "\n")
-                        (not x7743)))))
-                   g7740)))
-               (__toplevel_set-cdr! set-cdr!)
-               (caaaar
+                        (cdr x7742)))))
+                   g7741)))
+               (cdaddr
                 (lambda (x)
                   (letrec*
                    ((g7744
@@ -2544,154 +2524,157 @@
                            (letrec*
                             ((x7747
                               (begin
-                                (write '(funapp 1111 51))
+                                (write '(funapp 1110 51))
                                 (display "\n")
-                                (car x))))
+                                (cdr x))))
                             (begin
-                              (write '(funapp 1111 61))
+                              (write '(funapp 1110 61))
                               (display "\n")
-                              (car x7747)))))
+                              (cdr x7747)))))
                          (begin
-                           (write '(funapp 1112 26))
+                           (write '(funapp 1111 26))
                            (display "\n")
                            (car x7746)))))
                       (begin
-                        (write '(funapp 1113 23))
+                        (write '(funapp 1112 23))
                         (display "\n")
-                        (car x7745)))))
+                        (cdr x7745)))))
                    g7744)))
-               (negative?
+               (__toplevel_cdr cdr)
+               (cadar
                 (lambda (x)
                   (letrec*
                    ((g7748
                      (letrec*
-                      ((x7750
-                        (begin
-                          (write '(funapp 1118 45))
-                          (display "\n")
-                          (number? x))))
-                      (begin
-                        (write '(funapp 1118 59))
-                        (display "\n")
-                        (assert x7750))))
-                    (g7749
-                     (begin (write '(funapp 1119 28)) (display "\n") (< x 0))))
-                   g7749)))
-               (memv
-                (lambda (e l)
-                  (letrec*
-                   ((g7751
-                     (begin
-                       (write '(funapp 1121 53))
-                       (display "\n")
-                       (memq e l))))
-                   g7751)))
-               (caaar
-                (lambda (x)
-                  (letrec*
-                   ((g7752
-                     (letrec*
-                      ((x7753
+                      ((x7749
                         (letrec*
-                         ((x7754
+                         ((x7750
                            (begin
-                             (write '(funapp 1127 48))
+                             (write '(funapp 1120 48))
                              (display "\n")
                              (car x))))
                          (begin
-                           (write '(funapp 1127 58))
+                           (write '(funapp 1120 58))
                            (display "\n")
-                           (car x7754)))))
+                           (cdr x7750)))))
                       (begin
-                        (write '(funapp 1128 23))
+                        (write '(funapp 1121 23))
                         (display "\n")
-                        (car x7753)))))
-                   g7752)))
-               (debug
-                (lambda (e)
+                        (car x7749)))))
+                   g7748)))
+               (caadr
+                (lambda (x)
                   (letrec*
-                   ((g7755
-                     (begin (write '(funapp 1130 51)) (display "\n") '())))
-                   g7755)))
-               (reverse
-                (lambda (l)
-                  (letrec*
-                   ((g7756
+                   ((g7751
                      (letrec*
-                      ((x7758
+                      ((x7752
+                        (letrec*
+                         ((x7753
+                           (begin
+                             (write '(funapp 1128 48))
+                             (display "\n")
+                             (cdr x))))
+                         (begin
+                           (write '(funapp 1128 58))
+                           (display "\n")
+                           (car x7753)))))
+                      (begin
+                        (write '(funapp 1129 23))
+                        (display "\n")
+                        (car x7752)))))
+                   g7751)))
+               (char-ci>?
+                (lambda (c1 c2)
+                  (letrec*
+                   ((g7754
+                     (letrec*
+                      ((x7757
                         (begin
                           (write '(funapp 1134 45))
                           (display "\n")
-                          (list? l))))
+                          (char? c1))))
                       (begin
-                        (write '(funapp 1134 57))
+                        (write '(funapp 1134 58))
+                        (display "\n")
+                        (assert x7757))))
+                    (g7755
+                     (letrec*
+                      ((x7758
+                        (begin
+                          (write '(funapp 1135 45))
+                          (display "\n")
+                          (char? c2))))
+                      (begin
+                        (write '(funapp 1135 58))
                         (display "\n")
                         (assert x7758))))
-                    (g7757
+                    (g7756
                      (letrec*
-                      ((x-cnd7759
+                      ((x7759
                         (begin
-                          (write '(funapp 1137 35))
+                          (write '(funapp 1136 45))
                           (display "\n")
-                          (null? l))))
-                      (if x-cnd7759
-                        (begin (write '(funapp 1139 24)) (display "\n") '())
+                          (char-ci<=? c1 c2))))
+                      (begin
+                        (write '(funapp 1136 66))
+                        (display "\n")
+                        (not x7759)))))
+                   g7756)))
+               (__toplevel_set-cdr! set-cdr!)
+               (caaaar
+                (lambda (x)
+                  (letrec*
+                   ((g7760
+                     (letrec*
+                      ((x7761
                         (letrec*
                          ((x7762
                            (letrec*
                             ((x7763
                               (begin
-                                (write '(funapp 1141 51))
+                                (write '(funapp 1146 51))
                                 (display "\n")
-                                (cdr l))))
+                                (car x))))
                             (begin
-                              (write '(funapp 1141 61))
+                              (write '(funapp 1146 61))
                               (display "\n")
-                              (reverse x7763))))
-                          (x7760
-                           (letrec*
-                            ((x7761
-                              (begin
-                                (write '(funapp 1142 51))
-                                (display "\n")
-                                (car l))))
-                            (begin
-                              (write '(funapp 1142 61))
-                              (display "\n")
-                              (list x7761)))))
+                              (car x7763)))))
                          (begin
-                           (write '(funapp 1143 26))
+                           (write '(funapp 1147 26))
                            (display "\n")
-                           (append x7762 x7760)))))))
-                   g7757)))
-               (caaadr
+                           (car x7762)))))
+                      (begin
+                        (write '(funapp 1148 23))
+                        (display "\n")
+                        (car x7761)))))
+                   g7760)))
+               (negative?
                 (lambda (x)
                   (letrec*
                    ((g7764
                      (letrec*
-                      ((x7765
-                        (letrec*
-                         ((x7766
-                           (letrec*
-                            ((x7767
-                              (begin
-                                (write '(funapp 1152 51))
-                                (display "\n")
-                                (cdr x))))
-                            (begin
-                              (write '(funapp 1152 61))
-                              (display "\n")
-                              (car x7767)))))
-                         (begin
-                           (write '(funapp 1153 26))
-                           (display "\n")
-                           (car x7766)))))
+                      ((x7766
+                        (begin
+                          (write '(funapp 1153 45))
+                          (display "\n")
+                          (number? x))))
                       (begin
-                        (write '(funapp 1154 23))
+                        (write '(funapp 1153 59))
                         (display "\n")
-                        (car x7765)))))
-                   g7764)))
-               (cddadr
+                        (assert x7766))))
+                    (g7765
+                     (begin (write '(funapp 1154 28)) (display "\n") (< x 0))))
+                   g7765)))
+               (memv
+                (lambda (e l)
+                  (letrec*
+                   ((g7767
+                     (begin
+                       (write '(funapp 1156 53))
+                       (display "\n")
+                       (memq e l))))
+                   g7767)))
+               (caaar
                 (lambda (x)
                   (letrec*
                    ((g7768
@@ -2699,688 +2682,670 @@
                       ((x7769
                         (letrec*
                          ((x7770
-                           (letrec*
-                            ((x7771
-                              (begin
-                                (write '(funapp 1163 51))
-                                (display "\n")
-                                (cdr x))))
-                            (begin
-                              (write '(funapp 1163 61))
-                              (display "\n")
-                              (car x7771)))))
+                           (begin
+                             (write '(funapp 1162 48))
+                             (display "\n")
+                             (car x))))
                          (begin
-                           (write '(funapp 1164 26))
+                           (write '(funapp 1162 58))
                            (display "\n")
-                           (cdr x7770)))))
+                           (car x7770)))))
                       (begin
-                        (write '(funapp 1165 23))
+                        (write '(funapp 1163 23))
                         (display "\n")
-                        (cdr x7769)))))
+                        (car x7769)))))
                    g7768)))
-               (odd?
-                (lambda (x)
+               (debug
+                (lambda (e)
+                  (letrec*
+                   ((g7771
+                     (begin (write '(funapp 1165 51)) (display "\n") '())))
+                   g7771)))
+               (reverse
+                (lambda (l)
                   (letrec*
                    ((g7772
                      (letrec*
                       ((x7774
                         (begin
-                          (write '(funapp 1170 45))
+                          (write '(funapp 1169 45))
                           (display "\n")
-                          (number? x))))
+                          (list? l))))
                       (begin
-                        (write '(funapp 1170 59))
+                        (write '(funapp 1169 57))
                         (display "\n")
                         (assert x7774))))
                     (g7773
                      (letrec*
-                      ((x7775
+                      ((x-cnd7775
                         (begin
-                          (write '(funapp 1171 45))
+                          (write '(funapp 1172 35))
                           (display "\n")
-                          (modulo x 2))))
-                      (begin
-                        (write '(funapp 1171 60))
-                        (display "\n")
-                        (= 1 x7775)))))
-                   g7773)))
-               (caadar
-                (lambda (x)
-                  (letrec*
-                   ((g7776
-                     (letrec*
-                      ((x7777
+                          (null? l))))
+                      (if x-cnd7775
+                        (begin (write '(funapp 1174 24)) (display "\n") '())
                         (letrec*
                          ((x7778
                            (letrec*
                             ((x7779
                               (begin
-                                (write '(funapp 1180 51))
-                                (display "\n")
-                                (car x))))
-                            (begin
-                              (write '(funapp 1180 61))
-                              (display "\n")
-                              (cdr x7779)))))
-                         (begin
-                           (write '(funapp 1181 26))
-                           (display "\n")
-                           (car x7778)))))
-                      (begin
-                        (write '(funapp 1182 23))
-                        (display "\n")
-                        (car x7777)))))
-                   g7776)))
-               (apply
-                (lambda (proc args)
-                  (letrec*
-                   ((g7780
-                     (letrec*
-                      ((x7783
-                        (begin
-                          (write '(funapp 1188 39))
-                          (display "\n")
-                          (procedure? proc))))
-                      (begin
-                        (write '(funapp 1188 59))
-                        (display "\n")
-                        (assert x7783))))
-                    (g7781
-                     (letrec*
-                      ((x7784
-                        (begin
-                          (write '(funapp 1189 45))
-                          (display "\n")
-                          (list? args))))
-                      (begin
-                        (write '(funapp 1189 60))
-                        (display "\n")
-                        (assert x7784))))
-                    (g7782
-                     (letrec*
-                      ((x-cnd7785
-                        (begin
-                          (write '(funapp 1192 35))
-                          (display "\n")
-                          (null? args))))
-                      (if x-cnd7785
-                        (letrec*
-                         ((g7786
-                           (begin
-                             (write '(funapp 1194 42))
-                             (display "\n")
-                             (proc))))
-                         g7786)
-                        (letrec*
-                         ((x-cnd7787
-                           (letrec*
-                            ((x7788
-                              (begin
-                                (write '(funapp 1197 45))
-                                (display "\n")
-                                (cdr args))))
-                            (begin
-                              (write '(funapp 1197 58))
-                              (display "\n")
-                              (null? x7788)))))
-                         (if x-cnd7787
-                           (letrec*
-                            ((g7789
-                              (letrec*
-                               ((x7790
-                                 (begin
-                                   (write '(funapp 1201 48))
-                                   (display "\n")
-                                   (car args))))
-                               (begin
-                                 (write '(funapp 1201 61))
-                                 (display "\n")
-                                 (proc x7790)))))
-                            g7789)
-                           (letrec*
-                            ((x-cnd7791
-                              (letrec*
-                               ((x7792
-                                 (begin
-                                   (write '(funapp 1205 48))
-                                   (display "\n")
-                                   (cddr args))))
-                               (begin
-                                 (write '(funapp 1205 62))
-                                 (display "\n")
-                                 (null? x7792)))))
-                            (if x-cnd7791
-                              (letrec*
-                               ((g7793
-                                 (letrec*
-                                  ((x7795
-                                    (begin
-                                      (write '(funapp 1210 43))
-                                      (display "\n")
-                                      (car args)))
-                                   (x7794
-                                    (begin
-                                      (write '(funapp 1210 62))
-                                      (display "\n")
-                                      (cadr args))))
-                                  (begin
-                                    (write '(funapp 1211 35))
-                                    (display "\n")
-                                    (proc x7795 x7794)))))
-                               g7793)
-                              (letrec*
-                               ((x-cnd7796
-                                 (letrec*
-                                  ((x7797
-                                    (begin
-                                      (write '(funapp 1216 43))
-                                      (display "\n")
-                                      (cdddr args))))
-                                  (begin
-                                    (write '(funapp 1217 35))
-                                    (display "\n")
-                                    (null? x7797)))))
-                               (if x-cnd7796
-                                 (letrec*
-                                  ((g7798
-                                    (letrec*
-                                     ((x7801
-                                       (begin
-                                         (write '(funapp 1222 46))
-                                         (display "\n")
-                                         (car args)))
-                                      (x7800
-                                       (begin
-                                         (write '(funapp 1223 46))
-                                         (display "\n")
-                                         (cadr args)))
-                                      (x7799
-                                       (begin
-                                         (write '(funapp 1224 46))
-                                         (display "\n")
-                                         (caddr args))))
-                                     (begin
-                                       (write '(funapp 1225 38))
-                                       (display "\n")
-                                       (proc x7801 x7800 x7799)))))
-                                  g7798)
-                                 (letrec*
-                                  ((x-cnd7802
-                                    (letrec*
-                                     ((x7803
-                                       (begin
-                                         (write '(funapp 1230 46))
-                                         (display "\n")
-                                         (cddddr args))))
-                                     (begin
-                                       (write '(funapp 1231 38))
-                                       (display "\n")
-                                       (null? x7803)))))
-                                  (if x-cnd7802
-                                    (letrec*
-                                     ((g7804
-                                       (letrec*
-                                        ((x7808
-                                          (begin
-                                            (write '(funapp 1236 49))
-                                            (display "\n")
-                                            (car args)))
-                                         (x7807
-                                          (begin
-                                            (write '(funapp 1237 49))
-                                            (display "\n")
-                                            (cadr args)))
-                                         (x7806
-                                          (begin
-                                            (write '(funapp 1238 49))
-                                            (display "\n")
-                                            (caddr args)))
-                                         (x7805
-                                          (begin
-                                            (write '(funapp 1239 49))
-                                            (display "\n")
-                                            (cadddr args))))
-                                        (begin
-                                          (write '(funapp 1240 41))
-                                          (display "\n")
-                                          (proc x7808 x7807 x7806 x7805)))))
-                                     g7804)
-                                    (letrec*
-                                     ((x-cnd7809
-                                       (letrec*
-                                        ((x7810
-                                          (letrec*
-                                           ((x7811
-                                             (begin
-                                               (write '(funapp 1247 52))
-                                               (display "\n")
-                                               (cddddr args))))
-                                           (begin
-                                             (write '(funapp 1248 44))
-                                             (display "\n")
-                                             (cdr x7811)))))
-                                        (begin
-                                          (write '(funapp 1249 41))
-                                          (display "\n")
-                                          (null? x7810)))))
-                                     (if x-cnd7809
-                                       (letrec*
-                                        ((g7812
-                                          (letrec*
-                                           ((x7818
-                                             (begin
-                                               (write '(funapp 1254 52))
-                                               (display "\n")
-                                               (car args)))
-                                            (x7817
-                                             (begin
-                                               (write '(funapp 1255 52))
-                                               (display "\n")
-                                               (cadr args)))
-                                            (x7816
-                                             (begin
-                                               (write '(funapp 1256 52))
-                                               (display "\n")
-                                               (caddr args)))
-                                            (x7815
-                                             (begin
-                                               (write '(funapp 1257 52))
-                                               (display "\n")
-                                               (cadddr args)))
-                                            (x7813
-                                             (letrec*
-                                              ((x7814
-                                                (begin
-                                                  (write '(funapp 1260 55))
-                                                  (display "\n")
-                                                  (cddddr args))))
-                                              (begin
-                                                (write '(funapp 1261 47))
-                                                (display "\n")
-                                                (car x7814)))))
-                                           (begin
-                                             (write '(funapp 1262 44))
-                                             (display "\n")
-                                             (proc
-                                              x7818
-                                              x7817
-                                              x7816
-                                              x7815
-                                              x7813)))))
-                                        g7812)
-                                       (letrec*
-                                        ((x-cnd7819
-                                          (letrec*
-                                           ((x7820
-                                             (letrec*
-                                              ((x7821
-                                                (begin
-                                                  (write '(funapp 1274 55))
-                                                  (display "\n")
-                                                  (cddddr args))))
-                                              (begin
-                                                (write '(funapp 1275 47))
-                                                (display "\n")
-                                                (cddr x7821)))))
-                                           (begin
-                                             (write '(funapp 1276 44))
-                                             (display "\n")
-                                             (null? x7820)))))
-                                        (if x-cnd7819
-                                          (letrec*
-                                           ((g7822
-                                             (letrec*
-                                              ((x7830
-                                                (begin
-                                                  (write '(funapp 1281 55))
-                                                  (display "\n")
-                                                  (car args)))
-                                               (x7829
-                                                (begin
-                                                  (write '(funapp 1282 55))
-                                                  (display "\n")
-                                                  (cadr args)))
-                                               (x7828
-                                                (begin
-                                                  (write '(funapp 1283 55))
-                                                  (display "\n")
-                                                  (caddr args)))
-                                               (x7827
-                                                (begin
-                                                  (write '(funapp 1284 55))
-                                                  (display "\n")
-                                                  (cadddr args)))
-                                               (x7825
-                                                (letrec*
-                                                 ((x7826
-                                                   (begin
-                                                     (write '(funapp 1287 58))
-                                                     (display "\n")
-                                                     (cddddr args))))
-                                                 (begin
-                                                   (write '(funapp 1288 50))
-                                                   (display "\n")
-                                                   (car x7826))))
-                                               (x7823
-                                                (letrec*
-                                                 ((x7824
-                                                   (begin
-                                                     (write '(funapp 1291 58))
-                                                     (display "\n")
-                                                     (cddddr args))))
-                                                 (begin
-                                                   (write '(funapp 1292 50))
-                                                   (display "\n")
-                                                   (cadr x7824)))))
-                                              (begin
-                                                (write '(funapp 1293 47))
-                                                (display "\n")
-                                                (proc
-                                                 x7830
-                                                 x7829
-                                                 x7828
-                                                 x7827
-                                                 x7825
-                                                 x7823)))))
-                                           g7822)
-                                          (letrec*
-                                           ((x-cnd7831
-                                             (letrec*
-                                              ((x7832
-                                                (letrec*
-                                                 ((x7833
-                                                   (begin
-                                                     (write '(funapp 1306 58))
-                                                     (display "\n")
-                                                     (cddddr args))))
-                                                 (begin
-                                                   (write '(funapp 1307 50))
-                                                   (display "\n")
-                                                   (cdddr x7833)))))
-                                              (begin
-                                                (write '(funapp 1308 47))
-                                                (display "\n")
-                                                (null? x7832)))))
-                                           (if x-cnd7831
-                                             (letrec*
-                                              ((g7834
-                                                (letrec*
-                                                 ((x7844
-                                                   (begin
-                                                     (write '(funapp 1313 58))
-                                                     (display "\n")
-                                                     (car args)))
-                                                  (x7843
-                                                   (begin
-                                                     (write '(funapp 1314 58))
-                                                     (display "\n")
-                                                     (cadr args)))
-                                                  (x7842
-                                                   (begin
-                                                     (write '(funapp 1315 58))
-                                                     (display "\n")
-                                                     (caddr args)))
-                                                  (x7841
-                                                   (begin
-                                                     (write '(funapp 1316 58))
-                                                     (display "\n")
-                                                     (cadddr args)))
-                                                  (x7839
-                                                   (letrec*
-                                                    ((x7840
-                                                      (begin
-                                                        (write
-                                                         '(funapp 1319 61))
-                                                        (display "\n")
-                                                        (cddddr args))))
-                                                    (begin
-                                                      (write '(funapp 1320 53))
-                                                      (display "\n")
-                                                      (car x7840))))
-                                                  (x7837
-                                                   (letrec*
-                                                    ((x7838
-                                                      (begin
-                                                        (write
-                                                         '(funapp 1323 61))
-                                                        (display "\n")
-                                                        (cddddr args))))
-                                                    (begin
-                                                      (write '(funapp 1324 53))
-                                                      (display "\n")
-                                                      (cadr x7838))))
-                                                  (x7835
-                                                   (letrec*
-                                                    ((x7836
-                                                      (begin
-                                                        (write
-                                                         '(funapp 1327 61))
-                                                        (display "\n")
-                                                        (cddddr args))))
-                                                    (begin
-                                                      (write '(funapp 1328 53))
-                                                      (display "\n")
-                                                      (caddr x7836)))))
-                                                 (begin
-                                                   (write '(funapp 1329 50))
-                                                   (display "\n")
-                                                   (proc
-                                                    x7844
-                                                    x7843
-                                                    x7842
-                                                    x7841
-                                                    x7839
-                                                    x7837
-                                                    x7835)))))
-                                              g7834)
-                                             (letrec*
-                                              ((g7845
-                                                (begin
-                                                  (write '(funapp 1340 49))
-                                                  (display "\n")
-                                                  (error
-                                                   "Unsupported call."))))
-                                              g7845)))))))))))))))))))
-                   g7782)))
-               (member
-                (lambda (e l)
-                  (letrec*
-                   ((g7846
-                     (letrec*
-                      ((x7848
-                        (begin
-                          (write '(funapp 1346 45))
-                          (display "\n")
-                          (list? l))))
-                      (begin
-                        (write '(funapp 1346 57))
-                        (display "\n")
-                        (assert x7848))))
-                    (g7847
-                     (letrec*
-                      ((x-cnd7849
-                        (begin
-                          (write '(funapp 1349 35))
-                          (display "\n")
-                          (null? l))))
-                      (if x-cnd7849
-                        #f
-                        (letrec*
-                         ((x-cnd7850
-                           (letrec*
-                            ((x7851
-                              (begin
-                                (write '(funapp 1354 45))
-                                (display "\n")
-                                (car l))))
-                            (begin
-                              (write '(funapp 1354 55))
-                              (display "\n")
-                              (equal? x7851 e)))))
-                         (if x-cnd7850
-                           l
-                           (letrec*
-                            ((x7852
-                              (begin
-                                (write '(funapp 1357 45))
+                                (write '(funapp 1176 51))
                                 (display "\n")
                                 (cdr l))))
                             (begin
-                              (write '(funapp 1357 55))
+                              (write '(funapp 1176 61))
                               (display "\n")
-                              (member e x7852)))))))))
-                   g7847)))
-               (cddddr
+                              (reverse x7779))))
+                          (x7776
+                           (letrec*
+                            ((x7777
+                              (begin
+                                (write '(funapp 1177 51))
+                                (display "\n")
+                                (car l))))
+                            (begin
+                              (write '(funapp 1177 61))
+                              (display "\n")
+                              (list x7777)))))
+                         (begin
+                           (write '(funapp 1178 26))
+                           (display "\n")
+                           (append x7778 x7776)))))))
+                   g7773)))
+               (caaadr
                 (lambda (x)
                   (letrec*
-                   ((g7853
+                   ((g7780
                      (letrec*
-                      ((x7854
+                      ((x7781
                         (letrec*
-                         ((x7855
+                         ((x7782
                            (letrec*
-                            ((x7856
+                            ((x7783
                               (begin
-                                (write '(funapp 1366 51))
+                                (write '(funapp 1187 51))
                                 (display "\n")
                                 (cdr x))))
                             (begin
-                              (write '(funapp 1366 61))
+                              (write '(funapp 1187 61))
                               (display "\n")
-                              (cdr x7856)))))
+                              (car x7783)))))
                          (begin
-                           (write '(funapp 1367 26))
+                           (write '(funapp 1188 26))
                            (display "\n")
-                           (cdr x7855)))))
+                           (car x7782)))))
                       (begin
-                        (write '(funapp 1368 23))
+                        (write '(funapp 1189 23))
                         (display "\n")
-                        (cdr x7854)))))
-                   g7853)))
-               (cadddr
+                        (car x7781)))))
+                   g7780)))
+               (cddadr
                 (lambda (x)
                   (letrec*
-                   ((g7857
+                   ((g7784
                      (letrec*
-                      ((x7858
+                      ((x7785
                         (letrec*
-                         ((x7859
+                         ((x7786
                            (letrec*
-                            ((x7860
+                            ((x7787
                               (begin
-                                (write '(funapp 1377 51))
+                                (write '(funapp 1198 51))
                                 (display "\n")
                                 (cdr x))))
                             (begin
-                              (write '(funapp 1377 61))
+                              (write '(funapp 1198 61))
                               (display "\n")
-                              (cdr x7860)))))
+                              (car x7787)))))
                          (begin
-                           (write '(funapp 1378 26))
+                           (write '(funapp 1199 26))
                            (display "\n")
-                           (cdr x7859)))))
+                           (cdr x7786)))))
                       (begin
-                        (write '(funapp 1379 23))
+                        (write '(funapp 1200 23))
                         (display "\n")
-                        (car x7858)))))
-                   g7857)))
-               (int-top
-                (lambda ()
-                  (letrec*
-                   ((g7861
-                     (begin
-                       (write '(funapp 1381 53))
-                       (display "\n")
-                       (random 42))))
-                   g7861)))
-               (zero?
+                        (cdr x7785)))))
+                   g7784)))
+               (odd?
                 (lambda (x)
+                  (letrec*
+                   ((g7788
+                     (letrec*
+                      ((x7790
+                        (begin
+                          (write '(funapp 1205 45))
+                          (display "\n")
+                          (number? x))))
+                      (begin
+                        (write '(funapp 1205 59))
+                        (display "\n")
+                        (assert x7790))))
+                    (g7789
+                     (letrec*
+                      ((x7791
+                        (begin
+                          (write '(funapp 1206 45))
+                          (display "\n")
+                          (modulo x 2))))
+                      (begin
+                        (write '(funapp 1206 60))
+                        (display "\n")
+                        (= 1 x7791)))))
+                   g7789)))
+               (caadar
+                (lambda (x)
+                  (letrec*
+                   ((g7792
+                     (letrec*
+                      ((x7793
+                        (letrec*
+                         ((x7794
+                           (letrec*
+                            ((x7795
+                              (begin
+                                (write '(funapp 1215 51))
+                                (display "\n")
+                                (car x))))
+                            (begin
+                              (write '(funapp 1215 61))
+                              (display "\n")
+                              (cdr x7795)))))
+                         (begin
+                           (write '(funapp 1216 26))
+                           (display "\n")
+                           (car x7794)))))
+                      (begin
+                        (write '(funapp 1217 23))
+                        (display "\n")
+                        (car x7793)))))
+                   g7792)))
+               (apply
+                (lambda (proc args)
+                  (letrec*
+                   ((g7796
+                     (letrec*
+                      ((x7799
+                        (begin
+                          (write '(funapp 1223 39))
+                          (display "\n")
+                          (procedure? proc))))
+                      (begin
+                        (write '(funapp 1223 59))
+                        (display "\n")
+                        (assert x7799))))
+                    (g7797
+                     (letrec*
+                      ((x7800
+                        (begin
+                          (write '(funapp 1224 45))
+                          (display "\n")
+                          (list? args))))
+                      (begin
+                        (write '(funapp 1224 60))
+                        (display "\n")
+                        (assert x7800))))
+                    (g7798
+                     (letrec*
+                      ((x-cnd7801
+                        (begin
+                          (write '(funapp 1227 35))
+                          (display "\n")
+                          (null? args))))
+                      (if x-cnd7801
+                        (letrec*
+                         ((g7802
+                           (begin
+                             (write '(funapp 1229 42))
+                             (display "\n")
+                             (proc))))
+                         g7802)
+                        (letrec*
+                         ((x-cnd7803
+                           (letrec*
+                            ((x7804
+                              (begin
+                                (write '(funapp 1232 45))
+                                (display "\n")
+                                (cdr args))))
+                            (begin
+                              (write '(funapp 1232 58))
+                              (display "\n")
+                              (null? x7804)))))
+                         (if x-cnd7803
+                           (letrec*
+                            ((g7805
+                              (letrec*
+                               ((x7806
+                                 (begin
+                                   (write '(funapp 1236 48))
+                                   (display "\n")
+                                   (car args))))
+                               (begin
+                                 (write '(funapp 1236 61))
+                                 (display "\n")
+                                 (proc x7806)))))
+                            g7805)
+                           (letrec*
+                            ((x-cnd7807
+                              (letrec*
+                               ((x7808
+                                 (begin
+                                   (write '(funapp 1240 48))
+                                   (display "\n")
+                                   (cddr args))))
+                               (begin
+                                 (write '(funapp 1240 62))
+                                 (display "\n")
+                                 (null? x7808)))))
+                            (if x-cnd7807
+                              (letrec*
+                               ((g7809
+                                 (letrec*
+                                  ((x7811
+                                    (begin
+                                      (write '(funapp 1245 43))
+                                      (display "\n")
+                                      (car args)))
+                                   (x7810
+                                    (begin
+                                      (write '(funapp 1245 62))
+                                      (display "\n")
+                                      (cadr args))))
+                                  (begin
+                                    (write '(funapp 1246 35))
+                                    (display "\n")
+                                    (proc x7811 x7810)))))
+                               g7809)
+                              (letrec*
+                               ((x-cnd7812
+                                 (letrec*
+                                  ((x7813
+                                    (begin
+                                      (write '(funapp 1251 43))
+                                      (display "\n")
+                                      (cdddr args))))
+                                  (begin
+                                    (write '(funapp 1252 35))
+                                    (display "\n")
+                                    (null? x7813)))))
+                               (if x-cnd7812
+                                 (letrec*
+                                  ((g7814
+                                    (letrec*
+                                     ((x7817
+                                       (begin
+                                         (write '(funapp 1257 46))
+                                         (display "\n")
+                                         (car args)))
+                                      (x7816
+                                       (begin
+                                         (write '(funapp 1258 46))
+                                         (display "\n")
+                                         (cadr args)))
+                                      (x7815
+                                       (begin
+                                         (write '(funapp 1259 46))
+                                         (display "\n")
+                                         (caddr args))))
+                                     (begin
+                                       (write '(funapp 1260 38))
+                                       (display "\n")
+                                       (proc x7817 x7816 x7815)))))
+                                  g7814)
+                                 (letrec*
+                                  ((x-cnd7818
+                                    (letrec*
+                                     ((x7819
+                                       (begin
+                                         (write '(funapp 1265 46))
+                                         (display "\n")
+                                         (cddddr args))))
+                                     (begin
+                                       (write '(funapp 1266 38))
+                                       (display "\n")
+                                       (null? x7819)))))
+                                  (if x-cnd7818
+                                    (letrec*
+                                     ((g7820
+                                       (letrec*
+                                        ((x7824
+                                          (begin
+                                            (write '(funapp 1271 49))
+                                            (display "\n")
+                                            (car args)))
+                                         (x7823
+                                          (begin
+                                            (write '(funapp 1272 49))
+                                            (display "\n")
+                                            (cadr args)))
+                                         (x7822
+                                          (begin
+                                            (write '(funapp 1273 49))
+                                            (display "\n")
+                                            (caddr args)))
+                                         (x7821
+                                          (begin
+                                            (write '(funapp 1274 49))
+                                            (display "\n")
+                                            (cadddr args))))
+                                        (begin
+                                          (write '(funapp 1275 41))
+                                          (display "\n")
+                                          (proc x7824 x7823 x7822 x7821)))))
+                                     g7820)
+                                    (letrec*
+                                     ((x-cnd7825
+                                       (letrec*
+                                        ((x7826
+                                          (letrec*
+                                           ((x7827
+                                             (begin
+                                               (write '(funapp 1282 52))
+                                               (display "\n")
+                                               (cddddr args))))
+                                           (begin
+                                             (write '(funapp 1283 44))
+                                             (display "\n")
+                                             (cdr x7827)))))
+                                        (begin
+                                          (write '(funapp 1284 41))
+                                          (display "\n")
+                                          (null? x7826)))))
+                                     (if x-cnd7825
+                                       (letrec*
+                                        ((g7828
+                                          (letrec*
+                                           ((x7834
+                                             (begin
+                                               (write '(funapp 1289 52))
+                                               (display "\n")
+                                               (car args)))
+                                            (x7833
+                                             (begin
+                                               (write '(funapp 1290 52))
+                                               (display "\n")
+                                               (cadr args)))
+                                            (x7832
+                                             (begin
+                                               (write '(funapp 1291 52))
+                                               (display "\n")
+                                               (caddr args)))
+                                            (x7831
+                                             (begin
+                                               (write '(funapp 1292 52))
+                                               (display "\n")
+                                               (cadddr args)))
+                                            (x7829
+                                             (letrec*
+                                              ((x7830
+                                                (begin
+                                                  (write '(funapp 1295 55))
+                                                  (display "\n")
+                                                  (cddddr args))))
+                                              (begin
+                                                (write '(funapp 1296 47))
+                                                (display "\n")
+                                                (car x7830)))))
+                                           (begin
+                                             (write '(funapp 1297 44))
+                                             (display "\n")
+                                             (proc
+                                              x7834
+                                              x7833
+                                              x7832
+                                              x7831
+                                              x7829)))))
+                                        g7828)
+                                       (letrec*
+                                        ((x-cnd7835
+                                          (letrec*
+                                           ((x7836
+                                             (letrec*
+                                              ((x7837
+                                                (begin
+                                                  (write '(funapp 1309 55))
+                                                  (display "\n")
+                                                  (cddddr args))))
+                                              (begin
+                                                (write '(funapp 1310 47))
+                                                (display "\n")
+                                                (cddr x7837)))))
+                                           (begin
+                                             (write '(funapp 1311 44))
+                                             (display "\n")
+                                             (null? x7836)))))
+                                        (if x-cnd7835
+                                          (letrec*
+                                           ((g7838
+                                             (letrec*
+                                              ((x7846
+                                                (begin
+                                                  (write '(funapp 1316 55))
+                                                  (display "\n")
+                                                  (car args)))
+                                               (x7845
+                                                (begin
+                                                  (write '(funapp 1317 55))
+                                                  (display "\n")
+                                                  (cadr args)))
+                                               (x7844
+                                                (begin
+                                                  (write '(funapp 1318 55))
+                                                  (display "\n")
+                                                  (caddr args)))
+                                               (x7843
+                                                (begin
+                                                  (write '(funapp 1319 55))
+                                                  (display "\n")
+                                                  (cadddr args)))
+                                               (x7841
+                                                (letrec*
+                                                 ((x7842
+                                                   (begin
+                                                     (write '(funapp 1322 58))
+                                                     (display "\n")
+                                                     (cddddr args))))
+                                                 (begin
+                                                   (write '(funapp 1323 50))
+                                                   (display "\n")
+                                                   (car x7842))))
+                                               (x7839
+                                                (letrec*
+                                                 ((x7840
+                                                   (begin
+                                                     (write '(funapp 1326 58))
+                                                     (display "\n")
+                                                     (cddddr args))))
+                                                 (begin
+                                                   (write '(funapp 1327 50))
+                                                   (display "\n")
+                                                   (cadr x7840)))))
+                                              (begin
+                                                (write '(funapp 1328 47))
+                                                (display "\n")
+                                                (proc
+                                                 x7846
+                                                 x7845
+                                                 x7844
+                                                 x7843
+                                                 x7841
+                                                 x7839)))))
+                                           g7838)
+                                          (letrec*
+                                           ((x-cnd7847
+                                             (letrec*
+                                              ((x7848
+                                                (letrec*
+                                                 ((x7849
+                                                   (begin
+                                                     (write '(funapp 1341 58))
+                                                     (display "\n")
+                                                     (cddddr args))))
+                                                 (begin
+                                                   (write '(funapp 1342 50))
+                                                   (display "\n")
+                                                   (cdddr x7849)))))
+                                              (begin
+                                                (write '(funapp 1343 47))
+                                                (display "\n")
+                                                (null? x7848)))))
+                                           (if x-cnd7847
+                                             (letrec*
+                                              ((g7850
+                                                (letrec*
+                                                 ((x7860
+                                                   (begin
+                                                     (write '(funapp 1348 58))
+                                                     (display "\n")
+                                                     (car args)))
+                                                  (x7859
+                                                   (begin
+                                                     (write '(funapp 1349 58))
+                                                     (display "\n")
+                                                     (cadr args)))
+                                                  (x7858
+                                                   (begin
+                                                     (write '(funapp 1350 58))
+                                                     (display "\n")
+                                                     (caddr args)))
+                                                  (x7857
+                                                   (begin
+                                                     (write '(funapp 1351 58))
+                                                     (display "\n")
+                                                     (cadddr args)))
+                                                  (x7855
+                                                   (letrec*
+                                                    ((x7856
+                                                      (begin
+                                                        (write
+                                                         '(funapp 1354 61))
+                                                        (display "\n")
+                                                        (cddddr args))))
+                                                    (begin
+                                                      (write '(funapp 1355 53))
+                                                      (display "\n")
+                                                      (car x7856))))
+                                                  (x7853
+                                                   (letrec*
+                                                    ((x7854
+                                                      (begin
+                                                        (write
+                                                         '(funapp 1358 61))
+                                                        (display "\n")
+                                                        (cddddr args))))
+                                                    (begin
+                                                      (write '(funapp 1359 53))
+                                                      (display "\n")
+                                                      (cadr x7854))))
+                                                  (x7851
+                                                   (letrec*
+                                                    ((x7852
+                                                      (begin
+                                                        (write
+                                                         '(funapp 1362 61))
+                                                        (display "\n")
+                                                        (cddddr args))))
+                                                    (begin
+                                                      (write '(funapp 1363 53))
+                                                      (display "\n")
+                                                      (caddr x7852)))))
+                                                 (begin
+                                                   (write '(funapp 1364 50))
+                                                   (display "\n")
+                                                   (proc
+                                                    x7860
+                                                    x7859
+                                                    x7858
+                                                    x7857
+                                                    x7855
+                                                    x7853
+                                                    x7851)))))
+                                              g7850)
+                                             (letrec*
+                                              ((g7861
+                                                (begin
+                                                  (write '(funapp 1375 49))
+                                                  (display "\n")
+                                                  (error
+                                                   "Unsupported call."))))
+                                              g7861)))))))))))))))))))
+                   g7798)))
+               (member
+                (lambda (e l)
                   (letrec*
                    ((g7862
                      (letrec*
                       ((x7864
                         (begin
-                          (write '(funapp 1385 45))
+                          (write '(funapp 1381 45))
                           (display "\n")
-                          (number? x))))
+                          (list? l))))
                       (begin
-                        (write '(funapp 1385 59))
+                        (write '(funapp 1381 57))
                         (display "\n")
                         (assert x7864))))
                     (g7863
-                     (begin (write '(funapp 1386 28)) (display "\n") (= x 0))))
-                   g7863)))
-               (string>=?
-                (lambda (s1 s2)
-                  (letrec*
-                   ((g7865
                      (letrec*
-                      ((val7257
+                      ((x-cnd7865
                         (begin
-                          (write '(funapp 1393 33))
+                          (write '(funapp 1384 35))
                           (display "\n")
-                          (string>? s1 s2))))
-                      (letrec*
-                       ((g7866
-                         (if val7257
-                           val7257
-                           (begin
-                             (write '(funapp 1395 52))
-                             (display "\n")
-                             (string=? s1 s2)))))
-                       g7866))))
-                   g7865)))
-               (cadr
-                (lambda (x)
-                  (letrec*
-                   ((g7867
-                     (letrec*
-                      ((x7868
-                        (begin
-                          (write '(funapp 1401 45))
-                          (display "\n")
-                          (cdr x))))
-                      (begin
-                        (write '(funapp 1401 55))
-                        (display "\n")
-                        (car x7868)))))
-                   g7867)))
-               (__toplevel_car car)
-               (list?
-                (lambda (l)
-                  (letrec*
-                   ((g7869
-                     (letrec*
-                      ((val7258
+                          (null? l))))
+                      (if x-cnd7865
+                        #f
                         (letrec*
-                         ((x-cnd7870
-                           (begin
-                             (write '(funapp 1411 38))
-                             (display "\n")
-                             (pair? l))))
-                         (if x-cnd7870
+                         ((x-cnd7866
                            (letrec*
-                            ((x7871
+                            ((x7867
                               (begin
-                                (write '(funapp 1413 45))
+                                (write '(funapp 1389 45))
+                                (display "\n")
+                                (car l))))
+                            (begin
+                              (write '(funapp 1389 55))
+                              (display "\n")
+                              (equal? x7867 e)))))
+                         (if x-cnd7866
+                           l
+                           (letrec*
+                            ((x7868
+                              (begin
+                                (write '(funapp 1392 45))
                                 (display "\n")
                                 (cdr l))))
                             (begin
-                              (write '(funapp 1413 55))
+                              (write '(funapp 1392 55))
                               (display "\n")
-                              (list? x7871)))
-                           #f))))
-                      (letrec*
-                       ((g7872
-                         (if val7258
-                           val7258
-                           (begin
-                             (write '(funapp 1416 52))
-                             (display "\n")
-                             (null? l)))))
-                       g7872))))
+                              (member e x7868)))))))))
+                   g7863)))
+               (cddddr
+                (lambda (x)
+                  (letrec*
+                   ((g7869
+                     (letrec*
+                      ((x7870
+                        (letrec*
+                         ((x7871
+                           (letrec*
+                            ((x7872
+                              (begin
+                                (write '(funapp 1401 51))
+                                (display "\n")
+                                (cdr x))))
+                            (begin
+                              (write '(funapp 1401 61))
+                              (display "\n")
+                              (cdr x7872)))))
+                         (begin
+                           (write '(funapp 1402 26))
+                           (display "\n")
+                           (cdr x7871)))))
+                      (begin
+                        (write '(funapp 1403 23))
+                        (display "\n")
+                        (cdr x7870)))))
                    g7869)))
-               (cddaar
+               (cadddr
                 (lambda (x)
                   (letrec*
                    ((g7873
@@ -3391,810 +3356,933 @@
                            (letrec*
                             ((x7876
                               (begin
-                                (write '(funapp 1426 51))
+                                (write '(funapp 1412 51))
                                 (display "\n")
-                                (car x))))
+                                (cdr x))))
                             (begin
-                              (write '(funapp 1426 61))
+                              (write '(funapp 1412 61))
                               (display "\n")
-                              (car x7876)))))
+                              (cdr x7876)))))
                          (begin
-                           (write '(funapp 1427 26))
+                           (write '(funapp 1413 26))
                            (display "\n")
                            (cdr x7875)))))
                       (begin
-                        (write '(funapp 1428 23))
+                        (write '(funapp 1414 23))
                         (display "\n")
-                        (cdr x7874)))))
+                        (car x7874)))))
                    g7873)))
+               (int-top
+                (lambda ()
+                  (letrec*
+                   ((g7877
+                     (begin
+                       (write '(funapp 1416 53))
+                       (display "\n")
+                       (random 42))))
+                   g7877)))
+               (zero?
+                (lambda (x)
+                  (letrec*
+                   ((g7878
+                     (letrec*
+                      ((x7880
+                        (begin
+                          (write '(funapp 1420 45))
+                          (display "\n")
+                          (number? x))))
+                      (begin
+                        (write '(funapp 1420 59))
+                        (display "\n")
+                        (assert x7880))))
+                    (g7879
+                     (begin (write '(funapp 1421 28)) (display "\n") (= x 0))))
+                   g7879)))
+               (string>=?
+                (lambda (s1 s2)
+                  (letrec*
+                   ((g7881
+                     (letrec*
+                      ((val7258
+                        (begin
+                          (write '(funapp 1428 33))
+                          (display "\n")
+                          (string>? s1 s2))))
+                      (letrec*
+                       ((g7882
+                         (if val7258
+                           val7258
+                           (begin
+                             (write '(funapp 1430 52))
+                             (display "\n")
+                             (string=? s1 s2)))))
+                       g7882))))
+                   g7881)))
+               (cadr
+                (lambda (x)
+                  (letrec*
+                   ((g7883
+                     (letrec*
+                      ((x7884
+                        (begin
+                          (write '(funapp 1436 45))
+                          (display "\n")
+                          (cdr x))))
+                      (begin
+                        (write '(funapp 1436 55))
+                        (display "\n")
+                        (car x7884)))))
+                   g7883)))
+               (__toplevel_car car)
+               (list?
+                (lambda (l)
+                  (letrec*
+                   ((g7885
+                     (letrec*
+                      ((val7259
+                        (letrec*
+                         ((x-cnd7886
+                           (begin
+                             (write '(funapp 1446 38))
+                             (display "\n")
+                             (pair? l))))
+                         (if x-cnd7886
+                           (letrec*
+                            ((x7887
+                              (begin
+                                (write '(funapp 1448 45))
+                                (display "\n")
+                                (cdr l))))
+                            (begin
+                              (write '(funapp 1448 55))
+                              (display "\n")
+                              (list? x7887)))
+                           #f))))
+                      (letrec*
+                       ((g7888
+                         (if val7259
+                           val7259
+                           (begin
+                             (write '(funapp 1451 52))
+                             (display "\n")
+                             (null? l)))))
+                       g7888))))
+                   g7885)))
+               (cddaar
+                (lambda (x)
+                  (letrec*
+                   ((g7889
+                     (letrec*
+                      ((x7890
+                        (letrec*
+                         ((x7891
+                           (letrec*
+                            ((x7892
+                              (begin
+                                (write '(funapp 1461 51))
+                                (display "\n")
+                                (car x))))
+                            (begin
+                              (write '(funapp 1461 61))
+                              (display "\n")
+                              (car x7892)))))
+                         (begin
+                           (write '(funapp 1462 26))
+                           (display "\n")
+                           (cdr x7891)))))
+                      (begin
+                        (write '(funapp 1463 23))
+                        (display "\n")
+                        (cdr x7890)))))
+                   g7889)))
                (char-numeric?
                 (lambda (c)
                   (letrec*
-                   ((g7877
+                   ((g7893
                      (letrec*
-                      ((x-cnd7878
+                      ((x-cnd7894
                         (letrec*
-                         ((x7879 #\0))
+                         ((x7895 #\0))
                          (begin
-                           (write '(funapp 1435 58))
+                           (write '(funapp 1470 58))
                            (display "\n")
-                           (char<=? x7879 c)))))
-                      (if x-cnd7878
+                           (char<=? x7895 c)))))
+                      (if x-cnd7894
                         (letrec*
-                         ((x7880 #\9))
+                         ((x7896 #\9))
                          (begin
-                           (write '(funapp 1437 48))
+                           (write '(funapp 1472 48))
                            (display "\n")
-                           (char<=? c x7880)))
+                           (char<=? c x7896)))
                         #f))))
-                   g7877)))
+                   g7893)))
                (__toplevel_cons cons)
                (assv
                 (lambda (k l)
                   (letrec*
-                   ((g7881
+                   ((g7897
                      (letrec*
-                      ((x7883
+                      ((x7899
                         (begin
-                          (write '(funapp 1444 45))
+                          (write '(funapp 1479 45))
                           (display "\n")
                           (list? l))))
                       (begin
-                        (write '(funapp 1444 57))
+                        (write '(funapp 1479 57))
                         (display "\n")
-                        (assert x7883))))
-                    (g7882
+                        (assert x7899))))
+                    (g7898
                      (letrec*
-                      ((x-cnd7884
+                      ((x-cnd7900
                         (begin
-                          (write '(funapp 1447 35))
+                          (write '(funapp 1482 35))
                           (display "\n")
                           (null? l))))
-                      (if x-cnd7884
+                      (if x-cnd7900
                         #f
                         (letrec*
-                         ((x-cnd7885
+                         ((x-cnd7901
                            (letrec*
-                            ((x7886
+                            ((x7902
                               (begin
-                                (write '(funapp 1452 45))
+                                (write '(funapp 1487 45))
                                 (display "\n")
                                 (caar l))))
                             (begin
-                              (write '(funapp 1452 56))
+                              (write '(funapp 1487 56))
                               (display "\n")
-                              (eqv? x7886 k)))))
-                         (if x-cnd7885
+                              (eqv? x7902 k)))))
+                         (if x-cnd7901
                            (begin
-                             (write '(funapp 1454 28))
+                             (write '(funapp 1489 28))
                              (display "\n")
                              (car l))
                            (letrec*
-                            ((x7887
+                            ((x7903
                               (begin
-                                (write '(funapp 1455 45))
+                                (write '(funapp 1490 45))
                                 (display "\n")
                                 (cdr l))))
                             (begin
-                              (write '(funapp 1455 55))
+                              (write '(funapp 1490 55))
                               (display "\n")
-                              (assq k x7887)))))))))
-                   g7882)))
-               (not (lambda (x) (letrec* ((g7888 (if x #f #t))) g7888)))
+                              (assq k x7903)))))))))
+                   g7898)))
+               (not (lambda (x) (letrec* ((g7904 (if x #f #t))) g7904)))
                (__toplevel_append
                 (lambda (l1 l2)
                   (letrec*
-                   ((g7889
+                   ((g7905
                      (begin
-                       (write '(funapp 1459 50))
+                       (write '(funapp 1494 50))
                        (display "\n")
                        (append l1 l2))))
-                   g7889)))
+                   g7905)))
                (memq
                 (lambda (e l)
                   (letrec*
-                   ((g7890
+                   ((g7906
                      (letrec*
-                      ((x7892
+                      ((x7908
                         (begin
-                          (write '(funapp 1463 45))
+                          (write '(funapp 1498 45))
                           (display "\n")
                           (list? l))))
                       (begin
-                        (write '(funapp 1463 57))
+                        (write '(funapp 1498 57))
                         (display "\n")
-                        (assert x7892))))
-                    (g7891
+                        (assert x7908))))
+                    (g7907
                      (letrec*
-                      ((x-cnd7893
+                      ((x-cnd7909
                         (begin
-                          (write '(funapp 1466 35))
+                          (write '(funapp 1501 35))
                           (display "\n")
                           (null? l))))
-                      (if x-cnd7893
+                      (if x-cnd7909
                         #f
                         (letrec*
-                         ((x-cnd7894
+                         ((x-cnd7910
                            (letrec*
-                            ((x7895
+                            ((x7911
                               (begin
-                                (write '(funapp 1471 45))
+                                (write '(funapp 1506 45))
                                 (display "\n")
                                 (car l))))
                             (begin
-                              (write '(funapp 1471 55))
+                              (write '(funapp 1506 55))
                               (display "\n")
-                              (eq? x7895 e)))))
-                         (if x-cnd7894
+                              (eq? x7911 e)))))
+                         (if x-cnd7910
                            l
                            (letrec*
-                            ((x7896
+                            ((x7912
                               (begin
-                                (write '(funapp 1474 45))
+                                (write '(funapp 1509 45))
                                 (display "\n")
                                 (cdr l))))
                             (begin
-                              (write '(funapp 1474 55))
+                              (write '(funapp 1509 55))
                               (display "\n")
-                              (memq e x7896)))))))))
-                   g7891)))
+                              (memq e x7912)))))))))
+                   g7907)))
                (cadaar
                 (lambda (x)
                   (letrec*
-                   ((g7897
+                   ((g7913
                      (letrec*
-                      ((x7898
+                      ((x7914
                         (letrec*
-                         ((x7899
+                         ((x7915
                            (letrec*
-                            ((x7900
+                            ((x7916
                               (begin
-                                (write '(funapp 1483 51))
+                                (write '(funapp 1518 51))
                                 (display "\n")
                                 (car x))))
                             (begin
-                              (write '(funapp 1483 61))
+                              (write '(funapp 1518 61))
                               (display "\n")
-                              (car x7900)))))
+                              (car x7916)))))
                          (begin
-                           (write '(funapp 1484 26))
+                           (write '(funapp 1519 26))
                            (display "\n")
-                           (cdr x7899)))))
+                           (cdr x7915)))))
                       (begin
-                        (write '(funapp 1485 23))
+                        (write '(funapp 1520 23))
                         (display "\n")
-                        (car x7898)))))
-                   g7897)))
+                        (car x7914)))))
+                   g7913)))
                (length
                 (lambda (l)
                   (letrec*
-                   ((g7901
+                   ((g7917
                      (letrec*
-                      ((x7903
+                      ((x7919
                         (begin
-                          (write '(funapp 1490 45))
+                          (write '(funapp 1525 45))
                           (display "\n")
                           (list? l))))
                       (begin
-                        (write '(funapp 1490 57))
+                        (write '(funapp 1525 57))
                         (display "\n")
-                        (assert x7903))))
-                    (g7902
+                        (assert x7919))))
+                    (g7918
                      (letrec*
                       ((rec
                         (lambda (l)
                           (letrec*
-                           ((g7904
+                           ((g7920
                              (letrec*
-                              ((x-cnd7905
+                              ((x-cnd7921
                                 (begin
-                                  (write '(funapp 1498 43))
+                                  (write '(funapp 1533 43))
                                   (display "\n")
                                   (null? l))))
-                              (if x-cnd7905
+                              (if x-cnd7921
                                 0
                                 (letrec*
-                                 ((x7906
+                                 ((x7922
                                    (letrec*
-                                    ((x7907
+                                    ((x7923
                                       (begin
-                                        (write '(funapp 1503 53))
+                                        (write '(funapp 1538 53))
                                         (display "\n")
                                         (cdr l))))
                                     (begin
-                                      (write '(funapp 1503 63))
+                                      (write '(funapp 1538 63))
                                       (display "\n")
-                                      (rec x7907)))))
+                                      (rec x7923)))))
                                  (begin
-                                   (write '(funapp 1504 34))
+                                   (write '(funapp 1539 34))
                                    (display "\n")
-                                   (+ 1 x7906)))))))
-                           g7904))))
+                                   (+ 1 x7922)))))))
+                           g7920))))
                       (letrec*
-                       ((g7908
+                       ((g7924
                          (begin
-                           (write '(funapp 1506 40))
+                           (write '(funapp 1541 40))
                            (display "\n")
                            (rec l))))
-                       g7908))))
-                   g7902)))
+                       g7924))))
+                   g7918)))
                (char-ci<=?
                 (lambda (c1 c2)
                   (letrec*
-                   ((g7909
-                     (letrec*
-                      ((x7912
-                        (begin
-                          (write '(funapp 1511 45))
-                          (display "\n")
-                          (char? c1))))
-                      (begin
-                        (write '(funapp 1511 58))
-                        (display "\n")
-                        (assert x7912))))
-                    (g7910
-                     (letrec*
-                      ((x7913
-                        (begin
-                          (write '(funapp 1512 45))
-                          (display "\n")
-                          (char? c2))))
-                      (begin
-                        (write '(funapp 1512 58))
-                        (display "\n")
-                        (assert x7913))))
-                    (g7911
-                     (letrec*
-                      ((val7259
-                        (begin
-                          (write '(funapp 1515 33))
-                          (display "\n")
-                          (char-ci<? c1 c2))))
-                      (letrec*
-                       ((g7914
-                         (if val7259
-                           val7259
-                           (begin
-                             (write '(funapp 1517 52))
-                             (display "\n")
-                             (char-ci=? c1 c2)))))
-                       g7914))))
-                   g7911)))
-               (string>?
-                (lambda (s1 s2)
-                  (letrec*
-                   ((g7915
-                     (letrec*
-                      ((x7916
-                        (begin
-                          (write '(funapp 1523 45))
-                          (display "\n")
-                          (string<=? s1 s2))))
-                      (begin
-                        (write '(funapp 1523 65))
-                        (display "\n")
-                        (not x7916)))))
-                   g7915)))
-               (cdadr
-                (lambda (x)
-                  (letrec*
-                   ((g7917
-                     (letrec*
-                      ((x7918
-                        (letrec*
-                         ((x7919
-                           (begin
-                             (write '(funapp 1530 48))
-                             (display "\n")
-                             (cdr x))))
-                         (begin
-                           (write '(funapp 1530 58))
-                           (display "\n")
-                           (car x7919)))))
-                      (begin
-                        (write '(funapp 1531 23))
-                        (display "\n")
-                        (cdr x7918)))))
-                   g7917)))
-               (assoc
-                (lambda (k l)
-                  (letrec*
-                   ((g7920
-                     (letrec*
-                      ((x7922
-                        (begin
-                          (write '(funapp 1536 45))
-                          (display "\n")
-                          (list? l))))
-                      (begin
-                        (write '(funapp 1536 57))
-                        (display "\n")
-                        (assert x7922))))
-                    (g7921
-                     (letrec*
-                      ((x-cnd7923
-                        (begin
-                          (write '(funapp 1539 35))
-                          (display "\n")
-                          (null? l))))
-                      (if x-cnd7923
-                        #f
-                        (letrec*
-                         ((x-cnd7924
-                           (letrec*
-                            ((x7925
-                              (begin
-                                (write '(funapp 1544 45))
-                                (display "\n")
-                                (caar l))))
-                            (begin
-                              (write '(funapp 1544 56))
-                              (display "\n")
-                              (equal? x7925 k)))))
-                         (if x-cnd7924
-                           (begin
-                             (write '(funapp 1546 28))
-                             (display "\n")
-                             (car l))
-                           (letrec*
-                            ((x7926
-                              (begin
-                                (write '(funapp 1547 45))
-                                (display "\n")
-                                (cdr l))))
-                            (begin
-                              (write '(funapp 1547 55))
-                              (display "\n")
-                              (assoc k x7926)))))))))
-                   g7921)))
-               (caar
-                (lambda (x)
-                  (letrec*
-                   ((g7927
+                   ((g7925
                      (letrec*
                       ((x7928
                         (begin
-                          (write '(funapp 1552 45))
-                          (display "\n")
-                          (car x))))
-                      (begin
-                        (write '(funapp 1552 55))
-                        (display "\n")
-                        (car x7928)))))
-                   g7927)))
-               (char>?
-                (lambda (c1 c2)
-                  (letrec*
-                   ((g7929
-                     (letrec*
-                      ((x7932
-                        (begin
-                          (write '(funapp 1557 45))
+                          (write '(funapp 1546 45))
                           (display "\n")
                           (char? c1))))
                       (begin
-                        (write '(funapp 1557 58))
+                        (write '(funapp 1546 58))
                         (display "\n")
-                        (assert x7932))))
-                    (g7930
+                        (assert x7928))))
+                    (g7926
                      (letrec*
-                      ((x7933
+                      ((x7929
                         (begin
-                          (write '(funapp 1558 45))
+                          (write '(funapp 1547 45))
                           (display "\n")
                           (char? c2))))
                       (begin
-                        (write '(funapp 1558 58))
+                        (write '(funapp 1547 58))
                         (display "\n")
-                        (assert x7933))))
-                    (g7931
-                     (letrec*
-                      ((x7934
-                        (begin
-                          (write '(funapp 1559 45))
-                          (display "\n")
-                          (char<=? c1 c2))))
-                      (begin
-                        (write '(funapp 1559 63))
-                        (display "\n")
-                        (not x7934)))))
-                   g7931)))
-               (string<=?
-                (lambda (s1 s2)
-                  (letrec*
-                   ((g7935
+                        (assert x7929))))
+                    (g7927
                      (letrec*
                       ((val7260
                         (begin
-                          (write '(funapp 1566 33))
+                          (write '(funapp 1550 33))
                           (display "\n")
-                          (string<? s1 s2))))
+                          (char-ci<? c1 c2))))
                       (letrec*
-                       ((g7936
+                       ((g7930
                          (if val7260
                            val7260
                            (begin
-                             (write '(funapp 1568 52))
+                             (write '(funapp 1552 52))
                              (display "\n")
-                             (string=? s1 s2)))))
-                       g7936))))
-                   g7935)))
-               (for-each
-                (lambda (f l)
+                             (char-ci=? c1 c2)))))
+                       g7930))))
+                   g7927)))
+               (string>?
+                (lambda (s1 s2)
                   (letrec*
-                   ((g7937
+                   ((g7931
                      (letrec*
-                      ((x7940
+                      ((x7932
                         (begin
-                          (write '(funapp 1574 45))
+                          (write '(funapp 1558 45))
                           (display "\n")
-                          (procedure? f))))
+                          (string<=? s1 s2))))
                       (begin
-                        (write '(funapp 1574 62))
+                        (write '(funapp 1558 65))
                         (display "\n")
-                        (assert x7940))))
-                    (g7938
+                        (not x7932)))))
+                   g7931)))
+               (cdadr
+                (lambda (x)
+                  (letrec*
+                   ((g7933
                      (letrec*
-                      ((x7941
+                      ((x7934
+                        (letrec*
+                         ((x7935
+                           (begin
+                             (write '(funapp 1565 48))
+                             (display "\n")
+                             (cdr x))))
+                         (begin
+                           (write '(funapp 1565 58))
+                           (display "\n")
+                           (car x7935)))))
+                      (begin
+                        (write '(funapp 1566 23))
+                        (display "\n")
+                        (cdr x7934)))))
+                   g7933)))
+               (assoc
+                (lambda (k l)
+                  (letrec*
+                   ((g7936
+                     (letrec*
+                      ((x7938
                         (begin
-                          (write '(funapp 1575 45))
+                          (write '(funapp 1571 45))
                           (display "\n")
                           (list? l))))
                       (begin
-                        (write '(funapp 1575 57))
+                        (write '(funapp 1571 57))
                         (display "\n")
-                        (assert x7941))))
-                    (g7939
+                        (assert x7938))))
+                    (g7937
                      (letrec*
-                      ((x-cnd7942
+                      ((x-cnd7939
                         (begin
-                          (write '(funapp 1578 35))
+                          (write '(funapp 1574 35))
                           (display "\n")
                           (null? l))))
-                      (if x-cnd7942
-                        #t
+                      (if x-cnd7939
+                        #f
                         (letrec*
-                         ((x-cnd7943
-                           (begin
-                             (write '(funapp 1582 38))
-                             (display "\n")
-                             (pair? l))))
-                         (if x-cnd7943
+                         ((x-cnd7940
                            (letrec*
-                            ((g7944
-                              (letrec*
-                               ((x7946
-                                 (begin
-                                   (write '(funapp 1585 54))
-                                   (display "\n")
-                                   (car l))))
-                               (begin
-                                 (write '(funapp 1585 64))
-                                 (display "\n")
-                                 (f x7946))))
-                             (g7945
-                              (letrec*
-                               ((x7947
-                                 (begin
-                                   (write '(funapp 1587 48))
-                                   (display "\n")
-                                   (cdr l))))
-                               (begin
-                                 (write '(funapp 1587 58))
-                                 (display "\n")
-                                 (for-each f x7947)))))
-                            g7945)
+                            ((x7941
+                              (begin
+                                (write '(funapp 1579 45))
+                                (display "\n")
+                                (caar l))))
+                            (begin
+                              (write '(funapp 1579 56))
+                              (display "\n")
+                              (equal? x7941 k)))))
+                         (if x-cnd7940
                            (begin
-                             (write '(funapp 1589 27))
+                             (write '(funapp 1581 28))
                              (display "\n")
-                             '())))))))
-                   g7939)))
-               (abs
+                             (car l))
+                           (letrec*
+                            ((x7942
+                              (begin
+                                (write '(funapp 1582 45))
+                                (display "\n")
+                                (cdr l))))
+                            (begin
+                              (write '(funapp 1582 55))
+                              (display "\n")
+                              (assoc k x7942)))))))))
+                   g7937)))
+               (caar
                 (lambda (x)
                   (letrec*
-                   ((g7948
+                   ((g7943
+                     (letrec*
+                      ((x7944
+                        (begin
+                          (write '(funapp 1587 45))
+                          (display "\n")
+                          (car x))))
+                      (begin
+                        (write '(funapp 1587 55))
+                        (display "\n")
+                        (car x7944)))))
+                   g7943)))
+               (char>?
+                (lambda (c1 c2)
+                  (letrec*
+                   ((g7945
+                     (letrec*
+                      ((x7948
+                        (begin
+                          (write '(funapp 1592 45))
+                          (display "\n")
+                          (char? c1))))
+                      (begin
+                        (write '(funapp 1592 58))
+                        (display "\n")
+                        (assert x7948))))
+                    (g7946
+                     (letrec*
+                      ((x7949
+                        (begin
+                          (write '(funapp 1593 45))
+                          (display "\n")
+                          (char? c2))))
+                      (begin
+                        (write '(funapp 1593 58))
+                        (display "\n")
+                        (assert x7949))))
+                    (g7947
                      (letrec*
                       ((x7950
                         (begin
                           (write '(funapp 1594 45))
                           (display "\n")
-                          (number? x))))
+                          (char<=? c1 c2))))
                       (begin
-                        (write '(funapp 1594 59))
+                        (write '(funapp 1594 63))
                         (display "\n")
-                        (assert x7950))))
-                    (g7949
-                     (letrec*
-                      ((x-cnd7951
-                        (begin
-                          (write '(funapp 1596 43))
-                          (display "\n")
-                          (< x 0))))
-                      (if x-cnd7951
-                        (begin
-                          (write '(funapp 1596 67))
-                          (display "\n")
-                          (- 0 x))
-                        x))))
-                   g7949)))
-               (char-ci>=?
-                (lambda (c1 c2)
+                        (not x7950)))))
+                   g7947)))
+               (string<=?
+                (lambda (s1 s2)
                   (letrec*
-                   ((g7952
+                   ((g7951
                      (letrec*
-                      ((x7955
+                      ((val7261
                         (begin
-                          (write '(funapp 1601 45))
+                          (write '(funapp 1601 33))
                           (display "\n")
-                          (char? c1))))
-                      (begin
-                        (write '(funapp 1601 58))
-                        (display "\n")
-                        (assert x7955))))
-                    (g7953
+                          (string<? s1 s2))))
+                      (letrec*
+                       ((g7952
+                         (if val7261
+                           val7261
+                           (begin
+                             (write '(funapp 1603 52))
+                             (display "\n")
+                             (string=? s1 s2)))))
+                       g7952))))
+                   g7951)))
+               (for-each
+                (lambda (f l)
+                  (letrec*
+                   ((g7953
                      (letrec*
                       ((x7956
                         (begin
-                          (write '(funapp 1602 45))
+                          (write '(funapp 1609 45))
                           (display "\n")
-                          (char? c2))))
+                          (procedure? f))))
                       (begin
-                        (write '(funapp 1602 58))
+                        (write '(funapp 1609 62))
                         (display "\n")
                         (assert x7956))))
                     (g7954
                      (letrec*
-                      ((val7261
+                      ((x7957
                         (begin
-                          (write '(funapp 1605 33))
+                          (write '(funapp 1610 45))
+                          (display "\n")
+                          (list? l))))
+                      (begin
+                        (write '(funapp 1610 57))
+                        (display "\n")
+                        (assert x7957))))
+                    (g7955
+                     (letrec*
+                      ((x-cnd7958
+                        (begin
+                          (write '(funapp 1613 35))
+                          (display "\n")
+                          (null? l))))
+                      (if x-cnd7958
+                        #t
+                        (letrec*
+                         ((x-cnd7959
+                           (begin
+                             (write '(funapp 1617 38))
+                             (display "\n")
+                             (pair? l))))
+                         (if x-cnd7959
+                           (letrec*
+                            ((g7960
+                              (letrec*
+                               ((x7962
+                                 (begin
+                                   (write '(funapp 1620 54))
+                                   (display "\n")
+                                   (car l))))
+                               (begin
+                                 (write '(funapp 1620 64))
+                                 (display "\n")
+                                 (f x7962))))
+                             (g7961
+                              (letrec*
+                               ((x7963
+                                 (begin
+                                   (write '(funapp 1622 48))
+                                   (display "\n")
+                                   (cdr l))))
+                               (begin
+                                 (write '(funapp 1622 58))
+                                 (display "\n")
+                                 (for-each f x7963)))))
+                            g7961)
+                           (begin
+                             (write '(funapp 1624 27))
+                             (display "\n")
+                             '())))))))
+                   g7955)))
+               (abs
+                (lambda (x)
+                  (letrec*
+                   ((g7964
+                     (letrec*
+                      ((x7966
+                        (begin
+                          (write '(funapp 1629 45))
+                          (display "\n")
+                          (number? x))))
+                      (begin
+                        (write '(funapp 1629 59))
+                        (display "\n")
+                        (assert x7966))))
+                    (g7965
+                     (letrec*
+                      ((x-cnd7967
+                        (begin
+                          (write '(funapp 1631 43))
+                          (display "\n")
+                          (< x 0))))
+                      (if x-cnd7967
+                        (begin
+                          (write '(funapp 1631 67))
+                          (display "\n")
+                          (- 0 x))
+                        x))))
+                   g7965)))
+               (char-ci>=?
+                (lambda (c1 c2)
+                  (letrec*
+                   ((g7968
+                     (letrec*
+                      ((x7971
+                        (begin
+                          (write '(funapp 1636 45))
+                          (display "\n")
+                          (char? c1))))
+                      (begin
+                        (write '(funapp 1636 58))
+                        (display "\n")
+                        (assert x7971))))
+                    (g7969
+                     (letrec*
+                      ((x7972
+                        (begin
+                          (write '(funapp 1637 45))
+                          (display "\n")
+                          (char? c2))))
+                      (begin
+                        (write '(funapp 1637 58))
+                        (display "\n")
+                        (assert x7972))))
+                    (g7970
+                     (letrec*
+                      ((val7262
+                        (begin
+                          (write '(funapp 1640 33))
                           (display "\n")
                           (char-ci>? c1 c2))))
                       (letrec*
-                       ((g7957
-                         (if val7261
-                           val7261
+                       ((g7973
+                         (if val7262
+                           val7262
                            (begin
-                             (write '(funapp 1607 52))
+                             (write '(funapp 1642 52))
                              (display "\n")
                              (char-ci=? c1 c2)))))
-                       g7957))))
-                   g7954)))
+                       g7973))))
+                   g7970)))
                (caddar
                 (lambda (x)
                   (letrec*
-                   ((g7958
+                   ((g7974
                      (letrec*
-                      ((x7959
+                      ((x7975
                         (letrec*
-                         ((x7960
+                         ((x7976
                            (letrec*
-                            ((x7961
+                            ((x7977
                               (begin
-                                (write '(funapp 1617 51))
+                                (write '(funapp 1652 51))
                                 (display "\n")
                                 (car x))))
                             (begin
-                              (write '(funapp 1617 61))
+                              (write '(funapp 1652 61))
                               (display "\n")
-                              (cdr x7961)))))
+                              (cdr x7977)))))
                          (begin
-                           (write '(funapp 1618 26))
+                           (write '(funapp 1653 26))
                            (display "\n")
-                           (cdr x7960)))))
+                           (cdr x7976)))))
                       (begin
-                        (write '(funapp 1619 23))
+                        (write '(funapp 1654 23))
                         (display "\n")
-                        (car x7959)))))
-                   g7958)))
-               (newline (lambda () (letrec* ((g7962 #f)) g7962)))
+                        (car x7975)))))
+                   g7974)))
+               (newline (lambda () (letrec* ((g7978 #f)) g7978)))
                (lcm
                 (lambda (m n)
                   (letrec*
-                   ((g7963
+                   ((g7979
                      (letrec*
-                      ((x7965
+                      ((x7981
                         (letrec*
-                         ((x7966
+                         ((x7982
                            (begin
-                             (write '(funapp 1627 48))
+                             (write '(funapp 1662 48))
                              (display "\n")
                              (* m n))))
                          (begin
-                           (write '(funapp 1627 58))
+                           (write '(funapp 1662 58))
                            (display "\n")
-                           (abs x7966))))
-                       (x7964
+                           (abs x7982))))
+                       (x7980
                         (begin
-                          (write '(funapp 1628 31))
+                          (write '(funapp 1663 31))
                           (display "\n")
                           (gcd m n))))
                       (begin
-                        (write '(funapp 1629 23))
+                        (write '(funapp 1664 23))
                         (display "\n")
-                        (/ x7965 x7964)))))
-                   g7963)))
+                        (/ x7981 x7980)))))
+                   g7979)))
                (deref car)
                (list-ref
                 (lambda (l index)
                   (letrec*
-                   ((g7967
+                   ((g7983
                      (letrec*
-                      ((x7971
+                      ((x7987
                         (begin
-                          (write '(funapp 1635 45))
+                          (write '(funapp 1670 45))
                           (display "\n")
                           (list? l))))
                       (begin
-                        (write '(funapp 1635 57))
+                        (write '(funapp 1670 57))
                         (display "\n")
-                        (assert x7971))))
-                    (g7968
+                        (assert x7987))))
+                    (g7984
                      (letrec*
-                      ((x7972
+                      ((x7988
                         (begin
-                          (write '(funapp 1636 45))
+                          (write '(funapp 1671 45))
                           (display "\n")
                           (number? index))))
                       (begin
-                        (write '(funapp 1636 63))
+                        (write '(funapp 1671 63))
                         (display "\n")
-                        (assert x7972))))
-                    (g7969
+                        (assert x7988))))
+                    (g7985
                      (letrec*
-                      ((x7973
+                      ((x7989
                         (letrec*
-                         ((x7974
+                         ((x7990
                            (begin
-                             (write '(funapp 1639 48))
+                             (write '(funapp 1674 48))
                              (display "\n")
                              (length l))))
                          (begin
-                           (write '(funapp 1639 61))
+                           (write '(funapp 1674 61))
                            (display "\n")
-                           (< index x7974)))))
+                           (< index x7990)))))
                       (begin
-                        (write '(funapp 1640 23))
+                        (write '(funapp 1675 23))
                         (display "\n")
-                        (assert x7973))))
-                    (g7970
+                        (assert x7989))))
+                    (g7986
                      (letrec*
-                      ((x-cnd7975
+                      ((x-cnd7991
                         (begin
-                          (write '(funapp 1643 35))
+                          (write '(funapp 1678 35))
                           (display "\n")
                           (= index 0))))
-                      (if x-cnd7975
+                      (if x-cnd7991
                         (begin
-                          (write '(funapp 1645 25))
+                          (write '(funapp 1680 25))
                           (display "\n")
                           (car l))
                         (letrec*
-                         ((x7977
+                         ((x7993
                            (begin
-                             (write '(funapp 1647 34))
+                             (write '(funapp 1682 34))
                              (display "\n")
                              (cdr l)))
-                          (x7976
+                          (x7992
                            (begin
-                             (write '(funapp 1647 50))
+                             (write '(funapp 1682 50))
                              (display "\n")
                              (- index 1))))
                          (begin
-                           (write '(funapp 1648 26))
+                           (write '(funapp 1683 26))
                            (display "\n")
-                           (list-ref x7977 x7976)))))))
-                   g7970)))
+                           (list-ref x7993 x7992)))))))
+                   g7986)))
                (gcd
                 (lambda (a b)
                   (letrec*
-                   ((g7978
+                   ((g7994
                      (letrec*
-                      ((x-cnd7979
+                      ((x-cnd7995
                         (begin
-                          (write '(funapp 1655 35))
+                          (write '(funapp 1690 35))
                           (display "\n")
                           (= b 0))))
-                      (if x-cnd7979
+                      (if x-cnd7995
                         a
                         (letrec*
-                         ((x7980
+                         ((x7996
                            (begin
-                             (write '(funapp 1658 42))
+                             (write '(funapp 1693 42))
                              (display "\n")
                              (modulo a b))))
                          (begin
-                           (write '(funapp 1658 57))
+                           (write '(funapp 1693 57))
                            (display "\n")
-                           (gcd b x7980)))))))
-                   g7978))))
+                           (gcd b x7996)))))))
+                   g7994))))
               (letrec*
-               ((g7981
+               ((g7997
                  (begin
-                   (write '(funapp 1662 18))
+                   (write '(funapp 1697 18))
                    (display "\n")
                    ((lambda (f1)
                       (letrec*
-                       ((g7991
+                       ((g8007
                          (letrec*
                           ((a
                             (begin
-                              (write '(funapp 1666 29))
+                              (write '(funapp 1701 29))
                               (display "\n")
                               (f1 #t))))
                           (letrec*
-                           ((g7992
+                           ((g8008
                              (begin
-                               (write '(funapp 1667 42))
+                               (write '(funapp 1702 42))
                                (display "\n")
                                (f1 #f))))
-                           g7992))))
-                       g7991))
+                           g8008))))
+                       g8007))
                     (lambda (x1)
                       (letrec*
-                       ((g7982
+                       ((g7998
                          (begin
-                           (write '(funapp 1672 24))
+                           (write '(funapp 1707 24))
                            (display "\n")
                            ((lambda (f2)
                               (letrec*
-                               ((g7989
+                               ((g8005
                                  (letrec*
                                   ((b
                                     (begin
-                                      (write '(funapp 1676 35))
+                                      (write '(funapp 1711 35))
                                       (display "\n")
                                       (f2 #t))))
                                   (letrec*
-                                   ((g7990
+                                   ((g8006
                                      (begin
-                                       (write '(funapp 1677 48))
+                                       (write '(funapp 1712 48))
                                        (display "\n")
                                        (f2 #f))))
-                                   g7990))))
-                               g7989))
+                                   g8006))))
+                               g8005))
                             (lambda (x2)
                               (letrec*
-                               ((g7983
+                               ((g7999
                                  (begin
-                                   (write '(funapp 1682 30))
+                                   (write '(funapp 1717 30))
                                    (display "\n")
                                    ((lambda (f3)
                                       (letrec*
-                                       ((g7987
+                                       ((g8003
                                          (letrec*
                                           ((c
                                             (begin
-                                              (write '(funapp 1686 41))
+                                              (write '(funapp 1721 41))
                                               (display "\n")
                                               (f3 #t))))
                                           (letrec*
-                                           ((g7988
+                                           ((g8004
                                              (begin
-                                               (write '(funapp 1687 54))
+                                               (write '(funapp 1722 54))
                                                (display "\n")
                                                (f3 #f))))
-                                           g7988))))
-                                       g7987))
+                                           g8004))))
+                                       g8003))
                                     (lambda (x3)
                                       (letrec*
-                                       ((g7984
+                                       ((g8000
                                          (begin
-                                           (write '(funapp 1692 36))
+                                           (write '(funapp 1727 36))
                                            (display "\n")
                                            ((lambda (z)
                                               (letrec*
-                                               ((g7986
+                                               ((g8002
                                                  (begin
-                                                   (write '(funapp 1693 56))
+                                                   (write '(funapp 1728 56))
                                                    (display "\n")
                                                    (z x1 x2 x3))))
-                                               g7986))
+                                               g8002))
                                             (lambda (y1 y2 y3)
-                                              (letrec* ((g7985 y1)) g7985))))))
-                                       g7984))))))
-                               g7983))))))
-                       g7982))))))
-               g7981))))
-           g7426))))
-       g7409)))
-    g7408)))
+                                              (letrec* ((g8001 y1)) g8001))))))
+                                       g8000))))))
+                               g7999))))))
+                       g7998))))))
+               g7997))))
+           g7430))))
+       g7413)))
+    g7412)))

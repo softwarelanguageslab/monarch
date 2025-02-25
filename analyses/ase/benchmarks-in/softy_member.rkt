@@ -1,8 +1,8 @@
 #lang racket
 
-(define (member x l)
+(define (member_ x l)
   (if (empty? l) empty
-      (if (equal? x (car l)) l (member x (cdr l)))))
+      (if (equal? x (car l)) l (member_ x (cdr l)))))
 
 (provide (contract-out
- [member (-> (any/c (listof any/c)  (listof any/c)))]))
+ [member_ (-> (any/c (listof any/c)  (listof any/c)))]))

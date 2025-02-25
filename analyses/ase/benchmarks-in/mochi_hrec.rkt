@@ -7,5 +7,5 @@
   (f add1 n))
 
 (provide (contract-out
-  [f (-> (-> integer? integer?) integer? integer?)]
-  [main (-> integer? (and/c integer? (>=/c 0)))]))
+  [f (-> (-> integer?/c integer?/c) integer?/c integer?/c)]
+  [main (-> integer?/c (and/c integer?/c (>=/c 0)))]))
