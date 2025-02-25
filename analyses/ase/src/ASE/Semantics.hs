@@ -16,7 +16,7 @@ import Analysis.Monad (StoreM(hasAdr, lookupAdr, writeAdr), StoreM' (putStore), 
 import Analysis.SimpleActor.Semantics (injectLit)
 import Analysis.Monad.Allocation (AllocM(alloc))
 import qualified Analysis.Scheme.Primitives as Primitives
-import Control.Monad (ap)
+import Control.Monad (ap, when)
 import Control.Monad.Join
 import qualified Domain.Scheme.Class as Scheme
 import Domain.Scheme.Class (SchemeDomain(injectClo, withProc))
@@ -120,7 +120,14 @@ applyPrim vs e nam = maybe mzero (fmap Ap) $ Primitives.run <$> Map.lookup nam P
 
 -- | Apply a user-defined closure
 applyClo :: MachineM m => [V] -> Exp -> (Exp, Env K) -> m (Ctrl V K)
-applyClo ags e (Lam xs bdy _, ρ) = do
+applyClo ags e (lam@(Lam xs bdy _), ρ) = do
+   -- Check if arity matches
+   when (length xs /= length ags) $
+      error $ "Closure at " ++ show (spanOf lam)
+            ++ " called at " ++ show (spanOf e)
+            ++ " called with " ++ show (length ags)
+            ++ " but expected " ++ show (length xs)
+
    ctx' <- getCtx >>= pushCtx (spanOf e)
    withCtx (const ctx') $ do
       ads <- mapM (alloc . spanOf) xs

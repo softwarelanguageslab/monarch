@@ -207,7 +207,7 @@ instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAd
    isInteger = SymbolicVal . simplify . Predicate "integer?/v" . List.singleton . proposition 
    isReal    = SymbolicVal . simplify . Predicate "real?/v" . List.singleton . proposition 
    isChar    = SymbolicVal . simplify . Predicate "character?/v" . List.singleton . proposition 
-   isVecPtr  = SymbolicVal . simplify . Predicate "vector?/v" . List.singleton . proposition 
+   isVecPtr  = const bottom -- SymbolicVal . simplify . Predicate "vector?/v" . List.singleton . proposition 
    isStrPtr  = SymbolicVal . simplify . Predicate "string?/v" . List.singleton . proposition 
    isSymbol  = SymbolicVal . simplify . Predicate "symbol?/v" . List.singleton . proposition 
    isPaiPtr  = SymbolicVal . simplify . Predicate "pair?/v" . List.singleton . proposition 

@@ -4,6 +4,7 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+{-# LANGUAGE LambdaCase #-}
 module Analysis.Scheme.Primitives(Prim(..), allPrimitives, primitive, primitivesByName, initialEnv, initialSto) where
 
 
@@ -32,7 +33,8 @@ fix0 nam f = Prim nam (\_ [] -> f)
 
 -- | Unary primitives 
 efix1 :: String -> (forall m e . PrimM e m v => e -> v -> m v) -> Prim v
-efix1 nam f = Prim nam (\ex [x1] -> f ex x1)
+efix1 nam f = Prim nam (\ex -> \case [x1] -> f ex x1
+                                     xs -> error$  "invalid number of arguments for " ++ show nam ++ " expected 1, got " ++ show (Prelude.length xs) )
 -- | Binary primitives
 efix2 :: String -> (forall m e . PrimM e m v => e -> v -> v -> m v) -> Prim v
 efix2 nam f = Prim nam (\ex [x1, x2] -> f ex x1 x2)

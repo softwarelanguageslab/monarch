@@ -178,9 +178,9 @@ translate count formula = (t, allVariables', mappedVariables')
 parseLiteral :: MonadError String m => SExp.SExp -> m Literal
 parseLiteral (SExp.Atom "VInteger" _ ::: SExp.Num n _ ::: SExp.SNil _) =
    return $ Num n
-parseLiteral (SExp.Atom "VInteger" _ ::: (SExp.Atom "-" _ ::: SExp.Num n _ ::: SExp.SNil _) ::: SExp.SNil _) = 
+parseLiteral (SExp.Atom "VInteger" _ ::: (SExp.Atom "-" _ ::: SExp.Num n _ ::: SExp.SNil _) ::: SExp.SNil _) =
    return $ Num $ -n
-parseLiteral (SExp.Atom "VReal" _ ::: (SExp.Atom "-" _ ::: SExp.Rea n _ ::: SExp.SNil _) ::: SExp.SNil _) = 
+parseLiteral (SExp.Atom "VReal" _ ::: (SExp.Atom "-" _ ::: SExp.Rea n _ ::: SExp.SNil _) ::: SExp.SNil _) =
    return $ Rea (-n)
 parseLiteral (SExp.Atom "VReal" _ ::: SExp.Rea n _ ::: SExp.SNil _) =
    return $ Rea n
@@ -189,16 +189,19 @@ parseLiteral (SExp.Atom "VBool" _ ::: SExp.Atom truthValue _ ::: SExp.SNil _)
    | otherwise = throwError $ "invalid boolean literal " ++ truthValue
 parseLiteral (SExp.Atom "VSymbol" _ ::: SExp.Atom n _ ::: SExp.SNil _) =
    return $ Sym n
-parseLiteral (SExp.Atom "VNil" _) = 
+parseLiteral (SExp.Atom "VNil" _) =
    return $ Nil
-parseLiteral (SExp.Atom "VPair" _) = 
+parseLiteral (SExp.Atom "VPair" _) =
    return $ Pair
 parseLiteral l = throwError $ "unsupported literal = "  ++ show l ++ ";"
 
 -- | Parse the S-expression to a model
 parseAssignment :: MonadError String m => Map String i -> SExp.SExp -> m (Maybe (i, Set Literal))
 parseAssignment assgn (SExp.Atom "define-fun" _ ::: SExp.Atom x _ ::: _ ::: SExp.Atom _sort _ ::: literal ::: SExp.SNil _) =
-   liftA2 (,) (Map.lookup x assgn) . Just . Set.singleton <$> parseLiteral literal
+         (liftA2 (,) (Map.lookup x assgn) . Just . Set.singleton <$> parseLiteral literal) `catchError` handleErr
+      -- Z3 will sometimes include some part of its intermiediate state as part of the model,
+      -- this state usually does not correspond to a symbolic variable of interest, hence it can be safely ignored
+      where handleErr _ = return Nothing
 parseAssignment _ _ = throwError "not a valid assignment"
 
 -- | Parse a list of assignments into a model
