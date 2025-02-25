@@ -24,6 +24,7 @@ class Worker():
     def __init__(self):
         self.__available = True
         self.__process = None
+        self.__task_name = "no-program"
 
     def start(self, name):
          benchmark_output_name = time.strftime("%Y-%m-%d")
@@ -40,6 +41,7 @@ class Worker():
         """
         self.__process.stdin.write(configuration+";"+program_name+"\n")
         self.__process.stdin.flush()
+        self.__task_name = program_name + "/" + configuration
 
     def is_available(self):
         """
@@ -53,7 +55,7 @@ class Worker():
         """
         while True:
             line = self.__process.stdout.readline()
-            print(line, flush = True, end='')
+            print(f"[{self.__task_name}] {line}", flush = True, end='')
             if line.startswith("[D]"):
                 break
             
