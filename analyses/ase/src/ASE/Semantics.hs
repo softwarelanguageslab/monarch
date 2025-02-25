@@ -158,8 +158,8 @@ atomicEval lam@(Lam {})    = getEnv <&> injectClo . (lam,)
 atomicEval (Loc e s)       = return $ Scheme.symbol (show e ++ "@" ++ show s)
 atomicEval (Trace e s)     = traceInfo =<< atomicEval e
    where traceInfo v = do
-               liftIO $ putStr $ "TRACE[" ++ show s ++ "]"
-               pc <- getPc
+               liftIO $ putStr $ "TRACE[" ++ show s ++ "]" ++ show v
+               pc <- snapshotPC
                return v
 atomicEval exp             = error $ "expression " ++ show exp ++ " is not an atomic expression"
 
@@ -220,7 +220,7 @@ stepApply = popExec @(KAdr K) . applyContinuation
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
 restart = popExec @(FAdr K) selectContinuation
-   where selectContinuation (Branch pc) = liftIO (print pc) >> (maybe mzero (restartUsingModel pc) =<< computeModel pc)
+   where selectContinuation (Branch pc) = (maybe mzero (restartUsingModel pc) =<< computeModel pc)
          restartUsingModel pc model = do
             -- Compute the new context for the symbolic variables
             let modelCtx' = removeContextPC pc
@@ -281,19 +281,21 @@ step = stepAtomic
 -- with the evaluated value instead.
 ev :: MachineM m => Exp -> Env K -> KAdr K -> KFrame K -> m (Ctrl V K)
 ev e ρ α κ
-       = withEnv (const ρ) $ stepEvalInline =<< stepEval e
-      -- | otherwise = case e of
-      --                   -- The reason that we select based on the type of expression 
-      --                   -- is to ensure that no redundant work is performed. For instance, 
-      --                   -- an @if@ expression will never result in a value in a single 
-      --                   -- step, as such we don't pass such expressions to "stepEval".
-      --                   -- 
-      --                   -- However, conceptually this is equivalent to:
-      --                   -- withEnv (const ρ) (stepEval e) >>= (\case (Ap v) -> applyContinuation v κ
-      --                   --                                           _ -> pushK α κ >> return (Ev e ρ))
-      --                   Input _   -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
-      --                   App {}    -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
-      --                   _ -> push α κ >> return (Ev e ρ)
+   | isAtomic e = withEnv (const  ρ) $ (`applyContinuation` κ) =<< atomicEval e
+      -- = withEnv (const ρ) $ stepEvalInline =<< stepEval e
+   | otherwise = case e of
+                     -- The reason that we select based on the type of expression 
+                     -- is to ensure that no redundant work is performed. For instance, 
+                     -- an @if@ expression will never result in a value in a single 
+                     -- step, as such we don't pass such expressions to "stepEval".
+                     -- 
+                     -- However, conceptually this is equivalent to:
+                     -- withEnv (const ρ) (stepEval e) >>= (\case (Ap v) -> applyContinuation v κ
+                     --                                           _ -> pushK α κ >> return (Ev e ρ))
+                     -- _  -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+                     Input _   -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+                     App {}    -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+                     _ -> push α κ >> return (Ev e ρ)
    where stepEvalInline (Ap v) = applyContinuation v κ
          stepEvalInline (Ev expr env) = ev expr env α κ
          stepEvalInline ctrl = push α κ >> return ctrl
