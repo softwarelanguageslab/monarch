@@ -6,6 +6,8 @@ from threading import Thread
 from queue import Queue
 from itertools import product
 import time
+import os
+import math
 
 # Whether to run Tuna for core affinity
 TUNA_SHEDULER = False
@@ -16,6 +18,18 @@ exit_code = subprocess.run(["cabal", "run", "."])
 if exit_code == 0:
     print("Initial run of cabal produced unexpected output. ")
     sys.exit(1)
+
+
+# Compute the number of bytes available in the memory
+# so that each worker gets its own share of this memory
+mem_bytes = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') 
+mem_gib = mem_bytes/(1024.**3)
+
+NUM_WORKERS = cpu_count() - 1
+MAX_MEMORY_GB = math.floor(mem_gib / NUM_WORKERS)
+
+print(f"Number of workers {NUM_WORKERS}")
+print(f"Maximum memory for each worker {MAX_MEMORY_GB}")
  
 def retrieve_configurations(): 
     """
@@ -38,7 +52,7 @@ class Worker():
          if TUNA_SHEDULER:
              self.__process = subprocess.Popen(["tuna", "run", "-c", str(name),  " ".join(["cabal", "run", ".", "--", "benchmark","-i", "1", "-o", f"output/output-{benchmark_output_name}-worker-{name}.csv"])], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, encoding = "utf8")
          else:
-             self.__process = subprocess.Popen(["cabal", "run", ".", "--", "benchmark","-i", "1", "-o", f"output/output-{benchmark_output_name}-worker-{name}.csv"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, encoding = "utf8")
+             self.__process = subprocess.Popen(["cabal", "run", ".", "--", "+RTS", f"-M{MAX_MEMORY_GB}G", "-RTS", "benchmark","-i", "1", "-o", f"output/output-{benchmark_output_name}-worker-{name}.csv"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding = "utf8")
              
 
     def submit_task(self, program_name, configuration):
@@ -62,7 +76,8 @@ class Worker():
         """
         while True:
             line = self.__process.stdout.readline()
-            print(f"[{self.__task_name}] {line}", flush = True, end='')
+            if len(line) > 0: 
+                print(f"[{self.__task_name}] {line}", flush = True, end='')
             if line.startswith("[D]"):
                 break
             
@@ -106,7 +121,6 @@ class WorkerPool():
         for worker in self.__workers: 
             worker.wait()
 
-NUM_WORKERS = cpu_count() - 1
 PROGRAMS = [ l.strip() for l in open("benchmarks.txt").readlines() ]
 
 print("[*] Booting ... ")

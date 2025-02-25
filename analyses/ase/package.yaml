@@ -43,6 +43,6 @@ executable:
     - optparse-applicative
     - ase
     - time
-  #ghc-options:
-    #- -rtsopts
+  ghc-options:
+    - -rtsopts
     #- '"-with-rtsopts=-sstderr"'

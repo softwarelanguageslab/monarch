@@ -72,6 +72,7 @@ executable ase
       ConstraintKinds
       TupleSections
       GADTs
+  ghc-options: -rtsopts
   build-depends:
       ansi-terminal
     , ase
