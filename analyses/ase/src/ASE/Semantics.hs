@@ -134,6 +134,8 @@ applyClo ags e (lam@(Lam xs bdy _), ρ) = do
       let prs = map name xs
       let ρ' = extends (zip prs ads) (Map.restrictKeys ρ (fv bdy))
       mapM_ (uncurry writeAdr) (zip ads ags)
+      adr <- alloc (spanOf e)
+      push @(KAdr K) adr ReturnK
       return (NonAtomic bdy ρ')
 
 
@@ -210,6 +212,7 @@ stepEval e = error $ "Expression " ++ show e ++ " is not supported by this inter
 applyContinuation :: MachineM m => V -> KFrame K -> m (Ctrl V K)
 applyContinuation v =
    \case (LetK (adr:ads) exs bdy ρ) -> writeAdr adr v >> withEnv (const ρ) (evalLetrec ads exs bdy)
+         ReturnK                    -> return (Return v)
 
 -- | Apply the current continuation
 stepApply :: MachineM m => V -> m (Ctrl V K)
@@ -255,14 +258,16 @@ step' (Ap v) = liftA2 (,) (stackEmpty @(KAdr K)) (stackEmpty @(FAdr K))
         )
 step' (Ev e ρ)        = withEnv (const ρ) (stepEval e)
 step' (NonAtomic e ρ) = withEnv (const ρ) (stepEval e)
+step' (Return v)      = step' (Ap v)
 step' (Blm _ _)       = mzero
 step' (Res _)         = mzero
 
 -- | Step until a call state has been discovered
 stepAtomic :: MachineM m => Ctrl V K -> m (Ctrl V K)
-stepAtomic ctrl = linkInStore @(KAdr K) (step' ctrl >>= loop)
+stepAtomic ctrl = (step' ctrl >>= loop)
    where loop :: MachineM m => Ctrl V K -> m (Ctrl V K)
          loop ato@(NonAtomic {}) = return ato
+         loop ret@(Return v)     = return (Ap v)
          loop blm@(Blm _ _)      = return blm
          loop res@(Res _)        = return res
          loop ctrl               = loop =<< step' ctrl
@@ -277,4 +282,28 @@ step = stepAtomic
 
 ev :: MachineM m => Exp -> Env K -> KAdr K -> KFrame K -> m (Ctrl V K)
 ev expr env adr kont = push adr kont >> return (Ev expr env)
-    
+
+-- | Same as producing an @Ev@ state but checks whether the expression 
+-- can be evaluated in a single step, and if so prevents a continuation 
+-- from being pushed on the continuation stack and applies the continuation
+-- with the evaluated value instead.
+-- ev :: MachineM m => Exp -> Env K -> KAdr K -> KFrame K -> m (Ctrl V K)
+-- ev e ρ α κ
+--    | isAtomic e = withEnv (const  ρ) $ (`applyContinuation` κ) =<< atomicEval e
+--       -- = withEnv (const ρ) $ stepEvalInline =<< stepEval e
+--    | otherwise = case e of
+--                      -- The reason that we select based on the type of expression 
+--                      -- is to ensure that no redundant work is performed. For instance, 
+--                      -- an @if@ expression will never result in a value in a single 
+--                      -- step, as such we don't pass such expressions to "stepEval".
+--                      -- 
+--                      -- However, conceptually this is equivalent to:
+--                      -- withEnv (const ρ) (stepEval e) >>= (\case (Ap v) -> applyContinuation v κ
+--                      --                                           _ -> pushK α κ >> return (Ev e ρ))
+--                      -- _  -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+--                      Input _   -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+--                      App {}    -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
+--                      _ -> push α κ >> return (Ev e ρ)
+--    where stepEvalInline (Ap v) = applyContinuation v κ
+--          stepEvalInline (Ev expr env) = ev expr env α κ
+--          stepEvalInline ctrl = push α κ >> return ctrl

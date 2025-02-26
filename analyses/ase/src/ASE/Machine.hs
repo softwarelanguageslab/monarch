@@ -67,6 +67,7 @@ ifM mb mcsq malt = mb >>= (\v -> if v then mcsq else malt)
 -- | The control component for the abstract machine
 data Ctrl v k = Ev !Exp !(Env k)        -- ^ expression evaluation
               | NonAtomic !Exp !(Env k) -- ^ same as @Ev@ but signals that the action is non-atomic
+              | Return !v               -- ^ return the value from a function
               | Ap !v                   -- ^ apply continuation
               | Blm !v !Span            -- ^ generate blame
               | Res !v                  -- ^ final result state
@@ -136,6 +137,7 @@ data KFrame k = LetK ![VAdr k]     -- ^ the list of remaining addresses to store
                      ![Exp]        -- ^ list of remaining bindings 
                      !Exp          -- ^ body
                      !(Env k)      -- ^ the environment in which the let expression has to be evaluated
+               | ReturnK           -- ^ marker to return from expression
               deriving (Eq, Ord, Show, Generic)
 instance NFData k => NFData (KFrame k)
 instance Joinable (KFrame k) where
