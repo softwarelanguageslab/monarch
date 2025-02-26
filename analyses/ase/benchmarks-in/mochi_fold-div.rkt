@@ -1,6 +1,5 @@
 #lang racket
 
-
 (define (foldl f z l)
   (if (empty? l) z (foldl f (f z (car l)) (cdr l))))
 

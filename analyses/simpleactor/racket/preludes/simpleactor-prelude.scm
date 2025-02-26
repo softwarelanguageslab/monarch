@@ -87,6 +87,7 @@
    (define > (mon server client (-> number?/c number?/c boolean?/c) (lambda (a b) (orig-> a b))))
    (define <= (mon server client (-> number?/c number?/c boolean?/c) (lambda (a b) (orig-<= a b))))
    (define >= (mon server client (-> number?/c number?/c boolean?/c) (lambda (a b) (orig->= a b))))
+   (define (add1 x) (+ x 1))
 
    (define / (mon server client (-> number?/c number?/c number?/c) (lambda (a b) (orig-/ a b))))
 
