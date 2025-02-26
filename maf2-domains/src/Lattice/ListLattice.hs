@@ -19,7 +19,7 @@ reduce (v:vs)
           updated    = joins (v:olp)
 
 -- | A List lattice instance, where the elements may be overlapping
-instance (Joinable l, Meetable l, BottomLattice l,  Eq l) => Joinable [l] where
+instance {-# OVERLAPPABLE #-} (Joinable l, Meetable l, BottomLattice l,  Eq l) => Joinable [l] where
    join l1 l2 = reduce (l1 ++ l2)  
    
 instance BottomLattice [l] where 

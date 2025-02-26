@@ -260,7 +260,7 @@ step' (Res _)         = mzero
 
 -- | Step until a call state has been discovered
 stepAtomic :: MachineM m => Ctrl V K -> m (Ctrl V K)
-stepAtomic = step' >=> loop
+stepAtomic ctrl = linkInStore @(KAdr K) (step' ctrl >>= loop)
    where loop :: MachineM m => Ctrl V K -> m (Ctrl V K)
          loop ato@(NonAtomic {}) = return ato
          loop blm@(Blm _ _)      = return blm
@@ -275,28 +275,6 @@ step = stepAtomic
 -- Optimisations
 ------------------------------------------------------------
 
--- | Same as producing an @Ev@ state but checks whether the expression 
--- can be evaluated in a single step, and if so prevents a continuation 
--- from being pushed on the continuation stack and applies the continuation
--- with the evaluated value instead.
 ev :: MachineM m => Exp -> Env K -> KAdr K -> KFrame K -> m (Ctrl V K)
-ev e ρ α κ
-   | isAtomic e = withEnv (const  ρ) $ (`applyContinuation` κ) =<< atomicEval e
-      -- = withEnv (const ρ) $ stepEvalInline =<< stepEval e
-   | otherwise = case e of
-                     -- The reason that we select based on the type of expression 
-                     -- is to ensure that no redundant work is performed. For instance, 
-                     -- an @if@ expression will never result in a value in a single 
-                     -- step, as such we don't pass such expressions to "stepEval".
-                     -- 
-                     -- However, conceptually this is equivalent to:
-                     -- withEnv (const ρ) (stepEval e) >>= (\case (Ap v) -> applyContinuation v κ
-                     --                                           _ -> pushK α κ >> return (Ev e ρ))
-                     -- _  -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
-                     Input _   -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
-                     App {}    -> withEnv (const ρ) (stepEval e) >>= stepEvalInline
-                     _ -> push α κ >> return (Ev e ρ)
-   where stepEvalInline (Ap v) = applyContinuation v κ
-         stepEvalInline (Ev expr env) = ev expr env α κ
-         stepEvalInline ctrl = push α κ >> return ctrl
-
+ev expr env adr kont = push adr kont >> return (Ev expr env)
+    

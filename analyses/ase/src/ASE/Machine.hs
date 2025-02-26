@@ -20,10 +20,10 @@ import Analysis.Monad (EnvM, CtxM (getCtx, withCtx), runJoinT)
 import Analysis.Monad.Allocation (AllocM, alloc)
 import Analysis.Symbolic.Monad (MonadPathCondition)
 import Analysis.Monad.Cache (MonadCache)
-import Control.Monad.Layer (MonadLayer, upperM)
+import Control.Monad.Layer (MonadLayer (lowerM), upperM)
 import Control.Monad.Join (MonadBottom(..), MonadJoinable, MonadJoin, mjoinMap)
 import Control.Monad.DomainError (DomainError)
-import Control.Monad.Escape (MonadEscape, Esc, MayEscape)
+import Control.Monad.Escape (MonadEscape(throw ,catch), Esc, MayEscape)
 import Control.Lens.TH
 import Data.Maybe
 import qualified Domain.Class as Domain
@@ -40,7 +40,7 @@ import qualified Lattice.Class as L
 import qualified Lattice.Class as Lat
 import Lattice.BottomLiftedLattice
 import qualified RIO.Map as Map
-import RIO hiding (mzero)
+import RIO hiding (mzero, catch)
 import RIO.State
 import Syntax.AST hiding (Label)
 import qualified Symbolic.AST
@@ -55,6 +55,10 @@ import qualified Domain
 import Domain (SchemeDomain)
 import Control.Monad.Join (mjoins)
 import ASE.PC (MonadSnapshotPathCondition)
+import Debug.Trace (traceShowWith)
+
+ifM :: (Monad m) => m Bool -> m a -> m a -> m a
+ifM mb mcsq malt = mb >>= (\v -> if v then mcsq else malt)
 
 ------------------------------------------------------------
 -- Machine components
@@ -134,14 +138,14 @@ data KFrame k = LetK ![VAdr k]     -- ^ the list of remaining addresses to store
                      !(Env k)      -- ^ the environment in which the let expression has to be evaluated
               deriving (Eq, Ord, Show, Generic)
 instance NFData k => NFData (KFrame k)
-instance Joinable (KFrame k) where  
+instance Joinable (KFrame k) where
    join = error "join not implemented for KFrame"
 
 -- | Failure continuation
 newtype FFrame = Branch { branchPC :: PC }
             deriving (Eq, Ord, Show, Generic)
 instance NFData FFrame
-instance Joinable FFrame where  
+instance Joinable FFrame where
    join = error "join not implemented for FFrame"
 
 
@@ -239,19 +243,57 @@ instance (StoreM adr (Set (Kont frm adr)) m, Monad m, MonadJoin m, Ord adr, Ord 
 -- Stack based continuations
 ----------------------------------------
 
+newtype LocalStack frm = LocalStack { _stack :: [frm] } deriving (Ord, Eq, Show)
+$(makeLenses ''LocalStack)
+
+instance Joinable (LocalStack frm) where
+   join = error "join not implemented for LocalStack"
+instance BottomLattice (LocalStack frm) where
+   bottom = error "bottom not implemented for LocalStack"
+
 -- | A simpler version of the @MonadContinuationStack@ which actually uses a stack internally
 -- use only in combination with a visited set, and a finite number of continuations!
-newtype StackContinuationStackT adr frm m a = StackContinuationStackT (StateT [frm] m a)
-                                            deriving (Applicative, Functor, Monad, MonadState [frm], MonadLayer, MonadCache)
-runWithStackContinuationT :: Monad m => StackContinuationStackT adr frm m a -> m a  
-runWithStackContinuationT (StackContinuationStackT m) = evalStateT m []
+newtype StackContinuationStackT adr frm m a = StackContinuationStackT { getStackContinuationStackT :: (StateT (LocalStack (adr, frm)) m a) }
+                                            deriving (Applicative, Functor, Monad, MonadState (LocalStack (adr, frm)), MonadLayer, MonadCache, MonadBottom, MonadJoinable)
+runWithStackContinuationT :: forall adr frm m a . Monad m => StackContinuationStackT adr frm m a -> m a
+runWithStackContinuationT (StackContinuationStackT m) = evalStateT m (LocalStack [])
+
+instance (Monad m, MonadEscape m) => MonadEscape (LocalContinuationStackT adr frm m) where
+   type Esc (LocalContinuationStackT adr frm m) = Esc m
+   throw = upperM . throw
+   catch (LocalContinuationStackT m) f = LocalContinuationStackT $ StateT $ \s -> catch (runStateT m s) (\e -> runStateT (getLocalContinuationStackT (f e)) s)
+
 
 instance (Monad m) => MonadContinuationStack adr frm (StackContinuationStackT adr frm m) where
-   stackEmpty = gets null
-   peek = gets (\case [] -> Nothing
-                      (h:_) -> Just h)
-   push _ frm = modify (frm:)
-   pop = do { top <- gets head ; modify tail ; return top }
+   stackEmpty = gets (null . view stack)
+   peek = gets (view stack) <&> (\case [] -> Nothing
+                                       ((_, frm):_) -> Just frm)
+   push adr frm = modify (over stack ((adr, frm):))
+   pop = gets (snd . head . view stack) <* (modify (over stack tail))
+
+
+-- Version of the stack-based @MonadContinuationStack@ type class
+-- were @pop@ and @peek@ are delegated to an underlying representation
+-- if not found in the current one.
+newtype LocalContinuationStackT adr frm m a = LocalContinuationStackT { getLocalContinuationStackT :: (StateT (LocalStack (adr, frm)) m a) }
+                                            deriving (Applicative, Functor, Monad, MonadState (LocalStack (adr, frm)), MonadLayer, MonadCache, MonadBottom, MonadJoinable)
+
+instance (Monad m, MonadContinuationStack adr frm m) => MonadContinuationStack adr frm (LocalContinuationStackT adr frm m) where
+   stackEmpty = ifM (gets (null . view stack))
+                    (upperM $ stackEmpty @adr)
+                    (return False)
+   peek = gets (view stack) >>= (\case [] -> upperM $ peek @adr
+                                       ((_, frm):_) -> return $ Just frm)
+   push adr frm = modify (over stack ((adr, frm):))
+   pop = ifM (gets (null . view stack))
+             (upperM $ pop @adr)
+             (gets (snd . head . view stack) <* (modify (over stack tail)))
+
+
+-- | Link the elements of the current continuation stack in the store, thereby executing the and removing the @StackContinuationStackT@ from the layers
+linkInStore :: (Show adr, Show frm, MonadContinuationStack adr frm m) => LocalContinuationStackT adr frm m a -> m a
+linkInStore (LocalContinuationStackT m) = runStateT m (LocalStack []) >>= (\(a, LocalStack stack') -> mapM_ (uncurry push) (reverse stack') >> return a)
+
 
 ------------------------------------------------------------
 -- Abstract counts
@@ -542,12 +584,12 @@ type family Unescape (k :: Type) :: Type where
 class MonadAnalysisMetric m where
    -- |  Increment the number of times the @step@ function has been executed
    incStep :: m ()
-   
+
 -- | Trivial layered instance of @MonadAnaysisMetric@ 
 instance (MonadLayer t, Monad m, MonadAnalysisMetric m) => MonadAnalysisMetric (t m) where
    incStep = upperM incStep
 
-data AnalysisMetrics = AnalysisMetrics { _stepCount :: Int }
+data AnalysisMetrics = AnalysisMetrics { _stepCount :: Int }
 
 $(makeLenses ''AnalysisMetrics)
 
@@ -556,7 +598,7 @@ newtype AnalysisMetricT m a = AnalysisMetricT { getAnalysisMetricT :: StateT Ana
                               deriving (Functor, Applicative, Monad, MonadLayer, MonadTrans, MonadState AnalysisMetrics)
 
 instance Monad m => MonadAnalysisMetric (AnalysisMetricT m) where
-    incStep = modify (over stepCount (+1))  
-                  
-runAnalysisMetricT :: Monad m => AnalysisMetricT m a -> m (a, AnalysisMetrics) 
+    incStep = modify (over stepCount (+1))
+
+runAnalysisMetricT :: Monad m => AnalysisMetricT m a -> m (a, AnalysisMetrics)
 runAnalysisMetricT (AnalysisMetricT m) = runStateT m (AnalysisMetrics 0)
