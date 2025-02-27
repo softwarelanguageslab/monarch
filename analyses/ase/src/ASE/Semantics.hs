@@ -221,9 +221,9 @@ stepApply = popExec @(KAdr K) . applyContinuation
 -- | Restart the machine with the appropriate assignments 
 -- in the model so that the machine explores the path associated 
 -- with the path constraint in the failure continuation.
-restart :: MachineM m => m (Ctrl V K)
-restart = popExec @(FAdr K) selectContinuation
-   where selectContinuation (Branch pc) = (maybe mzero (restartUsingModel pc) =<< computeModel pc)
+restart :: MachineM m => V -> m (Ctrl V K)
+restart v = popExec @(FAdr K) selectContinuation
+   where selectContinuation (Branch pc) = (maybe (return (Ap v)) (restartUsingModel pc) =<< computeModel pc)
          restartUsingModel pc model = do
             -- Compute the new context for the symbolic variables
             let modelCtx' = removeContextPC pc
@@ -253,7 +253,7 @@ step' :: MachineM m => Ctrl V K -> m (Ctrl V K)
 step' (Ap v) = liftA2 (,) (stackEmpty @(KAdr K)) (stackEmpty @(FAdr K))
     >>= (\case (True, True) -> return (Res v)        -- machine has no continuations, it has reached a halting state 
                (True, _)    -> mjoin (return (Res v))
-                                     restart         -- machine has reached the end of the program but still needs to restart using the failure continuation
+                                     (restart v)     -- machine has reached the end of the program but still needs to restart using the failure continuation
                (_, _)       -> stepApply v           -- apply the continuation
         )
 step' (Ev e ρ)        = withEnv (const ρ) (stepEval e)
@@ -264,7 +264,7 @@ step' (Res _)         = mzero
 
 -- | Step until a call state has been discovered
 stepAtomic :: MachineM m => Ctrl V K -> m (Ctrl V K)
-stepAtomic ctrl = (step' ctrl >>= loop)
+stepAtomic ctrl = linkInStore @(KAdr K) (step' ctrl >>= loop)
    where loop :: MachineM m => Ctrl V K -> m (Ctrl V K)
          loop ato@(NonAtomic {}) = return ato
          loop ret@(Return v)     = return (Ap v)
