@@ -33,7 +33,7 @@ data Exp = -- Program Semantics
          | Parallel [Exp] Span               -- ^ parallel { e (; e)* }
          | Error Exp Span                    -- ^ error e
          -- Debugging analyses
-         | Fresh Span                        -- ^ fresh (only for debugging, generates a "fresh" symbolic value)
+         | Fresh Span                        -- ^ fresh (only for debugging, generates a "fresh" symbolic value)
          | Trace Exp Span                    -- ^ a trace expression, used for debugging
          | Loc String Span                   -- ^ a special-form that returns its span as a value when evaluated
          -- Analysis-specific

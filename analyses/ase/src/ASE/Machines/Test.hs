@@ -194,7 +194,7 @@ runStep f step@StepState { .. } = getAll step >>= inter . fromMaybe (error "init
         inter st = Cache.run @(FlowT m) (const intra) (uncons (() :+: st)) >>= putWidened . unnest
                  & runNonDetT
                  & fmap setFromList
-        setFromList [] =  Set.empty
+        setFromList [] =  Set.empty
         setFromList xs = Set.fromList xs
         stepState' = (stepState, Map.empty)
         putWidened :: forall m . (PutAll StepState FlowList, AllMapM StepState FlowList m) => HList (StepState ': FlowList) -> m StepState
@@ -238,6 +238,7 @@ analyze f cfg = iterateWLDebug step0 (\st -> runStep f st >>= mapM_ spawn >>= st
               & execWithComponentTracking
               & runWithWorkList
               & runVisitedT
+              & flip (<*) ((liftIO . print) =<< (stackEmpty @(FAdr K) @FFrame))
               & runWithStackContinuationT
               & runWidenedT @StepState @FlowList state0
    where step0  = initialStepState cfg

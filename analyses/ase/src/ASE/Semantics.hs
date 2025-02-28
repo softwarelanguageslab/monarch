@@ -24,7 +24,7 @@ import Domain.SimpleActor (ActorValue')
 import Symbolic.AST (Proposition(Variable), conjunction, Formula (Atomic), isSat, emptyPC)
 import Domain.Symbolic.Class (SymbolicValue(combine, assertFalse), symbolic, Abstract)
 import Domain.Symbolic (SymbolicVal(SymbolicVal), SymbolicValue (assertTrue))
-import RIO hiding (mzero)
+import RIO hiding (mzero, catch)
 import qualified RIO.Set as Set
 import Syntax.Span (spanOf)
 import Analysis.Environment (Environment(extends))
@@ -42,7 +42,7 @@ import System.IO (stdout)
 import Syntax.FV
 import ASE.Domain.SymbolicVariable (SymbolicCountMap)
 import Domain (BoolDomain(isTrue), isFalse)
-
+import Control.Monad.Escape (catch)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -160,7 +160,9 @@ atomicEval lam@(Lam {})    = getEnv <&> injectClo . (lam,)
 atomicEval (Loc e s)       = return $ Scheme.symbol (show e ++ "@" ++ show s)
 atomicEval (Trace e s)     = traceInfo =<< atomicEval e
    where traceInfo v = do
-               liftIO $ putStr $ "TRACE[" ++ show s ++ "]" ++ show v
+               ctx <- getCtx @_ @K
+               liftIO $ putStrLn $ "TRACE[" ++ show s ++ "]" ++ show v ++ " @ " ++ show ctx
+   
                pc <- snapshotPC
                return v
 atomicEval exp             = error $ "expression " ++ show exp ++ " is not an atomic expression"
@@ -170,7 +172,7 @@ atomicEval exp             = error $ "expression " ++ show exp ++ " is not an at
 stepEval :: MachineM m => Exp -> m (Ctrl V K)
 stepEval e
    | isAtomic e = Ap <$> atomicEval e
-stepEval (Error _ _) = mzero -- TODO: make an actual state here
+stepEval (Error _ _) = return Reset -- mzero -- TODO: make an actual state here
 stepEval (Ite cnd csq alt _) = do
       --liftIO (putStr "{IF}")
       vcnd <- atomicEval cnd
@@ -178,6 +180,11 @@ stepEval (Ite cnd csq alt _) = do
       αf2 <- alloc (spanOf alt)
       bt <- snapshotPC <&> simplifyPC . addConstraint (symbolic (assertFalse vcnd))
       bf <- snapshotPC <&> simplifyPC . addConstraint (symbolic (assertTrue vcnd))
+
+      -- liftIO (putStr "T: ")
+      -- liftIO (print bt)
+      -- liftIO (putStr "F: ")
+      -- liftIO (print bf)
 
       cond (pure vcnd)
          (  extendPc (assertTrue vcnd)
@@ -221,9 +228,9 @@ stepApply = popExec @(KAdr K) . applyContinuation
 -- | Restart the machine with the appropriate assignments 
 -- in the model so that the machine explores the path associated 
 -- with the path constraint in the failure continuation.
-restart :: MachineM m => V -> m (Ctrl V K)
-restart v = popExec @(FAdr K) selectContinuation
-   where selectContinuation (Branch pc) = (maybe (return (Ap v)) (restartUsingModel pc) =<< computeModel pc)
+restart :: MachineM m => m (Ctrl V K)
+restart = popExec @(FAdr K) selectContinuation
+   where selectContinuation (Branch pc) = (liftIO $ putStr "R") >> (maybe (return Reset) (restartUsingModel pc) =<< computeModel pc)
          restartUsingModel pc model = do
             -- Compute the new context for the symbolic variables
             let modelCtx' = removeContextPC pc
@@ -237,7 +244,7 @@ restart v = popExec @(FAdr K) selectContinuation
             -- ... by resetting the store
             putStore @(Map (VAdr K) V) (σ0 cfg)
             -- ... and resetting the continuation store
-            putStore @(Map (KAdr K) (Set (KKont K))) @(KAdr K) @(Set (KKont K)) Map.empty
+            emptyStack @(KAdr K)
             -- ... and resetting the path condition
             resetPC
             -- ... and by evaluating the initial program expression
@@ -253,18 +260,22 @@ step' :: MachineM m => Ctrl V K -> m (Ctrl V K)
 step' (Ap v) = liftA2 (,) (stackEmpty @(KAdr K)) (stackEmpty @(FAdr K))
     >>= (\case (True, True) -> return (Res v)        -- machine has no continuations, it has reached a halting state 
                (True, _)    -> mjoin (return (Res v))
-                                     (restart v)     -- machine has reached the end of the program but still needs to restart using the failure continuation
+                                     restart         -- machine has reached the end of the program but still needs to restart using the failure continuation
                (_, _)       -> stepApply v           -- apply the continuation
         )
 step' (Ev e ρ)        = withEnv (const ρ) (stepEval e)
 step' (NonAtomic e ρ) = withEnv (const ρ) (stepEval e)
 step' (Return v)      = step' (Ap v)
 step' (Blm _ _)       = mzero
+step' Reset           = ifM (stackEmpty @(FAdr K))  -- cannot reset if the stack is empty
+                            mzero
+                            restart
 step' (Res _)         = mzero
 
 -- | Step until a call state has been discovered
 stepAtomic :: MachineM m => Ctrl V K -> m (Ctrl V K)
-stepAtomic ctrl = linkInStore @(KAdr K) (step' ctrl >>= loop)
+stepAtomic ctrl =
+      linkInStore @(KAdr K) (step' ctrl >>= loop) --  `catch` (\_ -> return Reset)
    where loop :: MachineM m => Ctrl V K -> m (Ctrl V K)
          loop ato@(NonAtomic {}) = return ato
          loop ret@(Return v)     = return (Ap v)

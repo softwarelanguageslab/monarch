@@ -15,7 +15,7 @@ import qualified Analysis.Environment as Env
 import ASE.Domain.SymbolicVariable (SymbolicVariable, PC)
 import ASE.Syntax
 import ASE.Monad
-import Analysis.Monad.Store (StoreM, writeAdr, lookupAdr, StoreM', AbstractCountM(..))
+import Analysis.Monad.Store (StoreM, writeAdr, lookupAdr, StoreM', AbstractCountM(..), putStore)
 import Analysis.Monad (EnvM, CtxM (getCtx, withCtx), runJoinT)
 import Analysis.Monad.Allocation (AllocM, alloc)
 import Analysis.Symbolic.Monad (MonadPathCondition)
@@ -71,6 +71,7 @@ data Ctrl v k = Ev !Exp !(Env k)        -- ^ expression evaluation
               | Ap !v                   -- ^ apply continuation
               | Blm !v !Span            -- ^ generate blame
               | Res !v                  -- ^ final result state
+              | Reset                   -- ^ reset the machine explicitly without return a value
               deriving (Eq, Ord, Show, Generic)
 instance (NFData v, NFData k) => NFData (Ctrl v k)
 
@@ -180,6 +181,8 @@ type FKont k = Kont FFrame (FAdr k)
 -- | Continuation stack, indexed by type of continuation address,
 -- and the type of continuation frame
 class Monad m => MonadContinuationStack a frm m | m a -> frm where
+   -- | Makes the stack empty
+   emptyStack :: m ()
    -- | Checks whether there is an element on top of the stack 
    stackEmpty :: m Bool
    -- | Read the top frame of the continuation stack
@@ -196,6 +199,7 @@ popExec f  = pop @adr >>= f
 
 -- | Layered instance of @MonadContinuationStack@
 instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad (t m), MonadContinuationStack a frm m) => MonadContinuationStack a frm (t m) where
+   emptyStack = upperM (emptyStack @a)
    stackEmpty = upperM (stackEmpty @a)
    peek = upperM (peek @a)
    push adr = upperM . push @a adr
@@ -219,6 +223,11 @@ instance (NFData adr) => NFData (StoreContinuationState adr)
 initialContinuationStack :: StoreContinuationState k
 initialContinuationStack = StoreContinuationState Nothing
 
+-- | Returns true if the store 
+isEmptyStoreContinuationStack :: StoreContinuationState k -> Bool
+isEmptyStoreContinuationStack = isNothing . topContinuationAddress
+
+
 -- | Pattern that matches when the continuation stack is a halting continuation
 pattern KHlt <- StoreContinuationState Nothing
 
@@ -227,7 +236,8 @@ instance Joinable (StoreContinuationState adr) where
 instance BottomLattice (StoreContinuationState adr) where
    bottom = StoreContinuationState Nothing
 
-instance (StoreM adr (Set (Kont frm adr)) m, Monad m, MonadJoin m, Ord adr, Ord frm, Joinable frm) => MonadContinuationStack adr frm (StoreContinuationStackT adr frm m) where
+instance (StoreM adr (Set (Kont frm adr)) m, StoreM' (Map adr (Set (Kont frm adr))) adr (Set (Kont frm adr)) m,  Monad m, MonadJoin m, Ord adr, Ord frm, Joinable frm) => MonadContinuationStack adr frm (StoreContinuationStackT adr frm m) where
+   emptyStack =  put (StoreContinuationState Nothing) >> putStore @(Map adr (Set (Kont frm adr))) @adr @(Set (Kont frm adr)) Map.empty
    stackEmpty = gets (isNothing . topContinuationAddress)
    peek = gets topContinuationAddress >>= (traverse (mjoinMap (return . getFrm) <=< lookupAdr))
    push adr' frm = do
@@ -267,6 +277,7 @@ instance (Monad m, MonadEscape m) => MonadEscape (LocalContinuationStackT adr fr
 
 
 instance (Monad m) => MonadContinuationStack adr frm (StackContinuationStackT adr frm m) where
+   emptyStack = modify (over stack (const []))
    stackEmpty = gets (null . view stack)
    peek = gets (view stack) <&> (\case [] -> Nothing
                                        ((_, frm):_) -> Just frm)
@@ -281,6 +292,7 @@ newtype LocalContinuationStackT adr frm m a = LocalContinuationStackT { getLocal
                                             deriving (Applicative, Functor, Monad, MonadState (LocalStack (adr, frm)), MonadLayer, MonadCache, MonadBottom, MonadJoinable)
 
 instance (Monad m, MonadContinuationStack adr frm m) => MonadContinuationStack adr frm (LocalContinuationStackT adr frm m) where
+   emptyStack = modify (over stack (const [])) >> upperM (emptyStack @adr)
    stackEmpty = ifM (gets (null . view stack))
                     (upperM $ stackEmpty @adr)
                     (return False)

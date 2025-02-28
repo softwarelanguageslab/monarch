@@ -100,24 +100,30 @@ initialState cfg =  Ev (e0 cfg) (ρ0 cfg)
                 <+> Random.initialSeq        -- infinite random sequence
 
 -- | Run a single step of the local machine and produce a local machine state
-runLocalMachine :: Monad m => (Ctrl V K -> StackT m (Ctrl V K)) -> State -> m (Set State)
-runLocalMachine m k = Cache.run m k'
-                    -- Run the allocators
-                    & runAlloc KAdr
-                    & runAlloc FAdr
-                    & runAlloc symbolicVariable
-                    & runAlloc VAdr
-                    & runAlloc PAdr
-                    & runAlloc SAdr
-                    & runAlloc CAdr
-                    -- Run the semantics non-deterministically
-                    & runNonDetT
-                    -- Filter out all escaping values and replace them 
-                    -- by empty list, convert the resulting list to a set 
-                    -- afterwards.
-                    & fmap (Set.fromList . mapMaybe (isEscape . unnest))
+runLocalMachine' :: Monad m => (Ctrl V K -> StackT m (Ctrl V K)) -> State -> m (Set State)
+runLocalMachine' m k = Cache.run m k'
+                     -- Run the allocators
+                     & runAlloc KAdr
+                     & runAlloc FAdr
+                     & runAlloc symbolicVariable
+                     & runAlloc VAdr
+                     & runAlloc PAdr
+                     & runAlloc SAdr
+                     & runAlloc CAdr
+                     -- Run the semantics non-deterministically
+                     & runNonDetT
+                     -- Filter out all escaping values and replace them 
+                     -- by empty list, convert the resulting list to a set 
+                     -- afterwards.
+                     & fmap (Set.fromList . mapMaybe (isEscape . unnest))
    where k' = (k, Map.empty)
          isEscape :: HList (Unnest (Val (StackT m) (Ctrl V K))) -> Maybe State
          isEscape (Value v :+: rest) = Just $ uncons $ v :+: rest
          isEscape (MayBoth v _ :+: rest) = Just $ uncons $ v :+: rest
          isEscape _ = Nothing
+
+runLocalMachine :: Monad m => (Ctrl V K -> StackT m (Ctrl V K)) -> State -> m (Set State)
+runLocalMachine sem inn = runLocalMachine' sem inn <&> adaptInIfEmpty
+      where adaptInIfEmpty s = Set.union (Set.map (adaptCtrl . unnest) s) s
+            adaptCtrl :: HList (Unnest State) -> State
+            adaptCtrl (_ :+: rest) = uncons $ Reset :+: rest
