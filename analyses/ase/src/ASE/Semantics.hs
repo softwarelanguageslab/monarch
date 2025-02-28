@@ -43,6 +43,7 @@ import Syntax.FV
 import ASE.Domain.SymbolicVariable (SymbolicCountMap)
 import Domain (BoolDomain(isTrue), isFalse)
 import Control.Monad.Escape (catch)
+import Lattice.ConstantPropagationLattice
 
 ------------------------------------------------------------
 -- Shorthands
@@ -167,6 +168,9 @@ atomicEval (Trace e s)     = traceInfo =<< atomicEval e
                return v
 atomicEval exp             = error $ "expression " ++ show exp ++ " is not an atomic expression"
 
+debugVisited :: (MonadIO m, MonadVisitedSet e m) => e -> m ()
+debugVisited = isVisited @_ @_ @(CP Bool) >=> (liftIO . putStrLn . ("debugVisited: " ++) . show)
+
 -- | Evaluation part of the @step@ping function, dispatches
 -- directly over the expressions in @Exp@.
 stepEval :: MachineM m => Exp -> m (Ctrl V K)
@@ -230,7 +234,7 @@ stepApply = popExec @(KAdr K) . applyContinuation
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
 restart = popExec @(FAdr K) selectContinuation
-   where selectContinuation (Branch pc) = (liftIO $ putStr "R") >> (maybe (return Reset) (restartUsingModel pc) =<< computeModel pc)
+   where selectContinuation (Branch pc) = (maybe (return Reset) (restartUsingModel pc) =<< computeModel pc)
          restartUsingModel pc model = do
             -- Compute the new context for the symbolic variables
             let modelCtx' = removeContextPC pc
@@ -266,16 +270,16 @@ step' (Ap v) = liftA2 (,) (stackEmpty @(KAdr K)) (stackEmpty @(FAdr K))
 step' (Ev e ρ)        = withEnv (const ρ) (stepEval e)
 step' (NonAtomic e ρ) = withEnv (const ρ) (stepEval e)
 step' (Return v)      = step' (Ap v)
-step' (Blm _ _)       = mzero
+step' (Blm _ _)       = return Reset
 step' Reset           = ifM (stackEmpty @(FAdr K))  -- cannot reset if the stack is empty
                             mzero
                             restart
-step' (Res _)         = mzero
+step' (Res _)         = return Reset
 
 -- | Step until a call state has been discovered
 stepAtomic :: MachineM m => Ctrl V K -> m (Ctrl V K)
 stepAtomic ctrl =
-      linkInStore @(KAdr K) (step' ctrl >>= loop) --  `catch` (\_ -> return Reset)
+      linkInStore @(KAdr K) (step' ctrl >>= loop) `catch` (\_ -> return Reset)
    where loop :: MachineM m => Ctrl V K -> m (Ctrl V K)
          loop ato@(NonAtomic {}) = return ato
          loop ret@(Return v)     = return (Ap v)

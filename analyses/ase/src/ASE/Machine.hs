@@ -276,14 +276,13 @@ instance (Monad m, MonadEscape m) => MonadEscape (LocalContinuationStackT adr fr
    catch (LocalContinuationStackT m) f = LocalContinuationStackT $ StateT $ \s -> catch (runStateT m s) (\e -> runStateT (getLocalContinuationStackT (f e)) s)
 
 
-instance (Monad m) => MonadContinuationStack adr frm (StackContinuationStackT adr frm m) where
+instance (Monad m, Show frm, MonadIO m) => MonadContinuationStack adr frm (StackContinuationStackT adr frm m) where
    emptyStack = modify (over stack (const []))
    stackEmpty = gets (null . view stack)
    peek = gets (view stack) <&> (\case [] -> Nothing
                                        ((_, frm):_) -> Just frm)
    push adr frm = modify (over stack ((adr, frm):))
-   pop = gets (snd . head . view stack) <* (modify (over stack tail))
-
+   pop = gets (snd . head . view stack) <* (modify (over stack tail)) 
 
 -- Version of the stack-based @MonadContinuationStack@ type class
 -- were @pop@ and @peek@ are delegated to an underlying representation
@@ -485,7 +484,7 @@ class MonadVisitedSet e m | m -> e where
    addVisited :: e -> m ()
    -- | Checks whether the element is in the visited set, 
    -- can be @top@
-   isVisited :: BoolDomain b => e -> m b
+   isVisited :: (Show b, BoolDomain b) => e -> m b
 
 -- | Trivial layered instance of @MonadVisitedSet@
 instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadVisitedSet e m) => MonadVisitedSet e (t m) where
@@ -508,10 +507,11 @@ insertVisited :: Ord e => e -> VisitedSet e -> VisitedSet e
 insertVisited e v = v { visited = Set.insert e (visited v) }
 
 -- | Check whether an element is in the visited set
-containsVisited :: Ord e => BoolDomain b => e -> VisitedSet e -> b
+containsVisited :: PartialOrder e => Ord e => BoolDomain b => e -> VisitedSet e -> b
 containsVisited e v
    | Set.member e (mayVisited v) = boolTop
-   | otherwise = Domain.inject (Set.member e (visited v))
+   -- | Set.member e (visited v) =  Domain.inject True 
+   | otherwise = Domain.inject (any (leq e) (visited v))
 
 -- | Returns an empty visited set
 emptyVisited :: VisitedSet e
@@ -533,9 +533,9 @@ newtype VisitedT e m a = VisitedT { getVisitedT :: StateT (VisitedSet e) m a }
 runVisitedT :: Monad m => VisitedT e m a -> m a
 runVisitedT (VisitedT m) = evalStateT m emptyVisited
 
-instance (Ord e, Monad m) => MonadVisitedSet e (VisitedT e m) where
+instance (Ord e, Monad m, MonadIO m, PartialOrder e) => MonadVisitedSet e (VisitedT e m) where
    addVisited e = modify (insertVisited e)
-   isVisited e = gets (containsVisited e)
+   isVisited e = gets (containsVisited e) 
 
 ------------------------------------------------------------
 -- Machine interface

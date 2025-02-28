@@ -98,15 +98,16 @@ formula2nf (Formula.Disjunction _) =
 
 -- | Is the second formula entailed by the first formula, if so, the second 
 -- formula is more general than the first and therefore 'bigger'.
-leq :: (AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m Bool
-leq f1 f2 = isCertainlyUnfeasible (Formula.Negation (Formula.Implies f1 f2))
+leq :: (AbstractCountM i m, Eq i, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m Bool
+leq f1 f2
+   | otherwise = isCertainlyUnfeasible (Formula.Negation (Formula.Implies f1 f2))
 
 -- | Subsumption is the same as `leq` but flipped.
-subsumes :: (AbstractCountM i m, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m Bool
+subsumes :: (AbstractCountM i m,  Eq i, FormulaSolver i m) => Formula.Formula i -> Formula.Formula i -> m Bool
 subsumes = flip leq
 
 -- | Subsumption of sets of formulae
-subsumesPC :: (AbstractCountM i m, FormulaSolver i m) => Formula.PC i -> Formula.PC i -> m Bool
+subsumesPC :: (AbstractCountM i m, Eq i, FormulaSolver i m) => Formula.PC i -> Formula.PC i -> m Bool
 subsumesPC pc1 pc2 = and <$> sequence [ subsumes f1 f2 | f1 <- Set.toList pc1 , f2 <- Set.toList pc2 ]
 
 -- | The least upper bound of two path constraints is the 

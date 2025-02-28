@@ -220,8 +220,8 @@ type AnalysisT m = StackT (MonadStack '[
                               DependencyTrackingT StepState StepState,
                               ComponentTrackingT StepState,
                               WorkListT (Set StepState),
-                              VisitedT PC,
-                              StackContinuationStackT (FAdr K) FFrame
+                              StackContinuationStackT (FAdr K) FFrame,
+                              VisitedT PC
                            ] (WidenedT StepState FlowList m))
 type FlowOutput = State StepState FlowList
 
@@ -237,9 +237,9 @@ analyze f cfg = iterateWLDebug step0 (\st -> runStep f st >>= mapM_ spawn >>= st
               & runWithDependencyTracking
               & execWithComponentTracking
               & runWithWorkList
-              & runVisitedT
               & flip (<*) ((liftIO . print) =<< (stackEmpty @(FAdr K) @FFrame))
               & runWithStackContinuationT
+              & runVisitedT
               & runWidenedT @StepState @FlowList state0
    where step0  = initialStepState cfg
          state0 = initialState step0 cfg
