@@ -195,8 +195,8 @@ stepEval (Ite cnd csq alt _) = do
       vcnd <- atomicEval cnd
       αf1 <- alloc (spanOf csq)
       αf2 <- alloc (spanOf alt)
-      bt <- snapshotPC <&> simplifyPC . addConstraint (symbolic (assertFalse vcnd))
-      bf <- snapshotPC <&> simplifyPC . addConstraint (symbolic (assertTrue vcnd))
+      bt <- snapshotPC <&> removeContextPC' . simplifyPC . addConstraint (symbolic (assertFalse vcnd))
+      bf <- snapshotPC <&> removeContextPC' . simplifyPC . addConstraint (symbolic (assertTrue vcnd))
 
       -- liftIO (putStr "T: ")
       -- liftIO (print bt)

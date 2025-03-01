@@ -21,6 +21,7 @@ module Symbolic.AST
     Model(..),
     mapVariables,
     Simplification(..),
+    MapVariables(..)
   )
 where
 

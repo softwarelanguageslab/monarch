@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |  This module defines a suitable abstraction
 --  for path conditions, these abstractions are
@@ -93,6 +94,9 @@ instance Ord i => SelectVariable (PC i) i where
 
 instance Ord i => StrictSelectVariable (PC i) i where 
    strictVariables = strictVariables . formulaPC
+
+instance MapVariables PC where
+  mapVariables f (PC { ..}) = PC { formulaPC = Symbolic.AST.mapVariables f formulaPC, underconstrainedPC = Set.map f underconstrainedPC, countPC = Map.mapKeys f countPC }
 
 -- | Discards the count from the path condition
 discardCount :: PC i -> PC i 

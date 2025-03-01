@@ -283,8 +283,8 @@ instance (Monad m, Show frm, MonadIO m) => MonadContinuationStack adr frm (Stack
    stackEmpty = gets (null . view stack)
    peek = gets (view stack) <&> (\case [] -> Nothing
                                        ((_, frm):_) -> Just frm)
-   push adr frm = modify (over stack ((adr, frm):)) -- <* ((liftIO . (putStrLn . ("push: " ++))) . show . length =<< gets (view stack))
-   pop = gets (snd . head . view stack) <* (modify (over stack tail)) --  <* (liftIO . (putStrLn . ("pop: " ++)) . show . length =<< gets (view stack))
+   push adr frm = modify (over stack ((adr, frm):)) <* ((liftIO . (putStrLn . ("push: " ++))) . show . length =<< gets (view stack))
+   pop = gets (snd . head . view stack) <* (modify (over stack tail)) <* (liftIO . (putStrLn . ("pop: " ++)) . show . length =<< gets (view stack))
 
 -- Version of the stack-based @MonadContinuationStack@ type class
 -- were @pop@ and @peek@ are delegated to an underlying representation
