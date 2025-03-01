@@ -111,6 +111,8 @@ computeModel pc = do
 -- | Adapt the context of the variables in the model so that they include the given context
 adaptModelCtx :: PC SymbolicVariable -> Model V -> Model V
 adaptModelCtx pc = Model . adaptModel pc . getModel
+
+
 ------------------------------------------------------------
 -- Semantics
 ------------------------------------------------------------
@@ -118,6 +120,17 @@ adaptModelCtx pc = Model . adaptModel pc . getModel
 -- | Apply a primitive function
 applyPrim :: MachineM m => [V] -> Exp -> String -> m (Ctrl V K)
 applyPrim vs e nam = maybe mzero (fmap Ap) $ Primitives.run <$> Map.lookup nam Primitives.primitivesByName <*> pure e <*> pure vs
+
+-- | Reallocate the address in the given environment by changing their contexts
+-- to the given context (cf. k-cfa paradox)
+reallocateEnv :: MachineM m => K -> Env K -> m (Env K)
+reallocateEnv k = fmap Map.fromList . mapM realloc . Map.toList
+   where realloc (nam, adr@(VAdr s _)) = do
+            let adr' = VAdr s k
+            lookupAdr adr >>= writeAdr adr'
+            return (nam, adr')
+         realloc bdn@(nam, PrimAdr s) = return bdn
+
 
 -- | Apply a user-defined closure
 applyClo :: MachineM m => [V] -> Exp -> (Exp, Env K) -> m (Ctrl V K)
@@ -133,9 +146,9 @@ applyClo ags e (lam@(Lam xs bdy _), ρ) = do
    withCtx (const ctx') $ do
       ads <- mapM (alloc . spanOf) xs
       let prs = map name xs
-      let ρ' = extends (zip prs ads) (Map.restrictKeys ρ (fv bdy))
+      ρ' <- extends (zip prs ads) <$> reallocateEnv ctx' (Map.restrictKeys ρ (fv bdy))
       mapM_ (uncurry writeAdr) (zip ads ags)
-      adr <- alloc (spanOf e)
+      adr <- Cll <$> alloc (spanOf e)
       push @(KAdr K) adr ReturnK
       return (NonAtomic bdy ρ')
 
@@ -163,7 +176,7 @@ atomicEval (Trace e s)     = traceInfo =<< atomicEval e
    where traceInfo v = do
                ctx <- getCtx @_ @K
                liftIO $ putStrLn $ "TRACE[" ++ show s ++ "]" ++ show v ++ " @ " ++ show ctx
-   
+
                pc <- snapshotPC
                return v
 atomicEval exp             = error $ "expression " ++ show exp ++ " is not an atomic expression"
@@ -234,7 +247,7 @@ stepApply = popExec @(KAdr K) . applyContinuation
 -- with the path constraint in the failure continuation.
 restart :: MachineM m => m (Ctrl V K)
 restart = popExec @(FAdr K) selectContinuation
-   where selectContinuation (Branch pc) = (maybe (return Reset) (restartUsingModel pc) =<< computeModel pc)
+   where selectContinuation (Branch pc) = liftIO (putStrLn "Restart") >> (maybe (return Reset) (restartUsingModel pc) =<< computeModel pc)
          restartUsingModel pc model = do
             -- Compute the new context for the symbolic variables
             let modelCtx' = removeContextPC pc

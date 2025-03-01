@@ -54,7 +54,7 @@ import Solver.Z3
 import qualified Domain
 import Domain (SchemeDomain)
 import Control.Monad.Join (mjoins)
-import ASE.PC (MonadSnapshotPathCondition)
+import ASE.PC (MonadSnapshotPathCondition, leqFast)
 import Debug.Trace (traceShowWith)
 
 ifM :: (Monad m) => m Bool -> m a -> m a -> m a
@@ -153,8 +153,10 @@ instance Joinable FFrame where
 
 
 -- | Continuation address
-data KAdr k = KAdr !(Label Exp) !k | Hlt
-               deriving (Eq, Ord, Show, Generic)
+data KAdr k = KAdr !(Label Exp) !k
+            | Hlt -- ^ the halting address
+            | Cll (KAdr k) -- ^  special marker for continuations marking return addresses
+         deriving (Eq, Ord, Show, Generic)
 instance NFData k => NFData (KAdr k)
 
 -- | Failure continuation address
@@ -281,8 +283,8 @@ instance (Monad m, Show frm, MonadIO m) => MonadContinuationStack adr frm (Stack
    stackEmpty = gets (null . view stack)
    peek = gets (view stack) <&> (\case [] -> Nothing
                                        ((_, frm):_) -> Just frm)
-   push adr frm = modify (over stack ((adr, frm):))
-   pop = gets (snd . head . view stack) <* (modify (over stack tail)) 
+   push adr frm = modify (over stack ((adr, frm):)) <* ((liftIO . (putStrLn . ("push: " ++))) . show . length =<< gets (view stack))
+   pop = gets (snd . head . view stack) <* (modify (over stack tail)) <* (liftIO . (putStrLn . ("pop: " ++)) . show . length =<< gets (view stack))
 
 -- Version of the stack-based @MonadContinuationStack@ type class
 -- were @pop@ and @peek@ are delegated to an underlying representation
@@ -290,14 +292,17 @@ instance (Monad m, Show frm, MonadIO m) => MonadContinuationStack adr frm (Stack
 newtype LocalContinuationStackT adr frm m a = LocalContinuationStackT { getLocalContinuationStackT :: (StateT (LocalStack (adr, frm)) m a) }
                                             deriving (Applicative, Functor, Monad, MonadState (LocalStack (adr, frm)), MonadLayer, MonadCache, MonadBottom, MonadJoinable)
 
-instance (Monad m, MonadContinuationStack adr frm m) => MonadContinuationStack adr frm (LocalContinuationStackT adr frm m) where
+instance (Monad m, Show adr, MonadIO m ,MonadContinuationStack adr frm m) => MonadContinuationStack adr frm (LocalContinuationStackT adr frm m) where
    emptyStack = modify (over stack (const [])) >> upperM (emptyStack @adr)
    stackEmpty = ifM (gets (null . view stack))
                     (upperM $ stackEmpty @adr)
                     (return False)
    peek = gets (view stack) >>= (\case [] -> upperM $ peek @adr
                                        ((_, frm):_) -> return $ Just frm)
-   push adr frm = modify (over stack ((adr, frm):))
+   push adr frm = do
+      modify (over stack ((adr, frm):))
+      -- liftIO . print =<< (gets (map fst . view stack))
+
    pop = ifM (gets (null . view stack))
              (upperM $ pop @adr)
              (gets (snd . head . view stack) <* (modify (over stack tail)))
@@ -506,11 +511,15 @@ data VisitedSet e = VisitedSet { visited :: Set e, mayVisited :: Set e }
 insertVisited :: Ord e => e -> VisitedSet e -> VisitedSet e
 insertVisited e v = v { visited = Set.insert e (visited v) }
 
+-- | Return the size of the visited set 
+sizeVisited :: VisitedSet e -> Int
+sizeVisited = Set.size . visited
+
 -- | Check whether an element is in the visited set
-containsVisited :: PartialOrder e => Ord e => BoolDomain b => e -> VisitedSet e -> b
+containsVisited :: (Show e, PartialOrder e, Ord e) => BoolDomain b => e -> VisitedSet e -> b
 containsVisited e v
    | Set.member e (mayVisited v) = boolTop
-   -- | Set.member e (visited v) =  Domain.inject True 
+   | Set.member e (visited v) =  Domain.inject True
    | otherwise = Domain.inject (any (leq e) (visited v))
 
 -- | Returns an empty visited set
@@ -533,9 +542,9 @@ newtype VisitedT e m a = VisitedT { getVisitedT :: StateT (VisitedSet e) m a }
 runVisitedT :: Monad m => VisitedT e m a -> m a
 runVisitedT (VisitedT m) = evalStateT m emptyVisited
 
-instance (Ord e, Monad m, MonadIO m, PartialOrder e) => MonadVisitedSet e (VisitedT e m) where
-   addVisited e = modify (insertVisited e)
-   isVisited e = gets (containsVisited e) 
+instance (Ord e, Show e, Monad m, MonadIO m, PartialOrder e) => MonadVisitedSet e (VisitedT e m) where
+   addVisited e = modify (insertVisited e) <* (liftIO . print =<< gets sizeVisited)
+   isVisited e = gets (containsVisited e)
 
 ------------------------------------------------------------
 -- Machine interface

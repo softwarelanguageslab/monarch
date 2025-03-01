@@ -32,6 +32,7 @@ import GHC.Generics
 import Control.DeepSeq
 import Data.Map (Map)
 import Control.Lens (strict)
+import Lattice.Class (PartialOrder (leq))
 
 -- | A literal as they appear in a source program
 data Literal
@@ -242,6 +243,45 @@ isUnknown :: SolverResult -> Bool
 isUnknown Unknown = True
 isUnknown _ = False
 
+
+------------------------------------------------------------
+-- Partial ordering
+------------------------------------------------------------
+
+instance (Ord i, Eq i) => PartialOrder (Proposition i) where
+  leq (Variable i1) (Variable i2) = i1 == i2
+  leq (Function f1) (Function f2) = f1 == f2
+  leq (IsTrue prop1) (IsTrue prop2) = leq prop1 prop2
+  leq (IsFalse prop1) (IsFalse prop2) = leq prop1 prop2
+  leq (Predicate nam1 props1) (Predicate nam2 props2) =
+    length props1 == length props2 &&
+    nam1 == nam2 && all (uncurry leq) (zip props1 props2)
+  leq (Application operator1 operands1) (Application operator2 operands2) =
+    length operands1 == length operands2 &&
+    leq operator1 operator2 && all (uncurry leq) (zip operands1 operands2)
+  leq (Fresh vrs1) (Fresh vrs2) = Set.isSubsetOf vrs1 vrs2
+  leq Tautology Tautology = True
+  leq Bottom Bottom = True
+  leq Fail Fail = True
+  leq _ _ = False
+
+instance (Ord i, Eq i) => PartialOrder (Formula i) where
+  leq (Conjunction fs1) (Conjunction fs2) =
+    -- NOTE: we assume that @Set.toList@ returns the same ordering for different sets of @Fresh@
+    -- in the formula, if this is not the case, the result is still safe since it will return
+    -- False anyway
+    Set.size fs1 == Set.size fs2 && all (uncurry leq) (zip (Set.toList fs1) (Set.toList fs2))
+  leq (Disjunction fs1) (Disjunction fs2) =
+    Set.size fs1 == Set.size fs2 && all (uncurry leq) (zip (Set.toList fs1) (Set.toList fs2))
+  leq (Implies ant1 csq1) (Implies ant2 csq2) =
+    leq ant1 ant2 && leq csq1 csq2
+  leq (Negation f1) (Negation f2) = leq f1 f2
+  leq (Atomic prop1) (Atomic prop2) = leq prop1 prop2
+  leq Empty Empty = True
+  leq _ _ = False
+
+    
+  
 ------------------------------------------------------------
 -- Transformation of the path constraint
 ------------------------------------------------------------
