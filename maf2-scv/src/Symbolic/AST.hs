@@ -107,7 +107,7 @@ instance (Show i) => Show (Proposition i) where
    show (Literal lit) = show lit
    show (IsTrue p)    = "true?/v(" ++ show p ++ ")"
    show (IsFalse p)   = "false?/v(" ++ show p ++ ")"
-   show (Fresh _)     = "fresh"
+   show (Fresh vrs)     = "fresh@[" ++ intercalate "," (map show (Set.toList vrs)) ++ "]"
    show Tautology     = "true"
    show Bottom        = "⊥"
    show (Predicate nam p) = nam ++ "(" ++ intercalate "," (map show p) ++")"
@@ -280,8 +280,8 @@ instance (Ord i, Eq i) => PartialOrder (Formula i) where
   leq Empty Empty = True
   leq _ _ = False
 
-    
-  
+
+
 ------------------------------------------------------------
 -- Transformation of the path constraint
 ------------------------------------------------------------
