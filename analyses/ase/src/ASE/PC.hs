@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |  This module defines a suitable abstraction
 --  for path conditions, these abstractions are
@@ -45,6 +46,19 @@ import Symbolic.AST hiding (PC, emptyPC)
 import qualified Symbolic.SMT as SMT
 import Analysis.Monad.Store (AbstractCountM)
 import qualified Analysis.Monad.Store as Store
+
+------------------------------------------------------------
+--- Global variables
+------------------------------------------------------------
+
+{-# NOINLINE globalZ3Solver #-}
+globalZ3Solver :: Z3SolverState
+globalZ3Solver = unsafePerformIO (runZ3SolverBackground @() SMT.prelude)
+
+{-# NOINLINE runGlobalZ3 #-}
+-- | Execute the given Z3 solver action in the global solver context
+runGlobalZ3 :: (Ord i, Show i) => Z3Solver i a -> a
+runGlobalZ3 = unsafePerformIO . execInZ3State globalZ3Solver
 
 ------------------------------------------------------------
 -- Path condition structure
@@ -118,7 +132,7 @@ run count =
   -- Note on the usage of @unsafePerformIO@: this is safe since the solver will
   -- return the same answer (sat or unsat) for a given formula given that the
   -- timeout remains the same.
-  unsafePerformIO . runZ3SolverWithSetup SMT.prelude . fmap fst . runAbstractCountT count
+  runGlobalZ3 . fmap fst . runAbstractCountT count
 
 instance (Show i, Ord i) => Joinable (PC i) where
   -- XXX: underconstrained should be updated based on the result of `Path.join`
