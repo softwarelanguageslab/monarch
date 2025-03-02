@@ -1,7 +1,8 @@
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 -- | The Z3 solver
-module Solver.Z3(Z3Solver, runZ3Solver, runZ3SolverWithSetup)  where
+module Solver.Z3(Z3Solver, Z3SolverState, runZ3Solver, runZ3SolverWithSetup, runZ3SolverBackground, execInZ3State)  where
 
 import System.Process
 import System.IO
@@ -136,6 +137,14 @@ runZ3Solver m  = evalStateT (getZ3Solver $ m <* exit) Nothing
 
 runZ3SolverWithSetup :: Show i => Ord i => String -> Z3Solver i a -> IO a
 runZ3SolverWithSetup setupCode' m = evalStateT (getZ3Solver $ setup setupCode' >> m <* exit) Nothing
+
+-- | Same as @runZ3SolverWithSetup@ but the Z3 process is not terminated
+runZ3SolverBackground :: forall i . (Ord i, Show i) => String -> IO Z3SolverState
+runZ3SolverBackground setupCode' = fromMaybe (error "failed to start the Z3 solver") <$> execStateT (getZ3Solver $ setup @i setupCode') Nothing
+
+-- | Execute the given Z3 computation in the given Z3 state
+execInZ3State :: forall i a . (Ord i, Show i) => Z3SolverState -> Z3Solver i a -> IO a
+execInZ3State s = flip evalStateT (Just s) . getZ3Solver 
 
 -- TODO: ShowableVariable is no longer used remove
 instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) where
