@@ -8,6 +8,9 @@
 ## We use this datastructure in "maf2-syntax" to construct an AST 
 ## to be used for abstract interpetation of Erlang and Elixir programs alike.
 
+# TODO: perhaps the same functionality can also be provided by the `elixir`
+# module without first compiling the file down to a beam module.
+
 if [ -z $1 ] ; then 
    echo "Invalid usage."
    echo "Usage: "

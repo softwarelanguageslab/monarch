@@ -13,6 +13,7 @@ import Data.Kind
 import Data.Map (Map)
 import Lattice (BottomLattice)
 import Analysis.Monad.Fix (MonadFixpoint)
+import Syntax.Span (Span)
 
 type BasicEnv adr = Map String adr
 
@@ -45,7 +46,7 @@ type ErlangM m v mb = (
    AbstractM m,
    EnvM m (Adr m) (Env v),
    StoreM (Adr m) v m,
-   AllocM m Loc (Adr m),
+   AllocM m Span (Adr m),
    -- Fixpoints
    MonadFixpoint m Cmp v,
    -- Erlang specific

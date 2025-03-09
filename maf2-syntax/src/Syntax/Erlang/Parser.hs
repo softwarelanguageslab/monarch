@@ -1,13 +1,13 @@
-module Syntax.Erlang.Parser(Term(..), Loc, ParseError, parseErlangTerm, locOf) where
+module Syntax.Erlang.Parser(Term(..), Loc, ParseError, parseErlangTerm) where
 
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
+import Syntax.Span
 
--- | The location in a file
-data Loc = Loc { line :: !Int, col :: !Int, filename :: !String } 
-         deriving (Show, Eq, Ord)
-
+-- | The location of an AST node in a file
+type Loc = Span
+         
 withLoc :: Parser (Loc -> a) -> Parser a
 withLoc m = do
    start <- getPosition
@@ -15,10 +15,10 @@ withLoc m = do
    return (f $ fromSourcePos start)
 
 fromSourcePos :: SourcePos -> Loc 
-fromSourcePos pos = Loc {
-   filename = sourceName pos, 
-   line = sourceLine pos,
-   col = sourceColumn pos
+fromSourcePos pos = Span {
+   filename = sourceName pos,
+   startPosition = Position (sourceLine pos) (sourceColumn pos),
+   endPosition = Position (sourceLine pos) (sourceColumn pos) 
 }
 
 data Term = Tuple [Term] Loc   -- ^ { t1, t2, ..., tn }
@@ -32,16 +32,17 @@ data Term = Tuple [Term] Loc   -- ^ { t1, t2, ..., tn }
           | Character Char Loc
          deriving (Eq, Show, Ord)
 
-locOf :: Term -> Loc 
-locOf (Tuple _ loc) = loc
-locOf (Atom  _ loc) = loc
-locOf (List  _ loc) = loc
-locOf (TrueLiteral  loc) = loc
-locOf (FalseLiteral loc) = loc
-locOf (Text _     loc) = loc
-locOf (Number _   loc) = loc
-locOf (Floating _ loc) = loc
-locOf (Character _ loc) = loc
+
+instance SpanOf Term where 
+   spanOf (Tuple _ loc) = loc
+   spanOf (Atom  _ loc) = loc
+   spanOf (List  _ loc) = loc
+   spanOf (TrueLiteral  loc) = loc
+   spanOf (FalseLiteral loc) = loc
+   spanOf (Text _     loc) = loc
+   spanOf (Number _   loc) = loc
+   spanOf (Floating _ loc) = loc
+   spanOf (Character _ loc) = loc
 
 languageDef :: LanguageDef st
 languageDef = emptyDef { Token.identStart = letter }

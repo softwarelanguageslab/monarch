@@ -5,11 +5,11 @@
 module Syntax.Erlang.Compiler(compile, compileString) where
 
 import Syntax.Erlang.AST
-import Syntax.Erlang.Parser (Term, Loc)
+import Syntax.Erlang.Parser (Term)
 import qualified Syntax.Erlang.Parser as T
 import Control.Monad ((>=>))
 import Control.Monad.Except
-import Control.Applicative (liftA2)
+import Syntax.Span
 
 ------------------------------------------------------------
 -- Utility functions
@@ -32,17 +32,17 @@ data CompileErrorType = NotAModule       -- ^ thrown when a module was expected
                       | NotALiteral
                       deriving (Eq, Ord, Show)
 -- | A compiler error with an optional location in the source code
-data CompileError = CompileError CompileErrorType (Maybe Term) (Maybe Loc)
+data CompileError = CompileError CompileErrorType (Maybe Term) (Maybe Span)
                   | ParseError T.ParseError
                     deriving (Eq, Show)
 
 -- | Raise an error at the given location
-raiseAt :: (MonadError CompileError m) => CompileErrorType -> Loc -> m a
+raiseAt :: (MonadError CompileError m) => CompileErrorType -> Span -> m a
 raiseAt tp = throwError . CompileError tp Nothing . Just
 
 -- | Raise an error at the given location and term
 raiseAtTerm :: (MonadError CompileError m) => CompileErrorType -> Term -> m a
-raiseAtTerm tp t = throwError (CompileError tp (Just t) (Just (T.locOf t)))
+raiseAtTerm tp t = throwError (CompileError tp (Just t) (Just (spanOf t)))
 
 -- | Raise an error without passing location information
 raise :: (MonadError CompileError m) => CompileErrorType -> m a
@@ -53,7 +53,7 @@ type CompileM m = MonadError CompileError m
 -- | Compile the given term to a module.
 compileModule :: CompileM m => Term -> m Module
 compileModule (T.List ts _) =  Module <$> mapM compileDecl ts
-compileModule e = raiseAt NotAModule (T.locOf e)
+compileModule e = raiseAt NotAModule (spanOf e)
 
 -- | Compile the given term to a FunctionIdentifier.
 --
@@ -61,7 +61,7 @@ compileModule e = raiseAt NotAModule (T.locOf e)
 compileFnIdentifier :: (CompileM m) => Term -> m FunctionIdentifier
 compileFnIdentifier (T.Tuple [T.Atom name _, T.Number arity _] loc) =
    return (FunctionIdentifier name arity loc)
-compileFnIdentifier e = raiseAt InvalidSyntax (T.locOf e)
+compileFnIdentifier e = raiseAt InvalidSyntax (spanOf e)
 
 -- 
 compileDecl :: CompileM m => Term -> m Declaration
@@ -69,24 +69,24 @@ compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "export" _, T.List fns _] 
    Export <$> mapM compileFnIdentifier fns <*> pure loc
 compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "import" _, T.Tuple [T.Atom name locNam, T.List fns _] _] loc) =
    Import (Identifier name locNam) <$> mapM compileFnIdentifier fns <*> pure loc
-compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "module" _, T.Atom name nameLoc] loc) =
-   return (ModuleDecl (Identifier name nameLoc) loc)
+compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "module" _, T.Atom name nameSpan] loc) =
+   return (ModuleDecl (Identifier name nameSpan) loc)
 compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "file" _, T.Tuple [T.Atom file _, T.Number col _] _] loc) =
    return (File file col loc)
-compileDecl (T.Tuple [T.Atom "function" _, _, T.Atom name nameLoc, T.Number arity _, T.List clauses _] loc)=
-   Function (FunctionIdentifier name (fromInteger arity) nameLoc) <$> mapM compileClauses clauses <*> pure loc
+compileDecl (T.Tuple [T.Atom "function" _, _, T.Atom name nameSpan, T.Number arity _, T.List clauses _] loc)=
+   Function (FunctionIdentifier name (fromInteger arity) nameSpan) <$> mapM compileClauses clauses <*> pure loc
 compileDecl (T.Tuple [T.Atom "function" _, _, _, _, _] loc) =
    raiseAt InvalidFunction loc
 compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "record" _, T.Tuple [name, fields] _] loc)=
    raiseAt NotSupported loc
 compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom wild _, _] loc)= return (Wild wild loc)
-compileDecl e = raiseAt NotSupported (T.locOf e)
+compileDecl e = raiseAt NotSupported (spanOf e)
 
 -- | Checks if the given term is a character and returns it 
 -- if so, otherwise generates "ExpectedChar" error
 isChar :: CompileM m => Term -> m Char
 isChar (T.Character char _) = return char
-isChar e = raiseAt ExpectedChar (T.locOf e)
+isChar e = raiseAt ExpectedChar (spanOf e)
 
 -- | Compile literals
 compileLiteral :: CompileM m => Term -> m Literal
@@ -106,8 +106,8 @@ compileLiteral e = raiseAtTerm NotALiteral e
 
 -- | Compile a pattern from a function head or bindings
 compilePattern :: CompileM m => Term -> m Pattern
-compilePattern (T.Tuple [T.Atom "var" _, _, T.Atom var varLoc] _) =
-   return (VariablePat (Identifier var varLoc))
+compilePattern (T.Tuple [T.Atom "var" _, _, T.Atom var varSpan] _) =
+   return (VariablePat (Identifier var varSpan))
 compilePattern (T.Tuple [T.Atom "match" _, _, pat1, pat2] _) =
    CompoundPat <$> compilePattern pat1 <*> compilePattern pat2
 compilePattern (T.Tuple [T.Atom "cons" _, _, pat1, pat2] _) =
@@ -118,7 +118,7 @@ compilePattern lit = AtomicPat <$> compileLiteral lit
 compileClauses :: CompileM m => Term -> m Clause
 compileClauses (T.Tuple [T.Atom "clause" _, _, T.List [pat] _, T.List guards _, T.List bod _] _) =
    SimpleClause <$> compilePattern pat <*> mapM compileTermAsSequence guards <*> compileSequence bod
-compileClauses e = raiseAt NotSupported (T.locOf e)
+compileClauses e = raiseAt NotSupported (spanOf e)
 
 -- | Compiles a list of terms to a list of AST nodes
 compileSequence :: CompileM m => [Term] -> m [Expr]
@@ -127,13 +127,13 @@ compileSequence = mapM compileExpression
 -- | Assumes that the term is a list and compiles it as a sequence
 compileTermAsSequence :: CompileM m => Term -> m Body
 compileTermAsSequence (T.List es _) = compileSequence es
-compileTermAsSequence e = raiseAt InvalidSyntax (T.locOf e)
+compileTermAsSequence e = raiseAt InvalidSyntax (spanOf e)
 
 -- | Compiles an atom to an identifier (if it is a valid atom)
 compileIdent :: CompileM m => Term -> m Identifier
-compileIdent (T.Tuple [T.Atom "atom" _, _, T.Atom nam namLoc] _) =
-   return (Identifier nam namLoc)
-compileIdent e = raiseAt InvalidSyntax (T.locOf e)
+compileIdent (T.Tuple [T.Atom "atom" _, _, T.Atom nam namSpan] _) =
+   return (Identifier nam namSpan)
+compileIdent e = raiseAt InvalidSyntax (spanOf e)
 
 -- | Compile term to an expression
 compileExpression :: (CompileM m) => Term -> m Expr
@@ -159,12 +159,12 @@ compileExpression (T.Tuple [T.Atom "receive" _, _, T.List clauses _, afterExp, T
    Receive <$> mapM compileClauses clauses <*> (Just <$> liftA2 (,) (compileExpression afterExp) (compileSequence afterBod)) <*> pure loc
 compileExpression (T.Tuple [T.Atom "tuple" _, _, T.List es _] loc) =
    Tuple <$> compileSequence es <*> pure loc
-compileExpression (T.Tuple [T.Atom "var" _, _, T.Atom varName varLoc] _) =
-   return (Var (Identifier varName varLoc))
+compileExpression (T.Tuple [T.Atom "var" _, _, T.Atom varName varSpan] _) =
+   return (Var (Identifier varName varSpan))
 compileExpression (T.Tuple [T.Atom "cons" _, _, car, cdr] loc) =
    Cons <$> compileExpression car <*> compileExpression cdr <*> pure loc
-compileExpression (T.Tuple [T.Atom "op" _, _, T.Atom op opLoc, e1, e2] loc) = 
-   Call (Var (Identifier op opLoc)) <$> mapM compileExpression [e1, e2] <*> pure loc
+compileExpression (T.Tuple [T.Atom "op" _, _, T.Atom op opSpan, e1, e2] loc) = 
+   Call (Var (Identifier op opSpan)) <$> mapM compileExpression [e1, e2] <*> pure loc
 compileExpression lit = fmap Atomic (compileLiteral lit)
 
 -- | Compile a term that represents a module to an AST node
