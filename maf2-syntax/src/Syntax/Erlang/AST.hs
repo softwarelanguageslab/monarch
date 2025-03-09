@@ -6,7 +6,7 @@ module Syntax.Erlang.AST where
 -- contains line and column number information but in our test 
 -- cases it did not. There also does not seem to be a standardized format
 -- for this field. Hence, we choice not to use it for identification purposes.
-import Syntax.Span (Span)
+import Syntax.Span (Span, SpanOf(..))
 
 ------------------------------------------------------------
 -- Aliases for clarity
@@ -30,10 +30,17 @@ newtype Module = Module [Declaration]
 data Identifier = Identifier String Span 
                deriving (Eq, Ord, Show)
 
+instance SpanOf Identifier where
+  spanOf (Identifier _ s) = s
+
+
 -- | A function identifier is like an identifier
 -- but also keeps track of the arity of the function
 data FunctionIdentifier = FunctionIdentifier String Integer Span 
                         deriving (Eq, Ord, Show)
+
+instance SpanOf FunctionIdentifier where
+  spanOf (FunctionIdentifier _ _ s) = s
 
 -- | A declaration combines Erlang's attributes (e.g., -import directive)
 -- and declarations (e.g., functions)
@@ -42,9 +49,18 @@ data Declaration = Import ModuleName [FunctionIdentifier] Span  -- ^ -import(...
                  | Function FunctionIdentifier [Clause] Span    -- ^ function definition
                  | ModuleDecl Identifier Span     -- ^ -module(...)
                  | File String Integer Span       -- ^ -file(FILE, LINE)
-                 | Record Identifier Field Span   -- ^ -record(Identifier, {Field ...})
+                 | Record Identifier Field Span   -- ^ -record(Identifier, {Field ...})
                  | Wild  String Span              -- ^ a 'wild' attribute, not parsed further
                  deriving (Eq, Ord, Show)
+
+instance SpanOf Declaration where
+  spanOf (Import _ _ s) = s
+  spanOf (Export _ s) = s
+  spanOf (Function _ _ s) = s
+  spanOf (ModuleDecl _ s) = s
+  spanOf (File _ _ s) = s
+  spanOf (Record _ _ s) = s
+  spanOf (Wild _ s) = s
 
 -- |  A field from a record type.
 -- A field must contain a name (which is an atom), and an optional default value,
@@ -61,6 +77,14 @@ data Literal = AtomLit  String  Span
              | NilLit   Span
              deriving (Eq, Ord, Show)
 
+instance SpanOf Literal where
+  spanOf (AtomLit _ s) = s
+  spanOf (CharLit _ s) = s
+  spanOf (FloatLit _ s) = s
+  spanOf (IntLit _ s) = s
+  spanOf (StrLit _ s) = s
+  spanOf (NilLit s)   = s
+
 -- | Patterns, used in function heads and bindings
 data Pattern = AtomicPat Literal
              | VariablePat Identifier
@@ -68,7 +92,7 @@ data Pattern = AtomicPat Literal
              | ConsPat Pattern Pattern
              deriving (Eq, Ord, Show)
 
--- | An expression, currently not all Erlang expressions
+-- | Expressions. Currently not all Erlang expressions
 --  are supported, they are just omitted from the AST.
 --
 --  If the compiler (from 'Syntax.Erlang.Compiler') encouters
@@ -86,6 +110,21 @@ data Expr = Atomic Literal
           | Var Identifier
           | ModVar ModuleName Identifier
           deriving (Eq, Ord, Show)
+
+instance SpanOf Expr where
+  spanOf (Atomic l) = spanOf l
+  spanOf (Block _ s) = s
+  spanOf (Case _ _ s) = s
+  spanOf (Catch _ s) = s
+  spanOf (Call _ _ s) = s
+  spanOf (If _ s) = s
+  spanOf (Match _ _ _ s) = s
+  spanOf (Receive _ _ s) = s
+  spanOf (Tuple _ s) = s
+  spanOf (Cons _ _ s) = s
+  spanOf (Var i) = spanOf i
+  spanOf (ModVar _ i) = spanOf i
+
 
 -- | A clause in a pattern match expression
 data Clause = SimpleClause Pattern [Body] Body 
