@@ -30,7 +30,7 @@ data Exp = -- Program Semantics
          | DynVar Ide                        -- ^ $x
          | Begin [Exp] Span                  -- ^ { e (; e)* }
          | Input Span                        -- ^ input
-         | Parallel [Exp] Span               -- ^ parallel { e (; e)* }
+         | Parallel [Exp] Span               -- ^ parallel { e (; e)* }
          | Error Exp Span                    -- ^ error e
          -- Debugging analyses
          | Fresh Span                        -- ^ fresh (only for debugging, generates a "fresh" symbolic value)
