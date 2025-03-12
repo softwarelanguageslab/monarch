@@ -1,4 +1,4 @@
--- | Lattice that represents any value
+-- | Lattice consisting of just a single element that represents any value
 module Lattice.TopLattice(Top(..)) where 
 
 import Lattice.Class

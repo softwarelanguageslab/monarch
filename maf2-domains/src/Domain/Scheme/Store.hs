@@ -25,6 +25,8 @@ module Domain.Scheme.Store(
    Env,
 ) where
 
+
+import Lattice.Class
 import Syntax.Ide
 import Data.Map (Map)
 import Control.DeepSeq
@@ -40,6 +42,15 @@ data EnvAdr ctx = EnvAdr Ide ctx
 data PaiAdrE e ctx = PaiAdr e ctx | PaiTop deriving (Eq, Ord, Show, Generic, NFData)
 data StrAdrE e ctx = StrAdr e ctx | StrTop deriving (Eq, Ord, Show, Generic, NFData)
 data VecAdrE e ctx = VecAdr e ctx | VecTop deriving (Eq, Ord, Show, Generic, NFData)
+
+-- Trivial instances of the @TopLattice@ for all Scheme addresses
+instance TopLattice (PaiAdrE e ctx) where 
+  top = PaiTop
+instance TopLattice (StrAdrE e ctx) where 
+  top = StrTop
+instance TopLattice (VecAdrE e ctx) where
+  top = VecTop
+
 
 -- For convenience, addresses initialized to Scheme expressions ...
 type PaiAdr ctx = PaiAdrE Scheme.Exp ctx

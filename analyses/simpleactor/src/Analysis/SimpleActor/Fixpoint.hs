@@ -91,103 +91,103 @@ type IntraT m = MonadStack '[
                -- Symbolic execution
             ] m
 -- 
--- -- TODO: group some constraint into a constraint alias for ModX
--- type MonadInter m =
---       ( MapM ActorCmp ActorRes m,
---         WorkListM m ActorCmp,
---         ComponentTrackingM m ActorCmp,
---         DependsOn m ActorCmp '[
---             ActorCmp ,
---             EnvAdr K,
---             Pid Exp K,
---             PaiAdrE Exp K,
---             VecAdrE Exp K,
---             StrAdrE Exp K,
---             In ActorCmp ActorSto,
---             Out ActorCmp ActorSto ],
---             -- In ActorCmp ActorPC,
---             -- Out ActorCmp ActorPC ],
---         StoreM (PaiAdrE Exp K) (PaiDom ActorVlu) m,
---         StoreM (VecAdrE Exp K) (VecDom ActorVlu) m,
---         StoreM (StrAdrE Exp K) (StrDom ActorVlu) m,
---         MapM (In ActorCmp ActorSto) ActorSto m,
---         MapM (Out ActorCmp ActorSto) ActorSto m,
---         -- For global stores: StoreM (EnvAdr K) ActorVlu m,
---         -- For global stores: AbstractCountM (EnvAdr K) m,
---         MonadMailbox ActorVlu m,
---         FormulaSolver (EnvAdr K) m)
--- 
--- ------------------------------------------------------------
--- -- Analysis
--- ------------------------------------------------------------
--- 
--- -- | Compute the initial component for the given expression
--- initialCmp :: Exp -> ActorCmp
--- initialCmp exp = (((((((ActorExp exp, initialEnv), Map.empty), emptyMcfaContext 1), False), Pid exp [])), Symbolic.AST.emptyPC)
--- 
--- -- | Compute the initial flow sensitive store mapping for the given 
--- -- initial expression
--- initialFlowSensitiveSto :: Exp -> Map (In ActorCmp ActorSto) ActorSto
--- initialFlowSensitiveSto exp = Map.fromList [ (In (initialCmp exp), initialSto allPrimitives PrmAdr) ]
--- 
--- -- | Compute the output store of the main component
--- mainStore :: Exp -> Map (Out ActorCmp ActorSto) ActorSto -> ActorSto
--- mainStore e = fromJust . Map.lookup (Out (initialCmp e))
--- 
--- 
--- intra :: forall m . MonadInter m
---  => ActorCmp -> m ()
--- intra cmp = void
---              (runFixT @(IntraT (IntraAnalysisT ActorCmp m)) eval' cmp
---            & runAlloc @Ide @K @(EnvAdr K) EnvAdr
---            & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
---            & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
---            & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
---            & evalWithWidenedStore @ActorSto @(EnvAdr K) @ActorVlu
---            -- & evalWithWidenedFormulaT @(EnvAdr K)  @ActorVlu
---            -- & runWithSymbolicStore
---            & runIntraAnalysis cmp)
---       where eval' = runAroundT (flowSensitiveStore @_ @_ @ActorSto @_ @(EnvAdr K)) . (flowSensitiveEval @_ @_ @ActorSto (eval @ActorVlu))
--- 
--- initialEnv :: Env k
--- initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
--- 
--- inter :: MonadInter m => Exp -> m ()
--- inter = lfp intra . initialCmp
+-- TODO: group some constraint into a constraint alias for ModX
+type MonadInter m =
+      ( MapM ActorCmp ActorRes m,
+        WorkListM m ActorCmp,
+        ComponentTrackingM m ActorCmp,
+        DependsOn m ActorCmp '[
+            ActorCmp ,
+            EnvAdr K,
+            Pid Exp K,
+            PaiAdrE Exp K,
+            VecAdrE Exp K,
+            StrAdrE Exp K,
+            In ActorCmp ActorSto,
+            Out ActorCmp ActorSto ],
+            -- In ActorCmp ActorPC,
+            -- Out ActorCmp ActorPC ],
+        StoreM (PaiAdrE Exp K) (PaiDom ActorVlu) m,
+        StoreM (VecAdrE Exp K) (VecDom ActorVlu) m,
+        StoreM (StrAdrE Exp K) (StrDom ActorVlu) m,
+        MapM (In ActorCmp ActorSto) ActorSto m,
+        MapM (Out ActorCmp ActorSto) ActorSto m,
+        -- For global stores: StoreM (EnvAdr K) ActorVlu m,
+        -- For global stores: AbstractCountM (EnvAdr K) m,
+        MonadMailbox ActorVlu m,
+        FormulaSolver (EnvAdr K) m)
+
+------------------------------------------------------------
+-- Analysis
+------------------------------------------------------------
+
+-- | Compute the initial component for the given expression
+initialCmp :: Exp -> ActorCmp
+initialCmp exp = (((((((ActorExp exp, initialEnv), Map.empty), emptyMcfaContext 1), False), Pid exp [])), Symbolic.AST.emptyPC)
+
+-- | Compute the initial flow sensitive store mapping for the given 
+-- initial expression
+initialFlowSensitiveSto :: Exp -> Map (In ActorCmp ActorSto) ActorSto
+initialFlowSensitiveSto exp = Map.fromList [ (In (initialCmp exp), initialSto allPrimitives PrmAdr) ]
+
+-- | Compute the output store of the main component
+mainStore :: Exp -> Map (Out ActorCmp ActorSto) ActorSto -> ActorSto
+mainStore e = fromJust . Map.lookup (Out (initialCmp e))
+
+
+intra :: forall m . MonadInter m
+ => ActorCmp -> m ()
+intra cmp = void
+             (runFixT @(IntraT (IntraAnalysisT ActorCmp m)) eval' cmp
+           & runAlloc @Ide @K @(EnvAdr K) EnvAdr
+           & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
+           & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
+           & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
+           & evalWithWidenedStore @ActorSto @(EnvAdr K) @ActorVlu
+           -- & evalWithWidenedFormulaT @(EnvAdr K)  @ActorVlu
+           -- & runWithSymbolicStore
+           & runIntraAnalysis cmp)
+      where eval' = runAroundT (flowSensitiveStore @_ @_ @ActorSto @_ @(EnvAdr K)) . (flowSensitiveEval @_ @_ @ActorSto (eval @ActorVlu))
+
+initialEnv :: Env k
+initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
+
+inter :: MonadInter m => Exp -> m ()
+inter = lfp intra . initialCmp
 
 analyze :: Exp -> IO ((((), Map (Out ActorCmp ActorSto) ActorSto), ActorMai), Map ActorCmp ActorRes)
-analyze exp =  undefined -- do
-      --((((((((), _), _), _), mb), inn), out), mapping) <-
-      --        inter exp
-      --      -- Scheme stores
-      --      & runWithStore @(Map (PaiAdrE Exp K) (PaiDom ActorVlu))
-      --      & runWithStore @(Map (StrAdrE Exp K) (StrDom ActorVlu))
-      --      & runWithStore @(Map (VecAdrE Exp K) (VecDom ActorVlu))
-      --      -- Actor mailboxes
-      --      & runWithMailboxT @ActorVlu
-      --      -- Global store
-      --      -- & runStoreT @ActorSto @(EnvAdr K) @ActorVlu (initialSto allPrimitives PrmAdr)
-      --      -- Flow sensitivity
-      --      & runMapT @(In ActorCmp ActorSto) @ActorSto (initialFlowSensitiveSto exp)
-      --      & runMapT @(Out ActorCmp ActorSto) @ActorSto Map.empty
-      --      -- Path-widening
-      --      -- & runMapT @(In ActorCmp ActorPC) @ActorPC Map.empty
-      --      -- & runMapT @(Out ActorCmp ActorPC) @ActorPC emptyPC
-      --      -- Results
-      --      & runWithMapping @ActorCmp @ActorRes
-      --      -- & runWithJoinMap @ActorCmp @(Unlist ActorRes)
-      --      -- Worklist algorithm
-      --      & runWithComponentTracking @ActorCmp
-      --      & runWithDependencyTracking @ActorCmp @ActorCmp
-      --      & runWithDependencyTracking @ActorCmp @(EnvAdr K)
-      --      & runWithDependencyTracking @ActorCmp @(PaiAdrE Exp K)
-      --      & runWithDependencyTracking @ActorCmp @(VecAdrE Exp K)
-      --      & runWithDependencyTracking @ActorCmp @(StrAdrE Exp K)
-      --      & runWithDependencyTracking @ActorCmp @ActorRef
-      --      & runWithDependencyTracking @ActorCmp @(In ActorCmp ActorSto)
-      --      & runWithDependencyTracking @ActorCmp @(Out ActorCmp ActorSto)
-      --      & runWithWorkList @[_]
-      --      -- Z3 solving
-      --      & runCachedSolver
-      --      & runZ3SolverWithSetup SMT.prelude
-      --return ((((), out), mb), mapping)
+analyze exp =  do
+      ((((((((), _), _), _), mb), inn), out), mapping) <-
+              inter exp
+            -- Scheme stores
+            & runWithStore @(Map (PaiAdrE Exp K) (PaiDom ActorVlu))
+            & runWithStore @(Map (StrAdrE Exp K) (StrDom ActorVlu))
+            & runWithStore @(Map (VecAdrE Exp K) (VecDom ActorVlu))
+            -- Actor mailboxes
+            & runWithMailboxT @ActorVlu
+            -- Global store
+            -- & runStoreT @ActorSto @(EnvAdr K) @ActorVlu (initialSto allPrimitives PrmAdr)
+            -- Flow sensitivity
+            & runMapT @(In ActorCmp ActorSto) @ActorSto (initialFlowSensitiveSto exp)
+            & runMapT @(Out ActorCmp ActorSto) @ActorSto Map.empty
+            -- Path-widening
+            -- & runMapT @(In ActorCmp ActorPC) @ActorPC Map.empty
+            -- & runMapT @(Out ActorCmp ActorPC) @ActorPC emptyPC
+            -- Results
+            & runWithMapping @ActorCmp @ActorRes
+            -- & runWithJoinMap @ActorCmp @(Unlist ActorRes)
+            -- Worklist algorithm
+            & runWithComponentTracking @ActorCmp
+            & runWithDependencyTracking @ActorCmp @ActorCmp
+            & runWithDependencyTracking @ActorCmp @(EnvAdr K)
+            & runWithDependencyTracking @ActorCmp @(PaiAdrE Exp K)
+            & runWithDependencyTracking @ActorCmp @(VecAdrE Exp K)
+            & runWithDependencyTracking @ActorCmp @(StrAdrE Exp K)
+            & runWithDependencyTracking @ActorCmp @ActorRef
+            & runWithDependencyTracking @ActorCmp @(In ActorCmp ActorSto)
+            & runWithDependencyTracking @ActorCmp @(Out ActorCmp ActorSto)
+            & runWithWorkList @[_]
+            -- Z3 solving
+            & runCachedSolver
+            & runZ3SolverWithSetup SMT.prelude
+      return ((((), out), mb), mapping)
