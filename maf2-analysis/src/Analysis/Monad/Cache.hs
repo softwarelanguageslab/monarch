@@ -41,9 +41,11 @@ class Monad m => MonadCache m where
     type Base m  :: Type -> Type
     key :: k -> m (Key m k)
     val :: Val m v -> m v
-    run :: (k -> m v) -> Key m k -> Base m (Val m v)
+    -- TODO: @Ord v@ is necessary for SetNondetT, check whether
+    -- we can move this constraint somewhere else.
+    run :: forall k v . Ord v => (k -> m v) -> Key m k -> Base m (Val m v)
 
-cache :: forall m k v . (MonadCache m, MapM (Key m k) (Val m v) (Base m)) => Key m k -> (k -> m v) -> Base m ()
+cache :: forall m k v . (Ord v, MonadCache m, MapM (Key m k) (Val m v) (Base m)) => Key m k -> (k -> m v) -> Base m ()
 cache k f = run f k >>= put k
 
 cached :: forall m k v . (MonadCache m, MapM (Key m k) (Val m v) m) => Key m k -> m (Maybe v)
@@ -75,7 +77,7 @@ instance MonadCache m => MonadCache (MaybeT m) where
     {-# INLINE run #-}
     run f = run (runMaybeT . f)
 
-instance MonadCache m => MonadCache (StateT s m) where
+instance (Ord s, MonadCache m) => MonadCache (StateT s m) where
      type Key (StateT s m) k = Key m (k, s)
      type Val (StateT s m) v = Val m (v, s)
      type Base (StateT s m) = Base m
@@ -84,7 +86,7 @@ instance MonadCache m => MonadCache (StateT s m) where
      {-# INLINE run #-}
      run f = run (\(k,s) -> runStateT (f k) s)
 
-instance (Joinable e, MonadCache m) => MonadCache (MayEscapeT e m) where
+instance (Joinable e, Ord e, MonadCache m) => MonadCache (MayEscapeT e m) where
     type Key (MayEscapeT e m) k = Key m k
     type Val (MayEscapeT e m) v = Val m (MayEscape e v)
     type Base (MayEscapeT e m) = Base m
@@ -93,7 +95,7 @@ instance (Joinable e, MonadCache m) => MonadCache (MayEscapeT e m) where
     {-# INLINE run #-}
     run f = run (runMayEscape . f)
 
-instance (TaintM t m, Joinable e, MonadCache m) => MonadCache (MayEscapeTaintedT t e m) where
+instance (TaintM t m, Ord e, Ord t, Joinable e, MonadCache m) => MonadCache (MayEscapeTaintedT t e m) where
     type Key (MayEscapeTaintedT t e m) k = Key m k
     type Val (MayEscapeTaintedT t e m) v = Val m (MayEscape (Tainted t e) v)
     type Base (MayEscapeTaintedT t e m) = Base m
@@ -111,7 +113,7 @@ instance MonadCache m => MonadCache (ReaderT r m) where
     {-# INLINE run #-}
     run f = run (\(k,r) -> runReaderT (f k) r)
 
-instance (MonadCache m, Monoid w) => MonadCache (WriterT w m) where
+instance (MonadCache m, Ord w, Monoid w) => MonadCache (WriterT w m) where
     type Key (WriterT w m) k = Key m k
     type Val (WriterT w m) v = Val m (v, w)
     type Base (WriterT w m) = Base m
@@ -135,7 +137,7 @@ instance (MonadJoinable m) => MonadJoinable (CacheT m) where
    mjoin (CacheT ma) (CacheT mb) = CacheT $ IdentityT $ mjoin (runIdentityT ma) (runIdentityT mb)
 
 
-deriving instance MonadCache m => MonadCache (MapT k v m)
+deriving instance (Ord k, Ord v, MonadCache m) => MonadCache (MapT k v m)
 
 -- ---
 -- --- CacheT instance

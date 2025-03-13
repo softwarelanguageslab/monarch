@@ -7,8 +7,10 @@
 module Analysis.Monad.Join (
     JoinT(..),
     NonDetT,
+    SetNonDetT, 
     runJoinT,
     runNonDetT,
+    runSetNonDetT,
 ) where
 
 import Lattice.Class
@@ -23,6 +25,8 @@ import qualified Control.Monad as C
 import Control.Applicative
 import Analysis.Monad.Cache
 import Lattice.BottomLiftedLattice (BottomLifted(..))
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 --
 -- JoinT
@@ -81,9 +85,7 @@ runJoinT (JoinT m) = m
 -- NonDetT
 -- 
 
--- TODO: implement `MonadTransControl` (cf. ListT in original `layers` package)
-
--- | Useful for running the computation non-deterministically and defering join to the end.
+-- | Non-deterministic computations
 newtype NonDetT m a = NonDetT (ListT m a)
     deriving (Functor, Applicative, Monoid, MonadLayer, MonadTrans, Semigroup, Monad, MonadCache)
 
@@ -96,3 +98,33 @@ runNonDetT :: Monad m => NonDetT m a -> m [a]
 runNonDetT (NonDetT ma) = uncons ma >>= fix'
    where fix' Nothing         = return []
          fix' (Just (x, mxs)) = fmap (x:) (uncons mxs >>= fix')
+
+
+--
+-- NonDetT (but with cached sets)
+--
+
+-- | Same as @NonDetT@ but caches sets instead of lists
+newtype SetNonDetT m a = SetNonDetT  { getSetNonDetT :: (ListT m a) }
+                  deriving (Functor, Applicative, Monad, Monoid, MonadLayer, MonadTrans, Semigroup)
+
+
+instance (MonadCache m,  Monad m) => MonadCache (SetNonDetT m) where
+   type Key (SetNonDetT m) k = Key (ListT m) k
+   type Val (SetNonDetT m) v = Val m (Set v)
+   type Base (SetNonDetT m) = Base (ListT m) 
+   key = upperM . key
+   val :: forall v . Val m (Set v) -> SetNonDetT m v
+   val v = SetNonDetT (ListT $ val @m @(Set v) v >>= uncons . ListT.fromFoldable . Set.toList)
+   run f = run (fmap Set.fromList . ListT.toList . getSetNonDetT . f)
+
+instance (Monad m) => MonadJoinable (SetNonDetT m) where
+   mjoin (SetNonDetT ma) (SetNonDetT mb) = SetNonDetT $ ma `mplus` mb
+instance (Monad m) => MonadBottom (SetNonDetT m) where
+   mzero = SetNonDetT C.mzero
+
+runSetNonDetT :: (Ord a, Monad m) => SetNonDetT m a -> m (Set a)
+runSetNonDetT (SetNonDetT ma) = Set.fromList <$> (uncons ma >>= fix')
+   where fix' Nothing         = return []
+         fix' (Just (x, mxs)) = fmap (x:) (uncons mxs >>= fix')
+

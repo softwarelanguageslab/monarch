@@ -101,7 +101,7 @@ eval' rec (Parametrize bds e2 _) = do
    mapM_ (uncurry writeAdr) (zip ads vs)
    withExtendedDynamic bds' (eval' rec e2)
 eval' rec (Begin exs _) =
-   last . traceShowId <$> mapM (eval' rec) exs
+   last <$> mapM (eval' rec) exs
 eval' rec e@(Pair e1 e2 _) =
    stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
 eval' _ (Var (Ide x _)) =
@@ -172,11 +172,11 @@ match (PairPat pat1 pat2) v =
                       <*> match pat2 (cdr vp)
 
 injectLit :: SchemeDomain v => Lit -> v
-injectLit (Boolean b) = inject b
-injectLit (Symbol s)  = symbol s
-injectLit (Num n)     = inject n
-injectLit (Character c) = inject c
-injectLit Nil         = nil
+injectLit (Boolean b)    = inject b
+injectLit (Symbol s)     = symbol s
+injectLit (Num n)        = inject n
+injectLit (Character c)  = inject c
+injectLit Nil            = nil
 
 ------------------------------------------------------------
 -- Primitives

@@ -87,6 +87,8 @@ type IsErlValue c =
     AllAtKey1 Eq (ErlMapping c),
     AllAtKey1 Joinable      (ErlMapping c),
     AllAtKey1 PartialOrder  (ErlMapping c),
+    AllAtKey1 Ord (ErlMapping c),
+    Ord (PidCfg c),
     KeyIs1 IntDomain  (ErlMapping c) IntKey,
     KeyIs1 BoolDomain (ErlMapping c) BooKey,
     BoolFor (Assoc IntKey (ErlMapping c)) ~ Assoc BooKey (ErlMapping c))

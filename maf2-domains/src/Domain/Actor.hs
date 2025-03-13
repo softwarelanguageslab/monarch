@@ -19,7 +19,7 @@ instance (NFData e, NFData ctx) => NFData (Pid e ctx)
 
 -- | A generic domain for use in Actor based languages.
 -- This domain is minimal, as it only contains process identifiers (indicated by type @ARef v@). Messages are not explicitly modelled, and are assumed to be values of the analyzed programming language. For more complex actor languages such as AmbientTalk, more advanced, specific domains, can be used.
-class ActorDomain v where
+class (Ord (ARef v)) => ActorDomain v where
    -- | The type of actor reference included in abtract value `v`
    type ARef v :: Type
 

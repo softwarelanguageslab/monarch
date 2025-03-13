@@ -17,7 +17,7 @@ import Lattice.Class (Lattice)
 import Control.Monad.Escape
 import Control.Monad.DomainError
 
-instance (IsSchemeValue m) => ActorDomain (SchemeVal m) where
+instance (IsSchemeValue m, Ord (Assoc PidConf m)) => ActorDomain (SchemeVal m) where
    type ARef (SchemeVal m) = (Assoc PidConf m)
 
    -- actor references

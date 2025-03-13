@@ -18,6 +18,7 @@ import Control.Monad.State as State hiding (mzero)
 import Analysis.Monad.Cache
 import Control.Monad.Join
 import Analysis.Monad.Map (MapM)
+import Debug.Trace
 
 ---
 --- Component tracking typeclass

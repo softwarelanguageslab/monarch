@@ -38,11 +38,14 @@ import Analysis.Store (CountingMap)
 import Data.Maybe
 import Analysis.Context (emptyMcfaContext)
 import Control.Monad.State
+import qualified RIO.Set as Set
+
 -- 
 -- ------------------------------------------------------------
 -- -- Shortcuts
 -- ------------------------------------------------------------
 -- 
+
 type K = [Span]
 type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (EnvAdr K)
@@ -85,7 +88,7 @@ type IntraT m = MonadStack '[
                FormulaT (EnvAdr K) ActorVlu,
                WidenedStoreT ActorSto (EnvAdr K) ActorVlu,
                -- WidenedFormulaT (EnvAdr K) ActorVlu,
-               NonDetT,
+               SetNonDetT,
                -- JoinT,
                CacheT
                -- Symbolic execution
@@ -148,7 +151,7 @@ intra cmp = void
            -- & runWithSymbolicStore
            & runIntraAnalysis cmp)
       where eval' = runAroundT (flowSensitiveStore @_ @_ @ActorSto @_ @(EnvAdr K)) . (flowSensitiveEval @_ @_ @ActorSto (eval @ActorVlu))
-
+      
 initialEnv :: Env k
 initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
 

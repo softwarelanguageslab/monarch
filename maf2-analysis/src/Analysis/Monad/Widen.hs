@@ -71,7 +71,8 @@ runWidenedT :: forall s l m a .
                 -- cannot be derived at this point.
                 MonadCache (AllMapT s l (CacheT m)),
                 -- Other constraints
-                Functor m)
+                Functor m,
+                Ord a)
             => State s l 
             -> WidenedT s l m a 
             -> m (a, State s l)

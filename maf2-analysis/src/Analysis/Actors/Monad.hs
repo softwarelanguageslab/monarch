@@ -74,7 +74,10 @@ instance
 
 -- | Global mailbox parametrized by a mailbox abstraction
 newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT (Map (ARef v) mb) m a}
-  deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadCache)
+  deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)
+
+deriving instance (MonadCache m, Ord mb, Ord v, Ord (ARef v)) => MonadCache (GlobalMailboxT v mb m)
+  
 
 deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinable mb) => MonadJoinable (GlobalMailboxT v mb m)
 

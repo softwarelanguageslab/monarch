@@ -31,7 +31,7 @@ class MonadFixpoint m b c | m -> b c where
 newtype FixT b c m a = FixT {runFixT' :: IdentityT m a}
   deriving (MonadCache, MonadTrans, MonadLayer, Monad, Applicative, Functor, MonadJoinable, MonadEscape)
 
-runFixT :: forall m b c. (MonadCache m, MapM (Key m b) (Val m c) (Base m)) => (b -> FixT b c m c) -> Key m b -> Base m ()
+runFixT :: forall m b c. (Ord c, MonadCache m, MapM (Key m b) (Val m c) (Base m)) => (b -> FixT b c m c) -> Key m b -> Base m ()
 runFixT f kb = cache @(FixT b c m) @b kb f
 
 instance
