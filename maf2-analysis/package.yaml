@@ -45,6 +45,8 @@ dependencies:
 
 default-extensions:
   - FlexibleContexts
+  - FlexibleInstances
+  - ConstraintKinds
   - TypeFamilies
   - TupleSections
   - TemplateHaskell

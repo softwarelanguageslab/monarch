@@ -7,7 +7,6 @@ module Analysis.SimpleActor.Semantics where
 
 import Syntax.AST
 import Syntax.Span
-import Control.Monad.Reader hiding (fix)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Domain.Scheme.Class hiding (Exp)
@@ -29,7 +28,6 @@ import Analysis.Monad.Fix
 
 import Analysis.Scheme.Monad (stoPai)
 import Domain.Core.PairDomain (cons, car ,cdr)
-import Control.Applicative (liftA2)
 import Analysis.Scheme.Primitives (Prim(..), primitivesByName)
 import Domain (Domain(inject))
 import Analysis.Environment (Environment(..))
@@ -50,7 +48,6 @@ import Analysis.Symbolic.Monad (choice, choices)
 import Domain.Symbolic (equal, var)
 import Analysis.Store (Store)
 import qualified Analysis.Store as Store
-import qualified Data.List as List
 
 ------------------------------------------------------------
 -- Evaluation

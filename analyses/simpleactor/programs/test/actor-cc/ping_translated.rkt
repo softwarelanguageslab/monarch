@@ -608,7 +608,10 @@
                        ((self (lambda (m) (send^ real-self m))))
                        (receive
                         (((pair 'ping sender)
-                          (begin (print 'ping) (ping-behavior)))
+                          (begin
+                            (print 'ping)
+                            (sender (pair 'pong (dyn self)))
+                            (ping-behavior)))
                          ((pair
                            'enhanced
                            (pair k7402 (pair j7406 (pair 'ping sender))))
@@ -621,6 +624,7 @@
                                   (pair rcv7404 msg7405)))))
                              (begin
                                (print 'ping)
+                               (sender (pair 'pong (dyn self)))
                                (old-send7407 kc7403 'finish)
                                (ping-behavior)))))))))))
                  (pong-behavior
@@ -716,9 +720,9 @@
                       ((ping/c)
                        xj7435
                        xk7436
-                       (letrec ((act (spawn^ (ping-behavior))))
-                         (lambda (msg) (send^ act msg))))))
+                       (letrec ((act1 (spawn^ (ping-behavior))))
+                         (lambda (msg) (send^ act1 msg))))))
                    (pong
-                    (letrec ((act (spawn^ (pong-behavior))))
-                      (lambda (msg) (send^ act msg)))))
+                    (letrec ((act2 (spawn^ (pong-behavior))))
+                      (lambda (msg) (send^ act2 msg)))))
             (begin (ping (pair 'ping pong)) (wait-until-all-finished))))))))

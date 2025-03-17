@@ -4,8 +4,6 @@
 {-# HLINT ignore "Redundant bracket" #-}
 module Analysis.SimpleActor.Fixpoint(ActorCmp, analyze) where
 
--- XXX: there are some issues with having SchemeTopLifted in the pair lattice, 
--- unclear why this is the case.
 import Analysis.SimpleActor.Monad
 import Analysis.SimpleActor.Semantics
 import Analysis.Actors.Monad
@@ -39,6 +37,7 @@ import Data.Maybe
 import Analysis.Context (emptyMcfaContext)
 import Control.Monad.State
 import qualified RIO.Set as Set
+import Data.Tuple.Syntax
 
 -- 
 -- ------------------------------------------------------------
@@ -58,7 +57,7 @@ type ActorPC  = PC (EnvAdr K)
  
 type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Constraint where
       DependsOn m cmp '[] = ()
-      DependsOn m cmp (adr : ads) = (DependencyTrackingM m cmp adr, DependsOn m cmp ads)
+      DependsOn m cmp (adr : ads) = (MonadDependencyTracking cmp adr m, DependsOn m cmp ads)
 
 
 type family Unlist (as :: Type) :: Type where
@@ -86,7 +85,7 @@ type IntraT m = MonadStack '[
                ActorLocalT ActorVlu,
                -- Local path conditions
                FormulaT (EnvAdr K) ActorVlu,
-               WidenedStoreT ActorSto (EnvAdr K) ActorVlu,
+               -- WidenedStoreT ActorSto (EnvAdr K) ActorVlu,
                -- WidenedFormulaT (EnvAdr K) ActorVlu,
                SetNonDetT,
                -- JoinT,
@@ -105,18 +104,21 @@ type MonadInter m =
             Pid Exp K,
             PaiAdrE Exp K,
             VecAdrE Exp K,
-            StrAdrE Exp K,
-            In ActorCmp ActorSto,
-            Out ActorCmp ActorSto ],
+            StrAdrE Exp K
+            -- In ActorCmp ActorSto,
+            -- Out ActorCmp ActorSto
+          ],
             -- In ActorCmp ActorPC,
             -- Out ActorCmp ActorPC ],
         StoreM (PaiAdrE Exp K) (PaiDom ActorVlu) m,
         StoreM (VecAdrE Exp K) (VecDom ActorVlu) m,
         StoreM (StrAdrE Exp K) (StrDom ActorVlu) m,
-        MapM (In ActorCmp ActorSto) ActorSto m,
-        MapM (Out ActorCmp ActorSto) ActorSto m,
-        -- For global stores: StoreM (EnvAdr K) ActorVlu m,
-        -- For global stores: AbstractCountM (EnvAdr K) m,
+        -- For flow-sensitive stores
+        -- MapM (In ActorCmp ActorSto) ActorSto m,
+        -- MapM (Out ActorCmp ActorSto) ActorSto m,
+        -- For global stores:
+        StoreM (EnvAdr K) ActorVlu m,
+        AbstractCountM (EnvAdr K) m,
         MonadMailbox ActorVlu m,
         FormulaSolver (EnvAdr K) m)
 
@@ -140,17 +142,19 @@ mainStore e = fromJust . Map.lookup (Out (initialCmp e))
 
 intra :: forall m . MonadInter m
  => ActorCmp -> m ()
-intra cmp = void
-             (runFixT @(IntraT (IntraAnalysisT ActorCmp m)) eval' cmp
+intra cmp = void (
+             -- (runFixT @(IntraT (FlowSensitiveStoreMailboxT ActorCmp ActorSto (EnvAdr K) ActorVlu (IntraAnalysisT ActorCmp m))) eval' cmp
+             runFixT @(IntraT (IntraAnalysisT ActorCmp m)) (eval @ActorVlu) cmp
            & runAlloc @Ide @K @(EnvAdr K) EnvAdr
            & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
            & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
            & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
-           & evalWithWidenedStore @ActorSto @(EnvAdr K) @ActorVlu
+           -- & evalWithWidenedStore @ActorSto @(EnvAdr K) @ActorVlu
+           -- & runFlowSensitiveStoreMailboxT
            -- & evalWithWidenedFormulaT @(EnvAdr K)  @ActorVlu
            -- & runWithSymbolicStore
            & runIntraAnalysis cmp)
-      where eval' = runAroundT (flowSensitiveStore @_ @_ @ActorSto @_ @(EnvAdr K)) . (flowSensitiveEval @_ @_ @ActorSto (eval @ActorVlu))
+      -- where eval' = runAroundT (flowSensitiveStore @_ @_ @ActorSto @_ @(EnvAdr K)) . (flowSensitiveEval @_ @_ @ActorSto (eval @ActorVlu))
       
 initialEnv :: Env k
 initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
@@ -158,9 +162,11 @@ initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
 inter :: MonadInter m => Exp -> m ()
 inter = lfp intra . initialCmp
 
-analyze :: Exp -> IO ((((), Map (Out ActorCmp ActorSto) ActorSto), ActorMai), Map ActorCmp ActorRes)
+-- Type signature for flow sensitive stores
+-- analyze :: Exp -> IO ((((), Map (Out ActorCmp ActorSto) ActorSto), ActorMai), Map ActorCmp ActorRes)
+analyze :: Exp -> IO (ActorMai, ActorSto, Map ActorCmp ActorRes)
 analyze exp =  do
-      ((((((((), _), _), _), mb), inn), out), mapping) <-
+      (_ ::*:: _ ::*:: _ ::*:: mb ::*:: sto ::*:: mapping) <-
               inter exp
             -- Scheme stores
             & runWithStore @(Map (PaiAdrE Exp K) (PaiDom ActorVlu))
@@ -169,10 +175,10 @@ analyze exp =  do
             -- Actor mailboxes
             & runWithMailboxT @ActorVlu
             -- Global store
-            -- & runStoreT @ActorSto @(EnvAdr K) @ActorVlu (initialSto allPrimitives PrmAdr)
+            & runStoreT @ActorSto @(EnvAdr K) @ActorVlu (initialSto allPrimitives PrmAdr)
             -- Flow sensitivity
-            & runMapT @(In ActorCmp ActorSto) @ActorSto (initialFlowSensitiveSto exp)
-            & runMapT @(Out ActorCmp ActorSto) @ActorSto Map.empty
+            -- & runMapT @(In ActorCmp ActorSto) @ActorSto (initialFlowSensitiveSto exp)
+            -- & runMapT @(Out ActorCmp ActorSto) @ActorSto Map.empty
             -- Path-widening
             -- & runMapT @(In ActorCmp ActorPC) @ActorPC Map.empty
             -- & runMapT @(Out ActorCmp ActorPC) @ActorPC emptyPC
@@ -187,10 +193,12 @@ analyze exp =  do
             & runWithDependencyTracking @ActorCmp @(VecAdrE Exp K)
             & runWithDependencyTracking @ActorCmp @(StrAdrE Exp K)
             & runWithDependencyTracking @ActorCmp @ActorRef
-            & runWithDependencyTracking @ActorCmp @(In ActorCmp ActorSto)
-            & runWithDependencyTracking @ActorCmp @(Out ActorCmp ActorSto)
+            -- & runWithDependencyTracking @ActorCmp @(In ActorCmp ActorSto)
+            -- & runWithDependencyTracking @ActorCmp @(Out ActorCmp ActorSto)
             & runWithWorkList @[_]
             -- Z3 solving
             & runCachedSolver
             & runZ3SolverWithSetup SMT.prelude
-      return ((((), out), mb), mapping)
+      return (mb, sto, mapping)
+      -- for flow sensitive stores
+      -- return ((((), out), mb), mapping)

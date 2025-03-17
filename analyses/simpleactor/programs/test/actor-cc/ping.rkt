@@ -2,7 +2,7 @@
   ((ping-behavior (behavior ()
                     ((ping (sender) 
                         (print 'ping)
-                        ;(send sender pong self) 
+                        (send sender pong self) 
                         (become ping-behavior)))))
    (pong-behavior (behavior ()
                    ((pong (sender)

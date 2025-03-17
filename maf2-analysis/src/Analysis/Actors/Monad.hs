@@ -1,11 +1,13 @@
-{-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
+{-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 module Analysis.Actors.Monad(
    MonadMailbox(..),
    receive,
    MonadActorLocal(..),
    GlobalMailboxT, 
    runWithMailboxT,
-   ActorLocalT
+   ActorLocalT,
+   FlowSensitiveStoreMailboxT,
+   runFlowSensitiveStoreMailboxT
 ) where
 
 import Domain.Actor
@@ -20,10 +22,15 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
 import Analysis.Monad.WorkList (WorkListM)
-import Analysis.Monad.DependencyTracking (DependencyTrackingM(..), trigger)
-import Analysis.Monad (IntraAnalysisT)
+import Analysis.Monad.DependencyTracking (DependencyTrackingM(..), MonadDependencyTracking, trigger)
+import Analysis.Monad (IntraAnalysisT, MapM)
 import Control.Monad.State (StateT, gets, modify, runStateT)
 import Analysis.Actors.Mailbox (Mailbox, dequeue, enqueue, empty)
+import Control.Monad.Identity (IdentityT, runIdentityT)
+import Analysis.Monad.Map (In(In))
+import Analysis.Monad.Store
+import qualified Analysis.Monad.Map as MapM
+
 
 class (BottomLattice v, Joinable v) => MonadMailbox v m where
   send :: ARef v -> v -> m ()
@@ -106,11 +113,34 @@ instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
 
 
 ------------------------------------------------------------
+-- Flow-sensitive stores and mailboxes
+------------------------------------------------------------
+
+-- | A layer that writes a local store before sending the message 
+-- so that at every "continuation" of the actor, the store is
+-- known before it is reanalyzed.
+newtype FlowSensitiveStoreMailboxT ref s adr v m a = FlowSensitiveStoreMailboxT (IdentityT m a)
+                                   deriving (Applicative, Functor, Monad, MonadCache, MonadLayer, MonadJoinable, MonadBottom)
+
+
+instance (BottomLattice v, Joinable v, MapM (In ref s) s m, StoreM' s adr v m, MonadMailbox v m, Joinable s, ARef v ~ ref) => MonadMailbox v (FlowSensitiveStoreMailboxT (In ref s) s adr v m) where 
+  send ref msg = do
+    sto <- currentStore 
+    upperM (MapM.joinWith @(In ref s) @s (In ref) sto)
+    upperM $ send ref msg
+  receive' = upperM . receive'
+
+
+runFlowSensitiveStoreMailboxT :: FlowSensitiveStoreMailboxT ref s adr v m a -> m a
+runFlowSensitiveStoreMailboxT (FlowSensitiveStoreMailboxT ma) = runIdentityT ma
+
+
+------------------------------------------------------------
 -- Effect registration for global mailboxes
 ------------------------------------------------------------
 
 type Dep v = ARef v
 
-instance (MonadMailbox v m, WorkListM m cmp, DependencyTrackingM m cmp (Dep v)) => MonadMailbox v (IntraAnalysisT cmp m) where
-  send to msg = trigger @_ @cmp to >> lift (send to msg)
+instance (MonadMailbox v m, WorkListM m cmp, MonadDependencyTracking cmp (Dep v) m) => MonadMailbox v (IntraAnalysisT cmp m) where
+  send to msg = trigger @cmp to >> lift (send to msg)
   receive' ref = dependent @_ @cmp ref >> upperM (receive' ref)

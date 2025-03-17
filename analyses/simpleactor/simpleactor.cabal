@@ -25,9 +25,12 @@ library
   exposed-modules:
       Analysis.SimpleActor
       Analysis.SimpleActor.Fixpoint
+      Analysis.SimpleActor.Fixpoint.Common
+      Analysis.SimpleActor.Fixpoint.Inner
       Analysis.SimpleActor.Monad
       Analysis.SimpleActor.Semantics
       Control.Monad.Extra
+      Data.Tuple.Syntax
       Domain.SimpleActor
       Domain.SimpleActor.Class
       Domain.SimpleActor.Modular

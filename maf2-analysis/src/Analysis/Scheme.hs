@@ -84,11 +84,11 @@ type InterAnalysisM v m =
     StoreM (StrAdr K) (StrDom v) m,
     StoreM (EnvAdr K) v m,
     ComponentTrackingM m Cmp,
-    DependencyTrackingM m Cmp (PaiAdr K),
-    DependencyTrackingM m Cmp (VecAdr K),
-    DependencyTrackingM m Cmp (StrAdr K),
-    DependencyTrackingM m Cmp (EnvAdr K),
-    DependencyTrackingM m Cmp Cmp,
+    MonadDependencyTracking Cmp (PaiAdr K) m,
+    MonadDependencyTracking Cmp (VecAdr K) m,
+    MonadDependencyTracking Cmp (StrAdr K) m,
+    MonadDependencyTracking Cmp (EnvAdr K) m,
+    MonadDependencyTracking Cmp Cmp m,
     MapM Cmp (Res v) m,
     SchemeDomain v) :: Constraint
 

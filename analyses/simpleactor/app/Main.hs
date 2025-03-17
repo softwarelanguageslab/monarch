@@ -50,7 +50,6 @@ commandParser =
     (   command "analyze" (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
     <>  command "eval"    (info (interpret <$> inputOptions) (progDesc "Run a program")))
 
-
 ------------------------------------------------------------
 -- Inspecting analysis results
 ------------------------------------------------------------
@@ -83,15 +82,11 @@ loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTem
 -- SimpleActor SCV
 ------------------------------
 
-
 analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename, doTranslate  }) = do
    ast <- loadFile' doTranslate filename
-   ((((), out), mbs), res) <- analyze ast
-   mapM_ (\(cmp, sto) -> do
-      print cmp
-      putStrLn $ Store.printSto show (\case { (PrmAdr _) -> False ; _ -> True }) sto
-      putStrLn "=====") (Map.toList out)
+   (mbs, sto, res) <- analyze ast
+   putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
 
    putStrLn "====="
    putStrLn $ printMap printLoc (const True) res
