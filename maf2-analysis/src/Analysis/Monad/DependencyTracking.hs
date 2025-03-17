@@ -4,8 +4,9 @@
 module Analysis.Monad.DependencyTracking (
     DependencyTrackingM(..),
     DependencyTrackingT,
-    MonadDependencyTrigger,
-    MonadDependencyTracking,
+    MonadDependencyTrigger(..),
+    MonadDependencyTriggerTracking(..),
+    MonadDependencyTracking(..),
     trigger,
     runWithDependencyTracking,
     runWithDependencyTracking'
@@ -36,8 +37,16 @@ class Monad m => DependencyTrackingM m cmp dep where
 class (Monad m) => MonadDependencyTrigger cmp dep m | m -> cmp dep where
     trigger :: dep -> m ()
 
+class MonadDependencyTriggerTracking cmp dep m | m -> cmp dep where
+    -- | Returns the components that have triggered the given dependency 
+    triggers :: dep -> m (Set cmp)
+
+
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, Monad (t m), MonadDependencyTrigger cmp dep m)  => MonadDependencyTrigger cmp dep (t m) where
     trigger = upperM . trigger
+
+instance {-# OVERLAPPABLE #-} (Monad m, MonadDependencyTriggerTracking cmp dep m, MonadLayer t) => MonadDependencyTriggerTracking cmp dep (t m) where
+    triggers = upperM . triggers
 
 type MonadDependencyTracking cmp dep m = (DependencyTrackingM m cmp dep, MonadDependencyTrigger cmp dep m)
 
@@ -65,18 +74,23 @@ instance (DependencyTrackingM m cmp dep, Monad (t m), MonadLayer t) => Dependenc
 runWithDependencyTracking :: forall cmp dep m a . Monad m => DependencyTrackingT cmp dep m a -> m a
 runWithDependencyTracking (DependencyTrackingT m) = fst <$> runStateT m Map.empty  
 
--- | Same as @runWithDependencyTracking@ but returns the dependent mapping
+-- | Same as @runWithDependencyTracking@ but returns the dependent mapping
 runWithDependencyTracking' :: forall cmp dep m a . DependencyTrackingT cmp dep m a -> m (a, Map dep (Set cmp))
 runWithDependencyTracking' (DependencyTrackingT m) = runStateT m Map.empty
 
 
 --
--- Track all triggers
---
+-- Trigger tracking
+-- --
 
+
+-- | Layer to transparently track all dependency triggers
 newtype TrackTriggerDependenciesT cmp (dep :: Type) m a = TrackTriggerDependenciesT (StateT (Set dep) m a)
                                             deriving (Functor, Applicative, Monad, MonadLayer, MonadCache, MonadState (Set dep))
 
 instance (MonadDependencyTrigger cmp dep m, Ord dep) => MonadDependencyTrigger cmp dep (TrackTriggerDependenciesT cmp dep m) where           
     trigger dep = modify (Set.insert dep) >> upperM (trigger dep)
 
+
+
+    
