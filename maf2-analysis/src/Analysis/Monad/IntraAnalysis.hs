@@ -44,7 +44,7 @@ instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp
                         (upperM $ spawn cmp >> add cmp)
     components = upperM components
 
-instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM m cmp a, MonadDependencyTrigger cmp a m, WorkListM m cmp)
+instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM cmp a m, MonadDependencyTrigger cmp a m, WorkListM m cmp)
         => StoreM a v (IntraAnalysisT cmp m) where
     lookupAdr a = currentCmp >>= upperM . register a >> upperM (lookupAdr a)
     writeAdr a v = whenM (upperM $ writeAdr' a v) (notrace ("updated " ++ show a) (upperM $ trigger a))
@@ -52,7 +52,7 @@ instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM m cmp a, M
     updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger a)
     hasAdr = upperM . hasAdr
 
-instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM m cmp k, MonadDependencyTrigger cmp k m, WorkListM m cmp, Show v, Typeable v)
+instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM cmp k m, MonadDependencyTrigger cmp k m, WorkListM m cmp, Show v, Typeable v)
     => MapM k v (IntraAnalysisT cmp m) where
         get k = currentCmp >>= upperM . register k >> upperM (get k)
         put k v = whenM (upperM $ put' k v) (trace ("put " ++ show v) $ upperM $ trigger k)

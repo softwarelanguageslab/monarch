@@ -30,7 +30,7 @@ import Data.Kind
 --- Dependency tracking typeclass
 ---
 
-class Monad m => DependencyTrackingM m cmp dep where
+class Monad m => DependencyTrackingM cmp dep m where
     register :: dep -> cmp -> m ()
     dependent :: dep -> m (Set cmp)
 
@@ -48,7 +48,7 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, Monad (t m), MonadDependen
 instance {-# OVERLAPPABLE #-} (Monad m, MonadDependencyTriggerTracking cmp dep m, MonadLayer t) => MonadDependencyTriggerTracking cmp dep (t m) where
     triggers = upperM . triggers
 
-type MonadDependencyTracking cmp dep m = (DependencyTrackingM m cmp dep, MonadDependencyTrigger cmp dep m)
+type MonadDependencyTracking cmp dep m = (DependencyTrackingM cmp dep m, MonadDependencyTrigger cmp dep m)
 
 
 ---
@@ -58,14 +58,14 @@ type MonadDependencyTracking cmp dep m = (DependencyTrackingM m cmp dep, MonadDe
 newtype DependencyTrackingT cmp dep m a = DependencyTrackingT (StateT (Map dep (Set cmp)) m a)
     deriving (Functor, Applicative, Monad, MonadState (Map dep (Set cmp)), MonadTrans, MonadLayer, MonadTransControl, MonadCache)
 
-instance {-# OVERLAPPING #-} (Monad m, Ord dep, Ord cmp) => DependencyTrackingM (DependencyTrackingT cmp dep m) cmp dep where
+instance {-# OVERLAPPING #-} (Monad m, Ord dep, Ord cmp) => DependencyTrackingM cmp dep (DependencyTrackingT cmp dep m) where
     register d = modify . Map.insertWith Set.union d . Set.singleton
     dependent d = gets (fromMaybe Set.empty . Map.lookup d)
 
 instance {-# OVERLAPPING #-} (Ord dep, Ord cmp, Monad m, WorkListM m cmp) => MonadDependencyTrigger cmp dep (DependencyTrackingT cmp dep m) where
     trigger = dependent >=> adds
 
-instance (DependencyTrackingM m cmp dep, Monad (t m), MonadLayer t) => DependencyTrackingM (t m) cmp dep where
+instance (DependencyTrackingM cmp dep m, Monad (t m), MonadLayer t) => DependencyTrackingM cmp dep (t m) where
     register d = upperM . register d
     dependent = upperM . dependent
 

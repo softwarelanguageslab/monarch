@@ -26,6 +26,7 @@ library
       Analysis.SimpleActor
       Analysis.SimpleActor.Fixpoint
       Analysis.SimpleActor.Fixpoint.Common
+      Analysis.SimpleActor.Fixpoint.Modular
       Analysis.SimpleActor.Fixpoint.Sequential
       Analysis.SimpleActor.Monad
       Analysis.SimpleActor.Semantics

@@ -143,4 +143,4 @@ type Dep v = ARef v
 
 instance (MonadMailbox v m, WorkListM m cmp, MonadDependencyTracking cmp (Dep v) m) => MonadMailbox v (IntraAnalysisT cmp m) where
   send to msg = trigger @cmp to >> lift (send to msg)
-  receive' ref = dependent @_ @cmp ref >> upperM (receive' ref)
+  receive' ref = dependent @cmp ref >> upperM (receive' ref)

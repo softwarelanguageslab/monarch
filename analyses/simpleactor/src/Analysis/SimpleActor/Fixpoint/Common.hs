@@ -14,10 +14,11 @@ import Symbolic.AST ( PC )
 import Analysis.Store (CountingMap)
 import Data.Kind
 import Analysis.Monad.Stack (MonadStack)
-import Analysis.Monad.Store (StoreT, runStoreT)
+import Analysis.Monad.Store (StoreT, runStoreT, StoreM)
 import Domain.Scheme.Class hiding (Exp)
 import Data.Tuple.Syntax 
-import Analysis.Monad.DependencyTracking (DependencyTrackingM)
+import Analysis.Monad.DependencyTracking (DependencyTrackingM, MonadDependencyTracking, MonadDependencyTriggerTracking)
+import Analysis.Monad.Map (MapM)
 
 
 ------------------------------------------------------------
@@ -39,6 +40,11 @@ type ActorPC  = PC (EnvAdr K)
 
 type family Unlist (as :: Type) :: Type where
    Unlist [k] = k
+
+
+type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Constraint where
+      DependsOn m cmp '[] = ()
+      DependsOn m cmp (adr : ads) = (MonadDependencyTracking cmp adr m, DependsOn m cmp ads)
 
 ------------------------------------------------------------
 -- Stores
@@ -79,11 +85,32 @@ runActorStoreT :: forall a m . Functor m => ActorStos -> ActorStoreT m a -> m (a
 runActorStoreT (var, pai, str, vec) = fmap ret . runStoreT vec . runStoreT str  . runStoreT pai . runStoreT var
   where ret (a ::*:: var' ::*:: pai' ::*:: str' ::*:: vec') = (a, (var', pai', str', vec'))
 
+-- | Add constraints for Scheme stores
+type MonadSchemeStore m = (
+                      StoreM (EnvAdr K) ActorVlu m,
+                      StoreM (PaiAdrE Exp K) (PaiDom ActorVlu) m,
+                      StoreM (StrAdrE Exp K) (StrDom ActorVlu) m,
+                      StoreM (VecAdrE Exp K) (VecDom ActorVlu) m)
+
+
+
+-- | Parametrized constraint on actor references and addresses
+-- they depend on
+type DependOn :: (Type -> Type -> (Type -> Type) -> Constraint) -> (Type -> Type) -> Constraint
+type DependOn c m = (c ActorRef (EnvAdr K) m,
+                     c ActorRef (PaiAdrE Exp K) m,
+                     c ActorRef (StrAdrE Exp K) m,
+                     c ActorRef (VecAdrE Exp K) m)
 
 -- | Constraints for dependency tracking on each type of address
-type MonadActorStoreDependencyTracking m = (DependencyTrackingM m ActorRef (EnvAdr K),
-                                            DependencyTrackingM m ActorRef (PaiAdrE Exp K),
-                                            DependencyTrackingM m ActorRef (StrAdrE Exp K),
-                                            DependencyTrackingM m ActorRef (VecAdrE Exp K))
+type MonadActorStoreDependencyTracking m =
+  (DependOn DependencyTrackingM m,
+   DependOn MonadDependencyTriggerTracking m)
   
+
+-- | A store for each actor
+type MonadActorStore m = (MapM ActorRef (CountingMap (EnvAdr K) ActorVlu) m,
+                          MapM ActorRef (CountingMap (PaiAdrE Exp K) (PaiDom ActorVlu)) m,
+                          MapM ActorRef (CountingMap (StrAdrE Exp K) (StrDom ActorVlu)) m,
+                          MapM ActorRef (CountingMap (VecAdrE Exp K) (VecDom ActorVlu)) m)
 
