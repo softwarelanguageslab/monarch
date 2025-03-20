@@ -71,8 +71,8 @@ eval' rec e@(App e1 es _) = do
    apply rec e v1 v2
 eval' rec (Ite e1 e2 e3 _) =
    choice (eval' rec e1) (eval' rec e2) (eval' rec e3)
-eval' rec s@(Spawn e _) =
-   aref <$> spawn @v s (const $ rec (ActorExp e))
+eval' _rec (Spawn e _) =
+   getEnv >>= (fmap aref . spawn @v e)
 eval' _ (Terminate _) = terminate $> nil
 eval' rec (Receive pats _) = do
    self <- getSelf
@@ -115,7 +115,7 @@ eval' _ e = error $  "unsupported expression: " ++ show e
 trySend :: EvalM v m => v -> v -> m ()
 trySend ref p =
    choice   (pure $ isActorRef ref)
-           (mjoinMap (`send` p) (arefs' ref))
+           (mjoinMap (`send'` p) (arefs' ref))
            (escape InvalidArgument)
 
 apply :: EvalM v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v

@@ -55,7 +55,7 @@ instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM cmp a m, M
 instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM cmp k m, MonadDependencyTrigger cmp k m, WorkListM m cmp, Show v, Typeable v)
     => MapM k v (IntraAnalysisT cmp m) where
         get k = currentCmp >>= upperM . register k >> upperM (get k)
-        put k v = whenM (upperM $ put' k v) (trace ("put " ++ show v) $ upperM $ trigger k)
+        put k v = whenM (upperM $ put' k v) (notrace ("put " ++ show v) $ upperM $ trigger k)
         joinWith k v = whenM (upperM $ joinWith' k v) (notrace ("joinWith" ++ show (typeOf v)) $ upperM $ trigger k)
 
 notrace :: String -> v -> v

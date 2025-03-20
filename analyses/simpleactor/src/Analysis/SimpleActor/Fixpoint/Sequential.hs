@@ -40,6 +40,8 @@ import Control.Monad.Reader
 import Control.Monad.Join (mzero, MonadBottom)
 import qualified Analysis.Monad.Map as MapM
 import RIO hiding (exp, mzero)
+import qualified Debug.Trace as Debug
+import Analysis.Store (emptyCountingMap)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -94,7 +96,9 @@ type InterAnalysisM m = (MonadSchemeStore m,
                             -- Out ActorCmp ActorPC ],
                          AbstractCountM (EnvAdr K) m,
                          MonadMailbox ActorVlu m,
-                         FormulaSolver (EnvAdr K) m)
+                         FormulaSolver (EnvAdr K) m,
+                         MonadSpawn ActorVlu m,
+                         MonadIO m)
 
 
 ------------------------------------------------------------
@@ -132,22 +136,25 @@ instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMa
   lookupAdr adr = ifM (hasAdr adr)
        {- then -} (upperM $ lookupAdr adr)
        {- else -} -- Trigger contributions of the address and register our interest
-           (SequentialIntraT ask >>= register adr >> (triggers adr >>= adds) >> mzero)
+           (SequentialIntraT ask >>= register adr >> (triggers adr >>= adds >> mzero))
   writeAdr adr vlu = do
     cmp <- ask
     -- write the value to the input stores of all dependent actors,
     -- except ourselves, MapM ensures that dependent actors only get reanalyzed whenever
     -- the store changes.
     deps <- Set.filter (/= cmp) <$> dependent adr
-    mapM_ (\cmp' -> MapM.get cmp' >>= maybe (MapM.put cmp' $ extendSto adr vlu emptySto) (MapM.joinWith cmp' . updateSto adr vlu)) deps
+    mapM_ (\cmp' -> MapM.get cmp' >>= maybe (MapM.put cmp' $ extendSto adr vlu emptySto) (MapM.joinWith cmp' . extendSto adr vlu)) deps
+    -- track that we triggered the write 
+    trackTrigger adr cmp
     -- and write as usual
     upperM $ writeAdr adr vlu
 
   updateWith fs fw a = do
-    -- same as in @writeAdr@
+    -- same as in @writeAdr@ in terms of writing behavior and dependency trigger tracking
     cmp <- ask
     deps <- Set.filter (/= cmp) <$> dependent a
     mapM_ (\cmp' -> MapM.get cmp' >>= (MapM.joinWith cmp' . updateStoWith fs fw a) . fromMaybe emptySto) deps
+    trackTrigger a cmp
     upperM (updateWith fs fw a)
 
   hasAdr = upperM . (hasAdr @a)
@@ -176,8 +183,11 @@ type MonadActorModular m = (
     MonadMailbox ActorVlu m,
     -- Formula solving should be global since it requires IO
     FormulaSolver (EnvAdr K) m,
+    -- Spawning actors
+    MonadSpawn ActorVlu m,
     -- Other constraints
-    MonadBottom m
+    MonadBottom m,
+    MonadIO m
   )
 
 ------------------------------------------------------------
@@ -211,7 +221,11 @@ analyze :: forall m  . MonadActorModular m
         -> m ()
 analyze exp env ref = do
       -- retrieve store associated with this actor
-      sto <- maybe mzero return =<< MapM.get ref
+      sto <- fromMaybe (initialSto allPrimitives PrmAdr) <$> MapM.get ref
+      vsto <- fromMaybe emptyCountingMap <$> MapM.get ref
+      ssto <- fromMaybe emptyCountingMap <$> MapM.get ref
+      psto <- fromMaybe emptyCountingMap <$> MapM.get ref
+      
       _   <- inter exp env ref
             & runWithMapping @SequentialCmp @SequentialRes
             & runWithComponentTracking @SequentialCmp
@@ -223,9 +237,9 @@ analyze exp env ref = do
             & runWithDependencyTracking @SequentialCmp @ActorRef
             & runWithWorkList @[SequentialCmp]
             & runSequentialIntraT ref
-            & runWithStore @(CountingMap (PaiAdrE Exp K) (PaiDom ActorVlu))
-            & runWithStore @(CountingMap (StrAdrE Exp K) (StrDom ActorVlu))
-            & runWithStore @(CountingMap (VecAdrE Exp K) (VecDom ActorVlu))
+            & runStoreT @(CountingMap (PaiAdrE Exp K) (PaiDom ActorVlu)) @ActorPaiAdr psto
+            & runStoreT @(CountingMap (StrAdrE Exp K) (StrDom ActorVlu)) @ActorStrAdr ssto
+            & runStoreT @(CountingMap (VecAdrE Exp K) (VecDom ActorVlu)) @ActorVecAdr vsto
             & runStoreT @ActorSto @(EnvAdr K) @ActorVlu sto
 
       -- TODO: write the stores and other mappings so that they can be inspected at the end

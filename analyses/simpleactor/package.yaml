@@ -67,6 +67,7 @@ library:
   dependencies:
     - containers 
     - mtl
+    - transformers
     - maf2-syntax
     - maf2-domains
     - maf2-analysis

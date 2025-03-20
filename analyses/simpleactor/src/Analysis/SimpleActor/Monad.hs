@@ -117,7 +117,14 @@ class Monad m => MonadDynamic α m | m -> α where
    withExtendedDynamic :: [(String, α)] -> m a -> m a
    lookupDynamic :: String -> m α
 
-type MonadSpawn v (m :: Type -> Type) = (ARef v ~ Pid Exp [Span])
+-- | Monad for spawning new processes. Each process is uniquely identified by their
+-- expression and environment.
+class MonadSpawn v m | m -> v where
+    spawn :: Exp -> Env v -> m (ARef v)
+
+-- | Trivial instance for layered monad transformers
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v m) => MonadSpawn v (t m) where
+  spawn e = upperM . spawn e
 
 type MonadActor v m = (MonadMailbox v m, MonadSpawn v m, MonadActorLocal v m, MonadMeta m, MonadDynamic (Adr v) m)
 
@@ -145,15 +152,6 @@ instance
 
  withExtendedDynamic bds = lowerM (withExtendedDynamic bds)
  lookupDynamic = upperM . lookupDynamic
-
-spawn :: EvalM v m => Exp -> (ARef v -> m v) -> m (ARef v)
-spawn e f = do 
-   ctx <- getCtx
-   let s = Pid e ctx
-   -- NOTE: we `mjoin` with `return nil` here 
-   -- since the computation from `(f s)` might 
-   -- not terminate (i.e., return `Bottom`)
-   withSelf s (mjoin (f s) (return nil) >> return s)
 
 ------------------------------------------------------------
 -- Monad
@@ -218,3 +216,4 @@ instance Domain (Set ActorError) DomainError where
 
 instance Domain (Set ActorError) Error where
   inject = Set.singleton . ActorError
+

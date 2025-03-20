@@ -61,9 +61,6 @@ printMap printKey keepKey m  =
          indent = maximum (map (length . printKey . fst) adrs) + 5
 
 
-printLoc :: ActorCmp -> String
-printLoc ((((((e, _), _), _), _), _), _) = let (Span filename Position { .. } _) = spanOf e in show line ++ ":" ++ show column ++ "@" ++ filename
-
 ------------------------------------------------------------
 -- Entrypoints
 ------------------------------------------------------------
@@ -85,11 +82,11 @@ loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTem
 analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename, doTranslate  }) = do
    ast <- loadFile' doTranslate filename
-   (mbs, sto, res) <- analyze ast
-   putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
+   mbs <- analyze ast
+   -- putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
 
-   putStrLn "====="
-   putStrLn $ printMap printLoc (const True) res
+   -- putStrLn "====="
+   -- putStrLn $ printMap printLoc (const True) res
    putStrLn "====="
    putStrLn $ printMap  show (const True) mbs
    return ()
