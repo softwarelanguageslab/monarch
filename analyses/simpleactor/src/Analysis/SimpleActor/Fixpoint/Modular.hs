@@ -15,6 +15,8 @@ import Analysis.Monad.WorkList (WorkListM, iterateWL')
 import Analysis.Actors.Monad (MonadMailbox)
 import Solver (FormulaSolver)
 import Control.Monad.Join (MonadBottom)
+import Solver.Z3 (runZ3Solver)
+import Analysis.Monad (runIntraAnalysis)
 
 ------------------------------------------------------------
 -- Analysis data
@@ -62,11 +64,15 @@ type ModularInterM m = (MonadState AnalysisState m,
 
 -- | "intra"-analysis
 intra :: ModularInterM m => ActorRef -> m ()
-intra ref = gets (fromJust . Map.lookup ref . _pidToProcess) >>= flip (uncurry Sequential.analyze) ref
-
-inter :: ModularInterM m => ActorExp -> m ()
-inter expr = put (initialAnalysisState expr) >> iterateWL' EntryPid intra
+intra ref = (gets (fromJust . Map.lookup ref . _pidToProcess) >>= flip (uncurry Sequential.analyze) ref)
+          & runIntraAnalysis ref  
+    
+inter :: ModularInterM m => m ()
+inter = iterateWL' EntryPid intra
 
 -- | Analyze the whole actor program
 analyze :: ActorExp -> IO AnalysisResult
-analyze = undefined
+analyze expr = inter
+             & flip evalStateT (initialAnalysisState expr)
+             & runZ3Solver
+

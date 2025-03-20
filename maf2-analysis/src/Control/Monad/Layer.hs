@@ -31,6 +31,12 @@ instance {-# OVERLAPPABLE #-} (Monad (t m), MonadReader r m, MonadLayer t) => Mo
    ask = upperM ask 
    local f = lowerM (local f)
 
+-- A layered monads implement @MonadState@ type class
+instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad (t m), MonadState s m) => MonadState s (t m) where
+   get = upperM get
+   put = upperM . put
+
+
 -- | StateT instance
 instance MonadLayer (StateT s) where
    lowerM f m = StateT (f . runStateT m)
