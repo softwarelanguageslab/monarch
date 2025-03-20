@@ -42,6 +42,7 @@ import qualified Analysis.Monad.Map as MapM
 import RIO hiding (exp, mzero)
 import qualified Debug.Trace as Debug
 import Analysis.Store (emptyCountingMap)
+import Control.Fixpoint.WorkList (FIFOWorkList, LIFOWorklist)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -136,7 +137,7 @@ instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMa
   lookupAdr adr = ifM (hasAdr adr)
        {- then -} (upperM $ lookupAdr adr)
        {- else -} -- Trigger contributions of the address and register our interest
-           (SequentialIntraT ask >>= register adr >> (triggers adr >>= adds >> mzero))
+           (SequentialIntraT ask >>= register adr >> (triggers (traceShowId adr) >>= adds >> mzero))
   writeAdr adr vlu = do
     cmp <- ask
     -- write the value to the input stores of all dependent actors,
@@ -235,7 +236,7 @@ analyze exp env ref = do
             & runWithDependencyTracking @SequentialCmp @(VecAdrE Exp K)
             & runWithDependencyTracking @SequentialCmp @(StrAdrE Exp K)
             & runWithDependencyTracking @SequentialCmp @ActorRef
-            & runWithWorkList @[SequentialCmp]
+            & runWithWorkList @(LIFOWorklist SequentialCmp)
             & runSequentialIntraT ref
             & runStoreT @(CountingMap (PaiAdrE Exp K) (PaiDom ActorVlu)) @ActorPaiAdr psto
             & runStoreT @(CountingMap (StrAdrE Exp K) (StrDom ActorVlu)) @ActorStrAdr ssto

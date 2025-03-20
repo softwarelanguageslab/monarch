@@ -33,6 +33,7 @@ import qualified Symbolic.SMT as SMT
 import qualified Debug.Trace as Debug
 import Lattice.Class (BottomLattice, Joinable)
 import Control.Monad.Cond
+import Control.Fixpoint.WorkList (LIFOWorklist)
 import Syntax.FV
 
 ------------------------------------------------------------
@@ -117,7 +118,7 @@ type ModularInterM m = (MonadState AnalysisState m,
 
 -- | "intra"-analysis
 intra :: ModularInterM m => ActorRef -> m ()
-intra ref = (gets (fromJust . Map.lookup ref . _pidToProcess) >>= flip (uncurry Sequential.analyze) ref)
+intra ref = (gets (fromJust . Map.lookup ref . _pidToProcess) >>= flip (uncurry Sequential.analyze) (Debug.traceWith (("analyzing: " ++) . show) ref))
           & runModularIntraAnalysisT
           & runIntraAnalysis ref
           & runJoinT
@@ -146,7 +147,7 @@ analyze expr = fmap toAnalysisResult $ inter
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVecAdr
              & runWithMailboxT @ActorVlu @(Set _)
              & C.runWithComponentTracking
-             & runWithWorkList @[_]
+             & runWithWorkList @(LIFOWorklist _)
              & runCachedSolver
              & runZ3SolverWithSetup SMT.prelude
   where toAnalysisResult (_res ::*:: _varSto ::*:: _paiSto ::*:: _vecSto ::*:: _strSto ::*:: mb) = mb
