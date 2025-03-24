@@ -45,6 +45,7 @@ import qualified Debug.Trace as Debug
 import Analysis.Store (emptyCountingMap)
 import Control.Fixpoint.WorkList (FIFOWorkList, LIFOWorklist)
 import Lattice.Class
+import qualified Data.HashMap.Strict as HashMap
 
 
 ------------------------------------------------------------
@@ -181,7 +182,7 @@ instance (Monad m, StoreM ActorVarAdr ActorVlu m, StoreM' VarSto ActorVarAdr Act
    spawn expr env = do
       pid <- upperM (spawn expr env)
       sto <- currentStore @VarSto
-      MapM.joinWith pid (CountingMap $ Map.restrictKeys (store sto) (Set.fromList $ map snd $ Map.toList env)) 
+      MapM.joinWith pid (CountingMap $ Map.restrictKeys (store sto) (Set.fromList $ map snd $ HashMap.toList env)) 
       return pid
 
 ------------------------------------------------------------

@@ -7,13 +7,14 @@ import Lattice
 import Domain.Scheme.Class hiding (Exp)
 import Domain.Actor
 import Domain.Core
+import Data.HashMap.Strict (HashMap)
 
 type CPActorMapping adr pai vec str ctx exp =
     '[ RealConf ::-> CP Double,
        IntConf ::-> CP Integer,
        CharConf ::-> CP Char,
        BoolConf ::-> CP Bool,
-       EnvConf ::-> Map String (adr ctx),
+       EnvConf ::-> HashMap String (adr ctx),
        ExpConf ::-> exp,
        StrConf ::-> str ctx,
        PaiConf ::-> pai ctx,

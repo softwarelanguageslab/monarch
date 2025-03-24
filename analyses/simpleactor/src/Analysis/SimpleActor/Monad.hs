@@ -88,7 +88,6 @@ data Error = MatchError | InvalidArgument | BlameError String | ArityMismatch In
 instance NFData Error where   
    rnf x = x `seq` ()
 
-
 class (SplitLattice e) => SimpleActorErrorDomain e where 
    isMatchError :: (BottomLattice b, BoolDomain b) => e -> b
 instance SimpleActorErrorDomain (Set ActorError) where  

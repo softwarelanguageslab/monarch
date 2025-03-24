@@ -36,6 +36,7 @@ import Lattice.Class (BottomLattice, Joinable)
 import Control.Monad.Cond
 import Control.Fixpoint.WorkList (LIFOWorklist)
 import Syntax.FV
+import qualified Data.HashMap.Strict as HashMap
 
 ------------------------------------------------------------
 -- Analysis data
@@ -60,7 +61,7 @@ spawnWL cmp = ifM (Set.member cmp <$> C.components) (return ()) (C.spawn cmp >> 
 instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef, MapM ActorRef ActorSto m) => MonadSpawn ActorVlu (StateT AnalysisState m) where
   spawn expr env = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid <* MapM.joinWith pid (initialSto @VarSto @ActorVlu allPrimitives PrmAdr)
     where pid  = Pid expr []
-          env' = Map.restrictKeys env (fv expr)  
+          env' = env -- HashMap.restrictKeys env (fv expr)  
 
 
 ------------------------------------------------------------
@@ -102,7 +103,7 @@ initialPerActorSto = Map.singleton EntryPid (initialSto allPrimitives PrmAdr)
 
 -- | The initial analysis environment
 initialEnv :: ActorEnv
-initialEnv = Map.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
+initialEnv = HashMap.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
 
 ------------------------------------------------------------
 -- Analysis

@@ -20,6 +20,9 @@ import qualified Analysis.Store as Store
 import System.IO
 import Control.Monad
 import RIO (Identity)
+import Analysis.SimpleActor.Monad ()
+import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp)
+import Data.Tuple.Syntax
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -67,6 +70,10 @@ printCmpMap printKey keepKey cmp m = do
    print cmp
    putStrLn (printMap printKey keepKey m)
 
+-- | Compute the span of a sequential component
+spanOfCmp :: SequentialCmp -> Span
+spanOfCmp (cmp ::*:: _env ::*:: _dyn ::*:: _meta ::*::  _ref ::*:: _k ::*:: _pc) = spanOf cmp
+
 ------------------------------------------------------------
 -- Entrypoints
 ------------------------------------------------------------
@@ -89,7 +96,7 @@ analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename, doTranslate  }) = do
    ast <- loadFile' doTranslate filename
    (sequentialResults, mbs) <- analyze ast
-   mapM_ (uncurry  (printCmpMap show (const True))) (Map.toList sequentialResults)
+   mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialResults)
    -- putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
 
    -- putStrLn "====="

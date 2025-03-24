@@ -66,6 +66,7 @@ library:
   source-dirs: src
   dependencies:
     - containers 
+    - unordered-containers 
     - mtl
     - transformers
     - maf2-syntax

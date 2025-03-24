@@ -20,6 +20,7 @@ import Data.Kind
 import qualified Data.Set as Set
 import Domain.Actor
 import Control.DeepSeq
+import Data.HashMap.Strict (HashMap)
 
 --------------------------------------------------
 -- Declaration
@@ -189,7 +190,7 @@ instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAd
    type VAdr (SymbolicVal exp k i v) = VAdr v
 
    type Exp (SymbolicVal exp k i v)  = exp
-   type Env (SymbolicVal exp k i v)  = Map String (Adr v)
+   type Env (SymbolicVal exp k i v)  = HashMap String (Adr v)
 
    pptr      = const bottom
    vptr      = const bottom

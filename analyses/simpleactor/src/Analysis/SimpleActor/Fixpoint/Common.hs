@@ -19,6 +19,7 @@ import Domain.Scheme.Class hiding (Exp)
 import Data.Tuple.Syntax 
 import Analysis.Monad.DependencyTracking (DependencyTrackingM, MonadDependencyTracking, MonadDependencyTriggerTracking)
 import Analysis.Monad.Map (MapM)
+import RIO
 
 
 ------------------------------------------------------------
@@ -29,7 +30,7 @@ type K = [Span]
 type ActorExp = Exp
 type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (EnvAdr K)
-type ActorEnv = Map String (EnvAdr K)
+type ActorEnv = HashMap String (EnvAdr K)
 type ActorMai = Map ActorRef (Set ActorVlu)
 type ActorSto = CountingMap (EnvAdr K) ActorVlu
 type ActorPC  = PC (EnvAdr K)
@@ -58,7 +59,6 @@ type ActorStrAdr = StrAdrE Exp K
 
 -- | Output address for writing individual actor results
 newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
-
 
 ------------------------------------------------------------
 -- Stores
