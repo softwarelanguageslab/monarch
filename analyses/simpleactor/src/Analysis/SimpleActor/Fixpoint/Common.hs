@@ -56,6 +56,10 @@ type ActorPaiAdr = PaiAdrE Exp K
 type ActorVecAdr = VecAdrE Exp K
 type ActorStrAdr = StrAdrE Exp K
 
+-- | Output address for writing individual actor results
+newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
+
+
 ------------------------------------------------------------
 -- Stores
 ------------------------------------------------------------

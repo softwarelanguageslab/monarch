@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 module Main (main) where
@@ -54,12 +53,19 @@ commandParser =
 -- Inspecting analysis results
 ------------------------------------------------------------
 
+-- | Print an arbitrary mapping
 printMap :: (Show v) => (k -> String) -> (k -> Bool) -> Map k v -> String
 printMap printKey keepKey m  =
        intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (printKey k) (show v)) adrs
    where adrs   = Map.toList $ Map.filterWithKey (flip (const keepKey)) m
          indent = maximum (map (length . printKey . fst) adrs) + 5
 
+-- | Print a mapping associated with a particular component
+printCmpMap :: (Show cmp, Show v) => (k -> String) -> (k -> Bool) -> cmp -> Map k v -> IO ()
+printCmpMap printKey keepKey cmp m = do
+   putStrLn "============================================================"
+   print cmp
+   putStrLn (printMap printKey keepKey m)
 
 ------------------------------------------------------------
 -- Entrypoints
@@ -82,7 +88,8 @@ loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTem
 analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename, doTranslate  }) = do
    ast <- loadFile' doTranslate filename
-   mbs <- analyze ast
+   (sequentialResults, mbs) <- analyze ast
+   mapM_ (uncurry  (printCmpMap show (const True))) (Map.toList sequentialResults)
    -- putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
 
    -- putStrLn "====="
