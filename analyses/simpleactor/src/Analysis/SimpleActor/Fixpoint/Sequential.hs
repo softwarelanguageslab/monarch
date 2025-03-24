@@ -46,6 +46,7 @@ import Analysis.Store (emptyCountingMap)
 import Control.Fixpoint.WorkList (FIFOWorkList, LIFOWorklist)
 import Lattice.Class
 import qualified Data.HashMap.Strict as HashMap
+import Analysis.SimpleActor.Fixpoint.Common (initialDynEnvironment)
 
 
 ------------------------------------------------------------
@@ -233,7 +234,13 @@ inter :: InterAnalysisM m
       -> ActorRef    -- ^ the current actor reference
       -> m ()
 inter exp environment ref = iterateWL' initialCmp intra
-  where initialCmp = ActorExp exp <+> environment <+> Map.empty <+> emptyMcfaContext 0 <+> False <+> ref <+> emptyPC
+  where initialCmp = ActorExp exp         -- component to analyze
+                <+> environment           -- initial lexical environment
+                <+> initialDynEnvironment -- initial dynamic environment 
+                <+> emptyMcfaContext 0    -- context 
+                <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
+                <+> ref                   -- current `self`
+                <+> emptyPC
 
 
 
@@ -268,7 +275,5 @@ analyze exp env ref = do
 
       MapM.put (ActorResOut ref) (extractVal res)
 
-      -- TODO: write the stores and other mappings so that they can be inspected at the end
-      -- of the analysis.
       return ()
   where extractVal (_ ::*:: res ::*:: _ ::*:: _ ::*:: _ ::*::_) = res

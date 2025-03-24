@@ -101,7 +101,7 @@ deriving instance (MonadCache m, Ord mb, Ord v, Ord (ARef v)) => MonadCache (Glo
 deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinable mb) => MonadJoinable (GlobalMailboxT v mb m)
 
 instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadMailbox v (GlobalMailboxT v mb m) where
-  send ref v = GlobalMailboxT $ ifM (gets (hasMessage v . fromMaybe empty . Map.lookup ref)) (return False) (modify (Map.insertWith (const . enqueue v) ref (enqueue v empty)) $> True)
+  send ref v = GlobalMailboxT $ ifM (gets (hasMessage v . fromMaybe empty . Map.lookup ref)) (return False) (modify (Map.insertWith (\_ old ->  enqueue v old) ref (enqueue v empty)) $> True)
 
   -- NOTE: we cannot use `MonadJoin` here since we have passed the `JoinT` layer in the monadic stack,
   -- thus we use a `Joinable` instance to join the values ourselves. This should **not** happen

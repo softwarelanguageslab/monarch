@@ -20,6 +20,7 @@ import Data.Tuple.Syntax
 import Analysis.Monad.DependencyTracking (DependencyTrackingM, MonadDependencyTracking, MonadDependencyTriggerTracking)
 import Analysis.Monad.Map (MapM)
 import RIO
+import qualified RIO.Map as Map
 
 
 ------------------------------------------------------------
@@ -47,7 +48,6 @@ type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Const
       DependsOn m cmp '[] = ()
       DependsOn m cmp (adr : ads) = (MonadDependencyTracking cmp adr m, DependsOn m cmp ads)
 
-
 ------------------------------------------------------------
 -- Addresses
 ------------------------------------------------------------
@@ -59,6 +59,16 @@ type ActorStrAdr = StrAdrE Exp K
 
 -- | Output address for writing individual actor results
 newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
+
+------------------------------------------------------------
+-- Initial dynamic environment
+------------------------------------------------------------
+
+-- | The initial dynamic environment for an actor, only includes
+-- the default sending behavior.
+initialDynEnvironment :: Map String ActorVarAdr
+initialDynEnvironment = Map.singleton "send^" (PrmAdr "send^")
+
 
 ------------------------------------------------------------
 -- Stores

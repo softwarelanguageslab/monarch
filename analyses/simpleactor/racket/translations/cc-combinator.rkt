@@ -76,7 +76,7 @@
           (pattern        (car translated))
           (enhanced-msg   (cdr translated)))
 
-         `(,pattern  (begin (send^ ,rcv ,enhanced-msg)
+         `(,pattern  (begin ((dyn send^) ,rcv ,enhanced-msg)
                             (,behavior (pair ,tag ,current-value)))))))
 
 
@@ -198,7 +198,7 @@
              ;; calls to `parametrize` using some kind of CPS.
              (letrec 
                ((,κc (,κ ,j))
-                (,old-send send^))
+                (,old-send (dyn send^)))
                 (parametrize 
                   ((send^ (lambda (,rcv ,msg) (,old-send ,κc (pair ,rcv ,msg)))))
                   ,(before-last bdy

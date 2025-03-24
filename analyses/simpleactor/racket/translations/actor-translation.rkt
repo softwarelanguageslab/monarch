@@ -43,7 +43,7 @@
        (letrec
          ((real-self self^))
          (parametrize 
-            ((self (lambda (m) (send^ real-self m))))
+            ((self (lambda (m) ((dyn send^) real-self m))))
              (receive 
                ,(map translate-handler handlers)))))]
    [(quasiquote (behavior ,@es))
@@ -61,7 +61,7 @@
    [(quasiquote (spawn ,beh ,@ags))
     `(letrec ((act (spawn^ (,beh ,@ags))))
       (lambda (msg) 
-          (send^ act msg)))]
+          ((dyn send^) act msg)))]
    [(quasiquote (spawn ,@es))
     (invalid-syntax "spawn" e)]
    [(quasiquote (let ,bds ,@bdy))

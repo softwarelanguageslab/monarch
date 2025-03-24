@@ -79,9 +79,9 @@ instance (MonadDependencyTrigger cmp dep m, MonadIO m, Show dep) => MonadDepende
 instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadIO m, Show cmp, MonadDependencyTracking cmp ActorRef m, MonadDependencyTriggerTracking cmp ActorRef m) => MonadMailbox ActorVlu (ModularIntraAnalysisT cmp m) where
   send to msg =
     ifM (upperM (send to msg))
-        (trigger @cmp to $> False)
-        (return True)
-  receive' ref = currentCmp >>= register @cmp ref >> upperM (receive' ref)
+        (trigger @cmp to $> True)
+        (return False)
+  receive' ref = currentCmp >>= register @cmp ref >> upperM (Debug.traceWith (("receive:: " ++) . show) <$> receive' ref)
 
 
 

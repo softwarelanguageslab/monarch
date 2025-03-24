@@ -48,6 +48,7 @@ import Analysis.Symbolic.Monad (choice, choices)
 import Domain.Symbolic (equal, var)
 import Analysis.Store (Store)
 import qualified Analysis.Store as Store
+import Control.Monad.IO.Class (liftIO)
 
 ------------------------------------------------------------
 -- Evaluation
@@ -110,6 +111,8 @@ eval' rec (Blame e _) =
    eval' rec e >>= escape . BlameError . show
 eval' rec (Meta e _) =
    withMetaSet (withCtx (spanOf e:) (eval' rec e))
+eval' rec (Trace e _) =
+   ((liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) =<< eval' rec e) $> nil
 eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v m => v -> v -> m ()
@@ -160,9 +163,11 @@ matchList f ((pat, e):pats) value =
 match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
 match (ValuePat lit) v =
-   choice (return $ equal (injectLit lit) v) (return Map.empty) (escape MatchError)
+   -- TODO: replace @cond@ by @choice@ so that conditions are tracked symbolically
+   -- This is currently disabled because there is a bug causing some feasible paths to become infeasible.
+   cond (return $ equal (injectLit lit) v) (return Map.empty) (escape MatchError)
 match (PairPat pat1 pat2) v =
-   choice (return $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
+   cond (return $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
    where matchPair vp =
             Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
                       <$> match pat1 (car vp)

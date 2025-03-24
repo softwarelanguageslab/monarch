@@ -174,7 +174,8 @@ type EvalM v m =
     ActorDomain v,
     EqualLattice v,
     Show v,
-    SymbolicM (Adr v) m v
+    SymbolicM (Adr v) m v,
+    MonadIO m
   )
 
 ------------------------------------------------------------
@@ -198,7 +199,7 @@ newtype DynamicBindingT v m a = DynamicBindingT (ReaderT (Map String (Adr v)) m 
                               deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadCache)
 
 instance (Monad m, α ~ Adr v) => MonadDynamic α (DynamicBindingT v m) where  
-   lookupDynamic vr = DynamicBindingT $ asks (fromJust . Map.lookup vr)
+   lookupDynamic vr = DynamicBindingT $ asks (fromMaybe (error $ "dynamic binding " ++ show vr ++ " not found") . Map.lookup vr)
    withExtendedDynamic bds (DynamicBindingT ma) = DynamicBindingT $ local (Map.union (Map.fromList bds)) ma
    
 ------------------------------------------------------------
