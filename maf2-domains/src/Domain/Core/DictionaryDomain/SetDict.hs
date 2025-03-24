@@ -31,7 +31,7 @@ instance SetDict k v => DictionaryDomain (SetDictionary k v) where
    lookup ks (Dct d) = mjoinMap (maybe (escape KeyNotFound) (mjoin (escape KeyNotFound) . return) . flip Map.lookup d) ks 
 
    updateWeak ks v (Dct dct)
-      | Set.null ks = mzero
+      | Set.null ks = mbottom
       | otherwise   = return $ Dct $ foldr (\k -> Map.insertWith join k v) dct ks 
 
    isEmpty (Dct dct)

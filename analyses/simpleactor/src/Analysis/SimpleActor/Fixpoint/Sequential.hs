@@ -38,9 +38,9 @@ import Analysis.SimpleActor.Fixpoint.Common
 import Control.Monad.Layer (MonadLayer (..))
 import Control.Monad.Cond (ifM)
 import Control.Monad.Reader
-import Control.Monad.Join (mzero, MonadBottom)
+import Control.Monad.Join (mbottom, MonadBottom)
 import qualified Analysis.Monad.Map as MapM
-import RIO hiding (exp, mzero)
+import RIO hiding (exp)
 import qualified Debug.Trace as Debug
 import Analysis.Store (emptyCountingMap)
 import Control.Fixpoint.WorkList (FIFOWorkList, LIFOWorklist)
@@ -142,7 +142,7 @@ instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMa
         ifM (hasAdr adr)
        {- then -} (upperM $ lookupAdr adr)
        {- else -} -- Trigger contributions of the address and register our interest
-           (triggers (traceShowId adr) >>= adds >> mzero)
+           (triggers (traceShowId adr) >>= adds >> mbottom)
   writeAdr adr vlu = do
     cmp <- ask
     -- write the value to the input stores of all dependent actors,

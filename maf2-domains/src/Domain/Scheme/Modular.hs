@@ -468,8 +468,8 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
    withProc :: forall schemeM a . (AbstractM schemeM, Lattice a) => (Either String (Exp (SchemeVal m), Env (SchemeVal m)) -> schemeM a) -> SchemeVal m ->  schemeM a
    withProc f = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM a
-            select SCloKey clos' = Set.foldr (mjoin . f . Right) mzero clos'
-            select SPrimKey prs = Set.foldr (mjoin . f . Left) mzero prs
+            select SCloKey clos' = Set.foldr (mjoin . f . Right) mbottom clos'
+            select SPrimKey prs = Set.foldr (mjoin . f . Left) mbottom prs
             select _ _ = escape WrongType
 
    -- Predicates

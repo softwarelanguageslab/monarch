@@ -33,7 +33,7 @@ instance (BottomLattice a) => BottomLattice (BoundedList a) where
 
 ref :: (NumberDomain i, Domain i Int, Joinable a, BottomLattice a, AbstractM m) => BoundedList a -> i -> m a
 ref (BoundedList length elements) i
-      | length == bottom = mzero
+      | length == bottom = mbottom
       | otherwise        = rangedRef length
    where rangedRef (Interval (Bounded l1) (Bounded u1)) = 
             let values = mjoins (zipWith lookup [0..u1] elements)

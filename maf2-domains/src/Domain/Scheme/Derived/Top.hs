@@ -186,6 +186,6 @@ instance (ActorDomain v) => ActorDomain (SchemeTopLifted v) where
   type ARef (SchemeTopLifted v) = ARef v
 
   aref = pure . aref
-  arefs f = foldr (const . arefs f) mzero -- TODO[severe]: this is actually unsound, but is the only possibility at the moment (cf. note above)
+  arefs f = foldr (const . arefs f) mbottom -- TODO[severe]: this is actually unsound, but is the only possibility at the moment (cf. note above)
   isActorRef = foldr (const . isActorRef) boolTop . getTopLifted
   arefs' = foldr (const . arefs') Set.empty -- TODO[severe]: unsound (cf. above)  

@@ -120,7 +120,7 @@ newtype ActorLocalT v m a = ActorLocalT {runActorLocalT' :: ReaderT (ARef v) m a
 instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
   getSelf = ActorLocalT ask
   withSelf r = ActorLocalT . local (const r) . runActorLocalT'
-  terminate = mzero -- no particular behavior in the abstract
+  terminate = mbottom-- no particular behavior in the abstract
   waitUntilAllFinished = return () -- no behavior in the abstract
 
 

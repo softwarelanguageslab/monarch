@@ -44,16 +44,16 @@ class (Monad m) => MonadJoinable m where
    infix 0 <||>
 
 class (Monad m) => MonadBottom m where    
-   mzero :: m a 
+   mbottom :: m a 
 
 cond :: (MonadJoin m, BoolDomain b, Joinable v) => m b -> m v -> m v -> m v 
 cond cnd csq alt = cnd >>= (\b -> mjoin (t b) (f b))
-   where t b = if isTrue b then csq else mzero
-         f b = if isFalse b then alt else mzero
--- | If value is @Bottom@ results in  @mzero@ computation,
+   where t b = if isTrue b then csq else mbottom
+         f b = if isFalse b then alt else mbottom
+-- | If value is @Bottom@ results in  @mbottom@ computation,
 -- otherwise in a computation returning the wrapped value.
 fromBL :: MonadBottom m => BottomLifted a -> m a
-fromBL Bottom    = mzero 
+fromBL Bottom    = mbottom 
 fromBL (Value v) = return v 
 
 type MonadJoin m = (MonadJoinable m, MonadBottom m)
@@ -68,7 +68,7 @@ condsCP :: (MonadJoin m, Joinable v) => [(m (CP Bool), m v)] -> m v -> m v
 condsCP = conds
 
 mjoinMap :: (MonadJoin m, Foldable t, Joinable b) => (a -> m b) -> t a -> m b 
-mjoinMap f = foldr (mjoin . f) mzero
+mjoinMap f = foldr (mjoin . f) mbottom
 
 -- | Same as @mjoin@ but uses the given element as its neutral
 mjoins1' :: (MonadJoin m, Foldable t, Joinable v) => v -> t (m v) -> m v 
@@ -79,7 +79,7 @@ mjoins1 :: (MonadJoin m, Foldable t, Joinable v) => t (m v) -> m v
 mjoins1 = foldr1 mjoin 
 
 mjoins :: (MonadJoin m, Foldable t, Joinable v) => t (m v) -> m v
-mjoins = foldr mjoin mzero
+mjoins = foldr mjoin mbottom
 
 msplit :: (MonadJoin m, Joinable v, SplitLattice a) => (a -> m v) -> a -> m v
 msplit f = mjoinMap f . split
@@ -88,7 +88,7 @@ msplitOn :: (MonadJoin m, BoolDomain b, Joinable v, Lattice a, SplitLattice a) =
 msplitOn p ft ff vs = do (t, f) <- splitOnM p vs
                          protectBot ft t `mjoin` protectBot ff f
    where protectBot f v 
-            | v == bottom = mzero
+            | v == bottom = mbottom
             | otherwise   = f v 
 
 msplitOnCP :: (MonadJoin m, Lattice v, Lattice a, SplitLattice a) => (a -> m (CP Bool)) -> (a -> m v) -> (a -> m v) -> a -> m v
@@ -103,31 +103,31 @@ instance (MonadJoinable m) => MonadJoinable (ReaderT r m) where
    mjoin ma mb = ReaderT $ \r -> mjoin (runReaderT ma r) (runReaderT mb r)
 
 instance (MonadBottom m) => MonadBottom (ReaderT r m) where 
-   {-# INLINE mzero #-}
-   mzero = ReaderT $ const mzero
+   {-# INLINE mbottom #-}
+   mbottom = ReaderT $ const mbottom
 
 instance (MonadJoinable m, Joinable w, BottomLattice w, Monoid w) => MonadJoinable (WriterT w m) where
    {-# INLINE mjoin #-}
    mjoin (WriterT ma) (WriterT mb) = WriterT (mjoin ma mb)
 
 instance (Monoid w, MonadBottom m) => MonadBottom (WriterT w m) where 
-   mzero = WriterT mzero
+   mbottom = WriterT mbottom
 
 instance (MonadJoinable m, Joinable s, BottomLattice s) => MonadJoinable (StateT s m) where
    {-# INLINE mjoin #-}
    mjoin ma mb = StateT (\st -> mjoin (runStateT ma st) (runStateT mb st))
 
 instance (MonadBottom m) => MonadBottom (StateT r m) where 
-   {-# INLINE mzero #-}
-   mzero = StateT $ const mzero
+   {-# INLINE mbottom #-}
+   mbottom = StateT $ const mbottom
 
 instance (MonadJoinable m) => MonadJoinable (MaybeT m) where
    {-# INLINE mjoin #-}
    mjoin ma mb = MaybeT $ mjoin (runMaybeT ma) (runMaybeT mb)
 
 instance (MonadBottom m) => MonadBottom (MaybeT m) where 
-   {-# INLINE mzero #-}
-   mzero = MaybeT mzero
+   {-# INLINE mbottom #-}
+   mbottom = MaybeT mbottom
 
 instance MonadJoinable Maybe where
    mjoin (Just a) (Just b) = Just (join a b)
@@ -136,7 +136,7 @@ instance MonadJoinable Maybe where
    mjoin _ _ = Nothing 
    
 instance MonadBottom Maybe where
-   mzero = Nothing
+   mbottom = Nothing
 
 instance MonadJoinable Identity where
    mjoin = liftA2 join
@@ -145,5 +145,5 @@ instance (MonadJoinable m) => MonadJoinable (IdentityT m) where
    {-# INLINE mjoin #-}
    mjoin (IdentityT ma) (IdentityT mb) = IdentityT $ mjoin ma mb
 instance (MonadBottom m) => MonadBottom (IdentityT m) where 
-   {-# INLINE mzero #-}
-   mzero = IdentityT mzero
+   {-# INLINE mbottom #-}
+   mbottom = IdentityT mbottom

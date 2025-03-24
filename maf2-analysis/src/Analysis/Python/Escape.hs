@@ -50,8 +50,8 @@ instance (Ord vlu, Show vlu, Joinable vlu) => PyEscape (Set (PyEsc vlu)) vlu whe
     isBreak = mjoinMap $ \case Break -> return true
                                _     -> return false
     getReturn = mjoinMap $ \case Return v -> return v
-                                 _        -> mzero
+                                 _        -> mbottom
     getException = mjoinMap $ \case Exception e -> return e
-                                    _           -> mzero
+                                    _           -> mbottom
     isException = mjoinMap $ \case Exception _ -> return true
                                    _           -> return false
