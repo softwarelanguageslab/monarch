@@ -51,18 +51,18 @@ printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCm
          showCmp ((FuncBdy loc _, _), ctx) = "<func " ++ show loc ++ " with context " ++ show ctx ++ ">"
          indent = maximum (map (length . showCmp . fst) cmps) + 5
 
--- runREPL :: IO ()
--- runREPL = do count <- newIORef 0 
---              analyzeREPL @PyDomainCP (read count) print 
---       where read count = do cur <- readIORef count
---                             writeIORef count (cur + 1)
---                             prompt cur
---             prompt cur = do putStr ">>> "
---                             hFlush stdout
---                             txt <- getLine 
---                             case parse ("REPL:" ++ show cur) txt of  
---                               Just parsed -> return parsed
---                               Nothing     -> putStrLn "Invalid program" >> prompt cur 
+runREPL :: IO ()
+runREPL = do count <- newIORef 0 
+             analyzeREPL @PyDomainCP (read count) print 
+      where read count = do cur <- readIORef count
+                            writeIORef count (cur + 1)
+                            prompt cur
+            prompt cur = do putStr ">>> "
+                            hFlush stdout
+                            txt <- getLine 
+                            case parse ("REPL:" ++ show cur) txt of  
+                              Just parsed -> return parsed
+                              Nothing     -> putStrLn "Invalid program" >> prompt cur 
 
 
 runFile :: String -> IO ()
@@ -101,7 +101,8 @@ generateGraph files =
          toType Top = "?"
 
 main :: Options -> IO ()
-main (Options fileName) = ecopipe
+--main (Options fileName) = ecopipe
+main (Options fileName) = runREPL
 
 ecopipe :: IO ()
 ecopipe = generateGraph [

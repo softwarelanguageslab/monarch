@@ -8,6 +8,7 @@
 module Analysis.Python.Fixpoint where
 
 import Lattice
+import Lattice.Tainted (Tainted(..))
 import Analysis.Python.Common
 import Domain.Python.Objects as PyObj  
 import Analysis.Python.Semantics hiding (call)
@@ -18,6 +19,7 @@ import Analysis.Monad hiding (eval, call)
 import Domain.Python.Syntax
 
 import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Map (Map)
 import Prelude hiding (init, read)
 import Data.Function ((&))
@@ -26,12 +28,15 @@ import Analysis.Monad.Stack
 import Analysis.Monad.Call
 import qualified Control.Monad.Join as MJoin
 import Control.Monad.Identity
+import Control.Monad.IO.Class
+import Control.Monad
 import qualified Lattice.BottomLiftedLattice as BL
 
 import Data.Maybe
 import Data.Typeable
 import Data.Graph
 import Analysis.Store (CountingMap)
+import Data.Foldable (traverse_)
 
 ---
 --- Python analysis fixpoint algorithm
@@ -105,11 +110,10 @@ intra cmp = runIntraAnalysis cmp m
                                      return v 
 
 inter :: forall obj m . AnalysisM m obj => PyPrg -> m (Store obj)
-inter prg = do ((), initialStore) <- runWithStore @(Store obj) @ObjAdr @obj init   -- initialize Python infrastructure                              
-               let cmp = ((Main prg, initialEnv), [])
+inter prg = do let cmp = ((Main prg, initialEnv), [])
                add cmp                                                             -- add the main component to the worklist
                Analysis.Monad.put (PyCmpTaint cmp) mempty 
-               Analysis.Monad.put (PyCmpStoreIn cmp) initialStore
+               Analysis.Monad.put (PyCmpStoreIn cmp) =<< initialStore
                iterateWL (intra @obj)                                              -- start the analysis 
                Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
 
@@ -130,28 +134,37 @@ analyze prg = (rsto, osto, graph)
                                     & runWithWorkList @(Set PyCmp)
                                     & runIdentity
 
--- analyzeREPL :: forall obj . PyDomain obj PyRef
---     => IO PyPrg         -- a read function
---     -> (obj -> IO ())   -- a display function
---     -> IO ()
--- analyzeREPL read display = 
---     void $ (init >> repl) 
---             & runWithStore @(Map ObjAdr obj) @ObjAdr
---             & runWithMapping' @PyCmp @PyRes 
---             & runWithMapping' @PyCmpTaint 
---             & runWithDependencyTracking @PyCmp @ObjAdr
---             & runWithDependencyTracking @PyCmp @PyCmp
---             & runWithDependencyTracking @PyCmp @PyCmpTaint 
---             & runWithComponentTracking @PyCmp
---             & runWithWorkList @(Set PyCmp)
---             & runWithGraph @(SimpleGraph (CP String) ())
---     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
---                               let cmp = ((Main prg, initialEnv), [])
---                               add cmp 
---                               Analysis.Monad.put (PyCmpTaint cmp) mempty
---                               iterateWL intra 
---                               res <- justOrBot <$> Analysis.Monad.get @PyCmp @PyRes cmp 
---                               traverse ((\(Tainted s _) -> mapM lookupAdr (Set.toList (addrs s))) >=> liftIO . display . joins) res
+initialStore :: forall m obj . AnalysisM m obj => m (Store obj)
+initialStore = snd <$> runWithStore @(Store obj) @ObjAdr @obj init
+
+analyzeREPL :: forall obj . (PyDomain obj PyRef, Typeable obj, Show obj)
+    => IO PyPrg         -- a read function
+    -> (obj -> IO ())   -- a display function
+    -> IO ()
+analyzeREPL read display = 
+    void $ (initialStore >>= putStore >> repl) 
+            & runWithGraph @(SimpleGraph (CP String) (CP Bool))
+            & runWithMapping' @PyCmpStoreIn
+            & runWithMapping' @PyCmpStoreOut
+            & runWithStore @(Store obj) @ObjAdr
+            & runWithMapping' @PyCmp @PyRes 
+            & runWithMapping' @PyCmpTaint 
+            & runWithDependencyTracking @PyCmp @ObjAdr
+            & runWithDependencyTracking @PyCmp @PyCmp
+            & runWithDependencyTracking @PyCmp @PyCmpTaint
+            & runWithDependencyTracking @PyCmp @PyCmpStoreIn 
+            & runWithDependencyTracking @PyCmp @PyCmpStoreOut 
+            & runWithComponentTracking @PyCmp
+            & runWithWorkList @(Set PyCmp)
+    where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
+                              let cmp = ((Main prg, initialEnv), [])
+                              add cmp 
+                              Analysis.Monad.put (PyCmpTaint cmp) mempty
+                              Analysis.Monad.put (PyCmpStoreIn cmp) =<< currentStore
+                              iterateWL (intra @obj)
+                              putStore =<< Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
+                              res <- fromJust <$> Analysis.Monad.get @PyCmp @PyRes cmp 
+                              traverse_ ((\(Tainted s _) -> mapM lookupAdr (Set.toList (addrs s))) >=> liftIO . display . joins1) res 
 
 ---
 --- CP instantiation
@@ -161,3 +174,4 @@ type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
 
 analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
 analyzeCP = analyze @PyDomainCP
+
