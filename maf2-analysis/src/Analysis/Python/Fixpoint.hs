@@ -142,7 +142,7 @@ analyzeREPL :: forall obj . (PyDomain obj PyRef, Typeable obj, Show obj)
     -> (obj -> IO ())   -- a display function
     -> IO ()
 analyzeREPL read display = 
-    void $ (initialStore >>= repl) 
+    void $ (initialStore >>= putStore >> repl) 
             & runWithGraph @(SimpleGraph (CP String) (CP Bool))
             & runWithMapping' @PyCmpStoreIn
             & runWithMapping' @PyCmpStoreOut
@@ -156,17 +156,15 @@ analyzeREPL read display =
             & runWithDependencyTracking @PyCmp @PyCmpStoreOut 
             & runWithComponentTracking @PyCmp
             & runWithWorkList @(Set PyCmp)
-    where repl sto = do prg <- addImplicitReturn <$> liftIO read
-                        let cmp = ((Main prg, initialEnv), [])
-                        add cmp 
-                        Analysis.Monad.put (PyCmpTaint cmp) mempty
-                        Analysis.Monad.put (PyCmpStoreIn cmp) sto
-                        iterateWL (intra @obj)
-                        res <- fromJust <$> Analysis.Monad.get @PyCmp @PyRes cmp 
-                        upd <- Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
-                        putStore upd
-                        traverse_ ((\(Tainted s _) -> mapM lookupAdr (Set.toList (addrs s))) >=> liftIO . display . joins1) res
-                        repl upd
+    where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
+                              let cmp = ((Main prg, initialEnv), [])
+                              add cmp 
+                              Analysis.Monad.put (PyCmpTaint cmp) mempty
+                              Analysis.Monad.put (PyCmpStoreIn cmp) =<< currentStore
+                              iterateWL (intra @obj)
+                              putStore =<< Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
+                              res <- fromJust <$> Analysis.Monad.get @PyCmp @PyRes cmp 
+                              traverse_ ((\(Tainted s _) -> mapM lookupAdr (Set.toList (addrs s))) >=> liftIO . display . joins1) res 
 
 ---
 --- CP instantiation
