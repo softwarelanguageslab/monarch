@@ -73,7 +73,7 @@ eval' rec e@(App e1 es _) = do
 eval' rec (Ite e1 e2 e3 _) =
    choice (eval' rec e1) (eval' rec e2) (eval' rec e3)
 eval' _rec (Spawn e _) =
-   getEnv >>= (fmap aref . spawn @v e)
+   liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
 eval' _ (Terminate _) = terminate $> nil
 eval' rec (Receive pats _) = do
    self <- getSelf
@@ -110,7 +110,8 @@ eval' _ (Self _) = aref <$> getSelf @v
 eval' rec (Blame e _) =
    eval' rec e >>= escape . BlameError . show
 eval' rec (Meta e _) =
-   withMetaSet (withCtx (spanOf e:) (eval' rec e))
+   withMetaSet (eval' rec e)
+   -- withMetaSet (withCtx (spanOf e:) (eval' rec e))
 eval' rec (Trace e _) =
    ((liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) =<< eval' rec e) $> nil
 eval' _ e = error $  "unsupported expression: " ++ show e
@@ -130,7 +131,7 @@ applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e (lam@(Lam prs _ _), env) rec vs =
    if length prs /= length vs then
       error "invalid number of arguments"
-   else withCtx (const [spanOf e]) $ do
+   else {- withCtx (const [spanOf e]) $ -} do
             ads <- mapM alloc prs
             let bds = zip (map name prs) ads
             mapM_ (uncurry writeAdr) (zip ads vs)

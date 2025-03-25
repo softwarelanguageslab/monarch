@@ -17,7 +17,8 @@ module Analysis.SimpleActor.Monad
     MetaT, 
     DynamicBindingT,
     isMatchError,
-    Cmp(..)
+    Cmp(..),
+    Ctx(..)
   )
 where
 
@@ -77,6 +78,16 @@ instance FreeVariables Cmp where
    fv (ActorExp e) = fv e
 
 ------------------------------------------------------------
+-- Context sensitivity
+------------------------------------------------------------
+
+-- | Context for function calls and address allocations
+--
+-- Currently addresses and function call components are sensitive
+-- to the actor they were created in.
+newtype Ctx = Ctx { ref :: Pid Exp Ctx  } deriving (Ord, Eq, Show)
+
+------------------------------------------------------------
 -- Errors
 ------------------------------------------------------------
 
@@ -118,14 +129,14 @@ class Monad m => MonadDynamic α m | m -> α where
 
 -- | Monad for spawning new processes. Each process is uniquely identified by their
 -- expression and environment.
-class MonadSpawn v m | m -> v where
-    spawn :: Exp -> Env v -> m (ARef v)
+class MonadSpawn v k m | m -> v k where
+    spawn :: Exp -> Env v -> Ctx -> m (ARef v)
 
 -- | Trivial instance for layered monad transformers
-instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v m) => MonadSpawn v (t m) where
-  spawn e = upperM . spawn e
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v k m) => MonadSpawn v k (t m) where
+  spawn e env = upperM . spawn e env
 
-type MonadActor v m = (MonadMailbox v m, MonadSpawn v m, MonadActorLocal v m, MonadMeta m, MonadDynamic (Adr v) m)
+type MonadActor v m = (MonadMailbox v m, MonadSpawn v Ctx m, MonadActorLocal v m, MonadMeta m, MonadDynamic (Adr v) m)
 
 ------------------------------------------------------------
 -- Layered instances
@@ -165,7 +176,7 @@ type EvalM v m =
     MonadActor v m,
     MonadEscape m,
     MonadFixpoint m Cmp v,
-    CtxM m [Span],
+    CtxM m Ctx,
     Domain (Esc m) DomainError,
     Domain (Esc m) Error,
     BottomLattice (Esc m),

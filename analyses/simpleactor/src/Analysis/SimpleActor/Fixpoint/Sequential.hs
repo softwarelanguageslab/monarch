@@ -70,7 +70,7 @@ type SequentialT m = MonadStack '[
                        AllocT Exp K (PaiAdrE Exp K),
                        AllocT Exp K (StrAdrE Exp K),
                        AllocT Exp K (VecAdrE Exp K),
-                       MCfaT (Unlist K),
+                       CtxT K,
                        MetaT,
                        ActorLocalT ActorVlu,
                        -- Local path conditions
@@ -103,7 +103,7 @@ type InterAnalysisM m = (MonadSchemeStore m,
                          AbstractCountM (EnvAdr K) m,
                          MonadMailbox ActorVlu m,
                          FormulaSolver (EnvAdr K) m,
-                         MonadSpawn ActorVlu m,
+                         MonadSpawn ActorVlu Ctx m,
                          MonadIO m)
 
 
@@ -179,9 +179,9 @@ runSequentialIntraT ref (SequentialIntraT m) = runReaderT m ref
 
 -- | Write the relevant addresses to the input store
 -- of an actor when one is spawned
-instance (Monad m, StoreM ActorVarAdr ActorVlu m, StoreM' VarSto ActorVarAdr ActorVlu m, MapM ActorRef ActorSto m, MonadSpawn ActorVlu m) => MonadSpawn ActorVlu (SequentialIntraT m) where
-   spawn expr env = do
-      pid <- upperM (spawn expr env)
+instance (Monad m, StoreM ActorVarAdr ActorVlu m, StoreM' VarSto ActorVarAdr ActorVlu m, MapM ActorRef ActorSto m, MonadSpawn ActorVlu Ctx m) => MonadSpawn ActorVlu Ctx (SequentialIntraT m) where
+   spawn expr env ctx = do
+      pid <- upperM (spawn expr env ctx)
       sto <- currentStore @VarSto
       MapM.joinWith pid (CountingMap $ Map.restrictKeys (store sto) (Set.fromList $ map snd $ HashMap.toList env)) 
       return pid
@@ -203,7 +203,7 @@ type MonadActorModular m = (
     -- Formula solving should be global since it requires IO
     FormulaSolver (EnvAdr K) m,
     -- Spawning actors
-    MonadSpawn ActorVlu m,
+    MonadSpawn ActorVlu Ctx m,
     -- Keep track of results for each function call within
     -- the actor.
     MapM ActorResOut (Map SequentialCmp SequentialRes) m,
@@ -237,7 +237,7 @@ inter exp environment ref = iterateWL' initialCmp intra
   where initialCmp = ActorExp exp         -- component to analyze
                 <+> environment           -- initial lexical environment
                 <+> initialDynEnvironment -- initial dynamic environment 
-                <+> emptyMcfaContext 0    -- context 
+                <+> Ctx ref               -- context 
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> ref                   -- current `self`
                 <+> emptyPC

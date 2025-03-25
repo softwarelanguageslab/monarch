@@ -19,6 +19,7 @@ import Domain.Scheme.Class hiding (Exp)
 import Data.Tuple.Syntax 
 import Analysis.Monad.DependencyTracking (DependencyTrackingM, MonadDependencyTracking, MonadDependencyTriggerTracking)
 import Analysis.Monad.Map (MapM)
+import Analysis.SimpleActor.Monad (Ctx)
 import RIO
 import qualified RIO.Map as Map
 
@@ -27,7 +28,7 @@ import qualified RIO.Map as Map
 -- Shorthands
 ------------------------------------------------------------
 
-type K = [Span]
+type K = Ctx
 type ActorExp = Exp
 type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (EnvAdr K)

@@ -29,7 +29,7 @@ import Control.Monad.Trans.Identity
 import Analysis.Monad.WorkList
 import Analysis.Monad.Join (runJoinT)
 import Data.Tuple.Syntax
-import Analysis.SimpleActor.Monad (MonadSpawn (spawn))
+import Analysis.SimpleActor.Monad (MonadSpawn (spawn), Ctx)
 import qualified Symbolic.SMT as SMT
 import qualified Debug.Trace as Debug
 import Lattice.Class (BottomLattice, Joinable)
@@ -58,9 +58,9 @@ $(makeLenses ''AnalysisState)
 spawnWL :: (Ord cmp, ComponentTrackingM m cmp, WorkListM m cmp) => cmp -> m ()
 spawnWL cmp = ifM (Set.member cmp <$> C.components) (return ()) (C.spawn cmp >> add cmp)
 
-instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef, MapM ActorRef ActorSto m) => MonadSpawn ActorVlu (StateT AnalysisState m) where
-  spawn expr env = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid <* MapM.joinWith pid (initialSto @VarSto @ActorVlu allPrimitives PrmAdr)
-    where pid  = Pid expr []
+instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef, MapM ActorRef ActorSto m) => MonadSpawn ActorVlu Ctx (StateT AnalysisState m) where
+  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid <* MapM.joinWith pid (initialSto @VarSto @ActorVlu allPrimitives PrmAdr)
+    where pid  = Pid expr ctx
           env' = env -- HashMap.restrictKeys env (fv expr)  
 
 
@@ -118,7 +118,7 @@ type ModularInterM m = (MonadState AnalysisState m,
                         WorkListM m ActorRef,
                         MonadMailbox ActorVlu m,
                         FormulaSolver (EnvAdr K) m,
-                        MonadSpawn ActorVlu m,
+                        MonadSpawn ActorVlu Ctx m,
                         MapM ActorResOut (Map SequentialCmp SequentialRes) m,
                         MonadIO m)
 
