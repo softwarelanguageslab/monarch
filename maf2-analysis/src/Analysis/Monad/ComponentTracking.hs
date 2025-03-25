@@ -35,7 +35,7 @@ call :: forall v m cmp . (MonadCache m, MonadJoin m, MapM (Key m cmp) (Val m v) 
 call cmp = do k <- key cmp
               spawn k
               m <- cached @m @cmp @v k
-              maybe mzero return m
+              maybe mbottom return m
 
 ---
 --- Component tracking monad transformer 

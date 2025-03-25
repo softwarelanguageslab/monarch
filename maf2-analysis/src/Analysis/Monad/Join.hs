@@ -43,7 +43,7 @@ newtype JoinT m a = JoinT { runJoinT' :: m (BottomLifted a) }
 instance (Monad m) => MonadJoinable (JoinT m) where
    mjoin (JoinT ma) = JoinT . liftA2 join ma . runJoinT'
 instance (Monad m) => MonadBottom (JoinT m) where
-   mzero = JoinT $ return Bottom
+   mbottom = JoinT $ return Bottom
 
 -- Standard monad implementations
 instance (Functor m) => Functor (JoinT m) where
@@ -92,7 +92,7 @@ newtype NonDetT m a = NonDetT (ListT m a)
 instance (Monad m) => MonadJoinable (NonDetT m) where
    mjoin (NonDetT ma) (NonDetT mb) = NonDetT $ ma `mplus` mb
 instance (Monad m) => MonadBottom (NonDetT m) where
-   mzero = NonDetT C.mzero
+   mbottom = NonDetT C.mzero
 
 runNonDetT :: Monad m => NonDetT m a -> m [a]
 runNonDetT (NonDetT ma) = uncons ma >>= fix'
@@ -121,7 +121,7 @@ instance (MonadCache m,  Monad m) => MonadCache (SetNonDetT m) where
 instance (Monad m) => MonadJoinable (SetNonDetT m) where
    mjoin (SetNonDetT ma) (SetNonDetT mb) = SetNonDetT $ ma `mplus` mb
 instance (Monad m) => MonadBottom (SetNonDetT m) where
-   mzero = SetNonDetT C.mzero
+   mbottom = SetNonDetT C.mzero
 
 runSetNonDetT :: (Ord a, Monad m) => SetNonDetT m a -> m (Set a)
 runSetNonDetT (SetNonDetT ma) = Set.fromList <$> (uncons ma >>= fix')

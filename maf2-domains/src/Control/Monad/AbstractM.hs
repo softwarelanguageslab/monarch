@@ -15,4 +15,4 @@ type AbstractM m = (MonadJoin m, MonadEscape m, Domain (Esc m) DomainError)
 domain :: (AbstractM m, BoolDomain b) => b -> DomainError -> m a
 domain b err
    | isTrue b = escape err
-   | otherwise = mzero
+   | otherwise = mbottom

@@ -68,8 +68,8 @@ type instance BoolFor (Interval Integer) = CP Bool
 
 instance NumberDomain (Interval Integer) where  
    random = const $ return top
-   eq BottomInterval _ = mzero 
-   eq _ BottomInterval = mzero
+   eq BottomInterval _ = mbottom 
+   eq _ BottomInterval = mbottom
    eq i1@(Interval l1 u1) i2@(Interval l2 u2) 
       | l1 == u1 && i1 == i2 = return (inject True)
       | overlaps i1 i2       = return boolTop

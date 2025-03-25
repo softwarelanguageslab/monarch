@@ -101,11 +101,11 @@ intra cmp = runIntraAnalysis cmp m
                              Analysis.Monad.joinWith (PyCmpTaint cmp') =<< currentTaint 
                              changed <- Analysis.Monad.joinWith' (PyCmpStoreIn cmp') =<< currentStore
                              if changed
-                             then MJoin.mzero 
+                             then MJoin.mbottom 
                              else do rv <- cached cmp'
                                      rs <- Analysis.Monad.get (PyCmpStoreOut cmp')
-                                     v <- maybe MJoin.mzero return rv
-                                     s <- maybe MJoin.mzero return rs 
+                                     v <- maybe MJoin.mbottom return rv
+                                     s <- maybe MJoin.mbottom return rs 
                                      putStore s 
                                      return v 
 

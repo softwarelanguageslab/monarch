@@ -605,7 +605,7 @@
                   (lambda ()
                     (letrec ((real-self self^))
                       (parametrize
-                       ((self (lambda (m) (send^ real-self m))))
+                       ((self (lambda (m) ((dyn send^) real-self m))))
                        (receive
                         (((pair 'ping sender)
                           (begin
@@ -615,10 +615,14 @@
                          ((pair
                            'enhanced
                            (pair k7402 (pair j7406 (pair 'ping sender))))
-                          (letrec ((kc7403 (k7402 j7406)) (old-send7407 send^))
+                          (letrec ((kc7403 (k7402 j7406))
+                                   (old-send7407 (dyn send^)))
                             (parametrize
                              ((send^
                                (lambda (rcv7404 msg7405)
+                                 (trace 'contracted-send)
+                                 (trace kc7403)
+                                 (trace old-send7407)
                                  (old-send7407
                                   kc7403
                                   (pair rcv7404 msg7405)))))
@@ -631,7 +635,7 @@
                   (lambda ()
                     (letrec ((real-self self^))
                       (parametrize
-                       ((self (lambda (m) (send^ real-self m))))
+                       ((self (lambda (m) ((dyn send^) real-self m))))
                        (receive
                         (((pair 'pong sender)
                           (begin
@@ -641,7 +645,8 @@
                          ((pair
                            'enhanced
                            (pair k7409 (pair j7413 (pair 'pong sender))))
-                          (letrec ((kc7410 (k7409 j7413)) (old-send7414 send^))
+                          (letrec ((kc7410 (k7409 j7413))
+                                   (old-send7414 (dyn send^)))
                             (parametrize
                              ((send^
                                (lambda (rcv7411 msg7412)
@@ -667,9 +672,11 @@
                                        (lambda (j7424)
                                          (letrec ((r
                                                    (lambda (trace7428)
+                                                     (trace trace7428)
                                                      (receive
                                                       (('finish
                                                         (begin
+                                                          (trace 'finish)
                                                           (if (member
                                                                'pong
                                                                trace7428)
@@ -682,7 +689,8 @@
                                                          message7426
                                                          (('pong
                                                            (begin
-                                                             (send^
+                                                             (trace 'matched)
+                                                             ((dyn send^)
                                                               rcv7427
                                                               ((pair
                                                                 'enhanced
@@ -720,9 +728,9 @@
                       ((ping/c)
                        xj7435
                        xk7436
-                       (letrec ((act1 (spawn^ (ping-behavior))))
-                         (lambda (msg) (send^ act1 msg))))))
+                       (letrec ((act (spawn^ (ping-behavior))))
+                         (lambda (msg) ((dyn send^) act msg))))))
                    (pong
-                    (letrec ((act2 (spawn^ (pong-behavior))))
-                      (lambda (msg) (send^ act2 msg)))))
+                    (letrec ((act (spawn^ (pong-behavior))))
+                      (lambda (msg) (trace (dyn send^)) ((dyn send^) act msg)))))
             (begin (ping (pair 'ping pong)) (wait-until-all-finished))))))))

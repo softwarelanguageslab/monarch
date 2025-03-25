@@ -130,7 +130,7 @@ compileBdn :: MonadError String m => SExp -> m (Ide, Exp)
 compileBdn ((Atom x s) ::: e ::: SNil _) =
    (Ide x s ,) <$> compile e
 compileBdn e =
-   throwError $ "invalid syntax for binding in letrec " ++ show e ++ " at  " ++ show (spanOf e)
+   throwError $ "invalid syntax for binding " ++ show e ++ " at  " ++ show (spanOf e)
 
 compileParam :: MonadError String m => SExp -> m Ide
 compileParam ex@(Atom x _) = return $ Ide x (spanOf ex)

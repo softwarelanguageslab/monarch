@@ -1,6 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 -- | Analysis to analyse the inner actor semantics
-module Analysis.SimpleActor.Fixpoint.Sequential(analyze) where
+module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes) where
 
 ------------------------------------------------------------
 -- Imports
@@ -12,7 +13,7 @@ import Analysis.Actors.Monad
 
 import Data.Functor.Identity
 
-import Analysis.Monad hiding (eval)
+import Analysis.Monad hiding (eval, spawn, store)
 import Syntax.AST
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Monad.Fix
@@ -27,7 +28,7 @@ import Analysis.Symbolic.Monad
     ( FormulaT )
 import Solver
 import Symbolic.AST ( emptyPC )
-import Analysis.Store (CountingMap, Store (..))
+import Analysis.Store (CountingMap(..), Store (..))
 import Data.Maybe
 import Analysis.Context (emptyMcfaContext)
 import qualified RIO.Set as Set
@@ -37,9 +38,16 @@ import Analysis.SimpleActor.Fixpoint.Common
 import Control.Monad.Layer (MonadLayer (..))
 import Control.Monad.Cond (ifM)
 import Control.Monad.Reader
-import Control.Monad.Join (mzero, MonadBottom)
+import Control.Monad.Join (mbottom, MonadBottom)
 import qualified Analysis.Monad.Map as MapM
-import RIO hiding (exp, mzero)
+import RIO hiding (exp)
+import qualified Debug.Trace as Debug
+import Analysis.Store (emptyCountingMap)
+import Control.Fixpoint.WorkList (FIFOWorkList, LIFOWorklist)
+import Lattice.Class
+import qualified Data.HashMap.Strict as HashMap
+import Analysis.SimpleActor.Fixpoint.Common (initialDynEnvironment)
+
 
 ------------------------------------------------------------
 -- Shorthands
@@ -94,7 +102,9 @@ type InterAnalysisM m = (MonadSchemeStore m,
                             -- Out ActorCmp ActorPC ],
                          AbstractCountM (EnvAdr K) m,
                          MonadMailbox ActorVlu m,
-                         FormulaSolver (EnvAdr K) m)
+                         FormulaSolver (EnvAdr K) m,
+                         MonadSpawn ActorVlu m,
+                         MonadIO m)
 
 
 ------------------------------------------------------------
@@ -129,25 +139,29 @@ newtype SequentialIntraT m a = SequentialIntraT (ReaderT ActorRef m a)
 
 instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMap a v) m, WorkListM m ActorRef, MonadBottom m, DependencyTrackingM ActorRef a m, StoreM a v m) => StoreM a v (SequentialIntraT m) where
   storeSize = upperM (storeSize @a @v)
-  lookupAdr adr = ifM (hasAdr adr)
+  lookupAdr adr = SequentialIntraT ask >>= register adr >>
+        ifM (hasAdr adr)
        {- then -} (upperM $ lookupAdr adr)
        {- else -} -- Trigger contributions of the address and register our interest
-           (SequentialIntraT ask >>= register adr >> (triggers adr >>= adds) >> mzero)
+           (triggers (traceShowId adr) >>= adds >> mbottom)
   writeAdr adr vlu = do
     cmp <- ask
     -- write the value to the input stores of all dependent actors,
     -- except ourselves, MapM ensures that dependent actors only get reanalyzed whenever
     -- the store changes.
     deps <- Set.filter (/= cmp) <$> dependent adr
-    mapM_ (\cmp' -> MapM.get cmp' >>= maybe (MapM.put cmp' $ extendSto adr vlu emptySto) (MapM.joinWith cmp' . updateSto adr vlu)) deps
+    mapM_ (\cmp' -> MapM.get cmp' >>= maybe (MapM.put cmp' $ extendSto adr vlu emptySto) (MapM.joinWith cmp' . extendSto adr vlu)) deps
+    -- track that we triggered the write 
+    trackTrigger adr cmp
     -- and write as usual
     upperM $ writeAdr adr vlu
 
   updateWith fs fw a = do
-    -- same as in @writeAdr@
+    -- same as in @writeAdr@ in terms of writing behavior and dependency trigger tracking
     cmp <- ask
     deps <- Set.filter (/= cmp) <$> dependent a
     mapM_ (\cmp' -> MapM.get cmp' >>= (MapM.joinWith cmp' . updateStoWith fs fw a) . fromMaybe emptySto) deps
+    trackTrigger a cmp
     upperM (updateWith fs fw a)
 
   hasAdr = upperM . (hasAdr @a)
@@ -159,6 +173,18 @@ instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMa
 runSequentialIntraT :: ActorRef -> SequentialIntraT m a -> m a
 runSequentialIntraT ref (SequentialIntraT m) = runReaderT m ref
 
+------------------------------------------------------------
+-- Inter-actor stores
+------------------------------------------------------------
+
+-- | Write the relevant addresses to the input store
+-- of an actor when one is spawned
+instance (Monad m, StoreM ActorVarAdr ActorVlu m, StoreM' VarSto ActorVarAdr ActorVlu m, MapM ActorRef ActorSto m, MonadSpawn ActorVlu m) => MonadSpawn ActorVlu (SequentialIntraT m) where
+   spawn expr env = do
+      pid <- upperM (spawn expr env)
+      sto <- currentStore @VarSto
+      MapM.joinWith pid (CountingMap $ Map.restrictKeys (store sto) (Set.fromList $ map snd $ HashMap.toList env)) 
+      return pid
 
 ------------------------------------------------------------
 -- Actor-modular monadic requirements
@@ -176,8 +202,14 @@ type MonadActorModular m = (
     MonadMailbox ActorVlu m,
     -- Formula solving should be global since it requires IO
     FormulaSolver (EnvAdr K) m,
+    -- Spawning actors
+    MonadSpawn ActorVlu m,
+    -- Keep track of results for each function call within
+    -- the actor.
+    MapM ActorResOut (Map SequentialCmp SequentialRes) m,
     -- Other constraints
-    MonadBottom m
+    MonadBottom m,
+    MonadIO m
   )
 
 ------------------------------------------------------------
@@ -194,6 +226,7 @@ intra cmp = runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) (eval @Actor
           & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
           & runIntraAnalysis cmp
 
+
 -- | Inter-analysis
 inter :: InterAnalysisM m
       => Exp         -- ^ the actor expression to analyze
@@ -201,7 +234,15 @@ inter :: InterAnalysisM m
       -> ActorRef    -- ^ the current actor reference
       -> m ()
 inter exp environment ref = iterateWL' initialCmp intra
-  where initialCmp = ActorExp exp <+> environment <+> Map.empty <+> emptyMcfaContext 0 <+> False <+> ref <+> emptyPC
+  where initialCmp = ActorExp exp         -- component to analyze
+                <+> environment           -- initial lexical environment
+                <+> initialDynEnvironment -- initial dynamic environment 
+                <+> emptyMcfaContext 0    -- context 
+                <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
+                <+> ref                   -- current `self`
+                <+> emptyPC
+
+
 
 -- | Analyze a single actor until a fix point is reached
 analyze :: forall m  . MonadActorModular m
@@ -211,8 +252,12 @@ analyze :: forall m  . MonadActorModular m
         -> m ()
 analyze exp env ref = do
       -- retrieve store associated with this actor
-      sto <- maybe mzero return =<< MapM.get ref
-      _   <- inter exp env ref
+      sto <- fromMaybe (initialSto allPrimitives PrmAdr) <$> MapM.get ref
+      vsto <- fromMaybe emptyCountingMap <$> MapM.get ref
+      ssto <- fromMaybe emptyCountingMap <$> MapM.get ref
+      psto <- fromMaybe emptyCountingMap <$> MapM.get ref
+
+      res  <- inter exp env ref
             & runWithMapping @SequentialCmp @SequentialRes
             & runWithComponentTracking @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @SequentialCmp
@@ -221,14 +266,14 @@ analyze exp env ref = do
             & runWithDependencyTracking @SequentialCmp @(VecAdrE Exp K)
             & runWithDependencyTracking @SequentialCmp @(StrAdrE Exp K)
             & runWithDependencyTracking @SequentialCmp @ActorRef
-            & runWithWorkList @[SequentialCmp]
+            & runWithWorkList @(LIFOWorklist SequentialCmp)
             & runSequentialIntraT ref
-            & runWithStore @(CountingMap (PaiAdrE Exp K) (PaiDom ActorVlu))
-            & runWithStore @(CountingMap (StrAdrE Exp K) (StrDom ActorVlu))
-            & runWithStore @(CountingMap (VecAdrE Exp K) (VecDom ActorVlu))
+            & runStoreT @(CountingMap (PaiAdrE Exp K) (PaiDom ActorVlu)) @ActorPaiAdr psto
+            & runStoreT @(CountingMap (StrAdrE Exp K) (StrDom ActorVlu)) @ActorStrAdr ssto
+            & runStoreT @(CountingMap (VecAdrE Exp K) (VecDom ActorVlu)) @ActorVecAdr vsto
             & runStoreT @ActorSto @(EnvAdr K) @ActorVlu sto
 
-      -- TODO: write the stores and other mappings so that they can be inspected at the end
-      -- of the analysis.
-      return ()
+      MapM.put (ActorResOut ref) (extractVal res)
 
+      return ()
+  where extractVal (_ ::*:: res ::*:: _ ::*:: _ ::*:: _ ::*::_) = res

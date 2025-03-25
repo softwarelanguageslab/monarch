@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 module Main (main) where
@@ -21,6 +20,9 @@ import qualified Analysis.Store as Store
 import System.IO
 import Control.Monad
 import RIO (Identity)
+import Analysis.SimpleActor.Monad ()
+import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp)
+import Data.Tuple.Syntax
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -54,15 +56,23 @@ commandParser =
 -- Inspecting analysis results
 ------------------------------------------------------------
 
+-- | Print an arbitrary mapping
 printMap :: (Show v) => (k -> String) -> (k -> Bool) -> Map k v -> String
 printMap printKey keepKey m  =
        intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (printKey k) (show v)) adrs
    where adrs   = Map.toList $ Map.filterWithKey (flip (const keepKey)) m
          indent = maximum (map (length . printKey . fst) adrs) + 5
 
+-- | Print a mapping associated with a particular component
+printCmpMap :: (Show cmp, Show v) => (k -> String) -> (k -> Bool) -> cmp -> Map k v -> IO ()
+printCmpMap printKey keepKey cmp m = do
+   putStrLn "============================================================"
+   print cmp
+   putStrLn (printMap printKey keepKey m)
 
-printLoc :: ActorCmp -> String
-printLoc ((((((e, _), _), _), _), _), _) = let (Span filename Position { .. } _) = spanOf e in show line ++ ":" ++ show column ++ "@" ++ filename
+-- | Compute the span of a sequential component
+spanOfCmp :: SequentialCmp -> Span
+spanOfCmp (cmp ::*:: _env ::*:: _dyn ::*:: _meta ::*::  _ref ::*:: _k ::*:: _pc) = spanOf cmp
 
 ------------------------------------------------------------
 -- Entrypoints
@@ -85,11 +95,12 @@ loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTem
 analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename, doTranslate  }) = do
    ast <- loadFile' doTranslate filename
-   (mbs, sto, res) <- analyze ast
-   putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
+   (sequentialResults, mbs) <- analyze ast
+   mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialResults)
+   -- putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
 
-   putStrLn "====="
-   putStrLn $ printMap printLoc (const True) res
+   -- putStrLn "====="
+   -- putStrLn $ printMap printLoc (const True) res
    putStrLn "====="
    putStrLn $ printMap  show (const True) mbs
    return ()

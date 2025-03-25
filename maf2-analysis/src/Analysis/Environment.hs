@@ -4,6 +4,8 @@ module Analysis.Environment(Environment(..)) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 
 class Environment env a | env -> a where
    empty :: env
@@ -17,3 +19,10 @@ instance Environment (Map String a) a where
    lookup k = Map.findWithDefault (error $ "no such variable " ++ show k)  k
    extend   = Map.insert
    empty    = Map.empty
+
+-- Hashmap based representation of the environment gives a supposedly
+-- faster lookup speed since its keys are strings.
+instance Environment (HashMap String a) a where 
+    empty = HashMap.empty
+    lookup k = HashMap.findWithDefault (error $ "no such variable " ++ show k) k 
+    extend = HashMap.insert

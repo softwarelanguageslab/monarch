@@ -127,7 +127,7 @@ instance (Ord (Assoc CloKey m), Ord (Assoc AdrKey m), Assoc IntKey m ~ CP Intege
     -- primitives
     type PyPrmMap (PyObjHMap m) = PyPrm m
     hasPrm k = HMapDomain.member k . prm 
-    getPrm k = maybe mzero return . HMapDomain.lookup k . prm 
+    getPrm k = maybe mbottom return . HMapDomain.lookup k . prm 
     setPrm k v (PyObjHMap dct prm) = PyObjHMap dct $ HMapDomain.insert k v prm 
     -- attributes
     hasAttr k = Domain.containsKey k . dct

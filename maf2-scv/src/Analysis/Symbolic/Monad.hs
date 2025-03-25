@@ -75,11 +75,11 @@ choice mv mcsq malt = mv >>= (\v -> mjoin (checkTrue v) (checkFalse v))
          checkTrue v
             | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
             | isTrue  v = extendPc (assertTrue v) >> ifFeasible mcsq
-            | otherwise = mzero
+            | otherwise = mbottom
          checkFalse v
             | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
             | isFalse v = extendPc (assertFalse v) >> ifFeasible malt
-            | otherwise = mzero
+            | otherwise = mbottom
 
 -- | Same as `conds` but keeps track of path conditions
 choices :: (AbstractCountM i m, MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b)
@@ -88,11 +88,11 @@ choices clauses els =
    foldr (uncurry choice) els clauses
 
 -- | Executes the given action when the path condition is feasible
--- otherwise returns `mzero`
+-- otherwise returns `mbottom`
 ifFeasible :: (MonadJoin m, FormulaSolver i m, AbstractCountM i m, MonadPathCondition i m v,  Joinable a) => m a -> m a
 ifFeasible ma = do
    pcs <- fmap Set.toList getPc
-   mjoins (map (isFeasible >=> (\b -> if b then ma else mzero)) pcs)
+   mjoins (map (isFeasible >=> (\b -> if b then ma else mbottom)) pcs)
 
 
 type SymbolicM i m v = (-- Domain
@@ -196,7 +196,7 @@ pathWideningPerComponent f e = do
    oldPc <- upperM $ fromMaybe Set.empty <$> Map.get (Map.In @_ @(PC i) cmp)
    upperM . Map.put (Map.In @_ @(PC i) cmp) =<< Path.joinPC oldPc pc'
    v <- f e 
-   pc'' <- maybe mzero return =<< upperM (Map.get @_ @(PC i) (Map.Out @_ @(PC i) cmp))
+   pc'' <- maybe mbottom return =<< upperM (Map.get @_ @(PC i) (Map.Out @_ @(PC i) cmp))
    putPC pc'' 
    return v
 
@@ -207,7 +207,7 @@ pathWideningPerComponentEval :: forall m e i v . (Ord i, AbstractCountM i m, For
                          -> AroundT e v m v
 pathWideningPerComponentEval eval e = do
    cmp <- upperM $ Cache.key e 
-   pc' <- maybe mzero return =<< upperM (Map.get @_ @(PC i) (Map.In @_ @(PC i) cmp))
+   pc' <- maybe mbottom return =<< upperM (Map.get @_ @(PC i) (Map.In @_ @(PC i) cmp))
    putPC pc' 
    v <- eval e 
    pc'' <- getPc

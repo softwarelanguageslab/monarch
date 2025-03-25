@@ -19,6 +19,8 @@ import Domain.Scheme.Class hiding (Exp)
 import Data.Tuple.Syntax 
 import Analysis.Monad.DependencyTracking (DependencyTrackingM, MonadDependencyTracking, MonadDependencyTriggerTracking)
 import Analysis.Monad.Map (MapM)
+import RIO
+import qualified RIO.Map as Map
 
 
 ------------------------------------------------------------
@@ -29,7 +31,7 @@ type K = [Span]
 type ActorExp = Exp
 type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (EnvAdr K)
-type ActorEnv = Map String (EnvAdr K)
+type ActorEnv = HashMap String (EnvAdr K)
 type ActorMai = Map ActorRef (Set ActorVlu)
 type ActorSto = CountingMap (EnvAdr K) ActorVlu
 type ActorPC  = PC (EnvAdr K)
@@ -47,6 +49,28 @@ type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Const
       DependsOn m cmp (adr : ads) = (MonadDependencyTracking cmp adr m, DependsOn m cmp ads)
 
 ------------------------------------------------------------
+-- Addresses
+------------------------------------------------------------
+
+type ActorVarAdr = EnvAdr K 
+type ActorPaiAdr = PaiAdrE Exp K
+type ActorVecAdr = VecAdrE Exp K
+type ActorStrAdr = StrAdrE Exp K
+
+-- | Output address for writing individual actor results
+newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
+
+------------------------------------------------------------
+-- Initial dynamic environment
+------------------------------------------------------------
+
+-- | The initial dynamic environment for an actor, only includes
+-- the default sending behavior.
+initialDynEnvironment :: Map String ActorVarAdr
+initialDynEnvironment = Map.singleton "send^" (PrmAdr "send^")
+
+
+------------------------------------------------------------
 -- Stores
 ------------------------------------------------------------
 
@@ -62,10 +86,15 @@ type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Const
 
 
 -- | Combination of all Scheme stores
-type ActorStos = (CountingMap (EnvAdr K) ActorVlu,
-                  CountingMap (PaiAdrE Exp K) (PaiDom ActorVlu) ,
-                  CountingMap (StrAdrE Exp K) (StrDom ActorVlu),
-                  CountingMap (VecAdrE Exp K) (VecDom ActorVlu))
+type ActorStos = (VarSto, PaiSto,StrSto, VecSto)
+-- | Store of values variables bound to variables
+type VarSto = CountingMap ActorVarAdr ActorVlu
+-- | Store of pair values
+type PaiSto = CountingMap ActorPaiAdr (PaiDom ActorVlu)
+-- | Store of vector values
+type VecSto = CountingMap ActorVecAdr (VecDom ActorVlu)
+-- | Store of string values
+type StrSto = CountingMap ActorStrAdr (StrDom ActorVlu)
 
 
 -- | Shorthand for @StoreT@ by instantiating the backing storage
@@ -87,20 +116,20 @@ runActorStoreT (var, pai, str, vec) = fmap ret . runStoreT vec . runStoreT str  
 
 -- | Add constraints for Scheme stores
 type MonadSchemeStore m = (
-                      StoreM (EnvAdr K) ActorVlu m,
-                      StoreM (PaiAdrE Exp K) (PaiDom ActorVlu) m,
-                      StoreM (StrAdrE Exp K) (StrDom ActorVlu) m,
-                      StoreM (VecAdrE Exp K) (VecDom ActorVlu) m)
+                      StoreM ActorVarAdr ActorVlu m,
+                      StoreM ActorPaiAdr (PaiDom ActorVlu) m,
+                      StoreM ActorStrAdr (StrDom ActorVlu) m,
+                      StoreM ActorVecAdr (VecDom ActorVlu) m)
 
 
 
 -- | Parametrized constraint on actor references and addresses
 -- they depend on
 type DependOn :: (Type -> Type -> (Type -> Type) -> Constraint) -> (Type -> Type) -> Constraint
-type DependOn c m = (c ActorRef (EnvAdr K) m,
-                     c ActorRef (PaiAdrE Exp K) m,
-                     c ActorRef (StrAdrE Exp K) m,
-                     c ActorRef (VecAdrE Exp K) m)
+type DependOn c m = (c ActorRef ActorVarAdr m,
+                     c ActorRef ActorPaiAdr m,
+                     c ActorRef ActorStrAdr m,
+                     c ActorRef ActorVecAdr m)
 
 -- | Constraints for dependency tracking on each type of address
 type MonadActorStoreDependencyTracking m =
@@ -109,8 +138,7 @@ type MonadActorStoreDependencyTracking m =
   
 
 -- | A store for each actor
-type MonadActorStore m = (MapM ActorRef (CountingMap (EnvAdr K) ActorVlu) m,
-                          MapM ActorRef (CountingMap (PaiAdrE Exp K) (PaiDom ActorVlu)) m,
-                          MapM ActorRef (CountingMap (StrAdrE Exp K) (StrDom ActorVlu)) m,
-                          MapM ActorRef (CountingMap (VecAdrE Exp K) (VecDom ActorVlu)) m)
-
+type MonadActorStore m = (MapM ActorRef VarSto m,
+                          MapM ActorRef PaiSto m,
+                          MapM ActorRef VecSto m,
+                          MapM ActorRef StrSto m)

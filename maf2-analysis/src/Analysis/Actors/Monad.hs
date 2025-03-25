@@ -3,11 +3,12 @@ module Analysis.Actors.Monad(
    MonadMailbox(..),
    receive,
    MonadActorLocal(..),
-   GlobalMailboxT, 
+   GlobalMailboxT,
    runWithMailboxT,
    ActorLocalT,
    FlowSensitiveStoreMailboxT,
-   runFlowSensitiveStoreMailboxT
+   runFlowSensitiveStoreMailboxT,
+   send'
 ) where
 
 import Domain.Actor
@@ -25,15 +26,23 @@ import Analysis.Monad.WorkList (WorkListM)
 import Analysis.Monad.DependencyTracking (DependencyTrackingM(..), MonadDependencyTracking, trigger)
 import Analysis.Monad (IntraAnalysisT, MapM)
 import Control.Monad.State (StateT, gets, modify, runStateT)
-import Analysis.Actors.Mailbox (Mailbox, dequeue, enqueue, empty)
+import Analysis.Actors.Mailbox (Mailbox (hasMessage), dequeue, enqueue, empty)
 import Control.Monad.Identity (IdentityT, runIdentityT)
 import Analysis.Monad.Map (In(In))
 import Analysis.Monad.Store
 import qualified Analysis.Monad.Map as MapM
+import qualified Debug.Trace as Debug
+import Data.Functor
+import Analysis.Monad.IntraAnalysis (currentCmp)
+import Control.Monad.IO.Class
+import Control.Monad.Cond (ifM)
 
 
 class (BottomLattice v, Joinable v) => MonadMailbox v m where
-  send :: ARef v -> v -> m ()
+  -- | Send a message to the given actor reference, returns a boolean
+  -- to indicate whether the message was already part of the abstract
+  -- mailbox (False) or not (True).
+  send :: ARef v -> v -> m Bool
   receive' :: ARef v -> m v
 
 receive :: (MonadMailbox v m, Monad m) => ARef v -> (v -> m a) -> m a
@@ -66,6 +75,9 @@ instance
   send ref = upperM . send ref
   receive' = upperM . receive'
 
+-- | Same as @send@ but ignores the returned boolean
+send' :: (MonadMailbox v m, Functor m) => ARef v -> v -> m ()
+send' ref = void . send ref
 
 ------------------------------------------------------------
 -- Instances
@@ -84,12 +96,12 @@ newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT 
   deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)
 
 deriving instance (MonadCache m, Ord mb, Ord v, Ord (ARef v)) => MonadCache (GlobalMailboxT v mb m)
-  
+
 
 deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinable mb) => MonadJoinable (GlobalMailboxT v mb m)
 
 instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadMailbox v (GlobalMailboxT v mb m) where
-  send ref v = GlobalMailboxT $ modify (Map.insertWith (const . enqueue v) ref (enqueue v empty))
+  send ref v = GlobalMailboxT $ ifM (gets (hasMessage v . fromMaybe empty . Map.lookup ref)) (return False) (modify (Map.insertWith (\_ old ->  enqueue v old) ref (enqueue v empty)) $> True)
 
   -- NOTE: we cannot use `MonadJoin` here since we have passed the `JoinT` layer in the monadic stack,
   -- thus we use a `Joinable` instance to join the values ourselves. This should **not** happen
@@ -108,7 +120,7 @@ newtype ActorLocalT v m a = ActorLocalT {runActorLocalT' :: ReaderT (ARef v) m a
 instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
   getSelf = ActorLocalT ask
   withSelf r = ActorLocalT . local (const r) . runActorLocalT'
-  terminate = mzero -- no particular behavior in the abstract
+  terminate = mbottom-- no particular behavior in the abstract
   waitUntilAllFinished = return () -- no behavior in the abstract
 
 
@@ -123,9 +135,9 @@ newtype FlowSensitiveStoreMailboxT ref s adr v m a = FlowSensitiveStoreMailboxT 
                                    deriving (Applicative, Functor, Monad, MonadCache, MonadLayer, MonadJoinable, MonadBottom)
 
 
-instance (BottomLattice v, Joinable v, MapM (In ref s) s m, StoreM' s adr v m, MonadMailbox v m, Joinable s, ARef v ~ ref) => MonadMailbox v (FlowSensitiveStoreMailboxT (In ref s) s adr v m) where 
+instance (BottomLattice v, Joinable v, MapM (In ref s) s m, StoreM' s adr v m, MonadMailbox v m, Joinable s, ARef v ~ ref) => MonadMailbox v (FlowSensitiveStoreMailboxT (In ref s) s adr v m) where
   send ref msg = do
-    sto <- currentStore 
+    sto <- currentStore
     upperM (MapM.joinWith @(In ref s) @s (In ref) sto)
     upperM $ send ref msg
   receive' = upperM . receive'
@@ -141,6 +153,6 @@ runFlowSensitiveStoreMailboxT (FlowSensitiveStoreMailboxT ma) = runIdentityT ma
 
 type Dep v = ARef v
 
-instance (MonadMailbox v m, WorkListM m cmp, MonadDependencyTracking cmp (Dep v) m) => MonadMailbox v (IntraAnalysisT cmp m) where
-  send to msg = trigger @cmp to >> lift (send to msg)
-  receive' ref = dependent @cmp ref >> upperM (receive' ref)
+-- instance (MonadMailbox v m, WorkListM m cmp, MonadIO m, Show cmp, MonadDependencyTracking cmp (Dep v) m) => MonadMailbox v (IntraAnalysisT cmp m) where
+--   send to msg = (currentCmp >>= (liftIO . putStrLn . ("cmp: " ++) . show)) >> trigger @cmp to >> upperM (send to msg)
+--   receive' ref = dependent @cmp ref >> upperM (receive' ref)

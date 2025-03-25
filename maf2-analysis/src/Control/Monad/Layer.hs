@@ -24,7 +24,7 @@ instance {-# OVERLAPPABLE #-} (MonadIO m, Monad (t m), MonadLayer t) => MonadIO 
 
 -- | Implements `MonadBottom` for convenience
 instance {-# OVERLAPPABLE #-} (Monad (t m), MonadBottom m, MonadLayer t) => MonadBottom (t m) where 
-   mzero = upperM mzero
+   mbottom = upperM mbottom
 
 -- | Implements a `MonadReader` for layered monads
 instance {-# OVERLAPPABLE #-} (Monad (t m), MonadReader r m, MonadLayer t) => MonadReader r (t m) where  

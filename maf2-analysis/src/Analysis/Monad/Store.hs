@@ -233,7 +233,7 @@ flowSensitiveStore f e = do
    sto <- upperM (currentStore @s @a)
    upperM $ Map.joinWith (Map.In @_ @s cmp) sto
    v <- f e
-   sto' <-  maybe mzero return =<< upperM (Map.get @_ @s (Map.Out @_ @s cmp))
+   sto' <-  maybe mbottom return =<< upperM (Map.get @_ @s (Map.Out @_ @s cmp))
    upperM $ putStore sto'
    return v
 
@@ -244,7 +244,7 @@ flowSensitiveEval :: forall v m s e a . (Cache.MonadCache m, Map.Widened (Cache.
                   -> AroundT e v m v
 flowSensitiveEval eval e = do
    cmp <- upperM $ Cache.key e
-   putStore =<< maybe mzero return =<< upperM (Map.get @_ @s (Map.In @_ @s cmp))
+   putStore =<< maybe mbottom return =<< upperM (Map.get @_ @s (Map.In @_ @s cmp))
    v <- eval e
    upperM currentStore >>= (upperM . Map.joinWith (Map.Out @_ @s cmp))
    return v

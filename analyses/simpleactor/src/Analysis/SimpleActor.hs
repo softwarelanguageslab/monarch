@@ -1,3 +1,4 @@
-module Analysis.SimpleActor(module Analysis.SimpleActor.Fixpoint) where 
+module Analysis.SimpleActor(module Analysis.SimpleActor.Fixpoint.Modular) where 
    
-import Analysis.SimpleActor.Fixpoint
+import Analysis.SimpleActor.Fixpoint.Modular
+

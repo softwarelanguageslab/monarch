@@ -24,7 +24,6 @@ source-repository head
 library
   exposed-modules:
       Analysis.SimpleActor
-      Analysis.SimpleActor.Fixpoint
       Analysis.SimpleActor.Fixpoint.Common
       Analysis.SimpleActor.Fixpoint.Modular
       Analysis.SimpleActor.Fixpoint.Sequential
@@ -86,6 +85,8 @@ library
     , process
     , random
     , rio
+    , transformers
+    , unordered-containers
   default-language: Haskell2010
 
 executable simpleactor-exe

@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -75,7 +75,7 @@ library
       InstanceSigs
       TypeOperators
       DataKinds
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  ghc-options: -O3 -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
     , containers
@@ -90,6 +90,7 @@ library
     , process
     , singletons
     , transformers
+    , unordered-containers
   default-language: Haskell2010
 
 executable maf2-scv-exe
@@ -116,7 +117,7 @@ executable maf2-scv-exe
       InstanceSigs
       TypeOperators
       DataKinds
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -O3 -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
@@ -132,6 +133,7 @@ executable maf2-scv-exe
     , process
     , singletons
     , transformers
+    , unordered-containers
   default-language: Haskell2010
 
 test-suite maf2-scv-test
@@ -160,7 +162,7 @@ test-suite maf2-scv-test
       InstanceSigs
       TypeOperators
       DataKinds
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -O3 -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
@@ -184,4 +186,5 @@ test-suite maf2-scv-test
     , singletons
     , template-haskell
     , transformers
+    , unordered-containers
   default-language: Haskell2010

@@ -20,6 +20,7 @@ import Data.Kind
 import qualified Data.Set as Set
 import Domain.Actor
 import Control.DeepSeq
+import Data.HashMap.Strict (HashMap)
 
 --------------------------------------------------
 -- Declaration
@@ -168,12 +169,12 @@ instance (Eq i, Ord i) => CharDomain (SymbolicVal exp k i v) where
    downcase  (SymbolicVal c) = return $ SymbolicVal $ Predicate "downcase/v" [c]
    upcase    (SymbolicVal c) = return $ SymbolicVal $ Predicate "upcase/v"   [c]
    charToInt (SymbolicVal c) = return $ SymbolicVal $ Predicate "as-int/v"   [c]
-   isLower   (SymbolicVal _) = mzero 
-   isUpper   (SymbolicVal _) = mzero
-   charEq _ _                = mzero
-   charLt _ _                = mzero
-   charEqCI _ _              = mzero
-   charLtCI _ _              = mzero
+   isLower   (SymbolicVal _) = mbottom 
+   isUpper   (SymbolicVal _) = mbottom
+   charEq _ _                = mbottom
+   charLt _ _                = mbottom
+   charEqCI _ _              = mbottom
+   charLtCI _ _              = mbottom
 
 
 ------------------------------------------------------------
@@ -189,7 +190,7 @@ instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAd
    type VAdr (SymbolicVal exp k i v) = VAdr v
 
    type Exp (SymbolicVal exp k i v)  = exp
-   type Env (SymbolicVal exp k i v)  = Map String (Adr v)
+   type Env (SymbolicVal exp k i v)  = HashMap String (Adr v)
 
    pptr      = const bottom
    vptr      = const bottom
@@ -203,7 +204,7 @@ instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAd
    unsp      = SymbolicVal $ Literal Unsp
    prim      = SymbolicVal . Function . (++"/v")
    prims     = const bottom
-   withProc  = const . const mzero
+   withProc  = const . const mbottom
    isInteger = SymbolicVal . simplify . Predicate "integer?/v" . List.singleton . proposition 
    isReal    = SymbolicVal . simplify . Predicate "real?/v" . List.singleton . proposition 
    isChar    = SymbolicVal . simplify . Predicate "character?/v" . List.singleton . proposition 

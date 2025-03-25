@@ -19,6 +19,10 @@ class (Ord m, Eq m) => Mailbox m msg | m -> msg where
    -- | Create an empty mailbox
    empty :: m
 
+   -- | Returns true if the abstract mailbox already approximates
+   -- for the given message
+   hasMessage :: msg -> m -> Bool
+
 -- | A simple mailbox backed by a powerset.
 --
 -- This representation is finite if the number of messages that could be queued in the mailbox is also finite. 
@@ -27,3 +31,5 @@ instance (Ord msg) => Mailbox (Set msg) msg where
    enqueue = Set.insert
    dequeue m = Set.map (, m) m
    empty = Set.empty
+   hasMessage = Set.member
+
