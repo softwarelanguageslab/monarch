@@ -92,7 +92,7 @@ newtype Ctx = Ctx { ref :: Pid Exp Ctx  } deriving (Ord, Eq, Show)
 ------------------------------------------------------------
 
 -- TODO: BlameErorr should contain label not a string!
-data Error = MatchError | InvalidArgument | BlameError String | ArityMismatch Int Int
+data Error = MatchError | InvalidArgument | BlameError String | ArityMismatch Int Int | NotAnActorReference | NotAFunction Span
   deriving (Eq, Ord, Show)
 
 

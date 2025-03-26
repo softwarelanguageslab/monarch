@@ -74,7 +74,7 @@
          ((tag (cadr contract))
           (translated     ((translate-message/c j j) contract))
           (pattern        (car translated))
-          (enhanced-msg   (cdr translated)))
+          (enhanced-msg   (cadr translated)))
 
          `(,pattern  (begin ((dyn send^) ,rcv ,enhanced-msg)
                             (,behavior (pair ,tag ,current-value)))))))

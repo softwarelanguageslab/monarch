@@ -137,13 +137,15 @@ type InterAnalysisM m = (MonadSchemeStore m,
 newtype SequentialIntraT m a = SequentialIntraT (ReaderT ActorRef m a)
                 deriving (Applicative, Functor, Monad, MonadLayer, MonadCache, MonadReader ActorRef)
 
-instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMap a v) m, WorkListM m ActorRef, MonadBottom m, DependencyTrackingM ActorRef a m, StoreM a v m) => StoreM a v (SequentialIntraT m) where
+instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMap a v) m, WorkListM m ActorRef, MonadIO m, MonadBottom m, DependencyTrackingM ActorRef a m, StoreM a v m) => StoreM a v (SequentialIntraT m) where
   storeSize = upperM (storeSize @a @v)
   lookupAdr adr = SequentialIntraT ask >>= register adr >>
         ifM (hasAdr adr)
        {- then -} (upperM $ lookupAdr adr)
        {- else -} -- Trigger contributions of the address and register our interest
-           (triggers (traceShowId adr) >>= adds >> mbottom)
+           -- TODO[important]: we filter out contributions that we made ourselves, but this excludes us from creating self sends (in the abstract or concrete)
+           -- since the data of the self send will never be included in the input store.
+           (asks (Set.filter . (/=)) <*> triggers adr >>= adds >> mbottom)
   writeAdr adr vlu = do
     cmp <- ask
     -- write the value to the input stores of all dependent actors,
@@ -183,7 +185,7 @@ instance (Monad m, StoreM ActorVarAdr ActorVlu m, StoreM' VarSto ActorVarAdr Act
    spawn expr env ctx = do
       pid <- upperM (spawn expr env ctx)
       sto <- currentStore @VarSto
-      MapM.joinWith pid (CountingMap $ Map.restrictKeys (store sto) (Set.fromList $ map snd $ HashMap.toList env)) 
+      MapM.joinWith pid (CountingMap $ Map.restrictKeys (store sto) (Set.fromList $ map snd $ HashMap.toList env))
       return pid
 
 ------------------------------------------------------------

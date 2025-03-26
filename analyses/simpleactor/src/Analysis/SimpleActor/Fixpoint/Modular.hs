@@ -81,7 +81,7 @@ instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadIO m, Show cm
     ifM (upperM (send to msg))
         (trigger @cmp to $> True)
         (return False)
-  receive' ref = currentCmp >>= register @cmp ref >> upperM (Debug.traceWith (("receive:: " ++) . show) <$> receive' ref)
+  receive' ref = currentCmp >>= register @cmp ref >> upperM (receive' ref)
 
 
 

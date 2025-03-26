@@ -52,7 +52,7 @@ cond cnd csq alt = cnd >>= (\b -> mjoin (t b) (f b))
          f b = if isFalse b then alt else mbottom
 -- | If value is @Bottom@ results in  @mbottom@ computation,
 -- otherwise in a computation returning the wrapped value.
-fromBL :: MonadBottom m => BottomLifted a -> m a
+fromBL :: forall a m . MonadBottom m => BottomLifted a -> m a
 fromBL Bottom    = mbottom 
 fromBL (Value v) = return v 
 

@@ -507,12 +507,6 @@
                                      (cadr (cddddr args))
                                      (caddr (cddddr args))))
                                   (begin (error "Unsupported call."))))))))))))
-               (member
-                (lambda (e l)
-                  (assert (list? l))
-                  (if (null? l)
-                    #f
-                    (if (equal? (car l) e) l (member e (cdr l))))))
                (cddddr (lambda (x) (cdr (cdr (cdr (cdr x))))))
                (cadddr (lambda (x) (car (cdr (cdr (cdr x))))))
                (int-top (lambda () (random 42)))
@@ -669,9 +663,11 @@
                                        (lambda (j7424)
                                          (letrec ((r
                                                    (lambda (trace7428)
+                                                     (trace trace7428)
                                                      (receive
                                                       (('finish
                                                         (begin
+                                                          (trace (member 'pong trace7428))
                                                           (if (member
                                                                'pong
                                                                trace7428)
@@ -682,29 +678,35 @@
                                                          message7426)
                                                         (match
                                                          message7426
-                                                         (('pong
+                                                         (((pair 'pong x7429)
                                                            (begin
                                                              ((dyn send^)
                                                               rcv7427
-                                                              ((pair
-                                                                'enhanced
+                                                              (pair
+                                                               'enhanced
+                                                               (pair
+                                                                (lambda (j7431)
+                                                                  (letrec ((r
+                                                                            (lambda (trace7435)
+                                                                              (receive
+                                                                               (('finish
+                                                                                 (begin))
+                                                                                ((pair
+                                                                                  rcv7434
+                                                                                  message7433)
+                                                                                 (ping/c)))))))
+                                                                    (spawn^
+                                                                     (r
+                                                                      (list)))))
                                                                 (pair
-                                                                 (lambda (j7430)
-                                                                   (letrec ((r
-                                                                             (lambda (trace7434)
-                                                                               (receive
-                                                                                (('finish
-                                                                                  (begin))
-                                                                                 ((pair
-                                                                                   rcv7433
-                                                                                   message7432)
-                                                                                  (ping/c)))))))
-                                                                     (spawn^
-                                                                      (r
-                                                                       (list)))))
+                                                                 j7424
                                                                  (pair
-                                                                  j7424
-                                                                  'pong)))))
+                                                                  'pong
+                                                                  ((actor?
+                                                                    j7424
+                                                                    j7424)
+                                                                   x7429))))))
+                                                             (trace 'RECUR)
                                                              (r
                                                               (pair
                                                                'pong
@@ -718,10 +720,10 @@
                                     (x7421 (blame k7418))))))
                           (a7417 message7416)))))))
           (letrec ((ping
-                    (letrec ((xj7435 'client) (xk7436 'server))
+                    (letrec ((xj7436 'client) (xk7437 'server))
                       ((ping/c)
-                       xj7435
-                       xk7436
+                       xj7436
+                       xk7437
                        (letrec ((act (spawn^ (ping-behavior))))
                          (lambda (msg) ((dyn send^) act msg))))))
                    (pong

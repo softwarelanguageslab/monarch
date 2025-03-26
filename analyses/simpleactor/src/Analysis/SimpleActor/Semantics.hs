@@ -49,6 +49,8 @@ import Domain.Symbolic (equal, var)
 import Analysis.Store (Store)
 import qualified Analysis.Store as Store
 import Control.Monad.IO.Class (liftIO)
+import Lattice.ConstantPropagationLattice (CP)
+import Data.Functor ((<&>))
 
 ------------------------------------------------------------
 -- Evaluation
@@ -118,15 +120,15 @@ eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v m => v -> v -> m ()
 trySend ref p =
-   choice   (pure $ isActorRef ref)
-           (mjoinMap (`send'` p) (arefs' ref))
-           (escape InvalidArgument)
+   cond   (fromBL @(CP Bool) (isActorRef (traceShowId ref)) <&> traceShowId)
+          (mjoinMap (`send'` p) (arefs' ref))
+          (escape NotAnActorReference)
 
 apply :: EvalM v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
 apply rec e v vs = choices
    [(pure (isClo v), mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (pure (isPrim v), mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
-   (escape InvalidArgument)
+   (escape (NotAFunction (spanOf e)))
 applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e (lam@(Lam prs _ _), env) rec vs =
    if length prs /= length vs then
