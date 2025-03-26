@@ -14,7 +14,7 @@
                   (message/c 'ping (actor?) 
                              unspecified-recipient
                              (ensures/c (message/c 'pong 
-                                                   ()
+                                                   (actor?)
                                                    unspecified-recipient
                                                    (ping/c))))))))
 
