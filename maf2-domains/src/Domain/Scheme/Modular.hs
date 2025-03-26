@@ -26,6 +26,7 @@ module Domain.Scheme.Modular(
 ) where
 
 import Lattice
+import Lattice.Trace
 import Domain.Address
 import Domain.Class
 import Domain.Core
@@ -192,6 +193,7 @@ deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m)), 
 -- Lattice instances
 ------------------------------------------------------------
 
+deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 (Trace adr) (Values m)), Ord adr) => Trace adr (SchemeVal m)
 deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Joinable (Values m))) => Joinable (SchemeVal m)
 deriving instance BottomLattice (SchemeVal m)
 

@@ -1,11 +1,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Analysis.Environment(Environment(..)) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
+import Lattice.Trace
+import qualified Data.Set as Set
 
 class Environment env a | env -> a where
    empty :: env
@@ -26,3 +29,9 @@ instance Environment (HashMap String a) a where
     empty = HashMap.empty
     lookup k = HashMap.findWithDefault (error $ "no such variable " ++ show k) k 
     extend = HashMap.insert
+
+instance (Ord a) => Trace a (Map String a) where
+   trace = Set.fromList . map snd . Map.toList
+     
+instance (Ord a) => Trace a (HashMap String a) where
+   trace = Set.fromList . map snd . HashMap.toList

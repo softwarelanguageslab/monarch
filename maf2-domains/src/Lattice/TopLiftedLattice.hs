@@ -9,7 +9,8 @@ import Domain.Core.BoolDomain.Class (boolTop)
 import GHC.Generics
 import Lattice.Class
 import Lattice.Equal
-import Lattice.Split 
+import Lattice.Split
+import Lattice.Trace
 
 import qualified Data.Set as Set
 
@@ -77,3 +78,7 @@ instance (SplitLattice v, Ord v) => SplitLattice (TopLifted v) where
 
 instance (Eq a, Joinable a, Domain a b) => Domain (TopLifted a) b where  
    inject = Value . inject
+
+instance (Trace adr a) => Trace adr (TopLifted a) where
+   trace = foldr (const . trace) Set.empty
+   

@@ -5,11 +5,13 @@ module Lattice.ConstantPropagationLattice(CP(..), fromCP) where
 
 import Lattice.Class 
 import Lattice.Equal
+import Lattice.Trace
 import Domain.Class 
 import Domain.Core.BoolDomain.Class
 
 import GHC.Generics
 import Control.DeepSeq
+import qualified Data.Set as Set
 
 data CP a = Constant a | Top
     deriving (Eq, Ord, Show, Generic, NFData)
@@ -45,7 +47,12 @@ instance Applicative CP where
     (Constant f) <*> (Constant a) = Constant (f a)
     _ <*> _ = Top
 
+instance Ord adr => Trace adr (CP a) where
+  trace = const Set.empty
+
 -- | Convert from a CP lattice to another abstract domain
 fromCP :: (TopLattice a, Domain a c) => CP c -> a
 fromCP (Constant c) = inject c
 fromCP Top          = top
+
+  

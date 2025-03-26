@@ -114,6 +114,7 @@ library
       Lattice.ListLattice
       Lattice.MapLattice
       Lattice.MaybeLattice
+      Lattice.PointerSetLattice
       Lattice.ProductLattice
       Lattice.ReversePowerSetLattice
       Lattice.SetLattice
@@ -121,6 +122,7 @@ library
       Lattice.Tainted
       Lattice.TopLattice
       Lattice.TopLiftedLattice
+      Lattice.Trace
       Lattice.UnitLattice
   other-modules:
       Paths_maf2_domains

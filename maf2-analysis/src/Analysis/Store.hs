@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances, AllowAmbiguousTypes, FlexibleContexts, UndecidableInstances, Strict #-}
-module Analysis.Store(Store(..), CountingMap(..), store, restrictSto, printSto, emptyCountingMap) where
+module Analysis.Store(Store(..), CountingMap(..), store, restrictSto, printSto, emptyCountingMap, traceStore, traceStore') where
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -10,6 +10,8 @@ import Text.Printf
 import Control.DeepSeq
 
 import Data.Set (Set)
+import Lattice.Trace (Trace(..))
+import qualified Data.Set as Set
 
 -- | A generic store typeclass
 class Joinable v => Store s a v | s -> a v where
@@ -42,6 +44,14 @@ instance (Joinable v, Ord a) => Store (Map a v) a v where
 restrictSto :: (Ord a) => Set a -> Map a v -> Map a v
 restrictSto = flip Map.restrictKeys
 
+-- | Trace the addresses reachable in a single step from the given set of addresses according to the given store
+traceStore' :: (Trace adr v) => Set adr -> Map adr v  -> Set adr
+traceStore' adrs m = Set.unions (Set.map (maybe Set.empty trace . (`Map.lookup` m)) adrs)
+
+-- | Trace the addresses reachable from the given set of addresses in any number of steps
+traceStore :: (Trace adr v) => Set adr -> Map adr v -> Set adr 
+traceStore adrs m = if adrs /= adrs' then traceStore adrs m else adrs
+   where adrs' = traceStore' adrs m
 
 --
 -- Store printing 
