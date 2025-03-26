@@ -620,9 +620,6 @@
                             (parametrize
                              ((send^
                                (lambda (rcv7404 msg7405)
-                                 (trace 'contracted-send)
-                                 (trace kc7403)
-                                 (trace old-send7407)
                                  (old-send7407
                                   kc7403
                                   (pair rcv7404 msg7405)))))
@@ -672,11 +669,9 @@
                                        (lambda (j7424)
                                          (letrec ((r
                                                    (lambda (trace7428)
-                                                     (trace trace7428)
                                                      (receive
                                                       (('finish
                                                         (begin
-                                                          (trace 'finish)
                                                           (if (member
                                                                'pong
                                                                trace7428)
@@ -689,7 +684,6 @@
                                                          message7426
                                                          (('pong
                                                            (begin
-                                                             (trace 'matched)
                                                              ((dyn send^)
                                                               rcv7427
                                                               ((pair
@@ -713,7 +707,7 @@
                                                                   'pong)))))
                                                              (r
                                                               (pair
-                                                               message/c
+                                                               'pong
                                                                trace7428))))))))))))
                                            (spawn^ (r (list)))))
                                        (pair
@@ -732,5 +726,5 @@
                          (lambda (msg) ((dyn send^) act msg))))))
                    (pong
                     (letrec ((act (spawn^ (pong-behavior))))
-                      (lambda (msg) (trace (dyn send^)) ((dyn send^) act msg)))))
+                      (lambda (msg) ((dyn send^) act msg)))))
             (begin (ping (pair 'ping pong)) (wait-until-all-finished))))))))

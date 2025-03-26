@@ -67,11 +67,11 @@
 (define (translate-communication/c-aux κ)
   ;; same as @translate-message/c@ but adds the tag 
   ;; of the message to the reference cell for keeping 
-  ;; tracking of message traces.
+  ;; track of message traces.
   (define (translate-aux message behavior rcv current-value j)
     (lambda (contract)
        (let*
-         ((tag (car contract))
+         ((tag (cadr contract))
           (translated     ((translate-message/c j j) contract))
           (pattern        (car translated))
           (enhanced-msg   (cdr translated)))
