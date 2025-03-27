@@ -36,6 +36,7 @@ import Data.Void
 import Data.Singletons
 import Data.Singletons.Sigma
 import Data.TypeLevel.HList
+import GHC.TypeError
 
 data a :-> b = a :-> b
 type a ::-> b = a ':-> b -- nicer than the ':-> syntax ':-) 
@@ -44,7 +45,7 @@ infixr 6 ::->
 type family Assoc (kt :: k) (m :: [k :-> Type]) :: Type where
   Assoc kt (kt ::-> t : r)  = t
   Assoc kt (_ : r)          = Assoc kt r
-  Assoc kt '[]              = Void -- Should be this? TypeError (Text "The type " :<>: ShowType kt :<>: Text " was not found in the mapping")
+  Assoc kt '[]              = Void -- Should actually be, but generates too many errors: TypeError (Text "The type " :<>: ShowType kt :<>: Text " was not found in the mapping")
 type family Keys (m :: [k :-> Type]) :: [k] where
   Keys '[]              = '[]
   Keys (kt ::-> _ ': r) = (kt ': Keys r)

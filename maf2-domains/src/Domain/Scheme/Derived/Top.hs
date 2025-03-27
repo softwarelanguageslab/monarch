@@ -102,16 +102,11 @@ instance (RealDomain a) => RealDomain (SchemeTopLifted a) where
 
 instance
   ( SchemeDomain a,
-    TopLattice (VAdr a),
-    TopLattice (SAdr a),
-    TopLattice (PAdr a)
+    TopLattice (Adr a)
   ) =>
   SchemeDomain (SchemeTopLifted a)
   where
   type Adr (SchemeTopLifted a) = Adr a
-  type VAdr (SchemeTopLifted a) = VAdr a
-  type SAdr (SchemeTopLifted a) = SAdr a
-  type PAdr (SchemeTopLifted a) = PAdr a
   type Env (SchemeTopLifted a) = Env a
   type Exp (SchemeTopLifted a) = Exp a
 

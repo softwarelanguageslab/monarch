@@ -52,6 +52,7 @@ import Syntax.Span (SpanOf(..))
 import Syntax.FV
 import Analysis.Symbolic.Monad (SymbolicM)
 import Domain.Scheme hiding (Exp, Env)
+import Domain.Scheme.Store (StoreVal(..), ForAllStored)
 import Domain.Actor
 import Analysis.Actors.Monad
 import Control.DeepSeq
@@ -172,7 +173,7 @@ type EvalM v m =
   ( MonadJoinable m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
-    StoreM (Adr v) v m,
+    StoreM (Adr v) (StoreVal v) m,
     MonadActor v m,
     MonadEscape m,
     MonadFixpoint m Cmp v,
@@ -186,7 +187,11 @@ type EvalM v m =
     EqualLattice v,
     Show v,
     SymbolicM (Adr v) m v,
-    MonadIO m
+    MonadIO m,
+    -- Domain constraints
+    ForAllStored Show v,  
+    ForAllStored Eq v,  
+    ForAllStored Ord v
   )
 
 ------------------------------------------------------------

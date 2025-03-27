@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleInstances, AllowAmbiguousTypes, FlexibleContexts, UndecidableInstances, Strict #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor #-}
 module Analysis.Store(Store(..), CountingMap(..), store, restrictSto, printSto, emptyCountingMap, traceStore, traceStore') where
 
 import Data.Map (Map)
@@ -69,7 +71,7 @@ printSto printKey keepKey m  =
 
 
 newtype CountingMap a v = CountingMap { store :: Map a (v, AbstractCount) }
-   deriving (Eq, Ord, Joinable, Show, BottomLattice, NFData)
+   deriving (Eq, Ord, Joinable, Show, BottomLattice, NFData, Functor)
 
 emptyCountingMap :: CountingMap a v
 emptyCountingMap = CountingMap Map.empty

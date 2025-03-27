@@ -28,7 +28,7 @@ eval' _ (Bln b _)            = return (inject b)
 eval' _ (Nll _)              = return nil
 eval' _ (Sym s _)            = return (symbol s)
 eval' _ e@(Str s _)          = stoStr e (inject s)
-eval' _ (Var (Ide nam _))    = lookupEnv nam >>= lookupAdr
+eval' _ (Var (Ide nam _))    = lookupEnv nam >>= lookupVar
 eval' recur (Iff prd csq alt _)  = 
    cond (eval' recur prd) (eval' recur csq) (eval' recur alt)
 eval' recur (Bgn sqq _)          = last <$> mapM (eval' recur) sqq
@@ -44,8 +44,8 @@ eval' _ e                    = error $ "Unrecognized expression" ++ show e
 evalLet :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> Exp -> m v
 evalLet recur bds bdy = do
    vlus <- mapM (eval' recur) eps
-   adrs <- mapM allocVar vrs
-   mapM_ (uncurry writeAdr) (zip adrs vlus)
+   adrs <- mapM alloc vrs
+   mapM_ (uncurry writeVar) (zip adrs vlus)
    withExtendedEnv (zip (map name vrs) adrs) (eval' recur bdy)
    where (vrs, eps) = unzip bds
 
@@ -53,31 +53,31 @@ evalLetStar :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> 
 evalLetStar recur [] bdy = eval' recur bdy
 evalLetStar recur ((nam, ex) : rst) bdy = do
    vlu <- eval' recur ex
-   adr <- allocVar nam
-   _   <- writeAdr adr vlu
+   adr <- alloc nam
+   _   <- writeVar adr vlu
    withExtendedEnv [(name nam, adr)] (evalLetStar recur rst bdy)
 
 evalLetRec :: forall v m . (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> Exp -> m v
 evalLetRec recur bds bdy = do
-   adrs  <- mapM allocVar vrs
-   -- mapM_ (uncurry writeAdr . (, unsp)) adrs
+   adrs  <- mapM alloc vrs
+   -- mapM_ (uncurry writeVar . (, unsp)) adrs
    withExtendedEnv (zip (map name vrs) adrs) $ do
       vlus <- mapM (eval' recur) eps
-      mapM_ (uncurry writeAdr) (zip adrs vlus)
+      mapM_ (uncurry writeVar) (zip adrs vlus)
       eval' recur bdy
    where (vrs, eps) = unzip bds
 
 evalLetrecStar :: forall v m . (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> Exp -> m v
 evalLetrecStar recur bds bdy = do
-   adrs  <- mapM (allocVar . fst) bds
-   -- mapM_ (uncurry writeAdr . (, unsp)) adrs
+   adrs  <- mapM (alloc . fst) bds
+   -- mapM_ (uncurry writeVar . (, unsp)) adrs
    withExtendedEnv (zip (map (name . fst) bds) adrs) $ do
       -- difference with `letrec` is that the store is updated after each binding evaluation
       mapM_ (uncurry evalBinding) (zip adrs bds)
       eval' recur bdy
    where evalBinding adr (_, exp) = do
             vlu <- eval' recur exp
-            writeAdr adr vlu
+            writeVar adr vlu
             return vlu
 
 evalApp :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> Exp -> Exp -> [Exp] -> m v
@@ -90,8 +90,8 @@ applyFun recur app op ags = withProc (either (applyPrim app ags) (\clo -> applyC
 applyClo :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> (Exp, Env v) -> [v] -> m v
 applyClo recur (Lam prs bdy _, lex) ags = do
    withEnv (const lex) $ do
-      adrs <- mapM allocVar prs
-      zipWithM_ writeAdr adrs ags
+      adrs <- mapM alloc prs
+      zipWithM_ writeVar adrs ags
       withExtendedEnv (zip (map name prs) adrs) $ recur bdy
 applyClo _ _ _ = error "invalid closure"
 

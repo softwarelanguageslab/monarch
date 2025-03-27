@@ -27,6 +27,7 @@ module Domain.Scheme.Modular(
 
 import Lattice
 import Lattice.Trace
+import Lattice.PointerSetLattice
 import Domain.Address
 import Domain.Class
 import Domain.Core
@@ -79,10 +80,7 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | BoolConf   -- ^ abstraction for booleans
                    | EnvConf    -- ^ abstraction for environments
                    | ExpConf    -- ^ concrete type of expressions
-                   | StrConf    -- ^ type of string pointers
-                   | PaiConf    -- ^ type of pair pointers
-                   | VecConf    -- ^ type of vector pointers
-                   | VarConf    -- ^ type of regular pointers
+                   | AdrConf    -- ^ type of pointers
                    -- λα
                    | PidConf    -- ^ type of actor references
                    -- λα/c
@@ -132,9 +130,9 @@ type Values m = '[
    IntKey  ::-> Assoc IntConf m,
    CharKey ::-> Assoc CharConf m,
    BoolKey ::-> Assoc BoolConf m,
-   PaiKey  ::-> Set (Assoc PaiConf m),
-   VecKey  ::-> Set (Assoc VecConf m),
-   StrKey  ::-> Set (Assoc StrConf m),
+   PaiKey  ::-> PointerSet (Assoc AdrConf m),
+   VecKey  ::-> PointerSet (Assoc AdrConf m),
+   StrKey  ::-> PointerSet (Assoc AdrConf m),
    UnspKey ::-> (),
    NilKey  ::-> (),
    CloKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
@@ -180,10 +178,7 @@ type IsSchemeValue m =
     Rea (Assoc IntKey (Values m)) ~ Assoc RealKey (Values m),
     IntR (Assoc RealKey (Values m)) ~ Assoc IntKey (Values m),
     -- addresses
-    Address (Assoc VarConf m),
-    Address (Assoc PaiConf m),
-    Address (Assoc VecConf m),
-    Address (Assoc StrConf m))
+    Address (Assoc AdrConf m))
 
 -- Eq instance
 deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m))) => Eq (SchemeVal m)
@@ -421,30 +416,27 @@ instance (IsSchemeValue m) => RealDomain (SchemeVal m) where
 ------------------------------------------------------------
 
 instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
-   type Adr  (SchemeVal m) = Assoc VarConf m
-   type PAdr (SchemeVal m) = Assoc PaiConf m
-   type VAdr (SchemeVal m) = Assoc VecConf m
-   type SAdr (SchemeVal m) = Assoc StrConf m
+   type Adr  (SchemeVal m) = Assoc AdrConf m
    type Env  (SchemeVal m) = Assoc EnvConf m
    type Exp  (SchemeVal m) = Assoc ExpConf m
 
    -- Pointer injection
-   pptr = SchemeVal . HMap.singleton @PaiKey . Set.singleton
-   vptr = SchemeVal . HMap.singleton @VecKey . Set.singleton
-   sptr = SchemeVal . HMap.singleton @StrKey . Set.singleton
+   pptr = SchemeVal . HMap.singleton @PaiKey . PointerSet . Set.singleton
+   vptr = SchemeVal . HMap.singleton @VecKey . PointerSet . Set.singleton
+   sptr = SchemeVal . HMap.singleton @StrKey . PointerSet . Set.singleton
 
    -- Pointer extraction
    pptrs = mjoins . HMap.mapList select . getSchemeVal
-      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc PaiConf m))
-            select SPaiKey p = return p
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc AdrConf m))
+            select SPaiKey p = return (getPointerSet p)
             select _ _ = escape WrongType
    vptrs = mjoins . HMap.mapList select . getSchemeVal
-      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc VecConf m))
-            select SVecKey p = return p
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc AdrConf m))
+            select SVecKey p = return (getPointerSet p)
             select _ _ = escape WrongType
    sptrs = mjoins . HMap.mapList select . getSchemeVal
-      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc StrConf m))
-            select SStrKey p = return p
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc AdrConf m))
+            select SStrKey p = return (getPointerSet p)
             select _ _ = escape WrongType
 
 
@@ -494,17 +486,14 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
 
 
 -- A generic instance for the Scheme domain, parametrized by their sublattices
-type ModularSchemeValue r i c b pai vec str var exp env = SchemeVal '[
+type ModularSchemeValue r i c b adr exp env = SchemeVal '[
       RealConf ::-> r,
       IntConf  ::-> i,
       CharConf ::-> c,
       BoolConf ::-> b,
       EnvConf  ::-> env,
       ExpConf  ::-> exp,
-      StrConf  ::-> str,
-      PaiConf  ::-> pai,
-      VecConf  ::-> vec,
-      VarConf  ::-> var
+      AdrConf  ::-> adr
    ]
 
 ------------------------------------------------------------

@@ -31,11 +31,11 @@ import qualified RIO.Map as Map
 type K = Ctx
 type ActorExp = Exp
 type ActorRef = Pid Exp K
-type ActorVlu = ActorValue K (EnvAdr K)
-type ActorEnv = HashMap String (EnvAdr K)
+type ActorVlu = ActorValue K (SchemeAdr Exp K)
+type ActorEnv = HashMap String (SchemeAdr Exp K)
 type ActorMai = Map ActorRef (Set ActorVlu)
-type ActorSto = CountingMap (EnvAdr K) ActorVlu
-type ActorPC  = PC (EnvAdr K)
+type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
+type ActorPC  = PC (SchemeAdr Exp K)
 
 ------------------------------------------------------------
 -- Utilities
@@ -53,10 +53,7 @@ type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Const
 -- Addresses
 ------------------------------------------------------------
 
-type ActorVarAdr = EnvAdr K 
-type ActorPaiAdr = PaiAdrE Exp K
-type ActorVecAdr = VecAdrE Exp K
-type ActorStrAdr = StrAdrE Exp K
+type ActorVarAdr = SchemeAdr Exp K 
 
 -- | Output address for writing individual actor results
 newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
@@ -67,35 +64,15 @@ newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
 
 -- | The initial dynamic environment for an actor, only includes
 -- the default sending behavior.
-initialDynEnvironment :: Map String ActorVarAdr
-initialDynEnvironment = Map.singleton "send^" (PrmAdr "send^")
-
+initialDynEnvironment :: Map String (SchemeAdr Exp K)
+initialDynEnvironment = Map.singleton "send^" (PrrAdr "send^")
 
 ------------------------------------------------------------
 -- Stores
 ------------------------------------------------------------
 
-
--- As the SimpleActor language is based on Scheme and utilizes its
--- domain, the stores needs to be segmented into four different stores:
--- a store for pairs, a store for strings, a store for vectors and
--- a store for variables.
---
--- To make passing this store more ergonomic, we provide a type alias
--- combining these stores, as well as a partial monad transformer
--- stack that includes these stores.
-
-
--- | Combination of all Scheme stores
-type ActorStos = (VarSto, PaiSto,StrSto, VecSto)
--- | Store of values variables bound to variables
+-- | Store only storing environment based values
 type VarSto = CountingMap ActorVarAdr ActorVlu
--- | Store of pair values
-type PaiSto = CountingMap ActorPaiAdr (PaiDom ActorVlu)
--- | Store of vector values
-type VecSto = CountingMap ActorVecAdr (VecDom ActorVlu)
--- | Store of string values
-type StrSto = CountingMap ActorStrAdr (StrDom ActorVlu)
 
 
 -- | Shorthand for @StoreT@ by instantiating the backing storage
@@ -104,33 +81,17 @@ type StoreT' k v = StoreT (CountingMap k v) k v
 
 -- | Partial monad transformer stack representing for handling the different Scheme stores.
 type ActorStoreT m = MonadStack '[
-                      StoreT' (EnvAdr K) ActorVlu,
-                      StoreT' (PaiAdrE Exp K) (PaiDom ActorVlu),
-                      StoreT' (StrAdrE Exp K) (StrDom ActorVlu),
-                      StoreT' (VecAdrE Exp K) (VecDom ActorVlu)
+                      StoreT' (SchemeAdr Exp K) (StoreVal ActorVlu)
                    ] m
 
--- | Run an @ActorStoreT@ monad transformer
-runActorStoreT :: forall a m . Functor m => ActorStos -> ActorStoreT m a -> m (a, ActorStos)
-runActorStoreT (var, pai, str, vec) = fmap ret . runStoreT vec . runStoreT str  . runStoreT pai . runStoreT var
-  where ret (a ::*:: var' ::*:: pai' ::*:: str' ::*:: vec') = (a, (var', pai', str', vec'))
-
 -- | Add constraints for Scheme stores
-type MonadSchemeStore m = (
-                      StoreM ActorVarAdr ActorVlu m,
-                      StoreM ActorPaiAdr (PaiDom ActorVlu) m,
-                      StoreM ActorStrAdr (StrDom ActorVlu) m,
-                      StoreM ActorVecAdr (VecDom ActorVlu) m)
-
+type MonadSchemeStore m = (StoreM ActorVarAdr (StoreVal ActorVlu) m)
 
 
 -- | Parametrized constraint on actor references and addresses
 -- they depend on
 type DependOn :: (Type -> Type -> (Type -> Type) -> Constraint) -> (Type -> Type) -> Constraint
-type DependOn c m = (c ActorRef ActorVarAdr m,
-                     c ActorRef ActorPaiAdr m,
-                     c ActorRef ActorStrAdr m,
-                     c ActorRef ActorVecAdr m)
+type DependOn c m = (c ActorRef ActorVarAdr m)
 
 -- | Constraints for dependency tracking on each type of address
 type MonadActorStoreDependencyTracking m =
@@ -139,7 +100,4 @@ type MonadActorStoreDependencyTracking m =
   
 
 -- | A store for each actor
-type MonadActorStore m = (MapM ActorRef VarSto m,
-                          MapM ActorRef PaiSto m,
-                          MapM ActorRef VecSto m,
-                          MapM ActorRef StrSto m)
+type MonadActorStore m = (MapM ActorRef ActorSto m)

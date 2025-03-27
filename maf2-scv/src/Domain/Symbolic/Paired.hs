@@ -181,13 +181,10 @@ instance (Eq i, Ord i) => CharDomain (SymbolicVal exp k i v) where
 -- SchemeDomain instance
 ------------------------------------------------------------
 
-type ForAllAdress (c :: Type -> Constraint) v = (c (Adr v), c (PAdr v), c (SAdr v), c (VAdr v))
+type ForAllAdress (c :: Type -> Constraint) v = (c (Adr v))
 
-instance (Ord exp, Ord k, Show exp, Show (PAdr v), ForAllAdress Show v, ForAllAdress Eq v, ForAllAdress Ord v, Show k, Eq i, Ord i) => SchemeDomain (SymbolicVal exp k i v) where
+instance (Ord exp, Ord k, Show exp, ForAllAdress Show v, ForAllAdress Eq v, ForAllAdress Ord v, Show k, Eq i, Ord i) => SchemeDomain (SymbolicVal exp k i v) where
    type Adr  (SymbolicVal exp k i v) = Adr v
-   type PAdr (SymbolicVal exp k i v) = PAdr v
-   type SAdr (SymbolicVal exp k i v) = SAdr v
-   type VAdr (SymbolicVal exp k i v) = VAdr v
 
    type Exp (SymbolicVal exp k i v)  = exp
    type Env (SymbolicVal exp k i v)  = HashMap String (Adr v)

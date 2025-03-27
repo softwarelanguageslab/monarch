@@ -25,18 +25,11 @@ class (RealDomain v,
        BoolDomain v,
        BoolDomain (BoolFor v),
        -- all address type families should satisfy the address typeclass
-       Address (PAdr v),
-       Address (VAdr v),
-       Address (SAdr v),
        Address (Adr v),
        BoolFor v ~ v) => SchemeDomain v
   where
-  -- types of addresses to variables
+  -- types of addresses 
   type Adr v :: Type
-  -- Types of pointers to pairs, vectors and strings
-  type PAdr v :: Type
-  type VAdr v :: Type
-  type SAdr v :: Type
 
   -- Type of environment stored in closures
   type Env v :: Type
@@ -45,14 +38,14 @@ class (RealDomain v,
   type Exp v :: Type
 
   -- Pointer injection
-  pptr :: PAdr v -> v -- ^ a pointer to pairs
-  vptr :: VAdr v -> v -- ^ a pointer to vectors 
-  sptr :: SAdr v -> v -- ^ a pointer to strings
+  pptr :: Adr v -> v -- ^ a pointer to pairs
+  vptr :: Adr v -> v -- ^ a pointer to vectors 
+  sptr :: Adr v -> v -- ^ a pointer to strings
 
   -- Pointer extraction 
-  pptrs :: AbstractM m => v -> m (Set (PAdr v))
-  vptrs :: AbstractM m => v -> m (Set (VAdr v))
-  sptrs :: AbstractM m => v -> m (Set (SAdr v))
+  pptrs :: AbstractM m => v -> m (Set (Adr v))
+  vptrs :: AbstractM m => v -> m (Set (Adr v))
+  sptrs :: AbstractM m => v -> m (Set (Adr v))
 
   -- | Inject a symbol in the abstract domain
   symbol :: String -> v

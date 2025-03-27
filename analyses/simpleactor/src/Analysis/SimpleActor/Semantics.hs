@@ -35,6 +35,7 @@ import Analysis.Monad.Context (CtxM(..))
 import Data.Maybe
 import Debug.Trace
 import Lattice.Class (bottom)
+import Analysis.Scheme.Monad
 
 -- TODO: we are replacing the @cond@ operation 
 -- here in order to track conditions symbolically, 
@@ -92,22 +93,22 @@ eval' rec (Match e pats _) = do
 eval' rec (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
-   mapM_ (\(ex, adr) -> writeAdr adr =<< withExtendedEnv bds' (eval' rec ex)) (zip (map snd bds) ads)
+   mapM_ (\(ex, adr) -> writeVar adr =<< withExtendedEnv bds' (eval' rec ex)) (zip (map snd bds) ads)
    withExtendedEnv bds' (eval' rec e2)
 eval' rec (Parametrize bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (eval' rec . snd) bds
-   mapM_ (uncurry writeAdr) (zip ads vs)
+   mapM_ (uncurry writeVar) (zip ads vs)
    withExtendedDynamic bds' (eval' rec e2)
 eval' rec (Begin exs _) =
    last <$> mapM (eval' rec) exs
 eval' rec e@(Pair e1 e2 _) =
    stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
 eval' _ (Var (Ide x _)) =
-   lookupEnv x >>= lookupAdr >>= showIfBot (show x ++ " not in store")
+   lookupEnv x >>= lookupVar >>= showIfBot (show x ++ " not in store")
 eval' _ (DynVar (Ide x _)) =
-   lookupDynamic x >>= lookupAdr >>= showIfBot (show x ++ " dyn not in store")
+   lookupDynamic x >>= lookupVar >>= showIfBot (show x ++ " dyn not in store")
 eval' _ (Self _) = aref <$> getSelf @v
 eval' rec (Blame e _) =
    eval' rec e >>= escape . BlameError . show
@@ -136,7 +137,7 @@ applyClosure e (lam@(Lam prs _ _), env) rec vs =
    else {- withCtx (const [spanOf e]) $ -} do
             ads <- mapM alloc prs
             let bds = zip (map name prs) ads
-            mapM_ (uncurry writeAdr) (zip ads vs)
+            mapM_ (uncurry writeVar) (zip ads vs)
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 
@@ -150,7 +151,7 @@ allocMapping :: EvalM v m => Map Ide v -> m (Env v)
 allocMapping bds = do
    -- TODO: clean this up
    env <- getEnv
-   foldM (\env' (ide@(Ide nam _), v) -> do { adr <- alloc ide ; writeAdr adr v ; return (extend nam adr env') }) env (Map.toList bds)
+   foldM (\env' (ide@(Ide nam _), v) -> do { adr <- alloc ide ; writeVar adr v ; return (extend nam adr env') }) env (Map.toList bds)
 
 -- | Matches a list of patterns (from top to bottom) 
 -- against a value.
@@ -170,7 +171,7 @@ match (ValuePat lit) v =
    -- This is currently disabled because there is a bug causing some feasible paths to become infeasible.
    cond (return $ equal (injectLit lit) v) (return Map.empty) (escape MatchError)
 match (PairPat pat1 pat2) v =
-   cond (return $ isPaiPtr v) (pptrs v >>= deref (const matchPair)) (escape MatchError)
+   cond (return $ isPaiPtr v) (pptrs v >>= derefPai (const matchPair)) (escape MatchError)
    where matchPair vp =
             Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
                       <$> match pat1 (car vp)
@@ -212,7 +213,7 @@ actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
    ("list", aprim0 $ const $ return nil),
    -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
-   ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeAdr adr (var adr v) ; return $ var adr v }),
+   ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeVar adr (var adr v) ; return $ var adr v }),
    ("print", aprim1 $ const $ const $ return nil) ]
 
 -- | Scheme primitives

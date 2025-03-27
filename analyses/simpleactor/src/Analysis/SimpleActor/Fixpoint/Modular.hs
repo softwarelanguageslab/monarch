@@ -10,7 +10,7 @@ import Control.Lens.TH
 import RIO hiding (view)
 import qualified Data.Map as Map
 import Domain.Actor (Pid(EntryPid, Pid))
-import Domain.Scheme.Store (EnvAdr(PrmAdr))
+import Domain.Scheme.Store (EnvAdr(PrmAdr), StoreVal (VarVal), SchemeAdr (PrrAdr))
 import Analysis.SimpleActor.Semantics (allPrimitives, initialSto)
 import Control.Monad.State
 import RIO.Partial (fromJust)
@@ -59,7 +59,7 @@ spawnWL :: (Ord cmp, ComponentTrackingM m cmp, WorkListM m cmp) => cmp -> m ()
 spawnWL cmp = ifM (Set.member cmp <$> C.components) (return ()) (C.spawn cmp >> add cmp)
 
 instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef, MapM ActorRef ActorSto m) => MonadSpawn ActorVlu Ctx (StateT AnalysisState m) where
-  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid <* MapM.joinWith pid (initialSto @VarSto @ActorVlu allPrimitives PrmAdr)
+  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid <* MapM.joinWith pid (VarVal <$> initialSto @VarSto @ActorVlu allPrimitives PrrAdr)
     where pid  = Pid expr ctx
           env' = env -- HashMap.restrictKeys env (fv expr)  
 
@@ -99,11 +99,11 @@ initialAnalysisState expr =
 
 -- | Initial per-actor stores
 initialPerActorSto :: Map ActorRef ActorSto
-initialPerActorSto = Map.singleton EntryPid (initialSto allPrimitives PrmAdr)
+initialPerActorSto = Map.singleton EntryPid (VarVal <$> initialSto allPrimitives PrrAdr)
 
 -- | The initial analysis environment
 initialEnv :: ActorEnv
-initialEnv = HashMap.fromList (fmap (\nam -> (nam, PrmAdr nam)) allPrimitives)
+initialEnv = HashMap.fromList (fmap (\nam -> (nam, PrrAdr nam)) allPrimitives)
 
 ------------------------------------------------------------
 -- Analysis
@@ -117,7 +117,7 @@ type ModularInterM m = (MonadState AnalysisState m,
                         MonadDependencyTracking ActorRef ActorResOut m,
                         WorkListM m ActorRef,
                         MonadMailbox ActorVlu m,
-                        FormulaSolver (EnvAdr K) m,
+                        FormulaSolver ActorVarAdr m,
                         MonadSpawn ActorVlu Ctx m,
                         MapM ActorResOut (Map SequentialCmp SequentialRes) m,
                         MonadIO m)
@@ -138,26 +138,17 @@ analyze :: ActorExp -> IO AnalysisResult
 analyze expr = fmap toAnalysisResult $ inter
              & flip evalStateT (initialAnalysisState expr)
              & runMapT initialPerActorSto
-             & runWithMapping @ActorRef @PaiSto
-             & runWithMapping @ActorRef @VecSto
-             & runWithMapping @ActorRef @StrSto
              & runWithMapping @ActorResOut @(Map SequentialCmp SequentialRes)
              & runWithDependencyTracking @ActorRef @ActorVarAdr
-             & runWithDependencyTracking @ActorRef @ActorPaiAdr
-             & runWithDependencyTracking @ActorRef @ActorStrAdr
-             & runWithDependencyTracking @ActorRef @ActorVecAdr
              & runWithDependencyTracking @ActorRef @ActorRef
              & runWithDependencyTracking @ActorRef @ActorResOut
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr
-             & runWithDependencyTriggerTrackingT @ActorRef @ActorPaiAdr
-             & runWithDependencyTriggerTrackingT @ActorRef @ActorStrAdr
-             & runWithDependencyTriggerTrackingT @ActorRef @ActorVecAdr
              & runWithMailboxT @ActorVlu @(Set _)
              & C.runWithComponentTracking
              & runWithWorkList @(LIFOWorklist _)
              & runCachedSolver
              & runZ3SolverWithSetup SMT.prelude
-  where toAnalysisResult (_res ::*:: _varSto ::*:: _paiSto ::*:: _vecSto ::*:: _strSto ::*:: resOut ::*:: mb) = (resOut, mb)
+  where toAnalysisResult (_res ::*:: _varSto ::*:: resOut ::*:: mb) = (resOut, mb)
 
 

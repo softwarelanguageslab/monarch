@@ -207,9 +207,6 @@ instance (-- both subdomains should talk about the same environment
           -- value and not their seperate values,
           -- making integration easier.
           Adr l  ~ Adr r,
-          VAdr l ~ VAdr r,
-          SAdr l ~ SAdr r,
-          PAdr l ~ PAdr r,
           -- set-specific constraints
           Ord (Exp l),
           Ord (Env l),
@@ -218,9 +215,6 @@ instance (-- both subdomains should talk about the same environment
    ) => SchemeDomain (SchemePairedValue l r) where
 
    type Adr (SchemePairedValue l r)  = Adr l
-   type PAdr (SchemePairedValue l r) = PAdr l
-   type VAdr (SchemePairedValue l r) = VAdr l
-   type SAdr (SchemePairedValue l r) = SAdr l
 
    type Env (SchemePairedValue l r) = Env l
    type Exp (SchemePairedValue l r) = Exp l

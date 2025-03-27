@@ -9,7 +9,7 @@ import Prelude hiding (iterate, exp, lookup)
 import Analysis.Scheme.Primitives hiding (run)
 
 import Syntax.Scheme
-import Domain.Scheme hiding (Exp, Env)
+import Domain.Scheme hiding (Exp, Env, Adr)
 import Domain.Scheme.Store hiding (Env)
 import qualified Domain.Scheme as S
 
@@ -43,12 +43,10 @@ type Program  = Exp
 type Cmp      = Key (IntraT Identity) Exp
 type Res   v  = Val (IntraT Identity) v
 type K        = [Exp]
-type Env      = Map String (EnvAdr K)
-type Sto   v  = Map (EnvAdr K) v
-type PaiSto v = Map (PaiAdr K) (PaiDom v)
-type VecSto v = Map (VecAdr K) (VecDom v)
-type StrSto v = Map (StrAdr K) (StrDom v)
-type AnlRes v = (Sto v, PaiSto v, StrSto v, VecSto v, Map Cmp (Res v))
+type Env      = Map String Adr
+type Sto   v  = Map Adr (StoreVal v)
+type AnlRes v = (Sto v, Map Cmp (Res v))
+type Adr      = SchemeAdr Exp K
 
 
 -----------------------------------------
@@ -58,7 +56,7 @@ type AnlRes v = (Sto v, PaiSto v, StrSto v, VecSto v, Map Cmp (Res v))
 -- | The initial environment used by 
 -- the analysis
 analysisEnv :: Env
-analysisEnv = initialEnv PrmAdr
+analysisEnv = initialEnv PrrAdr
 
 -----------------------------------------
 -- Analysis
@@ -66,11 +64,9 @@ analysisEnv = initialEnv PrmAdr
 
 type IntraT m = MonadStack '[
                   MayEscapeT (Set DomainError),
-                  AllocT Ide K (EnvAdr K),
-                  AllocT Exp K (PaiAdr K),
-                  AllocT Exp K (StrAdr K),
-                  AllocT Exp K (VecAdr K),
-                  EnvT Env, 
+                  AllocT Ide K Adr,
+                  AllocT Exp K Adr,
+                  EnvT Env,
                   CtxT K,
                   JoinT,
                   CacheT
@@ -79,15 +75,9 @@ type IntraT m = MonadStack '[
 
 type InterAnalysisM v m =
    (WorkListM m Cmp,
-    StoreM (PaiAdr K) (PaiDom v) m,
-    StoreM (VecAdr K) (VecDom v) m,
-    StoreM (StrAdr K) (StrDom v) m,
-    StoreM (EnvAdr K) v m,
+    StoreM Adr (StoreVal v) m,
     ComponentTrackingM m Cmp,
-    MonadDependencyTracking Cmp (PaiAdr K) m,
-    MonadDependencyTracking Cmp (VecAdr K) m,
-    MonadDependencyTracking Cmp (StrAdr K) m,
-    MonadDependencyTracking Cmp (EnvAdr K) m,
+    MonadDependencyTracking Cmp Adr m,
     MonadDependencyTracking Cmp Cmp m,
     MapM Cmp (Res v) m,
     SchemeDomain v) :: Constraint
@@ -98,46 +88,38 @@ type InterAnalysisM v m =
 
 intra :: forall m v var . (InstSchemeDomain var v, InterAnalysisM v m) => Cmp -> m ()
 intra cmp =  runFixT @(IntraT (IntraAnalysisT Cmp m)) eval cmp
-           & runAlloc EnvAdr
-           & runAlloc PaiAdr
-           & runAlloc StrAdr
-           & runAlloc VecAdr
+           & runAlloc VarAdr
+           & runAlloc PtrAdr
            & runIntraAnalysis cmp
 
-inter :: forall v m .  (InstSchemeDomain (EnvAdr K) v, InterAnalysisM v m) => Exp -> m ()
+inter :: forall v m .  (InstSchemeDomain Adr v, InterAnalysisM v m) => Exp -> m ()
 inter exp = lfp intra ((exp, analysisEnv), [])
 
-analyze :: forall v . (InstSchemeDomain (EnvAdr K) v) =>  Exp -> AnlRes v
-analyze exp = let ((((((), varSto), paiSto), strSto), vecSto), resMap) =
+analyze :: forall v . (InstSchemeDomain (Adr) v) =>  Exp -> AnlRes v
+analyze exp = let (((), varSto), resMap) =
                        inter @v exp
-                     & runStoreT @(Sto v) @(EnvAdr K) @v (P.initialSto analysisEnv) 
-                     & runWithStore @(Map (PaiAdrE Exp K) (PaiDom v))
-                     & runWithStore @(Map (StrAdrE Exp K) (StrDom v))
-                     & runWithStore @(Map (VecAdrE Exp K) (VecDom v))
+                     & runStoreT @(Sto v) @Adr @(StoreVal v) (VarVal <$> P.initialSto analysisEnv)
                      & runWithMapping @Cmp @(Res v)
                      & runWithComponentTracking @Cmp
                      & runWithDependencyTracking @Cmp @Cmp
-                     & runWithDependencyTracking @Cmp @(EnvAdr K)
-                     & runWithDependencyTracking @Cmp @(PaiAdrE Exp K)
-                     & runWithDependencyTracking @Cmp @(VecAdrE Exp K)
-                     & runWithDependencyTracking @Cmp @(StrAdrE Exp K)
+                     & runWithDependencyTracking @Cmp @Adr
                      & runWithWorkList @(Set Cmp)
                      & runIdentity
-              in (varSto, paiSto, strSto, vecSto, resMap)
+              in (varSto, resMap)
 
 -- | Scheme Domain constraints
 type InstSchemeDomain var v = (
           Typeable v,
           Show v,
           SchemeValue v,
-          Adr v ~ var,
-          EnvAdr K ~ Adr v,
-          PaiAdr K ~ PAdr v,
-          StrAdr K ~ SAdr v,
-          VecAdr K ~ VAdr v,
+          Adr ~ var,
           SchemeConstraints v Exp var Env,
           EqualLattice v,
           S.Env v ~ Env,
           VarDom v ~ v,
           Ord K,
-          Ord v)
+          Ord v,
+          ForAllStored Ord v,
+          ForAllStored Show v,
+          ForAllStored Eq v)
+

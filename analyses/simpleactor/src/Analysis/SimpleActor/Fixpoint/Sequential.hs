@@ -66,17 +66,15 @@ type SequentialT m = MonadStack '[
                        MayEscapeT (Set ActorError),
                        EnvT ActorEnv,
                        DynamicBindingT ActorVlu,
-                       AllocT Ide K (EnvAdr K),
-                       AllocT Exp K (PaiAdrE Exp K),
-                       AllocT Exp K (StrAdrE Exp K),
-                       AllocT Exp K (VecAdrE Exp K),
+                       AllocT Ide K (SchemeAdr Exp K),
+                       AllocT Exp K (SchemeAdr Exp K),
                        CtxT K,
                        MetaT,
                        ActorLocalT ActorVlu,
                        -- Local path conditions
-                       FormulaT (EnvAdr K) ActorVlu,
-                       -- WidenedStoreT ActorSto (EnvAdr K) ActorVlu,
-                       -- WidenedFormulaT (EnvAdr K) ActorVlu,
+                       FormulaT (SchemeAdr Exp K) ActorVlu,
+                       -- WidenedStoreT ActorSto (SchemeAdr Exp K) ActorVlu,
+                       -- WidenedFormulaT (SchemeAdr Exp K) ActorVlu,
                        SetNonDetT,
                        -- JoinT,
                        CacheT
@@ -90,19 +88,16 @@ type InterAnalysisM m = (MonadSchemeStore m,
                          ComponentTrackingM m SequentialCmp,
                          DependsOn m SequentialCmp '[
                              SequentialCmp ,
-                             EnvAdr K,
-                             Pid Exp K,
-                             PaiAdrE Exp K,
-                             VecAdrE Exp K,
-                             StrAdrE Exp K
+                             SchemeAdr Exp K,
+                             Pid Exp K
                             -- In ActorCmp ActorSto,
                             -- Out ActorCmp ActorSto
                            ],
                             -- In ActorCmp ActorPC,
                             -- Out ActorCmp ActorPC ],
-                         AbstractCountM (EnvAdr K) m,
+                         AbstractCountM (SchemeAdr Exp K) m,
                          MonadMailbox ActorVlu m,
-                         FormulaSolver (EnvAdr K) m,
+                         FormulaSolver (SchemeAdr Exp K) m,
                          MonadSpawn ActorVlu Ctx m,
                          MonadIO m)
 
@@ -181,10 +176,10 @@ runSequentialIntraT ref (SequentialIntraT m) = runReaderT m ref
 
 -- | Write the relevant addresses to the input store
 -- of an actor when one is spawned
-instance (Monad m, StoreM ActorVarAdr ActorVlu m, StoreM' VarSto ActorVarAdr ActorVlu m, MapM ActorRef ActorSto m, MonadSpawn ActorVlu Ctx m) => MonadSpawn ActorVlu Ctx (SequentialIntraT m) where
+instance (Monad m, StoreM ActorVarAdr (StoreVal ActorVlu) m, StoreM' ActorSto ActorVarAdr (StoreVal ActorVlu) m, MapM ActorRef ActorSto m, MonadSpawn ActorVlu Ctx m) => MonadSpawn ActorVlu Ctx (SequentialIntraT m) where
    spawn expr env ctx = do
       pid <- upperM (spawn expr env ctx)
-      sto <- currentStore @VarSto
+      sto <- currentStore @ActorSto
       MapM.joinWith pid (CountingMap $ Map.restrictKeys (store sto) (Set.fromList $ map snd $ HashMap.toList env))
       return pid
 
@@ -203,7 +198,7 @@ type MonadActorModular m = (
     -- Global mailboxes
     MonadMailbox ActorVlu m,
     -- Formula solving should be global since it requires IO
-    FormulaSolver (EnvAdr K) m,
+    FormulaSolver (SchemeAdr Exp K) m,
     -- Spawning actors
     MonadSpawn ActorVlu Ctx m,
     -- Keep track of results for each function call within
@@ -222,10 +217,8 @@ type MonadActorModular m = (
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => SequentialCmp -> m ()
 intra cmp = runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) (eval @ActorVlu) cmp
-          & runAlloc @Ide @K @(EnvAdr K) EnvAdr
-          & runAlloc @Exp @K @(PaiAdrE Exp K) PaiAdr
-          & runAlloc @Exp @K @(StrAdrE Exp K) StrAdr
-          & runAlloc @Exp @K @(VecAdrE Exp K) VecAdr
+          & runAlloc VarAdr
+          & runAlloc PtrAdr
           & runIntraAnalysis cmp
 
 
@@ -254,28 +247,18 @@ analyze :: forall m  . MonadActorModular m
         -> m ()
 analyze exp env ref = do
       -- retrieve store associated with this actor
-      sto <- fromMaybe (initialSto allPrimitives PrmAdr) <$> MapM.get ref
-      vsto <- fromMaybe emptyCountingMap <$> MapM.get ref
-      ssto <- fromMaybe emptyCountingMap <$> MapM.get ref
-      psto <- fromMaybe emptyCountingMap <$> MapM.get ref
-
+      sto <- fromMaybe (VarVal <$> initialSto allPrimitives PrrAdr) <$> MapM.get ref
       res  <- inter exp env ref
             & runWithMapping @SequentialCmp @SequentialRes
             & runWithComponentTracking @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @SequentialCmp
-            & runWithDependencyTracking @SequentialCmp @(EnvAdr K)
-            & runWithDependencyTracking @SequentialCmp @(PaiAdrE Exp K)
-            & runWithDependencyTracking @SequentialCmp @(VecAdrE Exp K)
-            & runWithDependencyTracking @SequentialCmp @(StrAdrE Exp K)
+            & runWithDependencyTracking @SequentialCmp @(SchemeAdr Exp K)
             & runWithDependencyTracking @SequentialCmp @ActorRef
             & runWithWorkList @(LIFOWorklist SequentialCmp)
             & runSequentialIntraT ref
-            & runStoreT @(CountingMap (PaiAdrE Exp K) (PaiDom ActorVlu)) @ActorPaiAdr psto
-            & runStoreT @(CountingMap (StrAdrE Exp K) (StrDom ActorVlu)) @ActorStrAdr ssto
-            & runStoreT @(CountingMap (VecAdrE Exp K) (VecDom ActorVlu)) @ActorVecAdr vsto
-            & runStoreT @ActorSto @(EnvAdr K) @ActorVlu sto
+            & runStoreT @ActorSto @(SchemeAdr Exp K) @(StoreVal ActorVlu) sto
 
       MapM.put (ActorResOut ref) (extractVal res)
 
       return ()
-  where extractVal (_ ::*:: res ::*:: _ ::*:: _ ::*:: _ ::*::_) = res
+  where extractVal (_ ::*:: res ::*:: _) = res
