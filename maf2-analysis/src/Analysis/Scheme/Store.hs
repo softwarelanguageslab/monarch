@@ -36,6 +36,9 @@ import Analysis.Monad
 import Data.Singletons
 import Data.Function ((&))
 import Domain.Scheme.Store
+import Control.Monad.Join
+import Control.Monad.Layer
+import Analysis.Monad.Cache
 
 -- TODO: these two things should be moved elsewhere.
 data Id :: k ~> k
@@ -96,3 +99,13 @@ runSchemeAllocT var vec pai str m =
 
 type DSto k v =
    SchemeStore' Id v (EnvAdr k) (StrAdr k) (PaiAdr k) (VecAdr k)
+
+------------------------------------------------------------
+-- Non-partitioned store
+------------------------------------------------------------
+
+-- | Layer to keep track of a store containing Scheme values.
+--
+-- It is parametrized by the type of address used in the
+-- store to store its values at and the type of backing store.
+newtype SchemeStoreT s adr vlu m a = SchemeStoreT { getSchemeStoreT :: StoreT s adr vlu m a } deriving (Functor, Applicative, Monad, MonadJoinable, MonadBottom, MonadCache, MonadLayer)

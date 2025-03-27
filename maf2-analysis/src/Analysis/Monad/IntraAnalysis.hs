@@ -50,7 +50,7 @@ instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM cmp a m, M
     writeAdr a v = whenM (upperM $ writeAdr' a v) (notrace ("updated " ++ show a) (upperM $ trigger a))
     updateAdr a v = whenM (upperM $ updateAdr' a v) (notrace ("updated " ++ show a) (upperM $ trigger a))
     updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger a)
-    hasAdr = upperM . hasAdr
+    hasAdr = upperM . hasAdr @a @v
 
 instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM cmp k m, MonadDependencyTrigger cmp k m, WorkListM m cmp, Show v, Typeable v)
     => MapM k v (IntraAnalysisT cmp m) where

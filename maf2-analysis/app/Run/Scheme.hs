@@ -15,10 +15,10 @@ import Analysis.Scheme (AnlRes)
 
 newtype Options = Options String deriving Show
 
-printSto :: Map VariableAdr V -> String
+printSto :: Map VariableAdr (StoreVal V) -> String
 printSto m =
    intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs
-   where adrs   = Map.toList $ Map.filterWithKey (\case { PrmAdr _ -> const False ; _ -> const True }) m
+   where adrs   = Map.toList $ Map.filterWithKey (\case { PrrAdr _ -> const False ; _ -> const True }) m
          indent = maximum (map (length . show . fst) adrs) + 5
 
 
@@ -27,8 +27,8 @@ options =
    Options <$>
       strOption (long "filename" <> short 'f' <> help "the file to analyse")
 
-values :: AnlRes V -> Map VariableAdr V
-values (sto, _, _, _, _) = sto
+values :: AnlRes V -> Map VariableAdr (StoreVal V)
+values (sto, _) = sto
 
 main :: Options -> IO ()
 main (Options filename) = do

@@ -22,6 +22,7 @@ import Control.Monad ((>=>))
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Prelude hiding (or)
+import Domain.Scheme.Store (StoreVal(..))
 
 data Prim v = Prim { primName :: String, run :: forall m e . PrimM e m v => e -> [v] -> m v }
 
@@ -65,8 +66,8 @@ allPrimitives = [
    fix1 "boolean?" (return . isBool),
    fix1 "true?" return,
    fix1 "false?" (return . Domain.not),
-   fix1 "car" (pptrs >=> deref (const (return . car))),
-   fix1 "cdr" (pptrs >=> deref (const (return . cdr))),
+   fix1 "car" (pptrs >=> derefPai (const (return . car))),
+   fix1 "cdr" (pptrs >=> derefPai (const (return . cdr))),
    fix1 "ceiling" Domain.ceiling,
    -- fix1 "char->integer" todo,
    fix2 "char-ci<?" charLtCI,
@@ -96,10 +97,10 @@ allPrimitives = [
    fix1 "real?" (return . isReal),
    fix2 "remainder" remainder,
    fix1 "round" Domain.round,
-   fix2 "set-car!" (\adr v -> pptrs adr >>= deref (\adr pai ->
-      updateAdr adr (cons v (cdr pai)) $> unsp)),
-   fix2 "set-cdr!" (\adr v -> pptrs adr >>= deref (\adr pai ->
-      updateAdr adr (cons (car pai) v) $> unsp)),
+   fix2 "set-car!" (\adr v -> pptrs adr >>= derefPai (\adr pai ->
+      updateAdr adr (PaiVal $ cons v (cdr pai)) $> unsp)),
+   fix2 "set-cdr!" (\adr v -> pptrs adr >>= derefPai (\adr pai ->
+      updateAdr adr (PaiVal $ cons (car pai) v) $> unsp)),
    fix1 "sin" Domain.sin,
    fix1 "sqrt" Domain.sqrt,
    -- fix1 "string->number" todo, 
@@ -108,14 +109,14 @@ allPrimitives = [
       (\ex s1 s2 -> do
          adrs1 <- sptrs s1
          adrs2 <- sptrs s2
-         result <- deref (\_ str1 -> deref (const (append str1)) adrs2) adrs1
+         result <- derefStr (\_ str1 -> derefStr (const (append str1)) adrs2) adrs1
          stoStr ex result),
    fix1 "string-length"
-      (sptrs >=> deref (const Domain.length)),
+      (sptrs >=> derefStr (const Domain.length)),
    fix2 "string-ref"
-      (\s i -> sptrs s >>= deref (const (`ref` i))),
+      (\s i -> sptrs s >>= derefStr (const (`ref` i))),
    fix3 "string-set!"
-      (\s i c -> sptrs s >>= deref (\adr str -> updateAdr adr =<< set str i c) >> return unsp),
+      (\s i c -> sptrs s >>= derefStr (\adr str -> updateAdr adr . StrVal =<< set str i c) >> return unsp),
    -- fix2 "string<?" todo,
    fix1 "string?" (return .  isStrPtr),
    -- fix2 "substring" todo, 
@@ -124,9 +125,9 @@ allPrimitives = [
    fix1 "tan" Domain.tan,
    -- fix2 "make-vector" todo,
    -- varg "vector" todo, 
-   fix1 "vector-length" (vptrs >=> deref (const (return . vectorLength))),
-   fix2 "vector-ref" (\adr i -> vptrs adr >>= deref (const (`vectorRef` i))),
-   fix3 "vector-set!" (\adr i v -> vptrs adr >>= deref (\adr vec -> updateAdr adr =<< vectorSet vec i v) >> return unsp),
+   fix1 "vector-length" (vptrs >=> derefVec (const (return . vectorLength))),
+   fix2 "vector-ref" (\adr i -> vptrs adr >>= derefVec (const (`vectorRef` i))),
+   fix3 "vector-set!" (\adr i v -> vptrs adr >>= derefVec (\adr vec -> updateAdr adr . VecVal =<< vectorSet vec i v) >> return unsp),
    fix1 "vector?" $ return . isVecPtr,
    fix2 "<" lt,
    fix2 "=" eq,
@@ -140,7 +141,7 @@ allPrimitives = [
    fix1 "display" $ const (return Domain.nil),
    fix1 "displayln" $ const (return Domain.nil),
    -- TODO: format does not executed the formatting and returns a top from the string lattice
-   evar "format" (\e -> const (do { adr <- alloc @_ @_ e ; writeAdr adr topString ; return (sptr adr) })),
+   evar "format" (\e -> const (stoStr e topString)),
    -- NOTE: these are actually not Scheme primitives but help to run the analyses without fixpoints
    -- for some trivial programs
    evar "constant-true" (const $ const $ return (inject True)),

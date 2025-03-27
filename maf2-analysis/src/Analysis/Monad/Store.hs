@@ -78,28 +78,28 @@ instance {-# OVERLAPPABLE #-} (Monad (t m), StoreM adr v m, MonadLayer t) => Sto
    {-# INLINE updateWith #-}
    updateWith fs fw = upperM . updateWith fs fw
    {-# INLINE hasAdr #-}
-   hasAdr = upperM . hasAdr
+   hasAdr = upperM . hasAdr @adr @v
 
-updateAndCheck :: (Eq v, StoreM a v m) => a -> (a -> m ()) -> m Bool
-updateAndCheck a f = do ifM (hasAdr a)
-                            (do old <- lookupAdr a
+updateAndCheck :: forall v a m .  (Eq v, StoreM a v m) => a -> (a -> m ()) -> m Bool
+updateAndCheck a f = do ifM (hasAdr @_ @v a)
+                            (do old <- lookupAdr @_ @v a
                                 f a
-                                new <- lookupAdr a
+                                new <- lookupAdr @_ @v a
                                 return (old /= new))
                             (f a >> return True)
 
 
 -- | Convenience function: writes to an address `a` and checks if the value in the store at `a` has changed
-writeAdr' :: (Eq v, StoreM a v m) => a -> v -> m Bool
-writeAdr' a v = updateAndCheck a (`writeAdr` v)
+writeAdr' :: forall v a m . (Eq v, StoreM a v m) => a -> v -> m Bool
+writeAdr' a v = updateAndCheck @v a (`writeAdr` v)
 
 -- | Convenience function: updates an address `a` and checks if the value in the store at `a` has changed
-updateAdr' :: (Eq v, StoreM a v m) => a -> v -> m Bool
-updateAdr' a v = updateAndCheck a (`updateAdr` v)
+updateAdr' :: forall v a m . (Eq v, StoreM a v m) => a -> v -> m Bool
+updateAdr' a v = updateAndCheck @v a (`updateAdr` v)
 
 -- | Convenience function: updates an address `a` and checks if the value in the store at `a` has changed
-updateWith' :: (Eq v, StoreM a v m) => {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> m Bool
-updateWith' fs fw a = updateAndCheck a (updateWith fs fw)
+updateWith' :: forall v a m . (Eq v, StoreM a v m) => {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> m Bool
+updateWith' fs fw a = updateAndCheck @v a (updateWith fs fw)
 
 -- | Lookup
 lookups :: (Joinable a, MonadJoin m) => (adr -> m v) -> (adr -> v -> m a) -> Set adr -> m a
@@ -182,7 +182,7 @@ instance {-# OVERLAPPING #-} (Store s adr v, Address adr, Monad m) => StoreM adr
   lookupAdr = WidenedStoreT . lookupAdr 
   writeAdr adr  = WidenedStoreT . writeAdr adr
   updateWith fs fw = WidenedStoreT . updateWith fs fw
-  hasAdr = WidenedStoreT . hasAdr
+  hasAdr = WidenedStoreT . hasAdr @adr @v
 
 instance {-# OVERLAPPING #-} (Store s adr v, Monad m) => StoreM' s adr v (WidenedStoreT s adr v m) where 
    currentStore = WidenedStoreT currentStore 
