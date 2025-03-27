@@ -15,14 +15,6 @@
 --
 -- The Domain.Scheme.Class defines the type for each of these addresses. This module provides a sensible concrete type for these addresses.
 module Domain.Scheme.Store(
-   PaiAdrE(..),
-   StrAdrE(..),
-   VecAdrE(..),
-   EnvAdr(..),
-   PaiAdr,
-   StrAdr,
-   VecAdr,
-   Env,
    StoreVal(..),
    SchemeAdr(..),
    ForAllStored
@@ -32,16 +24,10 @@ module Domain.Scheme.Store(
 import Lattice.Class
 import Lattice.Trace
 import Syntax.Ide
-import Data.Map (Map)
 import Control.DeepSeq
 import GHC.Generics (Generic)
-import qualified Syntax.Scheme.AST as Scheme
 import Domain.Scheme.Class hiding (Env)
 import Data.Kind
-
-data EnvAdr ctx = EnvAdr !Ide !ctx 
-                | PrmAdr !String deriving (Eq, Ord, Show, Generic, NFData)
-
 
 data SchemeAdr e ctx = VarAdr !Ide !ctx   --  ^ variables
                      | PtrAdr !e   !ctx   --  heap allocated values
@@ -52,31 +38,6 @@ data SchemeAdr e ctx = VarAdr !Ide !ctx   --  ^ variables
 instance TopLattice (SchemeAdr e ctx) where
   top = TopAdr
 
-
--- | Addresses parametrized by the type of expression 
--- so that any expression type can be used in the 
--- abstract domain for Scheme.
-data PaiAdrE e ctx = PaiAdr !e !ctx | PaiTop deriving (Eq, Ord, Show, Generic, NFData)
-data StrAdrE e ctx = StrAdr !e !ctx | StrTop deriving (Eq, Ord, Show, Generic, NFData)
-data VecAdrE e ctx = VecAdr !e !ctx | VecTop deriving (Eq, Ord, Show, Generic, NFData)
-
--- Trivial instances of the @TopLattice@ for all Scheme addresses
-instance TopLattice (PaiAdrE e ctx) where 
-  top = PaiTop
-instance TopLattice (StrAdrE e ctx) where 
-  top = StrTop
-instance TopLattice (VecAdrE e ctx) where
-  top = VecTop
-
-
--- For convenience, addresses initialized to Scheme expressions ...
-type PaiAdr ctx = PaiAdrE Scheme.Exp ctx
-type StrAdr ctx = StrAdrE Scheme.Exp ctx
-type VecAdr ctx = VecAdrE Scheme.Exp ctx
-
--- | With sensible defaults for addresses comes a sensible
--- default for the environment.
-type Env ctx =  Map String (EnvAdr ctx)
 
 ------------------------------------------------------------
 -- Combined Scheme values

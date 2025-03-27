@@ -20,7 +20,7 @@ type M k = '[
        IntConf  ::-> CP Integer,
        CharConf ::-> CP Char,
        BoolConf ::-> CP Bool,
-       EnvConf  ::-> Env k,
+       EnvConf  ::-> Map String (SchemeAdr Exp k),
        ExpConf  ::-> Exp,
        AdrConf  ::-> SchemeAdr Exp k,
        PidConf  ::-> CP.Pid Exp k,

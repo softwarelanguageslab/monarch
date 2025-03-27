@@ -10,14 +10,14 @@ import Control.Lens.TH
 import RIO hiding (view)
 import qualified Data.Map as Map
 import Domain.Actor (Pid(EntryPid, Pid))
-import Domain.Scheme.Store (EnvAdr(PrmAdr), StoreVal (VarVal), SchemeAdr (PrrAdr))
+import Domain.Scheme.Store (StoreVal (VarVal), SchemeAdr (PrrAdr))
 import Analysis.SimpleActor.Semantics (allPrimitives, initialSto)
 import Control.Monad.State
 import RIO.Partial (fromJust)
 import qualified RIO.Set as Set
 import Analysis.Actors.Monad (MonadMailbox (..), runWithMailboxT)
 import Solver (FormulaSolver, runCachedSolver)
-import Solver.Z3 (runZ3Solver, runZ3SolverWithSetup)
+import Solver.Z3 (runZ3SolverWithSetup)
 import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp))
 import qualified Analysis.Monad.ComponentTracking as C
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
@@ -32,10 +32,8 @@ import Data.Tuple.Syntax
 import Analysis.SimpleActor.Monad (MonadSpawn (spawn), Ctx)
 import qualified Symbolic.SMT as SMT
 import qualified Debug.Trace as Debug
-import Lattice.Class (BottomLattice, Joinable)
 import Control.Monad.Cond
 import Control.Fixpoint.WorkList (LIFOWorklist)
-import Syntax.FV
 import qualified Data.HashMap.Strict as HashMap
 
 ------------------------------------------------------------
