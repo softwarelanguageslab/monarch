@@ -49,6 +49,7 @@ data StoreVal v  = PaiVal (PaiDom v)
                  | StrVal (StrDom v)
                  | VecVal (VecDom v)
                  | VarVal (VarDom v)
+                deriving Generic
 
 type ForAllStored :: (Type -> Constraint) -> Type -> Constraint
 type ForAllStored c v = (c (PaiDom v), c (StrDom v), c (VecDom v), c (VarDom v))
@@ -56,6 +57,8 @@ type ForAllStored c v = (c (PaiDom v), c (StrDom v), c (VecDom v), c (VarDom v))
 deriving instance (ForAllStored Ord v) =>  Ord (StoreVal v)
 deriving instance (ForAllStored Eq v) =>  Eq (StoreVal v)
 deriving instance (ForAllStored Show v) =>  Show (StoreVal v)
+
+instance (ForAllStored NFData v) => NFData (StoreVal v)
 
 -- | Instance of @PartialOrder@ for @StoreVal@, since values of the
 -- corresponding type can only be stored together, the comparison
