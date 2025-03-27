@@ -10,8 +10,6 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.List ( intercalate )
 import Text.Printf
-import Analysis.Scheme.Store (values)
-import Domain.Scheme.Store (EnvAdr(..))
 
 import System.Environment
 import System.Process
