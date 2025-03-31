@@ -29,6 +29,7 @@ library
       Control.Monad.Escape
       Control.Monad.Join
       Data.Finite
+      Data.ISet
       Data.TypeLevel.AssocList
       Data.TypeLevel.HList
       Data.TypeLevel.HMap
@@ -102,6 +103,7 @@ library
       Domain.Scheme.Derived.Top
       Domain.Scheme.Modular
       Domain.Scheme.Store
+      Domain.TopSet
       Lattice
       Lattice.BottomLiftedLattice
       Lattice.Class

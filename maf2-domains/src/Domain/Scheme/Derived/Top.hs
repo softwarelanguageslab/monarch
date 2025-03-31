@@ -119,9 +119,9 @@ instance
   pptrs (SchemeTopLifted (Value v)) = pptrs v
   pptrs (SchemeTopLifted Top) = return $ Set.singleton top
   sptrs (SchemeTopLifted (Value v)) = sptrs v
-  sptrs (SchemeTopLifted Top) = return $ Set.empty -- TODO: return $ Set.singleton top
+  sptrs (SchemeTopLifted Top) = return $ Set.singleton top
   vptrs (SchemeTopLifted (Value v)) = vptrs v
-  vptrs (SchemeTopLifted Top) = return $ Set.empty -- TODO: return $ Set.singleton top
+  vptrs (SchemeTopLifted Top) = return $ Set.singleton top
 
   -- Symbols
   symbol = SchemeTopLifted . Value . symbol
