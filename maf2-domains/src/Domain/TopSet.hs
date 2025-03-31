@@ -1,5 +1,5 @@
 -- | A set with a top representation
-module Domain.TopSet where
+module Domain.TopSet(TopSet(..), map, member, foldr, foldrM) where
 
 -- TODO: move to domain
 
@@ -10,6 +10,7 @@ import Domain.Class (Domain (..))
 import Domain.Core.BoolDomain.Class (BoolDomain (boolTop))
 import Lattice.Class (TopLattice (top), Joinable (join), PartialOrder (..))
 import Lattice.SetLattice ()
+import Prelude hiding (map, foldr)
 
 -- | A @TopSet@ is a set of lattice values @v@ or a top value of @v@
 data TopSet t v = ConstantSet (Set v) | TopSet t

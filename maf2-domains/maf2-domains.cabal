@@ -29,7 +29,6 @@ library
       Control.Monad.Escape
       Control.Monad.Join
       Data.Finite
-      Data.ISet
       Data.TypeLevel.AssocList
       Data.TypeLevel.HList
       Data.TypeLevel.HMap
