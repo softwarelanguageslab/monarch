@@ -98,7 +98,8 @@ executables:
     - maf2-analysis
     - filepath
     - time
-
+    - timeit
+    
 tests:
   simpleactor-tests:
     main:                Spec.hs

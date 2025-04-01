@@ -721,6 +721,7 @@
                           (a7417 message7416)))))))
           (letrec ((ping
                     (letrec ((xj7436 'client) (xk7437 'server))
+                      (trace 'ping)
                       ((ping/c)
                        xj7436
                        xk7437

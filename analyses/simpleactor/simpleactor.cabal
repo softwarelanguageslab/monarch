@@ -135,6 +135,7 @@ executable simpleactor-exe
     , simpleactor
     , singletons
     , time
+    , timeit
   default-language: Haskell2010
 
 test-suite simpleactor-tests

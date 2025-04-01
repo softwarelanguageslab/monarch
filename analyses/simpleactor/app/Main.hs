@@ -19,11 +19,14 @@ import Interpreter hiding (PrmAdr, store)
 import qualified Analysis.Store as Store
 import System.IO
 import Control.Monad
-import RIO (Identity)
+import RIO (Identity, NFData (..))
 import Analysis.SimpleActor.Monad ()
 import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp)
 import Data.Tuple.Syntax
 import qualified Analysis.SimpleActor.Infer as Infer
+import Control.DeepSeq (force)
+import GHC.IO (evaluate)
+import System.TimeIt
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -120,7 +123,8 @@ interpret (InputOptions { .. }) =
 inferCmd :: InputOptions -> IO ()
 inferCmd (InputOptions { filename, doTranslate }) = do
    ast <- loadFile' doTranslate filename
-   let inferred = Infer.infer ast
+   (ellapsed, inferred) <- timeItT $ evaluate $ force $ Infer.infer ast
+   putStrLn ("Ellapsed time (in seconds): " ++ show ellapsed)
    print inferred
 
 

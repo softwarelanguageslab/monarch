@@ -18,6 +18,7 @@ module Analysis.SimpleActor.Monad
     DynamicBindingT,
     DynamicBindingT',
     runWithDynamic,
+    runDynamicT,
     isMatchError,
     Cmp(..),
     Ctx(..)
@@ -225,6 +226,9 @@ instance (Monad m) => MonadDynamic adr (DynamicBindingT' adr m) where
    
 runWithDynamic :: DynamicBindingT' adr m a -> m a
 runWithDynamic (DynamicBindingT m) = runReaderT m Map.empty
+
+runDynamicT:: Map String adr -> DynamicBindingT' adr m a -> m a
+runDynamicT env (DynamicBindingT m) = runReaderT m env
 
 ------------------------------------------------------------
 -- Error abstractions

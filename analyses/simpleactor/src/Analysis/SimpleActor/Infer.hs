@@ -1,10 +1,11 @@
 {-# LANGUAGE UndecidableInstances, PolyKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 -- | This module is used to make inferences about certain parts
 -- of the program.
 module Analysis.SimpleActor.Infer where
 
 import qualified  Analysis.Environment as Environment
-import Analysis.SimpleActor.Monad (MonadDynamic(..), runWithDynamic)
+import Analysis.SimpleActor.Monad (MonadDynamic(..), runDynamicT)
 import Analysis.Monad (WorkListM, EnvM(..), StoreM(..), iterateWL', runEnv, runJoinT, runStoreT, runWithComponentTracking, runWithMapping', runWithWorkList, runWithDependencyTracking, MonadDependencyTracking)
 import Analysis.Monad.IntraAnalysis
 import Analysis.Monad.Map (MapM)
@@ -46,7 +47,9 @@ type Env = Map String Adr
 
 -- | An actor is described statically by its environment and
 -- expression.
-newtype Actor = Actor { getActor :: (Exp, Env) } deriving (Ord, Eq)
+newtype Actor = Actor { getActor :: (Exp, Env) } deriving (Ord, Eq, Generic)
+
+instance NFData Actor
 
 instance Show Actor where
   show = show . spanOf . fst . getActor
@@ -64,7 +67,9 @@ type Clo = (Exp, Env)
 data ActorTag = CloTag -- ^ the value is a closure
               | PrmTag -- ^ the value is a primitive
               | TopTag -- ^ the value is something else, but still keeps track of potential closures it contains
-               deriving (Ord, Eq, Show)
+               deriving (Ord, Eq, Show, Generic)
+
+instance NFData ActorTag
 
 $(genHKeys ''ActorTag)
 
@@ -72,7 +77,10 @@ $(genHKeys ''ActorTag)
 type M = '[ CloTag ::-> Set (Exp, Env), PrmTag ::-> Set String ]
 
 -- | Very crude approximation of actor values
-newtype Value = Value { getValue :: HMap M } deriving (Ord, Eq, Joinable, PartialOrder, BottomLattice)
+newtype Value = Value { getValue :: HMap M } deriving (Ord, Eq, Joinable, PartialOrder, BottomLattice, Generic)
+
+instance NFData Value
+
 instance (ForAll ActorTag (AtKey1 Show M)) => Show Value where
    show (Value hm) = List.intercalate "," $ map showElement $ HMap.toList hm
       where showElement :: BindingFrom M -> String
@@ -98,7 +106,9 @@ injectPrim = Value . HMap.singleton @PrmTag . Set.singleton
 
 -- | Type to indicate that the actor value might be something else,
 -- with a fallback of which actor values it might contain.
-data V = ConstantValue { values :: Value } | TopValue { values :: Value } deriving (Ord, Eq, Show)
+data V = ConstantValue { values :: Value } | TopValue { values :: Value } deriving (Ord, Eq, Show, Generic)
+
+instance NFData V
 
 instance Joinable V where
   join (TopValue v1) (TopValue v2) = TopValue $ L.join v1 v2
@@ -142,8 +152,11 @@ data Inferred = Inferred {
   _sends :: Map Actor (Set V),
   -- | Approximation of the messages that an actor could receive
   -- during its lifetime.
-  _receives :: Map Actor Pat
-} deriving (Eq, Ord, Show)
+  _receives :: Map Actor (Set Pat)
+} deriving (Eq, Ord, Show, Generic)
+
+instance NFData Inferred
+
 
 $(makeLenses ''Inferred)
 
@@ -155,12 +168,12 @@ initialInferred = Inferred Set.empty Map.empty Map.empty
 -- Analysis tasks
 ------------------------------------------------------------
 
-data Task = AnalyzeActor Actor | AnalyzeClosure Clo
+data Task = AnalyzeActor Actor | AnalyzeClosure Clo Actor
           deriving (Ord, Eq, Show)
 
 performTask :: InferM m => Task -> m ()
-performTask (AnalyzeActor (Actor (expr, env))) = modify (over actors (Set.insert (Actor (expr, env)))) >> void (withEnv (const env) (eval expr))
-performTask t@(AnalyzeClosure (expr, env)) = withEnv (const env) (eval expr) >>= MapM.put t
+performTask (AnalyzeActor (Actor (expr, env))) = modify (over actors (Set.insert (Actor (expr, env)))) >> local (const $ Actor (expr, env)) (void (withEnv (const env) (eval expr)))
+performTask t@(AnalyzeClosure (expr, env) actor) = local (const actor) (withEnv (const env) (eval expr) >>= MapM.joinWith t)
 
 -- | Create a task from an initial program expression
 injectTask :: Exp -> Task
@@ -184,7 +197,7 @@ applyClosure _ (Lam xs bdy _, env) vs = do
    let adrs = map (`VarAdr` ()) xs
    let nams = map name xs
    let env' = Environment.extends (zip nams adrs) env
-   let task = AnalyzeClosure (bdy, env')
+   task <- AnalyzeClosure (bdy, env') <$> ask
    mapM_ (uncurry writeAdr) (zip adrs vs)
    ComponentTracking.spawn task
    maybe mbottom return =<< MapM.get task
@@ -230,7 +243,7 @@ withBindsTop pat bdy = mapM_ (`writeAdr` top) adrs >> withExtendedEnv (zip nams 
 
 -- | Register a potential message receive
 registerReceive :: InferM m => Pat -> m ()
-registerReceive pat = ask >>= (\r -> modify (over receives (Map.insert r pat)))
+registerReceive pat = ask >>= (\r -> modify (over receives (Map.insertWith L.join r (Set.singleton pat))))
 
 -- | Allocate an address based on the identifier
 alloc :: InferM m => Ide -> m Adr
@@ -331,7 +344,7 @@ type InterM m = (
 intra :: (MonadReader Actor m, InterM m) => Task -> m ()
 intra t = void $ performTask t
                 & runEnv initialEnv
-                & runWithDynamic
+                & runDynamicT initialEnv
                 & runJoinT
                 & runIntraAnalysis t
 
