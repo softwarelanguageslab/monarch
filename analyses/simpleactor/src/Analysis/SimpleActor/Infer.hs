@@ -6,17 +6,16 @@ module Analysis.SimpleActor.Infer where
 import qualified  Analysis.Environment as Environment
 import Analysis.SimpleActor.Monad (MonadDynamic(..), runWithDynamic)
 import Analysis.Monad (WorkListM, EnvM(..), StoreM(..), iterateWL', runEnv, runJoinT, runStoreT, runWithComponentTracking, runWithMapping', runWithWorkList, runWithDependencyTracking, MonadDependencyTracking)
-import Analysis.Monad.IntraAnalysis 
+import Analysis.Monad.IntraAnalysis
 import Analysis.Monad.Map (MapM)
 import qualified Analysis.Monad.Map as MapM
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import qualified Analysis.Monad.ComponentTracking as ComponentTracking
 import Control.Lens
-import Control.Lens.TH
 import Control.Monad.State
 import Control.Monad.Join
 import Data.Kind
-import Data.List
+import qualified Data.List as List
 import Data.Singletons
 import Data.Singletons.Sigma
 import Domain.Class
@@ -31,6 +30,7 @@ import RIO hiding (over)
 import qualified RIO.Map as Map
 import Syntax.AST
 import Text.Printf
+import Syntax.Span (spanOf)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -70,13 +70,10 @@ type M = '[ CloTag ::-> Set (Exp, Env), PrmTag ::-> Set String ]
 -- | Very crude approximation of actor values
 newtype Value = Value { getValue :: HMap M } deriving (Ord, Eq, Joinable, PartialOrder, BottomLattice)
 instance (ForAll ActorTag (AtKey1 Show M)) => Show Value where
-   show (Value hm) = intercalate "," $ map showElement $ HMap.toList hm
+   show (Value hm) = List.intercalate "," $ map showElement $ HMap.toList hm
       where showElement :: BindingFrom M -> String
             showElement (key :&: value) =
                printf "%s -> %s" (show $ fromSing key) (withC_ @(AtKey1 Show M) (show value) key)
-
-
-
 
 -- | Extract the set of primitives embedded in the value
 getPrimitives :: Value -> Set String
@@ -158,7 +155,7 @@ data Task = AnalyzeActor Actor | AnalyzeClosure Clo
           deriving (Ord, Eq, Show)
 
 performTask :: InferM m => Task -> m ()
-performTask (AnalyzeActor (expr, env)) = void $ withEnv (const env) (eval expr)
+performTask (AnalyzeActor (expr, env)) = modify (over actors (Set.insert (expr, env))) >> void (withEnv (const env) (eval expr))
 performTask t@(AnalyzeClosure (expr, env)) = withEnv (const env) (eval expr) >>= MapM.put t
 
 -- | Create a task from an initial program expression
@@ -179,7 +176,7 @@ spawn = ComponentTracking.spawn . AnalyzeActor
 
 -- | Apply a closure 
 applyClosure :: InferM m => Exp -> Clo -> [V] -> m V
-applyClosure e (Lam xs bdy _, env) vs = do
+applyClosure _ (Lam xs bdy _, env) vs = do
    let adrs = map (`VarAdr` ()) xs
    let nams = map name xs
    let env' = Environment.extends (zip nams adrs) env
@@ -187,6 +184,8 @@ applyClosure e (Lam xs bdy _, env) vs = do
    mapM_ (uncurry writeAdr) (zip adrs vs)
    ComponentTracking.spawn task
    maybe mbottom return =<< MapM.get task
+applyClosure e _ _ = error $ "not a valid closure at " ++ show (spanOf e)
+
 
 -- | Apply a primitive function
 applyPrimitive :: InferM m => Exp -> String -> [V] -> m V
@@ -202,9 +201,14 @@ apply caller operator operands = case operator of
   -- the first two cases are handled as in @Analysis.SimpleActor.Semantics@
   -- the last one is handled in that way as well (for the closure and primitive values
   -- embedded in the top value) but also returns @top@
+  --
+  -- The top value that is produced here contains all the values from the operands,
+  -- this is because the assumption is that unimplemented primitives can only return
+  -- values either related to their inputs, or completely random values. Hence,
+  -- the abstraction is sound and also includes potential closures and actor references.
   ConstantValue v ->   mjoinMap (flip (applyClosure caller) operands) (getClosures v)
                   <||> mjoinMap (flip (applyPrimitive caller) operands) (getPrimitives v)
-  TopValue v -> apply caller (ConstantValue v) operands <||> return top
+  TopValue v -> apply caller (ConstantValue v) operands <||> return (TopValue $ L.joins $ map values operands)
 
 -- | Lookup a variable in the current environment, returns @top@
 -- if the variable does not exists in the environment this is to take
@@ -343,4 +347,4 @@ infer = runIdentity
       . runWithComponentTracking @Task
       . fmap fst . runStoreT @_ @Adr @V initialSto
       . flip execStateT initialInferred
-      . inter 
+      . inter
