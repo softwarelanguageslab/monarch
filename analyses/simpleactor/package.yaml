@@ -24,6 +24,7 @@ dependencies:
 - hspec-contrib
 - deepseq
 - rio
+- singletons
 
 
 ghc-options:

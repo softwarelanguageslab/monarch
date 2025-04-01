@@ -1,23 +1,36 @@
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, PolyKinds #-}
 -- | This module is used to make inferences about certain parts
 -- of the program.
 module Analysis.SimpleActor.Infer where
 
-import Analysis.Monad (WorkListM, EnvM(..), StoreM(..))
+import qualified  Analysis.Environment as Environment
+import Analysis.SimpleActor.Monad (MonadDynamic(..), runWithDynamic)
+import Analysis.Monad (WorkListM, EnvM(..), StoreM(..), iterateWL', runEnv, runJoinT, runStoreT, runWithComponentTracking, runWithMapping', runWithWorkList, runWithDependencyTracking, MonadDependencyTracking)
+import Analysis.Monad.IntraAnalysis 
+import Analysis.Monad.Map (MapM)
+import qualified Analysis.Monad.Map as MapM
+import Analysis.Monad.ComponentTracking (ComponentTrackingM)
+import qualified Analysis.Monad.ComponentTracking as ComponentTracking
 import Control.Lens
 import Control.Lens.TH
 import Control.Monad.State
 import Control.Monad.Join
+import Data.Kind
+import Data.List
+import Data.Singletons
+import Data.Singletons.Sigma
 import Domain.Class
-import Domain.Scheme.Store (SchemeAdr)
+import Domain.Scheme.Store (SchemeAdr(..))
 import qualified Data.Set as Set
-import Data.TypeLevel.HMap
+import Data.TypeLevel.HMap hiding (map)
 import qualified Data.TypeLevel.HMap as HMap
 import Domain.Core.BoolDomain.Class
-import Lattice.Class
-import RIO hiding (join)
+import Lattice.Class hiding (join)
+import qualified Lattice.Class as L
+import RIO hiding (over)
 import qualified RIO.Map as Map
 import Syntax.AST
+import Text.Printf
 
 ------------------------------------------------------------
 -- Shorthands
@@ -35,6 +48,14 @@ type Env = Map String Adr
 -- expression.
 type Actor = (Exp, Env)
 
+-- | Type of closures
+type Clo = (Exp, Env)
+
+------------------------------------------------------------
+-- Domain
+------------------------------------------------------------
+
+
 -- | Tags of the product in the actor value
 data ActorTag = CloTag -- ^ the value is a closure
               | PrmTag -- ^ the value is a primitive
@@ -44,24 +65,45 @@ data ActorTag = CloTag -- ^ the value is a closure
 $(genHKeys ''ActorTag)
 
 -- | Mapping for the abstract actor value product
-type M = '[ CloTag ::-> Set (Exp, Env) ]
+type M = '[ CloTag ::-> Set (Exp, Env), PrmTag ::-> Set String ]
 
 -- | Very crude approximation of actor values
-newtype Value = Value (HMap M) deriving (Ord, Eq, Joinable, PartialOrder, BottomLattice)
+newtype Value = Value { getValue :: HMap M } deriving (Ord, Eq, Joinable, PartialOrder, BottomLattice)
+instance (ForAll ActorTag (AtKey1 Show M)) => Show Value where
+   show (Value hm) = intercalate "," $ map showElement $ HMap.toList hm
+      where showElement :: BindingFrom M -> String
+            showElement (key :&: value) =
+               printf "%s -> %s" (show $ fromSing key) (withC_ @(AtKey1 Show M) (show value) key)
+
+
+
+
+-- | Extract the set of primitives embedded in the value
+getPrimitives :: Value -> Set String
+getPrimitives = fromMaybe Set.empty . HMap.get @PrmTag . getValue
+
+-- | Extract the set of closures embedded in the value
+getClosures :: Value -> Set (Exp, Env)
+getClosures = fromMaybe Set.empty . HMap.get @CloTag . getValue
+
 
 -- | Inject a closure into the abstract domain
 injectClo :: (Exp, Env) -> Value
 injectClo = Value . HMap.singleton @CloTag  . Set.singleton
 
+-- | Inject a primitive into the abstract domain
+injectPrim :: String -> Value
+injectPrim = Value . HMap.singleton @PrmTag . Set.singleton
+
 -- | Type to indicate that the actor value might be something else,
 -- with a fallback of which actor values it might contain.
-data V = ConstantValue Value | TopValue Value deriving (Ord, Eq)
+data V = ConstantValue { values :: Value } | TopValue { values :: Value } deriving (Ord, Eq, Show)
 
 instance Joinable V where
-  join (TopValue v1) (TopValue v2) = TopValue $ join v1 v2
-  join (ConstantValue v1) (ConstantValue v2) = ConstantValue $ join v1 v2
-  join (TopValue v1) (ConstantValue v2) = TopValue (join v1 v2)
-  join (ConstantValue v1) (TopValue v2) = TopValue (join v1 v2)
+  join (TopValue v1) (TopValue v2) = TopValue $ L.join v1 v2
+  join (ConstantValue v1) (ConstantValue v2) = ConstantValue $ L.join v1 v2
+  join (TopValue v1) (ConstantValue v2) = TopValue (L.join v1 v2)
+  join (ConstantValue v1) (TopValue v2) = TopValue (L.join v1 v2)
 
 instance PartialOrder V where
   leq _ (TopValue _) = True
@@ -74,12 +116,18 @@ instance TopLattice V where
 instance Domain V Bool where
   inject = const $ TopValue bottom
 
--- | For simplicity the @BoolDomain@ implementation for @V@ is always top
+-- | For simplicity the 'BoolDomain' implementation for 'V' is always top
 instance BoolDomain V where
   boolTop = TopValue bottom
   not = const boolTop
   and = const $ const boolTop
   or  = const $ const boolTop
+
+-- | Converts any value into a top value, retaining the possible
+-- abstract values that the top value could take.
+topValue :: V -> V
+topValue (ConstantValue v) = TopValue v
+topValue v = v
 
 ------------------------------------------------------------
 -- Analysis state
@@ -98,29 +146,55 @@ data Inferred = Inferred {
 
 $(makeLenses ''Inferred)
 
+-- | Initial inference state
+initialInferred :: Inferred
+initialInferred = Inferred Set.empty Map.empty Map.empty
+
+------------------------------------------------------------
+-- Analysis tasks
+------------------------------------------------------------
+
+data Task = AnalyzeActor Actor | AnalyzeClosure Clo
+          deriving (Ord, Eq, Show)
+
+performTask :: InferM m => Task -> m ()
+performTask (AnalyzeActor (expr, env)) = void $ withEnv (const env) (eval expr)
+performTask t@(AnalyzeClosure (expr, env)) = withEnv (const env) (eval expr) >>= MapM.put t
+
+-- | Create a task from an initial program expression
+injectTask :: Exp -> Task
+injectTask = AnalyzeActor . (, initialEnv)
+
 ------------------------------------------------------------
 -- Analysis Monad
 ------------------------------------------------------------
 
 -- | Monad for inferring information about the program
-type InferM m = (MonadState Inferred m, EnvM m Adr Env, WorkListM m Actor, StoreM Adr V m, MonadJoin m)
+type InferM m = (MonadState Inferred m, EnvM m Adr Env, ComponentTrackingM m Task, StoreM Adr V m, MonadJoin m, MonadReader Actor m, MonadDynamic Adr m, MapM Task V m)
 
 -- | Track that an actor was spawned, track its environment and expression
 -- and queue its analysis.
-spawn :: InferM m => (Exp, Env) -> m ()
-spawn = undefined
+spawn :: InferM m => Actor -> m ()
+spawn = ComponentTracking.spawn . AnalyzeActor
 
 -- | Apply a closure 
-applyClosure :: Exp -> (Exp, Env) -> [V] -> m V
-applyClosure = undefined
+applyClosure :: InferM m => Exp -> Clo -> [V] -> m V
+applyClosure e (Lam xs bdy _, env) vs = do
+   let adrs = map (`VarAdr` ()) xs
+   let nams = map name xs
+   let env' = Environment.extends (zip nams adrs) env
+   let task = AnalyzeClosure (bdy, env')
+   mapM_ (uncurry writeAdr) (zip adrs vs)
+   ComponentTracking.spawn task
+   maybe mbottom return =<< MapM.get task
 
 -- | Apply a primitive function
-applyPrimitive :: Exp -> String -> [V] -> m V
-applyPrimitive = undefined
+applyPrimitive :: InferM m => Exp -> String -> [V] -> m V
+applyPrimitive = runPrimitive
 
 -- | Apply a function (closure or primitive)
 apply :: InferM m => Exp -> V -> [V] -> m V
-apply caller operator operands = undefined
+apply caller operator operands = case operator of
   -- there are three cases: - the operator is a closure
   --                        - the operator is a primitive  
   --                        - the operator is a top value
@@ -128,12 +202,35 @@ apply caller operator operands = undefined
   -- the first two cases are handled as in @Analysis.SimpleActor.Semantics@
   -- the last one is handled in that way as well (for the closure and primitive values
   -- embedded in the top value) but also returns @top@
+  ConstantValue v ->   mjoinMap (flip (applyClosure caller) operands) (getClosures v)
+                  <||> mjoinMap (flip (applyPrimitive caller) operands) (getPrimitives v)
+  TopValue v -> apply caller (ConstantValue v) operands <||> return top
 
 -- | Lookup a variable in the current environment, returns @top@
 -- if the variable does not exists in the environment this is to take
 -- unimplemented primitives into account.
 lookupVar :: InferM m => String -> m V
 lookupVar = maybe (return top) lookupAdr <=< (fmap (flip Map.lookup) getEnv <*>) . pure
+
+-- | Extract the variables from the pattern, bind them to top
+-- and evaluate the body of the pattern in that environment.
+withBindsTop :: InferM m => Pat -> Exp -> m V
+withBindsTop pat bdy = mapM_ (`writeAdr` top) adrs >> withExtendedEnv (zip nams adrs) (eval bdy)
+   where vars = Set.toList $ patternVariables pat
+         nams = map name vars
+         adrs = map (`VarAdr` ()) vars
+
+-- | Register a potential message receive
+registerReceive :: InferM m => Pat -> m ()
+registerReceive pat = ask >>= (\r -> modify (over receives (Map.insert r pat)))
+
+-- | Allocate an address based on the identifier
+alloc :: InferM m => Ide -> m Adr
+alloc = return . flip VarAdr ()
+
+-- | Register a message send
+sendMessage :: InferM m => V -> V -> m V
+sendMessage = const $ const $ return top -- no useful behavior for now
 
 ------------------------------------------------------------
 -- Analysis Semantics
@@ -149,19 +246,101 @@ injectLit = const $ TopValue bottom
 eval :: InferM m => Exp -> m V
 eval (Literal lit _)  = return (injectLit lit)
 eval lam@(Lam {})     = ConstantValue . injectClo . (lam,) <$> getEnv
-eval (App e1 es _)    = undefined
+eval e@(App e1 es _)  = join $ liftA2 (apply e) (eval e1) (mapM eval es)
 eval (Ite _ e2 e3 _)  = eval e2 <||> eval e3
 eval (Spawn e _)      = (spawn . (e,) =<< getEnv) $> top
-eval (Terminate _)    = undefined
-eval (Receive pats _) = undefined
-eval (Match pats bdy _)   = undefined
-eval (Letrec bds _ _) = undefined
-eval (Parametrize bds e2 _) = undefined
+eval (Terminate _)    = mbottom -- no interesting behavior
+eval (Receive pats _) =
+  -- Different from receive in @Analysis.SimpleActor.eval@ as
+  -- it evaluates all possible branches of the receive and does
+  -- not actually consult a mailbox. But it does track the patterns
+  -- that the actor could receive.
+  mapM_ (registerReceive . fst) pats >> mjoinMap (uncurry withBindsTop) pats
+eval (Match v pats _)   = do
+  -- Ignores the pattern matches but binds all variables
+  -- occuring in the pattern to "top".
+  _ <- eval v -- evaluate @v@ for its side effects, but ignore its value
+  mjoinMap (uncurry withBindsTop) pats
+eval (Letrec bds bdy _) = do
+   ads <- mapM (alloc . fst) bds
+   let bds' = zip (map (name . fst) bds) ads
+   mapM_ (\(ex, adr) -> writeAdr adr =<< withExtendedEnv bds' (eval ex)) (zip (map snd bds) ads)
+   withExtendedEnv bds' (eval bdy)
+eval (Parametrize bds e2 _) = do
+   ads <- mapM (alloc . fst) bds
+   let bds' = zip (map (name . fst) bds) ads
+   vs <- mapM (eval . snd) bds
+   mapM_ (uncurry writeAdr) (zip ads vs)
+   withExtendedDynamic bds' (eval e2)
 eval (Begin exs _)    = foldM (const eval) top exs
-eval (Pair e1 e2 _)   = undefined
-eval (Var (Ide x _))  = undefined
-eval (DynVar (Ide _ _)) = undefined
-eval (Self _) = undefined
+eval (Pair e1 e2 _)   = topValue <$> liftA2 L.join (eval e1) (eval e2)
+eval (Var (Ide x _))  = lookupVar x
+eval (DynVar (Ide x _)) =
+   lookupDynamic x >>= lookupAdr
+eval (Self _)         = return top -- we don't care about self references
 -- Ignore all other expressions
-eval _ = return top
-    
+eval _                = return top
+
+------------------------------------------------------------
+-- Primitives
+------------------------------------------------------------
+
+-- | A primitive is a function from the call-site and operands
+-- of that function to a value
+newtype Prim = Prim (forall m . InferM m => Exp -> [V] -> m V)
+
+-- | List of all available primitives
+allPrimitives :: Map String Prim
+allPrimitives = Map.fromList [
+    ("send^", Prim $ \_ [rcv, msg] -> sendMessage rcv msg)
+  ]
+
+-- | Run a primitive given its name
+runPrimitive :: InferM m => Exp -> String -> [V] -> m V
+runPrimitive e nam vs = maybe (error "no such primitive") (\(Prim p) -> p e vs) (Map.lookup nam allPrimitives)
+
+-- | The initial environment with all its primitives
+initialEnv :: Map String Adr
+initialEnv = Map.mapWithKey (const . PrrAdr) allPrimitives
+
+initialSto :: Map Adr V
+initialSto = Map.fromList $ map (\nam -> (PrrAdr nam, ConstantValue $ injectPrim nam)) (Map.keys allPrimitives)
+
+------------------------------------------------------------
+-- Analysis instantiation
+------------------------------------------------------------
+
+type InterM :: (Type -> Type) -> Constraint
+type InterM m = (
+      StoreM Adr V m,
+      ComponentTrackingM m Task,
+      MonadState Inferred m,
+      MapM Task V m,
+      WorkListM m Task,
+      MonadDependencyTracking Task Adr m,
+      MonadDependencyTracking Task Task m)
+
+intra :: (MonadReader Actor m, InterM m) => Task -> m ()
+intra t = void $ performTask t
+                & runEnv initialEnv
+                & runWithDynamic
+                & runJoinT
+                & runIntraAnalysis t
+
+inter :: InterM m
+      => Exp -- ^ the initial program expression
+      -> m ()
+inter expr = iterateWL' (injectTask expr) intra
+           & flip runReaderT (expr, initialEnv)
+
+
+infer :: Exp -> Inferred
+infer = runIdentity
+      . runWithWorkList @[_] @Task
+      . runWithDependencyTracking @Task @Task
+      . runWithDependencyTracking @Task @Adr
+      . runWithMapping' @Task @V
+      . runWithComponentTracking @Task
+      . fmap fst . runStoreT @_ @Adr @V initialSto
+      . flip execStateT initialInferred
+      . inter 

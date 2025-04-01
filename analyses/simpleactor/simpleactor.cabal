@@ -86,6 +86,7 @@ library
     , process
     , random
     , rio
+    , singletons
     , transformers
     , unordered-containers
   default-language: Haskell2010
@@ -132,6 +133,7 @@ executable simpleactor-exe
     , optparse-applicative
     , rio
     , simpleactor
+    , singletons
     , time
   default-language: Haskell2010
 
@@ -173,4 +175,5 @@ test-suite simpleactor-tests
     , maf2-analysis
     , rio
     , simpleactor
+    , singletons
   default-language: Haskell2010

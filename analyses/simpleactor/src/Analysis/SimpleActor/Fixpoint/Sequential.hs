@@ -22,7 +22,7 @@ import Data.Set (Set)
 import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)
 import Domain.Scheme.Store
-import Domain.Scheme.Class (PaiDom, VecDom, StrDom)
+import Domain.Scheme.Class (PaiDom, VecDom, StrDom, Adr)
 import qualified Data.Map as Map
 import Analysis.Symbolic.Monad
     ( FormulaT )
@@ -65,7 +65,7 @@ type SequentialRes = Val (SequentialT Identity) ActorVlu
 type SequentialT m = MonadStack '[
                        MayEscapeT (Set ActorError),
                        EnvT ActorEnv,
-                       DynamicBindingT ActorVlu,
+                       DynamicBindingT' (Adr ActorVlu),
                        AllocT Ide K (SchemeAdr Exp K),
                        AllocT Exp K (SchemeAdr Exp K),
                        CtxT K,

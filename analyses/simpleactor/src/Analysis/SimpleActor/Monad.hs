@@ -16,6 +16,8 @@ module Analysis.SimpleActor.Monad
     ActorError,
     MetaT, 
     DynamicBindingT,
+    DynamicBindingT',
+    runWithDynamic,
     isMatchError,
     Cmp(..),
     Ctx(..)
@@ -210,14 +212,20 @@ instance (Monad m) => MonadMeta (MetaT m) where
 ifMetaSet :: MonadMeta m => (m a -> m a) -> m a -> m a
 ifMetaSet f ma = isMeta >>= (\b -> if b then f ma else ma)
 
--- | Dynamic binding monad
-newtype DynamicBindingT v m a = DynamicBindingT (ReaderT (Map String (Adr v)) m a)
+
+newtype DynamicBindingT' adr m a = DynamicBindingT (ReaderT (Map String adr) m a)
                               deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadCache)
 
-instance (Monad m, α ~ Adr v) => MonadDynamic α (DynamicBindingT v m) where  
+-- | Dynamic binding monad
+type DynamicBindingT v m a = DynamicBindingT' (Adr v) m a
+
+instance (Monad m) => MonadDynamic adr (DynamicBindingT' adr m) where  
    lookupDynamic vr = DynamicBindingT $ asks (fromMaybe (error $ "dynamic binding " ++ show vr ++ " not found") . Map.lookup vr)
    withExtendedDynamic bds (DynamicBindingT ma) = DynamicBindingT $ local (Map.union (Map.fromList bds)) ma
    
+runWithDynamic :: DynamicBindingT' adr m a -> m a
+runWithDynamic (DynamicBindingT m) = runReaderT m Map.empty
+
 ------------------------------------------------------------
 -- Error abstractions
 ------------------------------------------------------------

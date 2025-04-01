@@ -72,6 +72,7 @@ instance {-# OVERLAPPING #-} (Monad m, Ord k) => MapM k v (MapT k v m) where
 runWithMapping :: forall k v m a . MapT k v m a -> m (a, Map k v)
 runWithMapping (MapT m) = runStateT m Map.empty
 
+-- TODO: rename to evalWithMapping
 runWithMapping' :: forall k v m a . Monad m => MapT k v m a -> m a
 runWithMapping' = fmap fst . runWithMapping
 

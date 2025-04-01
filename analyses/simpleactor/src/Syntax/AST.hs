@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, DeriveGeneric #-}
-module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..)) where
+module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..), patternVariables) where
 
 import Data.List (intercalate)
 import qualified Data.Set as Set
@@ -57,6 +57,13 @@ instance Show Lit where
 
 -- | Pattern language
 data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show, Generic)
+
+-- | Compute the set of variables in the patern
+patternVariables :: Pat -> Set Ide
+patternVariables (PairPat pat1 pat2) =
+   patternVariables pat1 `Set.union` patternVariables pat2
+patternVariables (IdePat ide) = Set.singleton ide
+patternVariables _ = Set.empty
 
 instance NFData Pat 
 
