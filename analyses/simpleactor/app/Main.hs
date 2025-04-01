@@ -23,6 +23,7 @@ import RIO (Identity)
 import Analysis.SimpleActor.Monad ()
 import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp)
 import Data.Tuple.Syntax
+import qualified Analysis.SimpleActor.Infer as Infer
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -49,8 +50,10 @@ inputOptions = InputOptions <$> strOption
 commandParser :: Parser Command
 commandParser =
    subparser
-    (   command "analyze" (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
-    <>  command "eval"    (info (interpret <$> inputOptions) (progDesc "Run a program")))
+    (  command "analyze" (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
+    <> command "pre" (info (inferCmd <$> inputOptions) (progDesc "Pre-analysis"))
+    <> command "eval"    (info (interpret <$> inputOptions) (progDesc "Run a program")))
+
 
 ------------------------------------------------------------
 -- Inspecting analysis results
@@ -108,6 +111,18 @@ analyzeCmd (InputOptions { filename, doTranslate  }) = do
 interpret :: InputOptions -> IO ()
 interpret (InputOptions { .. }) =
    loadFile' doTranslate filename >>= runEval . eval >>= print
+
+
+------------------------------------------------------------
+-- SimpleActor Inference
+------------------------------------------------------------
+
+inferCmd :: InputOptions -> IO ()
+inferCmd (InputOptions { filename, doTranslate }) = do
+   ast <- loadFile' doTranslate filename
+   let inferred = Infer.infer ast
+   print inferred
+
 
 ------------------------------------------------------------
 -- Main entrypoint

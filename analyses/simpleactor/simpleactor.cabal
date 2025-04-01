@@ -141,6 +141,7 @@ test-suite simpleactor-tests
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Test.Infer.SimpleSpec
       Paths_simpleactor
   autogen-modules:
       Paths_simpleactor

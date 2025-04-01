@@ -46,7 +46,11 @@ type Env = Map String Adr
 
 -- | An actor is described statically by its environment and
 -- expression.
-type Actor = (Exp, Env)
+newtype Actor = Actor { getActor :: (Exp, Env) } deriving (Ord, Eq)
+
+instance Show Actor where
+  show = show . spanOf . fst . getActor
+
 
 -- | Type of closures
 type Clo = (Exp, Env)
@@ -139,7 +143,7 @@ data Inferred = Inferred {
   -- | Approximation of the messages that an actor could receive
   -- during its lifetime.
   _receives :: Map Actor Pat
-} deriving (Eq, Ord)
+} deriving (Eq, Ord, Show)
 
 $(makeLenses ''Inferred)
 
@@ -155,12 +159,12 @@ data Task = AnalyzeActor Actor | AnalyzeClosure Clo
           deriving (Ord, Eq, Show)
 
 performTask :: InferM m => Task -> m ()
-performTask (AnalyzeActor (expr, env)) = modify (over actors (Set.insert (expr, env))) >> void (withEnv (const env) (eval expr))
+performTask (AnalyzeActor (Actor (expr, env))) = modify (over actors (Set.insert (Actor (expr, env)))) >> void (withEnv (const env) (eval expr))
 performTask t@(AnalyzeClosure (expr, env)) = withEnv (const env) (eval expr) >>= MapM.put t
 
 -- | Create a task from an initial program expression
 injectTask :: Exp -> Task
-injectTask = AnalyzeActor . (, initialEnv)
+injectTask = AnalyzeActor . Actor . (, initialEnv)
 
 ------------------------------------------------------------
 -- Analysis Monad
@@ -252,7 +256,7 @@ eval (Literal lit _)  = return (injectLit lit)
 eval lam@(Lam {})     = ConstantValue . injectClo . (lam,) <$> getEnv
 eval e@(App e1 es _)  = join $ liftA2 (apply e) (eval e1) (mapM eval es)
 eval (Ite _ e2 e3 _)  = eval e2 <||> eval e3
-eval (Spawn e _)      = (spawn . (e,) =<< getEnv) $> top
+eval (Spawn e _)      = (spawn . Actor . (e,) =<< getEnv) $> top
 eval (Terminate _)    = mbottom -- no interesting behavior
 eval (Receive pats _) =
   -- Different from receive in @Analysis.SimpleActor.eval@ as
@@ -335,7 +339,7 @@ inter :: InterM m
       => Exp -- ^ the initial program expression
       -> m ()
 inter expr = iterateWL' (injectTask expr) intra
-           & flip runReaderT (expr, initialEnv)
+           & flip runReaderT (Actor (expr, initialEnv))
 
 
 infer :: Exp -> Inferred
