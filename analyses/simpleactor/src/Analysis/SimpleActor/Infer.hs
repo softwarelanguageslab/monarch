@@ -54,9 +54,9 @@ instance NFData Actor
 instance Show Actor where
   show = show . spanOf . fst . getActor
 
-
 -- | Type of closures
 type Clo = (Exp, Env)
+
 
 ------------------------------------------------------------
 -- Domain
@@ -66,6 +66,7 @@ type Clo = (Exp, Env)
 -- | Tags of the product in the actor value
 data ActorTag = CloTag -- ^ the value is a closure
               | PrmTag -- ^ the value is a primitive
+              | ActTag -- ^ the value is an actor reference
               | TopTag -- ^ the value is something else, but still keeps track of potential closures it contains
                deriving (Ord, Eq, Show, Generic)
 
@@ -74,7 +75,7 @@ instance NFData ActorTag
 $(genHKeys ''ActorTag)
 
 -- | Mapping for the abstract actor value product
-type M = '[ CloTag ::-> Set (Exp, Env), PrmTag ::-> Set String ]
+type M = '[ CloTag ::-> Set (Exp, Env), PrmTag ::-> Set String, ActTag ::-> Set Actor ]
 
 -- | Very crude approximation of actor values
 newtype Value = Value { getValue :: HMap M } deriving (Ord, Eq, Joinable, PartialOrder, BottomLattice, Generic)
@@ -96,6 +97,10 @@ getClosures :: Value -> Set (Exp, Env)
 getClosures = fromMaybe Set.empty . HMap.get @CloTag . getValue
 
 
+-- |  Extract the set of actor references from the value
+getActors :: Value -> Set Actor
+getActors = fromMaybe Set.empty . HMap.get @ActTag . getValue
+
 -- | Inject a closure into the abstract domain
 injectClo :: (Exp, Env) -> Value
 injectClo = Value . HMap.singleton @CloTag  . Set.singleton
@@ -103,6 +108,11 @@ injectClo = Value . HMap.singleton @CloTag  . Set.singleton
 -- | Inject a primitive into the abstract domain
 injectPrim :: String -> Value
 injectPrim = Value . HMap.singleton @PrmTag . Set.singleton
+
+-- | Inject an actor in the abstract value
+injectActor :: Actor -> Value
+injectActor = Value . HMap.singleton @ActTag . Set.singleton
+
 
 -- | Type to indicate that the actor value might be something else,
 -- with a fallback of which actor values it might contain.
@@ -139,6 +149,9 @@ instance BoolDomain V where
 topValue :: V -> V
 topValue (ConstantValue v) = TopValue v
 topValue v = v
+
+-- | An approximation of actors mailboxes
+type MB = V
 
 ------------------------------------------------------------
 -- Analysis state
@@ -183,13 +196,17 @@ injectTask = AnalyzeActor . Actor . (, initialEnv)
 -- Analysis Monad
 ------------------------------------------------------------
 
+-- | Key at which the mailboxes are stored in the global MapM
+newtype ActorMailboxKey = ActorMailboxKey Actor
+                        deriving (Ord, Eq, Show)
+
 -- | Monad for inferring information about the program
-type InferM m = (MonadState Inferred m, EnvM m Adr Env, ComponentTrackingM m Task, StoreM Adr V m, MonadJoin m, MonadReader Actor m, MonadDynamic Adr m, MapM Task V m)
+type InferM m = (MonadState Inferred m, EnvM m Adr Env, ComponentTrackingM m Task, StoreM Adr V m, MonadJoin m, MonadReader Actor m, MonadDynamic Adr m, MapM Task V m, MonadIO m, MapM ActorMailboxKey V m)
 
 -- | Track that an actor was spawned, track its environment and expression
 -- and queue its analysis.
-spawn :: InferM m => Actor -> m ()
-spawn = ComponentTracking.spawn . AnalyzeActor
+spawn :: InferM m => Actor -> m V
+spawn act = ComponentTracking.spawn (AnalyzeActor act) $> ConstantValue (injectActor act)
 
 -- | Apply a closure 
 applyClosure :: InferM m => Exp -> Clo -> [V] -> m V
@@ -235,8 +252,8 @@ lookupVar = maybe (return top) lookupAdr <=< (fmap (flip Map.lookup) getEnv <*>)
 
 -- | Extract the variables from the pattern, bind them to top
 -- and evaluate the body of the pattern in that environment.
-withBindsTop :: InferM m => Pat -> Exp -> m V
-withBindsTop pat bdy = mapM_ (`writeAdr` top) adrs >> withExtendedEnv (zip nams adrs) (eval bdy)
+withBindsTop :: InferM m => V -> Pat -> Exp -> m V
+withBindsTop topV pat bdy = mapM_ (`writeAdr` topV) adrs >> withExtendedEnv (zip nams adrs) (eval bdy)
    where vars = Set.toList $ patternVariables pat
          nams = map name vars
          adrs = map (`VarAdr` ()) vars
@@ -251,7 +268,14 @@ alloc = return . flip VarAdr ()
 
 -- | Register a message send
 sendMessage :: InferM m => V -> V -> m V
-sendMessage = const $ const $ return top -- no useful behavior for now
+sendMessage rcv v = mjoinMap (\rcv' -> do
+    MapM.joinWith (ActorMailboxKey rcv') v
+    return top) (getActors (values rcv))
+
+-- | Extract the possible values the current actor can receive
+receive :: (MonadBottom m, MonadReader Actor m, MapM ActorMailboxKey V m) => m V
+receive = (ask >>= MapM.get . ActorMailboxKey) >>= maybe mbottom return
+
 
 ------------------------------------------------------------
 -- Analysis Semantics
@@ -269,19 +293,20 @@ eval (Literal lit _)  = return (injectLit lit)
 eval lam@(Lam {})     = ConstantValue . injectClo . (lam,) <$> getEnv
 eval e@(App e1 es _)  = join $ liftA2 (apply e) (eval e1) (mapM eval es)
 eval (Ite _ e2 e3 _)  = eval e2 <||> eval e3
-eval (Spawn e _)      = (spawn . Actor . (e,) =<< getEnv) $> top
+eval (Spawn e _)      = spawn . Actor . (e,) =<< getEnv
 eval (Terminate _)    = mbottom -- no interesting behavior
-eval (Receive pats _) =
+eval (Receive pats _) = do
+  message <- receive
   -- Different from receive in @Analysis.SimpleActor.eval@ as
   -- it evaluates all possible branches of the receive and does
   -- not actually consult a mailbox. But it does track the patterns
   -- that the actor could receive.
-  mapM_ (registerReceive . fst) pats >> mjoinMap (uncurry withBindsTop) pats
-eval (Match v pats _)   = do
+  mapM_ (registerReceive . fst) pats >> mjoinMap (uncurry (withBindsTop $ topValue message)) pats
+eval (Match ev pats _)   = do
   -- Ignores the pattern matches but binds all variables
   -- occuring in the pattern to "top".
-  _ <- eval v -- evaluate @v@ for its side effects, but ignore its value
-  mjoinMap (uncurry withBindsTop) pats
+  matchValue <- eval ev -- evaluate @v@ for its side effects, but ignore its value
+  mjoinMap (uncurry (withBindsTop (topValue matchValue))) pats
 eval (Letrec bds bdy _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
@@ -300,6 +325,7 @@ eval (DynVar (Ide x _)) =
    lookupDynamic x >>= lookupAdr
 eval (Self _)         = return top -- we don't care about self references
 -- Ignore all other expressions
+eval (Trace e _)      = liftIO (print e) >> eval e
 eval _                = return top
 
 ------------------------------------------------------------
@@ -337,9 +363,12 @@ type InterM m = (
       ComponentTrackingM m Task,
       MonadState Inferred m,
       MapM Task V m,
+      MapM ActorMailboxKey V m,
       WorkListM m Task,
       MonadDependencyTracking Task Adr m,
-      MonadDependencyTracking Task Task m)
+      MonadDependencyTracking Task Task m,
+      MonadDependencyTracking Task ActorMailboxKey m,
+      MonadIO m)
 
 intra :: (MonadReader Actor m, InterM m) => Task -> m ()
 intra t = void $ performTask t
@@ -355,12 +384,13 @@ inter expr = iterateWL' (injectTask expr) intra
            & flip runReaderT (Actor (expr, initialEnv))
 
 
-infer :: Exp -> Inferred
-infer = runIdentity
-      . runWithWorkList @[_] @Task
+infer :: Exp -> IO Inferred
+infer = runWithWorkList @[_] @Task
       . runWithDependencyTracking @Task @Task
       . runWithDependencyTracking @Task @Adr
+      . runWithDependencyTracking @Task @ActorMailboxKey
       . runWithMapping' @Task @V
+      . runWithMapping' @ActorMailboxKey @V
       . runWithComponentTracking @Task
       . fmap fst . runStoreT @_ @Adr @V initialSto
       . flip execStateT initialInferred

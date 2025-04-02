@@ -657,7 +657,9 @@
                                   (match
                                    v7420
                                    (((pair 'ping x7422)
-                                     (pair
+                                     (begin
+                                      (trace 'ping)
+                                      (pair
                                       'enhanced
                                       (pair
                                        (lambda (j7424)
@@ -676,6 +678,8 @@
                                                        ((pair
                                                          rcv7427
                                                          message7426)
+                                                        (begin
+                                                          (trace 'rcv)
                                                         (match
                                                          message7426
                                                          (((pair 'pong x7429)
@@ -710,18 +714,17 @@
                                                              (r
                                                               (pair
                                                                'pong
-                                                               trace7428))))))))))))
+                                                               trace7428)))))))))))))
                                            (spawn^ (r (list)))))
                                        (pair
                                         j7419
                                         (pair
                                          'ping
-                                         ((actor? k7418 j7419) x7422))))))
+                                         ((actor? k7418 j7419) x7422)))))))
                                     (x7421 (blame k7418))))))
                           (a7417 message7416)))))))
           (letrec ((ping
                     (letrec ((xj7436 'client) (xk7437 'server))
-                      (trace 'ping)
                       ((ping/c)
                        xj7436
                        xk7437

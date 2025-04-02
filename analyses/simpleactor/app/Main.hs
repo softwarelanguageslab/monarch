@@ -123,7 +123,7 @@ interpret (InputOptions { .. }) =
 inferCmd :: InputOptions -> IO ()
 inferCmd (InputOptions { filename, doTranslate }) = do
    ast <- loadFile' doTranslate filename
-   (ellapsed, inferred) <- timeItT $ evaluate $ force $ Infer.infer ast
+   (ellapsed, inferred) <- timeItT $ Infer.infer ast
    putStrLn ("Ellapsed time (in seconds): " ++ show ellapsed)
    print inferred
 
