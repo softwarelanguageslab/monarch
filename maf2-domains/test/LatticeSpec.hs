@@ -59,7 +59,29 @@ boolLattice boolGen = do
    it "∀ a: not(not(a)) == a" $
       forAll boolGen (\a -> Domain.not (Domain.not a) `shouldBe` a)
 
-numDomainTests :: forall n c . (Show n, Eq n, NumberDomain n, Domain n c, Num c, Show c) => Gen n -> Gen c ->  Spec
+-- | approximate equality (to deal with floating point imprecision)
+-- https://rosettacode.org/wiki/Approximate_equality#Haskell
+class (Num a, Eq a, Ord a) => AlmostEq a where
+  eps :: a
+  infix 4 ~=
+  (~=) :: AlmostEq a => a -> a -> Bool
+  a ~= b = (a == b) || (abs (a - b) < eps * abs (a + b)) || (abs (a - b) < eps)
+
+instance AlmostEq Int where eps = 0  
+instance AlmostEq Integer where eps = 0
+instance AlmostEq Double where eps = 1e-14
+instance AlmostEq Float where eps = 1e-5
+
+-- approximate equality for CP
+class AlmostEqLattice a where 
+    (~=~) :: AlmostEqLattice a => a -> a -> Bool
+
+instance (AlmostEq a) => AlmostEqLattice (CP a) where 
+    (Constant a) ~=~ (Constant b) = a ~= b 
+    Top ~=~ Top = True 
+    _ ~=~ _ = False 
+
+numDomainTests :: forall n c . (Show n, Eq n, NumberDomain n, Domain n c, Num c, Show c, AlmostEqLattice n) => Gen n -> Gen c ->  Spec
 numDomainTests numGen concNum = do
    -- plus is monotone
    it "∀ a,b,c : b ⊑ c → plus(a, b) ⊑ plus(a, c)" $
@@ -69,7 +91,7 @@ numDomainTests numGen concNum = do
       forAll (pairs concNum) (\(a, b) -> subsumes (fromJust $ plus (inject @n a) (inject b)) (inject @n (a + b)))
    -- plus is associative
    it "∀ a, b, c: plus(a, plus(b, c)) == plus(plus(a, b), c)" $
-      forAll (triples numGen) (\(a, b, c) -> fromJust (plus a (fromJust (plus b c))) `shouldBe` fromJust (plus (fromJust (plus a b)) c))
+      forAll (triples numGen) (\(a, b, c) -> fromJust (plus a (fromJust (plus b c))) ~=~ fromJust (plus (fromJust (plus a b)) c))
 
 
     -- minus is monotone
@@ -107,4 +129,4 @@ spec = do
    -- number lattice operations
    describe "number domain for cpInt" $ numDomainTests (arbitrary :: Gen (CP Integer)) (arbitrary :: Gen Integer)
    -- properties for cpDouble do not hold because of float imprecision
-  -- describe "number domain for cpDouble" $ numDomainTests (arbitrary :: Gen (CP Double)) (arbitrary :: Gen Double)
+   describe "number domain for cpDouble" $ numDomainTests (arbitrary :: Gen (CP Double)) (arbitrary :: Gen Double)
