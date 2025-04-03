@@ -32,6 +32,8 @@ import qualified RIO.Map as Map
 import Syntax.AST
 import Text.Printf
 import Syntax.Span (spanOf)
+import Data.Maybe
+import Syntax (SpanOf)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -57,6 +59,71 @@ instance Show Actor where
 -- | Type of closures
 type Clo = (Exp, Env)
 
+
+------------------------------------------------------------
+-- Graph
+------------------------------------------------------------
+
+-- | Nodes of the graph
+data N = ActorNode Actor -- ^ a node that represents an actor (and also its reference)
+       | FnCallNode Clo  -- ^ node representing a function call (or closure)
+       | AdrNode Adr     -- ^ node representing an address in the store
+       deriving (Ord, Eq, Show, Generic)
+
+instance SpanOf N where
+  spanOf (ActorNode (Actor (e, _))) = spanOf e
+  spanOf (FnCallNode (e, _)) = spanOf e
+  spanOf (AdrNode adr) = spanOf adr
+
+instance NFData N
+
+-- | Edges of the graph
+data E = SpawnEdge      -- ^ an edge that goes from actor a to actor b whenever a spawns b
+       | SendEdge       -- ^ send a message 
+       | CallEdge       -- ^ add a call edge
+       deriving (Ord, Eq, Show, Generic)
+
+instance NFData E
+
+-- | Graph representation as an adjecency list
+data Graph = G { n :: Set N, e :: Map N (Set (N, E)) } deriving (Ord, Eq, Show, Generic)
+
+-- | Create an empty graph
+emptyGraph :: Graph
+emptyGraph = G Set.empty Map.empty
+
+instance NFData Graph
+
+
+-- | Add a new node to the graph (if does not already exist)
+addNode :: N -> Graph -> Graph
+addNode n' g@G { .. } = g { n = Set.insert n' n }
+
+-- | Add a 'Send' edge between the given nodes
+addSend :: N -> N -> Graph -> Graph
+addSend start end g@G { .. } = g { e = Map.insertWith Set.union start (Set.singleton (end, SendEdge)) e }
+
+-- | Add a 'Spawn' edge between the given nodes
+addSpawn :: N -> N -> Graph -> Graph
+addSpawn start end g@G { .. } = g { e = Map.insertWith Set.union start (Set.singleton (end, SpawnEdge)) e }
+
+
+-- | Add a 'Call' edge between the given nodes
+addCall :: N -> N -> Graph -> Graph
+addCall start end g@G { .. } = g { e = Map.insertWith Set.union start (Set.singleton (end, CallEdge)) e }
+
+-- | Generate a dot representation of the graph
+toDot :: Graph -> String
+toDot g = "digraph G { " ++ nodes ++ edges ++ "}"
+  where nodeList = Set.toList (n g)
+        -- | Attach a label (numerical index) to the node
+        label n = fromMaybe 0 $ Map.lookup n (Map.fromList (zip nodeList [1..]))
+        labelStr n = "n" ++ show (label n)
+        -- | The string representation of the nodes includded in the graph
+        nodes = List.intercalate ";" $ map printNode nodeList
+        edges = List.intercalate ";" $ map (uncurry (\k -> List.intercalate ";" . Set.toList . Set.map (printEdge k))) (Map.toList (e g))
+        printNode n = labelStr n ++ "[label = \"" ++ show (spanOf n) ++ "\"]"
+        printEdge start (end, tpy) = labelStr start ++ "->" ++ labelStr end ++ "[label = \"" ++ show tpy ++ "\"]"
 
 ------------------------------------------------------------
 -- Domain
@@ -165,7 +232,9 @@ data Inferred = Inferred {
   _sends :: Map Actor (Set V),
   -- | Approximation of the messages that an actor could receive
   -- during its lifetime.
-  _receives :: Map Actor (Set Pat)
+  _receives :: Map Actor (Set Pat),
+  -- | Graph containing information about the actor system
+  _graph :: Graph
 } deriving (Eq, Ord, Show, Generic)
 
 instance NFData Inferred
@@ -175,7 +244,7 @@ $(makeLenses ''Inferred)
 
 -- | Initial inference state
 initialInferred :: Inferred
-initialInferred = Inferred Set.empty Map.empty Map.empty
+initialInferred = Inferred Set.empty Map.empty Map.empty emptyGraph
 
 ------------------------------------------------------------
 -- Analysis tasks
@@ -206,7 +275,10 @@ type InferM m = (MonadState Inferred m, EnvM m Adr Env, ComponentTrackingM m Tas
 -- | Track that an actor was spawned, track its environment and expression
 -- and queue its analysis.
 spawn :: InferM m => Actor -> m V
-spawn act = ComponentTracking.spawn (AnalyzeActor act) $> ConstantValue (injectActor act)
+spawn act =  ComponentTracking.spawn (AnalyzeActor act)
+          >> modify (over graph (addNode $ ActorNode act))
+          >> (ask >>= (\self -> modify (over graph (addSpawn (ActorNode self) (ActorNode act)))))
+          $> ConstantValue (injectActor act)
 
 -- | Apply a closure 
 applyClosure :: InferM m => Exp -> Clo -> [V] -> m V
@@ -269,6 +341,8 @@ alloc = return . flip VarAdr ()
 -- | Register a message send
 sendMessage :: InferM m => V -> V -> m V
 sendMessage rcv v = mjoinMap (\rcv' -> do
+    self <- ask
+    modify (over graph (addSend (ActorNode self) (ActorNode rcv')))
     MapM.joinWith (ActorMailboxKey rcv') v
     return top) (getActors (values rcv))
 
