@@ -130,7 +130,10 @@ class Monad m => MonadMeta m where
 class Monad m => MonadDynamic α m | m -> α where  
    withExtendedDynamic :: [(String, α)] -> m a -> m a
    lookupDynamic :: String -> m α
-
+   withDynamic :: (Map String α -> Map String α) -> m a -> m a
+   getDynamic :: m (Map String α)
+  
+  
 -- | Monad for spawning new processes. Each process is uniquely identified by their
 -- expression and environment.
 class MonadSpawn v k m | m -> v k where
@@ -166,6 +169,8 @@ instance
 
  withExtendedDynamic bds = lowerM (withExtendedDynamic bds)
  lookupDynamic = upperM . lookupDynamic
+ withDynamic f = lowerM (withDynamic f)
+ getDynamic = upperM getDynamic
 
 ------------------------------------------------------------
 -- Monad
@@ -223,6 +228,8 @@ type DynamicBindingT v m a = DynamicBindingT' (Adr v) m a
 instance (Monad m) => MonadDynamic adr (DynamicBindingT' adr m) where  
    lookupDynamic vr = DynamicBindingT $ asks (fromMaybe (error $ "dynamic binding " ++ show vr ++ " not found") . Map.lookup vr)
    withExtendedDynamic bds (DynamicBindingT ma) = DynamicBindingT $ local (Map.union (Map.fromList bds)) ma
+   withDynamic f (DynamicBindingT ma) = DynamicBindingT $ local f ma
+   getDynamic = DynamicBindingT ask 
    
 runWithDynamic :: DynamicBindingT' adr m a -> m a
 runWithDynamic (DynamicBindingT m) = runReaderT m Map.empty

@@ -125,7 +125,9 @@ inferCmd (InputOptions { filename, doTranslate }) = do
    ast <- loadFile' doTranslate filename
    (ellapsed, inferred) <- timeItT $ Infer.infer ast
    putStrLn ("Ellapsed time (in seconds): " ++ show ellapsed)
-   putStrLn (Infer.toDot $ Infer._graph inferred)
+   dotOut <- openFile "out.dot" WriteMode
+   hPutStrLn dotOut (Infer.toDot $ Infer._graph inferred)
+   hClose dotOut
 
 
 ------------------------------------------------------------
