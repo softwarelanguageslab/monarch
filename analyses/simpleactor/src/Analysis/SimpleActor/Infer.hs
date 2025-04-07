@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 -- | This module is used to make inferences about certain parts
 -- of the program.
-module Analysis.SimpleActor.Infer where
+module Analysis.SimpleActor.Infer(infer, module Analysis.SimpleActor.Infer.Graph, Inferred(..)) where
 
 import qualified  Analysis.Environment as Environment
 import Analysis.SimpleActor.Monad (MonadDynamic(..), runDynamicT)
@@ -36,212 +36,9 @@ import Syntax.Span (spanOf)
 import Data.Maybe
 import Syntax (SpanOf)
 
-------------------------------------------------------------
--- Shorthands
-------------------------------------------------------------
-
--- | The type of addresses used in this analysis,
--- no context needed as this is a very simple and
--- crude pre-analysis.
-type Adr = SchemeAdr Exp ()
-
--- | The environment used during inferencing
-type Env = Map String Adr
-
--- | Type of the dynamic environment
-type Dyn = Map String Adr
-
--- | An actor is described statically by its environment and
--- expression.
-newtype Actor = Actor { getActor :: (Exp, Env) } deriving (Ord, Eq, Generic)
-
-instance NFData Actor
-
-instance Show Actor where
-  show = show . spanOf . fst . getActor
-
--- | Type of closures
-type Clo = (Exp, Env)
-
-
-------------------------------------------------------------
--- Graph
-------------------------------------------------------------
-
--- | Nodes of the graph
-data N = ActorNode Actor -- ^ a node that represents an actor (and also its reference)
-       | FnCallNode Clo  -- ^ node representing a function call (or closure)
-       | AdrNode Adr     -- ^ node representing an address in the store
-       | ReceiveNode Clo -- ^ node representing receives
-       deriving (Ord, Eq, Show, Generic)
-
-instance SpanOf N where
-  spanOf (ActorNode (Actor (e, _))) = spanOf e
-  spanOf (FnCallNode (e, _)) = spanOf e
-  spanOf (AdrNode adr) = spanOf adr
-  spanOf (ReceiveNode (e, _)) = spanOf e
-
-instance NFData N
-
--- | Edges of the graph
-data E = SpawnEdge      -- ^ an edge that goes from actor a to actor b whenever a spawns b
-       | SendEdge       -- ^ send a message 
-       | CallEdge       -- ^ add a call edge
-       | WriteEdge      -- ^ write a value to an address
-       | LookupEdge     -- ^ read a value from the given address
-       | ReceiveEdge    -- ^ edge that leads to a receive block
-       deriving (Ord, Eq, Show, Generic)
-
-instance NFData E
-
--- | Graph representation as an adjecency list
-data Graph = G { n :: Set N, e :: Map N (Set (N, E)) } deriving (Ord, Eq, Show, Generic)
-
--- | Create an empty graph
-emptyGraph :: Graph
-emptyGraph = G Set.empty Map.empty
-
-instance NFData Graph
-
-
--- | Add a new node to the graph (if does not already exist)
-addNode :: N -> Graph -> Graph
-addNode n' g@G { .. } = g { n = Set.insert n' n }
-
--- | Add an edge to the graph with the given label
-addEdge :: E -> N -> N -> Graph -> Graph
-addEdge lbl start end g@G{ .. } = g { e = Map.insertWith Set.union start (Set.singleton (end, lbl)) e }
-
--- | Add a 'Send' edge between the given nodes
-addSend :: N -> N -> Graph -> Graph
-addSend = addEdge SendEdge
-
--- | Add a 'Spawn' edge between the given nodes
-addSpawn :: N -> N -> Graph -> Graph
-addSpawn = addEdge SpawnEdge
-
--- | Add a 'Call' edge between the given nodes
-addCall :: N -> N -> Graph -> Graph
-addCall = addEdge CallEdge
-
--- | Add a 'Write' edge between the given nodes
-addWrite :: N -> N -> Graph -> Graph
-addWrite = addEdge WriteEdge
-
--- | Add a 'Lookup' edge between the given nodes
-addLookup :: N -> N -> Graph -> Graph
-addLookup = addEdge LookupEdge
-
--- | Generate a dot representation of the graph
-toDot :: Graph -> String
-toDot g = "digraph G { " ++ nodes ++ ";" ++ edges ++ "}"
-  where nodeList = Set.toList (n g)
-        -- | Attach a label (numerical index) to the node
-        label n = fromMaybe (0 :: Integer) $ Map.lookup n (Map.fromList (zip nodeList [1..]))
-        labelStr n = "n" ++ show (label n)
-        -- | The string representation of the nodes includded in the graph
-        nodes = List.intercalate ";\n" $ map printNode nodeList
-        edges = List.intercalate ";\n" $ map (uncurry (\k -> List.intercalate ";" . Set.toList . Set.map (printEdge k))) (Map.toList (e g))
-        printNode n = labelStr n ++ "[label = \"" ++ show (spanOf n) ++ "\", color = \"" ++ colorNode n ++ "\"]"
-        printEdge start (end, tpy) = labelStr start ++ " -> " ++ labelStr end ++ "[label = \"" ++ show tpy ++ "\"]"
-        colorNode = \case ActorNode {} -> "blue"
-                          FnCallNode {} -> "green"
-                          AdrNode {} -> "red"
-                          ReceiveNode {} -> "orange"
-
-------------------------------------------------------------
--- Domain
-------------------------------------------------------------
-
-
--- | Tags of the product in the actor value
-data ActorTag = CloTag -- ^ the value is a closure
-              | PrmTag -- ^ the value is a primitive
-              | ActTag -- ^ the value is an actor reference
-               deriving (Ord, Eq, Show, Generic)
-
-instance NFData ActorTag
-
-$(genHKeys ''ActorTag)
-
--- | Mapping for the abstract actor value product
-type M = '[ CloTag ::-> Set (Exp, Env), PrmTag ::-> Set String, ActTag ::-> Set Actor ]
-
--- | Very crude approximation of actor values
-newtype Value = Value { getValue :: HMap M } deriving (Ord, Eq, Joinable, PartialOrder, BottomLattice, Generic)
-
-instance NFData Value
-
-instance (ForAll ActorTag (AtKey1 Show M)) => Show Value where
-   show (Value hm) = List.intercalate "," $ map showElement $ HMap.toList hm
-      where showElement :: BindingFrom M -> String
-            showElement (key :&: value) =
-               printf "%s -> %s" (show $ fromSing key) (withC_ @(AtKey1 Show M) (show value) key)
-
--- | Extract the set of primitives embedded in the value
-getPrimitives :: Value -> Set String
-getPrimitives = fromMaybe Set.empty . HMap.get @PrmTag . getValue
-
--- | Extract the set of closures embedded in the value
-getClosures :: Value -> Set (Exp, Env)
-getClosures = fromMaybe Set.empty . HMap.get @CloTag . getValue
-
-
--- |  Extract the set of actor references from the value
-getActors :: Value -> Set Actor
-getActors = fromMaybe Set.empty . HMap.get @ActTag . getValue
-
--- | Inject a closure into the abstract domain
-injectClo :: (Exp, Env) -> Value
-injectClo = Value . HMap.singleton @CloTag  . Set.singleton
-
--- | Inject a primitive into the abstract domain
-injectPrim :: String -> Value
-injectPrim = Value . HMap.singleton @PrmTag . Set.singleton
-
--- | Inject an actor in the abstract value
-injectActor :: Actor -> Value
-injectActor = Value . HMap.singleton @ActTag . Set.singleton
-
-
--- | Type to indicate that the actor value might be something else,
--- with a fallback of which actor values it might contain.
-data V = ConstantValue { values :: Value } | TopValue { values :: Value } deriving (Ord, Eq, Show, Generic)
-
-instance NFData V
-
-instance Joinable V where
-  join (TopValue v1) (TopValue v2) = TopValue $ L.join v1 v2
-  join (ConstantValue v1) (ConstantValue v2) = ConstantValue $ L.join v1 v2
-  join (TopValue v1) (ConstantValue v2) = TopValue (L.join v1 v2)
-  join (ConstantValue v1) (TopValue v2) = TopValue (L.join v1 v2)
-
-instance PartialOrder V where
-  leq _ (TopValue _) = True
-  leq (ConstantValue v1) (ConstantValue v2) = leq v1 v2
-  leq _ _ = False
-
-instance TopLattice V where
-  top = TopValue bottom
-
-instance Domain V Bool where
-  inject = const $ TopValue bottom
-
--- | For simplicity the 'BoolDomain' implementation for 'V' is always top
-instance BoolDomain V where
-  boolTop = TopValue bottom
-  not = const boolTop
-  and = const $ const boolTop
-  or  = const $ const boolTop
-
--- | Converts any value into a top value, retaining the possible
--- abstract values that the top value could take.
-topValue :: V -> V
-topValue (ConstantValue v) = TopValue v
-topValue v = v
-
--- | An approximation of actors mailboxes
-type MB = V
+import Analysis.SimpleActor.Infer.Common
+import Analysis.SimpleActor.Infer.Graph
+import Analysis.SimpleActor.Infer.Domain
 
 ------------------------------------------------------------
 -- Analysis state
@@ -397,8 +194,9 @@ alloc = return . flip VarAdr ()
 -- | Register a message send
 sendMessage :: InferM m => V -> V -> m V
 sendMessage rcv v = mjoinMap (\rcv' -> do
-    self <- asks _self
-    modify (over graph (addSend (ActorNode self) (ActorNode rcv')))
+    -- self <- asks _self
+    node <- asks _node
+    modify (over graph (addSend node (ActorNode rcv')))
     MapM.joinWith (ActorMailboxKey rcv') v
     return top) (getActors (values rcv))
 
@@ -423,9 +221,11 @@ registerReceiveEdge target = (\source -> modify (over graph (addEdge ReceiveEdge
 valueNodes :: V -> Set N
 valueNodes = foldMap toNode . HMap.toList . getValue . values
    where  toNode :: BindingFrom M -> Set N
-          toNode (SCloTag :&: clos) = Set.map FnCallNode clos
+          toNode (SCloTag :&: clos) = Set.map (FnCallNode . first lamBdy) clos
           toNode (SPrmTag :&: _)    = Set.empty
           toNode (SActTag :&: refs) = Set.map ActorNode refs
+          lamBdy (Lam _ e _) = e
+          lamBdy _ = error "not a lambda expression"
 
 -- | Register a write to the specified memory address and performs the actual write,
 -- if the value written is representable by a node in the graph, an edge is added
@@ -447,8 +247,6 @@ registerReadAdr adr =
     asks _node
     >>= (modify . over graph . addLookup (AdrNode adr))
     >>  lookupAdr adr
-
-
 
 ------------------------------------------------------------
 -- Analysis Semantics
@@ -579,3 +377,4 @@ infer = runWithWorkList @[_] @Task
       . fmap fst . runStoreT @_ @Adr @V initialSto
       . flip execStateT initialInferred
       . inter
+

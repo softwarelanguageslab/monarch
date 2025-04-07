@@ -28,6 +28,9 @@ library
       Analysis.SimpleActor.Fixpoint.Modular
       Analysis.SimpleActor.Fixpoint.Sequential
       Analysis.SimpleActor.Infer
+      Analysis.SimpleActor.Infer.Common
+      Analysis.SimpleActor.Infer.Domain
+      Analysis.SimpleActor.Infer.Graph
       Analysis.SimpleActor.Monad
       Analysis.SimpleActor.Semantics
       Control.Monad.Cond
