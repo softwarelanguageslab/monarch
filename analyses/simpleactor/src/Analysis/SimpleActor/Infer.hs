@@ -35,6 +35,8 @@ import Text.Printf
 import Syntax.Span (spanOf)
 import Data.Maybe
 import Syntax (SpanOf)
+import Control.Monad.Layer
+import Control.Monad.Trans.Identity
 
 import Analysis.SimpleActor.Infer.Common
 import Analysis.SimpleActor.Infer.Graph
@@ -95,6 +97,18 @@ injectTask = AnalyzeActor . Actor . (, initialEnv)
 -- Analysis Monad
 ------------------------------------------------------------
 
+-- | Monadic type class for inference related activities
+class MonadInfer m where 
+  -- | Spawn a new process
+  spawnProcess :: Actor -> m V
+  -- | Call the given function (assuming that parameters have already been allocated)   
+  callClo :: Clo -> m V
+
+-- | Trivial instance of 'MonadInfer' for layered monads
+instance (MonadLayer t, Monad m, MonadInfer m) => MonadInfer (t m) where
+  spawnProcess = upperM . spawnProcess
+  callClo = upperM . callClo
+
 -- | Key at which the mailboxes are stored in the global MapM
 newtype ActorMailboxKey = ActorMailboxKey Actor
                         deriving (Ord, Eq, Show)
@@ -137,51 +151,8 @@ applyClosure _ (Lam xs bdy _, env) vs = do
    let nams = map name xs
    let env' = Environment.extends (zip nams adrs) env
    let clo  = (bdy, env')
-   modify (over graph (addNode (FnCallNode clo)))
-   registerCallEdge clo
-   task <- AnalyzeClosure clo <$> getDynamic <*> asks _self
-   mapM_ (uncurry registerWriteAdr) (zip adrs vs)
-   ComponentTracking.spawn task
-   maybe mbottom return =<< MapM.get task
+   callClo clo
 applyClosure e _ _ = error $ "not a valid closure at " ++ show (spanOf e)
-
-
--- | Apply a primitive function
-applyPrimitive :: InferM m => Exp -> String -> [V] -> m V
-applyPrimitive = runPrimitive
-
--- | Apply a function (closure or primitive)
-apply :: InferM m => Exp -> V -> [V] -> m V
-apply caller operator operands = case operator of
-  -- there are three cases: - the operator is a closure
-  --                        - the operator is a primitive  
-  --                        - the operator is a top value
-  --
-  -- the first two cases are handled as in @Analysis.SimpleActor.Semantics@
-  -- the last one is handled in that way as well (for the closure and primitive values
-  -- embedded in the top value) but also returns @top@
-  --
-  -- The top value that is produced here contains all the values from the operands,
-  -- this is because the assumption is that unimplemented primitives can only return
-  -- values either related to their inputs, or completely random values. Hence,
-  -- the abstraction is sound and also includes potential closures and actor references.
-  ConstantValue v ->   mjoinMap (flip (applyClosure caller) operands) (getClosures v)
-                  <||> mjoinMap (flip (applyPrimitive caller) operands) (getPrimitives v)
-  TopValue v -> apply caller (ConstantValue v) operands <||> return (TopValue $ L.joins $ map values operands)
-
--- | Lookup a variable in the current environment, returns @top@
--- if the variable does not exists in the environment this is to take
--- unimplemented primitives into account.
-lookupVar :: InferM m => String -> m V
-lookupVar = maybe (return top) registerReadAdr <=< (fmap (flip Map.lookup) getEnv <*>) . pure
-
--- | Extract the variables from the pattern, bind them to top
--- and evaluate the body of the pattern in that environment.
-withBindsTop :: InferM m => V -> Pat -> Exp -> m V
-withBindsTop topV pat bdy = mapM_ (`registerWriteAdr` topV) adrs >> withExtendedEnv (zip nams adrs) (eval bdy)
-   where vars = Set.toList $ patternVariables pat
-         nams = map name vars
-         adrs = map (`VarAdr` ()) vars
 
 -- | Register a potential message receive
 registerReceive :: InferM m => Pat -> m ()
@@ -267,6 +238,44 @@ evalReceive (Receive pats _) = do
   mapM_ (registerReceive . fst) pats >> mjoinMap (uncurry (withBindsTop $ topValue message)) pats
 evalReceive _ = error "not a receive expression"
 
+-- | Apply a primitive function
+applyPrimitive :: InferM m => Exp -> String -> [V] -> m V
+applyPrimitive = runPrimitive
+
+-- | Apply a function (closure or primitive)
+apply :: InferM m => Exp -> V -> [V] -> m V
+apply caller operator operands = case operator of
+  -- there are three cases: - the operator is a closure
+  --                        - the operator is a primitive  
+  --                        - the operator is a top value
+  --
+  -- the first two cases are handled as in @Analysis.SimpleActor.Semantics@
+  -- the last one is handled in that way as well (for the closure and primitive values
+  -- embedded in the top value) but also returns @top@
+  --
+  -- The top value that is produced here contains all the values from the operands,
+  -- this is because the assumption is that unimplemented primitives can only return
+  -- values either related to their inputs, or completely random values. Hence,
+  -- the abstraction is sound and also includes potential closures and actor references.
+  ConstantValue v ->   mjoinMap (flip (applyClosure caller) operands) (getClosures v)
+                  <||> mjoinMap (flip (applyPrimitive caller) operands) (getPrimitives v)
+  TopValue v -> apply caller (ConstantValue v) operands <||> return (TopValue $ L.joins $ map values operands)
+
+-- | Lookup a variable in the current environment, returns @top@
+-- if the variable does not exists in the environment this is to take
+-- unimplemented primitives into account.
+lookupVar :: InferM m => String -> m V
+lookupVar = maybe (return top) registerReadAdr <=< (fmap (flip Map.lookup) getEnv <*>) . pure
+
+-- | Extract the variables from the pattern, bind them to top
+-- and evaluate the body of the pattern in that environment.
+withBindsTop :: InferM m => V -> Pat -> Exp -> m V
+withBindsTop topV pat bdy = mapM_ (`registerWriteAdr` topV) adrs >> withExtendedEnv (zip nams adrs) (eval bdy)
+   where vars = Set.toList $ patternVariables pat
+         nams = map name vars
+         adrs = map (`VarAdr` ()) vars
+
+
 -- | Recursive evaluation function, follows the @Analysis.SimpleActor.Semantics.eval@ mostly
 -- but differs in its treatment of pattern matching, conditions and is overall much simpler.
 eval :: InferM m => Exp -> m V
@@ -276,13 +285,13 @@ eval e@(App e1 es _)  = join $ liftA2 (apply e) (eval e1) (mapM eval es)
 eval (Ite _ e2 e3 _)  = eval e2 <||> eval e3
 eval (Spawn e _)      = spawn . Actor . (e,) =<< getEnv
 eval (Terminate _)    = mbottom -- no interesting behavior
-eval ex@(Receive _ _) = do
-  clo <- (ex,) <$> getEnv
-  task <- AnalyzeReceive clo <$> getDynamic <*> asks _self
-  modify (over graph (addNode (ReceiveNode clo)))
-  registerReceiveEdge clo
-  ComponentTracking.spawn task
-  maybe mbottom return =<< MapM.get task
+eval ex@(Receive _ _) = evalReceive ex
+  -- clo <- (ex,) <$> getEnv
+  -- task <- AnalyzeReceive clo <$> getDynamic <*> asks _self
+  -- modify (over graph (addNode (ReceiveNode clo)))
+  -- registerReceiveEdge clo
+  -- ComponentTracking.spawn task
+  -- maybe mbottom return =<< MapM.get task
 
 eval (Match ev pats _)   = do
   -- Ignores the pattern matches but binds all variables
@@ -336,6 +345,29 @@ initialSto :: Map Adr V
 initialSto = Map.fromList $ map (\nam -> (PrrAdr nam, ConstantValue $ injectPrim nam)) (Map.keys allPrimitives)
 
 ------------------------------------------------------------
+-- Light-weight pre-analysis monad
+------------------------------------------------------------
+
+-- | Monad for the light-weight pre-analysis monad
+newtype PreAnalysisT m a = PreAnalysisT (StateT Inferred m a)
+                         deriving (Monad, Applicative, Functor, MonadState Inferred, MonadLayer)
+
+instance (Monad m,
+          MonadReader ComponentInfo m,
+          MapM Task V m,
+          MonadDynamic Adr m,
+          ComponentTrackingM m Task,
+          MonadBottom m
+  ) => MonadInfer (PreAnalysisT m) where
+   spawnProcess act = ComponentTracking.spawn (AnalyzeActor act)
+                  >> modify (over actors (Set.insert act))
+                  $> ConstantValue (injectActor act)
+   callClo clo      = do
+      task <- AnalyzeClosure clo <$> getDynamic <*> asks _self
+      ComponentTracking.spawn task
+      maybe mbottom return =<< MapM.get task 
+      
+------------------------------------------------------------
 -- Analysis instantiation
 ------------------------------------------------------------
 
@@ -378,3 +410,11 @@ infer = runWithWorkList @[_] @Task
       . flip execStateT initialInferred
       . inter
 
+------------------------------------------------------------
+-- Compositional data-flow graph construction
+------------------------------------------------------------
+
+ 
+-- Goal is to do something like this: https://dl.acm.org/doi/pdf/10.1145/320385.320400 but for tracking the actor references. The output of this algorithm
+-- will be a composable graph of values that are written to addresses or message
+-- sends. This information can be used at "face value" to detect emphemeral actors.
