@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 -- | Common shorthands shared between all "Infer" modules
-module Analysis.SimpleActor.Infer.Common(Adr, Env, Dyn, Actor(..), Clo) where
+module Analysis.SimpleActor.Infer.Common(Adr, Env, Dyn, Actor(..), Clo, Sto) where
 
 import Domain.Scheme.Store (SchemeAdr)
 import Syntax.AST
@@ -30,4 +30,5 @@ instance Show Actor where
 -- | Type of closures
 type Clo = (Exp, Env)
 
-
+-- | Type of stores
+type Sto v = Map Adr v

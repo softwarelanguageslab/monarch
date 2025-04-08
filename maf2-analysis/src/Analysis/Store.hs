@@ -52,7 +52,7 @@ traceStore' adrs m = Set.unions (Set.map (maybe Set.empty trace . (`Map.lookup` 
 
 -- | Trace the addresses reachable from the given set of addresses in any number of steps
 traceStore :: (Trace adr v) => Set adr -> Map adr v -> Set adr 
-traceStore adrs m = if adrs /= adrs' then traceStore adrs m else adrs
+traceStore adrs m = if adrs /= adrs' then traceStore adrs' m else adrs
    where adrs' = traceStore' adrs m
 
 --

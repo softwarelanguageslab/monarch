@@ -4,28 +4,20 @@ module Main (main) where
 
 import Syntax.Compiler
 import Data.Map (Map)
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.List (intercalate, find)
+import Data.List (intercalate)
 import Text.Printf
 import qualified Data.Map as Map
 import Syntax.Span hiding (filename)
 import Syntax.Simplifier
-import Domain.Scheme.Store
 import Analysis.SimpleActor
 import Options.Applicative
 import Syntax.AST hiding (filename)
 import Interpreter hiding (PrmAdr, store)
-import qualified Analysis.Store as Store
-import System.IO
 import Control.Monad
-import RIO (Identity, NFData (..))
 import Analysis.SimpleActor.Monad ()
 import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp)
 import Data.Tuple.Syntax
 import qualified Analysis.SimpleActor.Infer as Infer
-import Control.DeepSeq (force)
-import GHC.IO (evaluate)
 import System.TimeIt
 
 ------------------------------------------------------------
@@ -125,9 +117,9 @@ inferCmd (InputOptions { filename, doTranslate }) = do
    ast <- loadFile' doTranslate filename
    (ellapsed, inferred) <- timeItT $ Infer.infer ast
    putStrLn ("Ellapsed time (in seconds): " ++ show ellapsed)
-   dotOut <- openFile "out.dot" WriteMode
-   hPutStrLn dotOut (Infer.toDot $ Infer._graph inferred)
-   hClose dotOut
+   -- dotOut <- openFile "out.dot" WriteMode
+   -- hPutStrLn dotOut (Infer.toDot $ Infer._graph inferred)
+   -- hClose dotOut
 
 
 ------------------------------------------------------------

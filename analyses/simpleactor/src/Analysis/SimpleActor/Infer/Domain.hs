@@ -16,24 +16,25 @@ module Analysis.SimpleActor.Infer.Domain(
     MB,
     M,
     ActorTag(..),
-    SActorTag(..)   
+    SActorTag(..)
   ) where
 
 import Analysis.SimpleActor.Infer.Common
 import qualified Data.List as List
-import Data.TypeLevel.HMap hiding (map)
-import qualified Data.TypeLevel.HMap as HMap
+import Data.TypeLevel.HMap hiding (foldr, map)
+import qualified Data.TypeLevel.HMap as HMap hiding (foldr)
 import Data.Singletons
 import Domain.Class
 import Domain.Core.BoolDomain.Class
 import GHC.Generics
 import Lattice.Class (Joinable, PartialOrder, TopLattice, BottomLattice)
 import qualified Lattice.Class as L
-import RIO
+import RIO hiding (trace)
 import qualified RIO.Set as Set
 import qualified RIO.Map as Map
-import Syntax.AST
+import Syntax.AST hiding (Trace)
 import Text.Printf
+import Lattice.Trace (Trace (..))
 
 
 -- | Tags of the product in the actor value
@@ -52,7 +53,15 @@ type M = '[ CloTag ::-> Set (Exp, Env), PrmTag ::-> Set String, ActTag ::-> Set 
 -- | Very crude approximation of actor values
 newtype Value = Value { getValue :: HMap M } deriving (Ord, Eq, Joinable, PartialOrder, BottomLattice, Generic)
 
+
 instance NFData Value
+
+instance Trace Adr Value where
+   trace = foldr (Set.union . traceElement) Set.empty . HMap.toList . getValue
+    where traceElement :: BindingFrom M -> Set Adr
+          traceElement (SCloTag :&: clos)  = foldMap (foldMap (Set.singleton . snd) . Map.toList . snd) clos 
+          traceElement (SPrmTag :&: _)     = Set.empty
+          traceElement (SActTag :&: acts)  = foldMap (foldMap (Set.singleton . snd) . Map.toList . snd . getActor) acts 
 
 instance (ForAll ActorTag (AtKey1 Show M)) => Show Value where
    show (Value hm) = List.intercalate "," $ map showElement $ HMap.toList hm
@@ -105,6 +114,10 @@ instance PartialOrder V where
 
 instance TopLattice V where
   top = TopValue L.bottom
+
+
+instance Trace Adr V where
+   trace = trace . values
 
 instance Domain V Bool where
   inject = const $ TopValue L.bottom
