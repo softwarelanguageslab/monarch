@@ -7,6 +7,7 @@ import Domain.Core.BoolDomain.Class (BoolFor)
 import qualified Domain.Core.BoolDomain.Class as Bool
 
 import Data.Kind 
+import Lattice.BottomLiftedLattice
 
 class (Joinable n, Bool.BoolDomain (BoolFor n)) => NumberDomain n where
    isZero :: AbstractM m => n -> m (BoolFor n)
@@ -52,3 +53,31 @@ class (Domain r Double, NumberDomain r) => RealDomain r where
    tan :: AbstractM m => r -> m r
    atan :: AbstractM m => r -> m r
    sqrt :: AbstractM m => r -> m r
+
+type instance BoolFor (BottomLifted a) = BoolFor a
+instance (NumberDomain a, TopLattice a) => NumberDomain (BottomLifted a) where 
+   isZero Bottom = return Bool.false  
+   isZero (Value a) = isZero a
+   random _ = return $ Value top
+
+   plus = mapBL plus 
+   minus = mapBL minus 
+   times = mapBL times 
+   div = mapBL Domain.Core.NumberDomain.Class.div 
+   expt = mapBL expt 
+   eq = mapBLBool eq 
+   ne = mapBLBool ne 
+   lt = mapBLBool lt 
+   gt = mapBLBool gt 
+   ge = mapBLBool ge 
+   le = mapBLBool le
+
+mapBL :: Monad m => (t1 -> t2 -> m a) -> BottomLifted t1 -> BottomLifted t2 -> m (BottomLifted a)
+mapBL _ Bottom _ = return Bottom 
+mapBL _ _ Bottom = return Bottom 
+mapBL f (Value a) (Value b) = do v <- f a b; return $ Value v
+
+mapBLBool :: (Monad m, Bool.BoolDomain a) => (t1 -> t2 -> m a) -> BottomLifted t1 -> BottomLifted t2 -> m a
+mapBLBool f (Value a) (Value b) = f a b 
+mapBLBool _ Bottom _ = return Bool.boolTop 
+mapBLBool _ _ Bottom = return Bool.boolTop 
