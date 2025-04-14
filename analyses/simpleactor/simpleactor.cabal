@@ -77,6 +77,7 @@ library
     , containers
     , deepseq
     , exceptions
+    , extra
     , hspec
     , hspec-contrib
     , layers-mtl
@@ -127,6 +128,7 @@ executable simpleactor-exe
       base >=4.7 && <5
     , containers
     , deepseq
+    , extra
     , filepath
     , hspec
     , hspec-contrib
@@ -175,6 +177,7 @@ test-suite simpleactor-tests
   build-depends:
       base >=4.7 && <5
     , deepseq
+    , extra
     , hspec
     , hspec-contrib
     , maf2-analysis

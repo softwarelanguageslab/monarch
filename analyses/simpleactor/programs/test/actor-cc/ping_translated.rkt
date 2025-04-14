@@ -638,9 +638,12 @@
                            (pair k7409 (pair j7413 (pair 'pong sender))))
                           (letrec ((kc7410 (k7409 j7413))
                                    (old-send7414 (dyn send^)))
+                            (trace j7413)
                             (parametrize
                              ((send^
                                (lambda (rcv7411 msg7412)
+                                 (trace 
+                                  rcv7411)
                                  (old-send7414
                                   kc7410
                                   (pair rcv7411 msg7412)))))
@@ -658,14 +661,13 @@
                                    v7420
                                    (((pair 'ping x7422)
                                      (begin
-                                      (trace 'ping)
                                       (pair
                                       'enhanced
                                       (pair
                                        (lambda (j7424)
+                                         (trace j7424)
                                          (letrec ((r
                                                    (lambda (trace7428)
-                                                     (trace trace7428)
                                                      (receive
                                                       (('finish
                                                         (begin
@@ -690,6 +692,7 @@
                                                                'enhanced
                                                                (pair
                                                                 (lambda (j7431)
+                                                                  (trace "CALL")
                                                                   (letrec ((r
                                                                             (lambda (trace7435)
                                                                               (receive

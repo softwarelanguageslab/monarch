@@ -99,6 +99,9 @@ injectActor = Value . HMap.singleton @ActTag . Set.singleton
 -- with a fallback of which actor values it might contain.
 data V = ConstantValue { values :: Value } | TopValue { values :: Value } deriving (Ord, Eq, Show, Generic)
 
+instance BottomLattice V where
+  bottom = ConstantValue L.bottom
+
 instance NFData V
 
 instance Joinable V where

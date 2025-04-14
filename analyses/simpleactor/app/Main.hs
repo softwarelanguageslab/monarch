@@ -114,9 +114,11 @@ interpret (InputOptions { .. }) =
 
 inferCmd :: InputOptions -> IO ()
 inferCmd (InputOptions { filename, doTranslate }) = do
+   putStrLn $ "analyzing " ++ filename
    ast <- loadFile' doTranslate filename
    (ellapsed, inferred) <- timeItT $ Infer.infer ast
    putStrLn ("Ellapsed time (in seconds): " ++ show ellapsed)
+   putStrLn $ "Inferred local actor instances " ++ show (uncurry Infer.localActors inferred)
    -- dotOut <- openFile "out.dot" WriteMode
    -- hPutStrLn dotOut (Infer.toDot $ Infer._graph inferred)
    -- hClose dotOut

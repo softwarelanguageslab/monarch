@@ -3,10 +3,11 @@
 {-# LANGUAGE LambdaCase #-}
 -- | This module is used to make inferences about certain parts
 -- of the program.
-module Analysis.SimpleActor.Infer(infer, module Analysis.SimpleActor.Infer.Graph, Inferred(..)) where
+module Analysis.SimpleActor.Infer(infer, module Analysis.SimpleActor.Infer.Graph, Inferred(..), localActors) where
 
 import qualified  Analysis.Environment as Environment
 import Analysis.SimpleActor.Monad (MonadDynamic(..), runDynamicT)
+import Analysis.Store (traceStore)
 import Analysis.Monad (WorkListM, EnvM(..), StoreM(..), iterateWL', runEnv, runJoinT, runStoreT, runWithComponentTracking, runWithMapping', runWithWorkList, runWithDependencyTracking, MonadDependencyTracking)
 import Analysis.Monad.IntraAnalysis
 import Analysis.Monad.Map (MapM)
@@ -17,31 +18,29 @@ import Control.Lens
 import Control.Monad.State
 import Control.Monad.Join
 import Data.Kind
-import qualified Data.List as List
-import Data.Singletons
 import Data.Singletons.Sigma
-import Domain.Class
+import Data.Tuple.Extra (dupe)
 import Domain.Scheme.Store (SchemeAdr(..))
 import qualified Data.Set as Set
 import Data.TypeLevel.HMap hiding (map)
 import qualified Data.TypeLevel.HMap as HMap
-import Domain.Core.BoolDomain.Class
 import Lattice.Class hiding (join)
+import qualified Lattice.Trace as T
 import qualified Lattice.Class as L
 import RIO hiding (view, over)
 import qualified RIO.Map as Map
 import Syntax.AST
-import Text.Printf
 import Syntax.Span (spanOf)
-import Data.Maybe
-import Syntax (SpanOf)
+import Syntax.FV
 import Control.Monad.Layer
 import Control.Monad.Trans.Identity
+import Data.Maybe
+import qualified Debug.Trace as Trace
+
 
 import Analysis.SimpleActor.Infer.Common
 import Analysis.SimpleActor.Infer.Graph
 import Analysis.SimpleActor.Infer.Domain
-import Analysis.Store (traceStore)
 
 ------------------------------------------------------------
 -- Analysis state
@@ -52,9 +51,10 @@ data Inferred = Inferred {
   -- | Approximation of the set of actors in a program
   _actors :: Set Actor,
   -- | Approximation of the message sent by a particular actor
-  _sends :: Map Actor (Set V),
-  -- | Approximation of the messages that an actor could receive
-  -- during its lifetime.
+  _sends :: Map Actor V,
+  -- | Actors spawned by the given actor
+  _spawns :: Map Actor (Set Actor),
+  -- | Mailbox approximation  
   _receives :: Map Actor (Set Pat)
 } deriving (Eq, Ord, Show, Generic)
 
@@ -64,7 +64,7 @@ $(makeLenses ''Inferred)
 
 -- | Initial inference state
 initialInferred :: Inferred
-initialInferred = Inferred Set.empty Map.empty Map.empty
+initialInferred = Inferred Set.empty Map.empty Map.empty Map.empty
 
 ------------------------------------------------------------
 -- Analysis tasks
@@ -101,11 +101,14 @@ class MonadInfer m where
   spawnProcess :: Actor -> m V
   -- | Call the given function (assuming that parameters have already been allocated)   
   callClo :: Clo -> m V
+  -- | Register that the given message has been sent from the current actor
+  registerSend :: V -> m ()
 
 -- | Trivial instance of 'MonadInfer' for layered monads
 instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadInfer m) => MonadInfer (t m) where
   spawnProcess = upperM . spawnProcess
   callClo = upperM . callClo
+  registerSend = upperM . registerSend
 
 -- | Key at which the mailboxes are stored in the global MapM
 newtype ActorMailboxKey = ActorMailboxKey Actor
@@ -145,6 +148,7 @@ applyClosure _ (Lam xs bdy _, env) vs = do
    let nams = map name xs
    let env' = Environment.extends (zip nams adrs) env
    let clo  = (bdy, env')
+   mapM_ (uncurry writeAdr) (zip adrs vs)
    callClo clo
 applyClosure e _ _ = error $ "not a valid closure at " ++ show (spanOf e)
 
@@ -161,6 +165,7 @@ sendMessage :: InferM m => V -> V -> m V
 sendMessage rcv v = mjoinMap (\rcv' -> do
     -- self <- asks _self
     MapM.joinWith (ActorMailboxKey rcv') v
+    registerSend v
     return top) (getActors (values rcv))
 
 -- | Extract the possible values the current actor can receive
@@ -253,10 +258,10 @@ withBindsTop topV pat bdy = mapM_ (`registerWriteAdr` topV) adrs >> withExtended
 -- but differs in its treatment of pattern matching, conditions and is overall much simpler.
 eval :: InferM m => Exp -> m V
 eval (Literal lit _)  = return (injectLit lit)
-eval lam@(Lam {})     = ConstantValue . injectClo . (lam,) <$> getEnv
+eval lam@(Lam {})     = ConstantValue . injectClo . (lam,) . flip Map.restrictKeys (fv lam)  <$> getEnv
 eval e@(App e1 es _)  = join $ liftA2 (apply e) (eval e1) (mapM eval es)
 eval (Ite _ e2 e3 _)  = eval e2 <||> eval e3
-eval (Spawn e _)      = spawn . Actor . (e,) =<< getEnv
+eval (Spawn e _)      = (spawn . Actor . (e,)) . flip Map.restrictKeys (fv e) =<< getEnv
 eval (Terminate _)    = mbottom -- no interesting behavior
 eval ex@(Receive _ _) = evalReceive ex
 eval (Match ev pats _)   = do
@@ -282,7 +287,7 @@ eval (DynVar (Ide x _)) =
    lookupDynamic x >>= registerReadAdr
 eval (Self _)         = return top -- we don't care about self references
 -- Ignore all other expressions
--- eval (Trace e _)      = liftIO (print e) >> eval e
+eval (Trace e _)      = eval e >>= (\v -> liftIO (putStrLn ("TRACE@" ++ show (spanOf e) ++ ": " ++ " of " ++ show  v)) $> v)
 eval _                = return top
 
 ------------------------------------------------------------
@@ -328,11 +333,15 @@ instance (Monad m,
   ) => MonadInfer (PreAnalysisT m) where
    spawnProcess act = ComponentTracking.spawn (AnalyzeActor act)
                   >> modify (over actors (Set.insert act))
+                  >> modify (over spawns (Map.insertWith Set.union act Set.empty))
+                  >> (asks _self >>= (\self' -> modify (over spawns (Map.insertWith Set.union self' (Set.singleton act)))))
                   $> ConstantValue (injectActor act)
    callClo clo      = do
       task <- AnalyzeClosure clo <$> getDynamic <*> asks _self
       ComponentTracking.spawn task
       maybe mbottom return =<< MapM.get task
+   registerSend msg = asks _self >>= (\act -> modify (over sends (Map.insertWith L.join act msg)))
+
 
 -- | Run the computation inside the context of a pre-analysis monad
 runPreAnalysisT :: PreAnalysisT m a -> m a
@@ -371,7 +380,7 @@ inter expr = iterateWL' (injectTask expr) intra
            & flip runReaderT (ComponentInfo actor (ActorNode actor))
       where actor = Actor (expr, initialEnv)
 
-infer :: Exp -> IO Inferred
+infer :: Exp -> IO (Inferred, Sto V)
 infer = runWithWorkList @[_] @Task
       . runWithDependencyTracking @Task @Task
       . runWithDependencyTracking @Task @Adr
@@ -379,46 +388,33 @@ infer = runWithWorkList @[_] @Task
       . runWithMapping' @Task @V
       . runWithMapping' @ActorMailboxKey @V
       . runWithComponentTracking @Task
-      . fmap fst . runStoreT @_ @Adr @V initialSto
+      . runStoreT @_ @Adr @V initialSto
       . flip execStateT initialInferred
       . inter
 
 ------------------------------------------------------------
 -- Compositional data-flow graph construction
-------------------------------------------------------------
+-----------------------------------------------------------
 
----------------------------------------
--- Semantics instantiation
----------------------------------------
+-- | Computes the values that escape the given actor
+escapingValuesActor :: Inferred -> Sto V -> Actor -> Set V
+escapingValuesActor Inferred { .. } store act = Set.map (fromJust . flip Map.lookup store) (traceStore (Set.union spawnAdrs sendsAdrs) store)
+  where spawns' = fromMaybe Set.empty (Map.lookup act _spawns)
+        sends   = fromMaybe L.bottom (Map.lookup act _sends)
+        -- Addresses escaped through captured variables when spawning an actor
+        spawnAdrs :: Set Adr
+        spawnAdrs = foldMap (T.trace . snd . getActor) spawns'
+        -- Addresses escaped through message sends
+        sendsAdrs :: Set Adr
+        sendsAdrs  = Set.empty -- T.trace sends
 
-
-
-
----------------------------------------
--- Entrypoints
----------------------------------------
-
--- | A component that has to be analyzed compositionally
-data Component = ActorCmp Actor (Sto V)
-               deriving (Ord, Eq, Show)
-  
--- | A summary of the escaping values of the component
-data Summary
-
--- | Derive a set of components that need to be analyzed compositionally
--- from the inferred information of the actor system.
-componentsFromInferred :: Inferred         -- ^ the information inferred in the whole program pre-analysis
-                       -> Sto V            -- ^ derived store information (from the previous example)
-                       -> Set Component
-componentsFromInferred inferred sto = Set.map fromActor (_actors inferred)
-  where fromActor act@(Actor (expr ,env)) = ActorCmp act (Map.restrictKeys sto (traceStore (envAdrs env) sto))
-        envAdrs env = foldMap (Set.singleton . snd) (Map.toList env)
-
--- | Derive a summary for the given component
-summaryOfComponent :: Component -> Summary
-summaryOfComponent = undefined
+-- | For each actor, compute the set of values that are escaping the scope
+-- of the actor
+escapingValues :: Inferred -> Sto V -> Map Actor V
+escapingValues inf@Inferred { .. } sto = Map.fromList $ map (second (L.joins . escapingValuesActor inf sto)) (uncurry zip $ dupe actors)
+  where actors = Set.toList _actors
 
 
--- Goal is to do something like this: https://dl.acm.org/doi/pdf/10.1145/320385.320400 but for tracking the actor references. The output of this algorithm
--- will be a composable graph of values that are written to addresses or message
--- sends. This information can be used at "face value" to detect emphemeral actors.
+-- | Compute the actors local to the given actor based on the inferred data
+localActors :: Inferred -> Sto V -> Map Actor (Set Actor)
+localActors inf@Inferred { .. } sto = Trace.traceShow _spawns $ Map.mapWithKey (\k -> Set.filter (not . L.subsumes (fromMaybe L.bottom (Map.lookup k (escapingValues inf sto))) . ConstantValue . injectActor)) _spawns
