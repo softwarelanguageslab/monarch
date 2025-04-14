@@ -638,15 +638,15 @@
                            (pair k7409 (pair j7413 (pair 'pong sender))))
                           (letrec ((kc7410 (k7409 j7413))
                                    (old-send7414 (dyn send^)))
-                            (trace j7413)
+                            ; (trace j7413)
                             (parametrize
                              ((send^
                                (lambda (rcv7411 msg7412)
                                  (trace 
-                                  rcv7411)
+                                  kc7410)
                                  (old-send7414
                                   kc7410
-                                  (pair rcv7411 msg7412)))))
+                                  (pair rcv7411 (trace msg7412))))))
                              (begin
                                (print 'pong)
                                (sender (pair 'ping (dyn self)))
@@ -665,13 +665,13 @@
                                       'enhanced
                                       (pair
                                        (lambda (j7424)
-                                         (trace j7424)
+                                         ; (trace j7424)
                                          (letrec ((r
                                                    (lambda (trace7428)
                                                      (receive
                                                       (('finish
                                                         (begin
-                                                          (trace (member 'pong trace7428))
+                                                          ; (trace (member 'pong trace7428))
                                                           (if (member
                                                                'pong
                                                                trace7428)
@@ -681,7 +681,7 @@
                                                          rcv7427
                                                          message7426)
                                                         (begin
-                                                          (trace 'rcv)
+                                                          ; (trace 'rcv)
                                                         (match
                                                          message7426
                                                          (((pair 'pong x7429)
@@ -692,7 +692,7 @@
                                                                'enhanced
                                                                (pair
                                                                 (lambda (j7431)
-                                                                  (trace "CALL")
+                                                                  ; (trace "CALL")
                                                                   (letrec ((r
                                                                             (lambda (trace7435)
                                                                               (receive
@@ -713,7 +713,7 @@
                                                                     j7424
                                                                     j7424)
                                                                    x7429))))))
-                                                             (trace 'RECUR)
+                                                             ; (trace 'RECUR)
                                                              (r
                                                               (pair
                                                                'pong

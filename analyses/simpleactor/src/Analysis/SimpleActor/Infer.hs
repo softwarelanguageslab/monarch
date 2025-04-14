@@ -417,4 +417,6 @@ escapingValues inf@Inferred { .. } sto = Map.fromList $ map (second (L.joins . e
 
 -- | Compute the actors local to the given actor based on the inferred data
 localActors :: Inferred -> Sto V -> Map Actor (Set Actor)
-localActors inf@Inferred { .. } sto = Trace.traceShow _spawns $ Map.mapWithKey (\k -> Set.filter (not . L.subsumes (fromMaybe L.bottom (Map.lookup k (escapingValues inf sto))) . ConstantValue . injectActor)) _spawns
+localActors inf@Inferred { .. } sto =
+  Trace.traceShow _spawns $
+     Map.mapWithKey (\k -> Set.filter (not . L.subsumes (fromMaybe L.bottom (Map.lookup k (escapingValues inf sto))) . ConstantValue . injectActor)) _spawns

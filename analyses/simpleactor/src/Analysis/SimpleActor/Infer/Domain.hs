@@ -33,6 +33,7 @@ import RIO hiding (trace)
 import qualified RIO.Set as Set
 import qualified RIO.Map as Map
 import Syntax.AST hiding (Trace)
+import Syntax.Span
 import Text.Printf
 import Lattice.Trace (Trace (..))
 
@@ -66,6 +67,7 @@ instance Trace Adr Value where
 instance (ForAll ActorTag (AtKey1 Show M)) => Show Value where
    show (Value hm) = List.intercalate "," $ map showElement $ HMap.toList hm
       where showElement :: BindingFrom M -> String
+            showElement (SCloTag :&: value) = printf "CloTag -> %s" (show (Set.map (spanOf . fst) value)) 
             showElement (key :&: value) =
                printf "%s -> %s" (show $ fromSing key) (withC_ @(AtKey1 Show M) (show value) key)
 
