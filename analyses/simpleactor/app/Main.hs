@@ -19,6 +19,8 @@ import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp)
 import Data.Tuple.Syntax
 import qualified Analysis.SimpleActor.Infer as Infer
 import System.TimeIt
+import qualified RIO.Set as Set
+import System.Exit
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -118,10 +120,20 @@ inferCmd (InputOptions { filename, doTranslate }) = do
    ast <- loadFile' doTranslate filename
    (ellapsed, inferred) <- timeItT $ Infer.infer ast
    putStrLn ("Ellapsed time (in seconds): " ++ show ellapsed)
-   putStrLn $ "Inferred local actor instances " ++ show (uncurry Infer.localActors inferred)
+   let localActorRes = uncurry Infer.localActors inferred
+   let localActorResWithoutMain = Map.filterWithKey (\k -> const $ Infer.injectInitialActor ast /= k) localActorRes
+   let spawnsWithoutMain = Map.filterWithKey (\k -> const $ Infer.injectInitialActor ast /= k) (Infer._spawns (fst inferred))
+   let actorsSpawnedByOthers = sum $ map (Set.size . snd) $ Map.toList spawnsWithoutMain
+   putStrLn $ "Inferred local actor instances " ++ show localActorResWithoutMain
+   if sum (map (Set.size . snd) $ Map.toList localActorResWithoutMain) == 0 && actorsSpawnedByOthers > 2 then
+      exitSuccess
+   else
+      exitFailure
    -- dotOut <- openFile "out.dot" WriteMode
    -- hPutStrLn dotOut (Infer.toDot $ Infer._graph inferred)
    -- hClose dotOut
+
+
 
 
 ------------------------------------------------------------

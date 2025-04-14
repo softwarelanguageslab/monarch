@@ -702,6 +702,7 @@
                                                                                   rcv7434
                                                                                   message7433)
                                                                                  (ping/c)))))))
+                                                                    (trace 'FOO)
                                                                     (spawn^
                                                                      (r
                                                                       (list)))))
