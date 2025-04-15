@@ -19,14 +19,25 @@ if [ -z "${PERSES_SCHEME_JAR}" ] ; then
   exit 1
 fi
 
-SCRIPT_FILE=$(mktemp)
+TEST_DIR=$(mktemp -d)
+SCRIPT_FILE="${TEST_DIR}/run.sh"a
+MONARCH_DIR=$(dirname "$(realpath $0)")
+TEST_FILE="${TEST_DIR}/test.scm"
 
-echo << EOF #!/bin/bash
-cabal run . -- $@
-EOF >> $SCRIPT_FILE
+cp $INPUT_NAME $TEST_FILE
+
+cat << EOF > $SCRIPT_FILE
+#!/bin/bash
+set -o pipefail
+set -o nounset
+
+TEST_DIR=\$(dirname "\$(realpath \$0)")
+cd $MONARCH_DIR/../
+timeout 10 cabal run . -- pre -f \$TEST_DIR/test.scm --no-translate 2>/dev/null
+EOF
 
 chmod +x $SCRIPT_FILE
 
-java -jar $PERSES_JAR --language-ext-jars $PERSES_SCHEME_JAR --lang scheme --test-script $SCRIPT_FILE $INPUT_NAME
+java -jar $PERSES_JAR --language-ext-jars $PERSES_SCHEME_JAR --lang scheme --test-script $SCRIPT_FILE -i $TEST_FILE 
 
-rm $SCRIPT_FILE
+mv $TEST_DIR "perses_out_$(date -Iseconds)"

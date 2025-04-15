@@ -3,7 +3,7 @@
 {-# LANGUAGE LambdaCase #-}
 -- | This module is used to make inferences about certain parts
 -- of the program.
-module Analysis.SimpleActor.Infer(infer, module Analysis.SimpleActor.Infer.Graph, Inferred(..), localActors) where
+module Analysis.SimpleActor.Infer(infer, module Analysis.SimpleActor.Infer.Graph, Inferred(..), localActors, injectInitialActor) where
 
 import qualified  Analysis.Environment as Environment
 import Analysis.SimpleActor.Monad (MonadDynamic(..), runDynamicT)
@@ -89,7 +89,11 @@ performTask t@(AnalyzeReceive (expr, env) dyn actor) =
 
 -- | Create a task from an initial program expression
 injectTask :: Exp -> Task
-injectTask = AnalyzeActor . Actor . (, initialEnv)
+injectTask = AnalyzeActor . injectInitialActor
+
+-- | Initial actor 
+injectInitialActor :: Exp -> Actor
+injectInitialActor = Actor . (, initialEnv)
 
 ------------------------------------------------------------
 -- Analysis Monad
@@ -144,6 +148,8 @@ spawn act = spawnProcess act $> ConstantValue (injectActor act)
 -- | Apply a closure 
 applyClosure :: InferM m => Exp -> Clo -> [V] -> m V
 applyClosure _ (Lam xs bdy _, env) vs = do
+   unless (length xs == length vs) $
+      error "Invalid number of arguments"
    let adrs = map (`VarAdr` ()) xs
    let nams = map name xs
    let env' = Environment.extends (zip nams adrs) env
@@ -287,7 +293,7 @@ eval (DynVar (Ide x _)) =
    lookupDynamic x >>= registerReadAdr
 eval (Self _)         = return top -- we don't care about self references
 -- Ignore all other expressions
-eval (Trace e _)      = eval e >>= (\v -> liftIO (putStrLn ("TRACE@" ++ show (spanOf e) ++ ": " ++ " of " ++ show  v)) $> v)
+eval (Trace e _)      = eval e >>= (\v -> liftIO (putStrLn ("TRACE@" ++ show (spanOf e) ++ ": " ++ show e ++ " " ++ " of " ++ show  v)) $> v)
 eval _                = return top
 
 ------------------------------------------------------------
@@ -406,12 +412,12 @@ escapingValuesActor Inferred { .. } store act = Set.map (fromJust . flip Map.loo
         spawnAdrs = foldMap (T.trace . snd . getActor) spawns'
         -- Addresses escaped through message sends
         sendsAdrs :: Set Adr
-        sendsAdrs  = Set.empty -- T.trace sends
+        sendsAdrs  = T.trace sends
 
 -- | For each actor, compute the set of values that are escaping the scope
 -- of the actor
 escapingValues :: Inferred -> Sto V -> Map Actor V
-escapingValues inf@Inferred { .. } sto = Map.fromList $ map (second (L.joins . escapingValuesActor inf sto)) (uncurry zip $ dupe actors)
+escapingValues inf@Inferred { .. } sto = traceShowId $ Map.fromList $ map (second (L.joins . escapingValuesActor inf sto)) (uncurry zip $ dupe actors)
   where actors = Set.toList _actors
 
 
@@ -419,4 +425,4 @@ escapingValues inf@Inferred { .. } sto = Map.fromList $ map (second (L.joins . e
 localActors :: Inferred -> Sto V -> Map Actor (Set Actor)
 localActors inf@Inferred { .. } sto =
   Trace.traceShow _spawns $
-     Map.mapWithKey (\k -> Set.filter (not . L.subsumes (fromMaybe L.bottom (Map.lookup k (escapingValues inf sto))) . ConstantValue . injectActor)) _spawns
+     Map.mapWithKey (\k -> Set.filter (not . L.subsumes (maybe L.bottom values (Map.lookup k (escapingValues inf sto))) .  injectActor)) _spawns
