@@ -47,6 +47,7 @@ import Control.Fixpoint.WorkList (FIFOWorkList, LIFOWorklist)
 import Lattice.Class
 import qualified Data.HashMap.Strict as HashMap
 import Analysis.SimpleActor.Fixpoint.Common (initialDynEnvironment)
+import Analysis.Symbolic.Monad (DiscardFormulaT)
 
 
 ------------------------------------------------------------
@@ -72,7 +73,7 @@ type SequentialT m = MonadStack '[
                        MetaT,
                        ActorLocalT ActorVlu,
                        -- Local path conditions
-                       FormulaT (SchemeAdr Exp K) ActorVlu,
+                       DiscardFormulaT (SchemeAdr Exp K) ActorVlu,
                        -- WidenedStoreT ActorSto (SchemeAdr Exp K) ActorVlu,
                        -- WidenedFormulaT (SchemeAdr Exp K) ActorVlu,
                        SetNonDetT,
@@ -235,7 +236,7 @@ inter exp environment ref = iterateWL' initialCmp intra
                 <+> Ctx ref               -- context 
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> ref                   -- current `self`
-                <+> emptyPC
+                -- <+> emptyPC
 
 
 
