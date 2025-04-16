@@ -165,8 +165,6 @@ instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMa
   hasAdr = upperM . (hasAdr @a)
 
 
-
-
 -- | Run the @SequentiaIntraT@ monad transformer
 runSequentialIntraT :: ActorRef -> SequentialIntraT m a -> m a
 runSequentialIntraT ref (SequentialIntraT m) = runReaderT m ref
@@ -209,6 +207,7 @@ type MonadActorModular m = (
     MonadBottom m,
     MonadIO m
   )
+
 
 ------------------------------------------------------------
 -- Sequential analysis
