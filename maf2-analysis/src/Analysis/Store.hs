@@ -7,7 +7,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Domain.Core.AbstractCount
 import Lattice
-import Data.List 
+import qualified Data.List 
 import Text.Printf
 import Control.DeepSeq
 
@@ -22,7 +22,7 @@ class Joinable v => Store s a v | s -> a v where
    lookupSto :: a -> s -> Maybe v
    extendSto :: a -> v -> s -> s
    extendsSto :: [(a,v)] -> s -> s 
-   extendsSto = flip $ foldr (uncurry extendSto)
+   extendsSto = flip $ Data.List.foldr (uncurry extendSto)
    from :: [(a,v)] -> s
    from = flip extendsSto emptySto 
    updateSto :: a -> v -> s -> s
@@ -61,9 +61,9 @@ traceStore adrs m = if adrs /= adrs' then traceStore adrs' m else adrs
 
 printSto :: (Show v) => (k -> String) -> (k -> Bool) -> CountingMap k v -> String
 printSto printKey keepKey m  =
-       intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (printKey k) (show v)) adrs
+       Data.List.intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (printKey k) (show v)) adrs
    where adrs   = Map.toList $ Map.filterWithKey (flip (const keepKey)) (store m)
-         indent = maximum (map (length . printKey . fst) adrs) + 5
+         indent = Data.List.maximum (map (Data.List.length . printKey . fst) adrs) + 5
 
 ---
 --- Abstract counting
@@ -85,7 +85,7 @@ instance (Joinable v, Show a, Ord a) => Store (CountingMap a v) a v where
             extend (Just (v', count)) = Just (v' `join` v, inc count)
    updateStoWith :: (Joinable v, Show a, Ord a) => (v -> v) -> (v -> v) -> a -> CountingMap a v -> CountingMap a v
    updateStoWith fs fw a = CountingMap . Map.alter update a . store 
-      where update Nothing              = error ("updating an unbound address " ++ show a)
+      where update Nothing              = error ("updating an unbound address " Data.List.++ show a)
             update (Just (v, CountOne)) = Just (fs v, CountOne)
             update (Just (v, count))    = Just (fw v, count)
 

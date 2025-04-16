@@ -31,6 +31,7 @@ library
       Analysis.Actors.Monad
       Analysis.Actors.Semantics
       Analysis.Context
+      Analysis.Counting
       Analysis.Environment
       Analysis.Erlang.Monad
       Analysis.Erlang.Semantics
