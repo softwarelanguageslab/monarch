@@ -1,4 +1,4 @@
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 -- | Analysis to analyse the inner actor semantics
 module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes) where
@@ -42,6 +42,7 @@ import Control.Fixpoint.WorkList (LIFOWorklist)
 import Lattice.Class
 import Lattice.Trace
 import qualified Data.HashMap.Strict as HashMap
+import Control.Monad.Identity (IdentityT)
 
 
 ------------------------------------------------------------
@@ -72,7 +73,9 @@ type SequentialT m = MonadStack '[
                        -- WidenedFormulaT (SchemeAdr Exp K) ActorVlu,
                        SetNonDetT,
                        -- JoinT,
-                       CacheT
+                       CacheT,
+                       SequentialIntraT,
+                       StoreT ActorSto ActorAdr (StoreVal ActorVlu)
                   ] m
 
 -- | SequentialIntraM denotes the remaining constraints needed for running the intra
@@ -84,23 +87,32 @@ type InterAnalysisM m = (MonadSchemeStore m,
                          DependsOn m SequentialCmp '[
                              SequentialCmp ,
                              SchemeAdr Exp K,
-                             Pid Exp K
+                             Pid Exp K,
+                             In SequentialCmp ActorSto,
+                             Out SequentialCmp ActorSto
                             -- In ActorCmp ActorSto,
                             -- Out ActorCmp ActorSto
                            ],
                             -- In ActorCmp ActorPC,
                             -- Out ActorCmp ActorPC ],
-                         AbstractCountM (SchemeAdr Exp K) m,
+                         -- AbstractCountM (SchemeAdr Exp K) m,
                          MonadMailbox ActorVlu m,
                          FormulaSolver (SchemeAdr Exp K) m,
                          MonadSpawn ActorVlu Ctx m,
-                         MonadIO m)
+                         MonadIO m,
+                         -- Flow sensitive stores
+                         MapM (In SequentialCmp ActorSto) ActorSto m,
+                         MapM (Out SequentialCmp ActorSto) ActorSto m
+                        )
 
 
 ------------------------------------------------------------
 -- Garbage collection
 ------------------------------------------------------------
 
+-- | Trace the addresses in a component
+traceCmp :: SequentialCmp -> Set ActorAdr
+traceCmp (_ ::*:: env ::*:: dyn ::*:: _ ::*:: _ ::*:: _) = Set.unions [trace env, trace dyn]
 
 -- We apply garbage collection in this analysis to remove
 -- unreachable addresses from the store, therefore decreasing
@@ -111,13 +123,13 @@ type InterAnalysisM m = (MonadSchemeStore m,
 -- and which gets applied whenever the open recursive function is used (i.e., when crossing
 -- component boundaries)
 gc :: (MonadCache m,
-       Trace ActorAdr (Key m e),
-       StoreM' ActorSto a ActorVlu m)
+       StoreM' ActorSto ActorAdr ActorVlu m)
    => (e -> m ActorVlu) -- ^ the next arrow to execute after garbage collection
+   -> (Key m e -> Set ActorAdr) -- ^ specifies how to trace a the addresses in a component
    -> (e -> m ActorVlu)
-gc next e = do
+gc next traceKey e = do
   -- compute the set of addresses referenced by the current monadic context
-  adrs <- trace <$> key e
+  adrs <- traceKey <$> key e
   -- compute the set of transitively reachable addresses
   sto <- currentStore
   let adrs' = traceStore adrs (Map.map fst $ Store.store sto)
@@ -164,7 +176,7 @@ gc next e = do
 newtype SequentialIntraT m a = SequentialIntraT (ReaderT ActorRef m a)
                 deriving (Applicative, Functor, Monad, MonadLayer, MonadCache, MonadReader ActorRef)
 
-instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMap a v) m, WorkListM m ActorRef, MonadIO m, MonadBottom m, DependencyTrackingM ActorRef a m, StoreM a v m) => StoreM a v (SequentialIntraT m) where
+instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMap a v) m, MonadDependencyTracking ActorRef a m,  MonadIO m, MonadBottom m, DependencyTrackingM ActorRef a m, StoreM a v m) => StoreM a v (SequentialIntraT m) where
   storeSize = upperM (storeSize @a @v)
   lookupAdr adr = SequentialIntraT ask >>= register adr >>
         ifM (hasAdr adr)
@@ -172,7 +184,7 @@ instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMa
        {- else -} -- Trigger contributions of the address and register our interest
            -- TODO[important]: we filter out contributions that we made ourselves, but this excludes us from creating self sends (in the abstract or concrete)
            -- since the data of the self send will never be included in the input store.
-           (asks (Set.filter . (/=)) <*> triggers adr >>= adds >> mbottom)
+           (trigger adr >> mbottom)
   writeAdr adr vlu = do
     cmp <- ask
     -- write the value to the input stores of all dependent actors,
@@ -244,13 +256,34 @@ type MonadActorModular m = (
 -- Sequential analysis
 ------------------------------------------------------------
 
+-- | Keeps track of flow sensitive stores: it sets up the flow
+-- sensitive at the start of the analysis and then (at the In adr)
+-- and then saves it at its Out address.
+flowStore :: forall cmp s adr v m a . (
+              StoreM' s adr v m,            
+              MapM (In cmp s) s m,
+              MapM (Out cmp s) s m)
+          => (cmp -> m a) -- ^ original arrow
+          -> (cmp -> m a)
+flowStore next cmp = do
+  sto <- fromJust <$> MapM.get @(In cmp s) (In cmp)
+  putStore sto
+  v <- next cmp
+  sto' <- currentStore @s
+  MapM.put @(Out cmp s) (Out cmp) sto'
+  return v
+
 
 -- | Intra-analysis
-intra :: forall m . InterAnalysisM m => SequentialCmp -> m ()
-intra cmp = runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) (eval @ActorVlu) cmp
+intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
+intra ref cmp = flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) (gc (eval @ActorVlu) traceCmp)) cmp
           & runAlloc VarAdr
           & runAlloc PtrAdr
+          & runSequentialIntraT ref
+          & evalWithStore
           & runIntraAnalysis cmp
+
+
 
 
 -- | Inter-analysis
@@ -259,7 +292,7 @@ inter :: InterAnalysisM m
       -> ActorEnv    -- ^ the environment of variables captured by the actor expression
       -> ActorRef    -- ^ the current actor reference
       -> m ()
-inter exp environment ref = iterateWL' initialCmp intra
+inter exp environment ref = iterateWL' initialCmp (intra ref)
   where initialCmp = ActorExp exp         -- component to analyze
                 <+> environment           -- initial lexical environment
                 <+> initialDynEnvironment -- initial dynamic environment 
@@ -281,15 +314,18 @@ analyze exp env ref = do
       sto <- fromMaybe (VarVal <$> initialSto allPrimitives PrrAdr) <$> MapM.get ref
       res  <- inter exp env ref
             & runWithMapping @SequentialCmp @SequentialRes
+            & runWithMapping @(In SequentialCmp ActorSto)  @ActorSto
+            & runWithMapping @(Out SequentialCmp ActorSto) @ActorSto
             & runWithComponentTracking @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @(SchemeAdr Exp K)
             & runWithDependencyTracking @SequentialCmp @ActorRef
+            & runWithDependencyTracking @SequentialCmp @(In SequentialCmp ActorSto) 
+            & runWithDependencyTracking @SequentialCmp @(Out SequentialCmp ActorSto) 
             & runWithWorkList @(LIFOWorklist SequentialCmp)
-            & runSequentialIntraT ref
-            & runStoreT @ActorSto @(SchemeAdr Exp K) @(StoreVal ActorVlu) sto
+            -- & runStoreT @ActorSto @(SchemeAdr Exp K) @(StoreVal ActorVlu) sto
 
       MapM.put (ActorResOut ref) (extractVal res)
 
       return ()
-  where extractVal (_ ::*:: res ::*:: _) = res
+  where extractVal (_ ::*:: res ::*:: _ ::*:: _) = res
