@@ -101,8 +101,10 @@ eval' rec (Parametrize bds e2 _) = do
    vs <- mapM (eval' rec . snd) bds
    mapM_ (uncurry writeVar) (zip ads vs)
    withExtendedDynamic bds' (eval' rec e2)
-eval' rec (Begin exs _) =
-   last <$> mapM (eval' rec) exs
+eval' rec ex@(Begin exs _) =
+   if null exs
+   then error $ "sequence without expressions at " ++ show (spanOf ex)
+   else last <$> mapM (eval' rec) exs
 eval' rec e@(Pair e1 e2 _) =
    stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
 eval' _ (Var (Ide x _)) =

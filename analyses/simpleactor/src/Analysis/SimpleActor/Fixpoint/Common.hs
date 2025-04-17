@@ -53,6 +53,8 @@ type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Const
 -- Addresses
 ------------------------------------------------------------
 
+
+type ActorAdr = SchemeAdr Exp K
 type ActorVarAdr = SchemeAdr Exp K 
 
 -- | Output address for writing individual actor results

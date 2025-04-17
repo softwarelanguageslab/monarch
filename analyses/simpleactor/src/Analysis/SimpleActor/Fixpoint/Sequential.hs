@@ -14,23 +14,20 @@ import Analysis.Actors.Monad
 import Data.Functor.Identity
 
 import Analysis.Monad hiding (eval, spawn, store)
-import Syntax.AST
+import Analysis.Store
+import qualified Analysis.Store as Store
+import Syntax.AST hiding (Trace)
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Monad.Fix
 import Control.Monad.Escape
-import Data.Set (Set)
 import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)
 import Domain.Scheme.Store
-import Domain.Scheme.Class (PaiDom, VecDom, StrDom, Adr)
+import Domain.Scheme.Class (Adr)
 import qualified Data.Map as Map
-import Analysis.Symbolic.Monad
-    ( FormulaT )
+import Analysis.Symbolic.Monad ( DiscardFormulaT )
 import Solver
-import Symbolic.AST ( emptyPC )
-import Analysis.Store (CountingMap(..), Store (..))
 import Data.Maybe
-import Analysis.Context (emptyMcfaContext)
 import qualified RIO.Set as Set
 import Data.Tuple.Syntax
 
@@ -40,14 +37,11 @@ import Control.Monad.Cond (ifM)
 import Control.Monad.Reader
 import Control.Monad.Join (mbottom, MonadBottom)
 import qualified Analysis.Monad.Map as MapM
-import RIO hiding (exp)
-import qualified Debug.Trace as Debug
-import Analysis.Store (emptyCountingMap)
-import Control.Fixpoint.WorkList (FIFOWorkList, LIFOWorklist)
+import RIO hiding (exp, trace, join)
+import Control.Fixpoint.WorkList (LIFOWorklist)
 import Lattice.Class
+import Lattice.Trace
 import qualified Data.HashMap.Strict as HashMap
-import Analysis.SimpleActor.Fixpoint.Common (initialDynEnvironment)
-import Analysis.Symbolic.Monad (DiscardFormulaT)
 
 
 ------------------------------------------------------------
@@ -102,6 +96,43 @@ type InterAnalysisM m = (MonadSchemeStore m,
                          MonadSpawn ActorVlu Ctx m,
                          MonadIO m)
 
+
+------------------------------------------------------------
+-- Garbage collection
+------------------------------------------------------------
+
+
+-- We apply garbage collection in this analysis to remove
+-- unreachable addresses from the store, therefore decreasing
+-- its abstract count. This is particularly important to
+-- identify the cardinality of actor references (or process identifiers, i.e., PIDs).
+
+-- | Garbage collection arrow that gets added around the evaluation function,
+-- and which gets applied whenever the open recursive function is used (i.e., when crossing
+-- component boundaries)
+gc :: (MonadCache m,
+       Trace ActorAdr (Key m e),
+       StoreM' ActorSto a ActorVlu m)
+   => (e -> m ActorVlu) -- ^ the next arrow to execute after garbage collection
+   -> (e -> m ActorVlu)
+gc next e = do
+  -- compute the set of addresses referenced by the current monadic context
+  adrs <- trace <$> key e
+  -- compute the set of transitively reachable addresses
+  sto <- currentStore
+  let adrs' = traceStore adrs (Map.map fst $ Store.store sto)
+  -- restrict the store to those addresses going forward
+  putStore (restrictSto @ActorSto adrs' sto)
+  -- compute the value and add its contributions to the original store
+  v <- next e
+  sto' <- currentStore
+  -- TODO: this breaks strong updates because the store before
+  -- the call is joined with the store after the call completely
+  -- negating any strong updates. However, since this analysis
+  -- does not perform strong updates this is not such a big
+  -- problem but we might want to change this in the future. 
+  putStore (join sto sto')
+  return v
 
 ------------------------------------------------------------
 -- Sequential intra analysis monad

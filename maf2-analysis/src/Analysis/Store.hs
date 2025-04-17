@@ -28,8 +28,10 @@ class Joinable v => Store s a v | s -> a v where
    updateSto :: a -> v -> s -> s
    updateSto adr v = updateStoWith (const v) (`join` v) adr 
    updateStoWith :: {- strong update -} (v -> v) -> {- weak update -} (v -> v) -> a -> s -> s
+   -- | Restrict the addresses in the store to the given set of addresses
+   restrictSto :: Set a -> s -> s
    --updateStoWith fs _ adr s = let v' = fs (lookupSto adr s) in updateSto adr v' s
-   {-# MINIMAL size, emptySto, lookupSto, extendSto, updateStoWith #-}
+   {-# MINIMAL size, emptySto, lookupSto, extendSto, updateStoWith, restrictSto #-}
 
 
 -- | Simple map-based instance of the store with weak updates
@@ -40,11 +42,7 @@ instance (Joinable v, Ord a) => Store (Map a v) a v where
    extendSto adr vlu = Map.alter (Just . maybe vlu (join vlu)) adr
    -- a simple store only supports weak updates
    updateStoWith _ fw = Map.alter (Just . maybe (error "updating at a non-existent address") fw)
-
--- | Restrict the store to the given addresses only
--- TODO: maybe this should be in the typeclass itself?
-restrictSto :: (Ord a) => Set a -> Map a v -> Map a v
-restrictSto = flip Map.restrictKeys
+   restrictSto = flip Map.restrictKeys
 
 -- | Trace the addresses reachable in a single step from the given set of addresses according to the given store
 traceStore' :: (Trace adr v) => Set adr -> Map adr v  -> Set adr
@@ -88,6 +86,8 @@ instance (Joinable v, Show a, Ord a) => Store (CountingMap a v) a v where
       where update Nothing              = error ("updating an unbound address " Data.List.++ show a)
             update (Just (v, CountOne)) = Just (fs v, CountOne)
             update (Just (v, count))    = Just (fw v, count)
+
+   restrictSto ks = CountingMap . flip Map.restrictKeys ks . store
 
 
 

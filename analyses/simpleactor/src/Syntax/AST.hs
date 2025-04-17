@@ -10,8 +10,9 @@ import Syntax.Ide
 import Syntax.FV
 import Control.DeepSeq
 import GHC.Generics
+import Lattice.Trace (Trace(..))
 
--- | An expression
+-- | An expression
 data Exp = -- Program Semantics
            Lam [Ide] Exp Span                -- ^ λ (x*) . e 
          | App Exp [Exp] Span                -- ^ e(e*)
@@ -164,3 +165,11 @@ instance FreeVariables Exp where
    fv (Trace e _)       = fv e
    fv (Parallel es _)   = foldMap fv es
    fv (Error e _)       = fv e
+
+-- XXX: 'Exp' are not program values so it does not really make sense
+-- to define 'Trace' here, but since they are usually part of closures
+-- and closures contain environments that DO need to be traced we
+-- include this here for convenience.
+instance Ord adr => Trace adr Exp where
+   trace = const Set.empty
+
