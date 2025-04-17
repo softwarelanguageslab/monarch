@@ -697,7 +697,7 @@
                                                                             (lambda (trace7435)
                                                                               (receive
                                                                                (('finish
-                                                                                 (begin))
+                                                                                 '())
                                                                                 ((pair
                                                                                   rcv7434
                                                                                   message7433)
