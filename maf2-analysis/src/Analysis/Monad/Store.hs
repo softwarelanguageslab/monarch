@@ -190,10 +190,13 @@ instance {-# OVERLAPPING #-} (Store s adr vlu, BottomLattice s, Joinable s, Stor
                            where lookupLower = upperM (lookupAdr adr)
    hasAdr adr           = liftA2 (||) (TransparentStoreT (hasAdr adr)) (hasAdr adr)
 
-instance {-# OVERLAPPABLE #-} (Store s adr vlu, Monad m) => StoreM' s adr vlu (TransparentStoreT s adr vlu m) where
+instance {-# OVERLAPPING #-} (Store s adr vlu, Monad m) => StoreM' s adr vlu (TransparentStoreT s adr vlu m) where
    currentStore = TransparentStoreT currentStore
    putStore = TransparentStoreT . putStore
 
+instance {-# OVERLAPPING #-} Monad m => AbstractCountM adr (TransparentStoreT (CountingMap adr vlu) adr vlu m) where
+   count = TransparentStoreT count   
+   
 ------------------------------------------------------------
 -- Store widening
 ------------------------------------------------------------

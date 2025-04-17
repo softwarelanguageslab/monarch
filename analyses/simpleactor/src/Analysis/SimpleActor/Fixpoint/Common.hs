@@ -22,6 +22,7 @@ import Analysis.Monad.Map (MapM)
 import Analysis.SimpleActor.Monad (Ctx)
 import RIO
 import qualified RIO.Map as Map
+import Analysis.Monad (MonadDependencyTrigger)
 
 
 ------------------------------------------------------------
@@ -98,7 +99,8 @@ type DependOn c m = (c ActorRef ActorVarAdr m)
 -- | Constraints for dependency tracking on each type of address
 type MonadActorStoreDependencyTracking m =
   (DependOn DependencyTrackingM m,
-   DependOn MonadDependencyTriggerTracking m)
+   DependOn MonadDependencyTriggerTracking m,
+   DependOn MonadDependencyTrigger m)
   
 
 -- | A store for each actor

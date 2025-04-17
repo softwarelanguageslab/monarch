@@ -95,7 +95,6 @@ type InterAnalysisM m = (MonadSchemeStore m,
                            ],
                             -- In ActorCmp ActorPC,
                             -- Out ActorCmp ActorPC ],
-                         -- AbstractCountM (SchemeAdr Exp K) m,
                          MonadMailbox ActorVlu m,
                          FormulaSolver (SchemeAdr Exp K) m,
                          MonadSpawn ActorVlu Ctx m,
@@ -123,7 +122,7 @@ traceCmp (_ ::*:: env ::*:: dyn ::*:: _ ::*:: _ ::*:: _) = Set.unions [trace env
 -- and which gets applied whenever the open recursive function is used (i.e., when crossing
 -- component boundaries)
 gc :: (MonadCache m,
-       StoreM' ActorSto ActorAdr ActorVlu m)
+       StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m)
    => (e -> m ActorVlu) -- ^ the next arrow to execute after garbage collection
    -> (Key m e -> Set ActorAdr) -- ^ specifies how to trace a the addresses in a component
    -> (e -> m ActorVlu)
@@ -167,6 +166,8 @@ type MonadActorModular m = (
     -- Keep track of results for each function call within
     -- the actor.
     MapM ActorResOut (Map SequentialCmp SequentialRes) m,
+    -- Global store for shared variables
+    StoreM ActorAdr (StoreVal ActorVlu) m,
     -- Other constraints
     MonadBottom m,
     MonadIO m
@@ -197,7 +198,7 @@ flowStore next cmp = do
 
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
-intra ref cmp = flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) (gc (eval @ActorVlu) traceCmp)) cmp
+intra ref cmp = flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) (gc @(FixT _ _ (SequentialT (IntraAnalysisT SequentialCmp m))) (eval @ActorVlu) traceCmp)) cmp
           & runAlloc VarAdr
           & runAlloc PtrAdr
           & evalWithTransparentStoreT
