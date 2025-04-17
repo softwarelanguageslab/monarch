@@ -21,6 +21,7 @@ import qualified Data.Set as Set
 import Domain.Actor
 import Control.DeepSeq
 import Data.HashMap.Strict (HashMap)
+import Lattice.Trace (Trace (..))
 
 --------------------------------------------------
 -- Declaration
@@ -56,6 +57,14 @@ instance TopLattice (SymbolicVal exp k n v) where
 
 instance Meetable (SymbolicVal exp k i v) where 
    meet = error "TODO: meet is not implemented"
+
+------------------------------------------------------------
+-- Traceability
+------------------------------------------------------------
+
+instance (Ord adr) => Trace adr (SymbolicVal exp k i v) where
+   trace = const Set.empty
+
 
 ------------------------------------------------------------
 -- NumberDomain instance
@@ -327,6 +336,9 @@ instance (EqualLattice v) => EqualLattice (PairedSymbolic v exp k i) where
    eql a b = 
       eql (leftValue a) (leftValue b)
 
+------------------------------------------------------------
+-- Tracing
+------------------------------------------------------------
 
 ------------------------------------------------------------
 -- Pairing with other Scheme value

@@ -1,8 +1,10 @@
 module Domain.Actor(Pid(..), ActorDomain(..)) where
 
 import Data.Kind
+import qualified Data.Set as Set
 import Control.Monad.AbstractM
 import Lattice.Class (Lattice, BottomLattice)
+import Lattice.Trace (Trace(..))
 import Data.Set (Set)
 import Domain.Core.BoolDomain.Class (BoolDomain)
 import GHC.Generics
@@ -15,6 +17,8 @@ data Pid e ctx
   | EntryPid
   deriving (Ord, Eq, Show, Generic)
 
+instance Ord adr => Trace adr (Pid e ctx) where
+  trace = const Set.empty
 instance (NFData e, NFData ctx) => NFData (Pid e ctx)
 
 -- | A generic domain for use in Actor based languages.

@@ -9,6 +9,8 @@ import Control.Monad.DomainError
 import Control.Monad.Escape
 import Control.DeepSeq
 import GHC.Generics
+import Lattice.Trace (Trace(..))
+import qualified Data.Set as Set
 
 -- position insensitive vector
 data PIVector i c = PIVector i c deriving (Show, Eq, Ord, Generic)
@@ -25,6 +27,9 @@ instance (BottomLattice i, BottomLattice c) => BottomLattice (PIVector i c) wher
    -- for PartialOrder
    -- subsumes (PIVector i1 c1) (PIVector i2 c2) =
    --    subsumes i1 i2 && subsumes c1 c2
+
+instance (Trace adr i, Trace adr c) => Trace adr (PIVector i c) where
+   trace (PIVector i c) = Set.union (trace i) (trace c)
 
 instance (IntDomain i, Eq c, Joinable c) => VectorDomain (PIVector i c) where
    type VContent (PIVector i c) = c
