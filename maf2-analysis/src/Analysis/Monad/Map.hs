@@ -38,11 +38,13 @@ class Monad m => MapM k v m | m k -> v where
     get :: k -> m (Maybe v)
     put :: k -> v -> m ()
     joinWith  :: Joinable v => k -> v -> m ()
+    getAll :: m (Map k v)
 
 instance (MapM k v m, Monad (t m), MonadLayer t) => MapM k v (t m) where
     get = upperM . get
     put k = upperM . put k
     joinWith k = upperM . joinWith k
+    getAll = upperM getAll
 
 getOrBot :: (MapM k v m, BottomLattice v) => k -> m v
 getOrBot = fmap justOrBot . get
@@ -68,6 +70,7 @@ instance {-# OVERLAPPING #-} (Monad m, Ord k) => MapM k v (MapT k v m) where
     get = State.gets . Map.lookup
     put k = State.modify . Map.insert k
     joinWith k = State.modify . Map.insertWith join k
+    getAll = State.get
 
 runWithMapping :: forall k v m a . MapT k v m a -> m (a, Map k v)
 runWithMapping (MapT m) = runStateT m Map.empty

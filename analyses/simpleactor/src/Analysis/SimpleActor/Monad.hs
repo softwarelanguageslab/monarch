@@ -26,27 +26,22 @@ module Analysis.SimpleActor.Monad
 where
 
 import Analysis.Monad hiding (EvalM, spawn)
-import Analysis.Actors.Mailbox
 import Analysis.Scheme.Monad (SchemeDomainM)
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Control.Monad.Join
 import Control.Monad.Layer
 import Control.Monad.Reader hiding (mzero)
-import Control.Monad.State hiding (mzero)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Maybe (fromMaybe, fromJust)
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain.Class
 import Lattice (BottomLattice (bottom))
-import Lattice.Class (Joinable)
-import qualified Lattice.Class as L
 import Syntax.AST
 import qualified Syntax.Ide as Ide
 import Analysis.Monad.Fix (MonadFixpoint)
-import Data.Kind (Type)
 import Domain (SchemeDomain(Env))
 import Lattice.Equal (EqualLattice)
 import Domain.Core.BoolDomain.Class (BoolDomain (true, false, boolTop))

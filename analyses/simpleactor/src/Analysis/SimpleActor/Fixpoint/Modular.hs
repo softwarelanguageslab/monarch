@@ -18,7 +18,7 @@ import qualified RIO.Set as Set
 import Analysis.Actors.Monad (MonadMailbox (..), runWithMailboxT)
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
-import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp))
+import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), runStoreT)
 import qualified Analysis.Monad.ComponentTracking as C
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import Analysis.Monad.Map
@@ -56,8 +56,8 @@ $(makeLenses ''AnalysisState)
 spawnWL :: (Ord cmp, ComponentTrackingM m cmp, WorkListM m cmp) => cmp -> m ()
 spawnWL cmp = ifM (Set.member cmp <$> C.components) (return ()) (C.spawn cmp >> add cmp)
 
-instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef, MapM ActorRef ActorSto m) => MonadSpawn ActorVlu Ctx (StateT AnalysisState m) where
-  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid <* MapM.joinWith pid (VarVal <$> initialSto @VarSto @ActorVlu allPrimitives PrrAdr)
+instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef) => MonadSpawn ActorVlu Ctx (StateT AnalysisState m) where
+  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid
     where pid  = Pid expr ctx
           env' = env -- HashMap.restrictKeys env (fv expr)  
 
@@ -95,9 +95,13 @@ initialAnalysisState :: ActorExp -> AnalysisState
 initialAnalysisState expr =
   AnalysisState (Map.singleton EntryPid (expr, initialEnv))
 
+-- | Initial global store
+initialGlobalStore :: ActorSto
+initialGlobalStore = VarVal <$> initialSto allPrimitives PrrAdr
+
 -- | Initial per-actor stores
 initialPerActorSto :: Map ActorRef ActorSto
-initialPerActorSto = Map.singleton EntryPid (VarVal <$> initialSto allPrimitives PrrAdr)
+initialPerActorSto = Map.singleton EntryPid  initialGlobalStore
 
 -- | The initial analysis environment
 initialEnv :: ActorEnv
@@ -108,16 +112,21 @@ initialEnv = HashMap.fromList (fmap (\nam -> (nam, PrrAdr nam)) allPrimitives)
 ------------------------------------------------------------
 
 type ModularInterM m = (MonadState AnalysisState m,
-                        MonadActorStore m,
                         MonadActorStoreDependencyTracking m,
                         MonadDependencyTracking ActorRef ActorRef m,
                         MonadDependencyTriggerTracking ActorRef ActorRef m,
                         MonadDependencyTracking ActorRef ActorResOut m,
                         WorkListM m ActorRef,
                         MonadMailbox ActorVlu m,
+                        -- Z3 Solvin g
                         FormulaSolver ActorVarAdr m,
+                        -- Tracking actor spawns
                         MonadSpawn ActorVlu Ctx m,
+                        -- Actor results
                         MapM ActorResOut (Map SequentialCmp SequentialRes) m,
+                        -- Global store
+                        StoreM ActorAdr (StoreVal ActorVlu) m,
+                        -- For debugging
                         MonadIO m)
 
 -- | "intra"-analysis
@@ -135,7 +144,7 @@ inter = iterateWL' EntryPid intra
 analyze :: ActorExp -> IO AnalysisResult
 analyze expr = fmap toAnalysisResult $ inter
              & flip evalStateT (initialAnalysisState expr)
-             & runMapT initialPerActorSto
+             & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore 
              & runWithMapping @ActorResOut @(Map SequentialCmp SequentialRes)
              & runWithDependencyTracking @ActorRef @ActorVarAdr
              & runWithDependencyTracking @ActorRef @ActorRef

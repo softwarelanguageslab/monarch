@@ -8,10 +8,12 @@ module Analysis.Monad.Store (
     StoreT(..),
     AbstractCountM(..),
     WidenedStoreT,
+    TransparentStoreT,
     runStoreT,
     runWithStore,
     evalWithStore,
     evalWithWidenedStore,
+    evalWithTransparentStoreT,
     lookups,
     deref,
     deref',
@@ -46,6 +48,8 @@ import qualified Analysis.Monad.Map as Map
 import qualified Analysis.Monad.Cache as Cache
 import Analysis.Monad.Cache (MonadCache (..))
 import Analysis.Monad.Fix (AroundT(..))
+import Lattice.Class
+import Data.Functor ((<&>))
 
 ---
 --- StoreM typeclass
@@ -161,6 +165,38 @@ instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM' s a v (StoreT s a
    currentStore = get
    putStore = put
 
+------------------------------------------------------------
+-- 'Transparent' Stores
+------------------------------------------------------------
+
+-- | Functions exactly as 'StoreT' but does not error when an address is
+-- not found, instead it looks for the address in an underlying global store.
+-- The same goes for its writes which are passed to an underlying store
+-- layer in addition to being written in the current layer.
+newtype TransparentStoreT s adr vlu m a = TransparentStoreT { getTransparentStoreT :: StoreT s adr vlu m a }
+                                        deriving (Functor, Applicative, Monad, MonadCache, MonadLayer, MonadBottom, MonadJoinable)
+
+evalWithTransparentStoreT :: (Store s adr vlu, Functor m) => TransparentStoreT s adr vlu m a -> m a                                       
+evalWithTransparentStoreT (TransparentStoreT ma) = evalWithStore ma
+
+
+instance {-# OVERLAPPING #-} (Store s adr vlu, BottomLattice s, Joinable s, StoreM adr vlu m) => StoreM adr vlu (TransparentStoreT s adr vlu m) where
+   -- TODO: how to dispatch this transparently?
+   storeSize            = TransparentStoreT (storeSize @adr @vlu) 
+   writeAdr adr  vlu    = TransparentStoreT (writeAdr adr vlu) 
+   updateAdr adr vlu    = TransparentStoreT (updateAdr adr vlu) 
+   updateWith fs fw adr = TransparentStoreT (updateWith fs fw adr) -- TODO: this is not done transparently but should be written at the end of an inner analysis
+   lookupAdr adr        = TransparentStoreT (maybe lookupLower return =<< gets (Store.lookupSto adr))
+                           where lookupLower = upperM (lookupAdr adr)
+   hasAdr adr           = liftA2 (||) (TransparentStoreT (hasAdr adr)) (hasAdr adr)
+
+instance {-# OVERLAPPING #-} (Store s adr vlu, Monad m) => StoreM' s adr vlu (TransparentStoreT s adr vlu m) where
+   currentStore = TransparentStoreT currentStore
+   putStore = TransparentStoreT . putStore
+
+instance {-# OVERLAPPING #-} Monad m => AbstractCountM adr (TransparentStoreT (CountingMap adr vlu) adr vlu m) where
+   count = TransparentStoreT count   
+   
 ------------------------------------------------------------
 -- Store widening
 ------------------------------------------------------------
