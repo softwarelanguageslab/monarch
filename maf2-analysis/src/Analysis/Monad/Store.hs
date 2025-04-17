@@ -183,9 +183,9 @@ evalWithTransparentStoreT (TransparentStoreT ma) = evalWithStore ma
 instance {-# OVERLAPPING #-} (Store s adr vlu, BottomLattice s, Joinable s, StoreM adr vlu m) => StoreM adr vlu (TransparentStoreT s adr vlu m) where
    -- TODO: how to dispatch this transparently?
    storeSize            = TransparentStoreT (storeSize @adr @vlu) 
-   writeAdr adr  vlu    = TransparentStoreT (writeAdr adr vlu) >> upperM (writeAdr adr vlu)
-   updateAdr adr vlu    = TransparentStoreT (updateAdr adr vlu) >> upperM (updateAdr adr vlu)
-   updateWith fs fw adr = TransparentStoreT (updateWith fs fw adr) >> upperM (updateWith fs fw adr)
+   writeAdr adr  vlu    = TransparentStoreT (writeAdr adr vlu) 
+   updateAdr adr vlu    = TransparentStoreT (updateAdr adr vlu) 
+   updateWith fs fw adr = TransparentStoreT (updateWith fs fw adr) -- TODO: this is not done transparently but should be written at the end of an inner analysis
    lookupAdr adr        = TransparentStoreT (maybe lookupLower (\v -> fmap (join v) lookupLower) =<< gets (Store.lookupSto adr))
                            where lookupLower = upperM (lookupAdr adr)
    hasAdr adr           = liftA2 (||) (TransparentStoreT (hasAdr adr)) (hasAdr adr)
