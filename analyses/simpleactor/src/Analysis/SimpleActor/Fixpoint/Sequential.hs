@@ -140,11 +140,15 @@ gc next traceKey e = do
   cmp <- upperM $ key e
   -- compute the set of addresses referenced by the current monadic context
   let adrs = traceKey cmp
+  liftIO (putStrLn $ "addrs: " ++ show adrs)
   -- compute the set of transitively reachable addresses
   sto <- currentStore
+  liftIO (putStrLn $ "sto: " ++ show sto)
   let adrs' = traceStore adrs (Map.map fst $ Store.store sto)
   -- restrict the store to those addresses going forward
   let rsto = restrictSto @ActorSto adrs' sto
+  liftIO (putStrLn $ "addrs': " ++ show adrs')
+  liftIO (putStrLn $ "rsto: " ++ show rsto)
   MapM.joinWith @(In (Key m e) ActorSto) (In cmp) rsto
   -- compute the value and add its contributions to the original store
   v <- next e
