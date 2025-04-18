@@ -70,18 +70,16 @@ newtype ModularIntraAnalysisT cmp m a = ModularIntraAnalysisT (IdentityT m a)
                                           deriving (Monad, Applicative, Functor, MonadLayer)
 
 
-instance (MonadDependencyTrigger cmp dep m, MonadIO m, Show dep) => MonadDependencyTrigger cmp dep (ModularIntraAnalysisT cmp m) where
-  trigger dep = liftIO (putStrLn $ "triggering " ++ show dep) >> upperM (trigger dep)
+instance (MonadDependencyTrigger cmp dep m) => MonadDependencyTrigger cmp dep (ModularIntraAnalysisT cmp m) where
+  trigger dep = upperM (trigger dep)
 
 
-instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadIO m, Show cmp, MonadDependencyTracking cmp ActorRef m, MonadDependencyTriggerTracking cmp ActorRef m) => MonadMailbox ActorVlu (ModularIntraAnalysisT cmp m) where
-  send to msg =
-    ifM (upperM (send to msg))
-        (trigger @cmp to $> True)
+instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadDependencyTracking cmp ActorRef m, MonadDependencyTriggerTracking cmp ActorRef m) => MonadMailbox ActorVlu (ModularIntraAnalysisT cmp m) where
+  send rcv msg =
+    ifM (upperM (send rcv msg))
+        (trigger @cmp rcv $> True)
         (return False)
   receive' ref = currentCmp >>= register @cmp ref >> upperM (receive' ref)
-
-
 
 runModularIntraAnalysisT :: ModularIntraAnalysisT cmp m a -> m a
 runModularIntraAnalysisT (ModularIntraAnalysisT m) = runIdentityT m

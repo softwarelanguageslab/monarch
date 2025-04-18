@@ -135,20 +135,15 @@ gc :: forall m e .
    -> (Key m e -> Set ActorAdr) -- ^ specifies how to trace a the addresses in a component
    -> (e -> AroundT e ActorVlu m ActorVlu)
 gc next traceKey e = do
-  liftIO (putStrLn $ "putting" ++ show e)
   -- the component that we are calling
   cmp <- upperM $ key e
   -- compute the set of addresses referenced by the current monadic context
   let adrs = traceKey cmp
-  liftIO (putStrLn $ "addrs: " ++ show adrs)
   -- compute the set of transitively reachable addresses
   sto <- currentStore
-  liftIO (putStrLn $ "sto: " ++ show sto)
   let adrs' = traceStore adrs (Map.map fst $ Store.store sto)
   -- restrict the store to those addresses going forward
   let rsto = restrictSto @ActorSto adrs' sto
-  liftIO (putStrLn $ "addrs': " ++ show adrs')
-  liftIO (putStrLn $ "rsto: " ++ show rsto)
   MapM.joinWith @(In (Key m e) ActorSto) (In cmp) rsto
   -- compute the value and add its contributions to the original store
   v <- next e
@@ -206,7 +201,6 @@ flowStore :: forall cmp s adr v m a . (
           -> (cmp -> m a)
 flowStore next cmp = do
   sto <- fromMaybe bottom <$> MapM.get @(In cmp s) (In cmp)
-  liftIO . print =<< MapM.getAll @(In cmp s)
   putStore sto
   v <- next cmp
   sto' <- currentStore @s
@@ -217,7 +211,6 @@ flowStore next cmp = do
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
 intra ref cmp = do
-          liftIO (putStrLn $ "Analyzing " ++ show cmp)
           flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) eval'') cmp
                   & runAlloc VarAdr
                   & runAlloc PtrAdr

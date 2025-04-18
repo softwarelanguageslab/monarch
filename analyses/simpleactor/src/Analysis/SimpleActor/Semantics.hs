@@ -123,7 +123,7 @@ eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v m => v -> v -> m ()
 trySend ref p =
-   cond   (fromBL @(CP Bool) (isActorRef (traceShowId ref)) <&> traceShowId)
+   cond   (fromBL @(CP Bool) (isActorRef ref)) 
           (mjoinMap (`send'` p) (arefs' ref))
           (escape NotAnActorReference)
 
