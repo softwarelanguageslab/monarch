@@ -150,8 +150,6 @@ gc next traceKey e = do
 ------------------------------------------------------------
 
 type MonadActorModular m = (
-    -- Every actor has its own local store
-    MonadActorStore m,
     -- Dependencies can be tracked between the stores
     -- of each actor, in order to find which memory is shared.
     MonadActorStoreDependencyTracking m,
@@ -204,9 +202,6 @@ intra ref cmp = flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(Sequenti
           & evalWithTransparentStoreT
           & runIntraAnalysis cmp
 
-
-
-
 -- | Inter-analysis
 inter :: InterAnalysisM m
       => Exp         -- ^ the actor expression to analyze
@@ -231,8 +226,6 @@ analyze :: forall m  . MonadActorModular m
         -> ActorRef             -- ^ the current actor reference
         -> m ()
 analyze exp env ref = do
-      -- retrieve store associated with this actor
-      sto <- fromMaybe (VarVal <$> initialSto allPrimitives PrrAdr) <$> MapM.get ref
       res  <- inter exp env ref
             & runWithMapping @SequentialCmp @SequentialRes
             & runWithMapping @(In SequentialCmp ActorSto)  @ActorSto
