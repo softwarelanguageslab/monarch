@@ -186,7 +186,7 @@ instance {-# OVERLAPPING #-} (Store s adr vlu, BottomLattice s, Joinable s, Stor
    writeAdr adr  vlu    = TransparentStoreT (writeAdr adr vlu) 
    updateAdr adr vlu    = TransparentStoreT (updateAdr adr vlu) 
    updateWith fs fw adr = TransparentStoreT (updateWith fs fw adr) -- TODO: this is not done transparently but should be written at the end of an inner analysis
-   lookupAdr adr        = TransparentStoreT (maybe lookupLower (\v -> fmap (join v) lookupLower) =<< gets (Store.lookupSto adr))
+   lookupAdr adr        = TransparentStoreT (maybe lookupLower return =<< gets (Store.lookupSto adr))
                            where lookupLower = upperM (lookupAdr adr)
    hasAdr adr           = liftA2 (||) (TransparentStoreT (hasAdr adr)) (hasAdr adr)
 

@@ -44,6 +44,7 @@ import Lattice.Trace
 import qualified Data.HashMap.Strict as HashMap
 import Control.Monad.Identity (IdentityT)
 import Analysis.Monad.Store (TransparentStoreT)
+import Analysis.Store (countingStoreValues)
 
 
 ------------------------------------------------------------
@@ -121,22 +122,29 @@ traceCmp (_ ::*:: env ::*:: dyn ::*:: _ ::*:: _ ::*:: _) = Set.unions [trace env
 -- | Garbage collection arrow that gets added around the evaluation function,
 -- and which gets applied whenever the open recursive function is used (i.e., when crossing
 -- component boundaries)
-gc :: (MonadCache m,
+gc :: forall m e .
+      (MonadCache m,
+       MonadBottom m, 
+       MapM (In (Key m e) ActorSto) ActorSto m,
+       MapM (Out (Key m e) ActorSto) ActorSto m,
        StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m)
    => (e -> m ActorVlu) -- ^ the next arrow to execute after garbage collection
    -> (Key m e -> Set ActorAdr) -- ^ specifies how to trace a the addresses in a component
    -> (e -> m ActorVlu)
 gc next traceKey e = do
+  -- the component that we are calling
+  cmp <- key e
   -- compute the set of addresses referenced by the current monadic context
-  adrs <- traceKey <$> key e
+  let adrs = traceKey cmp
   -- compute the set of transitively reachable addresses
   sto <- currentStore
-  let adrs' = traceStore adrs (Map.map fst $ Store.store sto)
+  let adrs' = traceStore (traceShowId adrs) (Map.map fst $ Store.store sto)
   -- restrict the store to those addresses going forward
+  MapM.joinWith @(In (Key m e) ActorSto) (In cmp) sto
   putStore (restrictSto @ActorSto adrs' sto)
   -- compute the value and add its contributions to the original store
   v <- next e
-  sto' <- currentStore
+  sto' <- maybe mbottom return =<< MapM.get @(Out (Key m e) ActorSto) (Out cmp)
   -- TODO: this breaks strong updates because the store before
   -- the call is joined with the store after the call completely
   -- negating any strong updates. However, since this analysis
@@ -180,13 +188,14 @@ type MonadActorModular m = (
 -- sensitive at the start of the analysis and then (at the In adr)
 -- and then saves it at its Out address.
 flowStore :: forall cmp s adr v m a . (
-              StoreM' s adr v m,            
+              StoreM' s adr v m,
+              BottomLattice s,
               MapM (In cmp s) s m,
               MapM (Out cmp s) s m)
           => (cmp -> m a) -- ^ original arrow
           -> (cmp -> m a)
 flowStore next cmp = do
-  sto <- fromJust <$> MapM.get @(In cmp s) (In cmp)
+  sto <- fromMaybe bottom <$> MapM.get @(In cmp s) (In cmp)
   putStore sto
   v <- next cmp
   sto' <- currentStore @s
@@ -234,13 +243,14 @@ analyze exp env ref = do
             & runWithDependencyTracking @SequentialCmp @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @(SchemeAdr Exp K)
             & runWithDependencyTracking @SequentialCmp @ActorRef
-            & runWithDependencyTracking @SequentialCmp @(In SequentialCmp ActorSto) 
-            & runWithDependencyTracking @SequentialCmp @(Out SequentialCmp ActorSto) 
+            & runWithDependencyTracking @SequentialCmp @(In SequentialCmp ActorSto)
+            & runWithDependencyTracking @SequentialCmp @(Out SequentialCmp ActorSto)
             & runWithWorkList @(LIFOWorklist SequentialCmp)
             & runIntraAnalysis ref
             -- & runStoreT @ActorSto @(SchemeAdr Exp K) @(StoreVal ActorVlu) sto
 
       MapM.put (ActorResOut ref) (extractVal res)
-
-      return ()
+      mapM_ (uncurry writeAdr) (Map.toList $ contributions res)
   where extractVal (_ ::*:: res ::*:: _ ::*:: _) = res
+        extractSto (_ ::*:: _ ::*:: _ ::*:: outStore) = countingStoreValues <$> outStore
+        contributions res = joinMap snd (Map.toList $ extractSto res)
