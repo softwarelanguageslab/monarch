@@ -15,7 +15,7 @@ import Syntax.AST hiding (filename)
 import Interpreter hiding (PrmAdr, store)
 import Control.Monad
 import Analysis.SimpleActor.Monad ()
-import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp)
+import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, ActorRes(..))
 import Data.Tuple.Syntax
 import qualified Analysis.SimpleActor.Infer as Infer
 import System.TimeIt
@@ -96,9 +96,11 @@ analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename, doTranslate  }) = do
    ast <- loadFile' doTranslate filename
    (sequentialResults, mbs) <- analyze ast
-   mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialResults)
+   let sequentialResMap = fmap cmpRes sequentialResults
+   let sequentialCouMap = fmap outCount sequentialResults
+   mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialResMap)
    -- putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
-
+   mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialCouMap)
    -- putStrLn "====="
    -- putStrLn $ printMap printLoc (const True) res
    putStrLn "====="

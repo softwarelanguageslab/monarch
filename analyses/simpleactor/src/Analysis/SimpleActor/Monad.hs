@@ -55,6 +55,7 @@ import Domain.Actor
 import Analysis.Actors.Monad
 import Control.DeepSeq
 import GHC.Generics
+import Analysis.Monad.AbstractCount (MonadAbstractCount)
 
 ------------------------------------------------------------
 -- 'Components'
@@ -191,6 +192,7 @@ type EvalM v m =
     Show v,
     SymbolicM (Adr v) m v,
     MonadIO m,
+    MonadAbstractCount (ARef v) m,
     -- Domain constraints
     ForAllStored Show v,  
     ForAllStored Eq v,  

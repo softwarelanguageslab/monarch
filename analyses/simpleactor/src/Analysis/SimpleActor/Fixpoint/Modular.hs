@@ -4,7 +4,7 @@
 module Analysis.SimpleActor.Fixpoint.Modular where
 
 import Analysis.SimpleActor.Fixpoint.Common
-import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, SequentialRes)
+import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, SequentialRes, ActorRes)
 import qualified Analysis.SimpleActor.Fixpoint.Sequential as Sequential
 import Control.Lens.TH
 import RIO hiding (view)
@@ -40,10 +40,8 @@ import qualified Data.HashMap.Strict as HashMap
 -- Analysis data
 ------------------------------------------------------------
 
-type SequentialResult = Map SequentialCmp SequentialRes
-
 -- The analysis result
-type AnalysisResult = (Map ActorResOut SequentialResult, ActorMai)
+type AnalysisResult = (Map ActorResOut ActorRes, ActorMai)
 
 -- | State kept during the analysis that falls outside the
 -- scope of the monad transformers
@@ -121,7 +119,7 @@ type ModularInterM m = (MonadState AnalysisState m,
                         -- Tracking actor spawns
                         MonadSpawn ActorVlu Ctx m,
                         -- Actor results
-                        MapM ActorResOut (Map SequentialCmp SequentialRes) m,
+                        MapM ActorResOut ActorRes m,
                         -- Global store
                         StoreM ActorAdr (StoreVal ActorVlu) m,
                         -- For debugging
@@ -143,7 +141,7 @@ analyze :: ActorExp -> IO AnalysisResult
 analyze expr = fmap toAnalysisResult $ inter
              & flip evalStateT (initialAnalysisState expr)
              & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore 
-             & runWithMapping @ActorResOut @(Map SequentialCmp SequentialRes)
+             & runWithMapping @ActorResOut @ActorRes
              & runWithDependencyTracking @ActorRef @ActorVarAdr
              & runWithDependencyTracking @ActorRef @ActorRef
              & runWithDependencyTracking @ActorRef @ActorResOut

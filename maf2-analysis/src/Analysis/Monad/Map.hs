@@ -13,7 +13,8 @@ module Analysis.Monad.Map (
     runMapT,
     In(..),
     Out(..),
-    Widened
+    Widened,
+    outAddress
 ) where
 
 import Control.Monad.Trans
@@ -92,6 +93,10 @@ newtype In cmp v = In cmp deriving (Ord, Eq, Show, NFData)
 -- | Output address, parametrized by the type of component (or key) from CacheM
 -- and type of value @v@ stored at the address
 newtype Out cmp v = Out cmp deriving (Ord, Eq, Show, NFData)
+
+-- | Extracts the address from its 'Out' wrapper
+outAddress :: Out cmp v -> cmp
+outAddress (Out cmp) = cmp
 
 -- | Set of constraints applicable to any per-component widening function
 type Widened cmp v m = 

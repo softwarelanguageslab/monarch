@@ -137,7 +137,8 @@ instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, StoreM' s adr v m) => 
 -- AbstractCountM typeclass 
 --
 
--- | Keeps track of the abstract count for each variable 
+-- | Keeps track of the abstract count for each variable
+-- TODO: fix overlap with 'MonadAbstractCount'
 class AbstractCountM adr m | m -> adr where
    count :: m (Map adr AbstractCount)
 

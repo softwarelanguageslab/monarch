@@ -17,7 +17,8 @@
 module Domain.Scheme.Store(
    StoreVal(..),
    SchemeAdr(..),
-   ForAllStored
+   ForAllStored,
+  varVals
 ) where
 
 
@@ -29,6 +30,8 @@ import GHC.Generics (Generic)
 import Domain.Scheme.Class hiding (Env)
 import Data.Kind
 import Syntax.Span
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 data SchemeAdr e ctx = VarAdr !Ide !ctx   --  ^ variables
                      | PtrAdr !e   !ctx   --  heap allocated values
@@ -98,4 +101,11 @@ instance (ForAllStored (Trace adr) v, Ord adr) => Trace adr (StoreVal v) where
   trace (StrVal a) = trace a
   trace (VecVal a) = trace a
   trace (VarVal a) = trace a
+
+-- | Retrieve the stack-allocated values from the stored value
+varVals :: StoreVal a -> Set (VarDom a)
+varVals (VarVal v) =  Set.singleton v
+varVals _ = Set.empty
+
+-- TODO: add functions for extracting the heap allocated values as well
 

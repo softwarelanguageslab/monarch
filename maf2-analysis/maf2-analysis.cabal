@@ -37,6 +37,7 @@ library
       Analysis.Erlang.Semantics
       Analysis.IO
       Analysis.Monad
+      Analysis.Monad.AbstractCount
       Analysis.Monad.Allocation
       Analysis.Monad.Assertion
       Analysis.Monad.Cache
