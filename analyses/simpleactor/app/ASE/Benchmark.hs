@@ -12,7 +12,7 @@ import Syntax.Compiler
 
 -- -- Haskell-related
 -- import Control.DeepSeq
--- import Control.Monad
+import Control.Monad
 -- import GHC.Generics
 -- import RIO hiding (hFlush, hClose)
 
