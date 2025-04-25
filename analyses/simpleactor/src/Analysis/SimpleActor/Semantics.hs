@@ -52,6 +52,8 @@ import qualified Analysis.Store as Store
 import Control.Monad.IO.Class (liftIO)
 import Lattice.ConstantPropagationLattice (CP)
 import Data.Functor ((<&>))
+import Syntax.FV
+import Analysis.Environment (Environment(..))
 
 ------------------------------------------------------------
 -- Evaluation
@@ -67,7 +69,7 @@ eval = fix evalCmp
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
 eval' :: forall v m . EvalM v m => (Cmp -> m v) -> Exp -> m v
-eval' _ lam@(Lam {}) = injectClo . (lam,) <$> getEnv
+eval' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
 eval' _ (Literal lit _) = return (injectLit lit)
 eval' rec e@(App e1 es _) = do
    v1 <- eval' rec e1

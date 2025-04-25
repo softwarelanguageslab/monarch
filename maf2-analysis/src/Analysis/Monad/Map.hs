@@ -14,7 +14,8 @@ module Analysis.Monad.Map (
     In(..),
     Out(..),
     Widened,
-    outAddress
+    outAddress,
+    inAddress
 ) where
 
 import Control.Monad.Trans
@@ -97,6 +98,10 @@ newtype Out cmp v = Out cmp deriving (Ord, Eq, Show, NFData)
 -- | Extracts the address from its 'Out' wrapper
 outAddress :: Out cmp v -> cmp
 outAddress (Out cmp) = cmp
+
+-- | Extracts the address from the 'In' wrapper
+inAddress :: In cmp v -> cmp
+inAddress (In cmp) = cmp
 
 -- | Set of constraints applicable to any per-component widening function
 type Widened cmp v m = 

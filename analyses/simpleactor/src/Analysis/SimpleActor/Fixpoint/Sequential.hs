@@ -310,6 +310,6 @@ analyze exp env ref = do
 
       MapM.put (ActorResOut ref) (extractVal res)
       mapM_ (uncurry writeAdr) (Map.toList $ contributions res)
-  where extractVal (_ ::*:: res ::*:: _ ::*:: _ ::*:: _ ::*:: outCou) = ActorRes res (Map.mapKeys outAddress outCou)
+  where extractVal (_ ::*:: res ::*:: _ ::*:: _ ::*:: inCou ::*:: outCou) = ActorRes res (Map.mapKeys outAddress outCou)
         extractSto (_ ::*:: _ ::*:: _ ::*:: outStore ::*:: _ ::*:: _) = countingStoreValues <$> outStore
         contributions res = joinMap snd (Map.toList $ extractSto res)
