@@ -54,7 +54,7 @@ maxK = 5
 
 -- | Default timeout of 10 minutes.
 defaultTimeout :: Int 
-defaultTimeout = 30*60*1000*1000
+defaultTimeout = 120*60*1000*1000
 
 ------------------------------------------------------------
 -- Exceptions & Timeout
