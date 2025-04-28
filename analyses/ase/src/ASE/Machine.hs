@@ -533,7 +533,7 @@ instance Ord e => Joinable (VisitedSet e) where
    join (VisitedSet a1 b1) (VisitedSet a2 b2) = VisitedSet (Set.intersection a1 a2) -- the elements visited in both sets   
                                                            ((Set.union a1 a2) `Set.difference` (Set.intersection a1 a2) `Set.union` (Set.union b1 b2))
 instance (Eq e, Ord e) => PartialOrder (VisitedSet e) where
-   leq (VisitedSet a1 b1) (VisitedSet a2 b2) = (a1 == a2) && (leq b1 b2)
+   leq (VisitedSet a1 b1) (VisitedSet a2 b2) = (leq a2 a1) && (leq b1 b2)
 
 -- | Trivial instance of @MonadVisitedSet@ based on the state monad
 newtype VisitedT e m a = VisitedT { getVisitedT :: StateT (VisitedSet e) m a }
