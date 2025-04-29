@@ -105,7 +105,7 @@ eval' rec (Parametrize bds e2 _) = do
    withExtendedDynamic bds' (eval' rec e2)
 eval' rec ex@(Begin exs _) =
    if null exs
-   then error $ "sequence without expressions at " ++ show (spanOf ex)
+   then return nil
    else last <$> mapM (eval' rec) exs
 eval' rec e@(Pair e1 e2 _) =
    stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
@@ -145,7 +145,7 @@ applyClosure e (lam@(Lam prs _ _), env) rec vs =
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 
-applyPrimitive :: forall v m . EvalM v m => String -> Exp -> [v] -> m v
+applyPrimitive :: forall v m . (Show (Env v), EvalM v m) => String -> Exp -> [v] -> m v
 applyPrimitive =
    runPrimitive . fromJust . lookupPrimitive
 
@@ -194,10 +194,10 @@ injectLit Nil            = nil
 
 data Primitive v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim v)
 
-newtype SimpleActorPrim v = SimpleActorPrim (forall m . EvalM v m => [v] -> Exp -> m v)
+newtype SimpleActorPrim v = SimpleActorPrim (forall m . (Show (Env v), EvalM v m) => [v] -> Exp -> m v)
 
 -- | A nullary primitive
-aprim0 :: (forall m . EvalM v m => Exp -> m v) -> SimpleActorPrim v
+aprim0 :: (forall m . (Show (Env v), EvalM v m) => Exp -> m v) -> SimpleActorPrim v
 aprim0 f = SimpleActorPrim $ const f
 
 -- | A primitive on one argument
@@ -216,6 +216,7 @@ actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("wait-until-all-finished", aprim0 $ const $ return nil ),
    ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
    ("list", aprim0 $ const $ return nil),
+   ("print-env", aprim0 $ const $ (liftIO . print =<< getEnv) $> nil),
    -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
    ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeVar adr (var adr v) ; return $ var adr v }),
    ("print", aprim1 $ const $ const $ return nil) ]
@@ -232,7 +233,7 @@ allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives
 lookupPrimitive :: String -> Maybe (Primitive v)
 lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
 
-runPrimitive :: EvalM v m => Primitive v -> Exp -> [v] -> m v
+runPrimitive :: (Show (Env v), EvalM v m) => Primitive v -> Exp -> [v] -> m v
 runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
 runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = flip f
 

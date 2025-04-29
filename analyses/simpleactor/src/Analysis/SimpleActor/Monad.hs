@@ -192,6 +192,7 @@ type EvalM v m =
     Show v,
     SymbolicM (Adr v) m v,
     MonadIO m,
+    Show (Env v),
     MonadAbstractCount (ARef v) m,
     -- Domain constraints
     ForAllStored Show v,  

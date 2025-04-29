@@ -96,6 +96,8 @@ compile (Atom "quote" span' ::: s ::: SNil _) = compile (Quo s span')
 compile ex@(Atom "blame" _ ::: party ::: _) = Blame <$> compile party <*> pureSpan ex
 compile ex@(Atom "parametrize" _ ::: bds ::: bdy ::: SNil _) =
    Parametrize <$> smapM compileBdn bds <*> compile bdy <*> pureSpan ex
+compile ex@(Atom "parametrize" _ ::: _) =
+   throwError $ "invalid syntax for parametrize " ++ show ex
 compile e@(Atom "blame" _ ::: _) =
    throwError $ "invalid syntax for blame " ++ show e
 -- For debugging purposes

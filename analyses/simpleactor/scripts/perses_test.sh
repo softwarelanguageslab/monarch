@@ -28,12 +28,12 @@ cp $INPUT_NAME $TEST_FILE
 
 cat << EOF > $SCRIPT_FILE
 #!/bin/bash
-set -o pipefail
+# set -o pipefail
 set -o nounset
 
 TEST_DIR=\$(dirname "\$(realpath \$0)")
 cd $MONARCH_DIR/../
-gtimeout 10 cabal run . -- analyze -f \$TEST_DIR/test.scm --no-translate 2>/dev/null | grep "CountInf"
+gtimeout 10 cabal run . -- analyze -f \$TEST_DIR/test.scm --no-translate 2>&1 | grep "no such variable"
 EOF
 
 chmod +x $SCRIPT_FILE
