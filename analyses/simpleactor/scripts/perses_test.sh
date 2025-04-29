@@ -20,7 +20,7 @@ if [ -z "${PERSES_SCHEME_JAR}" ] ; then
 fi
 
 TEST_DIR=$(mktemp -d)
-SCRIPT_FILE="${TEST_DIR}/run.sh"a
+SCRIPT_FILE="${TEST_DIR}/run.sh"
 MONARCH_DIR=$(dirname "$(realpath $0)")
 TEST_FILE="${TEST_DIR}/test.scm"
 
@@ -33,7 +33,7 @@ set -o nounset
 
 TEST_DIR=\$(dirname "\$(realpath \$0)")
 cd $MONARCH_DIR/../
-timeout 10 cabal run . -- pre -f \$TEST_DIR/test.scm --no-translate 2>/dev/null
+gtimeout 10 cabal run . -- analyze -f \$TEST_DIR/test.scm --no-translate 2>/dev/null | grep "CountInf"
 EOF
 
 chmod +x $SCRIPT_FILE
