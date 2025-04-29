@@ -230,6 +230,9 @@ stepEval (Letrec bds bdy _) = do
 stepEval (Blame e s) = Blm <$> atomicEval e <*> pure s
 -- Parallel execution of the given expressions
 stepEval (Parallel es span) = mjoinMap (\e -> Ev e <$> getEnv) es
+stepEval (Assg x ex span) = do
+   v <- atomicEval ex
+   (lookupEnv (name x) >>= flip writeAdr v) $> Ap Scheme.nil
 stepEval e = error $ "Expression " ++ show e ++ " is not supported by this interpreter"
 
 -- | Apply the given continuation

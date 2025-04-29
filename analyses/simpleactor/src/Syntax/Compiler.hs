@@ -111,6 +111,10 @@ compile ex@(Atom "error" _ ::: e ::: SNil _) =
    Error <$> compile e <*> pure (spanOf ex)
 compile ex@(Atom "error" _ ::: _) =
    throwError $ "invalid syntax for error " ++ show ex
+compile ex@(Atom "set!" _ ::: Atom x s ::: e ::: SNil _) =
+   Assg (Ide x s) <$> compile e <*> pure (spanOf ex)
+compile ex@(Atom "set!" _ ::: _) =
+   throwError $ "invalid syntax for set! " ++ show ex   
 compile ex@(op ::: oprs) =
    App <$> compile op <*> smapM compile oprs <*> pureSpan ex
 

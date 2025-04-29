@@ -3,7 +3,7 @@
 (define (zip xs ys) ; zip itself is unsafe
   (cond
    [(and (empty? xs) (empty? ys)) empty]
-   [(and (cons? xs) (cons? ys)) (cons (cons (car xs) (car ys)) (zip (cdr xs) (cdr ys)))]
+   [(and (pair? xs) (pair? ys)) (cons (cons (car xs) (car ys)) (zip (cdr xs) (cdr ys)))]
    [else 'fail]))
 
 (define (mk-list n)

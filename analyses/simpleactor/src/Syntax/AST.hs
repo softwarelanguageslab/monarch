@@ -30,8 +30,9 @@ data Exp = -- Program Semantics
          | DynVar Ide                        -- ^ $x
          | Begin [Exp] Span                  -- ^ { e (; e)* }
          | Input Span                        -- ^ input
-         | Parallel [Exp] Span               -- ^ parallel { e (; e)* }
+         | Parallel [Exp] Span               -- ^ parallel { e (; e)* }
          | Error Exp Span                    -- ^ error e
+         | Assg Ide Exp Span                 -- ^ x <- e 
          -- Debugging analyses
          | Fresh Span                        -- ^ fresh (only for debugging, generates a "fresh" symbolic value)
          | Trace Exp Span                    -- ^ a trace expression, used for debugging
@@ -58,7 +59,7 @@ instance Show Lit where
 -- | Pattern language
 data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show, Generic)
 
-instance NFData Pat 
+instance NFData Pat
 
 -- | Labels for blame assignment
 newtype Label = Label { getLabelName :: String } deriving (Eq, Ord, Show, NFData)
@@ -94,6 +95,7 @@ instance SpanOf Exp where
                (Trace _ s) -> s
                (Parallel _ s) -> s
                (Error  _ s) -> s
+               (Assg _ _ s) -> s
 
 
 instance Show Exp where
@@ -122,14 +124,15 @@ instance Show Exp where
             (Trace e _)       -> printf "(trace %s)" (show e)
             (Parallel es _)   -> printf "(parallel %s)" (show es)
             (Error e _)       -> printf "(error %s)" (show e)
+            (Assg x e _)      -> printf "(set! %s %s)" (show x) (show e)
 
 
-variables :: Pat -> Set String 
-variables (PairPat e1 e2) = Set.union (variables e1) (variables e2) 
+variables :: Pat -> Set String
+variables (PairPat e1 e2) = Set.union (variables e1) (variables e2)
 variables (IdePat x)      = Set.singleton $ name x
 variables (ValuePat _)    = Set.empty
 
-instance FreeVariables (Pat, Exp) where    
+instance FreeVariables (Pat, Exp) where
    fv (pat, expr) = Set.difference (fv expr) (variables pat)
 
 instance FreeVariables Exp where
@@ -137,12 +140,12 @@ instance FreeVariables Exp where
    fv (App e1 es _) = Set.unions $ fv e1 : map fv es
    fv (Spawn e1 _)  = fv e1
    fv (Letrec bds es _) =
-      Set.difference (Set.unions $ (fv es) : (map (fv . snd) bds)) (Set.fromList (map (name . fst) bds))
-   fv Terminate {}      = Set.empty 
+      Set.difference (Set.unions $ fv es : map (fv . snd) bds) (Set.fromList (map (name . fst) bds))
+   fv Terminate {}      = Set.empty
    fv Self {}           = Set.empty
-   fv (Pair e1 e2 _)    = Set.unions [fv e1, fv e2] 
+   fv (Pair e1 e2 _)    = Set.unions [fv e1, fv e2]
    fv (Parametrize _ bdy _) = fv bdy
-   fv Blame {}          = Set.empty
+   fv Blame {}          = Set.empty
    fv (Receive pats _)  = Set.unions (map fv pats)
    fv (Match v pats _)  = Set.unions $ fv v : map fv pats
    fv (Literal _ _)     = Set.empty
@@ -157,3 +160,5 @@ instance FreeVariables Exp where
    fv (Trace e _)       = fv e
    fv (Parallel es _)   = foldMap fv es
    fv (Error e _)       = fv e
+   fv (Assg x e _)      = Set.singleton (name x) `Set.union` fv e
+
