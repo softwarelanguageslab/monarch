@@ -4285,7 +4285,10 @@
                                                  (begin
                                                    (write '(funapp 1726 50))
                                                    (display "\n")
-                                                   (pair? j7405 k7406 g7404))))
+                                                   (pair?/c
+                                                    j7405
+                                                    k7406
+                                                    g7404))))
                                                (begin
                                                  (write '(funapp 1727 42))
                                                  (display "\n")
@@ -4293,7 +4296,7 @@
                                             (begin
                                               (write '(funapp 1728 39))
                                               (display "\n")
-                                              (pair? j7405 k7406 x8015)))))
+                                              (pair?/c j7405 k7406 x8015)))))
                                          g8014))))
                                     g8013))
                                  xj7402

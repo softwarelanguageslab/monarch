@@ -2553,13 +2553,13 @@
                                                                                      (letrec ((g8014
                                                                                                (letrec ((x8015
                                                                                                          (letrec ((x8016
-                                                                                                                   (pair?
+                                                                                                                   (pair?/c
                                                                                                                     j7405
                                                                                                                     k7406
                                                                                                                     g7404)))
                                                                                                            (f7407
                                                                                                             x8016))))
-                                                                                                 (pair?
+                                                                                                 (pair?/c
                                                                                                   j7405
                                                                                                   k7406
                                                                                                   x8015))))
