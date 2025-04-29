@@ -2552,7 +2552,9 @@
                                                                     (cons/c
                                                                      any/c
                                                                      x8013))))
-                                                          (or/c null? x8012))))
+                                                          (or/c
+                                                           null?/c
+                                                           x8012))))
                                                 g8011))))
                                     (letrec ((g8014
                                               (parallel

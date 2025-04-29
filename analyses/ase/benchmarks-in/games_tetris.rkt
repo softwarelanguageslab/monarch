@@ -453,11 +453,11 @@
   [ghost-blocks (-> WORLD/C BSET/C)]
   ;; image
   [image? (-> any/c boolean?/c)]
-  [overlay (-> image? image? image?)]
-  [circle (-> real?/c real?/c string?/c image?)]
-  [rectangle (-> real?/c real?/c COLOR/C COLOR/C image?)]
+  [overlay (-> image/c image/c image/c)]
+  [circle (-> real?/c real?/c string?/c image/c)]
+  [rectangle (-> real?/c real?/c COLOR/C COLOR/C image/c)]
   [place-image (-> image/c real?/c real?/c image/c image/c)]
-  [empty-scene (-> real?/c real?/c image?)]
+  [empty-scene (-> real?/c real?/c image/c)]
   ;; aux
   [list-pick-random (-> (and/c cons?/c (listof TETRA/C)) TETRA/C)]
   [neg-1 integer?/c] ;; ha!

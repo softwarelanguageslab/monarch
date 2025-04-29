@@ -6124,19 +6124,19 @@
                                                                                      (letrec ((g9205
                                                                                                (letrec ((x9206
                                                                                                          (letrec ((x9208
-                                                                                                                   (image?
+                                                                                                                   (image/c
                                                                                                                     j7682
                                                                                                                     k7683
                                                                                                                     g7680))
                                                                                                                   (x9207
-                                                                                                                   (image?
+                                                                                                                   (image/c
                                                                                                                     j7682
                                                                                                                     k7683
                                                                                                                     g7681)))
                                                                                                            (f7684
                                                                                                             x9208
                                                                                                             x9207))))
-                                                                                                 (image?
+                                                                                                 (image/c
                                                                                                   j7682
                                                                                                   k7683
                                                                                                   x9206))))
@@ -6146,8 +6146,10 @@
                                                                        xk7679
                                                                        overlay)))
                                                               g9203)))
-                                                         (x9201 (input))
-                                                         (x9200 (input)))
+                                                         (x9201
+                                                          (cons 'image '()))
+                                                         (x9200
+                                                          (cons 'image '())))
                                                   (x9202 x9201 x9200))
                                                 (letrec ((x9212
                                                           (letrec ((xj7685
@@ -6185,7 +6187,7 @@
                                                                                                             x9219
                                                                                                             x9218
                                                                                                             x9217))))
-                                                                                                 (image?
+                                                                                                 (image/c
                                                                                                   j7690
                                                                                                   k7691
                                                                                                   x9216))))
@@ -6242,7 +6244,7 @@
                                                                                                             x9231
                                                                                                             x9230
                                                                                                             x9229))))
-                                                                                                 (image?
+                                                                                                 (image/c
                                                                                                   j7699
                                                                                                   k7700
                                                                                                   x9228))))
@@ -6354,7 +6356,7 @@
                                                                                                            (f7717
                                                                                                             x9254
                                                                                                             x9253))))
-                                                                                                 (image?
+                                                                                                 (image/c
                                                                                                   j7715
                                                                                                   k7716
                                                                                                   x9252))))

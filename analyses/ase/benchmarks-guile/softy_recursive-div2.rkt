@@ -4266,7 +4266,7 @@
                       (begin
                         (write '(funapp 1722 23))
                         (display "\n")
-                        (or/c null? x8012)))))
+                        (or/c null?/c x8012)))))
                    g8011))))
               (letrec*
                ((g8014

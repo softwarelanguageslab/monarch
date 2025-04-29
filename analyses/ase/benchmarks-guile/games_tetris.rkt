@@ -10385,12 +10385,15 @@
                                                  (begin
                                                    (write '(funapp 4128 50))
                                                    (display "\n")
-                                                   (image? j7682 k7683 g7680)))
+                                                   (image/c
+                                                    j7682
+                                                    k7683
+                                                    g7680)))
                                                 (x9207
                                                  (begin
                                                    (write '(funapp 4129 50))
                                                    (display "\n")
-                                                   (image?
+                                                   (image/c
                                                     j7682
                                                     k7683
                                                     g7681))))
@@ -10401,15 +10404,39 @@
                                             (begin
                                               (write '(funapp 4131 39))
                                               (display "\n")
-                                              (image? j7682 k7683 x9206)))))
+                                              (image/c j7682 k7683 x9206)))))
                                          g9205))))
                                     g9204))
                                  xj7678
                                  xk7679
                                  overlay))))
                             g9203)))
-                         (x9201 (input))
-                         (x9200 (input)))
+                         (x9201
+                          (begin
+                            (write '(funapp 4138 29))
+                            (display "\n")
+                            (cons
+                             (begin
+                               (write '(funapp 4138 34))
+                               (display "\n")
+                               'image)
+                             (begin
+                               (write '(funapp 4138 41))
+                               (display "\n")
+                               '()))))
+                         (x9200
+                          (begin
+                            (write '(funapp 4139 29))
+                            (display "\n")
+                            (cons
+                             (begin
+                               (write '(funapp 4139 34))
+                               (display "\n")
+                               'image)
+                             (begin
+                               (write '(funapp 4139 41))
+                               (display "\n")
+                               '())))))
                         (begin
                           (write '(funapp 4140 21))
                           (display "\n")
@@ -10480,7 +10507,7 @@
                                             (begin
                                               (write '(funapp 4161 39))
                                               (display "\n")
-                                              (image? j7690 k7691 x9216)))))
+                                              (image/c j7690 k7691 x9216)))))
                                          g9215))))
                                     g9214))
                                  xj7685
@@ -10572,7 +10599,7 @@
                                             (begin
                                               (write '(funapp 4192 39))
                                               (display "\n")
-                                              (image? j7699 k7700 x9228)))))
+                                              (image/c j7699 k7700 x9228)))))
                                          g9227))))
                                     g9226))
                                  xj7693
@@ -10762,7 +10789,7 @@
                                             (begin
                                               (write '(funapp 4254 39))
                                               (display "\n")
-                                              (image? j7715 k7716 x9252)))))
+                                              (image/c j7715 k7716 x9252)))))
                                          g9251))))
                                     g9250))
                                  xj7711
