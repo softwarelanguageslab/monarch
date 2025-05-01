@@ -26,4 +26,4 @@ EOF
 
 chmod +x $BUILD_SCRIPT
 
-docker run -v $MONARCH_DIR:/code -v $BUILD_SCRIPT:/build.sh -w /code/$PACKAGE -it haskell:9.6.6 /build.sh
+docker run -v $MONARCH_DIR:/code --mount type=bind,src=$BUILD_SCRIPT,dst=/build.sh,ro -w /code/$PACKAGE -it haskell:9.6.6 /build.sh
