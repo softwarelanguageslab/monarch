@@ -27,6 +27,7 @@ library
   exposed-modules:
       Analysis.Actors
       Analysis.Actors.Mailbox
+      Analysis.Actors.Mailbox.Graph
       Analysis.Actors.Message
       Analysis.Actors.Monad
       Analysis.Actors.Semantics
@@ -207,6 +208,8 @@ test-suite maf2-analysis-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      MailboxSpec
+      SchemeSmokeSpec
       Paths_maf2_analysis
   hs-source-dirs:
       test
