@@ -8,7 +8,8 @@ module Analysis.Actors.Monad(
    GlobalMailboxT,
    runWithMailboxT,
    ActorLocalT,
-   send'
+   send',
+   LocalMailboxT
 ) where
 
 import Domain.Actor
@@ -80,7 +81,7 @@ send' ref = void . send ref
 -- | Local mailbox for receiving messages, meant to be added above `GlobalMailboxT`
 -- and above any non-determinism and caching effects.
 newtype LocalMailboxT v mb m a = LocalMailboxT (StateT mb m a)
-                               deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadState mb, MonadJoinable, MonadBottom)
+                               deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadState mb, MonadJoinable, MonadBottom, MonadCache)
 
 instance (Mailbox mb v, BottomLattice mb, Joinable mb, Joinable v, MonadReceive v m, MonadJoin m, MonadActorLocal v m, Eq (ARef v)) => MonadReceive v (LocalMailboxT v mb m) where
   receive' ref = do

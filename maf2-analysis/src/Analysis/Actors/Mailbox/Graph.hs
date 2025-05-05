@@ -1,5 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
-module Analysis.Actors.Mailbox.Graph(GraphMailbox) where
+module Analysis.Actors.Mailbox.Graph(
+  GraphMailbox,
+  messages
+) where
 
 import Analysis.Actors.Mailbox hiding (hasMessage)
 import Data.Function ((&))
@@ -49,6 +52,10 @@ size = undefined -- TODO compute a path from bottom to top if any exist
 hasMessage :: (BoolDomain b, Ord msg)=> msg -> MessageGraph msg -> b
 hasMessage msg g = inject $ Set.member msg $ Map.keysSet (edges g)
 
+-- | Returns the set of messages inside this graph
+graphMessages :: MessageGraph msg -> Set msg
+graphMessages = Map.keysSet . edges
+
 -----------------------------------------------------------
 -- Partial ordering, and lattice structure
 -----------------------------------------------------------
@@ -73,3 +80,7 @@ instance (Ord msg) => Mailbox (GraphMailbox msg) msg where
   dequeue = foldMap (Set.map (fmap (GraphMailbox . Set.singleton)) . popMessage) . getMessageGraphs
   empty = GraphMailbox $ Set.singleton emptyGraph
   hasMessage' msg = joinMap (hasMessage msg) . getMessageGraphs
+
+-- | Return the powerset of messages represented by this graph
+messages :: Ord msg => GraphMailbox msg -> Set msg
+messages = foldMap graphMessages . getMessageGraphs

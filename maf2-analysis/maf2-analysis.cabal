@@ -28,6 +28,7 @@ library
       Analysis.Actors
       Analysis.Actors.Mailbox
       Analysis.Actors.Mailbox.Graph
+      Analysis.Actors.Mailbox.GraphToSet
       Analysis.Actors.Message
       Analysis.Actors.Monad
       Analysis.Actors.Semantics
