@@ -136,7 +136,7 @@ type Values m = '[
    UnspKey ::-> (),
    NilKey  ::-> (),
    CloKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
-   PrimKey ::-> Set String,
+   PrimKey ::-> CSet String,
    SymKey  ::-> CSet String,
    -- λα language
    PidKey  ::-> Set (Assoc PidConf m),
@@ -455,15 +455,15 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
    unsp = SchemeVal $ HMap.singleton @UnspKey ()
 
    -- Primitives
-   prim = SchemeVal . HMap.singleton @PrimKey . Set.singleton
-   prims = fromMaybe Set.empty . HMap.get @PrimKey . getSchemeVal
+   prim = SchemeVal . HMap.singleton @PrimKey . CSet . Set.singleton
+   prims = maybe Set.empty CSet.getSet . HMap.get @PrimKey . getSchemeVal
 
    -- | Extracting procedures
    withProc :: forall schemeM a . (AbstractM schemeM, Lattice a) => (Either String (Exp (SchemeVal m), Env (SchemeVal m)) -> schemeM a) -> SchemeVal m ->  schemeM a
    withProc f = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM a
             select SCloKey clos' = Set.foldr (mjoin . f . Right) mbottom clos'
-            select SPrimKey prs = Set.foldr (mjoin . f . Left) mbottom prs
+            select SPrimKey prs = Set.foldr (mjoin . f . Left) mbottom (CSet.getSet prs)
             select _ _ = escape WrongType
 
    -- Predicates
@@ -518,6 +518,8 @@ instance (BottomLattice s) => BottomLattice (SchemeString s v) where
    bottom = SchemeString bottom
 instance (StringDomain s) => Domain (SchemeString s v) String where
    inject = SchemeString . inject
+instance Ord a => Trace a (SchemeString s v) where
+   trace = const Set.empty
 instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s (SchemeVal m)) where
    type IntS (SchemeString s (SchemeVal m)) = SchemeVal m
    type ChaS (SchemeString s (SchemeVal m)) = SchemeVal m
@@ -551,3 +553,4 @@ insertChar = SchemeVal . HMap.singleton @CharKey
 
 insertBool :: (Assoc BoolKey (Values m) ~ b) => b -> SchemeVal m
 insertBool = SchemeVal . HMap.singleton @BoolKey
+

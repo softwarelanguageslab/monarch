@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleInstances, AllowAmbiguousTypes, ScopedTypeVariables #-}
 module Analysis.Monad.Widen(AllMapM, AllMapT, PutAll(..), GetAll(..), WidenedT, State, joinWithAllTuple, runWidenedT) where
 
-import Analysis.Monad.Map
+import Analysis.Monad.Map hiding (getAll)
 import Analysis.Monad.Cache (CacheT, MonadCache)
 import qualified Analysis.Monad.Cache as Cache
 import Data.TypeLevel.HList

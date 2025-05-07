@@ -6,6 +6,7 @@ module Lattice.CSetLattice(CSet(..)) where
 import Lattice.Class
 import Lattice.Split
 import Lattice.Equal
+import Lattice.Trace
 import Domain.Class
 import Domain.Core (BoolDomain(..))
 
@@ -49,3 +50,9 @@ instance Ord a => EqualLattice (CSet a) where
       | Set.size s1 == 1 && Set.size s2 == 1 = inject (s1 == s2)
       | Set.null (Set.intersection s1 s2) = inject False
       | otherwise = boolTop
+
+-- A CSet contains concrete values and is therefore assumed to have no
+-- abstract addresses.
+instance Ord adr => Trace adr (CSet a) where
+   trace = const Set.empty
+   

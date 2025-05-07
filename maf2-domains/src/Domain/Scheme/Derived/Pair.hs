@@ -34,6 +34,7 @@ import Control.Monad.Join
 import qualified Data.Set as Set
 import Text.Printf (printf)
 import Control.DeepSeq
+import Lattice.Trace (Trace (..))
 
 ------------------------------------------------------------
 -- Declaration
@@ -70,6 +71,13 @@ instance (Joinable l, Joinable r) => Joinable (SchemePairedValue l r) where
 -- | The paired value has bottom and subsumes if the consistuents have them
 instance (BottomLattice l, BottomLattice r) => BottomLattice (SchemePairedValue l r) where
    bottom = SchemePairedValue bottom
+
+------------------------------------------------------------
+-- Traceability
+------------------------------------------------------------
+
+instance (Trace adr l, Trace adr r) => Trace adr (SchemePairedValue l r) where
+   trace (SchemePairedValue (l, r)) = Set.union (trace l) (trace r) 
 
 ------------------------------------------------------------
 -- NumberDomain instance

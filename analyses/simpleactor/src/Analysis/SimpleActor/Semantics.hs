@@ -52,6 +52,8 @@ import qualified Analysis.Store as Store
 import Control.Monad.IO.Class (liftIO)
 import Lattice.ConstantPropagationLattice (CP)
 import Data.Functor ((<&>))
+import Syntax.FV
+import Analysis.Environment (Environment(..))
 
 ------------------------------------------------------------
 -- Evaluation
@@ -67,7 +69,7 @@ eval = fix evalCmp
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
 eval' :: forall v m . EvalM v m => (Cmp -> m v) -> Exp -> m v
-eval' _ lam@(Lam {}) = injectClo . (lam,) <$> getEnv
+eval' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
 eval' _ (Literal lit _) = return (injectLit lit)
 eval' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
@@ -101,8 +103,10 @@ eval' rec (Parametrize bds e2 _) = do
    vs <- mapM (eval' rec . snd) bds
    mapM_ (uncurry writeVar) (zip ads vs)
    withExtendedDynamic bds' (eval' rec e2)
-eval' rec (Begin exs _) =
-   last <$> mapM (eval' rec) exs
+eval' rec ex@(Begin exs _) =
+   if null exs
+   then return nil
+   else last <$> mapM (eval' rec) exs
 eval' rec e@(Pair e1 e2 _) =
    stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
 eval' _ (Var (Ide x _)) =
@@ -121,7 +125,7 @@ eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v m => v -> v -> m ()
 trySend ref p =
-   cond   (fromBL @(CP Bool) (isActorRef (traceShowId ref)) <&> traceShowId)
+   cond   (fromBL @(CP Bool) (isActorRef ref)) 
           (mjoinMap (`send'` p) (arefs' ref))
           (escape NotAnActorReference)
 
@@ -141,7 +145,7 @@ applyClosure e (lam@(Lam prs _ _), env) rec vs =
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 
-applyPrimitive :: forall v m . EvalM v m => String -> Exp -> [v] -> m v
+applyPrimitive :: forall v m . (Show (Env v), EvalM v m) => String -> Exp -> [v] -> m v
 applyPrimitive =
    runPrimitive . fromJust . lookupPrimitive
 
@@ -190,10 +194,10 @@ injectLit Nil            = nil
 
 data Primitive v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim v)
 
-newtype SimpleActorPrim v = SimpleActorPrim (forall m . EvalM v m => [v] -> Exp -> m v)
+newtype SimpleActorPrim v = SimpleActorPrim (forall m . (Show (Env v), EvalM v m) => [v] -> Exp -> m v)
 
 -- | A nullary primitive
-aprim0 :: (forall m . EvalM v m => Exp -> m v) -> SimpleActorPrim v
+aprim0 :: (forall m . (Show (Env v), EvalM v m) => Exp -> m v) -> SimpleActorPrim v
 aprim0 f = SimpleActorPrim $ const f
 
 -- | A primitive on one argument
@@ -212,6 +216,7 @@ actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("wait-until-all-finished", aprim0 $ const $ return nil ),
    ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
    ("list", aprim0 $ const $ return nil),
+   ("print-env", aprim0 $ const $ (liftIO . print =<< getEnv) $> nil),
    -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
    ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeVar adr (var adr v) ; return $ var adr v }),
    ("print", aprim1 $ const $ const $ return nil) ]
@@ -228,7 +233,7 @@ allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives
 lookupPrimitive :: String -> Maybe (Primitive v)
 lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
 
-runPrimitive :: EvalM v m => Primitive v -> Exp -> [v] -> m v
+runPrimitive :: (Show (Env v), EvalM v m) => Primitive v -> Exp -> [v] -> m v
 runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
 runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = flip f
 

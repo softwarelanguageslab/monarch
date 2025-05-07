@@ -1,14 +1,15 @@
 {-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 module Analysis.Actors.Monad(
-   MonadMailbox(..),
+   MonadMailbox,
+   MonadSend(..),
+   MonadReceive(..),
    receive,
    MonadActorLocal(..),
    GlobalMailboxT,
    runWithMailboxT,
    ActorLocalT,
-   FlowSensitiveStoreMailboxT,
-   runFlowSensitiveStoreMailboxT,
-   send'
+   send',
+   LocalMailboxT
 ) where
 
 import Domain.Actor
@@ -22,32 +23,31 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
-import Analysis.Monad.WorkList (WorkListM)
-import Analysis.Monad.DependencyTracking (DependencyTrackingM(..), MonadDependencyTracking, trigger)
-import Analysis.Monad (IntraAnalysisT, MapM)
-import Control.Monad.State (StateT, gets, modify, runStateT)
+import Control.Monad.State (StateT, gets, modify, runStateT, MonadState (put))
 import Analysis.Actors.Mailbox (Mailbox (hasMessage), dequeue, enqueue, empty)
-import Control.Monad.Identity (IdentityT, runIdentityT)
-import Analysis.Monad.Map (In(In))
-import Analysis.Monad.Store
-import qualified Analysis.Monad.Map as MapM
-import qualified Debug.Trace as Debug
 import Data.Functor
-import Analysis.Monad.IntraAnalysis (currentCmp)
-import Control.Monad.IO.Class
 import Control.Monad.Cond (ifM)
 
 
-class (BottomLattice v, Joinable v) => MonadMailbox v m where
-  -- | Send a message to the given actor reference, returns a boolean
-  -- to indicate whether the message was already part of the abstract
-  -- mailbox (False) or not (True).
-  send :: ARef v -> v -> m Bool
+-- | Receive messages of type 'v' in monadic context 'm'
+class MonadReceive v m | m -> v where
+  -- | Non-deterministically receive a message from the mailbox
   receive' :: ARef v -> m v
 
+-- | Send a message of type 'v' in the monadic context 'm'
+class MonadSend v m | m -> v where
+  -- | Send a message to the given actor reference,
+  -- returns 'True' whenever the message was already part
+  -- of the mailbox.
+  send :: ARef v -> v -> m Bool
+
+type MonadMailbox v m = (MonadReceive v m, MonadSend v m, BottomLattice v, Joinable v)
+
+-- | CPS version of "receive'"
 receive :: (MonadMailbox v m, Monad m) => ARef v -> (v -> m a) -> m a
 receive ref = (receive' ref >>=)
 
+-- | Local information of an actor
 class MonadActorLocal v m | m -> v where
   withSelf :: ARef v -> m a -> m a
   getSelf :: m (ARef v)
@@ -64,15 +64,10 @@ instance {-# OVERLAPPABLE #-} (MonadActorLocal v m, Monad m, MonadLayer t) => Mo
   terminate = upperM terminate
   waitUntilAllFinished = upperM waitUntilAllFinished
 
-instance
-  {-# OVERLAPPABLE #-}
-  ( MonadMailbox v m,
-    MonadLayer t,
-    Monad m
-  ) =>
-  MonadMailbox v (t m)
-  where
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSend v m) => MonadSend v (t m) where
   send ref = upperM . send ref
+
+instance {-# OVERLAPPABLE #-} (Monad m ,MonadLayer t, MonadReceive v m) => MonadReceive v (t m) where
   receive' = upperM . receive'
 
 -- | Same as @send@ but ignores the returned boolean
@@ -83,13 +78,17 @@ send' ref = void . send ref
 -- Instances
 ------------------------------------------------------------
 
--- | Local mailbox, meant to be added above `GlobalMailboxT`
+-- | Local mailbox for receiving messages, meant to be added above `GlobalMailboxT`
 -- and above any non-determinism and caching effects.
--- newtype LocalMailboxT v mb m a = LocalMailboxT (StateT (Maybe mb) m a)
---                                deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)
---
--- instance (Monad m) => MonadMailbox v (LocalMailboxT v mb m) where
--- instance (Monad m) => MonadSpawn v (LocalMailboxT v mb m) where
+newtype LocalMailboxT v mb m a = LocalMailboxT (StateT mb m a)
+                               deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadState mb, MonadJoinable, MonadBottom, MonadCache)
+
+instance (Mailbox mb v, BottomLattice mb, Joinable mb, Joinable v, MonadReceive v m, MonadJoin m, MonadActorLocal v m, Eq (ARef v)) => MonadReceive v (LocalMailboxT v mb m) where
+  receive' ref = do
+    self <- getSelf
+    if self == ref then
+      mjoinMap (\(msg, mb) -> put mb $> msg) =<< gets (Set.toList . dequeue)
+    else upperM (receive' ref)
 
 -- | Global mailbox parametrized by a mailbox abstraction
 newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT (Map (ARef v) mb) m a}
@@ -100,9 +99,11 @@ deriving instance (MonadCache m, Ord mb, Ord v, Ord (ARef v)) => MonadCache (Glo
 
 deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinable mb) => MonadJoinable (GlobalMailboxT v mb m)
 
-instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadMailbox v (GlobalMailboxT v mb m) where
+instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadSend v (GlobalMailboxT v mb m) where
   send ref v = GlobalMailboxT $ ifM (gets (hasMessage v . fromMaybe empty . Map.lookup ref)) (return False) (modify (Map.insertWith (\_ old ->  enqueue v old) ref (enqueue v empty)) $> True)
 
+
+instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadReceive v (GlobalMailboxT v mb m) where
   -- NOTE: we cannot use `MonadJoin` here since we have passed the `JoinT` layer in the monadic stack,
   -- thus we use a `Joinable` instance to join the values ourselves. This should **not** happen
   -- since the `JoinT` and `NonDetT` layers are normally responsible for providing this behavior.
@@ -123,35 +124,11 @@ instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
   terminate = mbottom-- no particular behavior in the abstract
   waitUntilAllFinished = return () -- no behavior in the abstract
 
-
-------------------------------------------------------------
--- Flow-sensitive stores and mailboxes
-------------------------------------------------------------
-
--- | A layer that writes a local store before sending the message 
--- so that at every "continuation" of the actor, the store is
--- known before it is reanalyzed.
-newtype FlowSensitiveStoreMailboxT ref s adr v m a = FlowSensitiveStoreMailboxT (IdentityT m a)
-                                   deriving (Applicative, Functor, Monad, MonadCache, MonadLayer, MonadJoinable, MonadBottom)
-
-
-instance (BottomLattice v, Joinable v, MapM (In ref s) s m, StoreM' s adr v m, MonadMailbox v m, Joinable s, ARef v ~ ref) => MonadMailbox v (FlowSensitiveStoreMailboxT (In ref s) s adr v m) where
-  send ref msg = do
-    sto <- currentStore
-    upperM (MapM.joinWith @(In ref s) @s (In ref) sto)
-    upperM $ send ref msg
-  receive' = upperM . receive'
-
-
-runFlowSensitiveStoreMailboxT :: FlowSensitiveStoreMailboxT ref s adr v m a -> m a
-runFlowSensitiveStoreMailboxT (FlowSensitiveStoreMailboxT ma) = runIdentityT ma
-
-
 ------------------------------------------------------------
 -- Effect registration for global mailboxes
 ------------------------------------------------------------
 
-type Dep v = ARef v
+-- type Dep v = ARef v
 
 -- instance (MonadMailbox v m, WorkListM m cmp, MonadIO m, Show cmp, MonadDependencyTracking cmp (Dep v) m) => MonadMailbox v (IntraAnalysisT cmp m) where
 --   send to msg = (currentCmp >>= (liftIO . putStrLn . ("cmp: " ++) . show)) >> trigger @cmp to >> upperM (send to msg)

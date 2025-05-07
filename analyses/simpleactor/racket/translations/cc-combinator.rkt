@@ -187,6 +187,7 @@
                (msg (gensym "msg"))
                (j  (gensym "j"))
                (old-send (gensym "old-send"))
+               (bdy-init (init bdy))
                (k  (gensym "k")))
           `(,(uncurry (append (list ''enhanced κ j) (list message))) 
              ;; TODO: we assume that there is only one instrumented 
@@ -201,11 +202,24 @@
                 (,old-send (dyn send^)))
                 (parametrize 
                   ((send^ (lambda (,rcv ,msg) (,old-send ,κc (pair ,rcv ,msg)))))
-                  ,(before-last bdy
-                                `(,old-send ,κc 'finish))))))]))
+                  ,@(if (null? bdy-init)
+                       '()
+                       `((,@bdy-init
+                          (,old-send ,κc 'finish)))))
+                ,(last bdy))))]))
 
   (map enhance-pattern pats))
 
+(define (last xs)
+  (if (null? (cdr xs))
+      (car xs)
+      (last (cdr xs))))
+
+(define (init xs)
+  (cond
+   ((null? xs) '())
+   ((null? (cdr xs)) '())
+   (else (cons (car xs) (init (cdr xs))))))
 
 (define (before-last lst item)
   (cond 

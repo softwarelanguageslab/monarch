@@ -507,6 +507,12 @@
                                      (cadr (cddddr args))
                                      (caddr (cddddr args))))
                                   (begin (error "Unsupported call."))))))))))))
+               (member
+                (lambda (e l)
+                  (assert (list? l))
+                  (if (null? l)
+                    #f
+                    (if (equal? (car l) e) l (member e (cdr l))))))
                (cddddr (lambda (x) (cdr (cdr (cdr (cdr x))))))
                (cadddr (lambda (x) (car (cdr (cdr (cdr x))))))
                (int-top (lambda () (random 42)))
@@ -618,10 +624,11 @@
                                   kc7403
                                   (pair rcv7404 msg7405)))))
                              (begin
+                               (print-env)
                                (print 'ping)
                                (sender (pair 'pong (dyn self)))
-                               (old-send7407 kc7403 'finish)
-                               (ping-behavior)))))))))))
+                               (old-send7407 kc7403 'finish)))
+                            (ping-behavior)))))))))
                  (pong-behavior
                   (lambda ()
                     (letrec ((real-self self^))
@@ -645,10 +652,11 @@
                                   kc7410
                                   (pair rcv7411 msg7412)))))
                              (begin
+                               (print-env)
                                (print 'pong)
                                (sender (pair 'ping (dyn self)))
-                               (old-send7414 kc7410 'finish)
-                               (pong-behavior)))))))))))
+                               (old-send7414 kc7410 'finish)))
+                            (pong-behavior)))))))))
                  (ping/c
                   (lambda ()
                     (lambda (k7418 j7419 a7417)
@@ -657,19 +665,15 @@
                                   (match
                                    v7420
                                    (((pair 'ping x7422)
-                                     (begin
-                                      (trace 'ping)
-                                      (pair
+                                     (pair
                                       'enhanced
                                       (pair
                                        (lambda (j7424)
                                          (letrec ((r
                                                    (lambda (trace7428)
-                                                     (trace trace7428)
                                                      (receive
                                                       (('finish
                                                         (begin
-                                                          (trace (member 'pong trace7428))
                                                           (if (member
                                                                'pong
                                                                trace7428)
@@ -678,8 +682,6 @@
                                                        ((pair
                                                          rcv7427
                                                          message7426)
-                                                        (begin
-                                                          (trace 'rcv)
                                                         (match
                                                          message7426
                                                          (((pair 'pong x7429)
@@ -710,17 +712,16 @@
                                                                     j7424
                                                                     j7424)
                                                                    x7429))))))
-                                                             (trace 'RECUR)
                                                              (r
                                                               (pair
                                                                'pong
-                                                               trace7428)))))))))))))
+                                                               trace7428))))))))))))
                                            (spawn^ (r (list)))))
                                        (pair
                                         j7419
                                         (pair
                                          'ping
-                                         ((actor? k7418 j7419) x7422)))))))
+                                         ((actor? k7418 j7419) x7422))))))
                                     (x7421 (blame k7418))))))
                           (a7417 message7416)))))))
           (letrec ((ping

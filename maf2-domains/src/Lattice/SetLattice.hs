@@ -9,6 +9,7 @@ import Lattice.Split
 
 import Data.Set (Set)
 import qualified Data.Set as Set 
+import Lattice.Trace (Trace(trace))
 
 -- | Joinable for sets
 instance (Ord a) => Joinable (Set a) where
@@ -37,6 +38,10 @@ instance (Ord a) => SplitLattice (Set a) where
 -- | Domain instance for sets
 instance Ord a => Domain (Set a) a where
    inject = Set.singleton
+
+-- | Tracing for sets
+instance Trace adr a => Trace adr (Set a) where
+   trace = foldMap trace
 
 -- | More precise equal instance for sets
 -- TODO: The assumption here is that `a` is a concrete value type

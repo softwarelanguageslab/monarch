@@ -22,6 +22,8 @@ import Analysis.Monad.Map (MapM)
 import Analysis.SimpleActor.Monad (Ctx)
 import RIO
 import qualified RIO.Map as Map
+import Analysis.Monad (MonadDependencyTrigger)
+import Domain.Core.AbstractCount (AbstractCount)
 
 
 ------------------------------------------------------------
@@ -35,7 +37,11 @@ type ActorVlu = ActorValue K (SchemeAdr Exp K)
 type ActorEnv = HashMap String (SchemeAdr Exp K)
 type ActorMai = Map ActorRef (Set ActorVlu)
 type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
+-- | Type of path constraints used in the "SimpleActor" analysis
 type ActorPC  = PC (SchemeAdr Exp K)
+-- | A mapping for counting the number of concrete
+-- actors associated with an abstract actor reference
+type ActorCou = Map ActorRef AbstractCount
 
 ------------------------------------------------------------
 -- Utilities
@@ -53,6 +59,8 @@ type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Const
 -- Addresses
 ------------------------------------------------------------
 
+
+type ActorAdr = SchemeAdr Exp K
 type ActorVarAdr = SchemeAdr Exp K 
 
 -- | Output address for writing individual actor results
@@ -96,7 +104,8 @@ type DependOn c m = (c ActorRef ActorVarAdr m)
 -- | Constraints for dependency tracking on each type of address
 type MonadActorStoreDependencyTracking m =
   (DependOn DependencyTrackingM m,
-   DependOn MonadDependencyTriggerTracking m)
+   DependOn MonadDependencyTriggerTracking m,
+   DependOn MonadDependencyTrigger m)
   
 
 -- | A store for each actor

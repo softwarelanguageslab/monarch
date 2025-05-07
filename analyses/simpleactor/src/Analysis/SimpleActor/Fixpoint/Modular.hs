@@ -4,7 +4,7 @@
 module Analysis.SimpleActor.Fixpoint.Modular where
 
 import Analysis.SimpleActor.Fixpoint.Common
-import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, SequentialRes)
+import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, SequentialRes, ActorRes)
 import qualified Analysis.SimpleActor.Fixpoint.Sequential as Sequential
 import Control.Lens.TH
 import RIO hiding (view)
@@ -18,7 +18,7 @@ import qualified RIO.Set as Set
 import Analysis.Actors.Monad (MonadMailbox (..), runWithMailboxT)
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
-import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp))
+import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), runStoreT)
 import qualified Analysis.Monad.ComponentTracking as C
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import Analysis.Monad.Map
@@ -40,10 +40,8 @@ import qualified Data.HashMap.Strict as HashMap
 -- Analysis data
 ------------------------------------------------------------
 
-type SequentialResult = Map SequentialCmp SequentialRes
-
 -- The analysis result
-type AnalysisResult = (Map ActorResOut SequentialResult, ActorMai)
+type AnalysisResult = (Map ActorResOut ActorRes, ActorMai)
 
 -- | State kept during the analysis that falls outside the
 -- scope of the monad transformers
@@ -56,8 +54,8 @@ $(makeLenses ''AnalysisState)
 spawnWL :: (Ord cmp, ComponentTrackingM m cmp, WorkListM m cmp) => cmp -> m ()
 spawnWL cmp = ifM (Set.member cmp <$> C.components) (return ()) (C.spawn cmp >> add cmp)
 
-instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef, MapM ActorRef ActorSto m) => MonadSpawn ActorVlu Ctx (StateT AnalysisState m) where
-  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid <* MapM.joinWith pid (VarVal <$> initialSto @VarSto @ActorVlu allPrimitives PrrAdr)
+instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef) => MonadSpawn ActorVlu Ctx (StateT AnalysisState m) where
+  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid
     where pid  = Pid expr ctx
           env' = env -- HashMap.restrictKeys env (fv expr)  
 
@@ -70,18 +68,16 @@ newtype ModularIntraAnalysisT cmp m a = ModularIntraAnalysisT (IdentityT m a)
                                           deriving (Monad, Applicative, Functor, MonadLayer)
 
 
-instance (MonadDependencyTrigger cmp dep m, MonadIO m, Show dep) => MonadDependencyTrigger cmp dep (ModularIntraAnalysisT cmp m) where
-  trigger dep = liftIO (putStrLn $ "triggering " ++ show dep) >> upperM (trigger dep)
+instance (MonadDependencyTrigger cmp dep m) => MonadDependencyTrigger cmp dep (ModularIntraAnalysisT cmp m) where
+  trigger dep = upperM (trigger dep)
 
 
-instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadIO m, Show cmp, MonadDependencyTracking cmp ActorRef m, MonadDependencyTriggerTracking cmp ActorRef m) => MonadMailbox ActorVlu (ModularIntraAnalysisT cmp m) where
-  send to msg =
-    ifM (upperM (send to msg))
-        (trigger @cmp to $> True)
+instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadDependencyTracking cmp ActorRef m, MonadDependencyTriggerTracking cmp ActorRef m) => MonadMailbox ActorVlu (ModularIntraAnalysisT cmp m) where
+  send rcv msg =
+    ifM (upperM (send rcv msg))
+        (trigger @cmp rcv $> True)
         (return False)
   receive' ref = currentCmp >>= register @cmp ref >> upperM (receive' ref)
-
-
 
 runModularIntraAnalysisT :: ModularIntraAnalysisT cmp m a -> m a
 runModularIntraAnalysisT (ModularIntraAnalysisT m) = runIdentityT m
@@ -95,9 +91,13 @@ initialAnalysisState :: ActorExp -> AnalysisState
 initialAnalysisState expr =
   AnalysisState (Map.singleton EntryPid (expr, initialEnv))
 
+-- | Initial global store
+initialGlobalStore :: ActorSto
+initialGlobalStore = VarVal <$> initialSto allPrimitives PrrAdr
+
 -- | Initial per-actor stores
 initialPerActorSto :: Map ActorRef ActorSto
-initialPerActorSto = Map.singleton EntryPid (VarVal <$> initialSto allPrimitives PrrAdr)
+initialPerActorSto = Map.singleton EntryPid  initialGlobalStore
 
 -- | The initial analysis environment
 initialEnv :: ActorEnv
@@ -108,16 +108,21 @@ initialEnv = HashMap.fromList (fmap (\nam -> (nam, PrrAdr nam)) allPrimitives)
 ------------------------------------------------------------
 
 type ModularInterM m = (MonadState AnalysisState m,
-                        MonadActorStore m,
                         MonadActorStoreDependencyTracking m,
                         MonadDependencyTracking ActorRef ActorRef m,
                         MonadDependencyTriggerTracking ActorRef ActorRef m,
                         MonadDependencyTracking ActorRef ActorResOut m,
                         WorkListM m ActorRef,
                         MonadMailbox ActorVlu m,
+                        -- Z3 Solvin g
                         FormulaSolver ActorVarAdr m,
+                        -- Tracking actor spawns
                         MonadSpawn ActorVlu Ctx m,
-                        MapM ActorResOut (Map SequentialCmp SequentialRes) m,
+                        -- Actor results
+                        MapM ActorResOut ActorRes m,
+                        -- Global store
+                        StoreM ActorAdr (StoreVal ActorVlu) m,
+                        -- For debugging
                         MonadIO m)
 
 -- | "intra"-analysis
@@ -135,8 +140,8 @@ inter = iterateWL' EntryPid intra
 analyze :: ActorExp -> IO AnalysisResult
 analyze expr = fmap toAnalysisResult $ inter
              & flip evalStateT (initialAnalysisState expr)
-             & runMapT initialPerActorSto
-             & runWithMapping @ActorResOut @(Map SequentialCmp SequentialRes)
+             & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore 
+             & runWithMapping @ActorResOut @ActorRes
              & runWithDependencyTracking @ActorRef @ActorVarAdr
              & runWithDependencyTracking @ActorRef @ActorRef
              & runWithDependencyTracking @ActorRef @ActorResOut

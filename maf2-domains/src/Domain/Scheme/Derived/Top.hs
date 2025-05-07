@@ -23,10 +23,14 @@ import Lattice.Equal
 import Lattice.TopLiftedLattice (TopLifted (..), fromTL)
 import Prelude hiding (acos, and, asin, atan, ceiling, cos, div, floor, log, not, or, round, sin, sqrt, tan)
 import Control.Monad.Join (MonadBottom(..))
+import Lattice.Trace (Trace (trace))
 
 -- | Lifts a value @a@ from the Scheme domain into a @TopLifted@ value so that all Scheme values have a synthetic top element
-newtype SchemeTopLifted a = SchemeTopLifted {getTopLifted :: (TopLifted a)}
+newtype SchemeTopLifted a = SchemeTopLifted {getTopLifted :: TopLifted a}
   deriving (Ord, Eq, Joinable, PartialOrder, Applicative, Foldable, Traversable, Functor, BottomLattice, EqualLattice, Generic)
+
+instance Trace adr a  => Trace adr (SchemeTopLifted a) where
+  trace = trace . getTopLifted
 
 instance (Show a) => Show (SchemeTopLifted a) where
   show (SchemeTopLifted Top) = "⊤"

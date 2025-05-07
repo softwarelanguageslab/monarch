@@ -57,6 +57,7 @@ instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM cmp k m, Mon
         get k = currentCmp >>= upperM . register k >> upperM (get k)
         put k v = whenM (upperM $ put' k v) (notrace ("put " ++ show v) $ upperM $ trigger k)
         joinWith k v = whenM (upperM $ joinWith' k v) (notrace ("joinWith" ++ show (typeOf v)) $ upperM $ trigger k)
+        getAll = upperM getAll
 
 notrace :: String -> v -> v
 notrace = const id

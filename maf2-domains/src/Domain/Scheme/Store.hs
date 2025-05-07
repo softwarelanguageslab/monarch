@@ -17,7 +17,8 @@
 module Domain.Scheme.Store(
    StoreVal(..),
    SchemeAdr(..),
-   ForAllStored
+   ForAllStored,
+  varVals
 ) where
 
 
@@ -28,12 +29,23 @@ import Control.DeepSeq
 import GHC.Generics (Generic)
 import Domain.Scheme.Class hiding (Env)
 import Data.Kind
+import Syntax.Span
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 data SchemeAdr e ctx = VarAdr !Ide !ctx   --  ^ variables
                      | PtrAdr !e   !ctx   --  heap allocated values
                      | PrrAdr !String     -- ^ primiitives
                      | TopAdr
                     deriving (Eq, Ord, Show, Generic, NFData)
+
+instance (SpanOf e) => SpanOf (SchemeAdr e ctx) where
+  spanOf (VarAdr i _) = spanOf i
+  spanOf (PtrAdr e _) = spanOf e
+  -- TODO: proper implementation of spanOf for these addresses
+  spanOf (PrrAdr s) = undefined
+  spanOf TopAdr = undefined
+
 
 instance TopLattice (SchemeAdr e ctx) where
   top = TopAdr
@@ -67,7 +79,7 @@ instance (ForAllStored NFData v) => NFData (StoreVal v)
 instance (ForAllStored PartialOrder v,
           ForAllStored Show v)
   => PartialOrder (StoreVal v) where
-  
+
   leq (PaiVal a) (PaiVal b) = leq a b
   leq (StrVal a) (StrVal b) = leq a b
   leq (VecVal a) (VecVal b) = leq a b
@@ -89,4 +101,11 @@ instance (ForAllStored (Trace adr) v, Ord adr) => Trace adr (StoreVal v) where
   trace (StrVal a) = trace a
   trace (VecVal a) = trace a
   trace (VarVal a) = trace a
-  
+
+-- | Retrieve the stack-allocated values from the stored value
+varVals :: StoreVal a -> Set (VarDom a)
+varVals (VarVal v) =  Set.singleton v
+varVals _ = Set.empty
+
+-- TODO: add functions for extracting the heap allocated values as well
+

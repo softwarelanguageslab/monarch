@@ -1,7 +1,7 @@
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 -- | Analysis to analyse the inner actor semantics
-module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes) where
+module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes, ActorRes(..)) where
 
 ------------------------------------------------------------
 -- Imports
@@ -14,23 +14,20 @@ import Analysis.Actors.Monad
 import Data.Functor.Identity
 
 import Analysis.Monad hiding (eval, spawn, store)
-import Syntax.AST
+import Analysis.Store
+import qualified Analysis.Store as Store
+import Syntax.AST hiding (Trace)
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Monad.Fix
 import Control.Monad.Escape
-import Data.Set (Set)
 import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)
 import Domain.Scheme.Store
-import Domain.Scheme.Class (PaiDom, VecDom, StrDom, Adr)
+import Domain.Scheme.Class (Adr)
 import qualified Data.Map as Map
-import Analysis.Symbolic.Monad
-    ( FormulaT )
+import Analysis.Symbolic.Monad ( DiscardFormulaT )
 import Solver
-import Symbolic.AST ( emptyPC )
-import Analysis.Store (CountingMap(..), Store (..))
 import Data.Maybe
-import Analysis.Context (emptyMcfaContext)
 import qualified RIO.Set as Set
 import Data.Tuple.Syntax
 
@@ -38,15 +35,17 @@ import Analysis.SimpleActor.Fixpoint.Common
 import Control.Monad.Layer (MonadLayer (..))
 import Control.Monad.Cond (ifM)
 import Control.Monad.Reader
-import Control.Monad.Join (mbottom, MonadBottom)
+import Control.Monad.Join (mbottom, MonadBottom, MonadJoinable)
 import qualified Analysis.Monad.Map as MapM
-import RIO hiding (exp)
-import qualified Debug.Trace as Debug
-import Analysis.Store (emptyCountingMap)
-import Control.Fixpoint.WorkList (FIFOWorkList, LIFOWorklist)
+import RIO hiding (exp, trace, join)
+import Control.Fixpoint.WorkList (LIFOWorklist)
 import Lattice.Class
+import Lattice.Trace
 import qualified Data.HashMap.Strict as HashMap
-import Analysis.SimpleActor.Fixpoint.Common (initialDynEnvironment)
+import Control.Monad.Identity (IdentityT)
+import Analysis.Monad.Store (TransparentStoreT)
+import Domain.Actor (arefs', ActorDomain)
+import Analysis.Monad.AbstractCount
 
 
 ------------------------------------------------------------
@@ -72,12 +71,15 @@ type SequentialT m = MonadStack '[
                        MetaT,
                        ActorLocalT ActorVlu,
                        -- Local path conditions
-                       FormulaT (SchemeAdr Exp K) ActorVlu,
+                       DiscardFormulaT (SchemeAdr Exp K) ActorVlu,
                        -- WidenedStoreT ActorSto (SchemeAdr Exp K) ActorVlu,
                        -- WidenedFormulaT (SchemeAdr Exp K) ActorVlu,
+                       CountSpawnT,
                        SetNonDetT,
                        -- JoinT,
-                       CacheT
+                       CacheT,
+                       TransparentStoreT ActorSto ActorAdr (StoreVal ActorVlu),
+                       AbstractCountT ActorRef
                   ] m
 
 -- | SequentialIntraM denotes the remaining constraints needed for running the intra
@@ -89,107 +91,113 @@ type InterAnalysisM m = (MonadSchemeStore m,
                          DependsOn m SequentialCmp '[
                              SequentialCmp ,
                              SchemeAdr Exp K,
-                             Pid Exp K
-                            -- In ActorCmp ActorSto,
-                            -- Out ActorCmp ActorSto
+                             Pid Exp K,
+                             In SequentialCmp ActorSto,
+                             Out SequentialCmp ActorSto,
+                             In SequentialCmp ActorCou,
+                             Out SequentialCmp ActorCou
                            ],
                             -- In ActorCmp ActorPC,
                             -- Out ActorCmp ActorPC ],
-                         AbstractCountM (SchemeAdr Exp K) m,
                          MonadMailbox ActorVlu m,
                          FormulaSolver (SchemeAdr Exp K) m,
                          MonadSpawn ActorVlu Ctx m,
-                         MonadIO m)
-
-
-------------------------------------------------------------
--- Sequential intra analysis monad
-------------------------------------------------------------
-
--- Actors may, just like threads, depend on segments of memory
--- that are shared with other actors. In our model,
--- mutation only occurs whenever a @letrec*@ special form
--- is used, since the semantics of a @letrec@ is a definition
--- followed by a destructive assignment.
---
--- To account for this behavior, an abstract intepreter must
--- track variables that are shared between actors (or threads)
--- so that their potential values could be added to the
--- value set of that actor.
---
--- To do so, we add a @SequentialIntraT@ layer to the monad
--- stack which intercepts calls to the store so that we
--- can track which variables are accessed by the currently analyzed
--- actor. The accessed variables are then added to current's actor
--- initial store,  by reanalyzing any actors that write to the
--- shared location.
--- 
--- This process is finite since the reananlysis only happens once,
--- for each shared address. Subsequent updates to that address
--- will trigger a reanalysis in the opposite direction.
-
-
-newtype SequentialIntraT m a = SequentialIntraT (ReaderT ActorRef m a)
-                deriving (Applicative, Functor, Monad, MonadLayer, MonadCache, MonadReader ActorRef)
-
-instance (MonadDependencyTriggerTracking ActorRef a m, MapM ActorRef (CountingMap a v) m, WorkListM m ActorRef, MonadIO m, MonadBottom m, DependencyTrackingM ActorRef a m, StoreM a v m) => StoreM a v (SequentialIntraT m) where
-  storeSize = upperM (storeSize @a @v)
-  lookupAdr adr = SequentialIntraT ask >>= register adr >>
-        ifM (hasAdr adr)
-       {- then -} (upperM $ lookupAdr adr)
-       {- else -} -- Trigger contributions of the address and register our interest
-           -- TODO[important]: we filter out contributions that we made ourselves, but this excludes us from creating self sends (in the abstract or concrete)
-           -- since the data of the self send will never be included in the input store.
-           (asks (Set.filter . (/=)) <*> triggers adr >>= adds >> mbottom)
-  writeAdr adr vlu = do
-    cmp <- ask
-    -- write the value to the input stores of all dependent actors,
-    -- except ourselves, MapM ensures that dependent actors only get reanalyzed whenever
-    -- the store changes.
-    deps <- Set.filter (/= cmp) <$> dependent adr
-    mapM_ (\cmp' -> MapM.get cmp' >>= maybe (MapM.put cmp' $ extendSto adr vlu emptySto) (MapM.joinWith cmp' . extendSto adr vlu)) deps
-    -- track that we triggered the write 
-    trackTrigger adr cmp
-    -- and write as usual
-    upperM $ writeAdr adr vlu
-
-  updateWith fs fw a = do
-    -- same as in @writeAdr@ in terms of writing behavior and dependency trigger tracking
-    cmp <- ask
-    deps <- Set.filter (/= cmp) <$> dependent a
-    mapM_ (\cmp' -> MapM.get cmp' >>= (MapM.joinWith cmp' . updateStoWith fs fw a) . fromMaybe emptySto) deps
-    trackTrigger a cmp
-    upperM (updateWith fs fw a)
-
-  hasAdr = upperM . (hasAdr @a)
-
-
-
-
--- | Run the @SequentiaIntraT@ monad transformer
-runSequentialIntraT :: ActorRef -> SequentialIntraT m a -> m a
-runSequentialIntraT ref (SequentialIntraT m) = runReaderT m ref
+                         MonadIO m,
+                         -- Flow sensitive stores
+                         MapM (In SequentialCmp ActorSto) ActorSto m,
+                         MapM (Out SequentialCmp ActorSto) ActorSto m,
+                         MapM (In SequentialCmp ActorCou) ActorCou m,
+                         MapM (Out SequentialCmp ActorCou) ActorCou m
+                        )
 
 ------------------------------------------------------------
--- Inter-actor stores
+-- Abstract counting of actor references
 ------------------------------------------------------------
 
--- | Write the relevant addresses to the input store
--- of an actor when one is spawned
-instance (Monad m, StoreM ActorVarAdr (StoreVal ActorVlu) m, StoreM' ActorSto ActorVarAdr (StoreVal ActorVlu) m, MapM ActorRef ActorSto m, MonadSpawn ActorVlu Ctx m) => MonadSpawn ActorVlu Ctx (SequentialIntraT m) where
-   spawn expr env ctx = do
-      pid <- upperM (spawn expr env ctx)
-      sto <- currentStore @ActorSto
-      MapM.joinWith pid (CountingMap $ Map.restrictKeys (store sto) (Set.fromList $ map snd $ HashMap.toList env))
-      return pid
+-- | Layer to track the counts of abstract actor references
+newtype CountSpawnT m a = CountSpawnT (IdentityT m a)
+                        deriving (MonadJoinable, MonadBottom, Applicative, Functor, Monad, MonadCache, MonadLayer)
+
+instance  (MonadAbstractCount ActorRef m, MonadSpawn ActorVlu Ctx m) => MonadSpawn ActorVlu Ctx (CountSpawnT m) where
+      spawn expr env ctx = upperM (spawn expr env ctx) >>= (\ref -> countIncrement ref $> ref)
+
+------------------------------------------------------------
+-- Garbage collection
+------------------------------------------------------------
+
+-- | Trace the addresses in a component
+traceCmp :: SequentialCmp -> Set ActorAdr
+traceCmp (_ ::*:: env ::*:: dyn ::*:: _ ::*:: _ ::*:: _) = Set.unions [trace env, trace dyn]
+
+-- We apply garbage collection in this analysis to remove
+-- unreachable addresses from the store, therefore decreasing
+-- its abstract count. This is particularly important to
+-- identify the cardinality of actor references (or process identifiers, i.e., PIDs).
+
+-- | Garbage collection arrow that gets added around the evaluation function,
+-- and which gets applied whenever the open recursive function is used (i.e., when crossing
+-- component boundaries)
+gc :: forall m e .
+      (MonadCache m,
+       MonadBottom m,
+       -- FLow sensitive store
+       MapM (In (Key m e) ActorSto) ActorSto m,
+       MapM (Out (Key m e) ActorSto) ActorSto m,
+       -- Flow sensitive counting of actor references
+       MapM (In (Key m e) ActorCou) ActorCou m,
+       MapM (Out (Key m e) ActorCou) ActorCou m,
+       MonadAbstractCount ActorRef m,
+       -- Store retrieval and updates
+       StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m)
+   => (e -> AroundT e ActorVlu m ActorVlu) -- ^ the next arrow to execute after garbage collection
+   -> (Key m e -> Set ActorAdr) -- ^ specifies how to trace a the addresses in a component
+   -> (e -> AroundT e ActorVlu m ActorVlu)
+gc next traceKey e = do
+  -- the component that we are calling
+  cmp <- upperM $ key e
+  -- compute the set of addresses referenced by the current monadic context
+  let adrs = traceKey cmp
+  -- compute the set of transitively reachable addresses
+  sto <- currentStore
+  let adrs' = traceStore adrs (Map.map fst $ Store.store sto)
+  -- restrict the store to those addresses going forward
+  let rsto = restrictSto @ActorSto adrs' sto
+  -- retrieve all reachable actor references
+  let refs = foldMap (foldMap arefs' . varVals . snd) (Map.toList $ countingStoreValues rsto)
+  -- registering the store 
+  MapM.joinWith @(In (Key m e) ActorSto) (In cmp) rsto
+  -- restrict the counting mapping to only the reachable actor
+  -- references.
+  cma <- getCounts @ActorRef
+  MapM.joinWith @(In (Key m e) ActorCou) (In cmp) (Map.restrictKeys cma refs)
+  -- compute the value and add its contributions to the original store
+  v <- next e
+  -- read the output flow-sensitive store and abstract count for actor references
+  sto' <- maybe mbottom return =<< MapM.get @(Out (Key m e) ActorSto) (Out cmp)
+  cou' <- maybe mbottom return =<< MapM.get @(Out (Key m e) ActorCou) (Out cmp)
+
+  -- TODO: this breaks strong updates because the store before
+  -- the call is joined with the store after the call completely
+  -- negating any strong updates. However, since this analysis
+  -- does not perform strong updates this is not such a big
+  -- problem but we might want to change this in the future. 
+  putStore (join sto sto')
+  putCounts @ActorRef cou'
+  return v
 
 ------------------------------------------------------------
 -- Actor-modular monadic requirements
 ------------------------------------------------------------
 
+-- | Collected results
+data ActorRes = ActorRes {
+            -- | Result for each component in the inner-actor analysis
+            cmpRes :: Map SequentialCmp SequentialRes,
+            -- | Output counts for each component in the inner-actor analysis
+            outCount :: Map SequentialCmp ActorCou
+      } deriving (Ord, Eq, Show)
+
 type MonadActorModular m = (
-    -- Every actor has its own local store
-    MonadActorStore m,
     -- Dependencies can be tracked between the stores
     -- of each actor, in order to find which memory is shared.
     MonadActorStoreDependencyTracking m,
@@ -203,24 +211,60 @@ type MonadActorModular m = (
     MonadSpawn ActorVlu Ctx m,
     -- Keep track of results for each function call within
     -- the actor.
-    MapM ActorResOut (Map SequentialCmp SequentialRes) m,
+    MapM ActorResOut ActorRes m,
+    -- Global store for shared variables
+    StoreM ActorAdr (StoreVal ActorVlu) m,
     -- Other constraints
     MonadBottom m,
     MonadIO m
   )
 
+
 ------------------------------------------------------------
 -- Sequential analysis
 ------------------------------------------------------------
 
+-- | Keeps track of flow sensitive stores: it sets up the flow
+-- sensitive at the start of the analysis and then (at the In adr)
+-- and then saves it at its Out address.
+flowStore :: forall cmp s adr v m a . (
+              StoreM' s adr v m,
+              BottomLattice s,
+              Show s, Show cmp,
+              -- FLow sensitive store
+              MapM (In cmp s) s m,
+              MapM (Out cmp s) s m,
+              -- Flow sensitive reference counting for
+              -- abstract actor references 
+              MapM (In cmp ActorCou) ActorCou m,
+              MapM (Out cmp ActorCou) ActorCou m,
+              MonadAbstractCount ActorRef m)
+          => (cmp -> m a) -- ^ original arrow
+          -> (cmp -> m a)
+flowStore next cmp = do
+  sto <- fromMaybe bottom <$> MapM.get @(In cmp s) (In cmp)
+  cou <- fromMaybe bottom <$> MapM.get @(In cmp ActorCou) (In cmp)
+  putStore sto
+  putCounts cou
+  v <- next cmp
+  sto' <- currentStore @s
+  cou' <- getCounts
+  MapM.put @(Out cmp s) (Out cmp) sto'
+  MapM.put @(Out cmp ActorCou) (Out cmp) cou'
+  return v
+
 
 -- | Intra-analysis
-intra :: forall m . InterAnalysisM m => SequentialCmp -> m ()
-intra cmp = runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) (eval @ActorVlu) cmp
-          & runAlloc VarAdr
-          & runAlloc PtrAdr
-          & runIntraAnalysis cmp
-
+intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
+intra ref cmp = do
+          flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) eval'') cmp
+                  & runAlloc VarAdr
+                  & runAlloc PtrAdr
+                  & evalWithTransparentStoreT
+                  & evalWithAbstractCountT
+                  & runIntraAnalysis cmp
+      where -- eval'' :: Cmp -> FixT Cmp ActorVlu (SequentialT (IntraAnalysisT SequentialCmp m)) ActorVlu
+            eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
 
 -- | Inter-analysis
 inter :: InterAnalysisM m
@@ -228,14 +272,14 @@ inter :: InterAnalysisM m
       -> ActorEnv    -- ^ the environment of variables captured by the actor expression
       -> ActorRef    -- ^ the current actor reference
       -> m ()
-inter exp environment ref = iterateWL' initialCmp intra
+inter exp environment ref = iterateWL' initialCmp (intra ref)
   where initialCmp = ActorExp exp         -- component to analyze
                 <+> environment           -- initial lexical environment
                 <+> initialDynEnvironment -- initial dynamic environment 
                 <+> Ctx ref               -- context 
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> ref                   -- current `self`
-                <+> emptyPC
+                -- <+> emptyPC
 
 
 
@@ -246,19 +290,26 @@ analyze :: forall m  . MonadActorModular m
         -> ActorRef             -- ^ the current actor reference
         -> m ()
 analyze exp env ref = do
-      -- retrieve store associated with this actor
-      sto <- fromMaybe (VarVal <$> initialSto allPrimitives PrrAdr) <$> MapM.get ref
       res  <- inter exp env ref
             & runWithMapping @SequentialCmp @SequentialRes
+            & runWithMapping @(In SequentialCmp ActorSto)  @ActorSto
+            & runWithMapping @(Out SequentialCmp ActorSto) @ActorSto
+            & runWithMapping @(In SequentialCmp ActorCou)  @ActorCou
+            & runWithMapping @(Out SequentialCmp ActorCou) @ActorCou
             & runWithComponentTracking @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @(SchemeAdr Exp K)
             & runWithDependencyTracking @SequentialCmp @ActorRef
+            & runWithDependencyTracking @SequentialCmp @(In SequentialCmp ActorSto)
+            & runWithDependencyTracking @SequentialCmp @(Out SequentialCmp ActorSto)
+            & runWithDependencyTracking @SequentialCmp @(In SequentialCmp ActorCou)
+            & runWithDependencyTracking @SequentialCmp @(Out SequentialCmp ActorCou)
             & runWithWorkList @(LIFOWorklist SequentialCmp)
-            & runSequentialIntraT ref
-            & runStoreT @ActorSto @(SchemeAdr Exp K) @(StoreVal ActorVlu) sto
+            & runIntraAnalysis ref
+            -- & runStoreT @ActorSto @(SchemeAdr Exp K) @(StoreVal ActorVlu) sto
 
       MapM.put (ActorResOut ref) (extractVal res)
-
-      return ()
-  where extractVal (_ ::*:: res ::*:: _) = res
+      mapM_ (uncurry writeAdr) (Map.toList $ contributions res)
+  where extractVal (_ ::*:: res ::*:: _ ::*:: _ ::*:: inCou ::*:: outCou) = ActorRes res (Map.mapKeys outAddress outCou)
+        extractSto (_ ::*:: _ ::*:: _ ::*:: outStore ::*:: _ ::*:: _) = countingStoreValues <$> outStore
+        contributions res = joinMap snd (Map.toList $ extractSto res)
