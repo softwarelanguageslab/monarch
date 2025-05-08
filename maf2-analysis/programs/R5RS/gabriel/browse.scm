@@ -2,9 +2,9 @@
 ;;; an AI-like data base of units.
 
 (define (lookup key table)
-  @sensitivity:FA
+  
   (let loop ((x table))
-    @sensitivity:FA
+    
     (if (null? x)
         #f
         (let ((pair (car x)))
@@ -15,7 +15,7 @@
 (define properties '())
 
 (define (get key1 key2)
-  @sensitivity:FA
+  
   (let ((x (lookup key1 properties)))
     (if x
         (let ((y (lookup key2 (cdr x))))
@@ -25,7 +25,7 @@
         #f)))
 
 (define (put key1 key2 val)
-  @sensitivity:FA
+  
   (let ((x (lookup key1 properties)))
     (if x
         (let ((y (lookup key2 (cdr x))))
@@ -38,12 +38,12 @@
 (define *current-gensym* 0)
 
 (define (generate-symbol)
-  @sensitivity:FA
+  
   (set! *current-gensym* (+ *current-gensym* 1))
   (string->symbol (number->string *current-gensym*)))
 
 (define (append-to-tail! x y)
-  @sensitivity:FA
+  
   (if (null? x)
       y
       (do ((a x b)
@@ -51,10 +51,10 @@
         ((null? b)
          (set-cdr! a y)
          x)
-        @sensitivity:FA)))
+        )))
 
 (define (tree-copy x)
-  @sensitivity:FA
+  
   (if (not (pair? x))
       x
       (cons (tree-copy (car x))
@@ -68,22 +68,21 @@
 (define *rand* 21)
 
 (define (init n m npats ipats)
-  @sensitivity:FA
+  
   (let ((ipats (tree-copy ipats)))
     (do ((p ipats (cdr p)))
         ((null? (cdr p)) (set-cdr! p ipats))
-      @sensitivity:FA)
+      )
     (do ((n n (- n 1))
          (i m (cond ((zero? i) m)
                     (else (- i 1))))
          (name (generate-symbol) (generate-symbol))
          (a '()))
         ((= n 0) a)
-      @sensitivity:No ;; does not terminate with FA, 1A
       (set! a (cons name a))
       (do ((i i (- i 1)))
           ((zero? i))
-        @sensitivity:FA
+        
         (put name (generate-symbol) #f))
       (put name
            'pattern
@@ -91,23 +90,22 @@
                 (ipats ipats (cdr ipats))
                 (a '()))
                ((zero? i) a)
-             @sensitivity:FA
+             
              (set! a (cons (car ipats) a))))
       (do ((j (- m i) (- j 1)))
           ((zero? j))
-        @sensitivity:FA
+        
         (put name (generate-symbol) #f)))))
 
 (define (browse-random)
-  @sensitivity:FA
+  
   (set! *rand* (remainder (* *rand* 17) 251))
   *rand*)
 
 (define (randomize l)
-  @sensitivity:FA
+  
   (do ((a '()))
       ((null? l) a)
-    @sensitivity:No ;; does not terminate with FA
     (let ((n (remainder (browse-random) (length l))))
       (cond ((zero? n)
              (set! a (cons (car l) a))
@@ -120,10 +118,9 @@
                 (set! a (cons (cadr x) a))
                 (set-cdr! x (cddr x))
                 x)
-               @sensitivity:FA))))))
+               ))))))
 
 (define (my-match pat dat alist)
-  @sensitivity:No ;; does not terminate with FA
   (cond ((null? pat)
          (null? dat))
         ((null? dat) '())
@@ -170,7 +167,7 @@
                                                        (cons (car pat) l)
                                                        alist)))
                                         (if (null? e) #f #t))
-                                       @sensitivity:1A ;; does not terminate with FA
+                                       
                                        )))))
                            (else #f))) ;;;; fix suggested by Manuel Serrano (cond did not have an else clause); this changes the run time quite a bit
                     (else (and
@@ -188,23 +185,23 @@
                     (a a a b (b a) b a b a)))))
 
 (define (browse pats)
-  @sensitivity:FA
+  
   (investigate
    database
    pats))
 
 (define (investigate units pats)
-  @sensitivity:FA
+  
   (do ((units units (cdr units)))
       ((null? units))
-    @sensitivity:FA
+    
     (do ((pats pats (cdr pats)))
         ((null? pats))
-      @sensitivity:FA
+      
       (do ((p (get (car units) 'pattern)
               (cdr p)))
           ((null? p))
-        @sensitivity:FA
+        
         (my-match (car pats) (car p) '())))))
 
 (browse '((*a ?b *b ?b a *a a *b *a)(*a *b *b *a (*a) (*b))(? ? * (b a) * ? ?)))
