@@ -15,7 +15,7 @@ import Analysis.SimpleActor.Semantics (allPrimitives, initialSto)
 import Control.Monad.State
 import RIO.Partial (fromJust)
 import qualified RIO.Set as Set
-import Analysis.Actors.Monad (MonadMailbox (..), runWithMailboxT)
+import Analysis.Actors.Monad (MonadMailbox (..), runWithMailboxT, MonadSend(..), MonadReceive(..))
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
 import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), runStoreT)
@@ -72,11 +72,13 @@ instance (MonadDependencyTrigger cmp dep m) => MonadDependencyTrigger cmp dep (M
   trigger dep = upperM (trigger dep)
 
 
-instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadDependencyTracking cmp ActorRef m, MonadDependencyTriggerTracking cmp ActorRef m) => MonadMailbox ActorVlu (ModularIntraAnalysisT cmp m) where
+instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadDependencyTracking cmp ActorRef m, MonadDependencyTriggerTracking cmp ActorRef m) => MonadSend ActorVlu (ModularIntraAnalysisT cmp m) where
   send rcv msg =
     ifM (upperM (send rcv msg))
         (trigger @cmp rcv $> True)
         (return False)
+
+instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadDependencyTracking cmp ActorRef m, MonadDependencyTriggerTracking cmp ActorRef m) => MonadReceive ActorVlu (ModularIntraAnalysisT cmp m) where
   receive' ref = currentCmp >>= register @cmp ref >> upperM (receive' ref)
 
 runModularIntraAnalysisT :: ModularIntraAnalysisT cmp m a -> m a
