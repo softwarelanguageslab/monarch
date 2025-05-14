@@ -42,7 +42,7 @@ import Control.Fixpoint.WorkList (LIFOWorklist)
 import Lattice.Class
 import Lattice.Trace
 import qualified Data.HashMap.Strict as HashMap
-import Control.Monad.Identity (IdentityT)
+import Control.Monad.Identity (IdentityT (..))
 import Analysis.Monad.Store (TransparentStoreT)
 import Domain.Actor (arefs', ActorDomain, ARef)
 import Analysis.Monad.AbstractCount
@@ -78,12 +78,12 @@ type SequentialT m = MonadStack '[
                        DiscardFormulaT (SchemeAdr Exp K) ActorVlu,
                        -- WidenedStoreT ActorSto (SchemeAdr Exp K) ActorVlu,
                        -- WidenedFormulaT (SchemeAdr Exp K) ActorVlu,
-                       CountSpawnT,
                        LocalMailboxT ActorVlu MB,
                        ActorLocalT ActorVlu,
                        SetNonDetT,
                        -- JoinT,
                        CacheT,
+                       CountSpawnT,
                        TransparentStoreT ActorSto ActorAdr (StoreVal ActorVlu),
                        AbstractCountT ActorRef
                   ] m
@@ -124,8 +124,18 @@ type InterAnalysisM m = (MonadSchemeStore m,
 newtype CountSpawnT m a = CountSpawnT (IdentityT m a)
                         deriving (MonadJoinable, MonadBottom, Applicative, Functor, Monad, MonadCache, MonadLayer)
 
+-- | Run the given computation in a 'CountSpawnT' context
+runCountSpawnT :: CountSpawnT m a -> m a
+runCountSpawnT (CountSpawnT ma)  = runIdentityT ma
+
 instance  (MonadAbstractCount ActorRef m, MonadSpawn ActorVlu Ctx m) => MonadSpawn ActorVlu Ctx (CountSpawnT m) where
       spawn expr env ctx = upperM (spawn expr env ctx) >>= (\ref -> countIncrement ref $> ref)
+
+-- TODO:
+-- * increment the count of any actor reference referenced from the value (transitively and through the store)
+-- * send the message down
+-- instance (MonadSend ActorVlu m, Trace v) => MonadSend ActorVlu (CountSpawnT m) where
+--       send to msg = 
 
 ------------------------------------------------------------
 -- Garbage collection
@@ -263,10 +273,11 @@ flowStore next cmp = do
 
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
-intra ref cmp = do
+intra _ref cmp = do
           flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) eval'') cmp
                   & runAlloc VarAdr
                   & runAlloc PtrAdr
+                  & runCountSpawnT
                   & evalWithTransparentStoreT
                   & evalWithAbstractCountT
                   & runIntraAnalysis cmp

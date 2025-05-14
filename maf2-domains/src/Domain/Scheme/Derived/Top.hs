@@ -58,19 +58,19 @@ instance (CharDomain a) => CharDomain (SchemeTopLifted a) where
 
   --- XXX: this is very close top the instance of @TopLifted@ in @Domain.Core.CharDomain.TopLifted@ see if
   -- some code can be shared
-  downcase = sequenceA . fmap downcase
-  upcase = sequenceA . fmap upcase
-  charToInt = sequenceA . fmap charToInt
-  isLower = fmap (fromTL boolTop . getTopLifted) . sequenceA . fmap isLower
-  isUpper = fmap (fromTL boolTop . getTopLifted) . sequenceA . fmap isUpper
+  downcase = traverse downcase
+  upcase = traverse upcase
+  charToInt = traverse charToInt
+  isLower = fmap (fromTL boolTop . getTopLifted) . traverse isLower
+  isUpper = fmap (fromTL boolTop . getTopLifted) . traverse isUpper
   charEq a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 charEq a
   charLt a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 charLt a
   charEqCI a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 charEqCI a
   charLtCI a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 charLtCI a
 
 instance (NumberDomain a) => NumberDomain (SchemeTopLifted a) where
-  isZero = sequenceA . fmap isZero
-  random = sequenceA . fmap random
+  isZero = traverse isZero
+  random = traverse random
   plus a = sequenceA . liftA2 plus a
   minus a = sequenceA . liftA2 minus a
   times a = sequenceA . liftA2 times a
@@ -83,26 +83,26 @@ instance (IntDomain a) => IntDomain (SchemeTopLifted a) where
   type Str (SchemeTopLifted a) = SchemeTopLifted (Str a)
   type Rea (SchemeTopLifted a) = SchemeTopLifted (Rea a)
 
-  toReal = sequenceA . fmap toReal
-  toString = sequenceA . fmap toString
+  toReal = traverse toReal
+  toString = traverse toString
   quotient a = sequenceA . liftA2 quotient a
   modulo a = sequenceA . liftA2 modulo a
   remainder a = sequenceA . liftA2 remainder a
 
 instance (RealDomain a) => RealDomain (SchemeTopLifted a) where
   type IntR (SchemeTopLifted a) = SchemeTopLifted (IntR a)
-  toInt = sequenceA . fmap toInt
-  ceiling = sequenceA . fmap ceiling
-  floor = sequenceA . fmap floor
-  round = sequenceA . fmap round
-  log = sequenceA . fmap log
-  sin = sequenceA . fmap sin
-  asin = sequenceA . fmap asin
-  cos = sequenceA . fmap cos
-  acos = sequenceA . fmap acos
-  tan = sequenceA . fmap tan
-  atan = sequenceA . fmap atan
-  sqrt = sequenceA . fmap sqrt
+  toInt = traverse toInt
+  ceiling = traverse ceiling
+  floor = traverse floor
+  round = traverse round
+  log = traverse log
+  sin = traverse sin
+  asin = traverse asin
+  cos = traverse cos
+  acos = traverse acos
+  tan = traverse tan
+  atan = traverse atan
+  sqrt = traverse sqrt
 
 instance
   ( SchemeDomain a,
