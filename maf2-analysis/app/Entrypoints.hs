@@ -6,6 +6,7 @@ import qualified Run.Scheme
 import qualified Run.Python
 import qualified Run.Erlang
 import qualified Run.Actor
+import qualified Run.SchemeCounting
 
 data Command =
    Interpreter Run.Interpreter.Options
@@ -13,6 +14,7 @@ data Command =
  | Scheme Run.Scheme.Options
  | Actor Run.Actor.Options
  | ParseErlang Run.Erlang.Options
+ | SchemeCounting Run.SchemeCounting.Options
 
  deriving Show
 
@@ -23,16 +25,20 @@ pythonCommand :: Parser Command
 pythonCommand = Python <$> Run.Python.options
 
 analyzeCommand = Scheme <$> Run.Scheme.options
+
+countCommand = SchemeCounting <$> Run.SchemeCounting.options
+
 parseErlangCommand = ParseErlang <$> Run.Erlang.options
 
 parseActorCommand = Actor <$> Run.Actor.options
 
 parseCommand :: Parser Command
 parseCommand = hsubparser $
-   command "eval"    (info interpreterCommand (progDesc "Run a concrete Scheme interpreter")) <>
-   command "scheme"  (info analyzeCommand (progDesc "Scheme analysis subcommand")) <>
-   command "python"  (info pythonCommand (progDesc "Python analysis subcommand")) <>
-   command "erlang"  (info parseErlangCommand (progDesc "Erlang parser")) 
+   command "eval"          (info interpreterCommand (progDesc "Run a concrete Scheme interpreter")) <>
+   command "scheme"        (info analyzeCommand (progDesc "Scheme analysis subcommand"))            <>
+   command "count-scheme"  (info countCommand (progDesc "Scheme HMap experiment subcommand"))     <>
+   command "python"        (info pythonCommand (progDesc "Python analysis subcommand"))             <>
+   command "erlang"        (info parseErlangCommand (progDesc "Erlang parser")) 
 
 opts :: ParserInfo Command
 opts = info (parseCommand <**> helper) (fullDesc <> progDesc "MAF: Monadic Analysis Framework")
@@ -41,9 +47,10 @@ run :: IO ()
 run = do
    command <- execParser opts
    case command of
-      Interpreter options -> Run.Interpreter.main options
-      Scheme      options -> Run.Scheme.main options
-      Python      options -> Run.Python.main options
-      ParseErlang options -> Run.Erlang.main options
-      Actor       options -> Run.Actor.main options
+      Interpreter    options -> Run.Interpreter.main options
+      Scheme         options -> Run.Scheme.main options
+      Python         options -> Run.Python.main options
+      ParseErlang    options -> Run.Erlang.main options
+      Actor          options -> Run.Actor.main options
+      SchemeCounting options -> Run.SchemeCounting.main options
       v                   -> error $ "cannot run command" ++ show v

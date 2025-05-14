@@ -16,6 +16,7 @@ license:        BSD-3-Clause
 build-type:     Simple
 extra-source-files:
     preludes/actor.scm
+    preludes/scheme.scm
 
 source-repository head
   type: git
@@ -43,6 +44,7 @@ library
       Syntax.Erlang.AST
       Syntax.Python.Compiler
       Syntax.Python.Parser
+      Syntax.Scheme.Prelude
       Syntax.Scheme.TH
       Paths_maf2_syntax
   autogen-modules:

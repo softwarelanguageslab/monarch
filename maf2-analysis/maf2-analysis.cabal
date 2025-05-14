@@ -154,6 +154,7 @@ executable maf-exe
       Run.Interpreter
       Run.Python
       Run.Scheme
+      Run.SchemeCounting
       Paths_maf2_analysis
   hs-source-dirs:
       app

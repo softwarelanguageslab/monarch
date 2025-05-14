@@ -1,7 +1,7 @@
 (define (lookup key table)
-  @sensitivity:FA
+  
   (letrec ((loop (lambda (x)
-                   @sensitivity:FA
+                   
                    (if (null? x)
                        #f
                        (let ((pair (car x)))
@@ -11,7 +11,7 @@
     (loop table)))
 (define properties '())
 (define (get key1 key2)
-  @sensitivity:FA
+  
   (let ((x (lookup key1 properties)))
     (if x
         (let ((y (lookup key2 (cdr x))))
@@ -20,7 +20,7 @@
               #f))
         #f)))
 (define (put key1 key2 val)
-  @sensitivity:FA
+  
   (let ((x (lookup key1 properties)))
     (if x
         (let ((y (lookup key2 (cdr x))))
@@ -30,7 +30,7 @@
         (set! properties
           (cons (cons key1 (cons (cons key2 val) '())) properties)))))
 (define (dderiv a)
-  @sensitivity:FA
+  
   (if (not (pair? a))
       (if (eq? a 'x) 1 0)
       (let ((f (get (car a) 'dderiv)))
@@ -39,17 +39,17 @@
             (error "No derivation method available")))))
 
 (define (my+dderiv a)
-  @sensitivity:FA
+  
   (cons '+
         (map dderiv (cdr a))))
 
 (define (my-dderiv a)
-  @sensitivity:FA
+  
   (cons '-
         (map dderiv (cdr a))))
 
 (define (*dderiv a)
-  @sensitivity:FA
+  
   (cons '*
         (cons a
               (cons (cons '+
@@ -57,7 +57,7 @@
                     '()))))
 
 (define (/dderiv a)
-  @sensitivity:FA
+  
   (cons '-
         (cons (cons '/
                     (cons (dderiv (cadr a))
