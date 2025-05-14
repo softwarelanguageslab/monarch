@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PackageImports #-}
 
-module Run.Python(main, Options, options) where
+module Run.Python(main, Options, options, runREPL) where
 
 import Syntax.Python
 import Options.Applicative
@@ -60,7 +60,7 @@ runREPL = do count <- newIORef 0
             prompt cur = do putStr ">>> "
                             hFlush stdout
                             txt <- getLine 
-                            case parse ("REPL:" ++ show cur) txt of  
+                            case parse ("RAPL:" ++ show cur) txt of  
                               Just parsed -> return parsed
                               Nothing     -> putStrLn "Invalid program" >> prompt cur 
 
@@ -70,14 +70,14 @@ runFile fileName =
    do program <- readFile fileName
       let Just parsed = parse "testje" program
       let (rsto, osto, graph) = analyzeCP parsed
-      putStrLn "\nPROGRAM:\n"
-      putStrLn (prettyString parsed)
+      -- putStrLn "\nPROGRAM:\n"
+      -- putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
       putStrLn (printRSto rsto)
       putStrLn "\nOBJECT STORE RESULTS:\n"
       putStrLn (printOSto osto)
-      putStrLn "\nDEPENDENCY GRAPH:\n"
-      putStrLn "\n"
+      --putStrLn "\nDEPENDENCY GRAPH:\n"
+      --putStrLn "\n"
 
 generateGraph :: [String] -> IO ()
 generateGraph files =
@@ -101,8 +101,8 @@ generateGraph files =
          toType Top = "?"
 
 main :: Options -> IO ()
---main (Options fileName) = ecopipe
-main (Options fileName) = runREPL
+main (Options fileName) = runFile fileName
+--main (Options fileName) = runREPL
 
 ecopipe :: IO ()
 ecopipe = generateGraph [

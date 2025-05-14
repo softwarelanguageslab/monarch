@@ -18,6 +18,7 @@ import Control.DeepSeq
 import Data.Bifunctor
 import Prelude hiding (span)
 import Syntax.Ide
+import Syntax.Scheme.Prelude (addPrelude)
 
 -- AST definition --
 
@@ -232,6 +233,10 @@ compile exp@(SExp.Atom "list" _ ::: vs) =
 -- and 
 compile exp@(SExp.Atom "and" _ ::: vs) = 
    foldr (\e es -> Iff e es (Bln False (spanOf exp)) (spanOf e)) (Bln True (spanOf exp)) <$> sequence (SExp.smap compile vs)
+-- or 
+compile exp@(SExp.Atom "or" _ ::: vs) = 
+   foldr (\e es -> Iff e (Bln True (spanOf exp)) es (spanOf e)) (Bln False (spanOf exp)) <$> sequence (SExp.smap compile vs)
+
 -- begin
 compile (SExp.Atom "begin" _ ::: (SExp.SNil _)) = throwError "begin cannot be empty"
 compile (SExp.Atom "begin" _ ::: xs) = begin <$> compileSequence xs
@@ -242,6 +247,9 @@ compile e@(SExp.Atom "if" _ ::: cnd ::: csq ::: SExp.SNil _) =
    Iff <$> compile cnd <*> compile csq <*> pure (Nll (SExp.spanOf e)) <*> pure (SExp.spanOf e)
 compile e@(SExp.Atom "if" _ ::: cnd ::: csq :::  alt ::: SExp.SNil _) =
    Iff <$> compile cnd <*> compile csq <*> compile alt <*> pure (SExp.spanOf e)
+-- cond 
+--compile exp@(SExp.Atom "cond" _ ::: vs) = 
+--   foldr (\e es -> Iff e (Bln True (spanOf exp)) es (spanOf e)) (Bln False (spanOf exp)) <$> sequence (SExp.smap compile vs)
 -- lambda
 compile e@(SExp.Atom "lambda" _ ::: prs ::: bdy) =
    Lam . fst <$> compileParams prs <*> (begin <$> compileSequence bdy) <*> pure (SExp.spanOf e)
@@ -366,7 +374,7 @@ parseSchemeExp :: String -> Maybe Exp
 parseSchemeExp = either (const Nothing) Just . parseSchemeExp'
 
 parseSchemeExp' :: String -> Either String Exp
-parseSchemeExp' = SExp.parseSexp >=> (flip runReaderT False . compileBegin)
+parseSchemeExp' = (return . addPrelude >=> SExp.parseSexp) >=> (flip runReaderT False . compileBegin)
 
 testParser :: IO ()
 testParser = forever (getLine >>= print . parseSchemeExp)

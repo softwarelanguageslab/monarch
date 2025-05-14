@@ -145,8 +145,9 @@ allPrimitives = [
    -- NOTE: these are actually not Scheme primitives but help to run the analyses without fixpoints
    -- for some trivial programs
    evar "constant-true" (const $ const $ return (inject True)),
-   evar "constant-false" (const $ const $ return (inject False))
-   -- fix1 "error" todo
+   evar "constant-false" (const $ const $ return (inject False)),
+   fix1 "assert" $ const (return Domain.nil)
+   --fix3 "error" todo
    ]
 
 primitivesByName :: Map String (Prim v)
