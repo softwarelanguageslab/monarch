@@ -45,7 +45,7 @@ parseCommand = hsubparser $
    command "erlang"        (info parseErlangCommand (progDesc "Erlang parser")) 
 
 opts :: ParserInfo Command
-opts = info (parseCommand <**> helper) (fullDesc <> progDesc "MAF: Monadic Analysis Framework")
+opts = info (parseCommand <**> helper) (fullDesc <> progDesc "Monarch: A MONadic ARCHitecture for Static Analyses through Abstract Definitional Interpreters")
 
 run :: IO ()
 run = do
