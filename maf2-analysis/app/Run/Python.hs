@@ -70,18 +70,14 @@ runFile fileName =
    do program <- readFile fileName
       let Just parsed = parse "testje" program
       let (rsto, osto, graph) = analyzeCP parsed
-      -- putStrLn "\nPROGRAM:\n"
-      -- putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
       putStrLn (printRSto rsto)
       putStrLn "\nOBJECT STORE RESULTS:\n"
       putStrLn (printOSto osto)
-      --putStrLn "\nDEPENDENCY GRAPH:\n"
-      --putStrLn "\n"
 
 generateGraph :: [String] -> IO ()
 generateGraph files =
-   do putStrLn "digraph ECOPIPE {"
+   do putStrLn "digraph {"
       putStrLn "\trankdir=\"LR\";"
       putStrLn "graph [overlap = true, fontname = Helvetica];"
       mapM_ generateGraphForFile files
@@ -102,15 +98,3 @@ generateGraph files =
 
 main :: Options -> IO ()
 main (Options fileName) = runFile fileName
---main (Options fileName) = runREPL
-
-ecopipe :: IO ()
-ecopipe = generateGraph [
-                              "programs/python/zensor/add_regime_status_tag.py",
-                              "programs/python/zensor/strain_resample.py",
-                              "programs/python/zensor/bolt_str_stats_per_movement.py",
-                              "programs/python/zensor/str_stats_per_movement.py",
-                              "programs/python/zensor/displacement_corrected_for_inclination.py"
-                        ]
-
-

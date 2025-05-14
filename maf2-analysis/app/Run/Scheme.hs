@@ -10,7 +10,6 @@ import Data.Map (Map)
 import Analysis.Scheme.Store ()
 import qualified Data.Map as Map
 import Domain.Scheme.Store
-import Data.Print
 import Analysis.Scheme (AnlRes)
 
 newtype Options = Options String deriving Show
