@@ -82,6 +82,42 @@ gabriel = [
    -- "programs/R5RS/gabriel/triangl.scm"
    ]
 
+gambit :: [String]
+gambit = [
+   -- "programs/R5RS/gambit/array1.scm"
+   -- "programs/R5RS/gambit/browse.scm"
+   -- "programs/R5RS/gambit/cat.scm"
+   -- "programs/R5RS/gambit/compiler.scm"
+   -- "programs/R5RS/gambit/ctak.scm"
+   -- "programs/R5RS/gambit/deriv.scm"
+   -- "programs/R5RS/gambit/destruc.scm"
+   "programs/R5RS/gambit/diviter.scm",
+   -- "programs/R5RS/gambit/earley.scm"
+   -- "programs/R5RS/gambit/fibc.scm"
+   "programs/R5RS/gambit/graphs.scm",
+   -- "programs/R5RS/gambit/lattice.scm"
+   -- "programs/R5RS/gambit/matrix.scm"
+   -- "programs/R5RS/gambit/mazefun.scm"
+   -- "programs/R5RS/gambit/nboyer.scm"
+   -- "programs/R5RS/gambit/nqueens.scm"
+   -- "programs/R5RS/gambit/paraffins.scm"
+   "programs/R5RS/gambit/perm9.scm",
+   -- "programs/R5RS/gambit/peval.scm"
+   "programs/R5RS/gambit/primes.scm",
+   -- "programs/R5RS/gambit/puzzle.scm"
+   -- "programs/R5RS/gambit/sboyer.scm"
+   -- "programs/R5RS/gambit/scheme.scm"
+   -- "programs/R5RS/gambit/slatex.scm"
+   -- "programs/R5RS/gambit/string.scm"
+   "programs/R5RS/gambit/sum.scm",
+   -- "programs/R5RS/gambit/sumloop.scm"
+   -- "programs/R5RS/gambit/tail.scm"
+   "programs/R5RS/gambit/tak.scm"
+   -- "programs/R5RS/gambit/trav1.scm"
+   -- "programs/R5RS/gambit/triangl.scm"
+   -- "programs/R5RS/gambit/wc.scm"
+   ]
+
 ad :: [String]
 ad = [
    -- "programs/R5RS/ad/abstrct.scm"
@@ -129,3 +165,4 @@ allBenchmarks = [
    ++ gabriel 
    ++ ad 
    ++ icp1
+   ++ gambit
