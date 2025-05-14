@@ -72,7 +72,7 @@ printCmpMap printKey keepKey cmp m = do
 
 -- | Compute the span of a sequential component
 spanOfCmp :: SequentialCmp -> Span
-spanOfCmp (cmp ::*:: _env ::*:: _dyn ::*:: _meta ::*::  _ref ::*:: _k) = spanOf cmp
+spanOfCmp (cmp ::*:: _env ::*:: _dyn ::*:: _k ::*:: _meta ::*::  _mb ::*:: _ref) = spanOf cmp
 
 ------------------------------------------------------------
 -- Entrypoints

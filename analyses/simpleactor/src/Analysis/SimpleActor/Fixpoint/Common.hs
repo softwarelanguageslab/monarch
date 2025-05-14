@@ -35,6 +35,7 @@ type ActorExp = Exp
 type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (SchemeAdr Exp K)
 type ActorEnv = HashMap String (SchemeAdr Exp K)
+-- | Global mailboxes
 type ActorMai = Map ActorRef (Set ActorVlu)
 type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
 -- | Type of path constraints used in the "SimpleActor" analysis

@@ -1,6 +1,7 @@
 {-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 module Analysis.Actors.Monad(
    MonadMailbox,
+   MonadMailbox'(..),
    MonadSend(..),
    MonadReceive(..),
    receive,
@@ -9,7 +10,8 @@ module Analysis.Actors.Monad(
    runWithMailboxT,
    ActorLocalT,
    send',
-   LocalMailboxT
+   LocalMailboxT,
+   MailboxDep
 ) where
 
 import Domain.Actor
@@ -27,12 +29,18 @@ import Control.Monad.State (StateT, gets, modify, runStateT, MonadState (put))
 import Analysis.Actors.Mailbox (Mailbox (hasMessage), dequeue, enqueue, empty)
 import Data.Functor
 import Control.Monad.Cond (ifM)
+import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, trigger, currentCmp)
 
 
 -- | Receive messages of type 'v' in monadic context 'm'
 class MonadReceive v m | m -> v where
   -- | Non-deterministically receive a message from the mailbox
   receive' :: ARef v -> m v
+
+
+-- | CPS version of "receive'"
+receive :: (MonadReceive v m, Monad m) => ARef v -> (v -> m a) -> m a
+receive ref = (receive' ref >>=)
 
 -- | Send a message of type 'v' in the monadic context 'm'
 class MonadSend v m | m -> v where
@@ -41,11 +49,16 @@ class MonadSend v m | m -> v where
   -- of the mailbox.
   send :: ARef v -> v -> m Bool
 
+-- | Same as @send@ but ignores the returned boolean
+send' :: (MonadMailbox v m, Functor m) => ARef v -> v -> m ()
+send' ref = void . send ref
+
+-- | A monadic context supporting mailbox operations is one that supports sending and receiving messages
 type MonadMailbox v m = (MonadReceive v m, MonadSend v m, BottomLattice v, Joinable v)
 
--- | CPS version of "receive'"
-receive :: (MonadMailbox v m, Monad m) => ARef v -> (v -> m a) -> m a
-receive ref = (receive' ref >>=)
+-- | A monadic context for retrieving the mailbox associated with a particular actor 
+class MonadMailbox' ref mb m | m -> ref mb where
+  getMailbox :: ref -> m mb
 
 -- | Local information of an actor
 class MonadActorLocal v m | m -> v where
@@ -70,9 +83,8 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSend v m) => MonadSen
 instance {-# OVERLAPPABLE #-} (Monad m ,MonadLayer t, MonadReceive v m) => MonadReceive v (t m) where
   receive' = upperM . receive'
 
--- | Same as @send@ but ignores the returned boolean
-send' :: (MonadMailbox v m, Functor m) => ARef v -> v -> m ()
-send' ref = void . send ref
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox' ref mb m) => MonadMailbox' ref mb (t m) where
+  getMailbox = upperM . getMailbox
 
 ------------------------------------------------------------
 -- Instances
@@ -95,8 +107,6 @@ newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT 
   deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)
 
 deriving instance (MonadCache m, Ord mb, Ord v, Ord (ARef v)) => MonadCache (GlobalMailboxT v mb m)
-
-
 deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinable mb) => MonadJoinable (GlobalMailboxT v mb m)
 
 instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadSend v (GlobalMailboxT v mb m) where
@@ -110,6 +120,9 @@ instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef 
   -- TODO: investigate how we can prevent monadic computations to be transported down in the stack
   -- so that they no longer skip the `JoinT` layer.
   receive' ref = GlobalMailboxT $ gets (foldr L.join bottom . Set.toList . Set.map fst . dequeue . fromMaybe empty . Map.lookup ref)
+
+instance (ref ~ ARef v, Mailbox mb v, Ord ref, Monad m) => MonadMailbox' ref mb (GlobalMailboxT v mb m) where
+  getMailbox ref = GlobalMailboxT $ gets (fromMaybe empty . Map.lookup ref)
 
 runWithMailboxT :: forall v mb m a . GlobalMailboxT v mb m a -> m (a, Map (ARef v) mb)
 runWithMailboxT (GlobalMailboxT ma) = runStateT ma Map.empty
@@ -127,6 +140,13 @@ instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
 ------------------------------------------------------------
 -- Effect registration for global mailboxes
 ------------------------------------------------------------
+
+-- Dependencies on actor mailboxes
+newtype MailboxDep ref mb = MailboxDep ref
+  deriving (Ord, Eq, Show)
+
+instance (MonadMailbox' ref mb m, MonadDependencyTracking cmp (MailboxDep ref mb) m) => MonadMailbox' ref mb (IntraAnalysisT cmp m) where
+  getMailbox ref = trigger @cmp (MailboxDep @_ @mb ref) >> upperM (getMailbox ref)
 
 -- type Dep v = ARef v
 

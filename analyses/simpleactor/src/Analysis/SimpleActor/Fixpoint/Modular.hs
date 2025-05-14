@@ -4,7 +4,7 @@
 module Analysis.SimpleActor.Fixpoint.Modular where
 
 import Analysis.SimpleActor.Fixpoint.Common
-import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, SequentialRes, ActorRes)
+import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, SequentialRes, ActorRes, MB)
 import qualified Analysis.SimpleActor.Fixpoint.Sequential as Sequential
 import Control.Lens.TH
 import RIO hiding (view)
@@ -15,7 +15,7 @@ import Analysis.SimpleActor.Semantics (allPrimitives, initialSto)
 import Control.Monad.State
 import RIO.Partial (fromJust)
 import qualified RIO.Set as Set
-import Analysis.Actors.Monad (MonadMailbox (..), runWithMailboxT, MonadSend(..), MonadReceive(..))
+import Analysis.Actors.Monad (MonadMailbox (..), runWithMailboxT, MonadSend(..), MonadReceive(..), MonadMailbox'(..), MailboxDep(..))
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
 import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), runStoreT)
@@ -29,6 +29,7 @@ import Control.Monad.Trans.Identity
 import Analysis.Monad.WorkList
 import Analysis.Monad.Join (runJoinT)
 import Data.Tuple.Syntax
+import Domain.Actor (ARef)
 import Analysis.SimpleActor.Monad (MonadSpawn (spawn), Ctx)
 import qualified Symbolic.SMT as SMT
 import qualified Debug.Trace as Debug
@@ -114,8 +115,10 @@ type ModularInterM m = (MonadState AnalysisState m,
                         MonadDependencyTracking ActorRef ActorRef m,
                         MonadDependencyTriggerTracking ActorRef ActorRef m,
                         MonadDependencyTracking ActorRef ActorResOut m,
+                        MonadDependencyTracking ActorRef (MailboxDep ActorRef MB) m,
                         WorkListM m ActorRef,
                         MonadMailbox ActorVlu m,
+                        MonadMailbox' (ARef ActorVlu) MB m,
                         -- Z3 Solvin g
                         FormulaSolver ActorVarAdr m,
                         -- Tracking actor spawns
@@ -147,6 +150,7 @@ analyze expr = fmap toAnalysisResult $ inter
              & runWithDependencyTracking @ActorRef @ActorVarAdr
              & runWithDependencyTracking @ActorRef @ActorRef
              & runWithDependencyTracking @ActorRef @ActorResOut
+             & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef MB)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr
              & runWithMailboxT @ActorVlu @(Set _)

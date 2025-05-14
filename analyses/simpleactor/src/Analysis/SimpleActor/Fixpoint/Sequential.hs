@@ -1,7 +1,7 @@
 {-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 -- | Analysis to analyse the inner actor semantics
-module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes, ActorRes(..)) where
+module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes, ActorRes(..), MB) where
 
 ------------------------------------------------------------
 -- Imports
@@ -44,8 +44,9 @@ import Lattice.Trace
 import qualified Data.HashMap.Strict as HashMap
 import Control.Monad.Identity (IdentityT)
 import Analysis.Monad.Store (TransparentStoreT)
-import Domain.Actor (arefs', ActorDomain)
+import Domain.Actor (arefs', ActorDomain, ARef)
 import Analysis.Monad.AbstractCount
+import Analysis.Actors.Monad (MonadMailbox')
 
 
 ------------------------------------------------------------
@@ -57,6 +58,10 @@ type SequentialCmp = Key (SequentialT Identity) Cmp
 type SequentialRes = Val (SequentialT Identity) ActorVlu
 
 
+-- TODO: move to 'Common'
+-- | The type of mailbox abstraction
+type MB = Set ActorVlu
+     
 ------------------------------------------------------------
 -- Monad stack
 ------------------------------------------------------------
@@ -69,12 +74,13 @@ type SequentialT m = MonadStack '[
                        AllocT Exp K (SchemeAdr Exp K),
                        CtxT K,
                        MetaT,
-                       ActorLocalT ActorVlu,
                        -- Local path conditions
                        DiscardFormulaT (SchemeAdr Exp K) ActorVlu,
                        -- WidenedStoreT ActorSto (SchemeAdr Exp K) ActorVlu,
                        -- WidenedFormulaT (SchemeAdr Exp K) ActorVlu,
                        CountSpawnT,
+                       LocalMailboxT ActorVlu MB,
+                       ActorLocalT ActorVlu,
                        SetNonDetT,
                        -- JoinT,
                        CacheT,
@@ -127,7 +133,7 @@ instance  (MonadAbstractCount ActorRef m, MonadSpawn ActorVlu Ctx m) => MonadSpa
 
 -- | Trace the addresses in a component
 traceCmp :: SequentialCmp -> Set ActorAdr
-traceCmp (_ ::*:: env ::*:: dyn ::*:: _ ::*:: _ ::*:: _) = Set.unions [trace env, trace dyn]
+traceCmp (_ ::*:: env ::*:: dyn ::*:: _ ::*:: _ ::*:: mb ::*:: _) = Set.unions [trace env, trace dyn, trace mb]
 
 -- We apply garbage collection in this analysis to remove
 -- unreachable addresses from the store, therefore decreasing
@@ -205,6 +211,7 @@ type MonadActorModular m = (
     WorkListM m ActorRef,
     -- Global mailboxes
     MonadMailbox ActorVlu m,
+    MonadMailbox' (ARef ActorVlu) MB m,
     -- Formula solving should be global since it requires IO
     FormulaSolver (SchemeAdr Exp K) m,
     -- Spawning actors
@@ -271,13 +278,15 @@ inter :: InterAnalysisM m
       => Exp         -- ^ the actor expression to analyze
       -> ActorEnv    -- ^ the environment of variables captured by the actor expression
       -> ActorRef    -- ^ the current actor reference
+      -> MB          -- ^ the initial mailbox
       -> m ()
-inter exp environment ref = iterateWL' initialCmp (intra ref)
+inter exp environment ref mb = iterateWL' initialCmp (intra ref)
   where initialCmp = ActorExp exp         -- component to analyze
                 <+> environment           -- initial lexical environment
                 <+> initialDynEnvironment -- initial dynamic environment 
                 <+> Ctx ref               -- context 
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
+                <+> mb                    -- initial mailboxes
                 <+> ref                   -- current `self`
                 -- <+> emptyPC
 
@@ -290,7 +299,10 @@ analyze :: forall m  . MonadActorModular m
         -> ActorRef             -- ^ the current actor reference
         -> m ()
 analyze exp env ref = do
-      res  <- inter exp env ref
+      -- retrieve the initial mailbox
+      mb   <- getMailbox ref
+      -- compute the analysis of the actor and all its turns (according to its mailbox)
+      res  <- inter exp env ref mb
             & runWithMapping @SequentialCmp @SequentialRes
             & runWithMapping @(In SequentialCmp ActorSto)  @ActorSto
             & runWithMapping @(Out SequentialCmp ActorSto) @ActorSto
