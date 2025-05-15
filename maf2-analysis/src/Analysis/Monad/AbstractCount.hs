@@ -29,13 +29,16 @@ class Monad m => MonadAbstractCount a m where
   -- | Replace the abstract count map with the given mapping
   putCounts :: Map a AbstractCount -> m ()
 
-  
+  -- | Mark the count of the given address as 'CountInf'
+  infty :: a -> m ()
+
 -- | Layered instance
 instance {-# OVERLAPPABLE #-} (Monad m, Monad (t m), MonadLayer t, MonadAbstractCount a m) => MonadAbstractCount a (t m) where
   countIncrement = upperM . countIncrement
   currentCount = upperM . currentCount
   getCounts = upperM getCounts
   putCounts = upperM . putCounts
+  infty = upperM . infty
 
 -- | Trivial instance of the @MonadAbstractCount@ type class
 -- as a state monad managing an abstract count mapping.
@@ -47,6 +50,7 @@ instance (Ord e, Monad m) => MonadAbstractCount e (AbstractCountT e m) where
   currentCount k = gets (getCount k)
   getCounts = gets getCountingMap
   putCounts = put . CountingMap
+  infty k = modify (markInfty k)
 
 evalWithAbstractCountT :: Monad m => AbstractCountT e m a -> m a
 evalWithAbstractCountT (AbstractCountT ma) = evalStateT ma emptyCountMap

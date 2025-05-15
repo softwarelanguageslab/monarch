@@ -41,6 +41,8 @@ class Joinable v => Store s a v | s -> a v where
    -- | Restrict the addresses in the store to the given set of addresses
    restrictSto :: Set a -> s -> s
    --updateStoWith fs _ adr s = let v' = fs (lookupSto adr s) in updateSto adr v' s
+   -- | Left-biased union of two stores
+   union :: s -> s -> s
    {-# MINIMAL size, emptySto, lookupSto, extendSto, updateStoWith, restrictSto #-}
 
 
@@ -53,6 +55,7 @@ instance (Joinable v, Ord a) => Store (Map a v) a v where
    -- a simple store only supports weak updates
    updateStoWith _ fw = Map.alter (Just . maybe (error "updating at a non-existent address") fw)
    restrictSto = flip Map.restrictKeys
+   union = Map.union
 
 -- | Trace the addresses reachable in a single step from the given set of addresses according to the given store
 traceStore' :: (Trace adr v) => Set adr -> Map adr v  -> Set adr
@@ -102,6 +105,7 @@ instance (Joinable v, Show a, Ord a) => Store (CountingMap a v) a v where
             update (Just (v, count))    = Just (fw v, count)
 
    restrictSto ks = CountingMap . flip Map.restrictKeys ks . store
+   union (CountingMap m1) (CountingMap m2) = CountingMap $ Map.union m1 m2
 
 
 

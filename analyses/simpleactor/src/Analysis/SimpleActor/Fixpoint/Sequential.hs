@@ -78,12 +78,12 @@ type SequentialT m = MonadStack '[
                        DiscardFormulaT (SchemeAdr Exp K) ActorVlu,
                        -- WidenedStoreT ActorSto (SchemeAdr Exp K) ActorVlu,
                        -- WidenedFormulaT (SchemeAdr Exp K) ActorVlu,
+                       CountSpawnT,
                        LocalMailboxT ActorVlu MB,
                        ActorLocalT ActorVlu,
                        SetNonDetT,
                        -- JoinT,
                        CacheT,
-                       CountSpawnT,
                        TransparentStoreT ActorSto ActorAdr (StoreVal ActorVlu),
                        AbstractCountT ActorRef
                   ] m
@@ -113,7 +113,8 @@ type InterAnalysisM m = (MonadSchemeStore m,
                          MapM (In SequentialCmp ActorSto) ActorSto m,
                          MapM (Out SequentialCmp ActorSto) ActorSto m,
                          MapM (In SequentialCmp ActorCou) ActorCou m,
-                         MapM (Out SequentialCmp ActorCou) ActorCou m
+                         MapM (Out SequentialCmp ActorCou) ActorCou m,
+                         StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m
                         )
 
 ------------------------------------------------------------
@@ -132,20 +133,33 @@ instance  (MonadAbstractCount ActorRef m, MonadSpawn ActorVlu Ctx m) => MonadSpa
       spawn expr env ctx = upperM (spawn expr env ctx) >>= (\ref -> countIncrement ref $> ref)
 
 
--- TODO:
--- * increment the count of any actor reference referenced from the value (transitively and through the store)
--- * send the message down
+
+-- | Compute the actor references contained within the given value and also those
+-- that are transitively reachable from the store.
+reachableRefs :: ActorVlu -> ActorSto -> Set ActorRef
+reachableRefs vlu sto = directRefs `Set.union` transitiveRefs
+      where ads = traceStore (trace vlu) (countingStoreValues sto)
+            directRefs = arefs' vlu
+            transitiveRefs = foldMap (foldMap arefs' . maybe Set.empty varVals . flip Map.lookup (countingStoreValues sto)) ads    
+
 instance (MonadSend ActorVlu m, StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m, MonadAbstractCount ActorRef m) => MonadSend ActorVlu (CountSpawnT m) where
       send receiver msg = do
             sto <- currentStore @ActorSto
-            let ads = traceStore (trace msg) (countingStoreValues sto)
-            -- compute all actor references reachable from the message (via the store), including from the message itself
-            let refs = foldMap (foldMap arefs' . maybe Set.empty varVals . flip Map.lookup (countingStoreValues sto)) ads
-                     `Set.union` arefs' msg
-            mapM_ countIncrement refs
+            mapM_ countIncrement (reachableRefs msg sto)
             upperM (send receiver msg)
 
-------------------------------------------------------------
+instance (MonadReceive ActorVlu m, StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m, MonadAbstractCount ActorRef m) => MonadReceive ActorVlu (CountSpawnT m) where
+      receive' ref = do
+            -- Receive the message from the underlying layer
+            -- find the actor references in the message and
+            -- and set them to infinity in the abstract count mapping
+            -- since we do not know how many actors have a reference
+            -- to to the actor reference
+            sto <- currentStore @ActorSto
+            msg <- upperM (receive' ref)
+            mapM_ infty (reachableRefs msg sto) 
+            return msg
+-----------------------------------------------------------
 -- Garbage collection
 ------------------------------------------------------------
 
@@ -239,6 +253,7 @@ type MonadActorModular m = (
     MapM ActorResOut ActorRes m,
     -- Global store for shared variables
     StoreM ActorAdr (StoreVal ActorVlu) m,
+    StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m,
     -- Other constraints
     MonadBottom m,
     MonadIO m
@@ -285,7 +300,6 @@ intra _ref cmp = do
           flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) eval'') cmp
                   & runAlloc VarAdr
                   & runAlloc PtrAdr
-                  & runCountSpawnT
                   & evalWithTransparentStoreT
                   & evalWithAbstractCountT
                   & runIntraAnalysis cmp

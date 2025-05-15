@@ -1,5 +1,5 @@
 -- | Infrastructure for keeping track of abstract counts within an analysis 
-module Analysis.Counting(CountMap(..), increment, isZero, isOne, getCount, emptyCountMap) where
+module Analysis.Counting(CountMap(..), increment, isZero, isOne, getCount,  markInfty, emptyCountMap) where
 
 import Lattice.Class
 import Lattice.MapLattice ()
@@ -11,7 +11,11 @@ import Data.Maybe (isNothing)
 -- | A mapping from elements to their count
 newtype CountMap e = CountingMap {getCountingMap :: Map e AbstractCount}
                   deriving (Joinable, PartialOrder, BottomLattice, Eq, Ord)
-  
+
+-- | Mark an entry in the counting map as "Infinte"
+markInfty :: Ord e => e -> CountMap e -> CountMap e
+markInfty k = CountingMap . Map.insert k CountInf . getCountingMap 
+
 -- | Increment the count at the given element by one
 increment :: Ord e => e -> CountMap e -> CountMap e
 increment k = CountingMap .  Map.insertWith (const inc) k CountOne . getCountingMap

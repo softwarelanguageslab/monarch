@@ -18,7 +18,7 @@ import qualified RIO.Set as Set
 import Analysis.Actors.Monad (MonadMailbox (..), runWithMailboxT, MonadSend(..), MonadReceive(..), MonadMailbox'(..), MailboxDep(..))
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
-import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), runStoreT)
+import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), StoreM'(..), runStoreT)
 import qualified Analysis.Monad.ComponentTracking as C
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import Analysis.Monad.Map
@@ -127,6 +127,7 @@ type ModularInterM m = (MonadState AnalysisState m,
                         MapM ActorResOut ActorRes m,
                         -- Global store
                         StoreM ActorAdr (StoreVal ActorVlu) m,
+                        StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m,
                         -- For debugging
                         MonadIO m)
 
