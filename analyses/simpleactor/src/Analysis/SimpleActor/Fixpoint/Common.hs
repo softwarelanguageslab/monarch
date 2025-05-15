@@ -24,6 +24,7 @@ import RIO
 import qualified RIO.Map as Map
 import Analysis.Monad (MonadDependencyTrigger)
 import Domain.Core.AbstractCount (AbstractCount)
+import Analysis.Actors.Mailbox.GraphToSet (GraphToSet)
 
 
 ------------------------------------------------------------
@@ -36,7 +37,7 @@ type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (SchemeAdr Exp K)
 type ActorEnv = HashMap String (SchemeAdr Exp K)
 -- | Global mailboxes
-type ActorMai = Map ActorRef (Set ActorVlu)
+type ActorMai = Map ActorRef (GraphToSet ActorVlu)
 type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
 -- | Type of path constraints used in the "SimpleActor" analysis
 type ActorPC  = PC (SchemeAdr Exp K)

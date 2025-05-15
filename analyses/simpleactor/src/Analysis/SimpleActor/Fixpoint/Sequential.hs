@@ -33,7 +33,6 @@ import Data.Tuple.Syntax
 
 import Analysis.SimpleActor.Fixpoint.Common
 import Control.Monad.Layer (MonadLayer (..))
-import Control.Monad.Cond (ifM)
 import Control.Monad.Reader
 import Control.Monad.Join (mbottom, MonadBottom, MonadJoinable)
 import qualified Analysis.Monad.Map as MapM
@@ -41,12 +40,14 @@ import RIO hiding (exp, trace, join)
 import Control.Fixpoint.WorkList (LIFOWorklist)
 import Lattice.Class
 import Lattice.Trace
-import qualified Data.HashMap.Strict as HashMap
 import Control.Monad.Identity (IdentityT (..))
-import Analysis.Monad.Store (TransparentStoreT)
-import Domain.Actor (arefs', ActorDomain, ARef)
+import Domain.Actor (arefs', ARef)
 import Analysis.Monad.AbstractCount
-import Analysis.Actors.Monad (MonadMailbox')
+import Control.Monad.State
+import Domain.Core.AbstractCount (AbstractCount(..))
+import qualified Control.Monad.State as State
+import qualified Analysis.Actors.Mailbox as Mailbox
+import Analysis.Actors.Mailbox.GraphToSet (GraphToSet, graphToSet)
 
 
 ------------------------------------------------------------
@@ -60,7 +61,7 @@ type SequentialRes = Val (SequentialT Identity) ActorVlu
 
 -- TODO: move to 'Common'
 -- | The type of mailbox abstraction
-type MB = Set ActorVlu
+type MB = GraphToSet ActorVlu
 
 ------------------------------------------------------------
 -- Monad stack
@@ -117,6 +118,36 @@ type InterAnalysisM m = (MonadSchemeStore m,
                          StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m
                         )
 
+
+------------------------------------------------------------
+-- Mailbox abstractions influenced by the abstract reference count of actor references
+------------------------------------------------------------
+
+newtype RefCountMailboxT m a = RefCountMailboxT (StateT (Map ActorRef MB) m a)
+                              deriving (Monad, Applicative, Functor, MonadState (Map ActorRef MB), MonadLayer, MonadCache)
+
+instance (MonadAbstractCount ActorRef m) =>  MonadSend ActorVlu (RefCountMailboxT m) where
+      send rcv msg = do
+            countRcv <- fromMaybe (error "should be defined") <$> currentCount rcv
+            mb <- State.gets (fromJust . Map.lookup rcv)
+            case countRcv of           
+                  -- if the count is equal to one, there are no interleavings possible, as
+                  -- only one actor has a reference to the actor reference, hence we can
+                  -- use the current abstraction of the mailbox.
+                  CountOne ->
+                        let mb' = Mailbox.enqueue msg mb
+                        in if mb == mb' 
+                           then return True
+                           else State.modify (Map.insert rcv mb') $> False
+                  -- if the count is infinite, then we have to widen the abstraction to a set abstraction
+                  CountInf ->
+                        let mb' = Mailbox.enqueue msg (graphToSet mb)
+                        in if mb == mb'
+                           then return True
+                           else State.modify (Map.insert rcv mb') $> False
+                                           
+      
+
 ------------------------------------------------------------
 -- Abstract counting of actor references
 ------------------------------------------------------------
@@ -159,6 +190,7 @@ instance (MonadReceive ActorVlu m, StoreM' ActorSto ActorAdr (StoreVal ActorVlu)
             msg <- upperM (receive' ref)
             mapM_ infty (reachableRefs msg sto) 
             return msg
+
 -----------------------------------------------------------
 -- Garbage collection
 ------------------------------------------------------------

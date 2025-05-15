@@ -15,6 +15,7 @@ import Domain.Core.AbstractCount
 import Domain.Core.BoolDomain.Class
 import Domain.Class
 import Lattice.Class hiding (top, bottom)
+import Lattice.Trace 
 
 -- | Graph representation of the mailbox
 data MessageGraph msg = MessageGraph
@@ -71,7 +72,11 @@ graphMessages = Map.keysSet . edges
 -- that this is the case of the analyzed programs
 -- has a finite representation of message.
 newtype GraphMailbox msg = GraphMailbox { getMessageGraphs :: Set (MessageGraph msg) }
-                         deriving (Ord, Eq, Show, Joinable, PartialOrder)
+                         deriving (Ord, Eq, Show, Joinable, PartialOrder, BottomLattice)
+
+
+instance (Ord msg, Trace adr msg) => Trace adr (GraphMailbox msg) where
+  trace = foldMap trace . messages
 
 -- | For implementing the mailbox type class, we distirbute
 -- all its operations to the elements the set.

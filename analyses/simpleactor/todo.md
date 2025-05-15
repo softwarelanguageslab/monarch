@@ -1,0 +1,1 @@
+- [ ] receive in the `GraphToSet` abstraction seems to fail (cf. receive_countinf.scm example which should have output for the test-beh actor)

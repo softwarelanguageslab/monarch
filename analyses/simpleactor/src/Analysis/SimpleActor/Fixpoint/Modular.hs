@@ -154,7 +154,7 @@ analyze expr = fmap toAnalysisResult $ inter
              & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef MB)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr
-             & runWithMailboxT @ActorVlu @(Set _)
+             & runWithMailboxT @ActorVlu @MB
              & C.runWithComponentTracking
              & runWithWorkList @(LIFOWorklist _)
              & runCachedSolver
