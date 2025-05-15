@@ -61,7 +61,7 @@ type SequentialRes = Val (SequentialT Identity) ActorVlu
 -- TODO: move to 'Common'
 -- | The type of mailbox abstraction
 type MB = Set ActorVlu
-     
+
 ------------------------------------------------------------
 -- Monad stack
 ------------------------------------------------------------
@@ -131,11 +131,19 @@ runCountSpawnT (CountSpawnT ma)  = runIdentityT ma
 instance  (MonadAbstractCount ActorRef m, MonadSpawn ActorVlu Ctx m) => MonadSpawn ActorVlu Ctx (CountSpawnT m) where
       spawn expr env ctx = upperM (spawn expr env ctx) >>= (\ref -> countIncrement ref $> ref)
 
+
 -- TODO:
 -- * increment the count of any actor reference referenced from the value (transitively and through the store)
 -- * send the message down
--- instance (MonadSend ActorVlu m, Trace v) => MonadSend ActorVlu (CountSpawnT m) where
---       send to msg = 
+instance (MonadSend ActorVlu m, StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m, MonadAbstractCount ActorRef m) => MonadSend ActorVlu (CountSpawnT m) where
+      send receiver msg = do
+            sto <- currentStore @ActorSto
+            let ads = traceStore (trace msg) (countingStoreValues sto)
+            -- compute all actor references reachable from the message (via the store), including from the message itself
+            let refs = foldMap (foldMap arefs' . maybe Set.empty varVals . flip Map.lookup (countingStoreValues sto)) ads
+                     `Set.union` arefs' msg
+            mapM_ countIncrement refs
+            upperM (send receiver msg)
 
 ------------------------------------------------------------
 -- Garbage collection

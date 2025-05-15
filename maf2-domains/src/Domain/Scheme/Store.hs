@@ -18,7 +18,7 @@ module Domain.Scheme.Store(
    StoreVal(..),
    SchemeAdr(..),
    ForAllStored,
-  varVals
+   varVals
 ) where
 
 
@@ -49,7 +49,6 @@ instance (SpanOf e) => SpanOf (SchemeAdr e ctx) where
 
 instance TopLattice (SchemeAdr e ctx) where
   top = TopAdr
-
 
 ------------------------------------------------------------
 -- Combined Scheme values
