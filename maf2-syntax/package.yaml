@@ -55,6 +55,7 @@ library:
     - Syntax.Scheme.Undefiner
     - Syntax.Scheme.Actor
     - Syntax.Scheme.Parser
+    - Syntax.Scheme.Prelude
     - Syntax.Erlang
     - Syntax.Erlang.Parser
     - Syntax.Erlang.Compiler

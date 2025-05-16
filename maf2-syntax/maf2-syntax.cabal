@@ -35,6 +35,7 @@ library
       Syntax.Scheme.Undefiner
       Syntax.Scheme.Actor
       Syntax.Scheme.Parser
+      Syntax.Scheme.Prelude
       Syntax.Erlang
       Syntax.Erlang.Parser
       Syntax.Erlang.Compiler
@@ -44,7 +45,6 @@ library
       Syntax.Erlang.AST
       Syntax.Python.Compiler
       Syntax.Python.Parser
-      Syntax.Scheme.Prelude
       Syntax.Scheme.TH
       Paths_maf2_syntax
   autogen-modules:
