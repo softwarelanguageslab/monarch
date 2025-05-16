@@ -13,7 +13,7 @@ The latest version of the framework is available at https://github.com/softwarel
 
 This artifact is also provided as a Docker image (in `image.tar.gz`) that 
 includes all the tools with their correct versions in addition to 
-a compiled executable that can be used to test the Python analysis 
+a compiled executable that can be used to test the Python and Scheme analyses 
 provided by the framework.
 
 The Docker image can be used as follows (for arm architectures use `arm64` instead of `x86_64`):
@@ -160,7 +160,7 @@ with-compiler: ghc-9.6.6
 source-repository-package
    type: git
    location: https://github.com/softwarelanguageslab/monarch.git
-   tag: cd936e0558953eaa468c65a373049dd5e0ae245a
+   tag: 00ca12d56341f9a1c914fefb215164be3f39fcfb
    subdir: maf2-syntax maf2-analysis maf2-domains 
            thirdparty/language-python/language-python
 
@@ -168,7 +168,7 @@ source-repository-package
 source-repository-package
    type: git
    location: https://github.com/bramvdbogaerde/layers-mtl.git
-   tag: 5201fd1814053630f762c382a79e49b7bf14df8f
+   tag: e02ee49ca80b419595f14399c44c61db2327b2b9
 
 packages: .
 ```

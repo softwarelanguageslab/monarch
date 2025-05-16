@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y vim \
 
 # Update Hackage index (for a specific date 
 # for correct reproducability)
-RUN cabal update --index-state=2024-10-01T00:00:00Z
+RUN cabal update --index-state=2025-05-01T00:00:00Z
 
 # Only now copy the artifact since this will change 
 # often and invalidates the cache.
