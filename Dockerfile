@@ -11,6 +11,15 @@ RUN mkdir /artifact/maf2-scv/
 RUN apt-get update && apt-get install -y vim \
     && rm -rf /var/lib/apt/lists/*
 
+# Install ghcup to manage multiple GHC versions (necessary for the lambda example)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 sh
+
+# Add ghcup and cabal to PATH
+ENV PATH="/root/.ghcup/bin:/root/.cabal/bin:/root/.local/bin:${PATH}"
+
+# Install GHC 9.4.8 using ghcup
+RUN ghcup install ghc 9.4.8
+
 # Update Hackage index (for a specific date 
 # for correct reproducability)
 RUN cabal update --index-state=2024-10-01T00:00:00Z
