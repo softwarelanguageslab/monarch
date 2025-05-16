@@ -3,4 +3,5 @@
 SCRIPTDIR=$(dirname "$0")
 
 cd $SCRIPTDIR/maf2-lambda/
+cabal clean
 cabal run
