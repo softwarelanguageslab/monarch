@@ -70,6 +70,8 @@ runFile fileName =
    do program <- readFile fileName
       let Just parsed = parse "testje" program
       let (rsto, osto, graph) = analyzeCP parsed
+      putStrLn "\nPROGRAM:\n"
+      putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
       putStrLn (printRSto rsto)
       putStrLn "\nOBJECT STORE RESULTS:\n"
