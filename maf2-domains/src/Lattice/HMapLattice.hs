@@ -30,13 +30,11 @@ instance BottomLattice (HMap m) where
    bottom = empty
 
 instance (HMapKey m,
-          ForAll (KeyKind m) (AtKey1 Eq m),
-          ForAll (KeyKind m) (AtKey1 PartialOrder m),
-          ForAll (KeyKind m) (AtKey1 Lattice m))
+          ForAll (KeyKind m) (AtKey1 PartialOrder m))
           =>
           PartialOrder (HMap m) where
-  subsumes m1 m2 = size m2 <= size m1 && all (withKey $ withC @(AtKey1 Lattice m) subsumesAt) (keys m2)
-      where subsumesAt :: forall kt . AtKey1 Lattice m @@ kt => Sing kt -> Bool
+  subsumes m1 m2 = size m2 <= size m1 && all (withKey $ withC @(AtKey1 PartialOrder m) subsumesAt) (keys m2)
+      where subsumesAt :: forall kt . AtKey1 PartialOrder m @@ kt => Sing kt -> Bool
             subsumesAt Sing = maybe False (`subsumes` fromJust (get @kt m2)) (get @kt m1)
 
 instance (HMapKey m, AllAtKey1 Eq m, AllAtKey1 Ord m) => SplitLattice (HMap m) where
