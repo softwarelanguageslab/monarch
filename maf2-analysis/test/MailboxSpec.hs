@@ -46,5 +46,5 @@ graphTests nam =
 
 spec :: Spec
 spec = do
-  -- graphTests @Set "the set mailbox abstraction"
+  graphTests @Set "the set mailbox abstraction"
   graphTests @GraphMailbox "the graph mailbox abstraction"
