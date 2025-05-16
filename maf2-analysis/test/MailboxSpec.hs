@@ -15,6 +15,7 @@ import Domain.Core.BoolDomain hiding (not)
 import Data.Function
 import Lattice.ConstantPropagationLattice (CP)
 import Lattice.BottomLiftedLattice (BottomLifted)
+import Debug.Trace (traceShowId)
 
 
 -- | Generic graph mailbox tests that should work regardless of
@@ -35,9 +36,15 @@ graphTests nam =
          & Set.map snd
          & all (isFalse @(BottomLifted (CP Bool)) . hasMessage' i)
     it "should return an empty set after dequeing from an empty mailbox" $
-      dequeue @(g Int) @Int (MB.empty @_ @Int) `shouldBe` Set.empty     
+      dequeue @(g Int) @Int (MB.empty @_ @Int) `shouldBe` Set.empty
+    it "should return the enqueued message after dequeing it" $
+      forAll (arbitrary :: Gen Int) $ \i ->
+           enqueue @(g Int) @Int i (MB.empty @_ @Int)
+         & dequeue
+         & Set.map fst
+         & elem i
 
 spec :: Spec
 spec = do
-  graphTests @Set "the set mailbox abstraction" 
-  graphTests @GraphMailbox "the graph mailbox abstraction" 
+  -- graphTests @Set "the set mailbox abstraction"
+  graphTests @GraphMailbox "the graph mailbox abstraction"

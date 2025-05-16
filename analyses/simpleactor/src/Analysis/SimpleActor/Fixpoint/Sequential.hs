@@ -145,9 +145,7 @@ instance (MonadAbstractCount ActorRef m) =>  MonadSend ActorVlu (RefCountMailbox
                         in if mb == mb'
                            then return True
                            else State.modify (Map.insert rcv mb') $> False
-                                           
       
-
 ------------------------------------------------------------
 -- Abstract counting of actor references
 ------------------------------------------------------------

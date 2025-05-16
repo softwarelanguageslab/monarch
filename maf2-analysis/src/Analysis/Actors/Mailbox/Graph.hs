@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Analysis.Actors.Mailbox.Graph(
   GraphMailbox,
-  messages
+  messages,
 ) where
 
 import Analysis.Actors.Mailbox hiding (hasMessage)
@@ -19,9 +19,9 @@ import Lattice.Trace
 
 -- | Graph representation of the mailbox
 data MessageGraph msg = MessageGraph
-  { -- |  The first message to be dequeued from the mailbox
+  { -- |  The last message to be dequeued from the mailbox
     top :: Maybe msg,
-    -- | The last message in the mailbox
+    -- | The first message in the mailbox
     bottom :: Maybe msg,
     -- | Every edge in the graph represents a "sends before" relation
     -- between message a and message b, so that if a -> b then a is sent before b
@@ -42,8 +42,9 @@ pushMessage msg g@MessageGraph { .. } = g { bottom = Just $ fromMaybe msg bottom
 -- and a set of successor message graphs.
 popMessage :: Ord msg => MessageGraph msg -> Set (msg, MessageGraph msg)
 popMessage g@MessageGraph { .. } = maybe Set.empty successors bottom
-  where successors m     = Set.map (m,) (maybe (Set.singleton emptyGraph) (Set.map updateGraph) $ Map.lookup m edges)
+  where successors m     = Set.map (m,) (maybe (Set.singleton emptyGraph) (Set.map updateGraph) $ foldMap emptyToNothing $ Map.lookup m edges)
         updateGraph next = g { bottom = Just next }
+        emptyToNothing s = if Set.null s then Nothing else Just s
 
 -- | Compute the bounds of the mailbox
 size :: (Domain Integer i, TopLattice i) => MessageGraph msg -> i
