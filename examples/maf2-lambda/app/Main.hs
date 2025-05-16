@@ -10,14 +10,15 @@ import Text.Printf
 import qualified Data.TypeLevel.HMap as HMap
 import Domain.Lambda
 import Data.Singletons.Sigma
-import Analysis.Scheme.Prelude (MayEscape)
+import Control.Monad.Escape (MayEscape)
 import Control.Monad.DomainError (DomainError)
 import Data.Set (Set)
 import Control.Monad.Escape (MayEscape(..), fromValue)
 import Data.Functor.Identity
+import Lattice.BottomLiftedLattice as BL
 
-printSto :: (Show adr, Functor f) => (forall a . a -> f a -> a) -> Map adr (f V) -> String
-printSto f m =
+printSto :: (Show adr, Functor f) => (forall a . a -> f a -> a) -> Map adr (f v) -> (v -> String) -> String
+printSto f m showIt =
    intercalate "\n" (map (\(k,v) -> printf "%*s | %s" indent (show k) (f "⊥" $ fmap showIt v)) adrs) ++ "\n----\n"
    where adrs   = Map.toList m
          indent = maximum (map (length . show . fst) adrs) + 5
@@ -34,7 +35,7 @@ program =
 
 main :: IO ()
 main = do
-   putStrLn $ printSto fromValue res
+   putStrLn $ printSto (const $ runIdentity) (fmap (Identity . maybe "⊥" (fromValue "⊥" . fmap showIt) . BL.toMaybe) res) id
    putStrLn "=========="
-   putStrLn $ printSto (const $ runIdentity) (fmap Identity sto)
+   putStrLn $ printSto (const $ runIdentity) (fmap Identity sto) showIt
    where (sto, res) = analyze program

@@ -12,8 +12,6 @@ import Analysis.Monad hiding (eval)
 import Syntax.Lambda
 import Domain.Lambda
 
-import qualified Control.Monad.State.SVar as SVar
-
 import Data.Map (Map)
 import Data.Function ((&))
 import Data.Functor.Identity
@@ -42,7 +40,7 @@ newtype Adr = Adr String
 -- for expressing the program semantics.
 type LamM m = (Monad m,
                MonadJoin m,           -- approximating program branches
-               StoreM m Adr V,        -- storing values of variables
+               StoreM Adr V m,        -- storing values of variables
                MonadFixpoint m Exp V, -- fixpoints
                MonadEscape m,         -- escape/exceptions
                Domain (Esc m) DomainError,
@@ -55,7 +53,7 @@ type LamM m = (Monad m,
 -- polymorphic and have type class constraints expressing
 -- what operations the domain should support.
 type V = LamVal Adr
-type Sto = Map Adr (SVar.SVar V)
+type Sto = Map Adr V
 
 -- | The evaluation function
 eval :: LamM m => Exp -> m V 
@@ -129,10 +127,10 @@ type IntraT m = MonadStack '[
 type InterM m = 
    (MapM Cmp Res m,
     WorkListM m Cmp, 
-    DependencyTrackingM m Cmp Cmp, 
-    DependencyTrackingM m Cmp Adr,
+    MonadDependencyTracking Cmp Cmp m, 
+    MonadDependencyTracking Cmp Adr m,
     ComponentTrackingM m Cmp,
-    StoreM m Adr V)
+    StoreM Adr V m)
 
 -- | The intra analysis uses `runFixT` which automatically
 -- inserts the monad transformers defined in `IntraT` and 

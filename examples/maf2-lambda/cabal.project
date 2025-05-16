@@ -1,9 +1,9 @@
-with-compiler: ghc-9.4.8
+with-compiler: ghc-9.6.6
 
 source-repository-package
    type: git
    location: https://github.com/softwarelanguageslab/monarch.git
-   tag: cd936e0558953eaa468c65a373049dd5e0ae245a
+   tag: bd757592574519c0d84d33726b878888afe19b87
    subdir: maf2-syntax maf2-analysis maf2-domains 
            thirdparty/language-python/language-python
 
@@ -11,7 +11,7 @@ source-repository-package
 source-repository-package
    type: git
    location: https://github.com/bramvdbogaerde/layers-mtl.git
-   tag: 5201fd1814053630f762c382a79e49b7bf14df8f
+   tag: e02ee49ca80b419595f14399c44c61db2327b2b9
 
 packages: 
    ../../maf2-syntax/

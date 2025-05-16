@@ -30,19 +30,22 @@
 module Domain.Lambda(Env, Clo, M, LamVal(..), clo, num, nonzero, inc, clos, SLamKey(..)) where
 
 import Data.Singletons
+import Data.List (intercalate)
+import Text.Printf
 import Domain (inject)
 import Lattice (Joinable, Lattice, PartialOrder, BottomLattice)
+import Lattice.HMapLattice ()
 import Lattice.ConstantPropagationLattice
-import Data.TypeLevel.HMap
+import Data.TypeLevel.HMap hiding (map)
+import qualified Data.TypeLevel.HMap as HMap
 import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Syntax.Lambda
 
 import Control.Monad.Join
-import Analysis.Scheme.Prelude (escape)
 import Control.Monad.DomainError (DomainError(..))
-import Control.Monad.Escape (MonadEscape (..))
+import Control.Monad.Escape (MonadEscape (..), escape)
 import Domain.Class (Domain)
 
 -- | Shorthand for environments
@@ -51,7 +54,7 @@ type Env adr = Map String adr
 type Clo adr = (Env adr, Exp)
 
 -- | The labels for the sparse labeled product
-data LamKey = IntKey | CloKey deriving (Eq, Ord)
+data LamKey = IntKey | CloKey deriving (Eq, Ord, Show)
 -- this is necessary for the infrastructure promoting
 -- data constructors to types and the other way around.
 $(genHKeys ''LamKey)
@@ -65,14 +68,20 @@ type M adr = '[ IntKey ::-> CP Int,
 -- are constructed from sparse labeled products with 
 -- the contents defined by the type alias @M@ (cf. above)
 newtype LamVal adr = LamVal (HMap (M adr))
-   deriving (Eq, Joinable, BottomLattice, PartialOrder)
+   deriving (Eq, Joinable, BottomLattice, PartialOrder, Ord)
 
--- | 
+instance Show adr => Show (LamVal adr) where
+   show (LamVal hm) = intercalate "," $ map showElement $ HMap.toList hm
+      where showElement :: BindingFrom (M adr) -> String
+            showElement (key :&: value) =
+               printf "%s -> %s" (show $ fromSing key) (withC_ @(AtKey1 Show (M adr)) (show value) key)
+
+-- | Extract all closures from the value
 clos :: forall a adr m . Lattice a => MonadJoin m => (Clo adr -> m a) -> LamVal adr -> m a
 clos f (LamVal v) = mjoins (mapList select v)
    where select :: forall k . Sing (k :: LamKey) -> Assoc k (M adr) -> m a
          select SCloKey v' = mjoins $ Prelude.map f (Set.toList v')
-         select _ _ = mzero
+         select _ _ = mbottom
 
 -- | Inject a closure in the domain
 clo :: Clo adr -> LamVal adr
