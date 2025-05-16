@@ -98,7 +98,9 @@ analyzeCmd (InputOptions { filename, doTranslate  }) = do
    (sequentialResults, mbs) <- analyze ast
    let sequentialResMap = fmap cmpRes sequentialResults
    let sequentialCouMap = fmap outCount sequentialResults
+   putStrLn "====== Results per actor"
    mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialResMap)
+   putStrLn "====== CountMap per Actor"
    -- putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
    mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialCouMap)
    -- putStrLn "====="

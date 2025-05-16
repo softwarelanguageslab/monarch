@@ -300,7 +300,6 @@ type MonadActorModular m = (
 flowStore :: forall cmp s adr v m a . (
               StoreM' s adr v m,
               BottomLattice s,
-              Show s, Show cmp,
               -- FLow sensitive store
               MapM (In cmp s) s m,
               MapM (Out cmp s) s m,
@@ -308,6 +307,7 @@ flowStore :: forall cmp s adr v m a . (
               -- abstract actor references 
               MapM (In cmp ActorCou) ActorCou m,
               MapM (Out cmp ActorCou) ActorCou m,
+              Joinable s,
               MonadAbstractCount ActorRef m)
           => (cmp -> m a) -- ^ original arrow
           -> (cmp -> m a)
@@ -319,8 +319,8 @@ flowStore next cmp = do
   v <- next cmp
   sto' <- currentStore @s
   cou' <- getCounts
-  MapM.put @(Out cmp s) (Out cmp) sto'
-  MapM.put @(Out cmp ActorCou) (Out cmp) cou'
+  MapM.joinWith @(Out cmp s) (Out cmp) sto'
+  MapM.joinWith @(Out cmp ActorCou) (Out cmp) cou'
   return v
 
 

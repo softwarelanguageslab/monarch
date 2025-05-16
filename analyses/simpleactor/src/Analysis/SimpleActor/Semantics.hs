@@ -76,7 +76,7 @@ eval' rec e@(App e1 es _) = do
    v2 <- mapM (eval' rec) es
    apply rec e v1 v2
 eval' rec (Ite e1 e2 e3 _) =
-   choice (eval' rec e1) (eval' rec e2) (eval' rec e3)
+   cond (eval' rec e1) (eval' rec e2) (eval' rec e3)
 eval' _rec (Spawn e _) =
    liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
 eval' _ (Terminate _) = terminate $> nil

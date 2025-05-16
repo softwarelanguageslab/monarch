@@ -4,7 +4,6 @@ module MailboxSpec(spec) where
 
 import Test.Hspec
 import Test.QuickCheck
-import Test.HUnit
 import Analysis.Actors.Mailbox
 import qualified Analysis.Actors.Mailbox as MB
 import Analysis.Actors.Mailbox.Graph
@@ -15,7 +14,6 @@ import Domain.Core.BoolDomain hiding (not)
 import Data.Function
 import Lattice.ConstantPropagationLattice (CP)
 import Lattice.BottomLiftedLattice (BottomLifted)
-import Debug.Trace (traceShowId)
 
 
 -- | Generic graph mailbox tests that should work regardless of

@@ -30,6 +30,7 @@ import Analysis.Actors.Mailbox (Mailbox (hasMessage), dequeue, enqueue, empty)
 import Data.Functor
 import Control.Monad.Cond (ifM)
 import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, trigger, currentCmp)
+import qualified Control.Monad.State as State
 
 
 -- | Receive messages of type 'v' in monadic context 'm'
@@ -110,8 +111,9 @@ deriving instance (MonadCache m, Ord mb, Ord v, Ord (ARef v)) => MonadCache (Glo
 deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinable mb) => MonadJoinable (GlobalMailboxT v mb m)
 
 instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadSend v (GlobalMailboxT v mb m) where
-  send ref v = GlobalMailboxT $ ifM (gets (hasMessage v . fromMaybe empty . Map.lookup ref)) (return False) (modify (Map.insertWith (\_ old ->  enqueue v old) ref (enqueue v empty)) $> True)
-
+  send ref v = GlobalMailboxT $ ifM (liftA2 (==) mbs mbs') (return False) ((State.put =<< mbs') >> return True)
+    where mbs  =  State.get
+          mbs' =  gets (Map.insertWith (\_ old ->  enqueue v old) ref (enqueue v empty))   
 
 instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadReceive v (GlobalMailboxT v mb m) where
   -- NOTE: we cannot use `MonadJoin` here since we have passed the `JoinT` layer in the monadic stack,
