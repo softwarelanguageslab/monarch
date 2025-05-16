@@ -17,7 +17,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTR
 # Add ghcup and cabal to PATH
 ENV PATH="/root/.ghcup/bin:/root/.cabal/bin:/root/.local/bin:${PATH}"
 
-# Install GHC 9.4.8 using ghcup
+# Install GHC 9.4.8 using ghcup (necessary for the lambda example)
 RUN ghcup install ghc 9.4.8
 
 # Update Hackage index (for a specific date 
