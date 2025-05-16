@@ -137,14 +137,14 @@ instance (MonadAbstractCount ActorRef m) =>  MonadSend ActorVlu (RefCountMailbox
                   CountOne ->
                         let mb' = Mailbox.enqueue msg mb
                         in if mb == mb' 
-                           then return True
-                           else State.modify (Map.insert rcv mb') $> False
+                           then return False
+                           else State.modify (Map.insert rcv mb') $> True
                   -- if the count is infinite, then we have to widen the abstraction to a set abstraction
                   CountInf ->
                         let mb' = Mailbox.enqueue msg (graphToSet mb)
                         in if mb == mb'
-                           then return True
-                           else State.modify (Map.insert rcv mb') $> False
+                           then return False
+                           else State.modify (Map.insert rcv mb') $> True
       
 ------------------------------------------------------------
 -- Abstract counting of actor references
@@ -385,6 +385,6 @@ analyze exp env ref = do
 
       MapM.put (ActorResOut ref) (extractVal res)
       mapM_ (uncurry writeAdr) (Map.toList $ contributions res)
-  where extractVal (_ ::*:: res ::*:: _ ::*:: _ ::*:: inCou ::*:: outCou) = ActorRes res (Map.mapKeys outAddress outCou)
+  where extractVal (_ ::*:: res ::*:: _ ::*:: _ ::*:: _ ::*:: outCou) = ActorRes res (Map.mapKeys outAddress outCou)
         extractSto (_ ::*:: _ ::*:: _ ::*:: outStore ::*:: _ ::*:: _) = countingStoreValues <$> outStore
         contributions res = joinMap snd (Map.toList $ extractSto res)
