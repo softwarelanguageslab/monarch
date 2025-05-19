@@ -14,14 +14,15 @@ module Analysis.SimpleActor.Monad
     EvalM,
     Error (..),
     ActorError,
-    MetaT, 
+    MetaT,
     DynamicBindingT,
     DynamicBindingT',
     runWithDynamic,
     runDynamicT,
     isMatchError,
     Cmp(..),
-    Ctx(..)
+    Ctx(..),
+    MonadIndexedMailbox(..)
   )
 where
 
@@ -56,6 +57,10 @@ import Analysis.Actors.Monad
 import Control.DeepSeq
 import GHC.Generics
 import Analysis.Monad.AbstractCount (MonadAbstractCount)
+import Control.Monad.State (StateT, MonadState, modify, gets)
+import qualified Lattice.Class as L
+import Analysis.Actors.Mailbox (Mailbox)
+import qualified Analysis.Actors.Mailbox as MB
 
 ------------------------------------------------------------
 -- 'Components'
@@ -65,14 +70,14 @@ data Cmp = FuncBdy  !Exp  -- ^ a function call component contains a lambda
          | ActorExp !Exp  -- ^ a newly spawned actor
       deriving (Show, Eq, Ord)
 
-instance NFData Cmp where  
+instance NFData Cmp where
    rnf x = x `seq` ()
 
-instance SpanOf Cmp where  
-   spanOf (FuncBdy e) = spanOf e 
+instance SpanOf Cmp where
+   spanOf (FuncBdy e) = spanOf e
    spanOf (ActorExp e) = spanOf e
 
-instance FreeVariables Cmp where 
+instance FreeVariables Cmp where
    fv (FuncBdy (Lam xs e _)) = Set.union (Set.fromList (map Ide.name xs)) (fv e)
    fv (FuncBdy _) = error "imposible value"
    fv (ActorExp e) = fv e
@@ -96,18 +101,18 @@ data Error = MatchError | InvalidArgument | BlameError String | ArityMismatch In
   deriving (Eq, Ord, Show)
 
 
-instance NFData Error where   
+instance NFData Error where
    rnf x = x `seq` ()
 
-class (SplitLattice e) => SimpleActorErrorDomain e where 
+class (SplitLattice e) => SimpleActorErrorDomain e where
    isMatchError :: (BottomLattice b, BoolDomain b) => e -> b
-instance SimpleActorErrorDomain (Set ActorError) where  
-   isMatchError es   
+instance SimpleActorErrorDomain (Set ActorError) where
+   isMatchError es
       | Set.size es == 0 = bottom
-      | Set.size es == 1 && Set.member (ActorError MatchError) es = true 
+      | Set.size es == 1 && Set.member (ActorError MatchError) es = true
       | not (Set.member (ActorError MatchError) es) = false
       | otherwise = boolTop
-      
+
 
 ------------------------------------------------------------
 -- Monad typeclasses
@@ -116,20 +121,20 @@ instance SimpleActorErrorDomain (Set ActorError) where
 
 -- | Reader-like monadic interface that carries 
 -- meta-annotations.
-class Monad m => MonadMeta m where 
+class Monad m => MonadMeta m where
    isMeta :: m Bool
-   withMetaSet :: m a -> m a 
+   withMetaSet :: m a -> m a
    withMetaUnset :: m a -> m a
 
 -- | Monad for scoped dynamic bindings
 -- in the target language (à la Racket "parmetrize")
-class Monad m => MonadDynamic α m | m -> α where  
+class Monad m => MonadDynamic α m | m -> α where
    withExtendedDynamic :: [(String, α)] -> m a -> m a
    lookupDynamic :: String -> m α
    withDynamic :: (Map String α -> Map String α) -> m a -> m a
    getDynamic :: m (Map String α)
-  
-  
+
+
 -- | Monad for spawning new processes. Each process is uniquely identified by their
 -- expression and environment.
 class MonadSpawn v k m | m -> v k where
@@ -141,32 +146,54 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v k m) => Monad
 
 type MonadActor v m = (MonadMailbox v m, MonadSpawn v Ctx m, MonadActorLocal v m, MonadMeta m, MonadDynamic (Adr v) m)
 
+-- | Global mailbox indexed per contributor so that strong updates of the global mailbox are allowed whenever
+-- there are no conflicting interleavings
+class MonadIndexedMailbox ref mb m | m -> ref mb  where
+  joinMailboxes :: ref -- ^ contributor
+                -> ref -- ^ receiver
+                -> mb  -- ^ the mailbox to join
+                -> m ()
+
+  putMailboxes :: ref -- ^ contributor
+               -> ref -- ^ receiver
+               -> mb  -- ^ the mailbox to put
+               -> m ()
+
 ------------------------------------------------------------
 -- Layered instances
 ------------------------------------------------------------
 
-instance 
- {-# OVERLAPPABLE #-} 
- (MonadLayer t , 
+instance
+ {-# OVERLAPPABLE #-}
+ (MonadLayer t ,
    Monad (t m),
-  MonadMeta m) => 
- MonadMeta (t m) where  
-   
+  MonadMeta m) =>
+ MonadMeta (t m) where
+
   isMeta = upperM isMeta
   withMetaSet = lowerM withMetaSet
   withMetaUnset = lowerM withMetaUnset
 
-instance 
+instance
  {-# OVERLAPPABLE #-}
  (MonadLayer t,
   Monad (t m),
-  MonadDynamic α m) 
- => MonadDynamic α (t m) where   
+  MonadDynamic α m)
+ => MonadDynamic α (t m) where
 
  withExtendedDynamic bds = lowerM (withExtendedDynamic bds)
  lookupDynamic = upperM . lookupDynamic
  withDynamic f = lowerM (withDynamic f)
  getDynamic = upperM getDynamic
+
+instance
+  {-# OVERLAPPABLE #-}
+  (Monad m, MonadLayer t, MonadIndexedMailbox ref mb m) =>
+  MonadIndexedMailbox ref mb (t m) where
+
+  joinMailboxes contributor recv = upperM . joinMailboxes contributor recv
+  putMailboxes contributor recv = upperM . putMailboxes contributor recv
+
 
 ------------------------------------------------------------
 -- Monad
@@ -195,8 +222,8 @@ type EvalM v m =
     Show (Env v),
     MonadAbstractCount (ARef v) m,
     -- Domain constraints
-    ForAllStored Show v,  
-    ForAllStored Eq v,  
+    ForAllStored Show v,
+    ForAllStored Eq v,
     ForAllStored Ord v
   )
 
@@ -205,7 +232,7 @@ type EvalM v m =
 ------------------------------------------------------------
 
 -- | Meta-flag monad
-newtype MetaT m a = MetaT (ReaderT Bool m a) 
+newtype MetaT m a = MetaT (ReaderT Bool m a)
                   deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadReader Bool, MonadCache)
 
 instance (Monad m) => MonadMeta (MetaT m) where
@@ -223,17 +250,30 @@ newtype DynamicBindingT' adr m a = DynamicBindingT (ReaderT (Map String adr) m a
 -- | Dynamic binding monad
 type DynamicBindingT v m a = DynamicBindingT' (Adr v) m a
 
-instance (Monad m) => MonadDynamic adr (DynamicBindingT' adr m) where  
+instance (Monad m) => MonadDynamic adr (DynamicBindingT' adr m) where
    lookupDynamic vr = DynamicBindingT $ asks (fromMaybe (error $ "dynamic binding " ++ show vr ++ " not found") . Map.lookup vr)
    withExtendedDynamic bds (DynamicBindingT ma) = DynamicBindingT $ local (Map.union (Map.fromList bds)) ma
    withDynamic f (DynamicBindingT ma) = DynamicBindingT $ local f ma
-   getDynamic = DynamicBindingT ask 
-   
+   getDynamic = DynamicBindingT ask
+
 runWithDynamic :: DynamicBindingT' adr m a -> m a
 runWithDynamic (DynamicBindingT m) = runReaderT m Map.empty
 
 runDynamicT:: Map String adr -> DynamicBindingT' adr m a -> m a
 runDynamicT env (DynamicBindingT m) = runReaderT m env
+
+-- | Mailboxes indexed by contributors
+newtype MailboxContributorIndexedT ref v mb m a = MailboxContributorIndexedT (StateT (Map ref (Map ref mb)) m a)
+                                                deriving (MonadState (Map ref (Map ref mb)), Applicative, Functor, Monad, MonadLayer, MonadCache)
+
+instance (Monad m, L.Joinable mb, Ord ref) => MonadIndexedMailbox ref mb (MailboxContributorIndexedT ref v mb m) where
+  joinMailboxes contributor recv mb = modify (Map.insertWith L.join recv (Map.singleton contributor mb))
+  putMailboxes contributor recv mb = modify (\mbs -> Map.insert recv (Map.insert contributor mb $ fromMaybe Map.empty $ Map.lookup recv mbs) mbs)
+
+-- Indexed mailboxes behave like one global mailbox when looked up
+instance (Ord ref, Mailbox mb v, L.Joinable mb, L.BottomLattice mb, Monad m) => MonadMailbox' ref mb (MailboxContributorIndexedT ref v mb m) where
+  getMailbox ref = gets (maybe MB.empty (L.joinMap snd . Map.toList) . Map.lookup ref)
+  getMailboxes =  gets (fmap (L.joinMap snd . Map.toList))
 
 ------------------------------------------------------------
 -- Error abstractions

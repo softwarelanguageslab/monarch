@@ -25,11 +25,11 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
-import Control.Monad.State (StateT, gets, modify, runStateT, MonadState (put))
+import Control.Monad.State (StateT (StateT), gets, modify, runStateT, MonadState (put))
 import Analysis.Actors.Mailbox (Mailbox (hasMessage), dequeue, enqueue, empty)
 import Data.Functor
 import Control.Monad.Cond (ifM)
-import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, trigger, currentCmp)
+import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, trigger, currentCmp, register)
 import qualified Control.Monad.State as State
 
 
@@ -60,6 +60,7 @@ type MonadMailbox v m = (MonadReceive v m, MonadSend v m, BottomLattice v, Joina
 -- | A monadic context for retrieving the mailbox associated with a particular actor 
 class MonadMailbox' ref mb m | m -> ref mb where
   getMailbox :: ref -> m mb
+  getMailboxes :: m (Map ref mb)
 
 -- | Local information of an actor
 class MonadActorLocal v m | m -> v where
@@ -86,10 +87,14 @@ instance {-# OVERLAPPABLE #-} (Monad m ,MonadLayer t, MonadReceive v m) => Monad
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox' ref mb m) => MonadMailbox' ref mb (t m) where
   getMailbox = upperM . getMailbox
+  getMailboxes = upperM getMailboxes
 
 ------------------------------------------------------------
 -- Instances
 ------------------------------------------------------------
+
+-- | Mapping of actor references to their mailboxes
+type MailboxMap v mb = Map (ARef v) mb
 
 -- | Local mailbox for receiving messages, meant to be added above `GlobalMailboxT`
 -- and above any non-determinism and caching effects.
@@ -104,7 +109,7 @@ instance (Mailbox mb v, BottomLattice mb, Joinable mb, Joinable v, MonadReceive 
     else upperM (receive' ref)
 
 -- | Global mailbox parametrized by a mailbox abstraction
-newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT (Map (ARef v) mb) m a}
+newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT (MailboxMap v mb) m a}
   deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer)
 
 deriving instance (MonadCache m, Ord mb, Ord v, Ord (ARef v)) => MonadCache (GlobalMailboxT v mb m)
@@ -125,6 +130,7 @@ instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef 
 
 instance (ref ~ ARef v, Mailbox mb v, Ord ref, Monad m) => MonadMailbox' ref mb (GlobalMailboxT v mb m) where
   getMailbox ref = GlobalMailboxT $ gets (fromMaybe empty . Map.lookup ref)
+  getMailboxes = GlobalMailboxT State.get
 
 runWithMailboxT :: forall v mb m a . GlobalMailboxT v mb m a -> m (a, Map (ARef v) mb)
 runWithMailboxT (GlobalMailboxT ma) = runStateT ma Map.empty
@@ -148,7 +154,8 @@ newtype MailboxDep ref mb = MailboxDep ref
   deriving (Ord, Eq, Show)
 
 instance (MonadMailbox' ref mb m, MonadDependencyTracking cmp (MailboxDep ref mb) m) => MonadMailbox' ref mb (IntraAnalysisT cmp m) where
-  getMailbox ref = trigger @cmp (MailboxDep @_ @mb ref) >> upperM (getMailbox ref)
+  getMailbox ref = ask >>= register @cmp (MailboxDep @_ @mb ref) >> upperM (getMailbox ref)
+  getMailboxes = upperM getMailboxes
 
 -- type Dep v = ARef v
 

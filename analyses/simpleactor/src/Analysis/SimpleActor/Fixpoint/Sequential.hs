@@ -48,6 +48,7 @@ import Domain.Core.AbstractCount (AbstractCount(..))
 import qualified Control.Monad.State as State
 import qualified Analysis.Actors.Mailbox as Mailbox
 import Analysis.Actors.Mailbox.GraphToSet (GraphToSet, graphToSet)
+import Analysis.Counting (getCountingMap)
 
 
 ------------------------------------------------------------
@@ -82,11 +83,12 @@ type SequentialT m = MonadStack '[
                        CountSpawnT,
                        LocalMailboxT ActorVlu MB,
                        ActorLocalT ActorVlu,
-                       SetNonDetT,
                        -- JoinT,
                        CacheT,
                        TransparentStoreT ActorSto ActorAdr (StoreVal ActorVlu),
-                       AbstractCountT ActorRef
+                       RefCountMailboxT,
+                       AbstractCountT ActorRef,
+                       SetNonDetT
                   ] m
 
 -- | SequentialIntraM denotes the remaining constraints needed for running the intra
@@ -107,6 +109,7 @@ type InterAnalysisM m = (MonadSchemeStore m,
                             -- In ActorCmp ActorPC,
                             -- Out ActorCmp ActorPC ],
                          MonadMailbox ActorVlu m,
+                         MonadMailbox' ActorRef MB m,
                          FormulaSolver (SchemeAdr Exp K) m,
                          MonadSpawn ActorVlu Ctx m,
                          MonadIO m,
@@ -115,7 +118,10 @@ type InterAnalysisM m = (MonadSchemeStore m,
                          MapM (Out SequentialCmp ActorSto) ActorSto m,
                          MapM (In SequentialCmp ActorCou) ActorCou m,
                          MapM (Out SequentialCmp ActorCou) ActorCou m,
-                         StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m
+                         StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m,
+                         -- Mailboxes
+                         MonadIndexedMailbox ActorRef MB m,
+                         MonadDependencyTracking ActorRef (MailboxDep ActorRef MB) m
                         )
 
 
@@ -124,19 +130,19 @@ type InterAnalysisM m = (MonadSchemeStore m,
 ------------------------------------------------------------
 
 newtype RefCountMailboxT m a = RefCountMailboxT (StateT (Map ActorRef MB) m a)
-                              deriving (Monad, Applicative, Functor, MonadState (Map ActorRef MB), MonadLayer, MonadCache)
+                              deriving (Monad, Applicative, Functor, MonadState (Map ActorRef MB), MonadLayer, MonadCache, MonadJoinable)
 
 instance (MonadAbstractCount ActorRef m) =>  MonadSend ActorVlu (RefCountMailboxT m) where
       send rcv msg = do
             countRcv <- fromMaybe (error "should be defined") <$> currentCount rcv
             mb <- State.gets (fromJust . Map.lookup rcv)
-            case countRcv of           
+            case countRcv of
                   -- if the count is equal to one, there are no interleavings possible, as
                   -- only one actor has a reference to the actor reference, hence we can
                   -- use the current abstraction of the mailbox.
                   CountOne ->
                         let mb' = Mailbox.enqueue msg mb
-                        in if mb == mb' 
+                        in if mb == mb'
                            then return False
                            else State.modify (Map.insert rcv mb') $> True
                   -- if the count is infinite, then we have to widen the abstraction to a set abstraction
@@ -145,7 +151,12 @@ instance (MonadAbstractCount ActorRef m) =>  MonadSend ActorVlu (RefCountMailbox
                         in if mb == mb'
                            then return False
                            else State.modify (Map.insert rcv mb') $> True
-      
+
+runRefCountMailboxT :: Map ActorRef MB -- ^ intitial global mailbox contents
+                    -> RefCountMailboxT m a
+                    -> m (a, Map ActorRef MB)
+runRefCountMailboxT s (RefCountMailboxT m) = runStateT m s
+
 ------------------------------------------------------------
 -- Abstract counting of actor references
 ------------------------------------------------------------
@@ -169,7 +180,7 @@ reachableRefs :: ActorVlu -> ActorSto -> Set ActorRef
 reachableRefs vlu sto = directRefs `Set.union` transitiveRefs
       where ads = traceStore (trace vlu) (countingStoreValues sto)
             directRefs = arefs' vlu
-            transitiveRefs = foldMap (foldMap arefs' . maybe Set.empty varVals . flip Map.lookup (countingStoreValues sto)) ads    
+            transitiveRefs = foldMap (foldMap arefs' . maybe Set.empty varVals . flip Map.lookup (countingStoreValues sto)) ads
 
 instance (MonadSend ActorVlu m, StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m, MonadAbstractCount ActorRef m) => MonadSend ActorVlu (CountSpawnT m) where
       send receiver msg = do
@@ -186,7 +197,7 @@ instance (MonadReceive ActorVlu m, StoreM' ActorSto ActorAdr (StoreVal ActorVlu)
             -- to to the actor reference
             sto <- currentStore @ActorSto
             msg <- upperM (receive' ref)
-            mapM_ infty (reachableRefs msg sto) 
+            mapM_ infty (reachableRefs msg sto)
             return msg
 
 -----------------------------------------------------------
@@ -269,11 +280,13 @@ type MonadActorModular m = (
     -- Dependencies can be tracked between the stores
     -- of each actor, in order to find which memory is shared.
     MonadActorStoreDependencyTracking m,
+    MonadDependencyTracking ActorRef (MailboxDep ActorRef MB) m,
     -- The sequential analysis can trigger new actors to be spawned
     WorkListM m ActorRef,
     -- Global mailboxes
-    MonadMailbox ActorVlu m,
+    -- MonadMailbox ActorVlu m,
     MonadMailbox' (ARef ActorVlu) MB m,
+    MonadIndexedMailbox ActorRef MB m,
     -- Formula solving should be global since it requires IO
     FormulaSolver (SchemeAdr Exp K) m,
     -- Spawning actors
@@ -326,16 +339,27 @@ flowStore next cmp = do
 
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
-intra _ref cmp = do
+intra selfRef cmp = do
+          inMbs <- getMailboxes
           flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) eval'') cmp
                   & runAlloc VarAdr
                   & runAlloc PtrAdr
                   & evalWithTransparentStoreT
-                  & evalWithAbstractCountT
+                  & runRefCountMailboxT inMbs
+                  & runWithAbstractCountT
+                  & (>>= outMbs)
+                  & runSetNonDetT
+                  & void
                   & runIntraAnalysis cmp
       where -- eval'' :: Cmp -> FixT Cmp ActorVlu (SequentialT (IntraAnalysisT SequentialCmp m)) ActorVlu
             eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
-
+            outMbs ((a, mbs), cou) = do
+                  let mbs' = Map.mapKeys (\k -> (,k) $ fromMaybe CountInf $ Map.lookup k (getCountingMap cou)) mbs
+                  mapM_ (uncurry writeMai) (Map.toList mbs')
+                  return a
+            writeMai (cou ,ref) = (case cou of
+                                    CountOne -> putMailboxes
+                                    CountInf -> joinMailboxes) selfRef ref
 -- | Inter-analysis
 inter :: InterAnalysisM m
       => Exp         -- ^ the actor expression to analyze

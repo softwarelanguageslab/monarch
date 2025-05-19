@@ -2,7 +2,8 @@
 module Analysis.Monad.AbstractCount(
   MonadAbstractCount(..),
   AbstractCountT,
-  evalWithAbstractCountT)  where
+  evalWithAbstractCountT,
+  runWithAbstractCountT)  where
 
 import Analysis.Counting
 import Analysis.Monad.Cache
@@ -51,6 +52,10 @@ instance (Ord e, Monad m) => MonadAbstractCount e (AbstractCountT e m) where
   getCounts = gets getCountingMap
   putCounts = put . CountingMap
   infty k = modify (markInfty k)
+
+
+runWithAbstractCountT ::AbstractCountT e m a -> m (a, CountMap e)
+runWithAbstractCountT  (AbstractCountT ma) = runStateT ma emptyCountMap
 
 evalWithAbstractCountT :: Monad m => AbstractCountT e m a -> m a
 evalWithAbstractCountT (AbstractCountT ma) = evalStateT ma emptyCountMap
