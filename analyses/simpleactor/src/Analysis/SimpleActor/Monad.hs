@@ -152,12 +152,12 @@ class MonadIndexedMailbox ref mb m | m -> ref mb  where
   joinMailboxes :: ref -- ^ contributor
                 -> ref -- ^ receiver
                 -> mb  -- ^ the mailbox to join
-                -> m ()
+                -> m Bool
 
   putMailboxes :: ref -- ^ contributor
                -> ref -- ^ receiver
                -> mb  -- ^ the mailbox to put
-               -> m ()
+               -> m Bool
 
 ------------------------------------------------------------
 -- Layered instances
@@ -289,4 +289,12 @@ instance Domain (Set ActorError) DomainError where
 
 instance Domain (Set ActorError) Error where
   inject = Set.singleton . ActorError
+
+------------------------------------------------------------
+-- Intra-analysis hooks
+------------------------------------------------------------
+
+instance (MonadDependencyTracking cmp (MailboxDep ref mb) m, MonadIndexedMailbox ref mb m) =>  MonadIndexedMailbox (IntraAnalysisT cmp m) where
+  joinMailboxes = undefined -- TODO: trigger when result is true
+  putMailboxes = undefined -- TODO: trigger when lower result is true
 
