@@ -11,7 +11,7 @@ module Analysis.Actors.Monad(
    ActorLocalT,
    send',
    LocalMailboxT,
-   MailboxDep
+   MailboxDep(..)
 ) where
 
 import Domain.Actor
@@ -101,12 +101,12 @@ type MailboxMap v mb = Map (ARef v) mb
 newtype LocalMailboxT v mb m a = LocalMailboxT (StateT mb m a)
                                deriving (Applicative, Functor, Monad, MonadTrans, MonadLayer, MonadState mb, MonadJoinable, MonadBottom, MonadCache)
 
-instance (Mailbox mb v, BottomLattice mb, Joinable mb, Joinable v, MonadReceive v m, MonadJoin m, MonadActorLocal v m, Eq (ARef v)) => MonadReceive v (LocalMailboxT v mb m) where
+instance (Mailbox mb v, BottomLattice mb, Joinable mb, Joinable v, MonadJoin m, MonadActorLocal v m, Eq (ARef v)) => MonadReceive v (LocalMailboxT v mb m) where
   receive' ref = do
     self <- getSelf
     if self == ref then
       mjoinMap (\(msg, mb) -> put mb $> msg) =<< gets (Set.toList . dequeue)
-    else upperM (receive' ref)
+    else error "ref /= self, TODO: fix that `receive'` can no longer be called with other references"
 
 -- | Global mailbox parametrized by a mailbox abstraction
 newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT (MailboxMap v mb) m a}

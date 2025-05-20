@@ -22,7 +22,8 @@ module Analysis.SimpleActor.Monad
     isMatchError,
     Cmp(..),
     Ctx(..),
-    MonadIndexedMailbox(..)
+    MonadIndexedMailbox(..),
+    runWithMailboxContributorIndexedT
   )
 where
 
@@ -61,6 +62,9 @@ import Control.Monad.State (StateT, MonadState, modify, gets)
 import qualified Lattice.Class as L
 import Analysis.Actors.Mailbox (Mailbox)
 import qualified Analysis.Actors.Mailbox as MB
+import qualified Control.Monad.State as State
+import Control.Monad.Cond
+import Data.Functor
 
 ------------------------------------------------------------
 -- 'Components'
@@ -266,9 +270,21 @@ runDynamicT env (DynamicBindingT m) = runReaderT m env
 newtype MailboxContributorIndexedT ref v mb m a = MailboxContributorIndexedT (StateT (Map ref (Map ref mb)) m a)
                                                 deriving (MonadState (Map ref (Map ref mb)), Applicative, Functor, Monad, MonadLayer, MonadCache)
 
-instance (Monad m, L.Joinable mb, Ord ref) => MonadIndexedMailbox ref mb (MailboxContributorIndexedT ref v mb m) where
-  joinMailboxes contributor recv mb = modify (Map.insertWith L.join recv (Map.singleton contributor mb))
-  putMailboxes contributor recv mb = modify (\mbs -> Map.insert recv (Map.insert contributor mb $ fromMaybe Map.empty $ Map.lookup recv mbs) mbs)
+runWithMailboxContributorIndexedT :: (Functor m, L.Joinable mb, L.BottomLattice mb) => MailboxContributorIndexedT ref v mb m a -> m (a, Map ref mb)
+runWithMailboxContributorIndexedT (MailboxContributorIndexedT m) = do
+  (fmap . fmap) (L.joinMap snd . Map.toList) <$> State.runStateT m Map.empty
+
+instance (Monad m, L.Joinable mb, Eq mb, Ord ref) => MonadIndexedMailbox ref mb (MailboxContributorIndexedT ref v mb m) where
+  joinMailboxes contributor recv mb = do
+    mbs <- State.get
+    let mbs' = Map.insertWith L.join recv (Map.singleton contributor mb) mbs
+    State.put mbs'
+    return (mbs /= mbs')
+  putMailboxes contributor recv mb = do
+    mbs <- State.get
+    let mbs' = Map.insert recv (Map.insert contributor mb $ fromMaybe Map.empty $ Map.lookup recv mbs) mbs
+    State.put mbs'
+    return (mbs /= mbs')
 
 -- Indexed mailboxes behave like one global mailbox when looked up
 instance (Ord ref, Mailbox mb v, L.Joinable mb, L.BottomLattice mb, Monad m) => MonadMailbox' ref mb (MailboxContributorIndexedT ref v mb m) where
@@ -294,7 +310,12 @@ instance Domain (Set ActorError) Error where
 -- Intra-analysis hooks
 ------------------------------------------------------------
 
-instance (MonadDependencyTracking cmp (MailboxDep ref mb) m, MonadIndexedMailbox ref mb m) =>  MonadIndexedMailbox (IntraAnalysisT cmp m) where
-  joinMailboxes = undefined -- TODO: trigger when result is true
-  putMailboxes = undefined -- TODO: trigger when lower result is true
-
+instance (MonadDependencyTracking cmp (MailboxDep ref mb) m, MonadIndexedMailbox ref mb m) =>  MonadIndexedMailbox ref mb (IntraAnalysisT cmp m) where
+  joinMailboxes contributor recv mb =
+    ifM (upperM (joinMailboxes contributor recv mb))
+        (trigger (MailboxDep @ref @mb recv) $> True)
+        (return False)
+  putMailboxes contributor recv mb =
+    ifM (upperM (putMailboxes contributor recv mb))
+        (trigger (MailboxDep @ref @mb recv) $> True)
+        (return False)

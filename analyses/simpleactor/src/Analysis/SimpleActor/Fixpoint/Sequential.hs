@@ -84,12 +84,15 @@ type SequentialT m = MonadStack '[
                        LocalMailboxT ActorVlu MB,
                        ActorLocalT ActorVlu,
                        -- JoinT,
-                       CacheT,
-                       TransparentStoreT ActorSto ActorAdr (StoreVal ActorVlu),
-                       RefCountMailboxT,
-                       AbstractCountT ActorRef,
-                       SetNonDetT
+                       CacheT
                   ] m
+
+type SequentialWidenedT m = MonadStack '[
+                                   TransparentStoreT ActorSto ActorAdr (StoreVal ActorVlu),
+                                   IntraAnalysisT SequentialCmp,
+                                   RefCountMailboxT,
+                                   AbstractCountT ActorRef,
+                                   SetNonDetT ] m
 
 -- | SequentialIntraM denotes the remaining constraints needed for running the intra
 -- analysis.
@@ -134,8 +137,8 @@ newtype RefCountMailboxT m a = RefCountMailboxT (StateT (Map ActorRef MB) m a)
 
 instance (MonadAbstractCount ActorRef m) =>  MonadSend ActorVlu (RefCountMailboxT m) where
       send rcv msg = do
-            countRcv <- fromMaybe (error "should be defined") <$> currentCount rcv
-            mb <- State.gets (fromJust . Map.lookup rcv)
+            countRcv <- fromMaybe CountInf <$> currentCount rcv
+            mb <- State.gets (fromMaybe Mailbox.empty . Map.lookup rcv)
             case countRcv of
                   -- if the count is equal to one, there are no interleavings possible, as
                   -- only one actor has a reference to the actor reference, hence we can
@@ -341,16 +344,16 @@ flowStore next cmp = do
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
 intra selfRef cmp = do
           inMbs <- getMailboxes
-          flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) eval'') cmp
+          flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT m)) eval'') cmp
                   & runAlloc VarAdr
                   & runAlloc PtrAdr
                   & evalWithTransparentStoreT
+                  & runIntraAnalysis cmp
                   & runRefCountMailboxT inMbs
                   & runWithAbstractCountT
                   & (>>= outMbs)
                   & runSetNonDetT
                   & void
-                  & runIntraAnalysis cmp
       where -- eval'' :: Cmp -> FixT Cmp ActorVlu (SequentialT (IntraAnalysisT SequentialCmp m)) ActorVlu
             eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
             outMbs ((a, mbs), cou) = do

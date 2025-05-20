@@ -30,7 +30,7 @@ import Analysis.Monad.WorkList
 import Analysis.Monad.Join (runJoinT)
 import Data.Tuple.Syntax
 import Domain.Actor (ARef)
-import Analysis.SimpleActor.Monad (MonadSpawn (spawn), Ctx)
+import Analysis.SimpleActor.Monad (MonadSpawn (spawn), Ctx, MonadIndexedMailbox(..), runWithMailboxContributorIndexedT)
 import qualified Symbolic.SMT as SMT
 import qualified Debug.Trace as Debug
 import Control.Monad.Cond
@@ -117,7 +117,8 @@ type ModularInterM m = (MonadState AnalysisState m,
                         MonadDependencyTracking ActorRef ActorResOut m,
                         MonadDependencyTracking ActorRef (MailboxDep ActorRef MB) m,
                         WorkListM m ActorRef,
-                        MonadMailbox ActorVlu m,
+                        -- MonadMailbox ActorVlu m,
+                        MonadIndexedMailbox ActorRef MB m,
                         MonadMailbox' (ARef ActorVlu) MB m,
                         -- Z3 Solvin g
                         FormulaSolver ActorVarAdr m,
@@ -154,7 +155,8 @@ analyze expr = fmap toAnalysisResult $ inter
              & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef MB)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr
-             & runWithMailboxT @ActorVlu @MB
+             & runWithMailboxContributorIndexedT
+             -- & runWithMailboxT @ActorVlu @MB
              & C.runWithComponentTracking
              & runWithWorkList @(LIFOWorklist _)
              & runCachedSolver
