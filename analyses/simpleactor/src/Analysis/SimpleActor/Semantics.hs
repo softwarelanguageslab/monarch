@@ -119,13 +119,14 @@ eval' rec (Blame e _) =
 eval' rec (Meta e _) =
    withMetaSet (eval' rec e)
    -- withMetaSet (withCtx (spanOf e:) (eval' rec e))
-eval' rec (Trace e _) =
-   ((liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) =<< eval' rec e) $> nil
+eval' rec (Trace e _) = do
+   v <- eval' rec e
+   (liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) v  $> v
 eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v m => v -> v -> m ()
 trySend ref p =
-   cond   (fromBL @(CP Bool) (isActorRef ref)) 
+   cond   (fromBL @(CP Bool) (isActorRef ref))
           (mjoinMap (`send'` p) (arefs' ref))
           (escape NotAnActorReference)
 

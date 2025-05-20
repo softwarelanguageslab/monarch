@@ -5,6 +5,7 @@
 module Analysis.Monad.Cache (
     MonadCache(..),
     cache,
+    cache',
     cached,
     CacheT,
     runCacheT,
@@ -47,6 +48,9 @@ class Monad m => MonadCache m where
 
 cache :: forall m k v . (Ord v, MonadCache m, MapM (Key m k) (Val m v) (Base m)) => Key m k -> (k -> m v) -> Base m ()
 cache k f = run f k >>= put k
+
+cache' :: forall m k v . (Ord v, MonadCache m, Joinable (Val m v), MapM (Key m k) (Val m v) (Base m)) => Key m k -> (k -> m v) -> Base m ()
+cache' k f = run f k >>= joinWith k
 
 cached :: forall m k v . (MonadCache m, MapM (Key m k) (Val m v) m) => Key m k -> m (Maybe v)
 cached = get >=> Prelude.traverse val
