@@ -60,10 +60,6 @@ type SequentialCmp = Key (SequentialT Identity) Cmp
 type SequentialRes = Val (SequentialT Identity) ActorVlu
 
 
--- TODO: move to 'Common'
--- | The type of mailbox abstraction
-type MB = GraphToSet ActorVlu
-
 ------------------------------------------------------------
 -- Monad stack
 ------------------------------------------------------------
@@ -74,7 +70,6 @@ type SequentialT m = MonadStack '[
                        DynamicBindingT' (Adr ActorVlu),
                        AllocT Ide K (SchemeAdr Exp K),
                        AllocT Exp K (SchemeAdr Exp K),
-                       CtxT K,
                        MetaT,
                        -- Local path conditions
                        DiscardFormulaT (SchemeAdr Exp K) ActorVlu,
@@ -159,6 +154,26 @@ runRefCountMailboxT :: Map ActorRef MB -- ^ intitial global mailbox contents
                     -> RefCountMailboxT m a
                     -> m (a, Map ActorRef MB)
 runRefCountMailboxT s (RefCountMailboxT m) = runStateT m s
+
+-- | Mailbox-sensitive variable address allocation
+newtype MailboxAllocT from adr m a = MailboxAllocT (ReaderT (from -> MB -> adr) m a)
+                          deriving (Monad, Applicative, Functor, MonadLayer, MonadReader (from -> MB -> adr))
+
+instance (MonadCache m) => MonadCache (MailboxAllocT from adr m) where
+      type Key (MailboxAllocT from adr m) k = Key m k
+      type Val (MailboxAllocT from adr m) v = Val m v
+      type Base (MailboxAllocT from adr m) = MailboxAllocT from adr (Base m)
+
+      key = lift . key
+      val = lift . val
+      run f k = MailboxAllocT $ ReaderT $ (runAlloc alloc . f) k 
+
+instance (MonadMailbox' ActorRef MB m) => AllocM (MailboxAllocT from adr m) from adr where
+      alloc from = ask >>= (\allocator -> allocator from <$> upperM getMailbox)
+
+runMailboxAllocT :: (from -> MB -> adr) -> MailboxAllocT from adr m a -> m a
+runMailboxAllocT allocator (MailboxAllocT m) = runReaderT m allocator
+
 
 ------------------------------------------------------------
 -- Abstract counting of actor references
@@ -374,7 +389,6 @@ inter exp environment ref mb = iterateWL' initialCmp (intra ref)
   where initialCmp = ActorExp exp         -- component to analyze
                 <+> environment           -- initial lexical environment
                 <+> initialDynEnvironment -- initial dynamic environment 
-                <+> Ctx ref               -- context 
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> mb                    -- initial mailboxes
                 <+> ref                   -- current `self`

@@ -31,7 +31,11 @@ import Analysis.Actors.Mailbox.GraphToSet (GraphToSet)
 -- Shorthands
 ------------------------------------------------------------
 
-type K = Ctx
+-- | The type of mailbox abstraction
+type MB = GraphToSet ActorVlu
+
+newtype K = K MB
+          deriving (Ord, Eq, Show)
 type ActorExp = Exp
 type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (SchemeAdr Exp K)

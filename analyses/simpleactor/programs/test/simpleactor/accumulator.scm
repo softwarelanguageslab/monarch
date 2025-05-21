@@ -1,6 +1,7 @@
 (letrec
-  ((acc-beh (lambda (acc) (receive (('done (if (null? acc) (blame "acc null") (trace 'ok)))
-                                    ((pair 'next v) (acc-beh (cons  v acc)))))))
+  ((acc-beh (lambda (acc)
+                (receive (('done (if (null? acc) (blame "acc null") (trace 'ok)))
+                          ((pair 'next v) (acc-beh (cons  v acc)))))))
   (acc-act (spawn^ (acc-beh '()))))
 
   (send^ acc-act (pair 'next 4))
