@@ -102,6 +102,7 @@ compileLiteral (T.Tuple [T.Atom "string" _, _, T.List cs _] loc) =
    StrLit <$> mapM isChar cs <*> pure loc
 compileLiteral (T.Tuple [T.Atom "nil" _, _] loc) =
    return (NilLit loc)
+-- TODO: support 'bin' literals which are bitstring patterns/values
 compileLiteral e = raiseAtTerm NotALiteral e
 
 -- | Compile a pattern from a function head or bindings

@@ -44,12 +44,12 @@ instance SpanOf Attribute where
 -- | A Core Erlang literal (constant)
 data Lit = CharLit Char Span  
          | IntegerLit Integer Span 
-         | FloatLit Float Span 
+         | FloatLit Float Span 
          | AtomLit Atom Span
-         | StringLit String Span
+         | StringLit String Span
          | NilLit Span
-         | TupleLit [Lit] Span 
-         | ConsLit  Lit Lit Span 
+         | TupleLit [Lit] Span 
+         | ConsLit  Lit Lit Span 
          deriving (Ord, Eq, Show)
 
 instance SpanOf Lit where  

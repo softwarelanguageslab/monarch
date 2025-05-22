@@ -33,6 +33,7 @@ if [ $? -ne 0 ] ; then
    exit 1
 fi
 
+export ERL_LIBS=$(elixir -e 'IO.puts :code.lib_dir(:elixir)')
 erl -noinput -eval "{ok,{_,[{abstract_code,{_,AC}}]}} = beam_lib:chunks(\"$MODULENAME\",[abstract_code]),io:format(\"~p~n\", [AC])." -s init stop > $MODULENAME.ec
 if [ $? -ne 0 ] ; then 
    rm $MODULENAME.ec

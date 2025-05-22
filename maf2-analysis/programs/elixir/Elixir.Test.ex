@@ -9,7 +9,7 @@ defmodule Elixir.Test do
     h + @num + :rand.uniform()
   end
 
-  def doSomething(pid) do 
-    send(pid, {:message})
+  def doSomething(pidd) do 
+    send(pidd, {:message})
   end
 end

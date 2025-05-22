@@ -4,9 +4,14 @@ Features:
 specified in that case
 - [X] Use the above to put the RefCountMailboxT on the same location, the widening strategy here is to write the mailboxes to the global mailboxes after a component has been analyzed, all branches are joined within this global store.
   => problem: the new mailbox must be strongly updated in some cases, how do we do this in the global mailbox?
-- [ ] solve constraint issues
-- [ ] put indexed mailbox monad at the bottom
-- [ ] register effects properly for putMailboxes and joinMailboxes
+- [X] solve constraint issues
+- [X] put indexed mailbox monad at the bottom
+- [X] register effects properly for putMailboxes and joinMailboxes
+
+Precision:
+
+- [ ] add current state of the mailbox to the allocation context, figure out how to avoid cycles? ==> not a problem if we make sure that in practice these context never expand forever, but in theory it is possible to have infinitely many nested context (since mailboxes capture values and values capture contexts through their pointers)
+
 
 Bugs:
 - [X] receive in the `GraphToSet` abstraction seems to fail (cf. receive_countinf.scm example which should have output for the test-beh actor). Fixed ==> issue with the implementation of `MonadSend` which supposed to disable triggers
