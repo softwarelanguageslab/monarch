@@ -49,6 +49,7 @@ import qualified Control.Monad.State as State
 import qualified Analysis.Actors.Mailbox as Mailbox
 import Analysis.Actors.Mailbox.GraphToSet (GraphToSet, graphToSet)
 import Analysis.Counting (getCountingMap)
+import Analysis.Monad.Join (runSetNonDetTIntercept)
 
 
 ------------------------------------------------------------
@@ -349,13 +350,14 @@ intra selfRef cmp = do
                   & runAlloc PtrAdr
                   & evalWithTransparentStoreT
                   & runIntraAnalysis cmp
+                  & runSetNonDetTIntercept restore save
                   & runRefCountMailboxT inMbs
                   & runWithAbstractCountT
-                  & (>>= outMbs)
-                  & runSetNonDetT
                   & void
       where -- eval'' :: Cmp -> FixT Cmp ActorVlu (SequentialT (IntraAnalysisT SequentialCmp m)) ActorVlu
             eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
+            restore = undefined
+            save    = undefined
             outMbs ((a, mbs), cou) = do
                   let mbs' = Map.mapKeys (\k -> (,k) $ fromMaybe CountInf $ Map.lookup k (getCountingMap cou)) mbs
                   mapM_ (uncurry writeMai) (Map.toList mbs')
