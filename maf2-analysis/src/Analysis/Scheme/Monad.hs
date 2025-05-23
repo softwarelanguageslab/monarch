@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM,  stoPai, stoStr, derefPai, derefVec, derefStr, writeVar, lookupVar) where
+module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM,  stoPai, stoStr, derefPai, derefVec, derefStr, writeVar, updateVar, lookupVar) where
 
 import Data.Functor
 import Syntax.Scheme.AST
@@ -44,6 +44,9 @@ derefStr = lookups (fmap coerce . lookupAdr)
 -- | Write a enviromnent variable value to the store
 writeVar :: (StoreM (Adr v) (StoreVal v) m) => Adr v -> VarDom v -> m ()
 writeVar adr = writeAdr adr . VarVal
+
+updateVar :: (StoreM (Adr v) (StoreVal v) m) => Adr v -> VarDom v -> m ()
+updateVar adr = updateAdr adr . VarVal
 
 -- | Lookup a variable from the store, errors if the address  does not have a variable value
 lookupVar :: (StoreM (Adr v) (StoreVal v) m ) => Adr v -> m (VarDom v)
