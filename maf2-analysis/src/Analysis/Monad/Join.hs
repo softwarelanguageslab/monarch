@@ -11,6 +11,7 @@ module Analysis.Monad.Join (
     runJoinT,
     runNonDetT,
     runSetNonDetT,
+    runSetNonDetTIntercept
 ) where
 
 import Lattice.Class
@@ -127,4 +128,11 @@ runSetNonDetT :: (Ord a, Monad m) => SetNonDetT m a -> m (Set a)
 runSetNonDetT (SetNonDetT ma) = Set.fromList <$> (uncons ma >>= fix')
    where fix' Nothing         = return []
          fix' (Just (x, mxs)) = fmap (x:) (uncons mxs >>= fix')
+
+-- | Run the computation in an a non-determinism monad but apply the pre and post-actions (running in monad 'm') before and
+-- after taking a branch.
+runSetNonDetTIntercept :: (Ord a, Monad m) => m () -> m () -> SetNonDetT m a -> m (Set a)
+runSetNonDetTIntercept pre post (SetNonDetT ma) = Set.fromList <$> (pre >> uncons ma >>= fix')
+   where fix' Nothing = post >> return []
+         fix' (Just (x, mxs)) = post >> pre >> fmap (x:) (uncons mxs >>= fix')
 
