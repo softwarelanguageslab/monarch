@@ -78,7 +78,8 @@ library
       Analysis.Scheme.Store
       Analysis.Semantics
       Analysis.Store
-      Benchmark.Programs
+      Benchmark.Scheme.Programs
+      Benchmark.Python.Programs
       Control.Fixpoint.WorkList
       Control.Monad.Cond
       Control.Monad.Layer

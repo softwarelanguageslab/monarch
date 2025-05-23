@@ -15,7 +15,7 @@ import Data.Print
 import Analysis.Scheme (AnlRes)
 import Data.TypeLevel.HMap as HMap (size)
 import Domain.Scheme.Modular (getSchemeVal)
-import Benchmark.Programs
+import Benchmark.Scheme.Programs
 
 newtype Options = Options String deriving Show
 

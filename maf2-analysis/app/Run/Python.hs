@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PackageImports #-}
 
-module Run.Python(main, Options, options, runREPL) where
+module Run.Python(main, Options, options, runREPL, runBenchmarks) where
 
 import Syntax.Python
 import Options.Applicative
@@ -26,6 +26,8 @@ import "maf2-analysis" Data.Graph (edges)
 import Lattice hiding (Value)
 import Analysis.Store (CountingMap, store)
 import qualified Lattice.BottomLiftedLattice as BL
+
+import Benchmark.Python.Programs
 
 newtype Options = Options String
    deriving Show
@@ -70,14 +72,19 @@ runFile fileName =
    do program <- readFile fileName
       let Just parsed = parse "testje" program
       let (rsto, osto, graph) = analyzeCP parsed
-      putStrLn "\nPROGRAM:\n"
-      putStrLn (prettyString parsed)
+      -- putStrLn "\nPROGRAM:\n"
+      -- putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
       putStrLn (printRSto rsto)
-      putStrLn "\nOBJECT STORE RESULTS:\n"
-      putStrLn (printOSto osto)
+      -- putStrLn "\nOBJECT STORE RESULTS:\n"
+      -- putStrLn (printOSto osto)
       --putStrLn "\nDEPENDENCY GRAPH:\n"
       --putStrLn "\n"
+
+benchmarks = allBenchmarks
+
+runBenchmarks :: IO ()
+runBenchmarks = mapM_ runFile benchmarks
 
 generateGraph :: [String] -> IO ()
 generateGraph files =

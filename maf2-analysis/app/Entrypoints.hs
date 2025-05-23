@@ -12,6 +12,7 @@ data Command =
    Interpreter Run.Interpreter.Options
  | Python Run.Python.Options
  | PythonRapl
+ | PythonBenchmarks
  | Scheme Run.Scheme.Options
  | Actor Run.Actor.Options
  | ParseErlang Run.Erlang.Options
@@ -25,7 +26,11 @@ interpreterCommand = Interpreter <$> Run.Interpreter.options
 pythonCommand :: Parser Command
 pythonCommand = Python <$> Run.Python.options
 
+pythonRaplCommand :: Parser Command
 pythonRaplCommand = pure PythonRapl
+
+pythonBenchmarkCommand :: Parser Command
+pythonBenchmarkCommand = pure PythonBenchmarks
 
 analyzeCommand = Scheme <$> Run.Scheme.options
 
@@ -41,6 +46,7 @@ parseCommand = hsubparser $
    command "scheme"        (info analyzeCommand (progDesc "Scheme analysis subcommand"))            <>
    command "count-scheme"  (info countCommand (progDesc "Scheme HMap experiment subcommand"))     <>
    command "python"        (info pythonCommand (progDesc "Python analysis subcommand"))             <>
+   command "python-benchmarks" (info pythonBenchmarkCommand (progDesc "Run the Python benchmarks subcommand"))             <>
    command "python-rapl"   (info pythonRaplCommand (progDesc "Python RAPL (Read-Analyse-Print-Loop) subcommand"))             <>
    command "erlang"        (info parseErlangCommand (progDesc "Erlang parser")) 
 
@@ -55,6 +61,7 @@ run = do
       Scheme         options -> Run.Scheme.main options
       Python         options -> Run.Python.main options
       PythonRapl             -> Run.Python.runREPL
+      PythonBenchmarks       -> Run.Python.runBenchmarks
       ParseErlang    options -> Run.Erlang.main options
       Actor          options -> Run.Actor.main options
       SchemeCounting options -> Run.SchemeCounting.main options

@@ -1,5 +1,5 @@
 -- | Scheme benchmark programs
-module Benchmark.Programs(quick, various, allBenchmarks) where 
+module Benchmark.Scheme.Programs(quick, various, allBenchmarks) where 
 
 -- | Quick benchmarks to find issues with the analysis
 quick :: [String]
