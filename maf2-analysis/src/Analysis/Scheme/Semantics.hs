@@ -32,7 +32,8 @@ eval' _ (Var (Ide nam _))    = lookupEnv nam >>= lookupVar
 eval' recur (Iff prd csq alt _)  = 
    cond (eval' recur prd) (eval' recur csq) (eval' recur alt)
 eval' recur (Bgn sqq _)          = last <$> mapM (eval' recur) sqq
-eval' _ e@(Lam {})           = curry injectClo e <$> getEnv -- TODO: restrict env based on fv
+eval' _ e@(Lam {})               = curry injectClo e <$> getEnv -- TODO: restrict env based on fv
+eval' recur (Set x e _)          = evalSet recur x e
 eval' recur (Let bds bdy _)      = evalLet recur bds bdy
 eval' recur (Ltt bds bdy _)      = evalLetStar recur bds bdy
 eval' recur (Ltr bds bdy _)      = evalLetRec recur bds bdy
@@ -40,6 +41,13 @@ eval' recur (Lrr bds bdy _)      = evalLetrecStar recur bds bdy
 eval' recur e@(App op opr  _)    = evalApp recur e op opr
 eval' _ (Debug msg)          = trace msg $ return nil
 eval' _ e                    = error $ "Unrecognized expression" ++ show e
+
+evalSet :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> Ide -> Exp -> m v 
+evalSet recur x e = do 
+   value <- eval' recur e 
+   adr <- lookupEnv (name x)
+   updateVar adr value
+   return value -- TODO: return "void"?
 
 evalLet :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> Exp -> m v
 evalLet recur bds bdy = do
