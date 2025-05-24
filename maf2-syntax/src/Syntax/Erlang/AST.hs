@@ -105,7 +105,7 @@ data Expr = Atomic Literal
           | If [Clause] Span
           | Match Pattern Expr Bool Span 
           | Receive [Clause] (Maybe (Expr, Body)) Span 
-          | Tuple [Expr] Span
+          | Tuple [Expr] Span
           | Cons Expr Expr Span
           | Var Identifier
           | ModVar ModuleName Identifier
