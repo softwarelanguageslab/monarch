@@ -1,5 +1,5 @@
 -- | Library code for testing infrastructure
-module Test(analysisSucceeds, defaultTimeout, module Test.Hspec) where
+module Test(analysisSucceeds, defaultTimeout, soundBenchmark, module Test.Hspec) where
 
 import Control.DeepSeq
 import Test.Hspec
@@ -41,3 +41,28 @@ analysisSucceeds name timeoutSec analyze parse filename = do
       () <- fromMaybe (error "timeout while executing analysis") <$> 
                timeout (timeoutSec*(10^6)) (analyze parsed) >>= (`deepseq` return ())
       return ()
+
+soundBenchmark :: (NFData res, Show err) =>
+  -- | Name of the analysis
+  String ->
+  -- Timeout value in seconds
+  Int -> 
+  -- | an analysis function
+  (e -> IO res) ->
+  -- | a concrete interpreter
+  (e -> IO concreteRes) ->
+  -- | a function to compare the results
+  (concreteRes -> res -> IO Bool) ->
+  (String -> IO (Either err e)) ->
+  -- | file to analyze
+  String ->
+  Spec
+soundBenchmark name timeoutSec analyze interpret subsumes parse benchmark = do
+   it ("The " ++ name ++ " of " ++ show benchmark ++ " is sound") $ do 
+      contents <- readFile benchmark
+      parsed <- either (error . ("could not parse " ++) . show) id <$> (parse contents)
+      analysisResult <- fromMaybe (error "timeout while executing analysis") <$>
+        timeout (timeoutSec*(10^6)) (analyze parsed)
+      concreteResult <- interpret parsed 
+      isSound <- concreteResult `subsumes` analysisResult
+      isSound `shouldBe` True

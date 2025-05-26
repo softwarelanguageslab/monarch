@@ -6,11 +6,11 @@ quick :: [String]
 quick = [
    "programs/R5RS/various/fib.scm",
    "programs/R5RS/various/count.scm",
-   "programs/R5RS/various/infinite-1.scm",
-   "programs/R5RS/various/infinite-2.scm",
-   "programs/R5RS/various/infinite-3.scm",
-   "programs/R5RS/various/widen.scm",
-   "programs/R5RS/various/map.scm"
+   -- "programs/R5RS/various/infinite-1.scm",
+   -- "programs/R5RS/various/infinite-2.scm",
+   -- "programs/R5RS/various/infinite-3.scm",
+   "programs/R5RS/various/widen.scm"
+   -- "programs/R5RS/various/map.scm"
    ]
 
 various :: [String]

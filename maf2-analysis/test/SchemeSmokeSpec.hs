@@ -1,7 +1,7 @@
 module SchemeSmokeSpec(spec) where
 
 import Test
-import qualified Benchmark.Programs as SchemeBenchmarks
+import qualified Benchmark.Scheme.Programs as SchemeBenchmarks
 import qualified Analysis.Scheme.Simple as Scheme
 import qualified Syntax.Scheme
 
