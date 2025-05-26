@@ -37,6 +37,8 @@ class (Monad m, MonadFail m) => InterpreterM m where
    withExtendedEnv :: [(String, CAdr)] -> m a -> m a
    -- | Extends the store with the given binding
    extendSto :: CAdr -> SchemeValue -> m ()
+   -- | overwrite a value in the store 
+   updateSto :: CAdr -> SchemeValue -> m ()
 
 
 type AdrAlloc    = StateT Int
@@ -61,5 +63,6 @@ instance InterpreterM CEvalM where
    withEnv f (CEvalM m) = CEvalM $ local f m
    withExtendedEnv bds (CEvalM m) = CEvalM $ local (\env -> foldr (uncurry Map.insert) env bds) m
    extendSto adr vlu = CEvalM $ modify (Map.insert adr vlu)
+   updateSto adr vlu = CEvalM $ modify (Map.insert adr vlu)
    lookupSto adr = CEvalM $ gets $ Map.findWithDefault (error $ "address not found" ++ show adr) adr
    derefAdr = lookupSto

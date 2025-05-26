@@ -35,12 +35,20 @@ instance (InterpreterM m) => EvalM m SchemeValue Exp where
    eval (Iff prd csq alt _)  = cond (eval prd) (eval csq) (eval alt)
    eval (Bgn sqq _)          = evalSequence sqq
    eval e@(Lam {})           = curry SchemeClo e <$> getEnv -- TODO: restrict env based on fv
+   eval (Set x e _)          = evalSet x e 
    eval (Let bds bdy _)      = evalLet bds bdy
    eval (Ltt bds bdy _)      = evalLetStar bds bdy
    eval (Ltr bds bdy _)      = evalLetRec bds bdy
    eval (Lrr bds bdy _)      = evalLetrecStar bds bdy
    eval e@(App op opr  _)    = evalApp e op opr
    eval e                    = error $ "Unrecognized expression" ++ show e
+
+evalSet :: (InterpreterM m) => Ide -> Exp -> m SchemeValue 
+evalSet x e = do 
+   v <- eval e 
+   adr <- lookupEnv (name x) 
+   updateSto adr v
+   return v
 
 evalLet :: (InterpreterM m) => [(Ide, Exp)] -> Exp -> m SchemeValue
 evalLet bds bdy = do
