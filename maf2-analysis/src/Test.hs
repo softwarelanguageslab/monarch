@@ -42,7 +42,7 @@ analysisSucceeds name timeoutSec analyze parse filename = do
                timeout (timeoutSec*(10^6)) (analyze parsed) >>= (`deepseq` return ())
       return ()
 
-soundBenchmark :: (NFData res, Show err) =>
+soundBenchmark :: (Show err) =>
   -- | Name of the analysis
   String ->
   -- Timeout value in seconds
