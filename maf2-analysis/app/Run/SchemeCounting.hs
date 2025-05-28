@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Run.SchemeCounting(Options, options, main) where 
+module Run.SchemeCounting where 
 
 import Options.Applicative
 import Analysis.Scheme.Simple
@@ -16,13 +16,6 @@ import Analysis.Scheme (AnlRes)
 import Data.TypeLevel.HMap as HMap (size)
 import Domain.Scheme.Modular (getSchemeVal)
 import Benchmark.Scheme.Programs
-
-newtype Options = Options String deriving Show
-
-options :: Parser Options
-options =
-   Options <$>
-      strOption (long "filename" <> short 'f' <> help "the file to analyse")
 
 printSto :: Map VariableAdr (StoreVal V) -> String
 printSto m =
@@ -67,8 +60,7 @@ countBenchmarks = do
 
 benchmarks = allBenchmarks
 
-main :: Options -> IO ()
-main (Options filename) = do 
-    putStrLn filename
+main ::  IO ()
+main = do 
     counts <- countBenchmarks 
-    putStrLn (show counts)
+    Prelude.print counts
