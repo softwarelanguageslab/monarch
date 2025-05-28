@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -37,12 +37,12 @@ library
       Syntax.Scheme.Parser
       Syntax.Scheme.Prelude
       Syntax.Erlang
+      Syntax.Erlang.AST
       Syntax.Erlang.Parser
       Syntax.Erlang.Compiler
   other-modules:
       Control.Monad.Cond
       Lib
-      Syntax.Erlang.AST
       Syntax.Python.Compiler
       Syntax.Python.Parser
       Syntax.Scheme.TH

@@ -84,7 +84,7 @@ atom = Atom <$> (between (char '\'') (char '\'') quotedAtom <|> ident)
 
 allowedAtom :: Parser Char
 allowedAtom = 
-   alphaNum <|> oneOf ['_', '+', '-', '*', '.', '@']
+   alphaNum <|> oneOf ['_', '+', '-', '*', '.', '@', '>', '<', '>', '<', '=']
 
 quotedAtom :: Parser String
 quotedAtom = many allowedAtom

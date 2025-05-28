@@ -10,6 +10,9 @@ defmodule Elixir.Test do
   end
 
   def doSomething(pidd) do 
+    if pidd > 30 do
+      300
+    end
     send(pidd, {:message})
   end
 end

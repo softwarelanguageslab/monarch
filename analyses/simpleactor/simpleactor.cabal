@@ -43,6 +43,7 @@ library
       Lib
       Syntax.AST
       Syntax.Compiler
+      Syntax.ErlangToSimpleActor
       Syntax.Simplifier
   other-modules:
       Paths_simpleactor

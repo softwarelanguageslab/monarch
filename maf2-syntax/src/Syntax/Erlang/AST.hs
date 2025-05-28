@@ -45,8 +45,8 @@ instance SpanOf FunctionIdentifier where
 -- | A declaration combines Erlang's attributes (e.g., -import directive)
 -- and declarations (e.g., functions)
 data Declaration = Import ModuleName [FunctionIdentifier] Span  -- ^ -import(...)
-                 | Export [FunctionIdentifier] Span             -- ^ -export(...)
-                 | Function FunctionIdentifier [Clause] Span    -- ^ function definition
+                 | Export [FunctionIdentifier] Span             -- ^ -export(...)
+                 | Function FunctionIdentifier [Clause] Span    -- ^ function definition
                  | ModuleDecl Identifier Span     -- ^ -module(...)
                  | File String Integer Span       -- ^ -file(FILE, LINE)
                  | Record Identifier Field Span   -- ^ -record(Identifier, {Field ...})
@@ -105,7 +105,7 @@ data Expr = Atomic Literal
           | If [Clause] Span
           | Match Pattern Expr Bool Span 
           | Receive [Clause] (Maybe (Expr, Body)) Span 
-          | Tuple [Expr] Span
+          | Tuple [Expr] Span
           | Cons Expr Expr Span
           | Var Identifier
           | ModVar ModuleName Identifier
@@ -129,3 +129,8 @@ instance SpanOf Expr where
 -- | A clause in a pattern match expression
 data Clause = SimpleClause Pattern [Body] Body 
             deriving (Eq, Ord, Show)
+
+-- | Alias for the contents of a function declaration
+data Function = Fn FunctionIdentifier [Clause] Span
+             deriving (Ord, Eq, Show)
+
