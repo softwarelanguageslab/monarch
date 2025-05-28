@@ -7,6 +7,7 @@ import Control.Monad.Error.Class
 import Control.Lens hiding ((|>), children)
 import Data.Either
 import Data.Kind
+import Data.List (find)
 import Data.Set (Set)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -120,13 +121,16 @@ bfs g = ifM queueEmpty
 -- | Compute a topological sorting of the Erlang module graph
 topSort :: ModuleGraph -> [String]
 topSort g = _order $ either error id $ execStateT (bfs g) (initialBfsState initialNode)
-  where initialNode = fst $ head $ sortWith snd (Map.toList (inDegrees g)) -- an initial node has in-degree zero
+  where initialNode = fst $ fromMaybe (error "no initial node found") $ find ((==0) . snd) (Map.toList (inDegrees g)) -- an initial node has in-degree zero
 
 ------------------------------------------------------------
 -- Resolving Import and Exports in Modules
 ------------------------------------------------------------
 
 type MonadResolve m = (MonadIO m, MonadError String m)
+
+findModuleInPath :: MonadResolve m => String -> [FilePath] -> m Erl.Module
+findModuleInPath = undefined
 
 -- | Collect the exports and imports for all modules in the given
 -- list. Also searches the given Erlang path for modules listed in the imports.
@@ -135,6 +139,13 @@ loadModules :: MonadResolve m
             -> [FilePath]   -- ^ search path for module resolution
             -> m ModuleGraph
 loadModules = undefined
+
+-- Resolves all modules and returns a topological sorting consistent
+-- with export-edges.
+resolve :: [Erl.Module]
+        -> [FilePath]
+        -> IO [LoadedModule]
+resolve = undefined        
 
 ------------------------------------------------------------
 -- Compilation of body and expressions
