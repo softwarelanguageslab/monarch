@@ -59,7 +59,7 @@ instance InterpreterM CEvalM where
    storeVal vlu adr =
       CEvalM (modify (Map.insert adr vlu)) $> SchemePtr adr
    getEnv = CEvalM ask
-   lookupEnv = CEvalM . asks . Map.findWithDefault (error "binding not found")
+   lookupEnv x = CEvalM $ asks (Map.findWithDefault (error $ "binding not found: " ++ x) x)
    withEnv f (CEvalM m) = CEvalM $ local f m
    withExtendedEnv bds (CEvalM m) = CEvalM $ local (\env -> foldr (uncurry Map.insert) env bds) m
    extendSto adr vlu = CEvalM $ modify (Map.insert adr vlu)

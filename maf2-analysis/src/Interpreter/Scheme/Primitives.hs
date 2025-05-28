@@ -45,12 +45,12 @@ derefPtr v = error $ "not a pointer " ++ show v
 coerc1Real :: (Double -> Double) -> SchemeValue -> SchemeValue
 coerc1Real f (SchemeInt a) = SchemeRea $ f (fromIntegral a)
 coerc1Real f (SchemeRea a) = SchemeRea $ f a
-coerc1Real _ a = error $  "not a number" ++ show a
+coerc1Real _ a = error $  "not a number " ++ show a
 
 coerc1Real' :: (Double -> Integer) -> SchemeValue -> SchemeValue
 coerc1Real' f (SchemeInt a) = SchemeInt $ f $ fromIntegral a
 coerc1Real' f (SchemeRea a) = SchemeRea $ fromIntegral $ f a
-coerc1Real' _ a = error $ "not a numer" ++ show a
+coerc1Real' _ a = error $ "not a number " ++ show a
 
 -- | Checks the following condition on the value isPointer && pred 
 derefPred :: (InterpreterM m) => (SchemeValue -> Bool) -> SchemeValue -> m Bool
@@ -82,7 +82,7 @@ allPrimitives = [
    fix2 "char<?" (\(SchemeCha c1) (SchemeCha c2) -> return $ SchemeBoo $ c1 < c2),
    fix2 "char=?" (\(SchemeCha c1) (SchemeCha c2) -> return $ SchemeBoo $ c1 == c2),
    efix2 "cons" (\ex car cdr -> allocAdr ex >>= storeVal (SchemePair car cdr)),
-   -- fix2 "eq?" todo 
+   fix2 "eq?" (\a b -> return $ SchemeBoo $ a == b),
    fix2 "expt" (\a b -> return $ a ** b),
    fix1 "floor" $ return . coerc1Real' floor,
    -- fix1 "integer->char" todo, 
@@ -92,12 +92,12 @@ allPrimitives = [
    -- fix2 "make-string" todo, 
    fix1 "number?" $ return . SchemeBoo . isNumber,
    fix1 "pair?" $ derefPred isPair >=> (return . SchemeBoo),
-   -- fix1 "procedure?" todo, 
+   fix1 "procedure?" $ return . SchemeBoo . isProcedure,
    fix2 "quotient" (\(SchemeInt a) (SchemeInt b) -> return $ SchemeInt $ div a b),
    fix1 "real?" $ return . SchemeBoo . isReal,
    fix2 "remainder" (\(SchemeInt a) (SchemeInt b) -> return $ SchemeInt $ rem a b),
    fix1 "round" $ return . coerc1Real' round,
-   fix2 "set-car!" (\(SchemePtr adr) v -> 
+   fix2 "set-car!" (\(SchemePtr adr) v ->
       (derefAdr adr <&> (\(SchemePair _ cdr) -> SchemePair v cdr) >>= (`storeVal` adr)) $> SchemeUns),
    fix2 "set-cdr!" (\(SchemePtr adr) v ->
       (derefAdr adr <&> (\(SchemePair car _) -> SchemePair car v) >>= (`storeVal` adr)) $> SchemeUns),
@@ -125,8 +125,12 @@ allPrimitives = [
    fix3 "vector-set!" (\ptr (SchemeInt pos) v -> derefPtr ptr <&> (\(SchemeVector vec) -> SchemeVector $ vec Vector.// [(fromIntegral pos, v)])) ,
    fix1 "vector?" $ derefPred isVector >=> (return .  SchemeBoo),
    fix2 "<" (\a b -> return $ SchemeBoo $ a < b),
+   fix2 ">" (\a b -> return $ SchemeBoo $ a > b),
    fix2 "=" (\a b -> return $ SchemeBoo $ a == b),
-   fix1 "random" random
+   fix2 "<=" (\a b -> return $ SchemeBoo $ a <= b),
+   fix2 ">=" (\a b -> return $ SchemeBoo $ a >= b),
+   fix1 "random" random,
+   fix1 "assert" (\_ -> return SchemeUns) -- todo make syntax
    -- fix1 "error" todo
    ]
 

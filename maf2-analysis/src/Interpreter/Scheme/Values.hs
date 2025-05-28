@@ -1,5 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
-module Interpreter.Scheme.Values(SchemeValue(..), CAdr(..), Env, Sto, trueish ,falsish, isNil, isNumber, isReal, isPair, isVector, isString) where
+module Interpreter.Scheme.Values(SchemeValue(..), CAdr(..), Env, Sto, trueish ,falsish, isNil, isNumber, isReal, isPair, isVector, isString, isProcedure) where
 
 import Data.Map
 import Data.Vector hiding ((++))
@@ -25,6 +25,7 @@ data SchemeValue =
  | SchemeRea Double
  | SchemeBoo Bool
  | SchemeCha Char
+ | SchemeSym String
  | SchemeClo (Exp, Env)
  | SchemeNil
  | SchemeUns
@@ -46,6 +47,7 @@ instance Show SchemeValue where
    show (SchemePair car cdr) = printf "(%s . %s)" (show car) (show cdr)
    show (SchemeVector vec) = "<vector>"
    show (SchemeString str) = show str
+   show SchemeUns = "unspecified"
 
 
 -- | Is the Scheme value considered to be true
@@ -89,6 +91,11 @@ isVector _ = False
 isPair :: SchemeValue -> Bool
 isPair (SchemePair _ _) = True
 isPair _ = False
+
+isProcedure :: SchemeValue -> Bool 
+isProcedure (SchemeClo _) = True 
+isProcedure (SchemePrim _) = True 
+isProcedure _ = False
 
 -- | Numerical tower for Scheme values
 

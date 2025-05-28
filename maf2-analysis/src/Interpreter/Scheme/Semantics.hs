@@ -30,6 +30,7 @@ instance (InterpreterM m) => EvalM m SchemeValue Exp where
    eval (Num n _)            = return $ SchemeInt n
    eval (Bln b _)            = return $ SchemeBoo b
    eval (Nll _)              = return SchemeNil
+   eval (Sym s _)            = return $ SchemeSym s 
    eval e@(Str s _)          = allocAdr e >>= storeVal (SchemeString s)
    eval (Var (Ide nam _))    = lookupEnv nam >>= lookupSto
    eval (Iff prd csq alt _)  = cond (eval prd) (eval csq) (eval alt)
