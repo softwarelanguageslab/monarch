@@ -1,4 +1,6 @@
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module SoundnessSpec(spec) where 
 
 import Test 
@@ -19,7 +21,7 @@ import qualified Domain.Scheme.Store as AbstractStore
 import Analysis.Scheme.Simple (V)
 import Syntax.Ide
 import Domain.Core.PairDomain.Class
-import Domain.Scheme.Class (PaiDom, SchemeDomain (nil))
+import Domain.Scheme.Class (PaiDom, SchemeDomain (nil, symbol))
 
 import Analysis.Python.Fixpoint (analyzeCP)
 import qualified Benchmark.Python.Programs as PythonBenchmarks
@@ -27,6 +29,7 @@ import Domain.Python.Syntax (parse)
 import Lattice (BottomLattice(bottom), joins)
 import Domain (SimplePair(..))
 import Domain.Core.VectorDomain.Class (VectorDomain(makeVector))
+import qualified Benchmark.Scheme.Programs as SchemeBenchmarks
 
 maybeToEither :: e -> Maybe a -> Either e a 
 maybeToEither e Nothing = Left e 
@@ -38,6 +41,7 @@ instance Domain V Concrete.SchemeValue where
     inject (Concrete.SchemeRea rea) = inject rea
     inject (Concrete.SchemeBoo boo) = inject boo
     inject (Concrete.SchemeCha cha) = inject cha 
+    inject (Concrete.SchemeSym sym) = symbol sym
     inject (Concrete.SchemeClo (exp, env)) = bottom -- todo
     inject Concrete.SchemeNil = nil
     inject Concrete.SchemeUns = SchemeVal $ HMap.singleton @UnspKey ()
@@ -53,6 +57,7 @@ instance Domain (AbstractStore.StoreVal V) Concrete.SchemeValue where
     inject (Concrete.SchemeRea rea) = AbstractStore.VarVal (inject rea) 
     inject (Concrete.SchemeBoo boo) = AbstractStore.VarVal (inject boo) 
     inject (Concrete.SchemeCha cha) = AbstractStore.VarVal (inject cha) 
+    inject (Concrete.SchemeSym sym) = AbstractStore.VarVal (symbol sym)
     inject (Concrete.SchemeClo (exp, env)) = AbstractStore.VarVal bottom -- todo
     inject Concrete.SchemeNil = AbstractStore.VarVal nil
     inject Concrete.SchemeUns = AbstractStore.VarVal (SchemeVal $ HMap.singleton @UnspKey ())
@@ -82,7 +87,7 @@ schemeSoundness = describe "Scheme soundness" $ mapM_ (soundBenchmark
             (return . Concrete.runInterpreter) -- concrete interpreter
             (\(_, concreteSto) (abstractSto, _) -> -- the analysis result should subsume the concrete result
                  return $ and $ combineMatchingMaps addressMatches (flip gamma) concreteSto abstractSto )
-            (return . Syntax.Scheme.parseString')) SchemeBenchmarks.quick
+            (return . Syntax.Scheme.parseString')) SchemeBenchmarks.soundnessBenchmarks
 
 
 -- pythonSoundness :: Spec

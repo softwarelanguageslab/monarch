@@ -79,7 +79,6 @@ allPrimitives = [
    fix2 "char<?" charLt,
    fix2 "char=?" charEq,
    efix2 "cons" (\ex a b -> stoPai ex (cons a b)),
-   -- fix2 "eq?" todo 
    fix2 "eq?" (\a -> return .  eql a),
    fix2 "expt" expt,
    fix1 "floor" Domain.floor,
@@ -146,8 +145,8 @@ allPrimitives = [
    -- for some trivial programs
    evar "constant-true" (const $ const $ return (inject True)),
    evar "constant-false" (const $ const $ return (inject False)),
-   fix1 "assert" $ const (return Domain.nil)
-   --fix3 "error" todo
+   fix1 "assert" $ const (return Domain.nil) -- todo: make syntax
+   --fix3 "error" -- todo
    ]
 
 primitivesByName :: Map String (Prim v)

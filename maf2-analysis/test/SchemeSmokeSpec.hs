@@ -14,4 +14,4 @@ spec =
             "Scheme analysis"
             defaultTimeout
             (return . Scheme.cpAnalyze)
-            (return . Syntax.Scheme.parseString')) SchemeBenchmarks.quick
+            (return . Syntax.Scheme.parseString')) SchemeBenchmarks.soundnessBenchmarks

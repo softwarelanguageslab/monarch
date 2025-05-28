@@ -43,8 +43,8 @@ class (MonadState Int m, MonadWriter [(Ide, Exp)] m, MonadError Error m, MonadRe
    ifAllowed e m = ask >>= (\isAllowed ->
       if defineAllowed isAllowed then m else throwError (DefineNotAllowed e))
 
-   isTopLevel :: m Bool
-   isTopLevel = asks topLevel
+   isAllowed :: m Bool
+   isAllowed = asks defineAllowed 
 
    genSym :: Span -> m Ide
    genSym span =
@@ -88,7 +88,7 @@ removeEmptyBegins = filter matches
 -- ```
 -- the translation is `(letrec* ((a x) (_0 (displayln x)) (b y)) (+ x y))`a
 undefineSequence :: forall m . UndefineM m =>  [Exp] -> m [Exp]
-undefineSequence exs = isTopLevel >>= transform False exs
+undefineSequence exs = isAllowed >>= transform False exs
    where transform _ [x] _ = singleton <$> undefineM x
          transform doAdd (x:xs) allowed = do
                (transformedExp, dfs) <- listen (undefineM x)
@@ -126,11 +126,15 @@ undefineM (Lam prs bdy span) =
 undefineM (Bgn exs span) =
    Bgn <$> (undefineSequence exs <&> removeEmptyBegins) <*> pure span
 -- A define variable needs to be transformed to a binding in the letrec
-undefineM e@(Dfv nam bdy _) =
-   ifAllowed e $ tell [(nam, bdy)] >> return Empty
+undefineM e@(Dfv nam bdy _) = do 
+   bdyUndefined <- letrectify (allowed $ undefineM bdy)
+   ifAllowed e $ tell [(nam, bdyUndefined)]
+   return Empty
 -- A define function needs to be transformed to a binding to a lambda in the letrec
-undefineM e@(Dff nam prs bdy span) =
-   ifAllowed e $ tell [(nam, Lam prs bdy span)] >> return Empty
+undefineM e@(Dff nam prs bdy span) = do 
+   bdyUndefined <- letrectify (allowed $ undefineM bdy)
+   ifAllowed e $ tell [(nam, Lam prs bdyUndefined span)]
+   return Empty
 -- A set does not allow define's in its subexpression
 undefineM (Set vrr exp span) =
    Set vrr <$> notAllowed (undefineM exp) <*> pure span
