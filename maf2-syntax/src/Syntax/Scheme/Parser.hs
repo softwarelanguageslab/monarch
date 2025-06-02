@@ -152,10 +152,14 @@ sign       =
 
 sexpParser :: Parser [SExp]
 sexpParser = do
+   optional (try langLine) -- discard a language line
    expr <- whiteSpace >> many expression
    eof
    return expr
 
+
+langLine :: Parser ()
+langLine = void (string "#lang" >> manyTill anyChar (try (char '\n')))
 
 expression :: Parser SExp
 expression = withSpan $ atom <|> try literal <|> pair <|> quote <|> quasiquote <|> try unquoteSplice <|> unquote
