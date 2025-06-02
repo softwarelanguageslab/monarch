@@ -90,6 +90,18 @@ runFile fileName =
       --putStrLn "\nDEPENDENCY GRAPH:\n"
       --putStrLn "\n"
 
+runFilePreanalysis :: String -> IO ()
+runFilePreanalysis fileName =
+   do program <- readFile fileName
+      let Just parsed = parse "testje" program
+      let (rsto, osto, characteristics) = preanalyzeCP parsed
+      putStrLn "\nPROGRAM:\n"
+      putStrLn (prettyString parsed)
+      putStrLn "\nRESULTS PER COMPONENT:\n"
+      putStrLn (printRSto rsto True osto)
+      putStrLn "\nCHARACTERISTICS:\n"
+      print characteristics
+
 benchmarks = allBenchmarks
 
 runBenchmarks :: IO ()
@@ -117,8 +129,7 @@ generateGraph files =
          toType Top = "?"
 
 main :: Options -> IO ()
-main (Options fileName) = runFile fileName
---main (Options fileName) = runREPL
+main (Options fileName) = runFilePreanalysis fileName
 
 ecopipe :: IO ()
 ecopipe = generateGraph [
