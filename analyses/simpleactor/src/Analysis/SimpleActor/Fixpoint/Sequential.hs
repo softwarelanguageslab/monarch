@@ -49,6 +49,8 @@ import Domain.Core.AbstractCount (AbstractCount(..))
 import qualified Control.Monad.State as State
 import qualified Analysis.Actors.Mailbox as Mailbox
 import Analysis.Actors.Mailbox.GraphToSet (graphToSet)
+import Control.Monad.Trans.Writer (WriterT(..))
+import Control.Monad.Writer.Class (MonadWriter(tell))
 
 
 ------------------------------------------------------------
@@ -351,24 +353,26 @@ flowStore next cmp = do
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
 intra selfRef cmp = do
-          inMbs <- getMailboxes
-          flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT m)) eval'') cmp
-                  & runAlloc VarAdr
-                  & runAlloc PtrAdr
-                  & evalWithTransparentStoreT
-                  & runIntraAnalysis cmp
-                  & runSetNonDetTIntercept (restore inMbs) save
-                  & runRefCountMailboxT inMbs
-                  & runWithAbstractCountT
-                  & void
+          inMbs  <- getMailboxes
+          ((), (LatticeMonoid outMbs')) <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
+                        & runAlloc VarAdr
+                        & runAlloc PtrAdr
+                        & evalWithTransparentStoreT
+                        & runIntraAnalysis cmp
+                        & runSetNonDetTIntercept (restore inMbs) save
+                        & runRefCountMailboxT inMbs
+                        & runWithAbstractCountT
+                        & void
+                        & runWriterT @(LatticeMonoid (Map (AbstractCount, ActorRef) MB))
+
+          mapM_ (uncurry writeMai) (Map.toList outMbs')
       where eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
-            save    = outMbs
-            outMbs = do
+            save    = do
                   mbs <- State.get
                   cou <- getCounts
                   let mbs' = Map.mapKeys (\k -> (,k) $ fromMaybe CountInf $ Map.lookup k cou) mbs
-                  mapM_ (uncurry writeMai) (Map.toList mbs')
-            writeMai (cou ,ref) = (case cou of
+                  tell (LatticeMonoid mbs')
+            writeMai (cou, ref) = (case cou of
                                     CountOne -> putMailboxes
                                     CountInf -> joinMailboxes) selfRef ref
             restore = State.put

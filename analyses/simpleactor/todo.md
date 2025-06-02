@@ -10,7 +10,7 @@ specified in that case
 
 Precision:
 
-- [ ] add current state of the mailbox to the allocation context, figure out how to avoid cycles? ==> not a problem if we make sure that in practice these context never expand forever, but in theory it is possible to have infinitely many nested context (since mailboxes capture values and values capture contexts through their pointers)
+- [X] add current state of the mailbox to the allocation context, figure out how to avoid cycles? ==> not a problem if we make sure that in practice these context never expand forever, but in theory it is possible to have infinitely many nested context (since mailboxes capture values and values capture contexts through their pointers), cf. 1351a50cd988df58b21a73192492657b046e1a95
 
 Soundness:
 
