@@ -19,13 +19,8 @@ import Data.Kind
 import Data.Bifunctor
 import Debug.Trace (traceShowId, trace)
 import Syntax.Span (spanOf, Span(..), Position(..))
-
--- | A concrete environment
-type Env = Map String Adr
-
--- | Concrete addresses 
-data Adr = Adr Int
-         | PrmAdr String deriving (Eq, Ord, Show)
+import Interpreter.Scheme.Values
+import Interpreter.Scheme.Monad
 
 -- | An actor message is any value
 type Message m = Value m
@@ -42,23 +37,28 @@ instance Eq (ARef m) where
 
 -- | Concrete values of the interpreter
 data Value m =
-     LiteralValue Lit
-   | PairValue (Value m) (Value m)
-   | ClosureValue Exp Env
+     SchemeVal SchemeValue
+   | PidValue (ARef m)
    | PrmValue String
    | ActorValue (ARef m)
    deriving (Eq, Ord)
 
-instance Show (Value m) where 
-   show = \case   
-            LiteralValue l -> show l 
-            PairValue a b  -> "(" ++ show a ++ " " ++ show b ++ ")"
-            ClosureValue expr _ -> "<procedure at " ++ show (line (startPosition (spanOf expr))) ++ ":" ++ show (column (startPosition (spanOf expr))) ++ ">"
+litToScheme :: Lit -> SchemeValue
+litToScheme = \case (Num n) -> SchemeInt n
+                    (Boolean b) -> SchemeBoo b
+                    (Symbol s) -> SchemeSym s
+                    (String str) -> SchemeString str
+                    (Character c) -> SchemeCha c
+                    Nil -> SchemeNil
+
+instance Show (Value m) where
+   show = \case
+            SchemeVal v -> show v
             ActorValue ref -> show ref
             PrmValue nam -> "<#primitive:" ++ show nam ++ ">"
 
 
-nil :: Value m 
+nil :: Value m
 nil = LiteralValue Nil
 
 -- | Actor system state
@@ -70,7 +70,7 @@ data SystemState m = SystemState {
    -- of contention. However, the semantics
    -- allow for some kind of scoped, localising
    -- most parts of the state per thread.
-   currStore :: IORef m (Map Adr (Value m)),
+   currStore :: IORef m (Map CAdr (Value m)),
    finishSignals :: IORef m [MVar m ()]
    }
 
@@ -114,40 +114,40 @@ dup v = (v,v)
 getEnv :: EvalM m => m Env
 getEnv = asks (view environment)
 
-withExtendedEnv' :: EvalM m => [(String, Adr)] -> m a -> m a
+withExtendedEnv' :: EvalM m => [(String, CAdr)] -> m a -> m a
 withExtendedEnv' kv = local (over environment (flip (foldl (flip (uncurry Map.insert))) kv))
 
-withExtendedEnv :: EvalM m => String -> Adr -> m a -> m a
+withExtendedEnv :: EvalM m => String -> CAdr -> m a -> m a
 withExtendedEnv adr val = withExtendedEnv' [(adr, val)]
 
 withMergedEnvironment :: EvalM m => Env -> m a -> m a
 withMergedEnvironment env' = local (over environment (`Map.union` env'))
 
-withExtendedDynamic :: EvalM m => [(String, Adr)] -> m a -> m a
+withExtendedDynamic :: EvalM m => [(String, CAdr)] -> m a -> m a
 withExtendedDynamic kv = local (over parameters (flip (foldl (flip (uncurry Map.insert))) kv))
 
 
 withEnv :: EvalM m => Env -> m a -> m a
 withEnv env = local (over environment (const env))
 
-lookupEnv :: EvalM m => String -> m Adr
+lookupEnv :: EvalM m => String -> m CAdr
 lookupEnv nam = join $ asks (maybe (printError $ nam ++ " not found") return . Map.lookup nam .  view environment)
 
-lookupDynamic :: EvalM m => String -> m Adr
+lookupDynamic :: EvalM m => String -> m CAdr
 lookupDynamic nam = join $ asks (maybe (printError $ nam ++ " not found") return . Map.lookup nam .  view parameters)
 
 
 -- Store
 
-alloc :: EvalM m => Ide -> m Adr
+alloc :: EvalM m => Ide -> m CAdr
 alloc _ =
    getsM (fmap Adr . flip atomicModifyIORef (\v -> (v+1, v+1)) . latestAdr)
 
-store :: EvalM m => Adr -> Value m -> m ()
+store :: EvalM m => CAdr -> Value m -> m ()
 store adr val =
    getsM (modifyRef' (Map.insert adr val) . currStore)
 
-deref :: EvalM m => Adr ->  m (Value m)
+deref :: EvalM m => CAdr ->  m (Value m)
 deref adr =
    join $ getsM (fmap (maybe (printError $ "deref failed of " ++ show adr) return . Map.lookup adr) . readIORef  . currStore)
 
@@ -196,7 +196,7 @@ eval' app@(App e1 es _) = do
 eval' (Ite e1 e2 e3 _) = do
    cnd <- eval e1
    case cnd of
-      LiteralValue (Boolean b) -> if b then eval e2 else eval e3
+      SchemeVal (SchemeBoo b) -> if b then eval e2 else eval e3
       _ -> printError "condition should be boolean"
 eval' (Spawn e _) =
    ActorValue <$> spawnActor (`withSelf` (void $ eval e))
@@ -248,8 +248,8 @@ trySend (ActorValue ref) p = send ref p
 trySend _ _ = printError "receiver is not an actor reference"
 
 apply :: EvalM m => Exp -> Value m -> [Value m] -> m (Value m)
-apply app (ClosureValue lam@(Lam prs e _) env) vs = do
-   when (length prs /= length vs) $ 
+apply app (SchemeVal (SchemeClo (lam@(Lam prs e _), env))) vs = do
+   when (length prs /= length vs) $
       printError ("argument mismatch: expected " ++ show (length prs) ++ " but got " ++ show (length vs) ++ " at " ++ show app ++ " for " ++ show lam)
 
    ads <- mapM alloc prs
@@ -278,10 +278,11 @@ matchList ((pat, e):pats) value =
 -- | Match a pattern against a value
 match :: Pat -> Value m -> Maybe (Mapping m)
 match (IdePat nam) val = Just (Map.fromList [(nam, val)])
-match (ValuePat val) (LiteralValue val')
-   | val == val' = Just Map.empty
+match (ValuePat val) (SchemeVal val')
+   | litToScheme val == val' = Just Map.empty
    | otherwise = Nothing
-match (PairPat pat1 pat2) (PairValue v1 v2) = do
+match (PairPat pat1 pat2) (SchemeVal (SchemePtr cadr)) = do
+      (SchemePair v1 v2) <- derefAdr cadr
       m1 <- match pat1 v1
       m2 <- match pat2 v2
       return $ Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error $ traceShowId "cannot map same variable to different values")
@@ -304,34 +305,34 @@ prim1 f = prim match
          match vs  = printError ("expected 1 argument, got " ++ show (length vs) ++ " arguments")
 
 allPrimitives :: Map String Prim
-allPrimitives = Map.fromList [
-      ("print", prim1 $ liftIO . print >=> const (return nil)) ,
-      ("list",  prim $ \case [] -> return nil
-                             l -> printError $ "invalid number of arguments, given " ++ show (length l) ++ " expected 0"),
-      ("inc", prim1 $ \case
-                  (LiteralValue (Num n)) -> return (LiteralValue (Num (n+1)))
-                  _ -> printError "invalid argument to inc"),
-      ("wait-until-all-finished", prim $ const waitUntilAllFinished >=> const (return nil)),
-      ("send^", prim $ \case [recv, payload] -> trySend recv payload >> return nil
-                             _               -> printError "invalid argument to send^"),
-      ("*", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1*n2))
-                         _ -> printError "invalid argument to *"),
-      ("+", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1+n2))
-                         _ -> printError "invalid arguments to +"),
-      ("=", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Boolean $ n1 == n2))
-                         _ -> printError "invalid arguments to ="),
-      ("not", prim $ \case [LiteralValue (Boolean b)] -> return (LiteralValue (Boolean $ not b))
-                           _ -> printError "invalid argument to not"),
-      ("nonzero?", prim1 $ \case (LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n /= 0))
-                                 _ -> printError "invalid argument to nonzero?"),
-      ("positive?", prim1 $ \case (LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n > 0))
-                                  _ -> printError "invalid argument to positive?")
-   ]
+allPrimitives = Map.fromList []
+--    ("print", prim1 $ liftIO . print >=> const (return nil)) ,
+   --    ("list",  prim $ \case [] -> return nil
+   --                           l -> printError $ "invalid number of arguments, given " ++ show (length l) ++ " expected 0"),
+   --    ("inc", prim1 $ \case
+   --                (LiteralValue (Num n)) -> return (LiteralValue (Num (n+1)))
+   --                _ -> printError "invalid argument to inc"),
+   --    ("wait-until-all-finished", prim $ const waitUntilAllFinished >=> const (return nil)),
+   --    ("send^", prim $ \case [recv, payload] -> trySend recv payload >> return nil
+   --                           _               -> printError "invalid argument to send^"),
+   --    ("*", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1*n2))
+   --                       _ -> printError "invalid argument to *"),
+   --    ("+", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Num $ n1+n2))
+   --                       _ -> printError "invalid arguments to +"),
+   --    ("=", prim $ \case [LiteralValue (Num n1), LiteralValue (Num n2)] -> return (LiteralValue (Boolean $ n1 == n2))
+   --                       _ -> printError "invalid arguments to ="),
+   --    ("not", prim $ \case [LiteralValue (Boolean b)] -> return (LiteralValue (Boolean $ not b))
+   --                         _ -> printError "invalid argument to not"),
+   --    ("nonzero?", prim1 $ \case (LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n /= 0))
+   --                               _ -> printError "invalid argument to nonzero?"),
+   --    ("positive?", prim1 $ \case (LiteralValue (Num n)) -> return $ LiteralValue (Boolean (n > 0))
+   --                                _ -> printError "invalid argument to positive?")
+   -- ]
 
 runPrimitive :: EvalM m => Prim -> [Value m] -> m (Value m)
 runPrimitive (Prim f) = ($) f
 
-initialEnv :: Map String Adr
+initialEnv :: Map String CAdr
 initialEnv = Map.mapWithKey (const . PrmAdr) allPrimitives
 
 storePrimitives :: EvalM m => m ()
