@@ -1,5 +1,7 @@
 -- | Scheme benchmark programs
 module Benchmark.Python.Programs where 
+import Benchmark.Scheme.Programs (soundnessBenchmarks)
+import Data.List
 
 -- | Quick benchmarks to find issues with the analysis
 quick :: [String]
@@ -25,6 +27,14 @@ scoping = [
     --"programs/python/tests/scoping/global_var.py", --Var previously declared GlobalScope is now declared LocalScope
     -- "programs/python/tests/scoping/nonlocal_var.py" --Var previously declared GlobalScope is now declared LocalScope
     ]
+
+soundnessBenchmarks :: [String]
+soundnessBenchmarks = allBenchmarks \\ 
+                     [
+                        "programs/python/debug.py", -- Database() is undefined
+                        "programs/python/exceptions.py", -- raise Exception()
+                        "programs/python/taint.py" -- no attribute __taint__ 
+                     ]
 
 allBenchmarks :: [String]
 allBenchmarks = quick 

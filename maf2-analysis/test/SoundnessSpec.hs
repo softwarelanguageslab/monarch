@@ -3,39 +3,42 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module SoundnessSpec(spec) where 
 
-import Test 
-
-import qualified Data.TypeLevel.HMap as HMap
-import Domain.Scheme.Modular (SchemeKey(..), SchemeVal(..))
+-- general imports
 import qualified Data.Vector as Vector
+import qualified Data.Map as Map
 
+import Test 
 import Domain.Class
+import Domain (SimplePair(..))
+import Domain.Core.VectorDomain.Class (VectorDomain(makeVector))
+import Domain.Core.PairDomain.Class
 import qualified Lattice.Class as Lattice
-import qualified Benchmark.Scheme.Programs as SchemeBenchmarks
+import Lattice (BottomLattice(bottom), joins)
+import qualified Data.TypeLevel.HMap as HMap
+import Syntax.Ide
+-- scheme
+import Domain.Scheme.Modular (SchemeKey(..), SchemeVal(..))
+import Analysis.Scheme
 import qualified Analysis.Scheme.Simple as Scheme
 import qualified Syntax.Scheme
 import qualified Interpreter.Scheme as Concrete
-import qualified Data.Map as Map
-import Analysis.Scheme
 import qualified Domain.Scheme.Store as AbstractStore
-import Analysis.Scheme.Simple (V)
-import Syntax.Ide
-import Domain.Core.PairDomain.Class
 import Domain.Scheme.Class (PaiDom, SchemeDomain (nil, symbol))
-
-import Analysis.Python.Fixpoint (analyzeCP)
-import qualified Benchmark.Python.Programs as PythonBenchmarks
-import Domain.Python.Syntax (parse)
-import Lattice (BottomLattice(bottom), joins)
-import Domain (SimplePair(..))
-import Domain.Core.VectorDomain.Class (VectorDomain(makeVector))
 import qualified Benchmark.Scheme.Programs as SchemeBenchmarks
+-- python
+import Analysis.Python.Fixpoint (analyzeCP)
+import Domain.Python.Syntax (parse)
+import Interpreter.Python.Eval (evalPythonProgram)
+import qualified Benchmark.Python.Programs as PythonBenchmarks
 
 maybeToEither :: e -> Maybe a -> Either e a 
 maybeToEither e Nothing = Left e 
 maybeToEither _ (Just a) = Right a
 
-instance Domain V Concrete.SchemeValue where 
+----------------------
+-- SCHEME SOUNDNESS --
+----------------------
+instance Domain Scheme.V Concrete.SchemeValue where 
     inject (Concrete.SchemePtr adr) = bottom -- todo
     inject (Concrete.SchemeInt int) = inject int
     inject (Concrete.SchemeRea rea) = inject rea
@@ -51,7 +54,7 @@ instance Domain V Concrete.SchemeValue where
     inject (Concrete.SchemeString s) = error "should not happen"
 
 -- pointers and closures are not checked
-instance Domain (AbstractStore.StoreVal V) Concrete.SchemeValue where 
+instance Domain (AbstractStore.StoreVal Scheme.V) Concrete.SchemeValue where 
     inject (Concrete.SchemePtr adr) = AbstractStore.VarVal bottom -- todo
     inject (Concrete.SchemeInt int) = AbstractStore.VarVal (inject int) 
     inject (Concrete.SchemeRea rea) = AbstractStore.VarVal (inject rea) 
@@ -83,24 +86,28 @@ schemeSoundness :: Spec
 schemeSoundness = describe "Scheme soundness" $ mapM_ (soundBenchmark
             "Scheme analysis"
             defaultTimeout
-            (return . Scheme.cpAnalyze) -- analyze
-            (return . Concrete.runInterpreter) -- concrete interpreter
+            (return . Scheme.cpAnalyze)            -- analyze
+            (return . Concrete.runInterpreter)     -- concrete interpreter
             (\(_, concreteSto) (abstractSto, _) -> -- the analysis result should subsume the concrete result
                  return $ and $ combineMatchingMaps addressMatches (flip gamma) concreteSto abstractSto )
             (return . Syntax.Scheme.parseString')) SchemeBenchmarks.soundnessBenchmarks
 
+----------------------
+-- PYTHON SOUNDNESS --
+----------------------
 
--- pythonSoundness :: Spec
--- pythonSoundness = describe "Python soundness" $ mapM_ (soundBenchmark
---             "Python analysis"
---             defaultTimeout
---             (return . analyzeCP) -- analyze
---             (return . analyzeCP) -- concrete interpreter
---             (\(_, concreteSto, _) (_, abstractSto, _) -> -- the analysis result should subsume the concrete result
---                 return True)
---             (return . (maybeToEither "parse error" . parse ""))) PythonBenchmarks.quick
+pythonSoundness :: Spec
+pythonSoundness = describe "Python soundness" $ mapM_ (soundBenchmark
+            "Python analysis"
+            defaultTimeout
+            (return . analyzeCP . snd)           -- analyze
+            (evalPythonProgram . fst)            -- concrete interpreter
+            (\concreteSto (_, abstractSto, _) -> -- the analysis result should subsume the concrete result
+                return True) -- TODO
+            (\ program -> return (fmap (program,) $ maybeToEither "parse error" $ parse "" program))) 
+            PythonBenchmarks.soundnessBenchmarks
 
 spec :: Spec 
 spec = do
     schemeSoundness
-    -- pythonSoundness
+    pythonSoundness

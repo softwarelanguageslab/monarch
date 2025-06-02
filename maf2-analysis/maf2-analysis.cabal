@@ -93,6 +93,7 @@ library
       Interpreter.Scheme.Primitives
       Interpreter.Scheme.Semantics
       Interpreter.Scheme.Values
+      Interpreter.Python.Eval
       Test
   other-modules:
       Data.SetExtra
@@ -144,6 +145,7 @@ library
     , transformers
     , unordered-containers
     , vector
+    , process
   default-language: Haskell2010
 
 executable maf-exe
