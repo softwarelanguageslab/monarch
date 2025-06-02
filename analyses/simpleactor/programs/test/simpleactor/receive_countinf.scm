@@ -3,7 +3,7 @@
 (letrec
   ((rcv-beh (lambda ()
               (receive
-                ( (ref (begin (display ref) (rcv-beh)) ))) ))
+                ( (ref (begin (send^ ref 'foo) (rcv-beh)) ))) ))
   (rcv-act (spawn^ (rcv-beh)))
   (tst-act (spawn^ 'test)))
 
