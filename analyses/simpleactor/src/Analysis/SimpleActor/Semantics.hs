@@ -117,6 +117,8 @@ eval' rec (Meta e _) =
 eval' rec (Trace e _) = do
    v <- eval' rec e
    (liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) v  $> v
+eval' rec (Error e _) =
+   eval' rec e >>= escape . BlameError . show
 eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v k m => v -> v -> m ()
