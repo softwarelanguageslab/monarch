@@ -21,7 +21,6 @@ module Analysis.SimpleActor.Monad
     runDynamicT,
     isMatchError,
     Cmp(..),
-    Ctx(..),
     MonadIndexedMailbox(..),
     runWithMailboxContributorIndexedT
   )
@@ -33,7 +32,7 @@ import Control.Monad.DomainError
 import Control.Monad.Escape
 import Control.Monad.Join
 import Control.Monad.Layer
-import Control.Monad.Reader hiding (mzero)
+import Control.Monad.Reader
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -87,16 +86,6 @@ instance FreeVariables Cmp where
    fv (ActorExp e) = fv e
 
 ------------------------------------------------------------
--- Context sensitivity
-------------------------------------------------------------
-
--- | Context for function calls and address allocations
---
--- Currently addresses and function call components are sensitive
--- to the actor they were created in.
-newtype Ctx = Ctx { ref :: Pid Exp Ctx  } deriving (Ord, Eq, Show)
-
-------------------------------------------------------------
 -- Errors
 ------------------------------------------------------------
 
@@ -116,7 +105,6 @@ instance SimpleActorErrorDomain (Set ActorError) where
       | Set.size es == 1 && Set.member (ActorError MatchError) es = true
       | not (Set.member (ActorError MatchError) es) = false
       | otherwise = boolTop
-
 
 ------------------------------------------------------------
 -- Monad typeclasses
@@ -142,13 +130,13 @@ class Monad m => MonadDynamic α m | m -> α where
 -- | Monad for spawning new processes. Each process is uniquely identified by their
 -- expression and environment.
 class MonadSpawn v k m | m -> v k where
-    spawn :: Exp -> Env v -> Ctx -> m (ARef v)
+    spawn :: Exp -> Env v -> k -> m (ARef v)
 
 -- | Trivial instance for layered monad transformers
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v k m) => MonadSpawn v k (t m) where
   spawn e env = upperM . spawn e env
 
-type MonadActor v m = (MonadMailbox v m, MonadSpawn v Ctx m, MonadActorLocal v m, MonadMeta m, MonadDynamic (Adr v) m)
+type MonadActor v k m = (MonadMailbox v m, MonadSpawn v k m, MonadActorLocal v m, MonadMeta m, MonadDynamic (Adr v) m)
 
 -- | Global mailbox indexed per contributor so that strong updates of the global mailbox are allowed whenever
 -- there are no conflicting interleavings
@@ -204,15 +192,15 @@ instance
 ------------------------------------------------------------
 
 -- | Evaluation monad
-type EvalM v m =
+type EvalM v k m =
   ( MonadJoinable m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
     StoreM (Adr v) (StoreVal v) m,
-    MonadActor v m,
+    MonadActor v k m,
     MonadEscape m,
     MonadFixpoint m Cmp v,
-    CtxM m Ctx,
+    CtxM m k,
     Domain (Esc m) DomainError,
     Domain (Esc m) Error,
     BottomLattice (Esc m),
