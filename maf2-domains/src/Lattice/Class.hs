@@ -9,7 +9,8 @@ module Lattice.Class (
    BottomLattice(..),
    PartialOrder(..),
    Lattice,
-   Meetable(..), 
+   Meetable(..),
+   LatticeMonoid(..),
    justOrBot, 
    overlap,
    joins,
@@ -133,3 +134,13 @@ instance  {-# OVERLAPPABLE #-} (Joinable a) => Semigroup a where
 -- | A structure with a join and a bottom is also a @Monoid@
 instance {-# OVERLAPPABLE #-} (Joinable a, BottomLattice a) => Monoid a where    
    mempty = bottom
+
+-- | Newtype wrapper for forcing the `Monoid` instance using `Joinable` and `BottomLattice`
+newtype LatticeMonoid a = LatticeMonoid a
+
+instance (Joinable a) => Semigroup (LatticeMonoid a) where
+   (<>) (LatticeMonoid a) (LatticeMonoid b) = LatticeMonoid $ join a b
+
+instance (Joinable a, BottomLattice a) => Monoid (LatticeMonoid a) where
+   mempty = LatticeMonoid $ bottom
+

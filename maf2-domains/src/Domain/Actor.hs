@@ -9,13 +9,18 @@ import Data.Set (Set)
 import Domain.Core.BoolDomain.Class (BoolDomain)
 import GHC.Generics
 import Control.DeepSeq
+import Syntax.Span (SpanOf (spanOf))
 
 -- | Generic representation of actor references, 
 -- parametrized by their spawn site and an optional context.
 data Pid e ctx
   = Pid e ctx
   | EntryPid
-  deriving (Ord, Eq, Show, Generic)
+  deriving (Ord, Eq, Generic)
+
+instance (SpanOf e) => Show (Pid e ctx) where
+  show EntryPid = "entry"
+  show (Pid e _) = show $ spanOf e
 
 instance Ord adr => Trace adr (Pid e ctx) where
   trace = const Set.empty

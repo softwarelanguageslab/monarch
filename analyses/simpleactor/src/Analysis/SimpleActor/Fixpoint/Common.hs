@@ -2,10 +2,8 @@
 -- | Abstractions common to the sequential and actor-modular analysis
 module Analysis.SimpleActor.Fixpoint.Common where
 
-import Data.Map (Map)
 
 import Syntax.AST
-import Data.Set (Set)
 import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)
 import Domain.Scheme.Store
@@ -14,12 +12,9 @@ import Symbolic.AST ( PC )
 import Analysis.Store (CountingMap)
 import Data.Kind
 import Analysis.Monad.Stack (MonadStack)
-import Analysis.Monad.Store (StoreT, runStoreT, StoreM)
-import Domain.Scheme.Class hiding (Exp)
-import Data.Tuple.Syntax 
+import Analysis.Monad.Store (StoreT, StoreM)
 import Analysis.Monad.DependencyTracking (DependencyTrackingM, MonadDependencyTracking, MonadDependencyTriggerTracking)
 import Analysis.Monad.Map (MapM)
-import Analysis.SimpleActor.Monad (Ctx)
 import RIO
 import qualified RIO.Map as Map
 import Analysis.Monad (MonadDependencyTrigger)
@@ -31,7 +26,7 @@ import Analysis.Actors.Mailbox.GraphToSet (GraphToSet)
 -- Shorthands
 ------------------------------------------------------------
 
-type K = Ctx
+type K = AdrCtx
 type ActorExp = Exp
 type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (SchemeAdr Exp K)
@@ -44,6 +39,16 @@ type ActorPC  = PC (SchemeAdr Exp K)
 -- | A mapping for counting the number of concrete
 -- actors associated with an abstract actor reference
 type ActorCou = Map ActorRef AbstractCount
+
+-- | The type of mailbox abstraction
+type MB = GraphToSet ActorVlu
+
+-- | Context for address allocations and function calls.
+--
+-- Currently these addresses are sensitive to the actor they
+-- were created in, and the current mailbox contents.
+data AdrCtx = AdrCtx ActorRef MB
+            deriving (Ord, Eq, Show) 
 
 ------------------------------------------------------------
 -- Utilities

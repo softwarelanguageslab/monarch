@@ -1,5 +1,6 @@
 {-# LANGUAGE UndecidableInstances, AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- | Analysis to analyse the inner actor semantics
 module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes, ActorRes(..), MB) where
 
@@ -47,9 +48,9 @@ import Control.Monad.State
 import Domain.Core.AbstractCount (AbstractCount(..))
 import qualified Control.Monad.State as State
 import qualified Analysis.Actors.Mailbox as Mailbox
-import Analysis.Actors.Mailbox.GraphToSet (GraphToSet, graphToSet)
-import Analysis.Counting (getCountingMap)
-import Analysis.Monad.Join (runSetNonDetTIntercept)
+import Analysis.Actors.Mailbox.GraphToSet (graphToSet)
+import Control.Monad.Trans.Writer (WriterT(..))
+import Control.Monad.Writer.Class (MonadWriter(tell))
 
 
 ------------------------------------------------------------
@@ -59,11 +60,6 @@ import Analysis.Monad.Join (runSetNonDetTIntercept)
 -- | A component in the sequential analysis
 type SequentialCmp = Key (SequentialT Identity) Cmp
 type SequentialRes = Val (SequentialT Identity) ActorVlu
-
-
--- TODO: move to 'Common'
--- | The type of mailbox abstraction
-type MB = GraphToSet ActorVlu
 
 ------------------------------------------------------------
 -- Monad stack
@@ -75,7 +71,6 @@ type SequentialT m = MonadStack '[
                        DynamicBindingT' (Adr ActorVlu),
                        AllocT Ide K (SchemeAdr Exp K),
                        AllocT Exp K (SchemeAdr Exp K),
-                       CtxT K,
                        MetaT,
                        -- Local path conditions
                        DiscardFormulaT (SchemeAdr Exp K) ActorVlu,
@@ -84,6 +79,7 @@ type SequentialT m = MonadStack '[
                        CountSpawnT,
                        LocalMailboxT ActorVlu MB,
                        ActorLocalT ActorVlu,
+                       CtxT K,
                        -- JoinT,
                        CacheT
                   ] m
@@ -91,9 +87,10 @@ type SequentialT m = MonadStack '[
 type SequentialWidenedT m = MonadStack '[
                                    TransparentStoreT ActorSto ActorAdr (StoreVal ActorVlu),
                                    IntraAnalysisT SequentialCmp,
+                                   SetNonDetT,
                                    RefCountMailboxT,
-                                   AbstractCountT ActorRef,
-                                   SetNonDetT ] m
+                                   AbstractCountT ActorRef
+                               ] m
 
 -- | SequentialIntraM denotes the remaining constraints needed for running the intra
 -- analysis.
@@ -115,7 +112,7 @@ type InterAnalysisM m = (MonadSchemeStore m,
                          -- MonadMailbox ActorVlu m,
                          MonadMailbox' ActorRef MB m,
                          FormulaSolver (SchemeAdr Exp K) m,
-                         MonadSpawn ActorVlu Ctx m,
+                         MonadSpawn ActorVlu K m,
                          MonadIO m,
                          -- Flow sensitive stores
                          MapM (In SequentialCmp ActorSto) ActorSto m,
@@ -129,6 +126,18 @@ type InterAnalysisM m = (MonadSchemeStore m,
                         )
 
 
+------------------------------------------------------------
+-- Mailbox-sensitive address allocation
+------------------------------------------------------------
+
+-- | Address allocation is rendered 'mailbox-sensitive' by consulting
+-- the current mailbox contents every time `getCtx` is called. 
+instance (CtxM m K, MonadActorLocal ActorVlu m, Monad m) => CtxM (LocalMailboxT ActorVlu MB m) K where
+      withCtx f m = do
+            ctx <- getCtx
+            lowerM (withCtx (const (f ctx))) m
+      getCtx = AdrCtx <$> getSelf <*> State.get
+                        
 ------------------------------------------------------------
 -- Mailbox abstractions influenced by the abstract reference count of actor references
 ------------------------------------------------------------
@@ -173,7 +182,7 @@ newtype CountSpawnT m a = CountSpawnT (IdentityT m a)
 runCountSpawnT :: CountSpawnT m a -> m a
 runCountSpawnT (CountSpawnT ma)  = runIdentityT ma
 
-instance  (MonadAbstractCount ActorRef m, MonadSpawn ActorVlu Ctx m) => MonadSpawn ActorVlu Ctx (CountSpawnT m) where
+instance  (MonadAbstractCount ActorRef m, MonadSpawn ActorVlu K m) => MonadSpawn ActorVlu K (CountSpawnT m) where
       spawn expr env ctx = upperM (spawn expr env ctx) >>= (\ref -> countIncrement ref $> ref)
 
 
@@ -294,7 +303,7 @@ type MonadActorModular m = (
     -- Formula solving should be global since it requires IO
     FormulaSolver (SchemeAdr Exp K) m,
     -- Spawning actors
-    MonadSpawn ActorVlu Ctx m,
+    MonadSpawn ActorVlu K m,
     -- Keep track of results for each function call within
     -- the actor.
     MapM ActorResOut ActorRes m,
@@ -343,28 +352,30 @@ flowStore next cmp = do
 
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
-intra selfRef cmp = undefined
-      --     inMbs <- getMailboxes
-      --     flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT m)) eval'') cmp
-      --             & runAlloc VarAdr
-      --             & runAlloc PtrAdr
-      --             & evalWithTransparentStoreT
-      --             & runIntraAnalysis cmp
-      --             & runSetNonDetTIntercept restore save
-      --             & runRefCountMailboxT inMbs
-      --             & runWithAbstractCountT
-      --             & void
-      -- where -- eval'' :: Cmp -> FixT Cmp ActorVlu (SequentialT (IntraAnalysisT SequentialCmp m)) ActorVlu
-      --       eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
-      --       restore = undefined
-      --       save    = undefined
-      --       outMbs ((a, mbs), cou) = do
-      --             let mbs' = Map.mapKeys (\k -> (,k) $ fromMaybe CountInf $ Map.lookup k (getCountingMap cou)) mbs
-      --             mapM_ (uncurry writeMai) (Map.toList mbs')
-      --             return a
-      --       writeMai (cou ,ref) = (case cou of
-      --                               CountOne -> putMailboxes
-      --                               CountInf -> joinMailboxes) selfRef ref
+intra selfRef cmp = do
+          inMbs  <- getMailboxes
+          ((), (LatticeMonoid outMbs')) <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
+                        & runAlloc VarAdr
+                        & runAlloc PtrAdr
+                        & evalWithTransparentStoreT
+                        & runIntraAnalysis cmp
+                        & runSetNonDetTIntercept (restore inMbs) save
+                        & runRefCountMailboxT inMbs
+                        & runWithAbstractCountT
+                        & void
+                        & runWriterT @(LatticeMonoid (Map (AbstractCount, ActorRef) MB))
+
+          mapM_ (uncurry writeMai) (Map.toList outMbs')
+      where eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
+            save    = do
+                  mbs <- State.get
+                  cou <- getCounts
+                  let mbs' = Map.mapKeys (\k -> (,k) $ fromMaybe CountInf $ Map.lookup k cou) mbs
+                  tell (LatticeMonoid mbs')
+            writeMai (cou, ref) = (case cou of
+                                    CountOne -> putMailboxes
+                                    CountInf -> joinMailboxes) selfRef ref
+            restore = State.put
 -- | Inter-analysis
 inter :: InterAnalysisM m
       => Exp         -- ^ the actor expression to analyze
@@ -376,10 +387,10 @@ inter exp environment ref mb = iterateWL' initialCmp (intra ref)
   where initialCmp = ActorExp exp         -- component to analyze
                 <+> environment           -- initial lexical environment
                 <+> initialDynEnvironment -- initial dynamic environment 
-                <+> Ctx ref               -- context 
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> mb                    -- initial mailboxes
                 <+> ref                   -- current `self`
+                <+> AdrCtx ref mb         -- address context
                 -- <+> emptyPC
 
 

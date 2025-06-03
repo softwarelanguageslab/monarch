@@ -1,36 +1,34 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE UndecidableInstances #-}
 -- | Actor-modular analysis
-module Analysis.SimpleActor.Fixpoint.Modular where
+module Analysis.SimpleActor.Fixpoint.Modular(analyze) where
 
 import Analysis.SimpleActor.Fixpoint.Common
-import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, SequentialRes, ActorRes, MB)
+import Analysis.SimpleActor.Fixpoint.Sequential (ActorRes)
 import qualified Analysis.SimpleActor.Fixpoint.Sequential as Sequential
 import Control.Lens.TH
 import RIO hiding (view)
 import qualified Data.Map as Map
-import Domain.Actor (Pid(EntryPid, Pid))
+import Domain.Actor ( Pid(EntryPid, Pid), ARef )
 import Domain.Scheme.Store (StoreVal (VarVal), SchemeAdr (PrrAdr))
 import Analysis.SimpleActor.Semantics (allPrimitives, initialSto)
 import Control.Monad.State
 import RIO.Partial (fromJust)
 import qualified RIO.Set as Set
-import Analysis.Actors.Monad (MonadMailbox (..), runWithMailboxT, MonadSend(..), MonadReceive(..), MonadMailbox'(..), MailboxDep(..))
+import Analysis.Actors.Monad (MonadMailbox, MonadSend(..), MonadReceive(..), MonadMailbox'(..), MailboxDep(..))
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
 import Analysis.Monad (runIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), StoreM'(..), runStoreT)
 import qualified Analysis.Monad.ComponentTracking as C
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import Analysis.Monad.Map
-import qualified Analysis.Monad.Map as MapM
 import Control.Monad.Layer (MonadLayer (..))
 import Analysis.Monad.DependencyTracking
 import Control.Monad.Trans.Identity
 import Analysis.Monad.WorkList
 import Analysis.Monad.Join (runJoinT)
 import Data.Tuple.Syntax
-import Domain.Actor (ARef)
-import Analysis.SimpleActor.Monad (MonadSpawn (spawn), Ctx, MonadIndexedMailbox(..), runWithMailboxContributorIndexedT)
+import Analysis.SimpleActor.Monad (MonadSpawn (spawn), MonadIndexedMailbox(..), runWithMailboxContributorIndexedT)
 import qualified Symbolic.SMT as SMT
 import qualified Debug.Trace as Debug
 import Control.Monad.Cond
@@ -55,7 +53,7 @@ $(makeLenses ''AnalysisState)
 spawnWL :: (Ord cmp, ComponentTrackingM m cmp, WorkListM m cmp) => cmp -> m ()
 spawnWL cmp = ifM (Set.member cmp <$> C.components) (return ()) (C.spawn cmp >> add cmp)
 
-instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef) => MonadSpawn ActorVlu Ctx (StateT AnalysisState m) where
+instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef) => MonadSpawn ActorVlu K (StateT AnalysisState m) where
   spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid
     where pid  = Pid expr ctx
           env' = env -- HashMap.restrictKeys env (fv expr)  
@@ -123,7 +121,7 @@ type ModularInterM m = (MonadState AnalysisState m,
                         -- Z3 Solvin g
                         FormulaSolver ActorVarAdr m,
                         -- Tracking actor spawns
-                        MonadSpawn ActorVlu Ctx m,
+                        MonadSpawn ActorVlu K m,
                         -- Actor results
                         MapM ActorResOut ActorRes m,
                         -- Global store
@@ -147,7 +145,7 @@ inter = iterateWL' EntryPid intra
 analyze :: ActorExp -> IO AnalysisResult
 analyze expr = fmap toAnalysisResult $ inter
              & flip evalStateT (initialAnalysisState expr)
-             & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore 
+             & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore
              & runWithMapping @ActorResOut @ActorRes
              & runWithDependencyTracking @ActorRef @ActorVarAdr
              & runWithDependencyTracking @ActorRef @ActorRef

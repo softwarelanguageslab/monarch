@@ -10,10 +10,18 @@ specified in that case
 
 Precision:
 
-- [ ] add current state of the mailbox to the allocation context, figure out how to avoid cycles? ==> not a problem if we make sure that in practice these context never expand forever, but in theory it is possible to have infinitely many nested context (since mailboxes capture values and values capture contexts through their pointers)
+- [X] add current state of the mailbox to the allocation context, figure out how to avoid cycles? ==> not a problem if we make sure that in practice these context never expand forever, but in theory it is possible to have infinitely many nested context (since mailboxes capture values and values capture contexts through their pointers), cf. 1351a50cd988df58b21a73192492657b046e1a95
 
+Soundness:
+
+- [X] only the mailbox of the last branch is put in the global mailbox data becaue of the last restore call. Should use a local writer monad and only after all branches have been evaluated join.
 
 Bugs:
 - [X] receive in the `GraphToSet` abstraction seems to fail (cf. receive_countinf.scm example which should have output for the test-beh actor). Fixed ==> issue with the implementation of `MonadSend` which supposed to disable triggers
 when the mailbox no longer changes (i.e., by returning `False` after `send`), the problem was that if the `hasMessage` returned true, the message was not enqueued, which is a problem in mailboxes that do track multiplicity, changed check
 to equality between two mailboxes. (cf. 3979eec4d00155561ad3f243dc8f8853a248c6db)
+
+Concrete interpreter/instrumentation:
+
+- [ ] Mailbox contents: print mailbox contents per pid upon send and receive
+- [ ] Print function applications and store contents (perhaps via shadow stack?)

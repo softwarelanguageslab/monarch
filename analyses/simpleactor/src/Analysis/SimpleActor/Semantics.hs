@@ -3,7 +3,7 @@
 {-# HLINT ignore "Move brackets to avoid $" #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Analysis.SimpleActor.Semantics where
+module Analysis.SimpleActor.Semantics(eval, allPrimitives, initialSto) where
 
 import Syntax.AST
 import Syntax.Span
@@ -18,19 +18,16 @@ import Analysis.Actors.Monad
 import Control.Monad ((>=>), foldM)
 import Control.Monad.Escape
 import Control.Monad.Join
-import Data.Functor (($>))
+import Data.Functor ( ($>) )
 
 import Analysis.Monad.Allocation
 import Analysis.Monad.Environment
-import Analysis.Monad.Store
 
 import Analysis.Monad.Fix
-
-import Analysis.Scheme.Monad (stoPai)
 import Domain.Core.PairDomain (cons, car ,cdr)
 import Analysis.Scheme.Primitives (Prim(..), primitivesByName)
 import Domain (Domain(inject))
-import Analysis.Environment (Environment(..))
+import Analysis.Environment ( Environment(..) )
 import Analysis.Monad.Context (CtxM(..))
 import Data.Maybe
 import Debug.Trace
@@ -42,7 +39,7 @@ import Analysis.Scheme.Monad
 -- this limits the applicability of the semantics 
 -- to one with symbolic constraints. We should 
 -- remove this and make the @cond@ more general.
-import Analysis.Symbolic.Monad (choice, choices)
+import Analysis.Symbolic.Monad (choices)
 -- | Same problem here, we really want to use @eql@
 -- but we cannot do that since a generic boolean 
 -- is required for its implementation.
@@ -51,24 +48,22 @@ import Analysis.Store (Store)
 import qualified Analysis.Store as Store
 import Control.Monad.IO.Class (liftIO)
 import Lattice.ConstantPropagationLattice (CP)
-import Data.Functor ((<&>))
 import Syntax.FV
-import Analysis.Environment (Environment(..))
 
 ------------------------------------------------------------
 -- Evaluation
 ------------------------------------------------------------
 
-showIfBot :: EvalM v m => String -> v -> m v
+showIfBot :: EvalM v k m => String -> v -> m v
 showIfBot s v = (if v == bottom then trace s else id) (return v)
 
-eval :: forall v m . EvalM v m => Cmp -> m v
+eval :: forall v m k . EvalM v k m => Cmp -> m v
 eval = fix evalCmp
    where evalCmp recur (FuncBdy (Lam _ bdy _)) = eval' recur bdy
          evalCmp recur (ActorExp e) = eval' recur e
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
-eval' :: forall v m . EvalM v m => (Cmp -> m v) -> Exp -> m v
+eval' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
 eval' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
 eval' _ (Literal lit _) = return (injectLit lit)
 eval' rec e@(App e1 es _) = do
@@ -103,7 +98,7 @@ eval' rec (Parametrize bds e2 _) = do
    vs <- mapM (eval' rec . snd) bds
    mapM_ (uncurry writeVar) (zip ads vs)
    withExtendedDynamic bds' (eval' rec e2)
-eval' rec ex@(Begin exs _) =
+eval' rec (Begin exs _) =
    if null exs
    then return nil
    else last <$> mapM (eval' rec) exs
@@ -122,21 +117,23 @@ eval' rec (Meta e _) =
 eval' rec (Trace e _) = do
    v <- eval' rec e
    (liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) v  $> v
+eval' rec (Error e _) =
+   eval' rec e >>= escape . BlameError . show
 eval' _ e = error $  "unsupported expression: " ++ show e
 
-trySend :: EvalM v m => v -> v -> m ()
+trySend :: EvalM v k m => v -> v -> m ()
 trySend ref p =
    cond   (fromBL @(CP Bool) (isActorRef ref))
           (mjoinMap (`send'` p) (arefs' ref))
           (escape NotAnActorReference)
 
-apply :: EvalM v m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
+apply :: EvalM v k m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
 apply rec e v vs = choices
    [(pure (isClo v), mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (pure (isPrim v), mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))
-applyClosure :: EvalM v m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
-applyClosure e (lam@(Lam prs _ _), env) rec vs =
+applyClosure :: EvalM v k m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
+applyClosure _e (lam@(Lam prs _ _), env) rec vs =
    if length prs /= length vs then
       error "invalid number of arguments"
    else {- withCtx (const [spanOf e]) $ -} do
@@ -146,13 +143,13 @@ applyClosure e (lam@(Lam prs _ _), env) rec vs =
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 
-applyPrimitive :: forall v m . (Show (Env v), EvalM v m) => String -> Exp -> [v] -> m v
+applyPrimitive :: forall v m k . (EvalM v k m) =>String -> Exp -> [v] -> m v
 applyPrimitive =
    runPrimitive . fromJust . lookupPrimitive
 
 type Mapping v = Map Ide v
 
-allocMapping :: EvalM v m => Map Ide v -> m (Env v)
+allocMapping :: EvalM v k m => Map Ide v -> m (Env v)
 allocMapping bds = do
    -- TODO: clean this up
    env <- getEnv
@@ -162,14 +159,14 @@ allocMapping bds = do
 -- against a value.
 --
 -- NOTE: written in CPS because @Exp@ is not @Joinable@
-matchList :: EvalM v m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
+matchList :: EvalM v k m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
 matchList _ [] _ = escape MatchError
 matchList f ((pat, e):pats) value =
    -- TODO: don't rethrow the error, use `catchOn` for this
    (match pat value >>= f e) `catchOn` (fromBL . isMatchError, const $ matchList f pats value)
 
 -- | Match a pattern against a value
-match :: forall v m . EvalM v m => Pat -> v -> m (Mapping v)
+match :: forall v m k . EvalM v k m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
 match (ValuePat lit) v =
    -- TODO: replace @cond@ by @choice@ so that conditions are tracked symbolically
@@ -188,31 +185,32 @@ injectLit (Symbol s)     = symbol s
 injectLit (Num n)        = inject n
 injectLit (Character c)  = inject c
 injectLit Nil            = nil
+injectLit (String _)     = error "cannot inject a string"
 
 ------------------------------------------------------------
 -- Primitives
 ------------------------------------------------------------
 
-data Primitive v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim v)
+data Primitive k v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim k v)
 
-newtype SimpleActorPrim v = SimpleActorPrim (forall m . (Show (Env v), EvalM v m) => [v] -> Exp -> m v)
+newtype SimpleActorPrim k v = SimpleActorPrim (forall m . (Show (Env v), EvalM v k m) => [v] -> Exp -> m v)
 
 -- | A nullary primitive
-aprim0 :: (forall m . (Show (Env v), EvalM v m) => Exp -> m v) -> SimpleActorPrim v
+aprim0 :: (forall m . (Show (Env v), EvalM v k m) => Exp -> m v) -> SimpleActorPrim k v
 aprim0 f = SimpleActorPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall m . EvalM v m => v -> Exp -> m v) -> SimpleActorPrim v
+aprim1 :: (forall m . EvalM v k m => v -> Exp -> m v) -> SimpleActorPrim k v
 aprim1 f = SimpleActorPrim $  \case [v] -> f v
                                     vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall m . EvalM v m => v -> v -> Exp -> m v) -> SimpleActorPrim v
+aprim2 :: (forall m . EvalM v k m => v -> v -> Exp -> m v) -> SimpleActorPrim k v
 aprim2 f = SimpleActorPrim $ \case [v1, v2] -> f v1 v2
                                    vs -> const $ escape $ ArityMismatch 2 (length vs)
 
 -- | Primitives specific to the simple actor language
-actorPrimitives :: Map String (Primitive v)
+actorPrimitives :: Map String (Primitive k v)
 actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("wait-until-all-finished", aprim0 $ const $ return nil ),
    ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
@@ -223,7 +221,7 @@ actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("print", aprim1 $ const $ const $ return nil) ]
 
 -- | Scheme primitives
-schemePrimitives :: Map String (Primitive v)
+schemePrimitives :: Map String (Primitive k v)
 schemePrimitives = SchemePrimitive <$> primitivesByName
 
 -- | The names of all primitives
@@ -231,10 +229,10 @@ allPrimitives :: [String]
 allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives
 
 -- | Lookup a primitive starting from the actor primitives
-lookupPrimitive :: String -> Maybe (Primitive v)
+lookupPrimitive :: String -> Maybe (Primitive k v)
 lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
 
-runPrimitive :: (Show (Env v), EvalM v m) => Primitive v -> Exp -> [v] -> m v
+runPrimitive :: ( EvalM v k m) =>Primitive k v -> Exp -> [v] -> m v
 runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
 runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = flip f
 
