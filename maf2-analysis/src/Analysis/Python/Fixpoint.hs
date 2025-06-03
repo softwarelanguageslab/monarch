@@ -180,17 +180,17 @@ type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
 analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
 analyzeCP = analyze @PyDomainCP
 
-preanalyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, [Bool]) 
+preanalyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, Map String CharacteristicsMap) 
 preanalyzeCP = preanalyze @PyDomainCP 
 
-preanalyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRef) => PyPrg -> (Map PyCmp PyRes, Store obj, [Bool])
+preanalyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRef) => PyPrg -> (Map PyCmp PyRes, Store obj, Map String CharacteristicsMap)
 preanalyze prg = (rsto, osto, characteristics)
     where (((osto, _), rsto), characteristics) = inter @obj prg
                                     & runWithGraph @(SimpleGraph (CP String) (CP Bool))
                                     & runWithMapping' @PyCmpStoreIn
                                     & runWithMapping' @PyCmpStoreOut 
                                     & runWithMapping @PyCmp
-                                    & runWithCharacteristic
+                                    & runWithMapping @String @CharacteristicsMap 
                                     & runWithMapping' @PyCmpTaint
                                     & runWithDependencyTracking @PyCmp @ObjAdr
                                     & runWithDependencyTracking @PyCmp @PyCmp
