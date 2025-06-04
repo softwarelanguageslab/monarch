@@ -7,7 +7,7 @@
  ((beh (lambda (x)
         (receive 
           (('inc (begin
-                     (send^ (self^) 'inc)
+                     ; (send^ (self^) 'inc)
                      (beh (+ x 1)))))))))
  (letrec
    ((ref (spawn^ (beh 0))))

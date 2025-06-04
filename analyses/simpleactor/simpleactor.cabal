@@ -33,6 +33,7 @@ library
       Analysis.SimpleActor.Infer.Graph
       Analysis.SimpleActor.Monad
       Analysis.SimpleActor.Semantics
+      Benchmark.SimpleActor.Precision
       Control.Monad.Cond
       Control.Monad.Extra
       Data.Tuple.Syntax
@@ -77,6 +78,7 @@ library
     , concurrency
     , containers
     , deepseq
+    , directory
     , exceptions
     , extra
     , hspec
@@ -129,6 +131,7 @@ executable simpleactor-exe
       base >=4.7 && <5
     , containers
     , deepseq
+    , directory
     , extra
     , filepath
     , hspec
@@ -178,6 +181,7 @@ test-suite simpleactor-tests
   build-depends:
       base >=4.7 && <5
     , deepseq
+    , directory
     , extra
     , hspec
     , hspec-contrib
