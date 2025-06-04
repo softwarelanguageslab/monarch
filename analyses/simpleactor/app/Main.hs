@@ -2,6 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main (main) where
 
+import qualified Benchmark.SimpleActor.Precision as Benchmark.Precision
 import Syntax.Compiler
 import Data.Map (Map)
 import Data.List (intercalate)
@@ -47,9 +48,10 @@ inputOptions = InputOptions <$> strOption
 commandParser :: Parser Command
 commandParser =
    subparser
-    (  command "analyze" (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
-    <> command "pre" (info (inferCmd <$> inputOptions) (progDesc "Pre-analysis"))
-    <> command "eval"    (info (interpret <$> inputOptions) (progDesc "Run a program")))
+    (  command "analyze"       (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
+    <> command "pre"           (info (inferCmd <$> inputOptions) (progDesc "Pre-analysis"))
+    <> command "eval"          (info (interpret <$> inputOptions) (progDesc "Run a program"))
+    <> command "precision"     (info (precision <$> inputOptions) (progDesc "Run the precision benchmarks")))
 
 
 ------------------------------------------------------------
@@ -137,8 +139,12 @@ inferCmd (InputOptions { filename, doTranslate }) = do
    -- hPutStrLn dotOut (Infer.toDot $ Infer._graph inferred)
    -- hClose dotOut
 
+------------------------------------------------------------
+-- Precision benchmarks
+------------------------------------------------------------
 
-
+precision :: InputOptions -> IO ()
+precision InputOptions { .. } = mapM_ print =<< Benchmark.Precision.runConcrete filename
 
 ------------------------------------------------------------
 -- Main entrypoint
