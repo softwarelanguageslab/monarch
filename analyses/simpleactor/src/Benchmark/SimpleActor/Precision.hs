@@ -19,6 +19,10 @@ import System.Process
 -- Concrete interpreter
 -------------------------------------------------------------
 
+-- | The default interpreter timeout in microseconds
+defaultInterpreterTimeout :: Int
+defaultInterpreterTimeout = 30*1000*1000*1000
+
 type InterpreterM m = (MonadIO m, MonadError String m)
 
 -- | Create a temporary file based on the given filename 
@@ -36,22 +40,22 @@ interpreterEnv path = [("SIMPLEACTOR_OUT", path)]
 
 runInterpreter :: InterpreterM m
                => String   -- ^ the input file to run
-               -> m [SExp] -- ^ list of datums corresponding to the blames and message sends in the program
+               -> m (Bool, [SExp]) -- ^ list of datums corresponding to the blames and message sends in the program
 runInterpreter filename = do
-  tempFile <- liftIO (createTemp filename) 
-  devNull <- liftIO (openFile "/dev/null" ReadWriteMode)
-  (_, _, _, processHandle) <- liftIO (createProcess ((proc "racket" [filename]) { env = Just (interpreterEnv tempFile), std_out = UseHandle devNull }))
-  _ <- liftIO (waitForProcess processHandle) -- TODO: do something with the exit code?
-  r <- either throwError return =<< parseSexp <$> (liftIO (readFile tempFile))
-  liftIO (removeFile tempFile)
-  return r
+    tempFile <- liftIO (createTemp filename)
+    devNull <- liftIO (openFile "/dev/null" ReadWriteMode)
+    (_, _, _, processHandle) <- liftIO (createProcess ((proc "racket" [filename]) { env = Just (interpreterEnv tempFile), std_out = UseHandle devNull }))
+    isTimedOut <- fmap isNothing $ liftIO $ timeout defaultInterpreterTimeout (waitForProcess processHandle) -- TODO: do something with the exit code?
+    r <- either throwError return . parseSexp =<< liftIO (readFile tempFile)
+    liftIO (removeFile tempFile)
+    return (isTimedOut, r)
 
 -------------------------------------------------------------
 -- Parsing interpreter results
 -------------------------------------------------------------
 
 -- | Collection of results from the interpreter
-data InterpreterResults = InterpreterResults {
+newtype InterpreterResults = InterpreterResults {
     -- | Set of blame locations
     _blames :: Set Span
   } deriving (Ord, Eq, Show)
@@ -76,7 +80,7 @@ parseLoc expr _ = error $ "invalid format for location datum " ++ show expr
 
 -- | Parse a single entry in the log
 parseLog :: InterpreterResultM m => SExp -> m ()
-parseLog (Atom "blame" _ ::: _party ::: loc ::: SNil _) = ask >>= (\filename -> modify (over blames (Set.insert (parseLoc loc filename))))
+parseLog (Atom "blame" _ ::: _party ::: loc ::: SNil _) = ask >>= (modify . over blames . Set.insert . parseLoc loc)
 parseLog (Atom "msg" _ ::: _ref ::: _msg ::: SNil _) = return () -- TODO: support messages and mailboxes
 parseLog _ = return () -- TODO: add some kind of warning here
 
@@ -91,15 +95,14 @@ convertAnalysisResult filename = flip runReader filename
                                . parseLogs
 
 maxRuns :: Int
-maxRuns = 100
+maxRuns = 3
 
 -- | Run the given program in the concrete a number of times and return a set of results
-runConcrete :: String -> IO [InterpreterResults]
+runConcrete :: String -> IO [(Bool, InterpreterResults)]
 runConcrete file = foldMapM (const $  fmap (either error id)  -- handle timeouts by reporting them and using partial results
                                    $  runExceptT
-                                   $  fmap List.singleton
-                                   $  convertAnalysisResult file
-                                  <$> runInterpreter file) [0..3]
+                                   $  List.singleton . fmap (convertAnalysisResult file)
+                                  <$> runInterpreter file) [0..maxRuns]
 
 -------------------------------------------------------------
 -- Static Analysis
