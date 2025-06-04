@@ -8,6 +8,35 @@
 
 (module reader syntax/module-reader simpleactor)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Logging
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Get logging configuration from the current environment
+(define *env* (current-environment-variables))
+(define *logging-output* (getenv *env* "SIMPLEACTOR_OUT"))
+
+;; Logging is handled through a singled thread so that bad interleavings
+;, between threads accessing the same file descriptor to not happen
+(define logging-thread
+  (thread (lambda ()
+    (if *logging-output*
+      (let ((out (open-output-file *logging-output)))
+        (let loop () (write (thread-receive) out) (flush-output out) (loop)))
+      (let loop () (thread-suspend) (loop))))))
+          
+;; Log the given datum to the logging output (if any is available)
+(define (log datum)
+  (thread-send logging-thread datum))
+
+;; Log a message send
+(define (log-send rcv msg)
+  (log `(msg ,rcv ,msg)))
+
+
+;; Log a message blame
+(define (log-blame loc party)
+  (log `(blame ,loc ,party)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Instrumentation for soundness and precision testing
