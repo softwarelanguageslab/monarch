@@ -14,7 +14,7 @@ import Data.List
 import Text.Printf (printf)
 import Control.Monad.DomainError
 import Analysis.Python.Escape (PyEsc)
-import Data.Set (Set)
+import qualified Data.Set as Set
 import Analysis.Python.Monad
 import Language.Python.Common (annot)
 import Domain.Python.Syntax
@@ -28,6 +28,10 @@ import Analysis.Store (CountingMap, store)
 import qualified Lattice.BottomLiftedLattice as BL
 
 import Benchmark.Python.Programs
+import Analysis.Python.Common (ObjAddrSet(addrs))
+import Analysis.Monad.Store (StoreM(lookupAdr))
+import Control.Monad
+import Lattice.Tainted 
 
 newtype Options = Options String
    deriving Show
@@ -42,12 +46,17 @@ printOSto s = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k
                     & filter (\case (PrmAdr _, _) -> False ; _ -> True)
          indent = maximum (map (length . show . fst) adrs) + 5
 
-printRSto :: Map PyCmp PyRes -> String
-printRSto m = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showVal v)) cmps
+printRSto :: (Show obj, Joinable obj) => Map PyCmp PyRes -> Bool -> CountingMap ObjAdr obj -> String
+printRSto m deref osto = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showVal deref v)) cmps
    where cmps = Map.toList m
-         showVal (Escape e) = "[!!: "++show e++"]"
-         showVal (Value v) = show v
-         showVal (MayBoth v e) = "[!!: "++show e++"]" ++ show v
+         showVal _ (Escape e) = "[!!: "++show e++"]"
+         showVal False (Value v) = show v
+         showVal False (MayBoth v e) = "[!!: "++show e++"]" ++ show v
+         showVal True (Value v) = showDereferencedVal v
+         showDereferencedVal (Tainted v _) =  
+            let adrs = Set.toList (addrs v)
+                values = map (\a -> store osto Map.! a) adrs
+            in (values & joins1 & show)
          showCmp ((Main _, _), _) = "<main>"
          showCmp ((LoopBdy loc _ _, _), ctx) = "<loop " ++ show loc ++ " with context " ++ show ctx ++ ">"
          showCmp ((FuncBdy loc _, _), ctx) = "<func " ++ show loc ++ " with context " ++ show ctx ++ ">"
@@ -75,11 +84,23 @@ runFile fileName =
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
-      putStrLn (printRSto rsto)
-      putStrLn "\nOBJECT STORE RESULTS:\n"
-      putStrLn (printOSto osto)
+      putStrLn (printRSto rsto True osto)
+      -- putStrLn "\nOBJECT STORE RESULTS:\n"
+      -- putStrLn (printOSto osto)
       --putStrLn "\nDEPENDENCY GRAPH:\n"
       --putStrLn "\n"
+
+runFilePreanalysis :: String -> IO ()
+runFilePreanalysis fileName =
+   do program <- readFile fileName
+      let Just parsed = parse "testje" program
+      let (rsto, osto, characteristics) = preanalyzeCP parsed
+      putStrLn "\nPROGRAM:\n"
+      putStrLn (prettyString parsed)
+      putStrLn "\nRESULTS PER COMPONENT:\n"
+      putStrLn (printRSto rsto True osto)
+      putStrLn "\nCHARACTERISTICS:\n"
+      print characteristics
 
 benchmarks = allBenchmarks
 
@@ -108,8 +129,7 @@ generateGraph files =
          toType Top = "?"
 
 main :: Options -> IO ()
-main (Options fileName) = runFile fileName
---main (Options fileName) = runREPL
+main (Options fileName) = runFilePreanalysis fileName
 
 ecopipe :: IO ()
 ecopipe = generateGraph [

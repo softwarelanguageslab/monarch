@@ -5,4 +5,3 @@ def fac(n):
         return n * fac(n-1)
     
 result = fac(n=5)
-print(result)

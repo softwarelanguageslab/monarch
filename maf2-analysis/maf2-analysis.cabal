@@ -61,6 +61,7 @@ library
       Analysis.Monad.Taint
       Analysis.Monad.Widen
       Analysis.Monad.WorkList
+      Analysis.Monad.FunctionCharacteristics
       Analysis.Python
       Analysis.Python.Common
       Analysis.Python.Escape

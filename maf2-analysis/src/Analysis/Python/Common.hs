@@ -19,6 +19,7 @@ module Analysis.Python.Common (
   new'',
   from,
   from',
+  emptyObjAddrSet
 ) where
 
 import Lattice hiding (empty, Top)
@@ -77,6 +78,8 @@ typeVal = constant . TypeObject
 
 newtype ObjAddrSet = ObjAddrSet { addrs :: Set ObjAdr }
   deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
+
+emptyObjAddrSet = ObjAddrSet Set.empty
 
 instance Show ObjAddrSet where
   show (ObjAddrSet s) = show (Set.toList s)
