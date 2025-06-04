@@ -13,20 +13,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Get logging configuration from the current environment
-(define *env* (current-environment-variables))
-(define *logging-output* (getenv *env* "SIMPLEACTOR_OUT"))
+(define *logging-output* (getenv "SIMPLEACTOR_OUT"))
+(displayln (format "Logging to ~a is enabled" *logging-output*))
 
 ;; Logging is handled through a singled thread so that bad interleavings
 ;, between threads accessing the same file descriptor to not happen
 (define logging-thread
   (thread (lambda ()
     (if *logging-output*
-      (let ((out (open-output-file *logging-output)))
+      (let ((out (open-output-file *logging-output* #:exists 'truncate)))
         (let loop () (write (thread-receive) out) (flush-output out) (loop)))
-      (let loop () (thread-suspend) (loop))))))
+      (let loop () (thread-suspend (current-thread)) (loop))))))
           
 ;; Log the given datum to the logging output (if any is available)
 (define (log datum)
+  (displayln (format "logging datum ~a" datum))
   (thread-send logging-thread datum))
 
 ;; Log a message send
@@ -62,7 +63,14 @@
 (define-syntax (app-instrumented stx)
   (syntax-parse stx
     [(_ operator operands ...)
-     #'(begin (displayln "app") (#%app operator operands ...))]))
+     #'(begin (#%app operator operands ...))]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Syntax utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-for-syntax (syntax-loc-datum stx)
+  'todo)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Actor language semantics
@@ -82,6 +90,16 @@
           (thread-send (pid-tid new-pid) new-pid)
           new-pid)])) 
 
+(define-syntax (blame stx)
+  (syntax-parse stx
+     [(_ party)
+        (let ((prty (gensym))
+              (loc (syntax-loc-datum #'party)))
+
+        #`(let ((,prty party))
+            (log-blame ,prty ,loc)
+            (error (format "blame error occured, blaming party ~a" prty))))]))
+
 (define-match-expander pair
   (lambda (stx)
     (syntax-case stx ()
@@ -94,6 +112,7 @@
          [pat body ...] ...)]))
 
 (define (send^ ref vlu)
+  (log-send ref vlu)
   (thread-send (pid-tid ref) vlu))
 
 (define (wait-until-terminated ref)
