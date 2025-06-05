@@ -1,13 +1,21 @@
 #lang racket
 
 (provide (all-defined-out)
-         (except-out (all-from-out racket) #%app #%module-begin)
-         (rename-out (app-instrumented #%app) (module-begin-instrumented #%module-begin)))
+         (except-out (all-from-out racket) #%app #%module-begin match cons)
+         (rename-out (set-mcar! set-car!)
+                     (set-mcdr! set-cdr!)
+                     (mcons cons))
+         (rename-out (app-instrumented #%app)
+                     (simpleactor-match match)
+                     (module-begin-instrumented #%module-begin)))
+
+(module reader syntax/module-reader simpleactor)
 
 (require (for-syntax syntax/parse))
 (require "./atomics.rkt")
+(require "./atomic-counter.rkt")
 
-(module reader syntax/module-reader simpleactor)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Logging
@@ -20,6 +28,11 @@
 
 ;; Shutdown logging by receiving the last messages and closing the file descriptor
 (define (shutdown-logging out)
+  (let loop ()
+    (let ((datum (thread-try-receive)))
+      (when datum
+          (begin (write datum out) (loop)))))
+          
   (displayln (format "Closing logging to ~a" *logging-output*))
   (close-output-port out))
 
@@ -44,8 +57,7 @@
                   ;; propagate correctly and breaks remain suspended
                   (sleep 0)
                   (loop)))))
-        (with-handlers [(exn:break:terminate? (lambda (e) 'done))]
-             (let loop () (thread-suspend (current-thread)) (loop))))))))
+          'done)))))
           
 ;; Log the given datum to the logging output (if any is available)
 (define (log datum)
@@ -57,7 +69,7 @@
 
 ;; Log a message send
 (define (log-send rcv msg)
-  (log `(msg ,(pid->datum rcv) ,msg)))
+  (log `(msg ,(pid->datum rcv) ,(if (symbol? msg) msg '(unsupported message print)))))
 
 ;; Log a message blame
 (define (log-blame loc party)
@@ -111,16 +123,16 @@
   (thread-wait logging-thread)
   (exit))
 
+
+(define *active-actor-count* (make-atomic-counter 0))
+(define *in-flight-message-count* (make-atomic-counter 0))
+
 ;; Wait until all actors have finished and stop the logging thread
 (define (shutdown-system)
   (displayln "Startup done ...")
-  ;; HACK to ensure that all actors have started before we wait for them.
-  ;; to make this fool proof we need some control over the scheduler to know
-  ;; whether the program can make some progress somewhere, but we don't so this
-  ;; is the best we got.
-  (sleep 5) 
   (displayln "Waiting for system shutdown ..")
-  (for-each (lambda (thread) (thread-wait thread)) (atomic-gets *running-actors* (lambda (v) v)))
+  (sync *active-actor-count*)
+  (sync *in-flight-message-count*)
   (displayln "All actors have terminated")
   (break-thread logging-thread 'terminate)
   (thread-wait logging-thread)
@@ -132,6 +144,7 @@
   (displayln (format "error: ~a" (exn-message e)))
 
   (when (self)
+    (atomic-counter-decrement *active-actor-count*)
     (kill-thread (current-thread))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -163,13 +176,16 @@
                                      (atomic-modify *running-actors* (lambda (actors) (cons (current-thread) actors)))
                                      (with-handlers ([exn:fail? handle-top-level-error]) 
                                        (parameterize ([self (thread-receive)]) 
-                                         (begin body))))) (quote-syntax #,stx))))
+                                         (begin body (atomic-counter-decrement *active-actor-count*)))))) (quote-syntax #,stx))))
 
+          (atomic-counter-increment *active-actor-count*)
           (thread-send (pid-tid new-pid) new-pid)
           new-pid)])) 
 
 (define-syntax (blame stx)
   (syntax-parse stx
+     [(_ party extra)
+      #'(blame party)]
      [(_ party)
         (let ((loc (syntax-loc-datum #'party)))
           #`(let ((prty party))
@@ -184,11 +200,21 @@
 (define-syntax (receive stx)
   (syntax-parse stx
     [(_ ((pat body ...) ...))
-     #'(match (thread-receive)
-         [pat body ...] ...)]))
+     #'(begin
+         (atomic-counter-decrement *active-actor-count*)
+         (let
+           ((msg (thread-receive)))
+             (atomic-counter-decrement *in-flight-message-count*)
+             (atomic-counter-increment *active-actor-count*)
+             (match msg
+               [pat body ...] ...)))]))
 
 (define (send^ ref vlu)
   (log-send ref vlu)
+  ;; NOTE: this assumes that the receiving actor will always
+  ;; act on the message. If this is not the case (lack of receive block for example)
+  ;; the program might time out.
+  (atomic-counter-increment *in-flight-message-count*)
   (thread-send (pid-tid ref) vlu))
 
 (define (wait-until-terminated ref)
@@ -196,4 +222,17 @@
 
 (define (wait-until-all-finished)
   (shutdown-system))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;: Other compatibility functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; The SimpleActor language has a slightly different syntax
+;; for match expression.
+(define-syntax (simpleactor-match stx)
+  (syntax-parse stx
+    [(_ ex ((pat bdy ...) ...))
+     #'(match ex [pat bdy ...] ...)]))
+
+(define (trace v) v)
 

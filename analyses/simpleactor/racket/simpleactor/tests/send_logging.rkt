@@ -9,6 +9,5 @@
            ((test-actor (spawn^ (test-behavior))))
 
              (displayln "ok")
-             (send^ test-actor 'do)
+             (send^ test-actor 'do)))
 
-             (wait-until-terminated test-actor)))
