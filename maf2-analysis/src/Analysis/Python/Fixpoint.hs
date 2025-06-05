@@ -48,6 +48,7 @@ import Analysis.Monad.FunctionCharacteristics
 type Store obj = CountingMap ObjAdr obj
 
 type IntraT obj m  = MonadStack '[
+                        PythonTaintAnalysisT,
                         MayEscapeTaintedT Taint (Set (PyEsc PyRef)),
                         AllocT PyLoc [PyLoc] ObjAdr, 
                         EnvT PyEnv,
@@ -87,10 +88,13 @@ type PyCmp = Key (IntraT () Identity) PyBdy
 type PyRes = Val (IntraT () Identity) PyRef  
 
 intra :: forall obj m . AnalysisM m obj => PyCmp -> m ()
-intra cmp = runIntraAnalysis cmp m
+intra cmp = m 
+              & runIntraAnalysis cmp 
     where m = do t <- fromJust <$> Analysis.Monad.get (PyCmpTaint cmp)
                  s <- fromJust <$> Analysis.Monad.get (PyCmpStoreIn cmp)
-                 r <- cache cmp (runCallT (uncurry callFix) . evalBdy)
+                 r <- cache cmp (\bdy -> evalBdy bdy 
+                                            & runPythonTaintAnalysisT
+                                            & runCallT (uncurry callFix)) 
                         & runAlloc allocPtr
                         & runWithTaint t 
                         & runStoreT s 
@@ -136,6 +140,7 @@ analyze prg = (rsto, osto, graph)
                                     & runWithComponentTracking @PyCmp
                                     & runWithWorkList @(Set PyCmp)
                                     & runIdentity
+                                    
 
 initialStore :: forall m obj . AnalysisM m obj => m (Store obj)
 initialStore = snd <$> runWithStore @(Store obj) @ObjAdr @obj init
