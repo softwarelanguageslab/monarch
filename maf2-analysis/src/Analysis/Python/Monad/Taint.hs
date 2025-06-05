@@ -14,7 +14,7 @@ import Analysis.Monad hiding (call, get)
 import Domain.Python.Syntax hiding (Continue, Break, Return, None)
 import Domain.Python.World
 import Analysis.Python.Escape
-import Analysis.Python.Monad
+import Analysis.Python.Monad.Core
 
 import Prelude hiding (lookup, exp, break)
 import Control.Monad ((>=>), (<=<))

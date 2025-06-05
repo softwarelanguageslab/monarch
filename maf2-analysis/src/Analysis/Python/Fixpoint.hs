@@ -12,7 +12,7 @@ import Lattice.Tainted (Tainted(..))
 import Analysis.Python.Common
 import Domain.Python.Objects as PyObj  
 import Analysis.Python.Semantics hiding (call)
-import Analysis.Python.Monad
+import Analysis.Python.Monad.Core
 import Analysis.Python.Objects
 import Analysis.Monad hiding (eval, call)
 import Analysis.Python.Monad.Taint

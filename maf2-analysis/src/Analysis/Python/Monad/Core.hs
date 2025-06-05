@@ -3,7 +3,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Analysis.Python.Monad (
+module Analysis.Python.Monad.Core (
   PyBdy(..),
   PyM(..),
   pyDeref',
