@@ -14,10 +14,10 @@ import Analysis.Monad hiding (call, get)
 import Domain.Python.Syntax hiding (Continue, Break, Return, None)
 import Domain.Python.World
 import Analysis.Python.Escape
-import Analysis.Python.Monad.Core
+import Analysis.Python.Monad.Class
 
 import Prelude hiding (lookup, exp, break)
-import Control.Monad ((>=>), (<=<))
+import Control.Monad ((>=>))
 import Analysis.Monad.Call (CallM(..))
 import Lattice.Tainted (Tainted(..))
 import Data.Set (Set)

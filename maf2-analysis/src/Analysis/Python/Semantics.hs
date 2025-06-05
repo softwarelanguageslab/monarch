@@ -12,7 +12,7 @@ import Domain.Python.Syntax hiding (None)
 import qualified Domain.Python.Syntax as Syntax
 import Analysis.Python.Objects
 import Analysis.Python.Common
-import Analysis.Python.Monad.Core
+import Analysis.Python.Monad.Class
 import Analysis.Python.Primitives
 import Control.Monad ((>=>), void)
 import qualified Domain.Core.SeqDomain as SeqDomain

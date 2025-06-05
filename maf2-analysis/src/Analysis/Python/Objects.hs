@@ -15,7 +15,7 @@ module Analysis.Python.Objects where
 
 import Domain.Python.Syntax hiding (Dict, None)
 import Analysis.Python.Common
-import Analysis.Python.Monad.Core
+import Analysis.Python.Monad.Class
 import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
