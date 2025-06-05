@@ -12,9 +12,10 @@ import Lattice.Tainted (Tainted(..))
 import Analysis.Python.Common
 import Domain.Python.Objects as PyObj  
 import Analysis.Python.Semantics hiding (call)
-import Analysis.Python.Monad
+import Analysis.Python.Monad.Class
 import Analysis.Python.Objects
 import Analysis.Monad hiding (eval, call)
+import Analysis.Python.Monad.Taint
 
 import Domain.Python.Syntax
 
@@ -49,7 +50,7 @@ type Store obj = CountingMap ObjAdr obj
 
 type IntraT obj m  = MonadStack '[
                         PythonTaintAnalysisT,
-                        MayEscapeTaintedT Taint (Set (PyEsc PyRef)),
+                        MayEscapeTaintedT Taint (Set (PyEsc PyRefTaint)),
                         AllocT PyLoc [PyLoc] ObjAdr, 
                         EnvT PyEnv,
                         CtxT [PyLoc],
@@ -61,7 +62,7 @@ type IntraT obj m  = MonadStack '[
 
 type IntraT' obj m = IntraT obj (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in IntraT type synonym
 
-type AnalysisM m obj = (PyDomain obj PyRef,
+type AnalysisM m obj = (PyDomain obj PyRefTaint,
                         MapM PyCmp PyRes m,
                         MapM PyCmpTaint Taint m,
                         MapM PyCmpStoreIn (Store obj) m,
@@ -85,7 +86,7 @@ newtype PyCmpStoreOut = PyCmpStoreOut PyCmp
     deriving (Eq, Ord, Show)
 
 type PyCmp = Key (IntraT () Identity) PyBdy
-type PyRes = Val (IntraT () Identity) PyRef  
+type PyRes = Val (IntraT () Identity) PyRefTaint  
 
 intra :: forall obj m . AnalysisM m obj => PyCmp -> m ()
 intra cmp = m 
@@ -102,7 +103,7 @@ intra cmp = m
                  case r of 
                     BL.Value (_, s') -> Analysis.Monad.put (PyCmpStoreOut cmp) s'
                     _                -> return ()
-          callFix :: PyLoc -> PyBdy -> IntraT' obj m PyRef
+          callFix :: PyLoc -> PyBdy -> IntraT' obj m PyRefTaint
           callFix _ bdy = do cmp' <- key bdy
                              spawn cmp' 
                              Analysis.Monad.joinWith (PyCmpTaint cmp') =<< currentTaint 
@@ -124,7 +125,7 @@ inter prg = do let cmp = ((Main prg, initialEnv), [])
                iterateWL (intra @obj)                                              -- start the analysis 
                Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
 
-analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRef) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool))
+analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool))
 analyze prg = (rsto, osto, graph)
     where ((osto, graph), rsto) = inter @obj prg
                                     & runWithGraph @(SimpleGraph (CP String) (CP Bool))
@@ -145,7 +146,7 @@ analyze prg = (rsto, osto, graph)
 initialStore :: forall m obj . AnalysisM m obj => m (Store obj)
 initialStore = snd <$> runWithStore @(Store obj) @ObjAdr @obj init
 
-analyzeREPL :: forall obj . (PyDomain obj PyRef, Typeable obj, Show obj)
+analyzeREPL :: forall obj . (PyDomain obj PyRefTaint, Typeable obj, Show obj)
     => IO PyPrg         -- a read function
     -> (obj -> IO ())   -- a display function
     -> IO ()
@@ -180,7 +181,7 @@ analyzeREPL read display =
 
 
 
-type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
+type PyDomainCP = PyObjCP PyRefTaint ObjAdr PyClo
 
 analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
 analyzeCP = analyze @PyDomainCP
@@ -188,7 +189,7 @@ analyzeCP = analyze @PyDomainCP
 preanalyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, Map String CharacteristicsMap) 
 preanalyzeCP = preanalyze @PyDomainCP 
 
-preanalyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRef) => PyPrg -> (Map PyCmp PyRes, Store obj, Map String CharacteristicsMap)
+preanalyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, Map String CharacteristicsMap)
 preanalyze prg = (rsto, osto, characteristics)
     where (((osto, _), rsto), characteristics) = inter @obj prg
                                     & runWithGraph @(SimpleGraph (CP String) (CP Bool))

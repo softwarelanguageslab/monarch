@@ -21,7 +21,7 @@ import Domain.Class
 import qualified Domain.Core.SeqDomain as SeqDomain
 import qualified Domain
 import Domain.Python.Syntax hiding (Dict, None)
-import Analysis.Python.Monad
+import Analysis.Python.Monad.Class
 import Analysis.Python.Common
 import Control.Monad.Join
 import Analysis.Python.Objects
