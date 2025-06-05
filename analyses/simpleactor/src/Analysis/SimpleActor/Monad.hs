@@ -13,6 +13,7 @@ module Analysis.SimpleActor.Monad
     spawn,
     EvalM,
     Error (..),
+    ActorError(..),
     ActorError,
     MetaT,
     DynamicBindingT,
@@ -89,8 +90,8 @@ instance FreeVariables Cmp where
 -- Errors
 ------------------------------------------------------------
 
--- TODO: BlameErorr should contain label not a string!
-data Error = MatchError | InvalidArgument | BlameError String | ArityMismatch Int Int | NotAnActorReference | NotAFunction Span
+-- TODO: BlameError should contain label not a string!
+data Error = MatchError | InvalidArgument | BlameError String Span | ArityMismatch Int Int | NotAnActorReference | NotAFunction Span
   deriving (Eq, Ord, Show)
 
 

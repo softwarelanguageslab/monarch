@@ -22,6 +22,7 @@ import qualified Analysis.SimpleActor.Infer as Infer
 import System.TimeIt
 import qualified RIO.Set as Set
 import System.Exit
+import RIO (stdout)
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -144,7 +145,7 @@ inferCmd (InputOptions { filename, doTranslate }) = do
 ------------------------------------------------------------
 
 precision :: InputOptions -> IO ()
-precision InputOptions { .. } = mapM_ print =<< Benchmark.Precision.runConcrete filename
+precision InputOptions { .. } = Benchmark.Precision.runPrecision filename stdout
 
 ------------------------------------------------------------
 -- Main entrypoint
