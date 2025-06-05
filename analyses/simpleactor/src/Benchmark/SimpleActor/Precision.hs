@@ -1,9 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 -- | Precision benchmarks by comparing blame errors against blame errors in a concrete interpreter.
 --
 -- These benchmarks assume that the `simpleactor` language is installed by running `raco pkg install`
 -- in the `racket/simpleactor` directory.
-module Benchmark.SimpleActor.Precision(runConcrete) where
+module Benchmark.SimpleActor.Precision(runPrecision) where
 
 import Control.Lens.TH
 import Control.Monad.Except
@@ -21,6 +22,9 @@ import qualified Analysis.SimpleActor.Fixpoint.Modular as Analysis
 import qualified Analysis.SimpleActor.Fixpoint.Sequential as SeqAnalysis
 import Control.Monad.Escape
 import Analysis.SimpleActor.Monad
+import Data.Monoid
+import System.IO hiding (openFile, readFile)
+import Control.Monad.Trans.Maybe
 
 -------------------------------------------------------------
 -- Concrete interpreter
@@ -66,6 +70,12 @@ newtype Results = Results {
     -- | Set of blame locations
     _blames :: Set Span
   } deriving (Ord, Eq, Show)
+
+instance Semigroup Results where
+  (<>) (Results b1) (Results b2) = Results $ Set.union b1 b2
+
+instance Monoid Results where
+  mempty = Results Set.empty
 
 $(makeLenses ''Results)
 
@@ -114,7 +124,7 @@ runConcrete file = foldMapM (const $  fmap (either error id)  -- handle timeouts
 -- | Same as 'runConcrete' but returns the results as a single
 -- set of blame locations.
 runConcrete' :: String -> IO (Bool, Results)
-runConcrete' = undefined -- foldMap (fmap _blames) <$> runConcrete
+runConcrete' = fmap (first getAny . foldMap (first Any)) . runConcrete
 
 -------------------------------------------------------------
 -- Static Analysis
@@ -134,23 +144,45 @@ getBlames = \case MayBoth _ es -> foldMap extractBlames (Set.toList es)
 
 -- | Analyze the given file, returns 'Nothing' if the analysis
 -- of that file times out (according to 'defaultAnalysisTimeout')
-analyzeFile :: FilePath -> IO (Maybe Results)
+analyzeFile :: FilePath -> MaybeT IO Results
 analyzeFile inputFilename = do
     -- parse the file
-    program <- readFile inputFilename <&> (either error id . parseFromString)
-    -- TODO: add timeout here
-    (sequentialResults, mbs) <- Analysis.analyze program
+    program <- liftIO (readFile inputFilename) <&> (either error id . parseFromString)
+
+    (sequentialResults, _mbs) <- MaybeT $ timeout defaultAnalysisTimeout $ Analysis.analyze program
 
     -- process results    
     let sequentialResMap = fmap SeqAnalysis.cmpRes sequentialResults
-    let blames = foldMap (foldMap (getBlames . SeqAnalysis.escapeRes . snd) . Map.toList . snd) (Map.toList sequentialResMap)
+    let blameRes = foldMap (foldMap (getBlames . SeqAnalysis.escapeRes . snd) . Map.toList . snd) (Map.toList sequentialResMap)
 
-    return $ Just $ Results blames  
+    return $ Results blameRes
 
 ------------------------------------------------------------
 -- Precision results
 ------------------------------------------------------------
 
+-- | Output that the given benchmark has timed out
+outputTimeout :: FilePath -> Handle -> IO ()
+outputTimeout path hdl =
+  hPutStrLn hdl $ path ++ ";t;0"
+
+-- | Run the cocnrete interpreter and compare its analysis result
+compareConcrete :: FilePath -- ^ the path to the analyzed file
+                -> Handle   -- ^ a handle for the output
+                -> Results  -- ^ the results of the concrete analysis
+                -> IO ()
+compareConcrete path hdl res = do
+  (timedout, interpResults) <- runConcrete' path
+  let concrBlameSize =  Set.size interpResults._blames
+  let abstrBlameSize =  Set.size res._blames 
+  -- soundness check: concrete reports less blame errors
+  -- than the abstract
+  unless (concrBlameSize <= abstrBlameSize) $
+    error "analysis is unsound"
+  hPutStrLn hdl $ path ++ ";" ++ show (abstrBlameSize - concrBlameSize) ++ if timedout then "1" else "0"  
+
 -- | Output the precision results of a single benchmark to the given file handle
 runPrecision :: FilePath -> Handle -> IO ()
-runPrecision = undefined
+runPrecision path hdl = do
+  anlResult <- runMaybeT (analyzeFile path)
+  maybe (outputTimeout path hdl) (compareConcrete path hdl) anlResult
