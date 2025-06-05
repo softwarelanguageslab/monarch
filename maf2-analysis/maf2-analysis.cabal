@@ -69,6 +69,7 @@ library
       Analysis.Python.Monad.Core
       Analysis.Python.Monad.Class
       Analysis.Python.Monad.Taint
+      Analysis.Python.Monad.Characteristics
       Analysis.Python.Objects
       Analysis.Python.Primitives
       Analysis.Python.Semantics
