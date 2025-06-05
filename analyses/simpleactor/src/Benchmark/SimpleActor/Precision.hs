@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 -- | Precision benchmarks by comparing blame errors against blame errors in a concrete interpreter.
 --
 -- These benchmarks assume that the `simpleactor` language is installed by running `raco pkg install`
@@ -12,8 +13,14 @@ import Syntax.Scheme.Parser
 import Syntax.Span
 import RIO
 import qualified RIO.Set as Set
+import qualified RIO.Map as Map
 import System.Directory
 import System.Process
+import Syntax.Compiler (parseFromString)
+import qualified Analysis.SimpleActor.Fixpoint.Modular as Analysis
+import qualified Analysis.SimpleActor.Fixpoint.Sequential as SeqAnalysis
+import Control.Monad.Escape
+import Analysis.SimpleActor.Monad
 
 -------------------------------------------------------------
 -- Concrete interpreter
@@ -54,21 +61,21 @@ runInterpreter filename = do
 -- Parsing interpreter results
 -------------------------------------------------------------
 
--- | Collection of results from the interpreter
-newtype InterpreterResults = InterpreterResults {
+-- | Collection of results from the interpreter or analysis
+newtype Results = Results {
     -- | Set of blame locations
     _blames :: Set Span
   } deriving (Ord, Eq, Show)
 
-$(makeLenses ''InterpreterResults)
+$(makeLenses ''Results)
 
 -- | Initial value for the interpreter results
-initialResults :: InterpreterResults
-initialResults = InterpreterResults Set.empty
+initialResults :: Results
+initialResults = Results Set.empty
 
 
 -- | Monad in which the interpreter results are collected
-type InterpreterResultM m = (MonadState InterpreterResults m, -- state over collected results 
+type InterpreterResultM m = (MonadState Results m, -- state over collected results 
                              MonadReader String m -- name of the file in the environment
                             )
 
@@ -89,7 +96,7 @@ parseLogs :: InterpreterResultM m => [SExp] -> m ()
 parseLogs = mapM_ parseLog
 
 -- | Convert logs to interpreter results
-convertAnalysisResult :: String -> [SExp] -> InterpreterResults
+convertAnalysisResult :: String -> [SExp] -> Results
 convertAnalysisResult filename = flip runReader filename
                                . flip execStateT initialResults
                                . parseLogs
@@ -98,12 +105,52 @@ maxRuns :: Int
 maxRuns = 3
 
 -- | Run the given program in the concrete a number of times and return a set of results
-runConcrete :: String -> IO [(Bool, InterpreterResults)]
+runConcrete :: String -> IO [(Bool, Results)]
 runConcrete file = foldMapM (const $  fmap (either error id)  -- handle timeouts by reporting them and using partial results
                                    $  runExceptT
                                    $  List.singleton . fmap (convertAnalysisResult file)
                                   <$> runInterpreter file) [0..maxRuns]
 
+-- | Same as 'runConcrete' but returns the results as a single
+-- set of blame locations.
+runConcrete' :: String -> IO (Bool, Results)
+runConcrete' = undefined -- foldMap (fmap _blames) <$> runConcrete
+
 -------------------------------------------------------------
 -- Static Analysis
 -------------------------------------------------------------
+
+-- | The default analysis timeout in microseconds
+defaultAnalysisTimeout :: Int
+defaultAnalysisTimeout = 10*60*1000*1000*1000
+
+-- | Return the locations of blame errors predicted by the analysis
+getBlames :: MayEscape (Set ActorError) v -> Set Span
+getBlames = \case MayBoth _ es -> foldMap extractBlames (Set.toList es)
+                  Escape es    -> foldMap extractBlames (Set.toList es)
+                  _            -> Set.empty
+      where extractBlames (ActorError (BlameError _ loc)) = Set.singleton loc
+            extractBlames _ = Set.empty
+
+-- | Analyze the given file, returns 'Nothing' if the analysis
+-- of that file times out (according to 'defaultAnalysisTimeout')
+analyzeFile :: FilePath -> IO (Maybe Results)
+analyzeFile inputFilename = do
+    -- parse the file
+    program <- readFile inputFilename <&> (either error id . parseFromString)
+    -- TODO: add timeout here
+    (sequentialResults, mbs) <- Analysis.analyze program
+
+    -- process results    
+    let sequentialResMap = fmap SeqAnalysis.cmpRes sequentialResults
+    let blames = foldMap (foldMap (getBlames . SeqAnalysis.escapeRes . snd) . Map.toList . snd) (Map.toList sequentialResMap)
+
+    return $ Just $ Results blames  
+
+------------------------------------------------------------
+-- Precision results
+------------------------------------------------------------
+
+-- | Output the precision results of a single benchmark to the given file handle
+runPrecision :: FilePath -> Handle -> IO ()
+runPrecision = undefined

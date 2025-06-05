@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- | Analysis to analyse the inner actor semantics
-module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes, ActorRes(..), MB) where
+module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes, ActorRes(..), MB, escapeRes) where
 
 ------------------------------------------------------------
 -- Imports
@@ -60,6 +60,9 @@ import Control.Monad.Writer.Class (MonadWriter(tell))
 -- | A component in the sequential analysis
 type SequentialCmp = Key (SequentialT Identity) Cmp
 type SequentialRes = Val (SequentialT Identity) ActorVlu
+
+escapeRes :: SequentialRes -> MayEscape (Set ActorError) ActorVlu
+escapeRes (escapeValue ::*:: _) = escapeValue
 
 ------------------------------------------------------------
 -- Monad stack

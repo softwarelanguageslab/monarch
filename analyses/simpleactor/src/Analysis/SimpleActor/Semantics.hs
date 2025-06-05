@@ -109,16 +109,16 @@ eval' _ (Var (Ide x _)) =
 eval' _ (DynVar (Ide x _)) =
    lookupDynamic x >>= lookupVar >>= showIfBot (show x ++ " dyn not in store")
 eval' _ (Self _) = aref <$> getSelf @v
-eval' rec (Blame e _) =
-   eval' rec e >>= escape . BlameError . show
+eval' rec (Blame e loc) =
+   eval' rec e >>= escape . flip BlameError loc . show
 eval' rec (Meta e _) =
    withMetaSet (eval' rec e)
    -- withMetaSet (withCtx (spanOf e:) (eval' rec e))
 eval' rec (Trace e _) = do
    v <- eval' rec e
    (liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) v  $> v
-eval' rec (Error e _) =
-   eval' rec e >>= escape . BlameError . show
+eval' rec (Error e loc) =
+   eval' rec e >>= escape . flip BlameError loc . show
 eval' _ e = error $  "unsupported expression: " ++ show e
 
 trySend :: EvalM v k m => v -> v -> m ()
