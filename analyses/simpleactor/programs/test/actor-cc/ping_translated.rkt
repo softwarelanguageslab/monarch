@@ -1,3 +1,4 @@
+#lang simpleactor
 (letrec ((any? (lambda (v) #t))
          (meta (lambda (v) v))
          (member
@@ -5,7 +6,8 @@
             (begin
               (match
                lst
-               ((() #f) ((pair v1 vs) (if (eq? v v1) #t (member v vs))))))))
+               (((list) #f)
+                ((pair v1 vs) (if (eq? v v1) #t (member v vs))))))))
          (unconstrained/c #f)
          (actor? (lambda (k j) (lambda (v) v)))
          (nonzero? (lambda (v) (not (= v 0)))))
@@ -14,17 +16,17 @@
              (>=
               (lambda (x y)
                 (assert (number? x))
-                (letrec ((val7244 (> x y)))
-                  (if val7244
-                    val7244
-                    (letrec ((val7245 (= x y))) (if val7245 val7245 #f))))))
+                (letrec ((val1579 (> x y)))
+                  (if val1579
+                    val1579
+                    (letrec ((val1580 (= x y))) (if val1580 val1580 #f))))))
              (<=
               (lambda (x y)
                 (assert (number? x))
-                (letrec ((val7246 (< x y)))
-                  (if val7246
-                    val7246
-                    (letrec ((val7247 (= x y))) (if val7247 val7247 #f))))))
+                (letrec ((val1581 (< x y)))
+                  (if val1581
+                    val1581
+                    (letrec ((val1582 (= x y))) (if val1582 val1582 #f))))))
              (> (lambda (x y) (assert (number? x)) (not (<= x y))))
              (orig-+ +)
              (orig-- -)
@@ -32,66 +34,67 @@
              (orig-/ /)
              (orig-> >)
              (orig-< <)
+             (orig-= =)
              (orig->= >=)
              (orig-<= <=)
              (orig-car car)
              (orig-cdr cdr)
              (orig-cons cons)
              (orig-vector-ref vector-ref)
-             (orig-vector-set vector-set!))
+             (orig-vector-set! vector-set!))
       '()
       (letrec ((empty '())
                (listof
                 (lambda (contract)
                   (lambda (k j lst) (map (lambda (v) (contract k j v)) lst))))
                (real?/c
-                (lambda (g7263 g7264 g7265)
-                  (if (real? g7265) g7265 (blame g7263 'real?))))
+                (lambda (g1598 g1599 g1600)
+                  (if (real? g1600) g1600 (blame g1598 'real?))))
                (boolean?/c
-                (lambda (g7266 g7267 g7268)
-                  (if (boolean? g7268) g7268 (blame g7266 'boolean?))))
+                (lambda (g1601 g1602 g1603)
+                  (if (boolean? g1603) g1603 (blame g1601 'boolean?))))
                (number?/c
-                (lambda (g7269 g7270 g7271)
-                  (if (number? g7271) g7271 (blame g7269 'number?))))
+                (lambda (g1604 g1605 g1606)
+                  (if (number? g1606) g1606 (blame g1604 'number?))))
                (any/c
-                (lambda (g7272 g7273 g7274)
-                  (if ((lambda (v) #t) g7274)
-                    g7274
-                    (blame g7272 '(lambda (v) #t)))))
+                (lambda (g1607 g1608 g1609)
+                  (if ((lambda (v) #t) g1609)
+                    g1609
+                    (blame g1607 '(lambda (v) #t)))))
                (any?/c
-                (lambda (g7275 g7276 g7277)
-                  (if ((lambda (v) #t) g7277)
-                    g7277
-                    (blame g7275 '(lambda (v) #t)))))
+                (lambda (g1610 g1611 g1612)
+                  (if ((lambda (v) #t) g1612)
+                    g1612
+                    (blame g1610 '(lambda (v) #t)))))
                (cons?/c
-                (lambda (g7278 g7279 g7280)
-                  (if (pair? g7280) g7280 (blame g7278 'pair?))))
+                (lambda (g1613 g1614 g1615)
+                  (if (pair? g1615) g1615 (blame g1613 'pair?))))
                (cons/c
                 (lambda (k1 k2)
                   (lambda (k j v) (cons (k1 k j (car v)) (k2 k j (cdr v))))))
                (pair?/c
-                (lambda (g7281 g7282 g7283)
-                  (if (pair? g7283) g7283 (blame g7281 'pair?))))
+                (lambda (g1616 g1617 g1618)
+                  (if (pair? g1618) g1618 (blame g1616 'pair?))))
                (integer?/c
-                (lambda (g7284 g7285 g7286)
-                  (if (integer? g7286) g7286 (blame g7284 'integer?))))
+                (lambda (g1619 g1620 g1621)
+                  (if (integer? g1621) g1621 (blame g1619 'integer?))))
                (symbol?/c
-                (lambda (g7287 g7288 g7289)
-                  (if (symbol? g7289) g7289 (blame g7287 'symbol?))))
+                (lambda (g1622 g1623 g1624)
+                  (if (symbol? g1624) g1624 (blame g1622 'symbol?))))
                (string?/c
-                (lambda (g7290 g7291 g7292)
-                  (if (string? g7292) g7292 (blame g7290 'string?))))
+                (lambda (g1625 g1626 g1627)
+                  (if (string? g1627) g1627 (blame g1625 'string?))))
                (and/c
                 (lambda (c1 c2)
                   (lambda (k j v) (if (c1 k j v) (c2 k j v) #f))))
                (or/c
                 (lambda (c1 c2)
                   (lambda (k j v)
-                    (letrec ((val7248 (c1 k j v)))
-                      (if val7248 val7248 (c2 k j v))))))
+                    (letrec ((val1583 (c1 k j v)))
+                      (if val1583 val1583 (c2 k j v))))))
                (null?/c
-                (lambda (g7293 g7294 g7295)
-                  (if (null? g7295) g7295 (blame g7293 'null?))))
+                (lambda (g1628 g1629 g1630)
+                  (if (null? g1630) g1630 (blame g1628 'null?))))
                (list-of
                 (lambda (contract)
                   (lambda (k j v)
@@ -103,204 +106,207 @@
                (any? (lambda (v) #t))
                (nonzero? (lambda (v) (not (= v 0))))
                (nonzero?/c
-                (lambda (g7296 g7297 g7298)
-                  (if ((lambda (v) (not (= v 0))) g7298)
-                    g7298
-                    (blame g7296 '(lambda (v) (not (= v 0)))))))
+                (lambda (g1631 g1632 g1633)
+                  (if ((lambda (v) (not (= v 0))) g1633)
+                    g1633
+                    (blame g1631 '(lambda (v) (not (= v 0)))))))
                (>=/c
                 (lambda (n)
-                  (lambda (g7299 g7300 g7301)
-                    (if ((lambda (v) (orig->= v n)) g7301)
-                      g7301
-                      (blame g7299 '(lambda (v) (orig->= v n)))))))
+                  (lambda (g1634 g1635 g1636)
+                    (if ((lambda (v) (orig->= v n)) g1636)
+                      g1636
+                      (blame g1634 '(lambda (v) (orig->= v n)))))))
                (>/c
                 (lambda (n)
-                  (lambda (g7302 g7303 g7304)
-                    (if ((lambda (v) (orig-> v n)) g7304)
-                      g7304
-                      (blame g7302 '(lambda (v) (orig-> v n)))))))
+                  (lambda (g1637 g1638 g1639)
+                    (if ((lambda (v) (orig-> v n)) g1639)
+                      g1639
+                      (blame g1637 '(lambda (v) (orig-> v n)))))))
                (</c
                 (lambda (n)
-                  (lambda (g7305 g7306 g7307)
-                    (if ((lambda (v) (orig-< v n)) g7307)
-                      g7307
-                      (blame g7305 '(lambda (v) (orig-< v n)))))))
+                  (lambda (g1640 g1641 g1642)
+                    (if ((lambda (v) (orig-< v n)) g1642)
+                      g1642
+                      (blame g1640 '(lambda (v) (orig-< v n)))))))
                (<=/c
                 (lambda (n)
-                  (lambda (g7308 g7309 g7310)
-                    (if ((lambda (v) (orig-<= v n)) g7310)
-                      g7310
-                      (blame g7308 '(lambda (v) (orig-<= v n)))))))
+                  (lambda (g1643 g1644 g1645)
+                    (if ((lambda (v) (orig-<= v n)) g1645)
+                      g1645
+                      (blame g1643 '(lambda (v) (orig-<= v n)))))))
                (=/c
                 (lambda (n)
-                  (lambda (g7311 g7312 g7313)
-                    (if ((lambda (v) (orig-= v n)) g7313)
-                      g7313
-                      (blame g7311 '(lambda (v) (orig-= v n)))))))
+                  (lambda (g1646 g1647 g1648)
+                    (if ((lambda (v) (orig-= v n)) g1648)
+                      g1648
+                      (blame g1646 '(lambda (v) (orig-= v n)))))))
                (meta (lambda (v) v))
                (+
-                (letrec ((xj7314 'server) (xk7315 'client))
-                  ((lambda (j7318 k7319 f7320)
-                     (lambda (g7316 g7317)
+                (letrec ((xj1649 'server) (xk1650 'client))
+                  ((lambda (j1653 k1654 f1655)
+                     (lambda (g1651 g1652)
                        (number?/c
-                        j7318
-                        k7319
-                        (f7320
-                         (number?/c j7318 k7319 g7316)
-                         (number?/c j7318 k7319 g7317)))))
-                   xj7314
-                   xk7315
+                        j1653
+                        k1654
+                        (f1655
+                         (number?/c j1653 k1654 g1651)
+                         (number?/c j1653 k1654 g1652)))))
+                   xj1649
+                   xk1650
                    (lambda (a b) (orig-+ a b)))))
                (-
-                (letrec ((xj7321 'server) (xk7322 'client))
-                  ((lambda (j7325 k7326 f7327)
-                     (lambda (g7323 g7324)
+                (letrec ((xj1656 'server) (xk1657 'client))
+                  ((lambda (j1660 k1661 f1662)
+                     (lambda (g1658 g1659)
                        (number?/c
-                        j7325
-                        k7326
-                        (f7327
-                         (number?/c j7325 k7326 g7323)
-                         (number?/c j7325 k7326 g7324)))))
-                   xj7321
-                   xk7322
+                        j1660
+                        k1661
+                        (f1662
+                         (number?/c j1660 k1661 g1658)
+                         (number?/c j1660 k1661 g1659)))))
+                   xj1656
+                   xk1657
                    (lambda (a b) (orig-- a b)))))
                (*
-                (letrec ((xj7328 'server) (xk7329 'client))
-                  ((lambda (j7332 k7333 f7334)
-                     (lambda (g7330 g7331)
+                (letrec ((xj1663 'server) (xk1664 'client))
+                  ((lambda (j1667 k1668 f1669)
+                     (lambda (g1665 g1666)
                        (number?/c
-                        j7332
-                        k7333
-                        (f7334
-                         (number?/c j7332 k7333 g7330)
-                         (number?/c j7332 k7333 g7331)))))
-                   xj7328
-                   xk7329
+                        j1667
+                        k1668
+                        (f1669
+                         (number?/c j1667 k1668 g1665)
+                         (number?/c j1667 k1668 g1666)))))
+                   xj1663
+                   xk1664
                    (lambda (a b) (orig-* a b)))))
                (<
-                (letrec ((xj7335 'server) (xk7336 'client))
-                  ((lambda (j7339 k7340 f7341)
-                     (lambda (g7337 g7338)
+                (letrec ((xj1670 'server) (xk1671 'client))
+                  ((lambda (j1674 k1675 f1676)
+                     (lambda (g1672 g1673)
                        (boolean?/c
-                        j7339
-                        k7340
-                        (f7341
-                         (number?/c j7339 k7340 g7337)
-                         (number?/c j7339 k7340 g7338)))))
-                   xj7335
-                   xk7336
+                        j1674
+                        k1675
+                        (f1676
+                         (number?/c j1674 k1675 g1672)
+                         (number?/c j1674 k1675 g1673)))))
+                   xj1670
+                   xk1671
                    (lambda (a b) (orig-< a b)))))
                (>
-                (letrec ((xj7342 'server) (xk7343 'client))
-                  ((lambda (j7346 k7347 f7348)
-                     (lambda (g7344 g7345)
+                (letrec ((xj1677 'server) (xk1678 'client))
+                  ((lambda (j1681 k1682 f1683)
+                     (lambda (g1679 g1680)
                        (boolean?/c
-                        j7346
-                        k7347
-                        (f7348
-                         (number?/c j7346 k7347 g7344)
-                         (number?/c j7346 k7347 g7345)))))
-                   xj7342
-                   xk7343
+                        j1681
+                        k1682
+                        (f1683
+                         (number?/c j1681 k1682 g1679)
+                         (number?/c j1681 k1682 g1680)))))
+                   xj1677
+                   xk1678
                    (lambda (a b) (orig-> a b)))))
                (<=
-                (letrec ((xj7349 'server) (xk7350 'client))
-                  ((lambda (j7353 k7354 f7355)
-                     (lambda (g7351 g7352)
+                (letrec ((xj1684 'server) (xk1685 'client))
+                  ((lambda (j1688 k1689 f1690)
+                     (lambda (g1686 g1687)
                        (boolean?/c
-                        j7353
-                        k7354
-                        (f7355
-                         (number?/c j7353 k7354 g7351)
-                         (number?/c j7353 k7354 g7352)))))
-                   xj7349
-                   xk7350
+                        j1688
+                        k1689
+                        (f1690
+                         (number?/c j1688 k1689 g1686)
+                         (number?/c j1688 k1689 g1687)))))
+                   xj1684
+                   xk1685
                    (lambda (a b) (orig-<= a b)))))
                (>=
-                (letrec ((xj7356 'server) (xk7357 'client))
-                  ((lambda (j7360 k7361 f7362)
-                     (lambda (g7358 g7359)
+                (letrec ((xj1691 'server) (xk1692 'client))
+                  ((lambda (j1695 k1696 f1697)
+                     (lambda (g1693 g1694)
                        (boolean?/c
-                        j7360
-                        k7361
-                        (f7362
-                         (number?/c j7360 k7361 g7358)
-                         (number?/c j7360 k7361 g7359)))))
-                   xj7356
-                   xk7357
+                        j1695
+                        k1696
+                        (f1697
+                         (number?/c j1695 k1696 g1693)
+                         (number?/c j1695 k1696 g1694)))))
+                   xj1691
+                   xk1692
                    (lambda (a b) (orig->= a b)))))
                (add1 (lambda (x) (+ x 1)))
                (/
-                (letrec ((xj7363 'server) (xk7364 'client))
-                  ((lambda (j7367 k7368 f7369)
-                     (lambda (g7365 g7366)
+                (letrec ((xj1698 'server) (xk1699 'client))
+                  ((lambda (j1702 k1703 f1704)
+                     (lambda (g1700 g1701)
                        (number?/c
-                        j7367
-                        k7368
-                        (f7369
-                         (number?/c j7367 k7368 g7365)
-                         (number?/c j7367 k7368 g7366)))))
-                   xj7363
-                   xk7364
+                        j1702
+                        k1703
+                        (f1704
+                         (number?/c j1702 k1703 g1700)
+                         (number?/c j1702 k1703 g1701)))))
+                   xj1698
+                   xk1699
                    (lambda (a b) (orig-/ a b)))))
                (car
-                (letrec ((xj7370 'server) (xk7371 'client))
-                  ((lambda (j7373 k7374 f7375)
-                     (lambda (g7372)
+                (letrec ((xj1705 'server) (xk1706 'client))
+                  ((lambda (j1708 k1709 f1710)
+                     (lambda (g1707)
                        (any/c
-                        j7373
-                        k7374
-                        (f7375 (pair?/c j7373 k7374 g7372)))))
-                   xj7370
-                   xk7371
+                        j1708
+                        k1709
+                        (f1710 (pair?/c j1708 k1709 g1707)))))
+                   xj1705
+                   xk1706
                    (lambda (p) (orig-car p)))))
                (cdr
-                (letrec ((xj7376 'server) (xk7377 'client))
-                  ((lambda (j7379 k7380 f7381)
-                     (lambda (g7378)
+                (letrec ((xj1711 'server) (xk1712 'client))
+                  ((lambda (j1714 k1715 f1716)
+                     (lambda (g1713)
                        (any/c
-                        j7379
-                        k7380
-                        (f7381 (pair?/c j7379 k7380 g7378)))))
-                   xj7376
-                   xk7377
+                        j1714
+                        k1715
+                        (f1716 (pair?/c j1714 k1715 g1713)))))
+                   xj1711
+                   xk1712
                    (lambda (p) (orig-cdr p)))))
                (cons
-                (letrec ((xj7382 'server) (xk7383 'client))
-                  ((lambda (j7386 k7387 f7388)
-                     (lambda (g7384 g7385)
+                (letrec ((xj1717 'server) (xk1718 'client))
+                  ((lambda (j1721 k1722 f1723)
+                     (lambda (g1719 g1720)
                        (pair?/c
-                        j7386
-                        k7387
-                        (f7388
-                         (any/c j7386 k7387 g7384)
-                         (any/c j7386 k7387 g7385)))))
-                   xj7382
-                   xk7383
+                        j1721
+                        k1722
+                        (f1723
+                         (any/c j1721 k1722 g1719)
+                         (any/c j1721 k1722 g1720)))))
+                   xj1717
+                   xk1718
                    (lambda (a b) (orig-cons a b)))))
+               (vector?/c
+                (lambda (g1724 g1725 g1726)
+                  (if (vector? g1726) g1726 (blame g1724 'vector?))))
                (vector-ref
-                (letrec ((xj7389 'server) (xk7390 'client))
-                  ((lambda (j7392 k7393 f7394)
-                     (lambda (g7391)
+                (letrec ((xj1727 'server) (xk1728 'client))
+                  ((lambda (j1730 k1731 f1732)
+                     (lambda (g1729)
                        (integer?/c
-                        j7392
-                        k7393
-                        (f7394 (vector?/c j7392 k7393 g7391)))))
-                   xj7389
-                   xk7390
+                        j1730
+                        k1731
+                        (f1732 (vector?/c j1730 k1731 g1729)))))
+                   xj1727
+                   xk1728
                    (lambda (v i) (orig-vector-ref v i)))))
                (vector-set!
-                (letrec ((xj7395 'server) (xk7396 'client))
-                  ((lambda (j7399 k7400 f7401)
-                     (lambda (g7397 g7398)
+                (letrec ((xj1733 'server) (xk1734 'client))
+                  ((lambda (j1737 k1738 f1739)
+                     (lambda (g1735 g1736)
                        (any/c
-                        j7399
-                        k7400
-                        (f7401
-                         (vector?/c j7399 k7400 g7397)
-                         (integer?/c j7399 k7400 g7398)))))
-                   xj7395
-                   xk7396
+                        j1737
+                        k1738
+                        (f1739
+                         (vector?/c j1737 k1738 g1735)
+                         (integer?/c j1737 k1738 g1736)))))
+                   xj1733
+                   xk1734
                    (lambda (vec i v) (orig-vector-set! vec i v)))))
                (cdddr (lambda (x) (cdr (cdr (cdr x)))))
                (__toplevel_set-car! set-car!)
@@ -329,36 +335,28 @@
                     #f
                     (if (eq? (caar l) k) (car l) (assq k (cdr l))))))
                (even? (lambda (x) (= 0 (modulo x 2))))
-               (list->string
-                (lambda (l)
-                  (assert (list? l))
-                  (if (null? l)
-                    ""
-                    (string-append
-                     (char->string (car l))
-                     (list->string (cdr l))))))
                (char<=?
                 (lambda (c1 c2)
                   (assert (char? c1))
                   (assert (char? c2))
-                  (letrec ((val7249 (char<? c1 c2)))
-                    (if val7249 val7249 (char=? c1 c2)))))
+                  (letrec ((val1584 (char<? c1 c2)))
+                    (if val1584 val1584 (char=? c1 c2)))))
                (cdddar (lambda (x) (cdr (cdr (cdr (car x))))))
                (list-tail
                 (lambda (x k)
-                  (assert (list? l))
-                  (assert (number?))
+                  (assert (list? x))
+                  (assert (number? k))
                   (if (zero? k) x (list-tail (cdr x) (- k 1)))))
                (halt (lambda () '()))
                (char-alphabetic?
                 (lambda (c) (if (char-ci>=? c #\a) (char-ci<=? c #\z) #f)))
                (char-whitespace?
                 (lambda (c)
-                  (letrec ((val7250 (= (char->integer c) 9)))
-                    (if val7250
-                      val7250
-                      (letrec ((val7251 (= (char->integer c) 10)))
-                        (if val7251 val7251 (= (char->integer c) 32)))))))
+                  (letrec ((val1585 (= (char->integer c) 9)))
+                    (if val1585
+                      val1585
+                      (letrec ((val1586 (= (char->integer c) 10)))
+                        (if val1586 val1586 (= (char->integer c) 32)))))))
                (cddar (lambda (x) (cdr (cdr (car x)))))
                (positive? (lambda (x) (assert (number? x)) (> x 0)))
                (string=? (lambda (s1 s2) (bool-top)))
@@ -371,21 +369,22 @@
                   (assert (number? x))
                   (if (< x 0) (ceiling x) (floor x))))
                ($cmp '())
+               (bool-top (lambda () (if (> (random) 0.5) #t #f)))
                (equal?
                 (lambda (a b)
-                  (letrec ((val7252 (eq? a b)))
-                    (if val7252
-                      val7252
-                      (letrec ((val7253 (if (null? a) (null? b) #f)))
-                        (if val7253
-                          val7253
-                          (letrec ((val7254
+                  (letrec ((val1587 (eq? a b)))
+                    (if val1587
+                      val1587
+                      (letrec ((val1588 (if (null? a) (null? b) #f)))
+                        (if val1588
+                          val1588
+                          (letrec ((val1589
                                     (if (string? a)
                                       (if (string? b) (string=? a b) #f)
                                       #f)))
-                            (if val7254
-                              val7254
-                              (letrec ((val7255
+                            (if val1589
+                              val1589
+                              (letrec ((val1590
                                         (if (pair? a)
                                           (if (pair? b)
                                             (if (equal? (car a) (car b))
@@ -393,18 +392,18 @@
                                               #f)
                                             #f)
                                           #f)))
-                                (if val7255
-                                  val7255
+                                (if val1590
+                                  val1590
                                   (if (vector? a)
                                     (if (vector? b)
                                       (letrec ((n (vector-length a)))
                                         (if (= (vector-length b) n)
                                           (letrec ((loop
                                                     (lambda (i)
-                                                      (letrec ((val7256
+                                                      (letrec ((val1591
                                                                 (= i n)))
-                                                        (if val7256
-                                                          val7256
+                                                        (if val1591
+                                                          val1591
                                                           (if (equal?
                                                                (vector-ref a i)
                                                                (vector-ref
@@ -432,8 +431,8 @@
                 (lambda (c1 c2)
                   (assert (char? c1))
                   (assert (char? c2))
-                  (letrec ((val7257 (char>? c1 c2)))
-                    (if val7257 val7257 (char=? c1 c2)))))
+                  (letrec ((val1592 (char>? c1 c2)))
+                    (if val1592 val1592 (char=? c1 c2)))))
                (cdaar (lambda (x) (cdr (car (car x)))))
                (cdaddr (lambda (x) (cdr (car (cdr (cdr x))))))
                (__toplevel_cdr cdr)
@@ -519,14 +518,14 @@
                (zero? (lambda (x) (assert (number? x)) (= x 0)))
                (string>=?
                 (lambda (s1 s2)
-                  (letrec ((val7258 (string>? s1 s2)))
-                    (if val7258 val7258 (string=? s1 s2)))))
+                  (letrec ((val1593 (string>? s1 s2)))
+                    (if val1593 val1593 (string=? s1 s2)))))
                (cadr (lambda (x) (car (cdr x))))
                (__toplevel_car car)
                (list?
                 (lambda (l)
-                  (letrec ((val7259 (if (pair? l) (list? (cdr l)) #f)))
-                    (if val7259 val7259 (null? l)))))
+                  (letrec ((val1594 (if (pair? l) (list? (cdr l)) #f)))
+                    (if val1594 val1594 (null? l)))))
                (cddaar (lambda (x) (cdr (cdr (car (car x))))))
                (char-numeric?
                 (lambda (c) (if (char<=? #\0 c) (char<=? c #\9) #f)))
@@ -554,8 +553,8 @@
                 (lambda (c1 c2)
                   (assert (char? c1))
                   (assert (char? c2))
-                  (letrec ((val7260 (char-ci<? c1 c2)))
-                    (if val7260 val7260 (char-ci=? c1 c2)))))
+                  (letrec ((val1595 (char-ci<? c1 c2)))
+                    (if val1595 val1595 (char-ci=? c1 c2)))))
                (string>? (lambda (s1 s2) (not (string<=? s1 s2))))
                (cdadr (lambda (x) (cdr (car (cdr x)))))
                (assoc
@@ -572,8 +571,8 @@
                   (not (char<=? c1 c2))))
                (string<=?
                 (lambda (s1 s2)
-                  (letrec ((val7261 (string<? s1 s2)))
-                    (if val7261 val7261 (string=? s1 s2)))))
+                  (letrec ((val1596 (string<? s1 s2)))
+                    (if val1596 val1596 (string=? s1 s2)))))
                (for-each
                 (lambda (f l)
                   (assert (procedure? f))
@@ -588,8 +587,8 @@
                 (lambda (c1 c2)
                   (assert (char? c1))
                   (assert (char? c2))
-                  (letrec ((val7262 (char-ci>? c1 c2)))
-                    (if val7262 val7262 (char-ci=? c1 c2)))))
+                  (letrec ((val1597 (char-ci>? c1 c2)))
+                    (if val1597 val1597 (char-ci=? c1 c2)))))
                (caddar (lambda (x) (car (cdr (cdr (car x))))))
                (newline (lambda () #f))
                (lcm (lambda (m n) (/ (abs (* m n)) (gcd m n))))
@@ -610,24 +609,23 @@
                         (((pair 'ping sender)
                           (begin
                             (print 'ping)
-                            (sender (pair 'pong (dyn self)))
+                            (sender (pair 'pong (self^)))
                             (ping-behavior)))
                          ((pair
                            'enhanced
-                           (pair k7402 (pair j7406 (pair 'ping sender))))
-                          (letrec ((kc7403 (k7402 j7406))
-                                   (old-send7407 (dyn send^)))
+                           (pair k1740 (pair j1744 (pair 'ping sender))))
+                          (letrec ((kc1741 (k1740 j1744))
+                                   (old-send1745 (dyn send^)))
                             (parametrize
                              ((send^
-                               (lambda (rcv7404 msg7405)
-                                 (old-send7407
-                                  kc7403
-                                  (pair rcv7404 msg7405)))))
+                               (lambda (rcv1742 msg1743)
+                                 (old-send1745
+                                  kc1741
+                                  (pair rcv1742 msg1743)))))
                              (begin
-                               (print-env)
                                (print 'ping)
-                               (sender (pair 'pong (dyn self)))
-                               (old-send7407 kc7403 'finish)))
+                               (sender (pair 'pong (self^)))
+                               (old-send1745 kc1741 'finish)))
                             (ping-behavior)))))))))
                  (pong-behavior
                   (lambda ()
@@ -638,97 +636,96 @@
                         (((pair 'pong sender)
                           (begin
                             (print 'pong)
-                            (sender (pair 'ping (dyn self)))
+                            (sender (pair 'ping (self^)))
                             (pong-behavior)))
                          ((pair
                            'enhanced
-                           (pair k7409 (pair j7413 (pair 'pong sender))))
-                          (letrec ((kc7410 (k7409 j7413))
-                                   (old-send7414 (dyn send^)))
+                           (pair k1747 (pair j1751 (pair 'pong sender))))
+                          (letrec ((kc1748 (k1747 j1751))
+                                   (old-send1752 (dyn send^)))
                             (parametrize
                              ((send^
-                               (lambda (rcv7411 msg7412)
-                                 (old-send7414
-                                  kc7410
-                                  (pair rcv7411 msg7412)))))
+                               (lambda (rcv1749 msg1750)
+                                 (old-send1752
+                                  kc1748
+                                  (pair rcv1749 msg1750)))))
                              (begin
-                               (print-env)
                                (print 'pong)
-                               (sender (pair 'ping (dyn self)))
-                               (old-send7414 kc7410 'finish)))
+                               (sender (pair 'ping (self^)))
+                               (old-send1752 kc1748 'finish)))
                             (pong-behavior)))))))))
                  (ping/c
                   (lambda ()
-                    (lambda (k7418 j7419 a7417)
-                      (lambda (v7420)
-                        (letrec ((message7416
+                    (lambda (k1756 j1757 a1755)
+                      (lambda (v1758)
+                        (letrec ((message1754
                                   (match
-                                   v7420
-                                   (((pair 'ping x7422)
+                                   v1758
+                                   (((pair 'ping x1760)
                                      (pair
                                       'enhanced
                                       (pair
-                                       (lambda (j7424)
+                                       (lambda (j1762)
                                          (letrec ((r
-                                                   (lambda (trace7428)
+                                                   (lambda (trace1766)
                                                      (receive
                                                       (('finish
                                                         (begin
                                                           (if (member
                                                                'pong
-                                                               trace7428)
+                                                               trace1766)
                                                             #t
-                                                            (blame j7424))))
+                                                            (blame j1762))))
                                                        ((pair
-                                                         rcv7427
-                                                         message7426)
+                                                         rcv1765
+                                                         message1764)
                                                         (match
-                                                         message7426
-                                                         (((pair 'pong x7429)
+                                                         message1764
+                                                         (((pair 'pong x1767)
                                                            (begin
                                                              ((dyn send^)
-                                                              rcv7427
+                                                              rcv1765
                                                               (pair
                                                                'enhanced
                                                                (pair
-                                                                (lambda (j7431)
+                                                                (lambda (j1769)
                                                                   (letrec ((r
-                                                                            (lambda (trace7435)
+                                                                            (lambda (trace1773)
                                                                               (receive
                                                                                (('finish
                                                                                  (begin))
                                                                                 ((pair
-                                                                                  rcv7434
-                                                                                  message7433)
+                                                                                  rcv1772
+                                                                                  message1771)
                                                                                  (ping/c)))))))
                                                                     (spawn^
                                                                      (r
                                                                       (list)))))
                                                                 (pair
-                                                                 j7424
+                                                                 j1762
                                                                  (pair
                                                                   'pong
                                                                   ((actor?
-                                                                    j7424
-                                                                    j7424)
-                                                                   x7429))))))
+                                                                    j1762
+                                                                    j1762)
+                                                                   x1767))))))
                                                              (r
                                                               (pair
                                                                'pong
-                                                               trace7428))))))))))))
+                                                               trace1766))))))))))))
                                            (spawn^ (r (list)))))
                                        (pair
-                                        j7419
+                                        j1757
                                         (pair
                                          'ping
-                                         ((actor? k7418 j7419) x7422))))))
-                                    (x7421 (blame k7418))))))
-                          (a7417 message7416)))))))
+                                         ((actor? k1756 j1757) x1760))))))
+                                    (x1759 (blame k1756))))))
+                          (a1755 message1754)))))))
           (letrec ((ping
-                    (letrec ((xj7436 'client) (xk7437 'server))
+                    (letrec ((xj1774 'client) (xk1775 'server))
                       ((ping/c)
-                       xj7436
-                       xk7437
+                       xj1774
+                       xk1775
                        (letrec ((act (spawn^ (ping-behavior))))
                          (lambda (msg) ((dyn send^) act msg))))))
                    (pong

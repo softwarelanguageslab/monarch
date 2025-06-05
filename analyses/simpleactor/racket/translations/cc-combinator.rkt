@@ -320,7 +320,7 @@
       (member (lambda (v lst)
                 (begin 
                    (match lst
-                     ((() #f)
+                     (((list) #f)
                       ((pair v1 vs)
                         (if (eq? v v1) #t (member v vs))))))))
       (unconstrained/c #f) ;; todo

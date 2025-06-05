@@ -15,13 +15,14 @@
    (define orig-/ /)
    (define orig-> >)
    (define orig-< <)
+   (define orig-= =)
    (define orig->= >=)
    (define orig-<= <=)
    (define orig-car car)
    (define orig-cdr cdr)
    (define orig-cons cons)
    (define orig-vector-ref vector-ref)
-   (define orig-vector-set vector-set!)
+   (define orig-vector-set! vector-set!)
 
 
 
@@ -102,6 +103,7 @@
 
    ;; Vectors
 
+   (define vector?/c (flat vector?))
    (define vector-ref (mon server client (-> vector?/c integer?/c) (lambda (v i) (orig-vector-ref v i))))
 
    (define vector-set! (mon server client (-> vector?/c integer?/c any/c) (lambda (vec i v) (orig-vector-set! vec i v))))
@@ -148,17 +150,16 @@
         (car l)
         (assq k (cdr l)))))
    (define (even? x)  (= 0 (modulo x 2)))
-   (define (list->string l)
-      (assert (list? l))
-      (if (null? l)
-        ""
-        (string-append (char->string (car l)) (list->string (cdr l)))))
+   ; (define (list->string l)
+   ;    (assert (list? l))
+   ;    (if (null? l)
+   ;      ""
+   ;      (string-append (char->string (car l)) (list->string (cdr l)))))
    (define (char<=? c1 c2)  (assert (char? c1)) (assert (char? c2)) (or (char<? c1 c2) (char=? c1 c2)))
    (define (cdddar x)  (cdr (cdr (cdr (car x)))))
    (define (list-tail x k)
-     
-     (assert (list? l))
-     (assert (number? ))
+     (assert (list? x))
+     (assert (number? k))
      (if (zero? k)
        x
        (list-tail (cdr x) (- k 1))))
@@ -196,6 +197,7 @@
    (define (cddr x)  (cdr (cdr x)))
    (define (truncate x)  (assert (number? x)) (if (< x 0) (ceiling x) (floor x)))
    (define $cmp '())
+   (define (bool-top) (if (> (random) 0.5) #t #f))
    (define (equal? a b)
      
      (or (eq? a b)

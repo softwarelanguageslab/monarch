@@ -51,6 +51,10 @@ compile ex@(Atom "letrec" _ ::: bds ::: e1 ::: SNil _) = do
 compile ex@(Atom "letrec" _ ::: bds ::: es) = do
    checkDuplicates bds
    Letrec <$> smapM compileBdn bds <*> (Begin <$> smapM compile es <*> pure (spanOf es)) <*> pureSpan ex
+-- let is the same as Letrec expressions in the simpleactor language
+compile ex@(Atom "let" _ ::: bds ::: es) = do
+   checkDuplicates bds
+   Letrec <$> smapM compileBdn bds <*> (Begin <$> smapM compile es <*> pure (spanOf es)) <*> pureSpan ex
 compile e@(Atom "letrec" _ ::: _) =
    throwError $ "invalid syntax for letrec " ++ show e ++ " at " ++ show (spanOf e)
 compile ex@(Atom "letrec*" _ ::: bds ::: e2 ::: SNil _) = do
@@ -92,6 +96,7 @@ compile e@(Atom "if" _ ::: _) =
 compile ex@(Atom "begin" _ ::: exs) =
    Begin <$> smapM compile exs <*> pureSpan ex
 compile ex@(Atom "self^" _) = pure $ Self (spanOf ex)
+compile ex@(Atom "self^" _ ::: SNil _) = pure $ Self (spanOf ex)
 compile (Atom "quote" span' ::: s ::: SNil _) = compile (Quo s span')
 compile ex@(Atom "blame" _ ::: party ::: _) = Blame <$> compile party <*> pureSpan ex
 compile ex@(Atom "parametrize" _ ::: bds ::: bdy ::: SNil _) =
