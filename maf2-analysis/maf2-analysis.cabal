@@ -67,6 +67,7 @@ library
       Analysis.Python.Escape
       Analysis.Python.Fixpoint
       Analysis.Python.Monad
+      Analysis.Python.Monad.Taint
       Analysis.Python.Objects
       Analysis.Python.Primitives
       Analysis.Python.Semantics
