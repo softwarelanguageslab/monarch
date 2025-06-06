@@ -6,7 +6,7 @@ module Run.Python(main, Options, options, runREPL, runBenchmarks) where
 import Syntax.Python
 import Options.Applicative
 import Data.Maybe
-import Analysis.Python.Fixpoint.Taint
+import Analysis.Python.Fixpoint.Characteristics
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Analysis.Python.Common

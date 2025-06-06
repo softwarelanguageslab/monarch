@@ -46,7 +46,6 @@ import Data.Foldable (traverse_)
 type Store obj = CountingMap ObjAdr obj
 
 type IntraT obj m  = MonadStack '[
-                        PythonTaintAnalysisT,
                         MayEscapeTaintedT Taint (Set (PyEsc PyRefTaint)),
                         AllocT PyLoc [PyLoc] ObjAdr, 
                         EnvT PyEnv,

@@ -38,8 +38,7 @@ import Analysis.Store (CountingMap)
 import Data.Foldable (traverse_)
 
 import Control.Monad.Escape (MayEscapeT)
-import Analysis.Python.Monad.Characteristics (PyRef)
-import Analysis.Python.Monad.Core (runPythonAnalysisT)
+import Analysis.Python.Monad.Core
 
 ---
 --- Python analysis fixpoint algorithm

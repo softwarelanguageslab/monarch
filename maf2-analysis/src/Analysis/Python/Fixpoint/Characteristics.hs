@@ -38,10 +38,8 @@ import Analysis.Store (CountingMap)
 import Data.Foldable (traverse_)
 
 import Control.Monad.Escape (MayEscapeT)
-import Analysis.Python.Monad.Characteristics (PyRef, runPythonCharacteristicsAnalysisT, PythonCharacteristicsAnalysisT)
-import Analysis.Python.Monad.Core (runPythonAnalysisT)
-
-import Analysis.Monad.FunctionCharacteristics
+import Analysis.Python.Monad.Characteristics
+import Analysis.Monad.FunctionCharacteristics (runWithCharacteristics, CharacteristicsM, CharacteristicsMap)
 
 ---
 --- Python analysis fixpoint algorithm
@@ -50,7 +48,6 @@ import Analysis.Monad.FunctionCharacteristics
 type Store obj = CountingMap ObjAdr obj
 
 type IntraT obj m  = MonadStack '[
-                        -- PythonCharacteristicsAnalysisT,
                         MayEscapeT (Set (PyEsc PyRef)),
                         AllocT PyLoc [PyLoc] ObjAdr,
                         EnvT PyEnv,
@@ -62,7 +59,8 @@ type IntraT obj m  = MonadStack '[
 
 type IntraT' obj m = IntraT obj (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in IntraT type synonym
 
-type AnalysisM m obj = (PyDomain obj PyRef,
+type AnalysisM m obj = (CharacteristicsM String m,
+                        PyDomain obj PyRef,
                         MapM PyCmp PyRes m,
                         MapM PyCmpStoreIn (Store obj) m,
                         MapM PyCmpStoreOut (Store obj) m,
@@ -89,8 +87,7 @@ intra cmp = m
               & runIntraAnalysis cmp
     where m = do s <- fromJust <$> Analysis.Monad.get (PyCmpStoreIn cmp)
                  r <- cache cmp (\bdy -> evalBdy bdy
-                                            & runPythonAnalysisT
-                                            -- & runPythonCharacteristicsAnalysisT
+                                            & runPythonCharacteristicsAnalysisT
                                             & runCallT (uncurry callFix))
                         & runAlloc allocPtr
                         & runStoreT s
@@ -125,7 +122,7 @@ analyze prg = (rsto, osto, characteristics)
                                     & runWithMapping' @PyCmpStoreIn
                                     & runWithMapping' @PyCmpStoreOut
                                     & runWithMapping @PyCmp
-                                    & runWithMapping @String @CharacteristicsMap
+                                    & runWithCharacteristics @String
                                     & runWithDependencyTracking @PyCmp @ObjAdr
                                     & runWithDependencyTracking @PyCmp @PyCmp
                                     & runWithDependencyTracking @PyCmp @PyCmpStoreIn
@@ -150,6 +147,7 @@ analyzeREPL read display =
             & runWithStore @(Store obj) @ObjAdr
             & runWithMapping' @PyCmp @PyRes
             & runWithMapping' @PyCmp
+            & runWithCharacteristics @String
             & runWithDependencyTracking @PyCmp @ObjAdr
             & runWithDependencyTracking @PyCmp @PyCmp
             & runWithDependencyTracking @PyCmp @PyCmpStoreIn
@@ -175,3 +173,4 @@ type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
 
 analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, Map String CharacteristicsMap)
 analyzeCP = analyze @PyDomainCP
+

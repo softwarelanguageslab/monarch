@@ -38,7 +38,7 @@ kcfa :: Int
 kcfa = 10
 
 type PyRef = ObjAddrSet
-type PyRet = (Set (PyEsc PyRef))
+type PyRet = Set (PyEsc PyRef)
 
 instance (vlu ~ PyRef,
           PyDomain obj vlu,

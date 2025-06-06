@@ -20,9 +20,6 @@ import Prelude hiding (lookup, exp, break)
 import Control.Monad ((>=>))
 import Analysis.Monad.Call (CallM(..))
 import Data.Set (Set)
-import Data.Functor (($>))
-import qualified Data.Set as Set
-import qualified Lattice.TopLiftedLattice as TopLattice
 import Lattice.TopLattice()
 import Domain.Python.Objects.Class
 import Control.Monad.Identity

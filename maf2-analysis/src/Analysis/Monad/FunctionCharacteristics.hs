@@ -1,15 +1,26 @@
 -- {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE RecordWildCards #-}
-module Analysis.Monad.FunctionCharacteristics where 
+module Analysis.Monad.FunctionCharacteristics where
 
 import qualified Data.Set as Set
 
-import Analysis.Monad.Map ( MapM(put, get) )
 import Data.Maybe (fromJust)
 import Syntax.Python (PyLoc)
+import Control.Monad.State ( StateT, MonadState )
 import Analysis.Python.Common (ObjAddrSet, emptyObjAddrSet, insertObjAddr, ObjAdr)
-    
+import qualified Data.Map as Map
+
+import Control.Monad.Trans
+import Control.Monad.Layer
+
+import qualified Control.Monad.State as State
+import Data.Map ( Map )
+
+import Control.Monad.Trans.State (runStateT)
+
+
+
 data CharacteristicsMap = CharacteristicsMap { callSites :: Set.Set PyLoc, -- number of call sites that invoke the function
                                                equivCallSites :: Set.Set PyLoc, -- number of equivalence classes of call sites that invoke the function
                                                allUses :: Set.Set PyLoc, -- number of uses of the this object and all parameters in the function
@@ -29,7 +40,30 @@ emptyCharacteristicsMap = CharacteristicsMap { callSites = Set.empty,
                                                parameterObjects = emptyObjAddrSet,
                                                parameterUses = Set.empty }
 
-class (Monad m) => CharacteristicsM k m where 
+addCallSite :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addCallSite k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{callSites = Set.insert n callSites})
+
+addEquivCallSite :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addEquivCallSite k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{equivCallSites = Set.insert n equivCallSites})
+
+addAllUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addAllUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{allUses = Set.insert n allUses})
+
+addReceiver :: (CharacteristicsM k m) => k -> ObjAdr -> m ()
+addReceiver k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{receivers = insertObjAddr n receivers})
+
+addthisUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addthisUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{allUses = Set.insert n allUses, -- a thisUse is also automatically an allUse
+                                                                                thisUses = Set.insert n thisUses})
+
+addParameterObject :: (CharacteristicsM k m) => k -> ObjAdr -> m ()
+addParameterObject k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterObjects = insertObjAddr n parameterObjects})
+
+addParameterUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addParameterUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterUses = Set.insert n parameterUses})
+
+
+class (Monad m) => CharacteristicsM k m where
     newFunction :: k -> m ()
     getCharacteristics :: k -> m CharacteristicsMap
     updateCharacteristics :: k -> CharacteristicsMap -> m ()
@@ -38,32 +72,18 @@ class (Monad m) => CharacteristicsM k m where
                                     newM <- f m
                                     updateCharacteristics k newM
 
-addCallSite :: (CharacteristicsM k m) => k -> PyLoc -> m ()
-addCallSite k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{callSites = Set.insert n callSites})                 
+instance (CharacteristicsM k m, Monad (t m), MonadLayer t) => CharacteristicsM k (t m) where 
+    newFunction = upperM . newFunction 
+    getCharacteristics = upperM . getCharacteristics 
+    updateCharacteristics k = upperM . updateCharacteristics k
 
-addEquivCallSite :: (CharacteristicsM k m) => k -> PyLoc -> m ()
-addEquivCallSite k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{equivCallSites = Set.insert n equivCallSites})                 
+newtype CharacteristicsT k m a = CharacteristicsT (StateT (Map.Map k CharacteristicsMap) m a)
+  deriving (Functor, Applicative, Monad, MonadTrans, MonadLayer, MonadTransControl, MonadState (Map k CharacteristicsMap))
 
-addAllUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
-addAllUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{allUses = Set.insert n allUses})                 
+instance {-# OVERLAPPING #-} (Monad m, Ord k) => CharacteristicsM k (CharacteristicsT k m) where
+    newFunction f = State.modify $ Map.insert f emptyCharacteristicsMap
+    getCharacteristics f = State.gets (fromJust . Map.lookup f)
+    updateCharacteristics f = State.modify . Map.insert f
 
-addReceiver :: (CharacteristicsM k m) => k -> ObjAdr -> m ()
-addReceiver k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{receivers = insertObjAddr n receivers})                 
-
-addthisUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
-addthisUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{allUses = Set.insert n allUses, -- a thisUse is also automatically an allUse
-                                                                                thisUses = Set.insert n thisUses})                 
-
-addParameterObject :: (CharacteristicsM k m) => k -> ObjAdr -> m ()
-addParameterObject k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterObjects = insertObjAddr n parameterObjects})                 
-
-addParameterUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
-addParameterUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterUses = Set.insert n parameterUses})                 
-
-instance {-# OVERLAPPING #-} (Monad m, MapM k CharacteristicsMap m, Ord k) => CharacteristicsM k m where 
-    newFunction f = put f emptyCharacteristicsMap
-    getCharacteristics k = do 
-        m <- get @k @CharacteristicsMap @m k
-        return $ fromJust m
-    updateCharacteristics = put
-
+runWithCharacteristics :: forall k m a . CharacteristicsT k m a -> m (a, Map k CharacteristicsMap)
+runWithCharacteristics (CharacteristicsT m) = runStateT m Map.empty 
