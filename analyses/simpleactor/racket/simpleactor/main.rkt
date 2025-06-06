@@ -7,6 +7,7 @@
                      (mcons cons))
          (rename-out (app-instrumented #%app)
                      (simpleactor-match match)
+                     (simpleactor-parameterize parametrize)
                      (module-begin-instrumented #%module-begin)))
 
 (module reader syntax/module-reader simpleactor)
@@ -131,6 +132,7 @@
 (define (shutdown-system)
   (displayln "Startup done ...")
   (displayln "Waiting for system shutdown ..")
+  (send^ (spawn^ (receive ((x 'done)))) 'done)
   (sync *active-actor-count*)
   (sync *in-flight-message-count*)
   (displayln "All actors have terminated")
@@ -236,3 +238,24 @@
 
 (define (trace v) v)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Dynamic variables
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Dynamic environment
+(define *dynamic-environment* (make-parameter (make-immutable-hash)))
+
+(define (dynamic-lookup var)
+  (hash-ref (*dynamic-environment*) var))
+
+(define-syntax (simpleactor-parameterize stx)
+  (syntax-parse stx
+    [(_ ((id val) ...) bdy ...)
+     #'(parameterize
+         ((*dynamic-environment*
+              (apply hash-set* (*dynamic-environment*) (flatten (list (list (quote id) val) ...)))))
+             bdy ...)]))
+
+(define-syntax (dyn stx)
+  (syntax-parse stx
+    [(_ var) #'(dynamic-lookup (quote var))]))
