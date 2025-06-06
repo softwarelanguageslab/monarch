@@ -46,7 +46,7 @@
            (let* ((ps   (map (lambda ags (gensym "x")) payload))
                   (nmsg (map (lambda (κ arg) `((,κ ,k ,j) ,arg)) payload ps)))
 
-           `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) (translate-communication/c communication) j)))])))
+           `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) (translate-aux communication) j)))])))
 
 ;; Translate a communication contract to
 ;; a equivalent SimpleActor construct.
@@ -166,7 +166,8 @@
      `(lambda (,k ,j ,a)    ;; blame labels and actor reference
         (lambda (,v) ;; message intercept
           (letrec
-            ((,message (match ,v ,(append (map (translate-message/c k j) messages) (list `(,x (blame ,k)))))))
+            ;; TODO: translate message/c to functions
+            ((,message (match ,v ,(append (map translate-aux messages) (list `(,x (blame ,k)))))))
             (,a ,message)))))]))
 
 ;; Enhances patterns in the `receive` construct
@@ -289,6 +290,8 @@
        ,(instrument-meta `(,(translate-aux κ) ,xj ,xk ,(translate-aux v)))))]
     [(quasiquote (behavior/c ,@messages))
      (translate-behavior/c e)]
+    [(quasiquote (ensures/c ,@messages))
+     (translate-communication/c e)]
     [(quasiquote (one-of/c ,@options))
      (let ((j (gensym "j")) (k (gensym "k")) (v (gensym "v")))
       (define (gen-oneof options v)

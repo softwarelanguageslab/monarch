@@ -1,10 +1,13 @@
 #lang racket
 
 (provide (all-defined-out)
-         (except-out (all-from-out racket) #%app #%module-begin match cons begin)
+         (except-out (all-from-out racket) #%app #%module-begin match begin)
          (rename-out (set-mcar! set-car!)
                      (set-mcdr! set-cdr!)
-                     (mcons cons))
+                     ; (mcons cons)
+                     ; (mpair? pair?)
+                     ; (mpair? cons?)
+                     )
          (rename-out (app-instrumented #%app)
                      (simpleactor-match match)
                      (simpleactor-parameterize parametrize)
@@ -16,6 +19,7 @@
 (require (for-syntax syntax/parse))
 (require "./atomics.rkt")
 (require "./atomic-counter.rkt")
+(require racket/exn)
 
 
 
@@ -69,9 +73,15 @@
 (define (pid->datum pid)
   `(pid ,(syntax-loc-datum (pid-exp pid))))
 
+;; Attempts to construct a parseable representtion of the message
+(define (try-print-message msg)
+  (cond ((symbol? msg) msg)
+        ((and (pair? msg) (symbol? (car msg))) (car msg))
+        (else 'unsupported-message-format)))
+
 ;; Log a message send
 (define (log-send rcv msg)
-  (log `(msg ,(pid->datum rcv) ,(if (symbol? msg) msg '(unsupported message print)))))
+  (log `(msg ,(pid->datum rcv) ,(try-print-message msg))))
 
 ;; Log a message blame
 (define (log-blame loc party)
@@ -136,6 +146,7 @@
   (send^ (spawn^ (receive ((x 'done)))) 'done)
   (sync *active-actor-count*)
   (sync *in-flight-message-count*)
+  (sleep 2)
   (displayln "All actors have terminated")
   (break-thread logging-thread 'terminate)
   (thread-wait logging-thread)
@@ -144,7 +155,8 @@
 ;; Handler for top-level errors that ensures that the logging actor has been terminated correctly
 ;; and all its output has been written.
 (define (handle-top-level-error e)
-  (displayln (format "error: ~a" (exn-message e)))
+  (raise e)
+  (displayln (format "error: ~a" (exn->string e)))
 
   (when (self)
     (atomic-counter-decrement *active-actor-count*)
@@ -251,7 +263,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Dynamic environment
-(define *dynamic-environment* (make-parameter (make-immutable-hash)))
+(define *dynamic-environment* (make-parameter (make-immutable-hash (list (cons 'send^ (lambda (ref msg) (send^ ref msg)))))))
 
 (define (dynamic-lookup var)
   (hash-ref (*dynamic-environment*) var))
