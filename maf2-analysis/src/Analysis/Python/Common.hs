@@ -19,7 +19,8 @@ module Analysis.Python.Common (
   new'',
   from,
   from',
-  emptyObjAddrSet
+  emptyObjAddrSet,
+  insertObjAddr
 ) where
 
 import Lattice hiding (empty, Top)
@@ -67,6 +68,7 @@ instance Show ObjAdr where
 
 class (Show v, Ord v, Lattice v, SplitLattice v) => PyVal v where
   injectAdr :: ObjAdr -> v
+  adrs :: v -> Set ObjAdr
 
 constant :: PyVal v => PyConstant -> v
 constant = injectAdr . allocCst  
@@ -79,18 +81,24 @@ typeVal = constant . TypeObject
 newtype ObjAddrSet = ObjAddrSet { addrs :: Set ObjAdr }
   deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
 
+emptyObjAddrSet :: ObjAddrSet
 emptyObjAddrSet = ObjAddrSet Set.empty
+
+insertObjAddr :: ObjAdr -> ObjAddrSet -> ObjAddrSet 
+insertObjAddr a (ObjAddrSet s) = ObjAddrSet $ Set.insert a s
 
 instance Show ObjAddrSet where
   show (ObjAddrSet s) = show (Set.toList s)
 
 instance PyVal ObjAddrSet where
   injectAdr = ObjAddrSet . Set.singleton
+  adrs = addrs
 
 -- tainted PyVal
 
 instance (PyVal v, TaintDomain t, Lattice t, Ord t) => PyVal (Tainted t v) where
   injectAdr = pure . injectAdr
+  adrs (Tainted s _) = adrs s
 
 -- environments
 

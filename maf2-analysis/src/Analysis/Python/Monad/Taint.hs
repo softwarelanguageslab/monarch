@@ -44,6 +44,7 @@ kcfa = 10
 
 type Taint = TopLifted (Set String)
 type PyRefTaint = Tainted Taint ObjAddrSet
+
 type PyRetTaint = Tainted Taint (Set (PyEsc PyRefTaint))
 
 instance (

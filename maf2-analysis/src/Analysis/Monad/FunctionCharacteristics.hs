@@ -8,7 +8,7 @@ import qualified Data.Set as Set
 import Analysis.Monad.Map ( MapM(put, get) )
 import Data.Maybe (fromJust)
 import Syntax.Python (PyLoc)
-import Analysis.Python.Common (ObjAddrSet, emptyObjAddrSet)
+import Analysis.Python.Common (ObjAddrSet, emptyObjAddrSet, insertObjAddr, ObjAdr)
     
 data CharacteristicsMap = CharacteristicsMap { callSites :: Set.Set PyLoc, -- number of call sites that invoke the function
                                                equivCallSites :: Set.Set PyLoc, -- number of equivalence classes of call sites that invoke the function
@@ -29,9 +29,6 @@ emptyCharacteristicsMap = CharacteristicsMap { callSites = Set.empty,
                                                parameterObjects = emptyObjAddrSet,
                                                parameterUses = Set.empty }
 
-numberOfCallSites :: CharacteristicsMap -> Int
-numberOfCallSites CharacteristicsMap{..} = Set.size callSites 
-
 class (Monad m) => CharacteristicsM k m where 
     newFunction :: k -> m ()
     getCharacteristics :: k -> m CharacteristicsMap
@@ -40,7 +37,29 @@ class (Monad m) => CharacteristicsM k m where
     modifyCharacteristics k f = do  m <- getCharacteristics k
                                     newM <- f m
                                     updateCharacteristics k newM
-                              
+
+addCallSite :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addCallSite k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{callSites = Set.insert n callSites})                 
+
+addEquivCallSite :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addEquivCallSite k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{equivCallSites = Set.insert n equivCallSites})                 
+
+addAllUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addAllUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{allUses = Set.insert n allUses})                 
+
+addReceiver :: (CharacteristicsM k m) => k -> ObjAdr -> m ()
+addReceiver k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{receivers = insertObjAddr n receivers})                 
+
+addthisUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addthisUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{allUses = Set.insert n allUses, -- a thisUse is also automatically an allUse
+                                                                                thisUses = Set.insert n thisUses})                 
+
+addParameterObject :: (CharacteristicsM k m) => k -> ObjAdr -> m ()
+addParameterObject k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterObjects = insertObjAddr n parameterObjects})                 
+
+addParameterUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addParameterUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterUses = Set.insert n parameterUses})                 
+
 instance {-# OVERLAPPING #-} (Monad m, MapM k CharacteristicsMap m, Ord k) => CharacteristicsM k m where 
     newFunction f = put f emptyCharacteristicsMap
     getCharacteristics k = do 

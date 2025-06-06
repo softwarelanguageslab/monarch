@@ -5,7 +5,7 @@
 
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
-module Analysis.Python.Fixpoint where
+module Analysis.Python.Fixpoint.Taint where
 
 import Lattice
 import Lattice.Tainted (Tainted(..))
@@ -38,9 +38,6 @@ import Data.Typeable
 import Data.Graph
 import Analysis.Store (CountingMap)
 import Data.Foldable (traverse_)
-
-
-import Analysis.Monad.FunctionCharacteristics
 
 ---
 --- Python analysis fixpoint algorithm
@@ -179,30 +176,7 @@ analyzeREPL read display =
 --- CP instantiation
 ---
 
-
-
 type PyDomainCP = PyObjCP PyRefTaint ObjAdr PyClo
 
 analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
 analyzeCP = analyze @PyDomainCP
-
-preanalyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, Map String CharacteristicsMap) 
-preanalyzeCP = preanalyze @PyDomainCP 
-
-preanalyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, Map String CharacteristicsMap)
-preanalyze prg = (rsto, osto, characteristics)
-    where (((osto, _), rsto), characteristics) = inter @obj prg
-                                    & runWithGraph @(SimpleGraph (CP String) (CP Bool))
-                                    & runWithMapping' @PyCmpStoreIn
-                                    & runWithMapping' @PyCmpStoreOut 
-                                    & runWithMapping @PyCmp
-                                    & runWithMapping @String @CharacteristicsMap 
-                                    & runWithMapping' @PyCmpTaint
-                                    & runWithDependencyTracking @PyCmp @ObjAdr
-                                    & runWithDependencyTracking @PyCmp @PyCmp
-                                    & runWithDependencyTracking @PyCmp @PyCmpTaint 
-                                    & runWithDependencyTracking @PyCmp @PyCmpStoreIn 
-                                    & runWithDependencyTracking @PyCmp @PyCmpStoreOut
-                                    & runWithComponentTracking @PyCmp
-                                    & runWithWorkList @(Set PyCmp)
-                                    & runIdentity

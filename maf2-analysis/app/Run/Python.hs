@@ -6,7 +6,7 @@ module Run.Python(main, Options, options, runREPL, runBenchmarks) where
 import Syntax.Python
 import Options.Applicative
 import Data.Maybe
-import Analysis.Python.Fixpoint
+import Analysis.Python.Fixpoint.Taint
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Analysis.Python.Common
@@ -28,7 +28,7 @@ import Analysis.Store (CountingMap, store)
 import qualified Lattice.BottomLiftedLattice as BL
 
 import Benchmark.Python.Programs
-import Analysis.Python.Common (ObjAddrSet(addrs))
+import Analysis.Python.Common (ObjAddrSet(addrs), PyVal (adrs))
 import Analysis.Monad.Store (StoreM(lookupAdr))
 import Control.Monad
 import Lattice.Tainted 
@@ -53,9 +53,9 @@ printRSto m deref osto = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" ind
          showVal False (Value v) = show v
          showVal False (MayBoth v e) = "[!!: "++show e++"]" ++ show v
          showVal True (Value v) = showDereferencedVal v
-         showDereferencedVal (Tainted v _) =  
-            let adrs = Set.toList (addrs v)
-                values = map (\a -> store osto Map.! a) adrs
+         showDereferencedVal v =  
+            let as = Set.toList (adrs v)
+                values = map (\a -> store osto Map.! a) as
             in (values & joins1 & show)
          showCmp ((Main _, _), _) = "<main>"
          showCmp ((LoopBdy loc _ _, _), ctx) = "<loop " ++ show loc ++ " with context " ++ show ctx ++ ">"
@@ -76,25 +76,25 @@ runREPL = do count <- newIORef 0
                               Nothing     -> putStrLn "Invalid program" >> prompt cur 
 
 
-runFile :: String -> IO ()
-runFile fileName =
-   do program <- readFile fileName
-      let Just parsed = parse "testje" program
-      let (rsto, osto, graph) = analyzeCP parsed
-      putStrLn "\nPROGRAM:\n"
-      putStrLn (prettyString parsed)
-      putStrLn "\nRESULTS PER COMPONENT:\n"
-      putStrLn (printRSto rsto True osto)
+-- runFile :: String -> IO ()
+-- runFile fileName =
+--    do program <- readFile fileName
+--       let Just parsed = parse "testje" program
+--       let (rsto, osto, graph) = analyzeCP parsed
+--       putStrLn "\nPROGRAM:\n"
+--       putStrLn (prettyString parsed)
+--       putStrLn "\nRESULTS PER COMPONENT:\n"
+--       putStrLn (printRSto rsto True osto)
       -- putStrLn "\nOBJECT STORE RESULTS:\n"
       -- putStrLn (printOSto osto)
       --putStrLn "\nDEPENDENCY GRAPH:\n"
       --putStrLn "\n"
 
-runFilePreanalysis :: String -> IO ()
-runFilePreanalysis fileName =
+runFile :: String -> IO ()
+runFile fileName =
    do program <- readFile fileName
       let Just parsed = parse "testje" program
-      let (rsto, osto, characteristics) = preanalyzeCP parsed
+      let (rsto, osto, characteristics) = analyzeCP parsed
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
@@ -107,37 +107,37 @@ benchmarks = allBenchmarks
 runBenchmarks :: IO ()
 runBenchmarks = mapM_ runFile benchmarks
 
-generateGraph :: [String] -> IO ()
-generateGraph files =
-   do putStrLn "digraph ECOPIPE {"
-      putStrLn "\trankdir=\"LR\";"
-      putStrLn "graph [overlap = true, fontname = Helvetica];"
-      mapM_ generateGraphForFile files
-      putStrLn "}"
-   where generateGraphForFile file = do program <- readFile file
-                                        let Just parsed = parse "testje" program
-                                        let (_, _, graph) = analyzeCP parsed
-                                        printGraph file graph
-         printGraph file graph = mapM_ (putStrLn . showEdge file) (edges graph)
-         showEdge file (from, to, isDep) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show ("[" ++ toType isDep ++ "] " ++ shortFileName file) ++ "];"
-         showNode (Constant name) = name
-         showNode Top = "⊤"
-         showNode _ = "⊥"
-         shortFileName = reverse . takeWhile (/='/') . reverse
-         toType (Constant True) = "WINDOW"
-         toType (Constant False) = "REACTOR"
-         toType Top = "?"
+-- generateGraph :: [String] -> IO ()
+-- generateGraph files =
+--    do putStrLn "digraph ECOPIPE {"
+--       putStrLn "\trankdir=\"LR\";"
+--       putStrLn "graph [overlap = true, fontname = Helvetica];"
+--       mapM_ generateGraphForFile files
+--       putStrLn "}"
+--    where generateGraphForFile file = do program <- readFile file
+--                                         let Just parsed = parse "testje" program
+--                                         let (_, _, graph) = analyzeCP parsed
+--                                         printGraph file graph
+--          printGraph file graph = mapM_ (putStrLn . showEdge file) (edges graph)
+--          showEdge file (from, to, isDep) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show ("[" ++ toType isDep ++ "] " ++ shortFileName file) ++ "];"
+--          showNode (Constant name) = name
+--          showNode Top = "⊤"
+--          showNode _ = "⊥"
+--          shortFileName = reverse . takeWhile (/='/') . reverse
+--          toType (Constant True) = "WINDOW"
+--          toType (Constant False) = "REACTOR"
+--          toType Top = "?"
 
 main :: Options -> IO ()
-main (Options fileName) = runFilePreanalysis fileName
+main (Options fileName) = runFile fileName
 
-ecopipe :: IO ()
-ecopipe = generateGraph [
-                              "programs/python/zensor/add_regime_status_tag.py",
-                              "programs/python/zensor/strain_resample.py",
-                              "programs/python/zensor/bolt_str_stats_per_movement.py",
-                              "programs/python/zensor/str_stats_per_movement.py",
-                              "programs/python/zensor/displacement_corrected_for_inclination.py"
-                        ]
+-- ecopipe :: IO ()
+-- ecopipe = generateGraph [
+--                               "programs/python/zensor/add_regime_status_tag.py",
+--                               "programs/python/zensor/strain_resample.py",
+--                               "programs/python/zensor/bolt_str_stats_per_movement.py",
+--                               "programs/python/zensor/str_stats_per_movement.py",
+--                               "programs/python/zensor/displacement_corrected_for_inclination.py"
+--                         ]
 
 

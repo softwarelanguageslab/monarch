@@ -65,7 +65,9 @@ library
       Analysis.Python
       Analysis.Python.Common
       Analysis.Python.Escape
-      Analysis.Python.Fixpoint
+      Analysis.Python.Fixpoint.Core
+      Analysis.Python.Fixpoint.Characteristics
+      Analysis.Python.Fixpoint.Taint
       Analysis.Python.Monad.Core
       Analysis.Python.Monad.Class
       Analysis.Python.Monad.Taint
