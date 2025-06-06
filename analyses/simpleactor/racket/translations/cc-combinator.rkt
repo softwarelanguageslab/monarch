@@ -77,7 +77,7 @@
           (enhanced-msg   (cadr translated)))
 
          `(,pattern  (begin ((dyn send^) ,rcv ,enhanced-msg)
-                            (,behavior (pair ,tag ,current-value)))))))
+                            (,behavior (cons ,tag ,current-value)))))))
 
 
   (define (check-member trace j)
@@ -201,7 +201,7 @@
                ((,κc (,κ ,j))
                 (,old-send (dyn send^)))
                 (parametrize 
-                  ((send^ (lambda (,rcv ,msg) (,old-send ,κc (pair ,rcv ,msg)))))
+                  ((send^ (lambda (,rcv ,msg) (,old-send ,κc (cons ,rcv ,msg)))))
                   ,@(if (null? bdy-init)
                        '()
                        `((,@bdy-init

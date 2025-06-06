@@ -41,7 +41,7 @@
    [(quasiquote (behavior ,ags ,handlers))
     `(lambda ,ags 
        (letrec
-         ((real-self self^))
+         ((real-self (self^)))
          (parametrize 
             ((self (lambda (m) ((dyn send^) real-self m))))
              (receive 

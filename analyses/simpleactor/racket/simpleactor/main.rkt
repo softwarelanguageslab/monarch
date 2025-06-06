@@ -1,13 +1,14 @@
 #lang racket
 
 (provide (all-defined-out)
-         (except-out (all-from-out racket) #%app #%module-begin match cons)
+         (except-out (all-from-out racket) #%app #%module-begin match cons begin)
          (rename-out (set-mcar! set-car!)
                      (set-mcdr! set-cdr!)
                      (mcons cons))
          (rename-out (app-instrumented #%app)
                      (simpleactor-match match)
                      (simpleactor-parameterize parametrize)
+                     (simpleactor-begin begin)
                      (module-begin-instrumented #%module-begin)))
 
 (module reader syntax/module-reader simpleactor)
@@ -235,6 +236,13 @@
   (syntax-parse stx
     [(_ ex ((pat bdy ...) ...))
      #'(match ex [pat bdy ...] ...)]))
+
+;; In the SimpleActor language 'begin' expressions may appear without
+;; any subexpressions, which is not allowed in Racket.
+(define-syntax (simpleactor-begin stx)
+  (syntax-parse stx
+    [(_) #'(void)]
+    [(_ ex ...) #'(begin ex ...)]))
 
 (define (trace v) v)
 

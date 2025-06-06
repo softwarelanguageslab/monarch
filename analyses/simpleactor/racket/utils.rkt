@@ -12,7 +12,7 @@
 (define (uncurry ags)
   (cond
     ((null? (cdr ags)) (car ags))
-    ((pair? ags) `(pair ,(car ags) ,(uncurry (cdr ags))))))
+    ((pair? ags) `(cons ,(car ags) ,(uncurry (cdr ags))))))
 
 (define (consify lst)
  (if (null? lst)
