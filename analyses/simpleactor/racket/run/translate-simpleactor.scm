@@ -38,6 +38,7 @@
 ;           #:meta #f
 ;           (ac:translate (ap:translate (co:translate (read))))))))
 ; (pretty-display (st:translate (ap:translate (co:translate (read)))))
+(displayln "#lang simpleactor")
 (pretty-write (identity (un:undefine-single (st:translate (cc:translate #:meta #f (ac:translate (ap:translate (co:translate (read-input)))))))))
 ;(pretty-write (st:translate (cc:translate #:meta #f (ac:translate (co:translate `(begin ,@(read-all (current-input-port))))))))
 ;(pretty-write (an:translate (un:undefine-single (st:translate (cc:translate #:meta #f (ac:translate (co:translate (read))))))))

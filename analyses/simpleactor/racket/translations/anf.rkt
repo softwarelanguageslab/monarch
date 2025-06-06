@@ -41,12 +41,12 @@ e ::= ae | if ae e e | let x = e in e | ae ae ... | match ae with (pat => e) ..
              ,(translate `(begin ,@bdy)))]
     [(quasiquote (terminate)) `(terminate)]
     [(quasiquote (self)) `(self)]
-    [(quasiquote (pair ,e1 ,e2))
-     (letrec ((x_e1 (gensym "e1"))
-              (x_e2 (gensym "e2")))
-       `(letrec ((,x_e1 ,(translate e1))
-                 (,x_e2 ,(translate e2)))
-          (pair ,x_e1 ,x_e2)))]
+    ; [(quasiquote (pair ,e1 ,e2))
+    ;  (letrec ((x_e1 (gensym "e1"))
+    ;           (x_e2 (gensym "e2")))
+    ;    `(letrec ((,x_e1 ,(translate e1))
+    ;              (,x_e2 ,(translate e2)))
+    ;       (pair ,x_e1 ,x_e2)))]
     [(quasiquote (blame ,e))
      (letrec ((x (gensym "blame")))
        `(letrec ((,x ,(translate e)))

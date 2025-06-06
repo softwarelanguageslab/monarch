@@ -148,7 +148,6 @@ analyzeFile :: FilePath -> MaybeT IO Results
 analyzeFile inputFilename = do
     -- parse the file
     program <- liftIO (readFile inputFilename) <&> (either error id . parseFromString)
-
     (sequentialResults, _mbs) <- MaybeT $ timeout defaultAnalysisTimeout $ Analysis.analyze program
 
     -- process results    
@@ -179,7 +178,7 @@ compareConcrete path hdl res = do
   -- than the abstract
   unless (concrBlameSize <= abstrBlameSize) $
     error "analysis is unsound"
-  hPutStrLn hdl $ path ++ ";" ++ show (abstrBlameSize - concrBlameSize) ++ if timedout then "1" else "0"  
+  hPutStrLn hdl $ path ++ ";" ++ show (abstrBlameSize - concrBlameSize) ++ ";" ++ if timedout then "1" else "0"  
 
 -- | Output the precision results of a single benchmark to the given file handle
 runPrecision :: FilePath -> Handle -> IO ()
