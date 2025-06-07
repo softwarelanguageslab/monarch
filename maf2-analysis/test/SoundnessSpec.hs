@@ -26,7 +26,7 @@ import qualified Domain.Scheme.Store as AbstractStore
 import Domain.Scheme.Class (PaiDom, SchemeDomain (nil, symbol))
 import qualified Benchmark.Scheme.Programs as SchemeBenchmarks
 -- python
-import Analysis.Python.Fixpoint (analyzeCP)
+import Analysis.Python.Fixpoint.Taint (analyzeCP)
 import Domain.Python.Syntax (parse)
 import Interpreter.Python.Eval (evalPythonProgram)
 import qualified Benchmark.Python.Programs as PythonBenchmarks
