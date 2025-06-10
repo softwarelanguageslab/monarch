@@ -20,7 +20,9 @@ module Analysis.Python.Common (
   from,
   from',
   emptyObjAddrSet,
-  insertObjAddr
+  insertObjAddr,
+  getCloLoc,
+  cloLoc
 ) where
 
 import Lattice hiding (empty, Top)
@@ -41,8 +43,9 @@ import qualified Domain.Class as Domain
 import Domain (CPDictionary)
 import Lattice.BottomLiftedLattice (BottomLifted)
 import Lattice.TopLattice
-import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)), Assoc)
+import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)), Assoc, get)
 import Data.TypeLevel.AssocList (LookupIn)
+import Data.Maybe (fromJust)
 
 --
 -- Addresses
@@ -106,9 +109,11 @@ type PyEnv = Map String ObjAdr
 
 -- closures 
 
+instance Closure PyClo where 
+  getCloLoc (PyClo l _ _ _ _) = l
+
 data PyClo = PyClo PyLoc [PyPar] PyStm [String] PyEnv
   deriving (Eq, Ord)
-
 instance Show PyClo where
   show (PyClo loc _ _ _ _) = "<func@" ++ show loc ++ ">" 
 
@@ -142,3 +147,6 @@ from v = new' cls [] [sing @k :&: v]
 -- | Convenience function to construct a Python object immediately from primitive concrete value
 from' :: forall (k :: PyPrmKey) obj v vlu . (PyDomain obj vlu, Domain (Abs obj k) v, SingI k) => v -> obj
 from' = from @k . Domain.inject
+
+cloLoc :: (PyDomain obj vlu) => obj -> [PyLoc]
+cloLoc o = map getCloLoc $ Set.toList $ fromJust $ Domain.Python.Objects.get @CloPrm o 

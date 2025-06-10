@@ -22,7 +22,7 @@ import Control.Monad.Trans.State (runStateT)
 
 
 data CharacteristicsMap = CharacteristicsMap { callSites :: Set.Set PyLoc, -- number of call sites that invoke the function
-                                               equivCallSites :: Set.Set PyLoc, -- number of equivalence classes of call sites that invoke the function
+                                               equivCallSites :: Set.Set PyLoc, -- number of equivalence classes of call sites that invoke the function (i.e., call sites with unique receiver and parameters)
                                                allUses :: Set.Set PyLoc, -- number of uses of the this object and all parameters in the function
                                                receivers :: ObjAddrSet, -- number of abstract receiver objects from all call sites that invoke the function
                                                thisUses :: Set.Set PyLoc, -- number of uses of the this object in the function 
@@ -55,7 +55,6 @@ addReceiver k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m
 addthisUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
 addthisUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{allUses = Set.insert n allUses, -- a thisUse is also automatically an allUse
                                                                                 thisUses = Set.insert n thisUses})
-
 addParameterObject :: (CharacteristicsM k m) => k -> ObjAdr -> m ()
 addParameterObject k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterObjects = insertObjAddr n parameterObjects})
 

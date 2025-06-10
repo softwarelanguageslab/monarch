@@ -28,6 +28,11 @@ data PyBdy = Main PyPrg
            | LoopBdy PyLoc PyExp PyStm
   deriving (Eq, Ord)
 
+getPyBdyLoc :: PyBdy -> Maybe PyLoc 
+getPyBdyLoc (FuncBdy l _) = Just l 
+getPyBdyLoc (LoopBdy l _ _) = Just l 
+getPyBdyLoc (Main _) = Nothing
+
 instance Show PyBdy where
   show (Main _) = "<main>"
   show (FuncBdy loc _) = printf "<func at %s>" (show loc)

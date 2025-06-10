@@ -2,8 +2,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
 
 module Analysis.Python.Fixpoint.Characteristics where
 
@@ -59,7 +59,7 @@ type IntraT obj m  = MonadStack '[
 
 type IntraT' obj m = IntraT obj (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in IntraT type synonym
 
-type AnalysisM m obj = (CharacteristicsM String m,
+type AnalysisM m obj = (CharacteristicsM PyLoc m,
                         PyDomain obj PyRef,
                         MapM PyCmp PyRes m,
                         MapM PyCmpStoreIn (Store obj) m,
@@ -115,14 +115,14 @@ inter prg = do let cmp = ((Main prg, initialEnv), [])
                iterateWL (intra @obj)                                              -- start the analysis 
                Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
 
-analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRef) => PyPrg -> (Map PyCmp PyRes, Store obj, Map String CharacteristicsMap)
+analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRef) => PyPrg -> (Map PyCmp PyRes, Store obj, Map PyLoc CharacteristicsMap)
 analyze prg = (rsto, osto, characteristics)
     where (((osto, _), rsto), characteristics) = inter @obj prg
                                     & runWithGraph @(SimpleGraph (CP String) (CP Bool))
                                     & runWithMapping' @PyCmpStoreIn
                                     & runWithMapping' @PyCmpStoreOut
                                     & runWithMapping @PyCmp
-                                    & runWithCharacteristics @String
+                                    & runWithCharacteristics @PyLoc
                                     & runWithDependencyTracking @PyCmp @ObjAdr
                                     & runWithDependencyTracking @PyCmp @PyCmp
                                     & runWithDependencyTracking @PyCmp @PyCmpStoreIn
@@ -147,7 +147,7 @@ analyzeREPL read display =
             & runWithStore @(Store obj) @ObjAdr
             & runWithMapping' @PyCmp @PyRes
             & runWithMapping' @PyCmp
-            & runWithCharacteristics @String
+            & runWithCharacteristics @PyLoc
             & runWithDependencyTracking @PyCmp @ObjAdr
             & runWithDependencyTracking @PyCmp @PyCmp
             & runWithDependencyTracking @PyCmp @PyCmpStoreIn
@@ -171,6 +171,6 @@ analyzeREPL read display =
 
 type PyDomainCP = PyObjCP PyRef ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, Map String CharacteristicsMap)
+analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, Map PyLoc CharacteristicsMap)
 analyzeCP = analyze @PyDomainCP
 

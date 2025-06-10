@@ -117,7 +117,7 @@ instance (Show (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Show (PyPrm m))) => Sho
 --
 
 -- TODO: this currently really only works for CP domains due to the fixed usage of CPList 
-instance (Ord (Assoc CloKey m), Ord (Assoc AdrKey m), Assoc IntKey m ~ CP Integer, AllAbs m) => PyObj (PyObjHMap m) where
+instance (Closure (Assoc CloKey m), Ord (Assoc CloKey m), Ord (Assoc AdrKey m), Assoc IntKey m ~ CP Integer, AllAbs m) => PyObj (PyObjHMap m) where
     type Ref (PyObjHMap m) = Assoc VluKey m 
     type Adr (PyObjHMap m) = Assoc AdrKey m
     type Clo (PyObjHMap m) = Assoc CloKey m 

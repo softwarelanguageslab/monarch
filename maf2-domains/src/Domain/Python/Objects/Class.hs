@@ -12,6 +12,7 @@ module Domain.Python.Objects.Class (
     at,
     atAttr,
     PyMapping,
+    Closure(..)
 ) where
 
 import Lattice
@@ -30,6 +31,7 @@ import Data.Set (Set)
 import Data.Map (Map)
 import Data.Function ((&))
 import Data.Maybe (fromJust)
+import Domain.Python.Syntax (PyLoc)
 
 type Abs obj k = Assoc k (PyPrmMap obj)
 
@@ -52,10 +54,14 @@ type PyMapping obj = '[
                         SrsPrm ::-> Abs obj SrsPrm
                       ]
 
+class Closure clo where 
+  getCloLoc :: clo -> PyLoc 
+
 class (
     Eq obj,
     Joinable obj,
     ForAll PyPrmKey (AbsJoinLattice obj),
+    Closure (Clo obj),
     Abs obj PrmPrm ~ Set (Either PyPrim XPyPrim), 
     Abs obj CloPrm ~ Set (Clo obj),
     Abs obj BndPrm ~ Map (Adr obj) (Ref obj),   -- TODO: this can be generalised  

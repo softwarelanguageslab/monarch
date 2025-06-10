@@ -10,7 +10,7 @@ import Control.Monad.Layer (MonadLayer (..))
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Analysis.Python.Common
-import Analysis.Monad hiding (call, get)
+import Analysis.Monad hiding (call, get, has)
 import Domain.Python.Syntax hiding (Continue, Break, Return, None)
 import Domain.Python.World
 import Analysis.Python.Escape
@@ -23,7 +23,7 @@ import Data.Set (Set)
 import Lattice.TopLattice()
 import Domain.Python.Objects.Class
 import Control.Monad.Identity
-import Analysis.Monad.FunctionCharacteristics (CharacteristicsM)
+import Analysis.Monad.FunctionCharacteristics
 
 newtype PythonCharacteristicsAnalysisT m a = PythonCharacteristicsAnalysisT (IdentityT m a)
   deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache)
@@ -44,7 +44,7 @@ type PyRet = Set (PyEsc PyRef)
 
 instance (vlu ~ PyRef,
           PyDomain obj vlu,
-          CharacteristicsM String m, 
+          CharacteristicsM PyLoc m, 
           CtxM m [PyLoc],
           MonadJoin m,
           MonadEscape m,
@@ -61,12 +61,20 @@ instance (vlu ~ PyRef,
           =>
           PyM (PythonCharacteristicsAnalysisT m) obj vlu where
   pyStoreSize = storeSize @ObjAdr @obj @(PythonCharacteristicsAnalysisT m)
-  pyCall = curry call
+  pyCall l b = do
+    let locs = getPyBdyLoc b 
+    maybe (return ()) (`addCallSite` l) locs
+    maybe (return ()) (`addEquivCallSite` l) locs -- todo: check equivalence of call sites 
+    curry call l b
   pyAlloc = store
   pyDeref f = deref f . addrs
   pyDeref_ f = deref f . addrs
-  pyAssignAt k v = updateWith (setAttr k v) (setAttrWeak k v)
-  pyAssign k v = mjoinMap (pyAssignAt k v) . addrs
+  pyAssignAt k v a = do 
+    pyDeref_ (\_ ob -> cond @_ @(CP Bool) (return $ has @CloPrm ob) (mapM_ newFunction $ cloLoc ob) (return ())) v
+    updateWith (setAttr k v) (setAttrWeak k v) a
+  pyAssign k v a = do 
+    pyDeref_ (\_ ob -> cond @_ @(CP Bool) (return $ has @CloPrm ob) (mapM_ newFunction $ cloLoc ob) (return ())) v
+    mjoinMap (pyAssignAt k v) $ addrs a
   pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do old <- getPrm s obj
                                                   upd <- f v old
                                                   let obj' = setPrm s upd obj
