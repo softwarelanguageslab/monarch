@@ -22,7 +22,9 @@ module Analysis.Python.Common (
   emptyObjAddrSet,
   insertObjAddr,
   getCloLoc,
-  cloLoc
+  cloLoc,
+  parNam,
+  cloParams
 ) where
 
 import Lattice hiding (empty, Top)
@@ -46,6 +48,10 @@ import Lattice.TopLattice
 import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)), Assoc, get)
 import Data.TypeLevel.AssocList (LookupIn)
 import Data.Maybe (fromJust)
+
+-- | Throws an error that the operation must still be implemented
+todo :: String -> a
+todo = error . ("[TODO] NYI: " ++)
 
 --
 -- Addresses
@@ -109,8 +115,14 @@ type PyEnv = Map String ObjAdr
 
 -- closures 
 
+parNam :: PyPar -> String
+parNam (Prm ide _) = ideName (lexIde ide)
+parNam (VarArg _ _) = todo "vararg parameter"
+parNam (VarKeyword _ _) = todo "varkeyword parameters"
+
 instance Closure PyClo where 
   getCloLoc (PyClo l _ _ _ _) = l
+  getCloParams (PyClo _ ps _ _ _) = map parNam ps
 
 data PyClo = PyClo PyLoc [PyPar] PyStm [String] PyEnv
   deriving (Eq, Ord)
@@ -150,3 +162,6 @@ from' = from @k . Domain.inject
 
 cloLoc :: (PyDomain obj vlu) => obj -> [PyLoc]
 cloLoc o = map getCloLoc $ Set.toList $ fromJust $ Domain.Python.Objects.get @CloPrm o 
+
+cloParams :: (PyDomain obj vlu) => obj -> [String]
+cloParams o = foldr (\c app -> getCloParams c ++ app ) [] $ Set.toList $ fromJust $ Domain.Python.Objects.get @CloPrm o 

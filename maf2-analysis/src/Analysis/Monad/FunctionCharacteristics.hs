@@ -27,7 +27,9 @@ data CharacteristicsMap = CharacteristicsMap { callSites :: Set.Set PyLoc, -- nu
                                                receivers :: ObjAddrSet, -- number of abstract receiver objects from all call sites that invoke the function
                                                thisUses :: Set.Set PyLoc, -- number of uses of the this object in the function 
                                                parameterObjects :: ObjAddrSet, -- the total number of abstract objects to which the 1st parameter may point from all call sites that invoke the function
-                                               parameterUses :: Set.Set PyLoc -- the total number of uses of the 1st parameter of a function (merge of FC7 and FC8 of the paper)
+                                               parameterUses :: Set.Set PyLoc, -- the total number of uses of the 1st parameter of a function (merge of FC7 and FC8 of the paper)
+                                               
+                                               parameters :: [String] -- the names of the parameters of the function
                                                } deriving (Eq, Ord, Show)
 
 
@@ -38,7 +40,8 @@ emptyCharacteristicsMap = CharacteristicsMap { callSites = Set.empty,
                                                receivers = emptyObjAddrSet,
                                                thisUses = Set.empty,
                                                parameterObjects = emptyObjAddrSet,
-                                               parameterUses = Set.empty }
+                                               parameterUses = Set.empty,
+                                               parameters = [] }
 
 addCallSite :: (CharacteristicsM k m) => k -> PyLoc -> m ()
 addCallSite k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{callSites = Set.insert n callSites})
@@ -61,7 +64,8 @@ addParameterObject k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> r
 addParameterUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
 addParameterUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterUses = Set.insert n parameterUses})
 
-
+setParameters :: (CharacteristicsM k m) => k -> [String] -> m ()
+setParameters k ps = modifyCharacteristics k (\m -> return m{parameters = ps})
 class (Monad m) => CharacteristicsM k m where
     newFunction :: k -> m ()
     getCharacteristics :: k -> m CharacteristicsMap

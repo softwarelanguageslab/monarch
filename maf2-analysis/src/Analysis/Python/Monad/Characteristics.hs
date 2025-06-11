@@ -70,10 +70,16 @@ instance (vlu ~ PyRef,
   pyDeref f = deref f . addrs
   pyDeref_ f = deref f . addrs
   pyAssignAt k v a = do 
-    pyDeref_ (\_ ob -> cond @_ @(CP Bool) (return $ has @CloPrm ob) (mapM_ newFunction $ cloLoc ob) (return ())) v
+    pyDeref_ (\_ ob -> cond @_ @(CP Bool) (return $ has @CloPrm ob) 
+                                          (mapM_ (\f -> do newFunction f
+                                                           setParameters f (cloParams ob)) $ cloLoc ob) 
+                                          (return ())) v
     updateWith (setAttr k v) (setAttrWeak k v) a
   pyAssign k v a = do 
-    pyDeref_ (\_ ob -> cond @_ @(CP Bool) (return $ has @CloPrm ob) (mapM_ newFunction $ cloLoc ob) (return ())) v
+    pyDeref_ (\_ ob -> cond @_ @(CP Bool) (return $ has @CloPrm ob) 
+                                          (mapM_ (\f -> do newFunction f
+                                                           setParameters f (cloParams ob)) $ cloLoc ob) 
+                                          (return ())) v
     mjoinMap (pyAssignAt k v) $ addrs a
   pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do old <- getPrm s obj
                                                   upd <- f v old

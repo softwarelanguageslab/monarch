@@ -213,11 +213,6 @@ callClo l pos kwa = mjoinMap apply
                        pyWithEnv (extends bindings env) $ pyCall l (FuncBdy loc bdy)
                else pyError ArityError
 
-parNam :: PyPar -> String
-parNam (Prm ide _) = ideName (lexIde ide)
-parNam (VarArg _ _) = todo "vararg parameter"
-parNam (VarKeyword _ _) = todo "varkeyword parameters"
-
 -- TODO: move this elsewhere
 -- TODO: improve implementation?
 isType :: PyM pyM obj vlu => obj -> PyType -> pyM vlu

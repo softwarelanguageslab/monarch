@@ -56,6 +56,7 @@ type PyMapping obj = '[
 
 class Closure clo where 
   getCloLoc :: clo -> PyLoc 
+  getCloParams :: clo -> [String]
 
 class (
     Eq obj,
