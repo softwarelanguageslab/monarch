@@ -62,9 +62,9 @@ instance (vlu ~ PyRef,
           PyM (PythonCharacteristicsAnalysisT m) obj vlu where
   pyStoreSize = storeSize @ObjAdr @obj @(PythonCharacteristicsAnalysisT m)
   pyCall l b = do
-    let locs = getPyBdyLoc b 
-    maybe (return ()) (`addCallSite` l) locs
-    maybe (return ()) (`addEquivCallSite` l) locs -- todo: check equivalence of call sites 
+    let loc = getPyBdyLoc b 
+    maybe (return ()) (`addCallSite` l) loc
+    maybe (return ()) (`addEquivCallSite` l) loc -- todo: check equivalence of call sites 
     curry call l b
   pyAlloc = store
   pyDeref f = deref f . addrs
@@ -75,12 +75,7 @@ instance (vlu ~ PyRef,
                                                            setParameters f (cloParams ob)) $ cloLoc ob) 
                                           (return ())) v
     updateWith (setAttr k v) (setAttrWeak k v) a
-  pyAssign k v a = do 
-    pyDeref_ (\_ ob -> cond @_ @(CP Bool) (return $ has @CloPrm ob) 
-                                          (mapM_ (\f -> do newFunction f
-                                                           setParameters f (cloParams ob)) $ cloLoc ob) 
-                                          (return ())) v
-    mjoinMap (pyAssignAt k v) $ addrs a
+  pyAssign k v = mjoinMap (pyAssignAt k v) . addrs
   pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do old <- getPrm s obj
                                                   upd <- f v old
                                                   let obj' = setPrm s upd obj
