@@ -46,10 +46,10 @@ emptyCharacteristicsMap = CharacteristicsMap { callSites = Map.empty,
 addCallSite :: (CharacteristicsM k m) => k -> PyLoc -> ObjAddrSet -> m ()
 addCallSite k n p = modifyCharacteristics k (\m@CharacteristicsMap{..} -> 
     do  let isNotEquiv = and $ Map.map (/= p) callSites
-        let newEquivCallSites = if isNotEquiv then Set.insert n equivCallSites else equivCallSites
+        let newEquivCallSites = if isNotEquiv then Set.insert n equivCallSites else equivCallSites -- add the call site to the equivalence classes only when the parameters and receiver are unique
         return m{callSites = Map.insert n p callSites, equivCallSites = newEquivCallSites})
 
-addAllUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
+addAllUse :: (CharacteristicsM k m) => k -> PyLoc -> m () -- this function only needs to be used for parameter uses that are not a first parameter
 addAllUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{allUses = Set.insert n allUses})
 
 addReceiver :: (CharacteristicsM k m) => k -> ObjAdr -> m ()
@@ -62,11 +62,14 @@ addParameterObject :: (CharacteristicsM k m) => k -> ObjAdr -> m ()
 addParameterObject k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterObjects = insertObjAddr n parameterObjects})
 
 addParameterUse :: (CharacteristicsM k m) => k -> PyLoc -> m ()
-addParameterUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{parameterUses = Set.insert n parameterUses})
+addParameterUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> return m{allUses = Set.insert n allUses, -- a parameterUse is also automatically an allUse
+                                                                                     parameterUses = Set.insert n parameterUses})
 
+-- save the parameters of the function so that we can know when a parameter is used
 setParameters :: (CharacteristicsM k m) => k -> [String] -> m ()
 setParameters k ps = modifyCharacteristics k (\m -> return m{parameters = ps})
 
+-- helper to see what function this could be a parameter of (much better would be to know in what function we are...)
 parameterOf :: (CharacteristicsM k m) => String -> m (Maybe k)
 parameterOf s = do m <- getAllCharacteristics
                    let filteredM = filter (\(_, CharacteristicsMap{..}) -> s `elem` parameters) (Map.toList m)
