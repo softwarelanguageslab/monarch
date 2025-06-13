@@ -21,15 +21,15 @@ import Control.Monad.Trans.State (runStateT)
 import Control.Monad
 
 
-data CharacteristicsMap = CharacteristicsMap {  callSites :: Map.Map PyLoc ObjAddrSet,     -- number of call sites that invoke the function (location and receiver+parameters)
-                                                equivCallSites :: Set.Set PyLoc,    -- number of equivalence classes of call sites that invoke the function (i.e., call sites with unique receiver and parameters)
-                                                allUses :: Set.Set PyLoc,           -- number of uses of the this object and all parameters in the function
-                                                receivers :: ObjAddrSet,            -- number of abstract receiver objects from all call sites that invoke the function
-                                                thisUses :: Set.Set PyLoc,          -- number of uses of the this (self) object in the function 
-                                                parameterObjects :: ObjAddrSet,     -- the total number of abstract objects to which the 1st parameter may point from all call sites that invoke the function
-                                                parameterUses :: Set.Set PyLoc,     -- the total number of uses of the 1st parameter of a function (merge of FC7 and FC8 of the paper)
+data CharacteristicsMap = CharacteristicsMap {  callSites :: Map.Map PyLoc ObjAddrSet,  -- number of call sites that invoke the function (location and receiver+parameters)
+                                                equivCallSites :: Set.Set PyLoc,        -- number of equivalence classes of call sites that invoke the function (i.e., call sites with unique receiver and parameters)
+                                                allUses :: Set.Set PyLoc,               -- number of uses of the this (self) object and all parameters in the function
+                                                receivers :: ObjAddrSet,                -- number of abstract receiver objects from all call sites that invoke the function
+                                                thisUses :: Set.Set PyLoc,              -- number of uses of the this (self) object in the function 
+                                                parameterObjects :: ObjAddrSet,         -- the total number of abstract objects to which the 1st parameter may point from all call sites that invoke the function
+                                                parameterUses :: Set.Set PyLoc,         -- the total number of uses of the 1st parameter of a function (merge of FC7 and FC8 of the paper)
 
-                                                parameters :: [String]              -- the names of the parameters of the function
+                                                parameters :: [String]                  -- the names of the parameters of the function
                                                } deriving (Eq, Ord, Show)
 
 
@@ -44,7 +44,7 @@ emptyCharacteristicsMap = CharacteristicsMap { callSites = Map.empty,
                                                parameters = [] }
 
 addCallSite :: (CharacteristicsM k m) => k -> PyLoc -> ObjAddrSet -> m ()
-addCallSite k n p = modifyCharacteristics k (\m@CharacteristicsMap{..} -> 
+addCallSite k n p = modifyCharacteristics k (\m@CharacteristicsMap{..} ->
     do  let isNotEquiv = and $ Map.map (/= p) callSites
         let newEquivCallSites = if isNotEquiv then Set.insert n equivCallSites else equivCallSites -- add the call site to the equivalence classes only when the parameters and receiver are unique
         return m{callSites = Map.insert n p callSites, equivCallSites = newEquivCallSites})
@@ -68,12 +68,16 @@ addParameterUse k n = modifyCharacteristics k (\m@CharacteristicsMap{..} -> retu
 -- save the parameters of the function so that we can know when a parameter is used
 setParameters :: (CharacteristicsM k m) => k -> [String] -> m ()
 setParameters k ps = modifyCharacteristics k (\m -> return m{parameters = ps})
-
+-- check if a variable name is a parameter of a function
+isParameter :: (CharacteristicsM k m) => k -> String -> m Bool
+isParameter k p = do m <- getCharacteristics k
+                     return $ p `elem` maybe [] parameters m
 -- helper to see what function this could be a parameter of (much better would be to know in what function we are...)
 parameterOf :: (CharacteristicsM k m) => String -> m (Maybe k)
 parameterOf s = do m <- getAllCharacteristics
                    let filteredM = filter (\(_, CharacteristicsMap{..}) -> s `elem` parameters) (Map.toList m)
                    return (fst <$> listToMaybe filteredM)
+
 
 class (Monad m) => CharacteristicsM k m where
     newFunction :: k -> m ()

@@ -21,8 +21,9 @@ instance (vlu ~ ObjAddrSet, PyM (PythonCharacteristicsAnalysisT m) obj vlu, Char
     callBnd loc pos kwa = mjoinMap apply . Map.toList
         where apply (rcv, fns) = do pyDeref_ (\_ ob -> 
                                         cond @_ @(CP Bool) (return $ has @CloPrm ob) 
+                                        -- add the receiver, call site and the first parameter of the function to its characteristics
                                                            (mapM_ (\f -> do addReceiver f rcv
-                                                                            addCallSite f loc (objAddrSetFromList $ injectAdr rcv : pos) -- todo: add kwas
+                                                                            addCallSite f loc (objAddrSetFromList $ injectAdr rcv : (pos ++ map snd kwa))
                                                                             mapM_ (addParameterObject f) (maybe [] objAddrSetToList $ listToMaybe pos))
                                                                   $ cloLoc ob)
                                                            (return ())) fns
@@ -31,7 +32,8 @@ instance (vlu ~ ObjAddrSet, PyM (PythonCharacteristicsAnalysisT m) obj vlu, Char
     callClo l pos kwa = mjoinMap apply
         where
             apply (PyClo loc prs bdy lcl env) = do 
-                addCallSite loc l $ objAddrSetFromList pos
+                -- add the call site and the first parameter of the function to its characteristics
+                addCallSite loc l $ objAddrSetFromList (pos ++ map snd kwa)
                 mapM_ (addParameterObject loc) (maybe [] objAddrSetToList $ listToMaybe pos)
                 pyWithCtx l $
                     do  frm <- pyAlloc (tagAs FrmTag loc) (new' FrameType [] [])
