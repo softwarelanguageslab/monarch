@@ -1,9 +1,48 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Analysis.Python.Semantics.Characteristics where 
+module Analysis.Python.Semantics.Characteristics where
 
-import Analysis.Python.Semantics.Class 
+import Lattice (CP)
+import Control.Monad.Join (mjoinMap, cond)
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Analysis.Monad.FunctionCharacteristics
+import Analysis.Python.Common
+import Analysis.Python.Semantics.Class
 import Analysis.Python.Monad.Characteristics
-import Analysis.Python.Monad.Class (PyM)
+import Analysis.Python.Monad.Class
+import Domain.Python.Syntax
+import Domain.Python.World
+import Domain.Python.Objects
+import Data.Maybe (listToMaybe)
+import Analysis.Environment (Environment(extends))
 
-instance (PyM (PythonCharacteristicsAnalysisT m) obj vlu) => PySemantics (PythonCharacteristicsAnalysisT m) obj vlu where 
+instance (vlu ~ ObjAddrSet, PyM (PythonCharacteristicsAnalysisT m) obj vlu, CharacteristicsM PyLoc m) => PySemantics (PythonCharacteristicsAnalysisT m) obj vlu where
+    callBnd loc pos kwa = mjoinMap apply . Map.toList
+        where apply (rcv, fns) = do pyDeref_ (\_ ob -> 
+                                        cond @_ @(CP Bool) (return $ has @CloPrm ob) 
+                                                           (mapM_ (\f -> do addReceiver f rcv
+                                                                            addCallSite f loc (objAddrSetFromList $ injectAdr rcv : pos) -- todo: add kwas
+                                                                            mapM_ (addParameterObject f) (maybe [] objAddrSetToList $ listToMaybe pos))
+                                                                  $ cloLoc ob)
+                                                           (return ())) fns
+                                    call loc (injectAdr rcv : pos) kwa fns
+    
+    callClo l pos kwa = mjoinMap apply
+        where
+            apply (PyClo loc prs bdy lcl env) = do 
+                addCallSite loc l $ objAddrSetFromList pos
+                mapM_ (addParameterObject loc) (maybe [] objAddrSetToList $ listToMaybe pos)
+                pyWithCtx l $
+                    do  frm <- pyAlloc (tagAs FrmTag loc) (new' FrameType [] [])
+                        let ari = length prs
+                        let psn = length pos
+                        let kps = drop psn prs
+                        let akw = Set.fromList $ map (ideName . fst) kwa
+                        let pkw = Set.fromList $ map parNam kps
+                        if psn <= ari && akw == pkw
+                        then do mapM_ (\(par, arg) -> pyAssignAt (parNam par) arg frm) (zip prs pos) -- bind positional args 
+                                mapM_ (\(kyw, arg) -> pyAssignAt (ideName kyw) arg frm) kwa          -- bind keyword args
+                                let bindings = map (,frm) lcl
+                                pyWithEnv (extends bindings env) $ pyCall l (FuncBdy loc bdy)
+                        else pyError ArityError

@@ -24,7 +24,9 @@ module Analysis.Python.Common (
   getCloLoc,
   cloLoc,
   parNam,
-  cloParams
+  cloParams,
+  objAddrSetFromList,
+  objAddrSetToList
 ) where
 
 import Lattice hiding (empty, Top)
@@ -95,6 +97,13 @@ emptyObjAddrSet = ObjAddrSet Set.empty
 
 insertObjAddr :: ObjAdr -> ObjAddrSet -> ObjAddrSet 
 insertObjAddr a (ObjAddrSet s) = ObjAddrSet $ Set.insert a s
+
+objAddrSetFromList :: [ObjAddrSet] -> ObjAddrSet 
+objAddrSetFromList [] = emptyObjAddrSet 
+objAddrSetFromList (s : rest) = ObjAddrSet $ Set.union (addrs s) (addrs $ objAddrSetFromList rest)
+
+objAddrSetToList :: ObjAddrSet -> [ObjAdr]
+objAddrSetToList = Set.toList . addrs
 
 instance Show ObjAddrSet where
   show (ObjAddrSet s) = show (Set.toList s)
