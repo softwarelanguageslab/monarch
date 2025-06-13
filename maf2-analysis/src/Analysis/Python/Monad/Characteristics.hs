@@ -24,6 +24,7 @@ import Lattice.TopLattice()
 import Domain.Python.Objects.Class
 import Control.Monad.Identity
 import Analysis.Monad.FunctionCharacteristics
+import qualified Data.Map as Map
 
 newtype PythonCharacteristicsAnalysisT m a = PythonCharacteristicsAnalysisT (IdentityT m a)
   deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache)
@@ -61,11 +62,7 @@ instance (vlu ~ PyRef,
           =>
           PyM (PythonCharacteristicsAnalysisT m) obj vlu where
   pyStoreSize = storeSize @ObjAdr @obj @(PythonCharacteristicsAnalysisT m)
-  pyCall l b = do
-    let loc = getPyBdyLoc b 
-    maybe (return ()) (`addCallSite` l) loc
-    maybe (return ()) (`addEquivCallSite` l) loc -- todo: check equivalence of call sites 
-    curry call l b
+  pyCall = curry call
   pyAlloc = store
   pyDeref f = deref f . addrs
   pyDeref_ f = deref f . addrs
