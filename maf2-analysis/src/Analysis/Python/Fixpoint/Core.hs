@@ -10,7 +10,8 @@ module Analysis.Python.Fixpoint.Core where
 import Lattice
 import Analysis.Python.Common
 import Domain.Python.Objects as PyObj  
-import Analysis.Python.Semantics hiding (call)
+import Analysis.Python.Semantics.Class hiding (call)
+import Analysis.Python.Semantics.Core
 import Analysis.Python.Monad.Class
 import Analysis.Python.Objects
 import Analysis.Monad hiding (eval, call)

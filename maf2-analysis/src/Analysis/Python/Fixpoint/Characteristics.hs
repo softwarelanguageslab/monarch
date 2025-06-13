@@ -10,7 +10,8 @@ module Analysis.Python.Fixpoint.Characteristics where
 import Lattice
 import Analysis.Python.Common
 import Domain.Python.Objects as PyObj  
-import Analysis.Python.Semantics hiding (call)
+import Analysis.Python.Semantics.Class hiding (call)
+import Analysis.Python.Semantics.Characteristics
 import Analysis.Python.Monad.Class
 import Analysis.Python.Objects
 import Analysis.Monad hiding (eval, call)
@@ -82,7 +83,7 @@ newtype PyCmpStoreOut = PyCmpStoreOut PyCmp
 type PyCmp = Key (IntraT () Identity) PyBdy
 type PyRes = Val (IntraT () Identity) PyRef
 
-intra :: forall obj m . AnalysisM m obj => PyCmp -> m ()
+intra :: forall obj m . (AnalysisM m obj) => PyCmp -> m ()
 intra cmp = m
               & runIntraAnalysis cmp
     where m = do s <- fromJust <$> Analysis.Monad.get (PyCmpStoreIn cmp)

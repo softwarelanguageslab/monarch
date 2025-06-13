@@ -11,7 +11,8 @@ import Lattice
 import Lattice.Tainted (Tainted(..))
 import Analysis.Python.Common
 import Domain.Python.Objects as PyObj  
-import Analysis.Python.Semantics hiding (call)
+import Analysis.Python.Semantics.Class hiding (call)
+import Analysis.Python.Semantics.Taint
 import Analysis.Python.Monad.Class
 import Analysis.Python.Objects
 import Analysis.Monad hiding (eval, call)

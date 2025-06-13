@@ -74,7 +74,10 @@ library
       Analysis.Python.Monad.Characteristics
       Analysis.Python.Objects
       Analysis.Python.Primitives
-      Analysis.Python.Semantics
+      Analysis.Python.Semantics.Class
+      Analysis.Python.Semantics.Core
+      Analysis.Python.Semantics.Taint
+      Analysis.Python.Semantics.Characteristics
       Analysis.Scheme
       Analysis.Scheme.Actors.Components
       Analysis.Scheme.Monad
