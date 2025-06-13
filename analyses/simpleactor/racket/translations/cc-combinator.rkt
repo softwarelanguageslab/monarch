@@ -62,7 +62,7 @@
            (let* [(ps (map (lambda ags (gensym "x")) payload))
                   (nmsg (map (lambda (contract arg) `((,contract ,k ,j) ,arg)) payload ps))]
 
-               `(,(uncurry (cons (list 'quote tag) ps)) ,(enhanced-message (uncurry (cons (list 'quote tag) nmsg)) (translate-aux communication) j)))]))
+               `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) (translate-aux communication) j)))]))
               
     
 
