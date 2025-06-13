@@ -4,6 +4,12 @@
 ;; to SimpleActor. It is expected  that `actor-translation`
 ;; is run first, so that the input does not contain
 ;; constructs from the λα language.
+;;
+;; Current limitations:
+; - message/c contracts need to be in the ensures/c contract directly instead of
+; referring to them through variables or other means, this is because the ensures/c
+; contract needs to extract the message tag from the message and therefore needs to
+; have at-compile-time informmation about the messages in the contract. 
 
 (provide translate)
 (require "../utils.rkt")
@@ -39,14 +45,26 @@
 ;; but creates an enhanced message
 ;; if a communication contract is 
 ;; used.
-(define (translate-message/c k j) 
-    (lambda (exp)
+(define (translate-message/c exp)
+        (let* [(k    (gensym "k"))
+               (j    (gensym "j"))
+               (v    (gensym "v"))]
+
+           `(lambda (,k ,j ,v)
+             (match ,v
+               (,((translate-message-handler k j) exp))))))               
+
+;; Translates a message contract to a single
+;; message handler.
+(define ((translate-message-handler k j) exp)
         (match exp
           [(quasiquote (message/c ,tag ,payload ,recipient ,communication))
-           (let* ((ps   (map (lambda ags (gensym "x")) payload))
-                  (nmsg (map (lambda (κ arg) `((,κ ,k ,j) ,arg)) payload ps)))
+           (let* [(ps (map (lambda ags (gensym "x")) payload))
+                  (nmsg (map (lambda (contract arg) `((,contract ,k ,j) ,arg)) payload ps))]
 
-           `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) (translate-aux communication) j)))])))
+               `(,(uncurry (cons (list 'quote tag) ps)) ,(enhanced-message (uncurry (cons (list 'quote tag) nmsg)) (translate-aux communication) j)))]))
+              
+    
 
 ;; Translate a communication contract to
 ;; a equivalent SimpleActor construct.
@@ -72,7 +90,7 @@
     (lambda (contract)
        (let*
          ((tag (cadr contract))
-          (translated     ((translate-message/c j j) contract))
+          (translated     ((translate-message-handler j j) contract))
           (pattern        (car translated))
           (enhanced-msg   (cadr translated)))
 
@@ -154,6 +172,19 @@
 ;; match any expected tag the appropriate
 ;; blame message is generated.
 (define (translate-behavior/c exp) 
+  (define (clauses->if k j a v message-contracts otherwise)
+    (define result (gensym "result"))
+    (if (null? message-contracts)
+        otherwise
+        (let ((message-contract (car message-contracts))
+              (other-contracts (cdr message-contracts)))
+        `(letrec ((,result (,message-contract ,k ,j ,v)))
+            (if ,result
+                ;; a is the actor reference, applying it
+                ;; to the result entails sending a message.
+                (,a ,result)
+                ,(clauses->if k j a v other-contracts otherwise))))))
+                 
   (match exp
     [(quasiquote (behavior/c ,@messages))
      (let ((message (gensym "message"))
@@ -161,14 +192,16 @@
            (k (gensym "k"))
            (j (gensym "j"))
            (v (gensym "v"))
-           (x (gensym "x")))
-
+           (x (gensym "x"))
+           ;; message contracts are functions taking blame labels
+           ;; and messages and returning an enhanced message or
+           ;; #f indicating that the message contract did not match
+           ;; the given message.
+           (message-contracts (map translate-aux messages)))
+     
      `(lambda (,k ,j ,a)    ;; blame labels and actor reference
         (lambda (,v) ;; message intercept
-          (letrec
-            ;; TODO: translate message/c to functions
-            ((,message (match ,v ,(append (map translate-aux messages) (list `(,x (blame ,k)))))))
-            (,a ,message)))))]))
+          ,(clauses->if k j a v message-contracts `(blame ,k)))))]))
 
 ;; Enhances patterns in the `receive` construct
 ;; with patterns with the enhanced counter-parts 
@@ -292,6 +325,8 @@
      (translate-behavior/c e)]
     [(quasiquote (ensures/c ,@messages))
      (translate-communication/c e)]
+    [(quasiquote (message/c ,@rest))
+     (translate-message/c e)]
     [(quasiquote (one-of/c ,@options))
      (let ((j (gensym "j")) (k (gensym "k")) (v (gensym "v")))
       (define (gen-oneof options v)
@@ -351,6 +386,7 @@
    ;(displayln (eval_ (translate test-4 #:meta #t))) ;; returns 5
    ;(displayln (eval_ `(,(translate test-5) 2))) ;; returns 1
    ;(displayln (eval_ `(,(translate test-5) 1))) ;; blame error blaming k
-   (pretty-display (translate `(struct/c world TETRA/C BSET/C)))
+   ; (pretty-display (translate `(struct/c world TETRA/C BSET/C)))
+   ; (pretty-write (translate-aux '(behavior/c (message/c pong (actor?) any-recipient (ensures/c (message/c ping (actor?) any-recipient unconstrained/c))))))
    )
 
