@@ -5,7 +5,7 @@ module Analysis.Monad.FunctionCharacteristics where
 
 import qualified Data.Set as Set
 
-import Data.Maybe (fromJust, listToMaybe)
+import Data.Maybe (fromJust, listToMaybe, fromMaybe)
 import Syntax.Python (PyLoc)
 import Control.Monad.State ( StateT, MonadState )
 import Analysis.Python.Common (ObjAddrSet, emptyObjAddrSet, insertObjAddr, ObjAdr)
@@ -18,7 +18,7 @@ import qualified Control.Monad.State as State
 import Data.Map ( Map )
 
 import Control.Monad.Trans.State (runStateT)
-
+import Control.Monad
 
 
 data CharacteristicsMap = CharacteristicsMap { callSites :: Set.Set PyLoc, -- number of call sites that invoke the function
@@ -75,12 +75,11 @@ parameterOf s = do m <- getAllCharacteristics
 class (Monad m) => CharacteristicsM k m where
     newFunction :: k -> m ()
     getAllCharacteristics :: m (Map.Map k CharacteristicsMap)
-    getCharacteristics :: k -> m CharacteristicsMap
+    getCharacteristics :: k -> m (Maybe CharacteristicsMap)
     updateCharacteristics :: k -> CharacteristicsMap -> m ()
     modifyCharacteristics :: k -> (CharacteristicsMap -> m CharacteristicsMap) -> m ()
     modifyCharacteristics k f = do  m <- getCharacteristics k
-                                    newM <- f m
-                                    updateCharacteristics k newM
+                                    maybe (return ()) (f >=> updateCharacteristics k) m
 
 instance (CharacteristicsM k m, Monad (t m), MonadLayer t) => CharacteristicsM k (t m) where
     newFunction = upperM . newFunction
@@ -94,7 +93,7 @@ newtype CharacteristicsT k m a = CharacteristicsT (StateT (Map.Map k Characteris
 instance {-# OVERLAPPING #-} (Monad m, Ord k) => CharacteristicsM k (CharacteristicsT k m) where
     newFunction f = State.modify $ Map.insert f emptyCharacteristicsMap
     getAllCharacteristics = State.get
-    getCharacteristics f = State.gets (fromJust . Map.lookup f)
+    getCharacteristics = State.gets . Map.lookup
     updateCharacteristics f = State.modify . Map.insert f
 
 runWithCharacteristics :: forall k m a . CharacteristicsT k m a -> m (a, Map k CharacteristicsMap)
