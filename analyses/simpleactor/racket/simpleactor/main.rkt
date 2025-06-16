@@ -193,7 +193,7 @@
                                        (parameterize ([self (thread-receive)]) 
                                          (begin body (atomic-counter-decrement *active-actor-count*)))))) (quote-syntax #,stx))))
 
-          (atomic-counter-increment *active-actor-count*)
+          ; (atomic-counter-increment *active-actor-count*)
           (thread-send (pid-tid new-pid) new-pid)
           new-pid)])) 
 
