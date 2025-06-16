@@ -220,7 +220,7 @@
          (let
            ((msg (thread-receive)))
              (atomic-counter-decrement *in-flight-message-count*)
-             (atomic-counter-increment *active-actor-count*)
+             ; (atomic-counter-increment *active-actor-count*)
              (match msg
                [pat body ...] ...)))]))
 
@@ -229,6 +229,7 @@
   ;; NOTE: this assumes that the receiving actor will always
   ;; act on the message. If this is not the case (lack of receive block for example)
   ;; the program might time out.
+  (atomic-counter-increment *active-actor-count*)
   (atomic-counter-increment *in-flight-message-count*)
   (thread-send (pid-tid ref) vlu))
 
