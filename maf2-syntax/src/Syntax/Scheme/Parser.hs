@@ -182,10 +182,10 @@ parseList = do
    return $ Pai ex exs
 
 quote :: Parser (Span -> SExp)
-quote = lexeme $ Quo <$> (char '\'' >> expression)
+quote = lexeme $ Quo <$> (lexeme (char '\'') >> expression)
 
 quasiquote :: Parser (Span -> SExp)
-quasiquote = lexeme $ Qua <$> (char '`' >> expression)
+quasiquote = lexeme $ Qua <$> (lexeme (char '`') >> expression)
 
 unquote :: Parser (Span -> SExp)
 unquote = char ',' >> Unq <$> expression
