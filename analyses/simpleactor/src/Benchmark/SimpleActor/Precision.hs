@@ -17,7 +17,7 @@ import qualified RIO.Set as Set
 import qualified RIO.Map as Map
 import System.Directory
 import System.Process
-import Syntax.Compiler (parseFromString)
+import Syntax.Compiler (parseFromString')
 import qualified Analysis.SimpleActor.Fixpoint.Modular as Analysis
 import qualified Analysis.SimpleActor.Fixpoint.Sequential as SeqAnalysis
 import Control.Monad.Escape
@@ -147,7 +147,7 @@ getBlames = \case MayBoth _ es -> foldMap extractBlames (Set.toList es)
 analyzeFile :: FilePath -> MaybeT IO Results
 analyzeFile inputFilename = do
     -- parse the file
-    program <- liftIO (readFile inputFilename) <&> (either error id . parseFromString)
+    program <- liftIO (readFile inputFilename) <&> (either error id . parseFromString' (Just inputFilename))
     (sequentialResults, _mbs) <- MaybeT $ timeout defaultAnalysisTimeout $ Analysis.analyze program
 
     -- process results    
@@ -173,15 +173,18 @@ compareConcrete :: FilePath -- ^ the path to the analyzed file
 compareConcrete path hdl res = do
   (timedout, interpResults) <- runConcrete' path
   let concrBlameSize =  Set.size interpResults._blames
-  let abstrBlameSize =  Set.size res._blames 
+  let abstrBlameSize =  Set.size res._blames
   -- soundness check: concrete reports less blame errors
   -- than the abstract
-  unless (concrBlameSize <= abstrBlameSize) $
+  unless (concrBlameSize <= abstrBlameSize) $ do
+    let missing = Set.difference interpResults._blames res._blames
+    putStrLn $ "missing: " ++ show missing
     error "analysis is unsound"
-  hPutStrLn hdl $ path ++ ";" ++ show (abstrBlameSize - concrBlameSize) ++ ";" ++ if timedout then "1" else "0"  
+  hPutStrLn hdl $ path ++ ";" ++ show (abstrBlameSize - concrBlameSize) ++ ";" ++ if timedout then "1" else "0"
 
 -- | Output the precision results of a single benchmark to the given file handle
 runPrecision :: FilePath -> Handle -> IO ()
 runPrecision path hdl = do
+  putStrLn path
   anlResult <- runMaybeT (analyzeFile path)
   maybe (outputTimeout path hdl) (compareConcrete path hdl) anlResult

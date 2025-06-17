@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 -- | Parser to S-expressions
-module Syntax.Scheme.Parser(SExp(..), Span(..), parseSexp, parseDatum, spanOf, pattern (:::), smap, smapM) where
+module Syntax.Scheme.Parser(SExp(..), Span(..), parseSexp', parseSexp, parseDatum, spanOf, pattern (:::), smap, smapM) where
 
 import Data.Functor
 import Text.ParserCombinators.Parsec
@@ -13,6 +13,7 @@ import Text.Printf
 import Syntax.Span
 import Data.Functor.Identity (Identity)
 import Control.Monad.Except
+import Data.Maybe (fromMaybe)
 
 -- | Location information
 fromSourcePos :: SourcePos -> Span
@@ -230,7 +231,10 @@ parseDatum :: SourceName -> String -> Either String (SExp, String)
 parseDatum nam = either (Left . show) Right  . parse (whiteSpace >> expression >>= (\expr -> getInput <&> (expr,))) nam
 
 -- | Parse an s-expression as a string
-parseSexp :: String -> Either String [SExp]
-parseSexp = convert . parse sexpParser "SExpParser"
+parseSexp' :: Maybe String -> String -> Either String [SExp]
+parseSexp' filename = convert . parse sexpParser (fromMaybe "SExpParser" filename)
    where convert (Left e)  = Left $ show e
          convert (Right e) = Right e
+
+parseSexp :: String -> Either String [SExp]
+parseSexp = parseSexp' Nothing

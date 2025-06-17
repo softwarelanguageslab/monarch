@@ -33,7 +33,7 @@ set -o nounset
 
 TEST_DIR=\$(dirname "\$(realpath \$0)")
 cd $MONARCH_DIR/../
-gtimeout 10 cabal run . -- analyze -f \$TEST_DIR/test.scm --no-translate 2>&1 | grep "no such variable"
+gtimeout 10 cabal run . -- precision -i \$TEST_DIR/test.scm --no-translate 2>&1 | grep "missing: fromList [685:48-685:48]"
 EOF
 
 chmod +x $SCRIPT_FILE

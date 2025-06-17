@@ -44,7 +44,7 @@ data Exp = -- Program Semantics
 instance NFData Exp
 
 -- | Literals are expressions that evaluate to themselves
-data Lit = Num Integer | Character Char | Boolean Bool | Symbol String | String String | Nil deriving (Eq, Ord, Generic)
+data Lit = Num Integer | Real Double | Character Char | Boolean Bool | Symbol String | String String | Nil deriving (Eq, Ord, Generic)
 
 instance NFData Lit
 
@@ -53,6 +53,7 @@ instance Show Lit where
    show (Boolean b) = show b
    show (Symbol s) = show s
    show (String str) = show str
+   show (Real r)     = show r
    show (Character c) = "\\#" ++ show c
    show Nil = "'()"
 
