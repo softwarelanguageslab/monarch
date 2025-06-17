@@ -1,0 +1,8 @@
+programs/preprocessed/inputs_test/ping2-translated.rkt
+programs/preprocessed/inputs_test/ping4-translated.rkt
+programs/preprocessed/inputs_test/ping5-translated.rkt
+programs/preprocessed/inputs_test/ping7-translated.rkt
+programs/preprocessed/inputs_test/ping0-translated.rkt
+programs/preprocessed/inputs_test/ping3-translated.rkt
+programs/preprocessed/inputs_test/ping1-translated.rkt
+programs/preprocessed/inputs_test/ping6-translated.rkt
