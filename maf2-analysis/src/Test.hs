@@ -1,11 +1,14 @@
 -- | Library code for testing infrastructure
-module Test(analysisSucceeds, defaultTimeout, soundBenchmark, module Test.Hspec) where
+module Test(analysisSucceeds, defaultTimeout, soundBenchmark, module Test.Hspec, maybeToEither) where
 
 import Control.DeepSeq
 import Test.Hspec
 import System.Timeout
 import Data.Maybe (fromMaybe)
 
+maybeToEither :: e -> Maybe a -> Either e a 
+maybeToEither e Nothing = Left e 
+maybeToEither _ (Just a) = Right a
 
 -- | Default timeout in seconds
 defaultTimeout :: Int 
