@@ -244,7 +244,7 @@ compileExp (Starred ex _)             = todo "eval starred expression"
 compileExp (Paren ex _)               = compileExp ex
 compileExp (CondExpr tru cnd fls _)   = todo "eval conditional expression"
 compileExp (BinaryOp op left right a) = binaryToCall op left right a
-compileExp (UnaryOp op arg _)         = todo "eval unary op"
+compileExp (UnaryOp op arg a)         = unaryToCall op arg a
 compileExp (Dot rcv atr a)            = Read (compileExp rcv) (Ide atr) a
 compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ compileExp bdy) annot) annot [] -- note: [] is because of no local variables
 compileExp (AST.Tuple exs a)          = Literal $ Tuple (map compileExp exs) a
@@ -311,6 +311,15 @@ binaryToCall op left right a =
        compiledRight = compileExp right
    in Call (Read compiledLeft (opToIde op) (spanningTagged (annot left) (annot op)))
            [compiledRight]
+           []
+           a
+
+-- | Translates a unary operation to a function call 
+unaryToCall :: Op PyLoc -> Expr PyLoc -> PyLoc -> Exp PyLoc AfterSimplification
+unaryToCall op arg a =
+   let compiledArg  = compileExp arg
+   in Call (Read compiledArg (opToIde op) (spanningTagged (annot arg) (annot op)))
+           []
            []
            a
 

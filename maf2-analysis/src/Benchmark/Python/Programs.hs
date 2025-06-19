@@ -32,12 +32,12 @@ mopsaBasic = [
    "programs/python/mopsa-basic/class_constructor.py",
    "programs/python/mopsa-basic/class_inheritance.py",
    "programs/python/mopsa-basic/class_static_method.py",
-   -- "programs/python/mopsa-basic/dict_loop.py", -- COMPILER ERROR: eval unary op
+   "programs/python/mopsa-basic/dict_loop.py",
    "programs/python/mopsa-basic/dict.py",
    "programs/python/mopsa-basic/function_default_args.py",
    -- "programs/python/mopsa-basic/function_side_effect.py", -- Var previously declared GlobalScope is now declared LocalScope
-   -- "programs/python/mopsa-basic/generator_loop_2.py", -- COMPILER ERROR: eval unary op
-   -- "programs/python/mopsa-basic/generator_loop.py", -- COMPILER ERROR: eval unary op
+   -- "programs/python/mopsa-basic/generator_loop_2.py", -- COMPILER ERROR: eval yield
+   -- "programs/python/mopsa-basic/generator_loop.py", -- COMPILER ERROR: eval yield
    -- "programs/python/mopsa-basic/generator_rel_2.py", -- COMPILER ERROR: assertion statement
    -- "programs/python/mopsa-basic/generator_rel.py", -- COMPILER ERROR: eval yield
    -- "programs/python/mopsa-basic/generator.py", -- COMPILER ERROR: eval yield
@@ -48,7 +48,7 @@ mopsaBasic = [
    -- "programs/python/mopsa-basic/list_comprehension.py", -- COMPILER ERROR: eval list comprehension
    -- "programs/python/mopsa-basic/list_in_loop.py", -- COMPILER ERROR: eval sliced
    "programs/python/mopsa-basic/list_insert_pop.py",
-   -- "programs/python/mopsa-basic/list_insert.py", -- COMPILER ERROR: eval unary op
+   "programs/python/mopsa-basic/list_insert.py",
    "programs/python/mopsa-basic/list_len.py",
    -- "programs/python/mopsa-basic/list_of_tuples.py", -- COMPILER ERROR: eval sliced
    "programs/python/mopsa-basic/list_op.py",
@@ -58,12 +58,12 @@ mopsaBasic = [
    -- "programs/python/mopsa-basic/module_math.py", -- import not supported
    "programs/python/mopsa-basic/multi_compare.py",
    "programs/python/mopsa-basic/num_loop.py",
-   -- "programs/python/mopsa-basic/object_in_condition.py", -- COMPILER ERROR: eval unary op
+   -- "programs/python/mopsa-basic/object_in_condition.py", -- do not support no
    -- "programs/python/mopsa-basic/object_in_loop.py", -- import not supported
    "programs/python/mopsa-basic/operators.py",
    "programs/python/mopsa-basic/range_iter.py",
    "programs/python/mopsa-basic/range_to_list.py",
-   -- "programs/python/mopsa-basic/range.py", -- COMPILER ERROR: eval unary op
+   "programs/python/mopsa-basic/range.py",
    "programs/python/mopsa-basic/recency.py",
    "programs/python/mopsa-basic/sets.py",
    "programs/python/mopsa-basic/try_raise.py",
@@ -84,10 +84,11 @@ scoping = [
 
 soundnessBenchmarks :: [String]
 soundnessBenchmarks = allBenchmarks \\ 
-                     [
+                     [ -- these are benchmarks that cannot be ran in the concrete interpreter
                         "programs/python/debug.py", -- Database() is undefined
                         "programs/python/exceptions.py", -- raise Exception()
                         "programs/python/taint.py" -- no attribute __taint__ 
+                        -- todo: fill in list
                      ]
 
 allBenchmarks :: [String]
