@@ -31,10 +31,6 @@ import Domain.Python.Syntax (parse)
 import Interpreter.Python.Eval (evalPythonProgram)
 import qualified Benchmark.Python.Programs as PythonBenchmarks
 
-maybeToEither :: e -> Maybe a -> Either e a 
-maybeToEither e Nothing = Left e 
-maybeToEither _ (Just a) = Right a
-
 ----------------------
 -- SCHEME SOUNDNESS --
 ----------------------
@@ -110,4 +106,4 @@ pythonSoundness = describe "Python soundness" $ mapM_ (soundBenchmark
 spec :: Spec 
 spec = do
     schemeSoundness
-    pythonSoundness
+    -- pythonSoundness

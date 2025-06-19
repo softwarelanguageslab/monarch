@@ -8,6 +8,7 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-partial-fields #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Syntax.Python.AST(
    -- ast nodes
    Parameter(..), 
@@ -36,6 +37,7 @@ import Language.Python.Common.AST hiding (None, List, Try, Raise, Handler, Condi
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Data.List (intersperse)
+import Control.DeepSeq (NFData)
 
 -------------------------------------------------------------------------------
 -- Compilation phases
@@ -101,20 +103,30 @@ type Micro = AfterLexicalAddressing
 
 -- | A program is a series of statements
 newtype Program a ξ = Program { programStmt :: Stmt a ξ }
+   deriving (Generic)
+
+instance (Holds NFData ξ a) => NFData (Program a ξ) where
 
 deriving instance (Holds Show ξ a) => Show (Program a ξ)
 deriving instance (Holds Eq ξ a) => Eq (Program a ξ)
 deriving instance (Holds Ord ξ a) => Ord (Program a ξ)
+
+deriving instance Generic (Ident a)
+instance (NFData a) => NFData (Ident a) where
 
 -- | An identifier is backed by the Language.Python identifier
 data Ide a = Ide { getIdeIdent :: Ident a } 
            | NamespacedIde { getIdent :: Ide a, namespace :: Ide a } 
    deriving (Eq, Ord, Show, Generic)
 
+instance (NFData a) => NFData (Ide a) where
+
 -- | An identifier that is augmented with lexical addressing information
 data IdeLex a = IdeLex { lexIde :: Ide a, num :: Int } 
               | IdeGbl String 
    deriving (Eq, Show, Ord, Generic)
+
+instance (NFData a) => NFData (IdeLex a) where
 
 -- Phase information for each type of statement
 type family XAsgn ξ
@@ -154,10 +166,13 @@ data Stmt a ξ = Assg (XAsgn ξ) (Lhs a ξ) (Exp a ξ)
               | Global   (XGbl  ξ) (Ide a) a                                  -- ^ global
               | Conditional (XCond ξ) [(Exp a ξ, Stmt a ξ)] (Stmt a ξ) a      -- ^ if-elif-else
               | StmtExp (XStmtExp ξ) (Exp a ξ) a
+   deriving (Generic)
 
 deriving instance (Holds Show ξ a) => Show (Stmt a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Stmt a ξ)
 deriving instance (Holds Eq   ξ a) => Eq (Stmt a ξ)
+
+instance (Holds NFData ξ a) => NFData (Stmt a ξ) where
 
 makeSeq :: (XSeq ξ ~ ()) => [Stmt a ξ] -> Stmt a ξ
 makeSeq [stm] = stm
@@ -168,21 +183,26 @@ data Exp a ξ = Lam [Par a ξ] (Stmt a ξ) a (XLam ξ a)           -- ^ a less r
              | Var (XIde ξ a)                                  -- ^ a variable 
              | Read (Exp a ξ) (Ide a) a                        -- ^ field access e.x
              | Call (Exp a ξ) [Exp a ξ] [(Ide a, Exp a ξ)] a   -- ^ function call
-             | Literal (Lit a ξ)                               -- ^ a value literal
+             | Literal (Lit a ξ)
+   deriving (Generic)                               -- ^ a value literal
 
 deriving instance (Holds Show ξ a) => Show (Exp a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Exp a ξ)
 deriving instance (Holds Eq   ξ a) => Eq (Exp a ξ)
 
+instance (Holds NFData ξ a) => NFData (Exp a ξ) where
+
 -- | Function parameters
 data Par a ξ = Prm {parIde :: XIde ξ a, parAnnot :: a }
              | VarArg { parIde :: XIde ξ a, parAnnot :: a }
              | VarKeyword { parIde :: XIde ξ a, parAnnot :: a }
+   deriving (Generic)
 
 deriving instance (Holds Show ξ a) => Show (Par a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Par a ξ)
 deriving instance (Holds Eq   ξ a) => Eq (Par a ξ)
 
+instance (Holds NFData ξ a) => NFData (Par a ξ) where
 
 -- | Arguments
 --data Arg a ξ = PosArg (Exp a ξ) a         -- ^ Positional argument
@@ -198,11 +218,13 @@ data Lhs a ξ = Field (Exp a ξ) (Ide a) a -- ^ assignment to a field
              | ListPat [Lhs a ξ] a 
              | TuplePat [Lhs a ξ] a 
              | IdePat (XIde ξ a)
+   deriving (Generic)
 
 deriving instance (Holds Show ξ a) => Show (Lhs a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Lhs a ξ)
 deriving instance (Holds Eq   ξ a) => Eq (Lhs a ξ)
 
+instance (Holds NFData ξ a) => NFData (Lhs a ξ) where
 
 -- | Value literals
 data Lit a ξ = Bool Bool a 
@@ -213,10 +235,13 @@ data Lit a ξ = Bool Bool a
              | Dict [(Exp a ξ, Exp a ξ)] a
              | List [Exp a ξ] a
              | None a 
+   deriving (Generic)
 
 deriving instance (Holds Show ξ a) => Show (Lit a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Lit a ξ)
 deriving instance (Holds Eq   ξ a) => Eq (Lit a ξ)
+
+instance (Holds NFData ξ a) => NFData (Lit a ξ) where
 
 -------------------------------------------------------------------------------
 -- Auxilary functions

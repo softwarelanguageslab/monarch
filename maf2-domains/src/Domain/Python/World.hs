@@ -7,6 +7,8 @@ import Data.TypeLevel.HMap (All, ForAllOf, ForAll(..), Dict(..), genHKeys)
 
 import Prelude hiding (True, False, all)
 import Data.Singletons (Sing)
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
 
 
 -- | Built-in types in Python
@@ -30,7 +32,9 @@ data PyType = NoneType
             | DatabaseType 
             | DataFrameType
             | SeriesType  
-  deriving (Eq, Ord, Enum, Bounded, Show) 
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic) 
+
+instance NFData PyType where
 
 -- | The name of a built-in Python type 
 name :: PyType -> String
@@ -166,13 +170,17 @@ data PyPrim     =
                 -- series primitives
                 | SeriesAsType 
                 | SeriesMerge
-  deriving (Eq, Ord, Enum, Bounded, Show)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
+
+instance NFData PyPrim where
 
 -- | Special add-on primitives
 data XPyPrim = ObjectTaint 
              | DatabaseRead 
              | DatabaseWrite
-  deriving (Eq, Ord, Enum, Bounded, Show)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
+
+instance NFData XPyPrim where
 
 -- | Built-in attributes in Python
 data PyAttr = ClassAttr 
@@ -273,7 +281,9 @@ data PyConstant = None
                 | TypeMRO     PyType 
                 | PrimObject  PyPrim 
                 | XPrimObject XPyPrim
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData PyConstant where
 
 instance Finite PyConstant where
   all = [None, True, False, GlobalFrame] 
@@ -296,7 +306,11 @@ data PyPrmKey = IntPrm
               | DctPrm
               | DfrPrm 
               | SrsPrm 
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData PyPrmKey where
+
+
 
 genHKeys ''PyPrmKey
 

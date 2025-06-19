@@ -50,6 +50,8 @@ import Lattice.TopLattice
 import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)), Assoc, get)
 import Data.TypeLevel.AssocList (LookupIn)
 import Data.Maybe (fromJust)
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -61,7 +63,9 @@ todo = error . ("[TODO] NYI: " ++)
 
 data ObjAdr = PtrAdr PyLoc [PyLoc]
             | PrmAdr PyConstant
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic)
+
+instance NFData ObjAdr where
 
 allocPtr :: PyLoc -> [PyLoc] -> ObjAdr 
 allocPtr = PtrAdr
@@ -90,7 +94,7 @@ typeVal = constant . TypeObject
 -- simple PyVal 
 
 newtype ObjAddrSet = ObjAddrSet { addrs :: Set ObjAdr }
-  deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice)
+  deriving (Eq, Ord, Joinable, PartialOrder, BottomLattice, Generic, NFData)
 
 emptyObjAddrSet :: ObjAddrSet
 emptyObjAddrSet = ObjAddrSet Set.empty

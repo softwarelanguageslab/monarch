@@ -17,6 +17,8 @@ import Data.Singletons (SingI, Sing)
 import Text.Printf (printf)
 import Lattice.TopLattice()
 import Domain.Python.Objects.Class
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
 
 --
 -- The Python monad 
@@ -26,7 +28,9 @@ import Domain.Python.Objects.Class
 data PyBdy = Main PyPrg
            | FuncBdy PyLoc PyStm
            | LoopBdy PyLoc PyExp PyStm
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic)
+
+instance NFData PyBdy where
 
 getPyBdyLoc :: PyBdy -> Maybe PyLoc 
 getPyBdyLoc (FuncBdy l _) = Just l 

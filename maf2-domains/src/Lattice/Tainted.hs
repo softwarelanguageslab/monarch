@@ -2,9 +2,13 @@ module Lattice.Tainted (Tainted(..), taintWith, ) where
 
 import Lattice.Class
 import Domain.Core.TaintDomain.Class
+import Control.DeepSeq (NFData)
+import GHC.Generics (Generic)
 
 data Tainted t a = Tainted a t
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Generic)
+
+instance (NFData t, NFData a) => NFData (Tainted t a) where
 
 taintWith :: t -> a -> Tainted t a
 taintWith = flip Tainted 

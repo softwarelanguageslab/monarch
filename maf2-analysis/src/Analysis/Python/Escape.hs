@@ -14,6 +14,8 @@ import qualified Data.Set as Set
 import Control.Monad.Join
 import Lattice
 import Debug.Trace
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
 
 ---
 --- The PyEscape class
@@ -23,7 +25,9 @@ data PyEsc vlu = Return vlu
                | Exception vlu
                | Break
                | Continue
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance NFData vlu => NFData (PyEsc vlu) where
 
 class (Domain esc (PyEsc vlu), Show esc) => PyEscape esc vlu | esc -> vlu where
     isReturn     :: (MonadJoin m, BoolDomain b) => esc -> m b  -- TODO: this one is actuallly not needed if we have `getReturn`?
