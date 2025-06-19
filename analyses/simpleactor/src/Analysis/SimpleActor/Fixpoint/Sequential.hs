@@ -51,6 +51,7 @@ import qualified Analysis.Actors.Mailbox as Mailbox
 import Analysis.Actors.Mailbox.GraphToSet (graphToSet)
 import Control.Monad.Trans.Writer (WriterT(..))
 import Control.Monad.Writer.Class (MonadWriter(tell))
+import Syntax (SpanOf(spanOf))
 
 
 ------------------------------------------------------------
@@ -353,9 +354,13 @@ flowStore next cmp = do
   return v
 
 
+spanOfCmp :: SequentialCmp -> Span
+spanOfCmp (exp ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
+
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
 intra selfRef cmp = do
+          -- liftIO (putStrLn $ "analyzing[intra] " ++ show (spanOfCmp cmp))
           inMbs  <- getMailboxes
           ((), (LatticeMonoid outMbs')) <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
                         & runAlloc VarAdr

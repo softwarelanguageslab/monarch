@@ -33,10 +33,10 @@ set -o nounset
 
 TEST_DIR=\$(dirname "\$(realpath \$0)")
 cd $MONARCH_DIR/../
-OUTPUT=\$(gtimeout 10 cabal run . -- precision -i \$TEST_DIR/test.scm 2>&1)
+OUTPUT=\$(timeout 50 cabal run . -- precision -i \$TEST_DIR/test.scm 2>&1)
 if [ \$? -eq 1 ] ; then
-  echo $OUTPUT
-  echo \$OUTPUT | grep -F "missing: fromList [685:48-685:48]"
+  echo \$OUTPUT
+  echo \$OUTPUT | grep -F "missing: fromList ["
 else
   exit 1
 fi
@@ -44,6 +44,6 @@ EOF
 
 chmod +x $SCRIPT_FILE
 
-java -jar $PERSES_JAR --language-ext-jars $PERSES_SCHEME_JAR --lang scheme --test-script $SCRIPT_FILE -i $TEST_FILE 
+java -jar $PERSES_JAR --alg perses_node_with_bfs_delta --language-ext-jars $PERSES_SCHEME_JAR --lang scheme --test-script $SCRIPT_FILE -i $TEST_FILE 
 
 mv $TEST_DIR "perses_out_$(date -Iseconds)"
