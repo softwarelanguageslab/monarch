@@ -9,15 +9,16 @@
                         (print 'pong)
                         (send sender ping self)
                         (become pong-behavior)))))
-   (ping/c (lambda () 
-              (message/c 'ping (actor?) 
-                         unspecified-recipient
-                         (ensures/c (message/c 'pong 
-                                               (actor?)
-                                               unspecified-recipient
-                                               (ensures/c ping/c)))))))
+   (ping/c  (behavior/c (message/c 'ping (actor?) unspecified-recipient (ping/cm))))
+   (ping/cm (lambda () 
+              (ensures/c (message/c 'pong (actor?) 
+                                    unspecified-recipient
+                                    (ensures/c (message/c 'ping
+                                                          (actor?)
+                                                          unspecified-recipient
+                                                          (ping/cm))))))))
 
-  (letrec ((ping (mon client server (behavior/c ping/c) (spawn ping-behavior)))
+  (letrec ((ping (mon client server ping/c (spawn ping-behavior)))
            (pong (spawn pong-behavior)))
     (begin (send ping ping pong)
            (wait-until-all-finished))))

@@ -23,6 +23,10 @@ import System.TimeIt
 import qualified RIO.Set as Set
 import System.Exit
 import RIO (stdout)
+import RIO.Directory
+
+ifM :: Monad m => m Bool -> m a -> m a -> m a
+ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
 
 ------------------------------------------------------------
 -- Command-line arguments
@@ -31,6 +35,7 @@ import RIO (stdout)
 type Command = IO ()
 
 
+-- | Command-line options for a single file
 data InputOptions = InputOptions {
                   filename :: String,
                   doTranslate :: Bool,
@@ -46,13 +51,26 @@ inputOptions = InputOptions <$> strOption
                   ) <*> flag True False ( long "no-translate" <> help "If present, disables translations" )
                   <*> flag False True ( long "debug" <> help "If present, enable debug output" )
 
+
+-- | Command-line for options for a list of files in a directory
+newtype MultipleInputOptions = MultipleInputOptions {
+                              inputDirectory :: String
+                            } deriving (Show, Ord, Eq)
+
+-- | Parser for command-line options corresponding to the 'MultipleInputOptions' record type
+multipleInputOptions :: Parser MultipleInputOptions
+multipleInputOptions = MultipleInputOptions <$> strOption (   long "inputDir"
+                                                          <> short 'i'
+                                                          <> help "The directory containing the input files" )
+
+
 commandParser :: Parser Command
 commandParser =
    subparser
     (  command "analyze"       (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
-    <> command "pre"           (info (inferCmd <$> inputOptions) (progDesc "Pre-analysis"))
-    <> command "eval"          (info (interpret <$> inputOptions) (progDesc "Run a program"))
-    <> command "precision"     (info (precision <$> inputOptions) (progDesc "Run the precision benchmarks")))
+    <> command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
+    <> command "eval"          (info (interpret  <$> inputOptions) (progDesc "Run a program"))
+    <> command "precision"     (info (precision  <$> multipleInputOptions) (progDesc "Run the precision benchmarks")))
 
 
 ------------------------------------------------------------
@@ -144,8 +162,13 @@ inferCmd (InputOptions { filename, doTranslate }) = do
 -- Precision benchmarks
 ------------------------------------------------------------
 
-precision :: InputOptions -> IO ()
-precision InputOptions { .. } = Benchmark.Precision.runPrecision filename stdout
+precision :: MultipleInputOptions -> IO ()
+precision MultipleInputOptions { .. } = do
+   files <- ifM (doesDirectoryExist inputDirectory)
+                (map (inputDirectory ++) <$> getDirectoryContents inputDirectory)
+                (return [inputDirectory])
+
+   mapM_ (`Benchmark.Precision.runPrecision` stdout) files
 
 ------------------------------------------------------------
 -- Main entrypoint

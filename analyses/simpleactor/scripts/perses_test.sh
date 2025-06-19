@@ -28,12 +28,18 @@ cp $INPUT_NAME $TEST_FILE
 
 cat << EOF > $SCRIPT_FILE
 #!/bin/bash
-# set -o pipefail
+set -o pipefail
 set -o nounset
 
 TEST_DIR=\$(dirname "\$(realpath \$0)")
 cd $MONARCH_DIR/../
-gtimeout 10 cabal run . -- analyze -f \$TEST_DIR/test.scm --no-translate 2>&1 | grep "no such variable"
+OUTPUT=\$(gtimeout 10 cabal run . -- precision -i \$TEST_DIR/test.scm 2>&1)
+if [ \$? -eq 1 ] ; then
+  echo $OUTPUT
+  echo \$OUTPUT | grep -F "missing: fromList [685:48-685:48]"
+else
+  exit 1
+fi
 EOF
 
 chmod +x $SCRIPT_FILE
