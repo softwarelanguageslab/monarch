@@ -5,6 +5,8 @@
 ## binary when executed.
 
 INPUT_NAME=$1
+PROPERTY_SCRIPT=$(realpath $2)
+MONARCH_DIR=$(dirname "$(realpath $0)")
 shift
 
 if [ -z "${PERSES_JAR}" ] ; then
@@ -21,7 +23,6 @@ fi
 
 TEST_DIR=$(mktemp -d)
 SCRIPT_FILE="${TEST_DIR}/run.sh"
-MONARCH_DIR=$(dirname "$(realpath $0)")
 TEST_FILE="${TEST_DIR}/test.scm"
 
 cp $INPUT_NAME $TEST_FILE
@@ -33,13 +34,8 @@ set -o nounset
 
 TEST_DIR=\$(dirname "\$(realpath \$0)")
 cd $MONARCH_DIR/../
-OUTPUT=\$(timeout 50 cabal run . -- precision -i \$TEST_DIR/test.scm 2>&1)
-if [ \$? -eq 1 ] ; then
-  echo \$OUTPUT
-  echo \$OUTPUT | grep -F "missing: fromList ["
-else
-  exit 1
-fi
+
+$PROPERTY_SCRIPT \$TEST_DIR/test.scm
 EOF
 
 chmod +x $SCRIPT_FILE
