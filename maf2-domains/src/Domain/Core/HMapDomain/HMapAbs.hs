@@ -1,6 +1,7 @@
 {-# LANGUAGE PolyKinds              #-}
 {-# LANGUAGE AllowAmbiguousTypes    #-}
 {-# LANGUAGE UndecidableInstances   #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Domain.Core.HMapDomain.HMapAbs (HMapAbs(..)) where
 
@@ -12,16 +13,24 @@ import Data.TypeLevel.HMap
 import qualified Data.TypeLevel.HMap as HMap
 import qualified Lattice.ReversePowerSetLattice as RSet
 
-import Data.Kind (Type)
 import Data.Singletons
+import GHC.Generics (Generic)
+import Domain.Python.World (PyPrmKey)
+import Control.DeepSeq (NFData)
 
 -- | HMapDomain instance
 -- TODO: should also have an explicit bottom!
 newtype HMapAbs m = HMapAbs (HMap m, ReversePowerSet (KeyType m))
+    deriving (Generic)
     
 deriving instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Eq m)) => Eq (HMapAbs m)
 deriving instance (HMapKey m, ForAll (KeyKind m) (AtKey1 Joinable m)) => Joinable (HMapAbs m)
 deriving instance BottomLattice (HMapAbs m)
+
+instance (NFData (Demote (KeyKind m)), NFData (ReversePowerSet (Demote (KeyKind m)))) => NFData (HMapAbs m) where
+
+deriving instance Generic (ReversePowerSet PyPrmKey)
+instance NFData (ReversePowerSet PyPrmKey) where
 
 instance (HMapKey m, 
           ForAll k (AtKey1 Eq m), 

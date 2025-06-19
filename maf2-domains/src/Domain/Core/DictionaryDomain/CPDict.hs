@@ -21,11 +21,15 @@ import Control.Monad.DomainError (DomainError(..))
 import Control.Monad.Escape
 import Lattice.BottomLiftedLattice (BottomLifted, joinWithBL, joinsBL)
 import qualified Lattice.BottomLiftedLattice as BL
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
 
 -- | A dictionary that only works for keys from a CP domain 
 data CPDictionary k v = CPDict (Set k) (Map k v) (BottomLifted v)   
                       | TopDict (Set k) v
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord, Show, Generic)
+
+instance (NFData k, NFData v) => NFData (CPDictionary k v) where
 
 -- Typical constraints for dictionaries
 type CPDict k v = (Ord k, Joinable v)

@@ -39,6 +39,7 @@ import Data.Typeable
 import Data.Graph
 import Analysis.Store (CountingMap)
 import Data.Foldable (traverse_)
+import Control.DeepSeq (NFData)
 
 ---
 --- Python analysis fixpoint algorithm

@@ -4,6 +4,8 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 -- | Reduced Python Syntax and its compiler
 module Syntax.Python.Compiler(compile, parse, lexical, PyLoc(..), PyTag(..), tagAs) where
 
@@ -16,7 +18,7 @@ import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Applicative (liftA2, asum)
-import Syntax.Python.Parser (parseFile, SrcSpan)
+import Syntax.Python.Parser (parseFile, SrcSpan(..))
 import Language.Python.Common.AST hiding (None, List, Handler, Try, Raise, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
 import qualified Language.Python.Common.AST as AST
 import Data.Map (Map)
@@ -27,6 +29,8 @@ import Language.Python.Common.SrcLocation (spanning)
 import Language.Python.Common (startRow, startCol)
 import Data.Bifunctor (Bifunctor(second, first))
 import Data.Function ((&))
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData (rnf))
 
 
 todo :: String -> a
@@ -37,8 +41,13 @@ todo = error . ("COMPILER ERROR: " ++)
 -- Source code locations with extra Python-specific tags 
 -------------------------------------------------------------------------------
 
+instance NFData SrcSpan where
+  rnf _ = ()  -- SrcSpan is treated as already fully evaluated (safe if it's metadata only)
+
 data PyLoc = PyLoc SrcSpan (Maybe PyTag)
-   deriving (Eq, Ord)
+   deriving (Eq, Ord, Generic)
+
+instance NFData PyLoc where
 data PyTag = FrmTag
            | ClsStr
            | ClsTup
@@ -56,7 +65,9 @@ data PyTag = FrmTag
            | ItrIdx
            | ItrLst
            | DctKey String
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord, Show, Generic)
+
+instance NFData PyTag where
 
 instance Show PyLoc where
    show (PyLoc s t) = locStr ++ tagStr

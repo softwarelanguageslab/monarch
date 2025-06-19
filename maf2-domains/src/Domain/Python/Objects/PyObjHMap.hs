@@ -29,6 +29,8 @@ import Lattice.BottomLiftedLattice (BottomLifted)
 import Lattice.TopLattice (Top)
 import Control.Monad.Join (MonadBottom(..))
 import qualified Domain.Core.DictionaryDomain.CPDict as CPDict
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
 
 --
 -- Configuring the abstractions 
@@ -65,6 +67,10 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
 
 data PyObjHMap (m :: [PyAbsKey :-> Type]) = PyObjHMap { dct :: CPDictionary String (Assoc VluKey m),
                                                         prm :: HMapAbs (PyPrm m) }
+                            deriving (Generic)
+
+instance (NFData (CPDictionary String (Assoc VluKey m)), NFData (HMapAbs (PyPrm m))) => NFData (PyObjHMap m) where
+ 
 
 type AllJoin m = (ForAll PyPrmKey (AtKey1 Joinable (PyPrm m)),
                   ForAll PyPrmKey (AtKey1 PartialOrder (PyPrm m)),

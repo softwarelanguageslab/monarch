@@ -7,6 +7,8 @@ import Data.Set (Set)
 import qualified Data.Set as Set 
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
+import GHC.Generics (Generic)
+import Control.DeepSeq (NFData)
 
 --
 -- Graph type class
@@ -29,6 +31,9 @@ class Graph g v e | g -> v e where
 --
 
 newtype SimpleGraph v e = SimpleGraph { adj :: Map v (Set (v, e)) }
+    deriving (Generic)
+
+instance (NFData v, NFData e) => NFData (SimpleGraph v e) where
 
 add :: (Ord v, Ord e) => Set (v, e) -> v -> SimpleGraph v e -> SimpleGraph v e
 add to from = SimpleGraph . Map.insertWith Set.union from to . adj  
