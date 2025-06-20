@@ -58,6 +58,8 @@ import Text.Printf (printf)
 import Lattice.CSetLattice (CSet (CSet))
 import qualified Lattice.CSetLattice as CSet
 import Debug.Trace
+import Syntax.Span (spanOf, SpanOf)
+import qualified Data.List as List
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -194,11 +196,11 @@ deriving instance BottomLattice (SchemeVal m)
 
 -- Show instance
 -- TODO: this should be valid for any HMap, maybe make it the default implementation?
-instance (ForAll SchemeKey (AtKey1 Show (Values m)), Show (Assoc ExpConf m)) => Show (SchemeVal m) where
+instance (ForAll SchemeKey (AtKey1 Show (Values m)), SpanOf (Assoc ExpConf m), Show (Assoc ExpConf m)) => Show (SchemeVal m) where
    show (SchemeVal hm) = intercalate "," $ map showElement $ HMap.toList hm
       where showElement :: BindingFrom (Values m) -> String
-            showElement (SCloKey :&: clos') = 
-               show $ Set.map (show . fst) clos'
+            showElement (SCloKey :&: clos') =
+               "CloKey -> {" ++ List.intercalate "," (Set.toList $ Set.map (\(expr, _) -> "<procedure: " ++ show (spanOf expr) ++ ">") clos') ++ "}"
             showElement (key :&: value) =
                printf "%s -> %s" (show $ fromSing key) (withC_ @(AtKey1 Show (Values m)) (show value) key)
 
@@ -267,7 +269,7 @@ instance (IsSchemeValue m) => BoolDomain (SchemeVal m) where
             falsish _ _ = False
             ors :: forall (kt :: SchemeKey) . Sing kt -> MapWithAt (Const Bool) kt (Values m) -> Bool -> Bool
             ors _ = HMap.withFacts @(Const Bool) @kt @(Values m) (||)
-   
+
    or a b = justOrBot $ cond (pure a) (pure a) (pure b)
    and a b = justOrBot $ cond (pure a) (cond (pure b) (pure b) (pure false)) (pure false)
    boolTop = SchemeVal $ HMap.singleton @BoolKey boolTop

@@ -128,7 +128,7 @@ trySend ref p =
           (escape NotAnActorReference)
 
 apply :: EvalM v k m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
-apply rec e v vs = choices
+apply rec e v vs = conds
    [(pure (isClo v), mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (pure (isPrim v), mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))

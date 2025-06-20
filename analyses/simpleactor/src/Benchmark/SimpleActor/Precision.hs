@@ -149,6 +149,7 @@ analyzeFile inputFilename = do
     -- parse the file
     program <- liftIO (readFile inputFilename) <&> (either error id . parseFromString' (Just inputFilename))
     (sequentialResults, _mbs) <- MaybeT $ timeout defaultAnalysisTimeout $ Analysis.analyze program
+    liftIO (putStrLn $ "analysis of " ++ inputFilename ++ " completed")
 
     -- process results    
     let sequentialResMap = fmap SeqAnalysis.cmpRes sequentialResults
