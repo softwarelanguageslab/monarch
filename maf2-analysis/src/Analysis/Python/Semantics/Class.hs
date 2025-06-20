@@ -112,8 +112,13 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     evalLogic (LNot _) [arg] l = do 
         boolPrim <- eval arg >>= lookupAttr l (attrStr BoolAttr)
         pyIf (call l [] [] boolPrim) (return $ constant False) (return $ constant True)
-
-    evalLogic _ _ _= error "not supported yet: and, or (evalLogic)"
+    evalLogic (LAnd _) [a, b] _ = do 
+        v1 <- eval a 
+        pyIf (return v1) (eval b) (return v1) -- if a is false then a else b
+    evalLogic (LOr _) [a, b] _= do 
+        v1 <- eval a 
+        pyIf (return v1) (return v1) (eval b) -- if a is true then a else b
+    evalLogic _ _ _ = error "evalLogic: wrong number of arguments"
     evalRea :: PyExp -> String -> PyLoc -> m vlu
     evalRea obj nam loc = lookupAttr loc nam =<< eval obj
 
