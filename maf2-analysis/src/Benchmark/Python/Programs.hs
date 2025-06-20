@@ -58,7 +58,7 @@ mopsaBasic = [
    -- "programs/python/mopsa-basic/module_math.py", -- import not supported
    "programs/python/mopsa-basic/multi_compare.py",
    "programs/python/mopsa-basic/num_loop.py",
-   -- "programs/python/mopsa-basic/object_in_condition.py", -- do not support no
+   "programs/python/mopsa-basic/object_in_condition.py",
    -- "programs/python/mopsa-basic/object_in_loop.py", -- import not supported
    "programs/python/mopsa-basic/operators.py",
    "programs/python/mopsa-basic/range_iter.py",

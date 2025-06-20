@@ -107,6 +107,13 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     eval (Literal lit)          = evalLit lit
     eval (Call fun arg kwa loc) = evalCll fun arg kwa loc
     eval (Read obj nam loc)     = evalRea obj (ideName nam) loc
+    eval (LogicOp op args loc)  = evalLogic op args loc
+    evalLogic :: LOp PyLoc -> [PyExp] -> PyLoc -> m vlu 
+    evalLogic (LNot _) [arg] l = do 
+        boolPrim <- eval arg >>= lookupAttr l (attrStr BoolAttr)
+        pyIf (call l [] [] boolPrim) (return $ constant False) (return $ constant True)
+
+    evalLogic _ _ _= error "not supported yet: and, or (evalLogic)"
     evalRea :: PyExp -> String -> PyLoc -> m vlu
     evalRea obj nam loc = lookupAttr loc nam =<< eval obj
 

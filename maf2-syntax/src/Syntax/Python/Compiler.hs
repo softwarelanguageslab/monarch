@@ -36,6 +36,13 @@ import Control.DeepSeq (NFData (rnf))
 todo :: String -> a
 todo = error . ("COMPILER ERROR: " ++)
 
+fromLeft :: Either a b -> a
+fromLeft (Left a) = a
+fromLeft _ = error "fromLeft of a Right"
+
+fromRight :: Either a b -> b
+fromRight (Right b) = b
+fromRight _ = error "fromRight of a Left"
 
 -------------------------------------------------------------------------------
 -- Source code locations with extra Python-specific tags 
@@ -88,7 +95,7 @@ spanningTagged _ _ = error "spanning not supported for tagged locations"
 -- From String to AST
 -------------------------------------------------------------------------------
 
-evalWriterT :: Monad m => WriterT w m a -> m a 
+evalWriterT :: Monad m => WriterT w m a -> m a
 evalWriterT m = fst <$> runWriterT m
 
 -- | Parse a Python file to an AST
@@ -110,7 +117,7 @@ gensym = do n <- get
             return ("$var" ++ show n)
 
 capture :: SimplifyM m PyLoc => m a -> m (a, [Ide PyLoc])
-capture = censor (const []) . listen 
+capture = censor (const []) . listen
 
 -- TODO: assumes this is only used by compileClassBdy? So integrate it there 
 thunkify :: a -> Stmt a AfterSimplification -> Stmt a AfterSimplification
@@ -243,8 +250,8 @@ compileExp (SetComp comp _)           = todo "eval set comprehension"
 compileExp (Starred ex _)             = todo "eval starred expression"
 compileExp (Paren ex _)               = compileExp ex
 compileExp (CondExpr tru cnd fls _)   = todo "eval conditional expression"
-compileExp (BinaryOp op left right a) = binaryToCall op left right a
-compileExp (UnaryOp op arg a)         = unaryToCall op arg a
+compileExp (BinaryOp op left right a) = compileBinaryOp op left right a
+compileExp (UnaryOp op arg a)         = compileUnaryOp op arg a
 compileExp (Dot rcv atr a)            = Read (compileExp rcv) (Ide atr) a
 compileExp (Lambda ags bdy annot)     = Lam (compilePrs ags) (Return () (Just $ compileExp bdy) annot) annot [] -- note: [] is because of no local variables
 compileExp (AST.Tuple exs a)          = Literal $ Tuple (map compileExp exs) a
@@ -304,21 +311,44 @@ compileLhs [AST.Var ident _] = namespacedLhs (Ide ident)
 compileLhs [Dot e x a] = return $ Field (compileExp e) (Ide x) a
 compileLhs ex = error "unsupported expression as LHS in assignment"
 
+compileBinaryOp :: Op PyLoc -> Expr PyLoc -> Expr PyLoc -> PyLoc -> Exp PyLoc AfterSimplification
+compileBinaryOp op left right a = case opToIde op of
+   Right _ -> binaryToLogicOp op left right a
+   Left _  -> binaryToCall op left right a
+
+binaryToLogicOp :: Op PyLoc -> Expr PyLoc -> Expr PyLoc -> PyLoc -> Exp PyLoc AfterSimplification
+binaryToLogicOp op left right a =
+   let compiledLeft  = compileExp left
+       compiledRight = compileExp right
+       lop           = fromRight $ opToIde op
+   in LogicOp lop [compiledLeft, compiledRight] a
+
 -- | Translates a binary operation to a function call
 binaryToCall :: Op PyLoc -> Expr PyLoc -> Expr PyLoc -> PyLoc -> Exp PyLoc AfterSimplification
 binaryToCall op left right a =
    let compiledLeft  = compileExp left
        compiledRight = compileExp right
-   in Call (Read compiledLeft (opToIde op) (spanningTagged (annot left) (annot op)))
+   in Call (Read compiledLeft (fromLeft $ opToIde op) (spanningTagged (annot left) (annot op)))
            [compiledRight]
            []
            a
+
+compileUnaryOp :: Op PyLoc -> Expr PyLoc -> PyLoc -> Exp PyLoc AfterSimplification
+compileUnaryOp op arg a = case opToIde op of
+   Right _ -> unaryToLogicOp op arg a
+   Left _  -> unaryToCall op arg a
+
+unaryToLogicOp :: Op PyLoc -> Expr PyLoc -> PyLoc -> Exp PyLoc AfterSimplification
+unaryToLogicOp op arg a =
+   let compiledArg  = compileExp arg
+       lop           = fromRight $ opToIde op
+   in LogicOp lop [compiledArg] a
 
 -- | Translates a unary operation to a function call 
 unaryToCall :: Op PyLoc -> Expr PyLoc -> PyLoc -> Exp PyLoc AfterSimplification
 unaryToCall op arg a =
    let compiledArg  = compileExp arg
-   in Call (Read compiledArg (opToIde op) (spanningTagged (annot arg) (annot op)))
+   in Call (Read compiledArg (fromLeft $ opToIde op) (spanningTagged (annot arg) (annot op)))
            []
            []
            a
@@ -327,29 +357,31 @@ compileDictBnd :: DictKeyDatumList PyLoc -> (Exp PyLoc AfterSimplification, Exp 
 compileDictBnd (DictMappingPair kexpr vexpr) = (compileExp kexpr, compileExp vexpr)
 compileDictBnd _ = error "unsupported dictionary entry (unwrapping)"
 
-opToIde :: Op a -> Ide a
+opToIde :: Op a -> Either (Ide a) (LOp a)
 opToIde op = case op of
-   Not a -> error "do not support no"
-   Exponent a -> Ide (Ident "__pow__" a)
-   LessThan a -> Ide (Ident "__lt__" a)
-   GreaterThan a -> Ide (Ident "__gt__" a)
-   Equality a -> Ide (Ident "__eq__" a)
-   GreaterThanEquals a -> Ide (Ident "__ge__" a)
-   LessThanEquals a -> Ide (Ident "__le__" a)
-   NotEquals a -> Ide (Ident "__ne__" a)
-   BinaryOr a -> Ide (Ident "__or__" a)
-   Xor a -> Ide (Ident "__xor__" a)
-   BinaryAnd a -> Ide (Ident "__and__" a)
-   ShiftLeft a -> Ide (Ident "__lshift__" a)
-   ShiftRight a -> Ide (Ident "__rshift__" a)
-   Multiply a -> Ide (Ident "__mul__" a)
-   Plus a -> Ide (Ident "__add__" a)
-   Minus a -> Ide (Ident "__sub__" a)
-   Divide a -> Ide (Ident "__truediv__" a)
-   FloorDivide a -> Ide (Ident "__floordiv__" a)
-   MatrixMult a -> Ide (Ident "__matmul__" a)
-   Invert a -> Ide (Ident "__invert__" a)
-   Modulo a -> Ide (Ident "__mod__" a)
+   Not a -> Right $ LNot a
+   And a -> Right $ LAnd a
+   Or a -> Right $ LOr a
+   Exponent a -> Left $ Ide (Ident "__pow__" a)
+   LessThan a -> Left $ Ide (Ident "__lt__" a)
+   GreaterThan a -> Left $ Ide (Ident "__gt__" a)
+   Equality a -> Left $ Ide (Ident "__eq__" a)
+   GreaterThanEquals a -> Left $ Ide (Ident "__ge__" a)
+   LessThanEquals a -> Left $ Ide (Ident "__le__" a)
+   NotEquals a -> Left $ Ide (Ident "__ne__" a)
+   BinaryOr a -> Left $ Ide (Ident "__or__" a)
+   Xor a -> Left $ Ide (Ident "__xor__" a)
+   BinaryAnd a -> Left $ Ide (Ident "__and__" a)
+   ShiftLeft a -> Left $ Ide (Ident "__lshift__" a)
+   ShiftRight a -> Left $ Ide (Ident "__rshift__" a)
+   Multiply a -> Left $ Ide (Ident "__mul__" a)
+   Plus a -> Left $ Ide (Ident "__add__" a)
+   Minus a -> Left $ Ide (Ident "__sub__" a)
+   Divide a -> Left $ Ide (Ident "__truediv__" a)
+   FloorDivide a -> Left $ Ide (Ident "__floordiv__" a)
+   MatrixMult a -> Left $ Ide (Ident "__matmul__" a)
+   Invert a -> Left $ Ide (Ident "__invert__" a)
+   Modulo a -> Left $ Ide (Ident "__mod__" a)
    _ -> error "unsupported operator"
 
 
@@ -497,13 +529,13 @@ lookupLexIde ide = condM [
 lexicalExp :: forall m a . (LexicalM m a) => Exp a AfterSimplification -> m (Exp a AfterLexicalAddressing)
 lexicalExp (Var ide) = either (\(e, x) -> Read (Var e) x (annot (getIdeIdent $ lexIde e))) Var <$> lookupLexIde ide
 lexicalExp (Lam prs stmt a ass) = do
-      lcs <- filterM (\ide -> let nam = ideName ide in not <$> liftA2 (||) (isNonLocal nam) (isGlobal nam)) ass 
+      lcs <- filterM (\ide -> let nam = ideName ide in not <$> liftA2 (||) (isNonLocal nam) (isGlobal nam)) ass
       genPars <- mapM (overPar genIde) prs
       genLcls <- mapM genIde lcs
-      let nams = map (ideName . parIde) prs ++ map ideName lcs   
-      let ides  = map parIde genPars ++ genLcls  
+      let nams = map (ideName . parIde) prs ++ map ideName lcs
+      let ides  = map parIde genPars ++ genLcls
       bdy <- enterScope (zip nams ides) $ lexicalStmt stmt
-      return $ Lam genPars bdy a (map (ideName . lexIde) ides) 
+      return $ Lam genPars bdy a (map (ideName . lexIde) ides)
    where overPar :: (Ide a -> m (IdeLex a)) -> Par a AfterSimplification -> m (Par a AfterLexicalAddressing)
          overPar f (Prm ide a)        = Prm <$> f ide <*> pure a
          overPar f (VarArg ide a)     = VarArg <$> f ide <*> pure a
@@ -515,6 +547,9 @@ lexicalExp (Call e ags kwa a)   = Call <$> lexicalExp e
                                        <*> mapM (\(ide, exp) -> (ide,) <$> lexicalExp exp) kwa
                                        <*> pure a
 lexicalExp (Literal lit)        = Literal <$> lexicalLit lit
+lexicalExp (LogicOp op x a)     = LogicOp <$> pure op 
+                                          <*> mapM lexicalExp x
+                                          <*> pure a
 
 lexicalLit :: (LexicalM m a) => Lit a AfterSimplification -> m (Lit a AfterLexicalAddressing)
 lexicalLit (Bool b a)    = return $ Bool b a

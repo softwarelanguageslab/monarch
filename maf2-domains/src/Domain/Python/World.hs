@@ -70,7 +70,8 @@ methods IntType = [(AddAttr,      IntAdd),
                    (LtAttr,       IntLt),
                    (GtAttr,       IntGt),
                    (LeAttr,       IntLe),
-                   (GeAttr,       IntGe)]
+                   (GeAttr,       IntGe),
+                   (BoolAttr,     IntBool)]
 methods FloatType = [(AddAttr,      FloatAdd),
                      (SubAttr,      FloatSub),
                      (MulAttr,      FloatMul),
@@ -80,9 +81,10 @@ methods FloatType = [(AddAttr,      FloatAdd),
                      (LtAttr,       FloatLt),
                      (GtAttr,       FloatGt),
                      (LeAttr,       FloatLe),
-                     (GeAttr,       FloatGe)] 
-methods NoneType          = []
-methods BoolType          = []
+                     (GeAttr,       FloatGe),
+                     (BoolAttr,     FloatBool)] 
+methods NoneType          = [(BoolAttr,     NoneBool)]
+methods BoolType          = [(BoolAttr,     BoolBool)]
 methods StringType        = [(AddAttr, StringAppend)]
 methods TupleType         = [] 
 methods PrimType          = []
@@ -96,7 +98,8 @@ methods FrameType         = []
 methods DictionaryType    = [(GetItemAttr, DictGetItem),
                              (SetItemAttr, DictSetItem),
                              (KeysAttr,    DictKeys)]
-methods ObjectType        = [(InitAttr, ObjectInit)]
+methods ObjectType        = [(InitAttr, ObjectInit),
+                             (BoolAttr, ObjectBool)]
 methods TypeType          = [(InitAttr, TypeInit)]
 methods ExceptionType     = []
 methods StopIterationExceptionType = [] 
@@ -131,6 +134,7 @@ data PyPrim     =
                 | IntGt
                 | IntLe
                 | IntGe
+                | IntBool
                 -- float primitives
                 | FloatAdd
                 | FloatSub
@@ -142,6 +146,7 @@ data PyPrim     =
                 | FloatGt
                 | FloatLe
                 | FloatGe
+                | FloatBool
                 -- dict primitives
                 | DictGetItem 
                 | DictSetItem
@@ -153,12 +158,14 @@ data PyPrim     =
                 | ListIter 
                 -- string primitives
                 | StringAppend 
+                -- stringlength?
                 -- list iterator primitives
                 | ListIteratorNext 
                 -- type primitives
                 | TypeInit  
                 -- object primitives
                 | ObjectInit
+                | ObjectBool
                 -- dataframe primitives
                 | DataFrameEmpty
                 | DataFrameRename
@@ -170,6 +177,9 @@ data PyPrim     =
                 -- series primitives
                 | SeriesAsType 
                 | SeriesMerge
+                -- 
+                | NoneBool
+                | BoolBool
   deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance NFData PyPrim where
@@ -225,6 +235,7 @@ data PyAttr = ClassAttr
             | AppendAttr 
             | MergeAttr
             | FromSeriesAttr
+            | BoolAttr
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -270,6 +281,7 @@ attrStr KeysAttr      = "keys"
 attrStr AppendAttr    = "append"
 attrStr MergeAttr     = "merge"
 attrStr FromSeriesAttr = "from_series"
+attrStr BoolAttr      = "__bool__"
 
 -- | Built-in objects in Python 
 data PyConstant = None
