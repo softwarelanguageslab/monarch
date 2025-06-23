@@ -29,7 +29,7 @@ import Control.Monad.State (StateT (StateT), gets, modify, runStateT, MonadState
 import Analysis.Actors.Mailbox (Mailbox (hasMessage), dequeue, enqueue, empty)
 import Data.Functor
 import Control.Monad.Cond (ifM)
-import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, trigger, currentCmp, register)
+import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, trigger, currentCmp, register, DebugIntraAnalysisT)
 import qualified Control.Monad.State as State
 
 
@@ -154,6 +154,11 @@ newtype MailboxDep ref mb = MailboxDep ref
   deriving (Ord, Eq, Show)
 
 instance (MonadMailbox' ref mb m, MonadDependencyTracking cmp (MailboxDep ref mb) m) => MonadMailbox' ref mb (IntraAnalysisT cmp m) where
+  getMailbox ref = ask >>= register @cmp (MailboxDep @_ @mb ref) >> upperM (getMailbox ref)
+  getMailboxes = upperM getMailboxes
+
+
+instance (MonadMailbox' ref mb m, MonadDependencyTracking cmp (MailboxDep ref mb) m) => MonadMailbox' ref mb (DebugIntraAnalysisT cmp m) where
   getMailbox ref = ask >>= register @cmp (MailboxDep @_ @mb ref) >> upperM (getMailbox ref)
   getMailboxes = upperM getMailboxes
 
