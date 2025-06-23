@@ -14,6 +14,7 @@ module Syntax.Python.AST(
    Parameter(..), 
    Ident(..), 
    Lit(..), 
+   LOp(..),
    Program(..), 
    Lhs(..), 
    Ide(..), 
@@ -183,8 +184,9 @@ data Exp a ξ = Lam [Par a ξ] (Stmt a ξ) a (XLam ξ a)           -- ^ a less r
              | Var (XIde ξ a)                                  -- ^ a variable 
              | Read (Exp a ξ) (Ide a) a                        -- ^ field access e.x
              | Call (Exp a ξ) [Exp a ξ] [(Ide a, Exp a ξ)] a   -- ^ function call
-             | Literal (Lit a ξ)
-   deriving (Generic)                               -- ^ a value literal
+             | Literal (Lit a ξ)                               -- ^ a value literal
+             | LogicOp (LOp a) [Exp a ξ] a           -- ^ a logical operator (and, or, not)
+   deriving (Generic)                               
 
 deriving instance (Holds Show ξ a) => Show (Exp a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Exp a ξ)
@@ -242,6 +244,14 @@ deriving instance (Holds Ord  ξ a) => Ord (Lit a ξ)
 deriving instance (Holds Eq   ξ a) => Eq (Lit a ξ)
 
 instance (Holds NFData ξ a) => NFData (Lit a ξ) where
+
+-- | Logical operators
+data LOp a   = LAnd a 
+             | LOr a 
+             | LNot a
+   deriving (Show, Ord, Eq, Generic)
+
+instance (NFData a) => NFData (LOp a) where
 
 -------------------------------------------------------------------------------
 -- Auxilary functions

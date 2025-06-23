@@ -10,6 +10,7 @@
 
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
+
 module Analysis.Python.Primitives (applyPrim) where
 
 import Domain.Python.World
@@ -17,7 +18,7 @@ import Domain.Python.Objects
 
 import Lattice
 import Domain ( NumberDomain, BoolDomain(..) )
-import Domain.Class
+import Domain.Class ()
 import qualified Domain.Core.SeqDomain as SeqDomain
 import qualified Domain
 import Domain.Python.Syntax hiding (Dict, None)
@@ -48,6 +49,7 @@ applyPrim IntTrueDiv    = prim2'' $ intBinop @ReaPrm @ReaPrm intDiv Domain.div
   where
         intDiv :: Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj ReaPrm)
         intDiv a b = Monad.join $ liftM2 Domain.div (Domain.toReal a) (Domain.toReal b)
+applyPrim IntBool       = prim1'' @IntPrm @BlnPrm (\o -> Domain.ne o (Domain.inject (0::Integer)))
 applyPrim IntEq         = prim2'' $ intBinop'' @BlnPrm Domain.eq
 applyPrim IntNe         = prim2'' $ intBinop'' @BlnPrm Domain.ne
 applyPrim IntLt         = prim2'' $ intBinop'' @BlnPrm Domain.lt
@@ -65,6 +67,7 @@ applyPrim FloatLt       = prim2'' $ floatBinop @BlnPrm Domain.lt
 applyPrim FloatGt       = prim2'' $ floatBinop @BlnPrm Domain.gt
 applyPrim FloatLe       = prim2'' $ floatBinop @BlnPrm Domain.le
 applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
+applyPrim FloatBool     = prim1'' @ReaPrm @BlnPrm (\o -> Domain.ne o (Domain.inject (0::Double)))
 -- string primitives
 applyPrim StringAppend  = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc . from @StrPrm =<< Domain.append s1 s2
 -- dictionary primitives
@@ -108,6 +111,7 @@ applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr
                                                       return $ constant None
 -- object primitives
 applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
+applyPrim ObjectBool = prim1 $ \_ _ -> return $ constant True
 -- DataFrame primitives
 applyPrim DataFrameGetItem = prim2' @DfrPrm @StrPrm $ \loc dfr _ -> pyStore loc (from @SrsPrm dfr)
 applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref2'' @StrPrm @SrsPrm (\_ srs -> none $ pyAssignInPrm SDfrPrm (assignSeries srs) a3 a1) a2 a3
@@ -122,6 +126,9 @@ applyPrim DataFrameFromSeries = prim1' @SrsPrm $ \loc srs -> pyStore loc (from @
 -- Series primitives
 applyPrim SeriesAsType    = prim2 $ \_ self _ -> return self
 applyPrim SeriesMerge     = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1
+-- other primitives
+applyPrim NoneBool = prim1 $ \_ _ -> return $ constant False
+applyPrim BoolBool = prim1'' @BlnPrm @BlnPrm return
 
 --
 -- Primitive helpers 
@@ -142,24 +149,34 @@ prim1 :: forall pyM obj vlu . PyM pyM obj vlu
 prim1 f loc [a] = f loc a
 prim1 _ _   _  = pyError ArityError
 
+-- | version of prim1 that derefs the argument
 prim1' :: forall a pyM obj vlu . (SingI a, PyM pyM obj vlu)
         => (PyLoc -> Abs obj a -> pyM vlu)      -- ^ the primitive function
         -> (PyLoc -> [vlu]     -> pyM vlu)      -- ^ the resulting function   
 prim1' f = prim1 $ \loc -> pyDeref' (get @a >=> f loc)
+-- | version of prim1 that derefs the argument and stores the result + the function is on part of the object
+prim1'' :: forall a b pyM obj vlu . (SingI a, SingI b, PyM pyM obj vlu)
+        => (Abs obj a -> pyM (Abs obj b))           -- ^ the primitive function
+        -> (PyLoc -> [vlu] -> pyM vlu)              -- ^ the resulting function 
+prim1'' f = prim1 $ \loc -> pyDeref' 
+                                (\o -> do v <- get @a o 
+                                          res <- f v 
+                                          let resO = from @b res 
+                                          pyStore loc resO)
 
 prim2 :: PyM pyM obj vlu
         => (PyLoc -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
         -> (PyLoc -> [vlu]      -> pyM vlu)     -- ^ the resulting function 
 prim2 f loc [a1, a2] = f loc a1 a2
 prim2 _ _ _          = pyError ArityError
-
+-- | version of prim2 that derefs the arguments
 prim2' :: forall a1 a2 pyM obj vlu . (SingI a1, SingI a2, PyM pyM obj vlu)
         => (PyLoc -> Abs obj a1 -> Abs obj a2 -> pyM vlu)   -- ^ the primitive function
         -> (PyLoc -> [vlu] -> pyM vlu)                      -- ^ the resulting function 
 prim2' f = prim2 $ \loc -> pyDeref2' (\o1 o2 -> do v1 <- get @a1 o1
                                                    v2 <- get @a2 o2
                                                    f loc v1 v2)
-
+-- | version of prim2 that derefs the arguments and stores the results
 prim2'' :: PyM pyM obj vlu
         => (obj -> obj -> pyM obj)                  -- ^ the primitive function
         -> (PyLoc -> [vlu] -> pyM vlu)              -- ^ the resulting function 
