@@ -65,6 +65,7 @@ import qualified Analysis.Actors.Mailbox as MB
 import qualified Control.Monad.State as State
 import Control.Monad.Cond
 import Data.Functor
+import qualified Debug.Trace as Debug
 
 ------------------------------------------------------------
 -- 'Components'
@@ -263,7 +264,11 @@ runWithMailboxContributorIndexedT :: (Functor m, L.Joinable mb, L.BottomLattice 
 runWithMailboxContributorIndexedT (MailboxContributorIndexedT m) = do
   (fmap . fmap) (L.joinMap snd . Map.toList) <$> State.runStateT m Map.empty
 
-instance (Monad m, L.Joinable mb, Eq mb, Ord ref) => MonadIndexedMailbox ref mb (MailboxContributorIndexedT ref v mb m) where
+diffValues mapA mapB = Map.filterWithKey
+               (\k v -> Map.lookup k mapB /= Just v)
+               (Map.intersection mapA mapB)
+
+instance (Monad m, L.Joinable mb, Eq mb, Show ref, Show mb, Ord ref) => MonadIndexedMailbox ref mb (MailboxContributorIndexedT ref v mb m) where
   joinMailboxes contributor recv mb = do
     mbs <- State.get
     let mbs' = Map.insertWith L.join recv (Map.singleton contributor mb) mbs
@@ -308,3 +313,15 @@ instance (MonadDependencyTracking cmp (MailboxDep ref mb) m, MonadIndexedMailbox
     ifM (upperM (putMailboxes contributor recv mb))
         (trigger (MailboxDep @ref @mb recv) $> True)
         (return False)
+
+
+instance (MonadDependencyTracking cmp (MailboxDep ref mb) m, MonadIndexedMailbox ref mb m) =>  MonadIndexedMailbox ref mb (DebugIntraAnalysisT cmp m) where
+  joinMailboxes contributor recv mb =
+    ifM (upperM (joinMailboxes contributor recv mb))
+        (trigger (MailboxDep @ref @mb recv) $> True)
+        (return False)
+  putMailboxes contributor recv mb =
+    ifM (upperM (putMailboxes contributor recv mb))
+        (trigger (MailboxDep @ref @mb recv) $> True)
+        (return False)
+

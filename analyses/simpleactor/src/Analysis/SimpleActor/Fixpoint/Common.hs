@@ -47,7 +47,7 @@ type MB = GraphToSet ActorVlu
 --
 -- Currently these addresses are sensitive to the actor they
 -- were created in, and the current mailbox contents.
-data AdrCtx = AdrCtx ActorRef MB
+data AdrCtx = AdrCtx ActorRef MB | Empty
             deriving (Ord, Eq, Show) 
 
 ------------------------------------------------------------
