@@ -543,6 +543,8 @@ instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s (
 instance (IsSchemeValue m,
           Ord (Assoc ExpConf m),
           Ord (Assoc EnvConf m),
+          Ord (Assoc PidConf m),
+          AddressWithCtx ctx (Assoc PidConf m),
           AddressWithCtx ctx (Assoc AdrConf m),
           AddressWithCtx ctx (Assoc EnvConf m)) => AddressWithCtx ctx (SchemeVal m) where
 
@@ -552,6 +554,7 @@ instance (IsSchemeValue m,
              select SVecKey ptrs = SchemeVal $ HMap.singleton @VecKey $ removePtrsCtx ptrs
              select SStrKey ptrs = SchemeVal $ HMap.singleton @StrKey $ removePtrsCtx ptrs
              select SCloKey clss = SchemeVal $ HMap.singleton @CloKey $ Set.map (second (replaceCtx ctx')) clss
+             select SPidKey pids = SchemeVal $ HMap.singleton @PidKey $ Set.map (replaceCtx ctx') pids
              select k v = SchemeVal $ HMap.singletonWithSing k v
              removePtrsCtx :: PointerSet (Assoc AdrConf m) -> PointerSet (Assoc AdrConf m)
              removePtrsCtx = PointerSet . Set.map (replaceCtx ctx') . getPointerSet

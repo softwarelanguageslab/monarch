@@ -363,9 +363,9 @@ intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
 intra selfRef cmp = do
           -- liftIO (putStrLn $ "analyzing[intra] " ++ show (spanOfCmp cmp))
           inMbs  <- getMailboxes
-          ((), (LatticeMonoid outMbs')) <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
-                        & runAlloc VarAdr -- TODO: use the actual context
-                        & runAlloc PtrAdr -- problem: current context is infinite
+          ((), LatticeMonoid outMbs') <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
+                        & runAlloc VarAdr
+                        & runAlloc PtrAdr
                         & evalWithTransparentStoreT
                         & runIntraAnalysis cmp
                         & runSetNonDetTIntercept (restore inMbs) save
