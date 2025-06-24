@@ -37,6 +37,9 @@ class (Ord m, Eq m) => Mailbox m msg | m -> msg where
   hasMessage :: msg -> m -> Bool
   hasMessage msg  = isTrue @(BottomLifted (CP Bool)) . hasMessage' msg
 
+  -- | Applies the given function over the mailbox contens
+  mapMessages :: (msg -> msg) -> m -> m 
+
 -- | A simple mailbox backed by a powerset.
 --
 -- This representation is finite if the number of messages that could be queued in the mailbox is also finite.
@@ -48,4 +51,5 @@ instance (Ord msg) => Mailbox (Set msg) msg where
   hasMessage' msg m
     | Set.member msg m = boolTop
     | otherwise = inject False
+  mapMessages = Set.map
 

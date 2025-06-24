@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Analysis.Environment(Environment(..)) where
 
 import Data.Map (Map)
@@ -10,6 +11,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Lattice.Trace
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Domain.Address (AddressWithCtx (..))
 
 class Environment env a | env -> a where
    empty :: env
@@ -40,3 +42,10 @@ instance (Ord a) => Trace a (Map String a) where
 
 instance (Ord a) => Trace a (HashMap String a) where
    trace = Set.fromList . map snd . HashMap.toList
+
+-- | Recursively replace contexts of the addresses inside the environment
+instance (AddressWithCtx ctx a) => AddressWithCtx ctx (Map String a) where
+   replaceCtx ctx' = Map.map (replaceCtx ctx')
+
+instance (AddressWithCtx ctx a) => AddressWithCtx ctx (HashMap String a) where
+   replaceCtx ctx' = HashMap.map (replaceCtx ctx')

@@ -16,6 +16,7 @@ import Domain.Core.BoolDomain.Class
 import Domain.Class
 import Lattice.Class hiding (top, bottom)
 import Lattice.Trace 
+import Data.Bifunctor
 
 -- | Graph representation of the mailbox
 data MessageGraph msg = MessageGraph
@@ -45,6 +46,14 @@ popMessage g@MessageGraph { .. } = maybe Set.empty successors bottom
   where successors m     = Set.map (m,) (maybe (Set.singleton emptyGraph) (Set.map updateGraph) $ foldMap emptyToNothing $ Map.lookup m edges)
         updateGraph next = g { bottom = Just next }
         emptyToNothing s = if Set.null s then Nothing else Just s
+
+-- | Map a function over the messages in the mailbox
+mapMessages' :: Ord msg => (msg -> msg) -> MessageGraph msg -> MessageGraph msg
+mapMessages' f g@MessageGraph { .. } =
+  MessageGraph { top = fmap f top,
+                 bottom = fmap f bottom,
+                 edges = Map.fromList $ map (bimap f (Set.map f))(Map.toList edges)
+               }
 
 -- | Compute the bounds of the mailbox
 size :: (Domain Integer i, TopLattice i) => MessageGraph msg -> i
@@ -86,6 +95,7 @@ instance (Ord msg) => Mailbox (GraphMailbox msg) msg where
   dequeue = foldMap (Set.map (fmap (GraphMailbox . Set.singleton)) . popMessage) . getMessageGraphs
   empty = GraphMailbox $ Set.singleton emptyGraph
   hasMessage' msg = joinMap (hasMessage msg) . getMessageGraphs
+  mapMessages f = GraphMailbox . Set.map (mapMessages' f) . getMessageGraphs
 
 -- | Return the powerset of messages represented by this graph
 messages :: Ord msg => GraphMailbox msg -> Set msg

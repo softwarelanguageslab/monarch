@@ -35,6 +35,7 @@ import qualified Data.Set as Set
 import Text.Printf (printf)
 import Control.DeepSeq
 import Lattice.Trace (Trace (..))
+import Domain.Address (AddressWithCtx (..))
 
 ------------------------------------------------------------
 -- Declaration
@@ -267,3 +268,10 @@ instance (-- both subdomains should talk about the same environment
 
    symbol s  = SchemePairedValue (symbol s, symbol s)
    symbols v = Set.union (symbols $ leftValue v) (symbols $ rightValue v)
+
+------------------------------------------------------------
+-- AddressWithCtx instance
+------------------------------------------------------------
+
+instance (AddressWithCtx ctx l, AddressWithCtx ctx r) => AddressWithCtx ctx (SchemePairedValue l r) where
+   replaceCtx ctx' (SchemePairedValue (l,r)) = SchemePairedValue (replaceCtx ctx' l, replaceCtx ctx' r)

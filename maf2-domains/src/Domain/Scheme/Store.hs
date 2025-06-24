@@ -32,12 +32,19 @@ import Data.Kind
 import Syntax.Span
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Domain.Address (AddressWithCtx (..))
 
 data SchemeAdr e ctx = VarAdr !Ide !ctx   --  ^ variables
                      | PtrAdr !e   !ctx   --  heap allocated values
                      | PrrAdr !String     -- ^ primiitives
                      | TopAdr
                     deriving (Eq, Ord, Show, Generic, NFData)
+
+
+instance AddressWithCtx ctx (SchemeAdr e ctx) where
+  replaceCtx ctx' = \case VarAdr ide _ -> VarAdr ide ctx'
+                          PtrAdr e  _  -> PtrAdr e ctx'
+                          adr -> adr
 
 instance (SpanOf e) => SpanOf (SchemeAdr e ctx) where
   spanOf (VarAdr i _) = spanOf i
