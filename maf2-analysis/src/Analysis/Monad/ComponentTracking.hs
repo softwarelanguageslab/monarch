@@ -14,11 +14,10 @@ import Control.Monad.Layer
 
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Control.Monad.State as State hiding (mzero)
+import Control.Monad.State as State
 import Analysis.Monad.Cache
 import Control.Monad.Join
 import Analysis.Monad.Map (MapM)
-import Debug.Trace
 
 ---
 --- Component tracking typeclass

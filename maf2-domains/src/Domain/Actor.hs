@@ -10,6 +10,7 @@ import Domain.Core.BoolDomain.Class (BoolDomain)
 import GHC.Generics
 import Control.DeepSeq
 import Syntax.Span (SpanOf (spanOf))
+import Domain.Address (AddressWithCtx (replaceCtx))
 
 -- | Generic representation of actor references, 
 -- parametrized by their spawn site and an optional context.
@@ -17,6 +18,11 @@ data Pid e ctx
   = Pid e ctx
   | EntryPid
   deriving (Ord, Eq, Generic)
+
+instance AddressWithCtx ctx (Pid e ctx) where
+  replaceCtx ctx' (Pid e _) = Pid e ctx'
+  replaceCtx _ EntryPid  = EntryPid
+
 
 instance (SpanOf e) => Show (Pid e ctx) where
   show EntryPid = "entry"

@@ -59,6 +59,16 @@ instance Meetable (SymbolicVal exp k i v) where
    meet = error "TODO: meet is not implemented"
 
 ------------------------------------------------------------
+-- AddressWithCtx
+------------------------------------------------------------
+
+-- NOTE: Propositions currently don't have contexts, but might
+-- have in the future through symbolic variables i
+
+instance AddressWithCtx ctx (SymbolicVal exp k i v) where
+   replaceCtx = const id
+
+------------------------------------------------------------
 -- Traceability
 ------------------------------------------------------------
 

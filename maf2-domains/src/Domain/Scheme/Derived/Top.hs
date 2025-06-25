@@ -24,6 +24,7 @@ import Lattice.TopLiftedLattice (TopLifted (..), fromTL)
 import Prelude hiding (acos, and, asin, atan, ceiling, cos, div, floor, log, not, or, round, sin, sqrt, tan)
 import Control.Monad.Join (MonadBottom(..))
 import Lattice.Trace (Trace (trace))
+import Domain.Address (AddressWithCtx (replaceCtx))
 
 -- | Lifts a value @a@ from the Scheme domain into a @TopLifted@ value so that all Scheme values have a synthetic top element
 newtype SchemeTopLifted a = SchemeTopLifted {getTopLifted :: TopLifted a}
@@ -187,4 +188,11 @@ instance (ActorDomain v) => ActorDomain (SchemeTopLifted v) where
   aref = pure . aref
   arefs f = foldr (const . arefs f) mbottom -- TODO[severe]: this is actually unsound, but is the only possibility at the moment (cf. note above)
   isActorRef = foldr (const . isActorRef) boolTop . getTopLifted
-  arefs' = foldr (const . arefs') Set.empty -- TODO[severe]: unsound (cf. above)  
+  arefs' = foldr (const . arefs') Set.empty -- TODO[severe]: unsound (cf. above)
+
+------------------------------------------------------------
+-- AddressWithCtx
+------------------------------------------------------------
+
+instance (AddressWithCtx ctx v) => AddressWithCtx ctx (SchemeTopLifted v) where
+  replaceCtx ctx' = SchemeTopLifted . fmap (replaceCtx ctx') . getTopLifted

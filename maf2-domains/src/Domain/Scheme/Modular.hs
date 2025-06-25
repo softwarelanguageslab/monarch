@@ -60,6 +60,7 @@ import qualified Lattice.CSetLattice as CSet
 import Debug.Trace
 import Syntax.Span (spanOf, SpanOf)
 import qualified Data.List as List
+import Data.Bifunctor
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -532,6 +533,31 @@ instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s (
    stringLt s1 s2  = SchemeVal . HMap.singleton @BoolKey <$> stringLt (sconst s1) (sconst s2)
    toNumber  = (toNumber . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
    topString = SchemeString topString
+
+------------------------------------------------------------
+-- Scheme values contain addresses (with contexts)
+------------------------------------------------------------
+
+
+-- | Recursively replace contexts inside Scheme values
+instance (IsSchemeValue m,
+          Ord (Assoc ExpConf m),
+          Ord (Assoc EnvConf m),
+          Ord (Assoc PidConf m),
+          AddressWithCtx ctx (Assoc PidConf m),
+          AddressWithCtx ctx (Assoc AdrConf m),
+          AddressWithCtx ctx (Assoc EnvConf m)) => AddressWithCtx ctx (SchemeVal m) where
+
+   replaceCtx ctx' = joins . HMap.mapList select . getSchemeVal
+       where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> SchemeVal m
+             select SPaiKey ptrs = SchemeVal $ HMap.singleton @PaiKey $ removePtrsCtx ptrs
+             select SVecKey ptrs = SchemeVal $ HMap.singleton @VecKey $ removePtrsCtx ptrs
+             select SStrKey ptrs = SchemeVal $ HMap.singleton @StrKey $ removePtrsCtx ptrs
+             select SCloKey clss = SchemeVal $ HMap.singleton @CloKey $ Set.map (second (replaceCtx ctx')) clss
+             select SPidKey pids = SchemeVal $ HMap.singleton @PidKey $ Set.map (replaceCtx ctx') pids
+             select k v = SchemeVal $ HMap.singletonWithSing k v
+             removePtrsCtx :: PointerSet (Assoc AdrConf m) -> PointerSet (Assoc AdrConf m)
+             removePtrsCtx = PointerSet . Set.map (replaceCtx ctx') . getPointerSet
 
 ------------------------------------------------------------
 -- Subdomain extraction

@@ -2,7 +2,6 @@
 -- | Abstractions common to the sequential and actor-modular analysis
 module Analysis.SimpleActor.Fixpoint.Common where
 
-
 import Syntax.AST
 import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)
@@ -20,7 +19,6 @@ import qualified RIO.Map as Map
 import Analysis.Monad (MonadDependencyTrigger)
 import Domain.Core.AbstractCount (AbstractCount)
 import Analysis.Actors.Mailbox.GraphToSet (GraphToSet)
-
 
 ------------------------------------------------------------
 -- Shorthands
@@ -47,7 +45,7 @@ type MB = GraphToSet ActorVlu
 --
 -- Currently these addresses are sensitive to the actor they
 -- were created in, and the current mailbox contents.
-data AdrCtx = AdrCtx ActorRef MB
+data AdrCtx = AdrCtx ActorRef MB | Empty
             deriving (Ord, Eq, Show) 
 
 ------------------------------------------------------------

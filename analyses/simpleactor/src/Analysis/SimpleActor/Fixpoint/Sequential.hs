@@ -52,6 +52,7 @@ import Analysis.Actors.Mailbox.GraphToSet (graphToSet)
 import Control.Monad.Trans.Writer (WriterT(..))
 import Control.Monad.Writer.Class (MonadWriter(tell))
 import Syntax (SpanOf(spanOf))
+import Domain.Address (replaceCtx)
 
 
 ------------------------------------------------------------
@@ -140,8 +141,8 @@ instance (CtxM m K, MonadActorLocal ActorVlu m, Monad m) => CtxM (LocalMailboxT 
       withCtx f m = do
             ctx <- getCtx
             lowerM (withCtx (const (f ctx))) m
-      getCtx = AdrCtx <$> getSelf <*> State.get
-                        
+      getCtx = AdrCtx <$> getSelf <*> gets (Mailbox.mapMessages (replaceCtx Empty))
+
 ------------------------------------------------------------
 -- Mailbox abstractions influenced by the abstract reference count of actor references
 ------------------------------------------------------------
@@ -362,7 +363,7 @@ intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
 intra selfRef cmp = do
           -- liftIO (putStrLn $ "analyzing[intra] " ++ show (spanOfCmp cmp))
           inMbs  <- getMailboxes
-          ((), (LatticeMonoid outMbs')) <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
+          ((), LatticeMonoid outMbs') <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
                         & runAlloc VarAdr
                         & runAlloc PtrAdr
                         & evalWithTransparentStoreT

@@ -41,6 +41,8 @@ instance (Ord msg) => Mailbox (GraphToSet msg) msg where
   empty = GraphAbstraction empty
   hasMessage' msg = \case SetAbstraction s -> hasMessage' msg s
                           GraphAbstraction s -> hasMessage' msg s
+  mapMessages f = \case SetAbstraction s -> SetAbstraction $ mapMessages f s
+                        GraphAbstraction s -> GraphAbstraction $ mapMessages f s
 
 instance (Ord msg, Trace adr msg) => Trace adr (GraphToSet msg) where
   trace (GraphAbstraction abstr) = trace abstr

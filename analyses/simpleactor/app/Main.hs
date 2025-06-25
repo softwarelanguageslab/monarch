@@ -24,6 +24,7 @@ import qualified RIO.Set as Set
 import System.Exit
 import RIO (stdout)
 import RIO.Directory
+import Debug.Trace (traceShowId)
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -165,7 +166,7 @@ inferCmd (InputOptions { filename, doTranslate }) = do
 precision :: MultipleInputOptions -> IO ()
 precision MultipleInputOptions { .. } = do
    files <- ifM (doesDirectoryExist inputDirectory)
-                (map (inputDirectory ++) <$> getDirectoryContents inputDirectory)
+                (filterM doesFileExist . map (inputDirectory ++) =<< getDirectoryContents inputDirectory)
                 (return [inputDirectory])
 
    mapM_ (`Benchmark.Precision.runPrecision` stdout) files
