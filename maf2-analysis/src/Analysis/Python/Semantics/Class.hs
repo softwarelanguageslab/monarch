@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Analysis.Python.Semantics.Class where 
 
 
@@ -10,7 +11,7 @@ import Analysis.Python.Objects
 import Analysis.Python.Common
 import Analysis.Python.Monad.Class
 import Analysis.Python.Primitives
-import Control.Monad ((>=>), void)
+import Control.Monad ((>=>), (<=<), void)
 import qualified Domain.Core.SeqDomain as SeqDomain
 import qualified Domain.Core.DictionaryDomain as DctDomain
 import Lattice
@@ -23,6 +24,7 @@ import qualified Data.Set as Set
 import Prelude hiding (break, exp, lookup, True, False)
 import Data.Functor (($>))
 import Analysis.Environment (extends)
+import Control.Monad.Escape (orElse)
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -31,27 +33,30 @@ todo = error . ("[TODO] NYI: " ++)
 globalFrame :: ObjAdr
 globalFrame = allocCst GlobalFrame
 
+
 class (PyM m obj vlu) => PySemantics m obj vlu where 
     -- | Evaluate a Python component
     evalBdy :: PyBdy -> m vlu
     evalBdy (Main prg) = pyReturnable (exec (programStmt prg) $> constant None)
-    evalBdy (LoopBdy loc cnd bdy) = pyIf (eval cnd)
-                                     (pyCatchLoop (exec bdy >> evalWhi cnd bdy loc)
-                                                  (return $ constant None)  -- break
-                                                  (evalWhi cnd bdy loc))    -- continue
-                                     (return $ constant None)
+    evalBdy (LoopBdy loc cnd bdy) =
+        pyIf' loc   (eval cnd)
+                    (pyCatchLoop    (exec bdy >> evalWhi cnd bdy loc)
+                                    (return $ constant None)  -- break
+                                    (evalWhi cnd bdy loc))    -- continue
+                    (return $ constant None)
     evalBdy (FuncBdy _ bdy) = pyReturnable (exec bdy $> constant None)
-    --globalFrame :: ObjAdr
+
     -- | Variable to frame object
     frame :: PyIde -> m (ObjAdr, String)
     frame (IdeGbl nam)   = return (globalFrame, nam)
     frame (IdeLex ide _) = (,nam) <$> pyLookupEnv nam
         where nam = ideName ide
+
     -- | Execute a single statement
     exec :: PyStm -> m ()
     exec (Assg _ lhs rhs)            = execAss lhs rhs
     exec (Return _ exp loc)          = execRet exp loc
-    exec (Conditional _ brs els _ )  = execIff brs els
+    exec (Conditional _ brs els loc) = execIff loc brs els
     exec (StmtExp _ e _)             = execExp e
     exec (Loop _ cnd bdy loc)        = execWhi cnd bdy loc
     exec (Seq _ sts)                 = execSeq sts
@@ -83,12 +88,13 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
          assignTo (Field e nam _) vlu  = eval e >>= pyAssign (ideName nam) vlu
          assignTo (ListPat _ _) vlu    = todo "list assignment"
          assignTo (TuplePat _ _) vlu   = todo "tuple assignment"
-    execIff :: [(PyExp, PyStm)] -> PyStm -> m ()
-    execIff [] els = exec els
-    execIff ((prd, bdy):rst) els = pyIf_ (eval prd)
-                                         (exec bdy)
-                                         (execIff rst els)
-    execSeq :: [PyStm] -> m ()
+    execIff :: PyLoc -> [(PyExp, PyStm)] -> PyStm -> m ()
+    execIff _ [] els = exec els
+    execIff loc ((prd, bdy):rst) els =
+        pyIf'_ loc  (eval prd)
+                    (exec bdy)
+                    (execIff (tagAs IffNxt loc) rst els)
+    execSeq :: [PyStm] -> m () 
     execSeq = mapM_ exec
     execRet :: Maybe PyExp -> PyLoc -> m ()
     execRet (Just exp) _    = eval exp >>= pyReturn
@@ -99,6 +105,7 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     execCnt = pyContinue
     execWhi :: PyExp -> PyStm -> PyLoc -> m ()
     execWhi cnd bdy loc = void $ evalWhi cnd bdy loc
+
     evalWhi :: PyExp -> PyStm -> PyLoc -> m vlu
     evalWhi cnd bdy loc = pyWithCtx loc $ pyCall loc (LoopBdy loc cnd bdy)  
     eval :: PyExp -> m vlu
@@ -110,14 +117,13 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     eval (LogicOp op args loc)  = evalLogic op args loc
     evalLogic :: LOp PyLoc -> [PyExp] -> PyLoc -> m vlu 
     evalLogic (LNot _) [arg] l = do 
-        boolPrim <- eval arg >>= lookupAttr l (attrStr BoolAttr)
-        pyIf (call l [] [] boolPrim) (return $ constant False) (return $ constant True)
-    evalLogic (LAnd _) [a, b] _ = do 
+        pyIf' l (eval arg) (return $ constant False) (return $ constant True)
+    evalLogic (LAnd _) [a, b] l = do 
         v1 <- eval a 
-        pyIf (return v1) (eval b) (return v1) -- if a is false then a else b
-    evalLogic (LOr _) [a, b] _= do 
+        pyIf' l (return v1) (eval b) (return v1) -- if a is false then a else b
+    evalLogic (LOr _) [a, b] l = do 
         v1 <- eval a 
-        pyIf (return v1) (return v1) (eval b) -- if a is true then a else b
+        pyIf' l (return v1) (return v1) (eval b) -- if a is true then a else b
     evalLogic _ _ _ = error "evalLogic: wrong number of arguments"
     evalRea :: PyExp -> String -> PyLoc -> m vlu
     evalRea obj nam loc = lookupAttr loc nam =<< eval obj
@@ -154,6 +160,7 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
                                  psv <- mapM eval pos
                                  kwv <- mapM (\(ide, exp) -> (ide,) <$> eval exp) kwa
                                  call loc psv kwv fun
+
     call :: PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> vlu -> m vlu
     call loc pos kwa = pyDeref (\adr obj ->
         pyIf (obj `isType` BoundType)
@@ -200,6 +207,18 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
                                 let bindings = map (,frm) lcl
                                 pyWithEnv (extends bindings env) $ pyCall l (FuncBdy loc bdy)
                         else pyError ArityError
+
+
+    pyIf' :: PyLoc -> m vlu -> m vlu -> m vlu -> m vlu
+    pyIf' l prd csq alt = do 
+        boolPrim <- prd >>= lookupAttr (tagAs IffPrm l) (attrStr BoolAttr)
+        call (tagAs IffCnd l) [] [] boolPrim >>= pyDeref' (\obj -> cond (get @BlnPrm obj) csq alt)
+
+    pyIf'_ :: PyLoc -> m vlu -> m () -> m () -> m ()
+    pyIf'_ l prd csq alt = do 
+        boolPrim <- prd >>= lookupAttr (tagAs IffPrm l) (attrStr BoolAttr)
+        call (tagAs IffCnd l) [] [] boolPrim >>= pyDeref_ (\_ obj -> cond (get @BlnPrm obj) csq alt)
+
     -- TODO: move this elsewhere
     -- TODO: improve implementation?
     isType :: obj -> PyType -> m vlu
@@ -207,3 +226,4 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
         getAttr (attrStr ClassAttr) obj >>= 
             pyDeref (\a _ -> return . constant $ if a == adr then Py.True else Py.False)
         where adr = allocCst (TypeObject typ)
+
