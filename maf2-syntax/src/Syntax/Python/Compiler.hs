@@ -71,6 +71,9 @@ data PyTag = FrmTag
            | NxtExc
            | ItrIdx
            | ItrLst
+           | IffCnd 
+           | IffPrm
+           | IffNxt
            | DctKey String
    deriving (Eq, Ord, Show, Generic)
 

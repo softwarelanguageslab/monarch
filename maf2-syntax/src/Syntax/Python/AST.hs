@@ -328,7 +328,12 @@ instance Pretty (Exp a AfterLexicalAddressing) where
       out ")"
 
    pretty (Literal l) = pretty l
+   pretty (LogicOp op prs _) = pretty op >> out " " >> sequence_ (intersperse (out ",") (map pretty prs))
 
+instance Pretty (LOp a) where 
+   pretty (LNot _) = out "not"
+   pretty (LAnd _) = out "and"
+   pretty (LOr _)  = out "or"
 instance Pretty (Lit a AfterLexicalAddressing) where
    pretty (Bool b _) = out (show b)
    pretty (Integer i _) = out (show i)
