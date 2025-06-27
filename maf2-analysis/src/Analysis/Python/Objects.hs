@@ -34,7 +34,7 @@ import Data.Bifunctor
 import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad hiding (has)
 import Data.Map (Map)
-import Lattice ( join, eql, CP )
+import Lattice ( join, eql )
 
 --
 -- Python constants 

@@ -16,7 +16,7 @@ import qualified Data.Set as Set
 import Data.Map (Map, (!))
 import qualified Data.Map as Map 
 import Control.Monad.AbstractM
-import Control.Monad.Join (MonadBottom(..), MonadJoinable (mjoin))
+import Control.Monad.Join (MonadJoinable (mjoin))
 import Control.Monad.DomainError (DomainError(..))
 import Control.Monad.Escape
 import Lattice.BottomLiftedLattice (BottomLifted, joinWithBL, joinsBL)

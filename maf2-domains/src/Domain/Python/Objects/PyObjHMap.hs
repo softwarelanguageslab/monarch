@@ -31,6 +31,7 @@ import Control.Monad.Join (MonadBottom(..))
 import qualified Domain.Core.DictionaryDomain.CPDict as CPDict
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
+import Domain.Python.DataFrameDomain (CPDataFrame)
 
 --
 -- Configuring the abstractions 
@@ -57,7 +58,7 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
     TupPrm ::-> CPList (Assoc VluKey m),                -- TODO: could use a more optimised representation (e.g., CPVector)
     LstPrm ::-> CPList (Assoc VluKey m),
     DctPrm ::-> CPDictionary String (Assoc VluKey m),
-    DfrPrm ::-> CP Bool,
+    DfrPrm ::-> CPDataFrame (Assoc VluKey m),
     SrsPrm ::-> CP Bool
   ]
 

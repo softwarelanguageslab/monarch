@@ -39,5 +39,5 @@ instance (Ord a) => Meetable (ReversePowerSet a) where
    meet _ RPBottom = RPBottom
    meet (RPSet s1) (RPSet s2) = RPSet (s1 `Set.union` s2)
 
-instance (Ord a) => TopLattice (ReversePowerSet a) where
+instance TopLattice (ReversePowerSet a) where
    top = RPSet Set.empty

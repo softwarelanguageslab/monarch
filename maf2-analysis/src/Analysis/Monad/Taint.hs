@@ -20,7 +20,7 @@ import Control.Monad.Join
 import Domain.Core.TaintDomain.Class (TaintDomain)
 import Lattice.Tainted (Tainted(..))
 import Data.Kind (Type)
-import Lattice (Joinable)
+import Lattice (Joinable(..))
 import Control.Monad (ap)
 import Data.Functor ((<&>))
 import Control.Monad.Escape
@@ -40,7 +40,7 @@ taint  :: TaintM t m => v -> m (Tainted t v)
 taint v = Tainted v <$> currentTaint
 
 addTaint :: TaintM t m => Tainted t v -> m (Tainted t v)
-addTaint (Tainted v t) = Tainted v . mappend t <$> currentTaint
+addTaint (Tainted v t) = Tainted v . join t <$> currentTaint
 
 unwrapTainted :: TaintM t m => (v -> m (Tainted t a)) -> Tainted t v -> m (Tainted t a)
 unwrapTainted f (Tainted v t) = withTaint t (addTaint =<< f v)
@@ -57,7 +57,7 @@ newtype TaintT t m a = TaintT (ReaderT t m a)
 
 instance {-# OVERLAPPING #-} (Monad m, TaintDomain t) => TaintM t (TaintT t m) where
     currentTaint = ask
-    withTaint = local . mappend 
+    withTaint = local . join 
 
 instance (TaintM t m, Monad (l m), MonadLayer l) => TaintM t (l m) where
     currentTaint = upperM currentTaint

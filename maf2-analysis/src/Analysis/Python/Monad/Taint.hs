@@ -62,7 +62,7 @@ instance (
           SplitLattice (Esc m),
           EnvM m ObjAdr PyEnv,
           AllocM m PyLoc ObjAdr,
-          GraphM (CP String) (CP Bool) m,
+          GraphM (CP String) () m,
           StoreM ObjAdr obj m)
           =>
           PyM (PythonTaintAnalysisT m) obj vlu where
@@ -91,16 +91,18 @@ instance (
   pyLookupEnv = lookupEnv
   pyLookupSto = lookupAdr
   pyWithCtx loc = withCtx (take kcfa . (loc:))
-  applyXPrim ObjectTaint _ = \case
-                                [a] -> withTaint @Taint TopLattice.Top (addTaint a)
-                                _   -> pyError ArityError
-  applyXPrim DatabaseRead loc = \case
-                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm Prelude.False)) str
-                                  _        -> pyError ArityError
-                                  where toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
-                                        toTaint Lattice.Top            = TopLattice.Top
-  applyXPrim DatabaseWrite _ = \case
-                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\dfr nam -> currentTaint @Taint >>= \t -> addEdges nam t dfr $> constant None) df str
-                                  _            -> pyError ArityError
-                                  where addEdges to TopLattice.Top dfr = addEdge Lattice.Top to dfr
-                                        addEdges to (TopLattice.Value s) dfr = mapM_ (\source -> addEdge (Lattice.Constant source) to dfr) (Set.toList s)
+  applyXPrim ObjectTaint _ = const (pyError ArityError) -- undefined -- \case
+  --                               [a] -> withTaint @Taint TopLattice.Top (addTaint a)
+  --                               _   -> pyError ArityError
+  applyXPrim DatabaseRead _ = const (pyError ArityError) -- undefined 
+                              -- \case
+                              --     [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc undefined) str
+                              --     _        -> pyError ArityError
+                              --     where toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
+                              --           toTaint Lattice.Top            = TopLattice.Top
+  applyXPrim DatabaseWrite _ = const (pyError ArityError) --undefined 
+    -- \case
+    --                               [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\dfr nam -> currentTaint @Taint >>= \t -> addEdges nam t () $> constant None) df str
+    --                               _            -> pyError ArityError
+    --                               where addEdges to TopLattice.Top dfr = addEdge Lattice.Top to dfr
+    --                                     addEdges to (TopLattice.Value s) dfr = mapM_ (\source -> addEdge (Lattice.Constant source) to dfr) (Set.toList s)

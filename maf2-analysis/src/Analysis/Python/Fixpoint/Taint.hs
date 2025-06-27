@@ -71,7 +71,7 @@ type AnalysisM m obj = (PyDomain obj PyRefTaint,
                         MonadDependencyTracking PyCmp PyCmpTaint m,
                         MonadDependencyTracking PyCmp PyCmpStoreIn m,
                         MonadDependencyTracking PyCmp PyCmpStoreOut m,
-                        GraphM (CP String) (CP Bool) m,
+                        GraphM (CP String) () m,
                         WorkListM m PyCmp,
                         Typeable obj,
                         Show obj)
@@ -123,10 +123,10 @@ inter prg = do let cmp = ((Main prg, initialEnv), [])
                iterateWL (intra @obj)                                              -- start the analysis 
                Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
 
-analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool))
+analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) ())
 analyze prg = (rsto, osto, graph)
     where ((osto, graph), rsto) = inter @obj prg
-                                    & runWithGraph @(SimpleGraph (CP String) (CP Bool))
+                                    & runWithGraph @(SimpleGraph (CP String) ())
                                     & runWithMapping' @PyCmpStoreIn
                                     & runWithMapping' @PyCmpStoreOut 
                                     & runWithMapping @PyCmp
@@ -150,7 +150,7 @@ analyzeREPL :: forall obj . (PyDomain obj PyRefTaint, Typeable obj, Show obj)
     -> IO ()
 analyzeREPL read display = 
     void $ (initialStore >>= putStore >> repl) 
-            & runWithGraph @(SimpleGraph (CP String) (CP Bool))
+            & runWithGraph @(SimpleGraph (CP String) ())
             & runWithMapping' @PyCmpStoreIn
             & runWithMapping' @PyCmpStoreOut
             & runWithStore @(Store obj) @ObjAdr
@@ -179,5 +179,5 @@ analyzeREPL read display =
 
 type PyDomainCP = PyObjCP PyRefTaint ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
+analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) ())
 analyzeCP = analyze @PyDomainCP

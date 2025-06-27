@@ -83,7 +83,7 @@ library
       Domain.Python
       Domain.Python.DataFrameDomain
       Domain.Python.DataFrameDomain.Class
-      Domain.Python.DataFrameDomain.DataFrameSet
+      Domain.Python.DataFrameDomain.CPDataFrame
       Domain.Python.Objects
       Domain.Python.Objects.Class
       Domain.Python.Objects.PyObjHMap
