@@ -8,6 +8,7 @@ module Analysis.Monad.WorkList (
     runWithWorkList,
     iterateWL,
     iterateWL',
+    iterateWLInitial'',
     iterateWLDebug
 ) where
 
@@ -61,6 +62,10 @@ runWithWorkList (WorkListT m) = fst <$> runStateT m WL.empty
 
 iterateWL'' :: WorkListM m cmp => m Bool -> (cmp -> m a) -> m ()
 iterateWL'' stopEarly f = unlessM (liftA2 (||) stopEarly done) (pop >>= f >> iterateWL'' stopEarly f)
+
+iterateWLInitial'' :: WorkListM m cmp => cmp -> m Bool -> (cmp -> m a) -> m ()
+iterateWLInitial'' initial stopEarly f = add initial >> iterateWL'' stopEarly f
+
 
 iterateWL :: WorkListM m cmp => (cmp -> m a) -> m ()
 iterateWL = iterateWL'' (return False)

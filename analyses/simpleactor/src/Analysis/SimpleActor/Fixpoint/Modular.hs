@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE UndecidableInstances #-}
 -- | Actor-modular analysis
-module Analysis.SimpleActor.Fixpoint.Modular(analyze) where
+module Analysis.SimpleActor.Fixpoint.Modular(analyze, analyze', AnalysisResult(..)) where
 
 import Analysis.SimpleActor.Fixpoint.Common
 import Analysis.SimpleActor.Fixpoint.Sequential (ActorRes)
@@ -19,6 +19,7 @@ import Analysis.Actors.Monad (MonadMailbox, MonadSend(..), MonadReceive(..), Mon
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
 import Analysis.Monad (runDebugIntraAnalysis, runIntraAnalysis,MonadIntraAnalysis (currentCmp), StoreM(..), StoreM'(..), runStoreT)
+import Analysis.Monad.Profiling
 import qualified Analysis.Monad.ComponentTracking as C
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import Analysis.Monad.Map
@@ -40,7 +41,12 @@ import qualified Data.HashMap.Strict as HashMap
 ------------------------------------------------------------
 
 -- The analysis result
-type AnalysisResult = (Map ActorResOut ActorRes, ActorMai)
+data AnalysisResult = AnalysisResult {
+                         resultMap :: Map ActorResOut ActorRes,
+                         mailboxes ::  ActorMai,
+                         profileSeq :: Profile Sequential.SequentialCmp,
+                         profileMod :: Profile ActorRef
+                      } deriving (Ord, Eq, Show)
 
 -- | State kept during the analysis that falls outside the
 -- scope of the monad transformers
@@ -127,6 +133,8 @@ type ModularInterM m = (MonadState AnalysisState m,
                         -- Global store
                         StoreM ActorAdr (StoreVal ActorVlu) m,
                         StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m,
+                        -- Profiling
+                        MonadProfiling Sequential.SequentialCmp m,
                         -- For debugging
                         MonadIO m)
 
@@ -138,12 +146,18 @@ intra ref = (gets (fromJust . Map.lookup ref . _pidToProcess) >>= flip (uncurry 
           & runJoinT
           & void
 
-inter :: ModularInterM m => m ()
-inter = iterateWL' EntryPid intra
+newtype MaxStepsT m a = MaxStepsT { getMaxStepsT :: StateT Int m a } deriving (Functor, Monad, Applicative, MonadLayer)
+
+evalMaxStepsT :: Monad m => MaxStepsT m a -> m a
+evalMaxStepsT = flip evalStateT 0 . getMaxStepsT
+
+inter :: ModularInterM m => Maybe Int -> m ()
+inter maxSteps = evalMaxStepsT $ iterateWLInitial'' EntryPid (maybe (return False) maxReached maxSteps) intra
+  where maxReached maxSteps' = MaxStepsT (modify (+1)) >> MaxStepsT (gets (> maxSteps'))
 
 -- | Analyze the whole actor program
-analyze :: ActorExp -> IO AnalysisResult
-analyze expr = fmap toAnalysisResult $ inter
+analyze' :: Maybe Int -> ActorExp -> IO AnalysisResult
+analyze' maxSteps expr = fmap toAnalysisResult $ inter maxSteps
              & flip evalStateT (initialAnalysisState expr)
              & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore
              & runWithMapping @ActorResOut @ActorRes
@@ -156,9 +170,14 @@ analyze expr = fmap toAnalysisResult $ inter
              & runWithMailboxContributorIndexedT
              -- & runWithMailboxT @ActorVlu @MB
              & C.runWithComponentTracking
+             & runWithWorklistProfilingT @ActorRef
              & runWithWorkList @(LIFOWorklist _)
+             & runProfilingT @Sequential.SequentialCmp
+             & runProfilingT @ActorRef
              & runCachedSolver
              & runZ3SolverWithSetup SMT.prelude
-  where toAnalysisResult (_res ::*:: _varSto ::*:: resOut ::*:: mb) = (resOut, mb)
+  where toAnalysisResult (_res ::*:: _varSto ::*:: resOut ::*:: mb ::*:: profileSeq ::*:: profileMod) = AnalysisResult resOut mb profileSeq profileMod
 
 
+analyze :: ActorExp -> IO AnalysisResult
+analyze = analyze' Nothing

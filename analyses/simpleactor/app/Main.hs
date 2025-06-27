@@ -19,12 +19,12 @@ import Analysis.SimpleActor.Monad ()
 import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, ActorRes(..))
 import Data.Tuple.Syntax
 import qualified Analysis.SimpleActor.Infer as Infer
+import qualified Analysis.Monad.Profiling as Profiling
 import System.TimeIt
 import qualified RIO.Set as Set
 import System.Exit
 import RIO (stdout)
 import RIO.Directory
-import Debug.Trace (traceShowId)
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -38,9 +38,16 @@ type Command = IO ()
 
 -- | Command-line options for a single file
 data InputOptions = InputOptions {
+                  -- | The name of the file to analyze
                   filename :: String,
+                  -- | DEPRECATED: whether the Racket to the SimpleActor
+                  -- should be performed before running analysis, requires Racket to be installed.
                   doTranslate :: Bool,
-                  debug :: Bool
+                  -- | Whether debugging is enabled, this simply expands
+                  -- the output of the runPythonTaintAnalysisT
+                  debug :: Bool,
+                  -- | Maximum number of steps in the analysis            
+                  maxSteps :: Maybe Int 
               } deriving (Show, Ord, Eq)
 
 
@@ -51,6 +58,7 @@ inputOptions = InputOptions <$> strOption
                    <> help "Input file"
                   ) <*> flag True False ( long "no-translate" <> help "If present, disables translations" )
                   <*> flag False True ( long "debug" <> help "If present, enable debug output" )
+                  <*> optional (option auto (long "max" <> short 't' <> help "maximum number of analysis steps"))
 
 
 -- | Command-line for options for a list of files in a directory
@@ -115,9 +123,9 @@ loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTem
 ------------------------------
 
 analyzeCmd :: InputOptions -> IO ()
-analyzeCmd (InputOptions { filename, doTranslate  }) = do
+analyzeCmd (InputOptions { filename, doTranslate, maxSteps  }) = do
    ast <- loadFile' doTranslate filename
-   (sequentialResults, mbs) <- analyze ast
+   (AnalysisResult sequentialResults mbs seqProf modProf) <- analyze' maxSteps ast
    let sequentialResMap = fmap cmpRes sequentialResults
    let sequentialCouMap = fmap outCount sequentialResults
    putStrLn "====== Results per actor"
@@ -129,6 +137,9 @@ analyzeCmd (InputOptions { filename, doTranslate  }) = do
    -- putStrLn $ printMap printLoc (const True) res
    putStrLn "====="
    putStrLn $ printMap  show (const True) mbs
+   putStrLn "====="
+   putStrLn $ printMap show (const True) (Profiling._profile seqProf) 
+   putStrLn $ printMap show (const True) (Profiling._profile modProf) 
    return ()
 
 interpret :: InputOptions -> IO ()
