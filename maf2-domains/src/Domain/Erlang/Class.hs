@@ -9,7 +9,7 @@ import Control.Monad.AbstractM
 
 type Clo v = (Env v, [Clause])
 
-class (NumberDomain v, IntDomain v) => ErlangDomain v where
+class (NumberDomain v v, IntDomain v v v v) => ErlangDomain v where
    type Pid v :: Type
    type Env v :: Type
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Domain.Core.CharDomain.Class (CharDomain(..)) where
 
 import Domain.Class 
@@ -6,12 +7,10 @@ import Domain.Core.BoolDomain
 
 import Data.Kind 
 
-class (Domain c Char) => CharDomain c where
-   type IntC c :: Type
-
+class (Domain c Char) => CharDomain c int where
    downcase :: AbstractM m => c -> m c
    upcase :: AbstractM m => c -> m c
-   charToInt :: AbstractM m => c -> m (IntC c)
+   charToInt :: AbstractM m => c -> m int 
    isLower :: (AbstractM m, BoolDomain b) => c -> m b
    isUpper :: (AbstractM m, BoolDomain b) => c -> m b
    charEq :: (AbstractM m, BoolDomain b) => c -> c -> m b

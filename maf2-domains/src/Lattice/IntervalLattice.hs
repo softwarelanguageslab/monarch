@@ -63,10 +63,8 @@ instance (Ord a) => Meetable (Interval a) where
       | overlaps i1 i2 = Interval (max l1 l2) (min l1 l2)
    meet _ _ = BottomInterval
    
-
-type instance BoolFor (Interval Integer) = CP Bool
-
-instance NumberDomain (Interval Integer) where  
+-- TODO: move this to Domain.Core.NumberDomain.Interval
+instance NumberDomain (Interval Integer) (CP Bool) where  
    random = const $ return top
    eq BottomInterval _ = mbottom 
    eq _ BottomInterval = mbottom

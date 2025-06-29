@@ -9,22 +9,23 @@ import Control.DeepSeq
 import qualified Data.Set as Set
 import Domain.Actor
 import Domain.Class
-import Domain.Core.BoolDomain (boolTop)
 import Domain.Core.BoolDomain.Class
 import Domain.Core.BoolDomain.TopLifted ()
 import Domain.Core.CharDomain.Class
 import Domain.Core.CharDomain.TopLifted ()
 import Domain.Core.NumberDomain.Class
 import Domain.Core.NumberDomain.TopLifted ()
+import Domain.Core.StringDomain.TopLifted
 import Domain.Scheme.Class
 import GHC.Generics
 import Lattice.Class
 import Lattice.Equal
 import Lattice.TopLiftedLattice (TopLifted (..), fromTL)
-import Prelude hiding (acos, and, asin, atan, ceiling, cos, div, floor, log, not, or, round, sin, sqrt, tan)
+import Prelude hiding (length, acos, and, asin, atan, ceiling, cos, div, floor, log, not, or, round, sin, sqrt, tan)
 import Control.Monad.Join (MonadBottom(..))
 import Lattice.Trace (Trace (trace))
 import Domain.Address (AddressWithCtx (replaceCtx))
+import Domain.Core.StringDomain.Class (StringDomain (..))
 
 -- | Lifts a value @a@ from the Scheme domain into a @TopLifted@ value so that all Scheme values have a synthetic top element
 newtype SchemeTopLifted a = SchemeTopLifted {getTopLifted :: TopLifted a}
@@ -39,8 +40,6 @@ instance (Show a) => Show (SchemeTopLifted a) where
 
 instance (NFData a) => NFData (SchemeTopLifted a)
 
-type instance BoolFor (SchemeTopLifted a) = SchemeTopLifted (BoolFor a)
-
 instance TopLattice (SchemeTopLifted a) where
   top = SchemeTopLifted Top
 
@@ -54,60 +53,72 @@ instance (BoolDomain a) => BoolDomain (SchemeTopLifted a) where
   and = liftA2 and
   or = liftA2 or
 
-instance (CharDomain a) => CharDomain (SchemeTopLifted a) where
-  type IntC (SchemeTopLifted a) = SchemeTopLifted (IntC a)
+instance (TopLattice bln, TopLattice int, TopLattice chr, StringDomain a bln int chr) => StringDomain (SchemeTopLifted a) bln int chr where
+  length = length @_ @bln @int @chr . getTopLifted
+  append (SchemeTopLifted a) (SchemeTopLifted b) = SchemeTopLifted <$> append @_ @bln @int @chr a b
+  ref (SchemeTopLifted s) = ref @_ @bln @int @chr s
+  stringLt (SchemeTopLifted a) (SchemeTopLifted b) = stringLt @_ @bln @int @chr a b
+  toNumber = toNumber @_ @bln @int @chr  . getTopLifted
+  makeString i = fmap SchemeTopLifted . makeString @_ @bln @int @chr i
+  topString = SchemeTopLifted (topString @_ @bln @int @chr)
+  set (SchemeTopLifted s) i = fmap SchemeTopLifted . set @_ @bln @int @chr s i
+
+instance (CharDomain a int) => CharDomain (SchemeTopLifted a) (SchemeTopLifted int) where
 
   --- XXX: this is very close top the instance of @TopLifted@ in @Domain.Core.CharDomain.TopLifted@ see if
   -- some code can be shared
-  downcase = traverse downcase
-  upcase = traverse upcase
+  downcase = traverse (downcase @_ @int)
+  upcase = traverse (upcase @_ @int)
   charToInt = traverse charToInt
-  isLower = fmap (fromTL boolTop . getTopLifted) . traverse isLower
-  isUpper = fmap (fromTL boolTop . getTopLifted) . traverse isUpper
-  charEq a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 charEq a
-  charLt a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 charLt a
-  charEqCI a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 charEqCI a
-  charLtCI a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 charLtCI a
+  isLower = fmap (fromTL boolTop . getTopLifted) . traverse (isLower @_ @int)
+  isUpper = fmap (fromTL boolTop . getTopLifted) . traverse (isUpper @_ @int)
+  charEq a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 (charEq @_ @int) a
+  charLt a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 (charLt @_ @int) a
+  charEqCI a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 (charEqCI @_ @int) a
+  charLtCI a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 (charLtCI @_ @int) a
 
-instance (NumberDomain a) => NumberDomain (SchemeTopLifted a) where
+instance (NumberDomain a bln) => NumberDomain (SchemeTopLifted a) (SchemeTopLifted bln) where
   isZero = traverse isZero
-  random = traverse random
-  plus a = sequenceA . liftA2 plus a
-  minus a = sequenceA . liftA2 minus a
-  times a = sequenceA . liftA2 times a
-  div a = sequenceA . liftA2 div a
-  expt a = sequenceA . liftA2 expt a
-  eq a = sequenceA . liftA2 eq a
-  lt a = sequenceA . liftA2 lt a
+  random = traverse (random @_ @bln)
+  plus a = sequenceA . liftA2 (plus @_ @bln) a
+  minus a = sequenceA . liftA2 (minus @_ @bln) a
+  times a = sequenceA . liftA2 (times @_ @bln) a
+  div a = sequenceA . liftA2 (div @_ @bln) a
+  expt a = sequenceA . liftA2 (expt @_ @bln) a
+  eq a = sequenceA . liftA2 (eq @_ @bln) a
+  lt a = sequenceA . liftA2 (lt @_ @bln) a
 
-instance (IntDomain a) => IntDomain (SchemeTopLifted a) where
-  type Str (SchemeTopLifted a) = SchemeTopLifted (Str a)
-  type Rea (SchemeTopLifted a) = SchemeTopLifted (Rea a)
+type instance StrDom (SchemeTopLifted a) = (StrDom a)
 
-  toReal = traverse toReal
-  toString = traverse toString
-  quotient a = sequenceA . liftA2 quotient a
-  modulo a = sequenceA . liftA2 modulo a
-  remainder a = sequenceA . liftA2 remainder a
+instance (IntDomain a bln str rea, str ~ StrDom a, TopLattice str) =>
+  IntDomain (SchemeTopLifted a)
+            (SchemeTopLifted bln)
+            str
+            (SchemeTopLifted rea) where
+  toReal = traverse (toReal @_ @bln @str)
+  toString = fmap (fromTL top) . traverse (toString @_ @bln @_ @rea) . getTopLifted
+  quotient a = sequenceA . liftA2 (quotient @_ @bln @str @rea) a
+  modulo a = sequenceA . liftA2 (modulo @_ @bln @str @rea) a
+  remainder a = sequenceA . liftA2 (remainder @_ @bln @str @rea) a
 
-instance (RealDomain a) => RealDomain (SchemeTopLifted a) where
-  type IntR (SchemeTopLifted a) = SchemeTopLifted (IntR a)
-  toInt = traverse toInt
-  ceiling = traverse ceiling
-  floor = traverse floor
-  round = traverse round
-  log = traverse log
-  sin = traverse sin
-  asin = traverse asin
-  cos = traverse cos
-  acos = traverse acos
-  tan = traverse tan
-  atan = traverse atan
-  sqrt = traverse sqrt
+instance (RealDomain a bln int) => RealDomain (SchemeTopLifted a) (SchemeTopLifted bln) (SchemeTopLifted int) where
+  toInt = traverse (toInt @_ @bln)
+  ceiling = traverse (ceiling @_ @bln @int)
+  floor = traverse (floor @_ @bln @int)
+  round = traverse (round @_ @bln @int)
+  log = traverse (log @_ @bln @int)
+  sin = traverse (sin @_ @bln @int)
+  asin = traverse (asin @_ @bln @int)
+  cos = traverse (cos @_ @bln @int)
+  acos = traverse (acos @_ @bln @int)
+  tan = traverse (tan @_ @bln @int)
+  atan = traverse (atan @_ @bln @int)
+  sqrt = traverse (sqrt @_ @bln @int)
 
 instance
   ( SchemeDomain a,
-    TopLattice (Adr a)
+    TopLattice (Adr a),
+    TopLattice (StrDom a)
   ) =>
   SchemeDomain (SchemeTopLifted a)
   where

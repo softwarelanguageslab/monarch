@@ -31,7 +31,6 @@ import Lattice.PointerSetLattice
 import Domain.Address
 import Domain.Class
 import Domain.Core
-import Domain.Core.BoolDomain.Class (BoolFor)
 import Domain.Scheme.Class
 import Control.Monad.Join
 import Control.Monad.DomainError
@@ -61,6 +60,7 @@ import Debug.Trace
 import Syntax.Span (spanOf, SpanOf)
 import qualified Data.List as List
 import Data.Bifunctor
+import Data.TypeLevel.AssocList (KeyIs)
 
 maybeSingle :: Maybe a -> Set a
 maybeSingle Nothing = Set.empty
@@ -84,6 +84,7 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | EnvConf    -- ^ abstraction for environments
                    | ExpConf    -- ^ concrete type of expressions
                    | AdrConf    -- ^ type of pointers
+                   | StrConf    -- ^ abstraction for strings
                    -- λα
                    | PidConf    -- ^ type of actor references
                    -- λα/c
@@ -164,22 +165,25 @@ newtype SchemeVal (m :: [SchemeConfKey :-> Type]) = SchemeVal { getSchemeVal :: 
 
 instance NFData (SchemeVal m)
 
+data RealDomainWith bln int :: Type ~> Constraint
+type instance Apply (RealDomainWith bln int) r = RealDomain r bln int 
+
+data IntDomainWith bln str rea :: Type ~> Constraint
+type instance Apply (IntDomainWith bln str rea) i = IntDomain i bln str rea
+
+data CharDomainWith int :: Type ~> Constraint
+type instance Apply (CharDomainWith int) c = CharDomain c int
+
 -- | A valid choice for `m` and `c` should satisfy these constraints
 type IsSchemeValue m =
    (ForAll SchemeKey (AtKey1 Eq (Values m)),
     ForAll SchemeKey (AtKey1 PartialOrder (Values m)),
     ForAll SchemeKey (AtKey1 Joinable (Values m)),
     -- expected subdomains
-    KeyIs1 RealDomain (Values m) RealKey,
+    KeyIs (RealDomainWith (Assoc BoolKey (Values m)) (Assoc IntKey (Values m))) (Values m) RealKey,
     KeyIs1 BoolDomain (Values m) BoolKey,
-    KeyIs1 IntDomain  (Values m)  IntKey,
-    KeyIs1 CharDomain (Values m) CharKey,
-    -- relations between subdomains
-    IntC (Assoc CharKey (Values m)) ~ Assoc IntKey (Values m),
-    BoolFor (Assoc IntKey (Values m)) ~ BoolFor (Assoc RealKey (Values m)),
-    BoolFor (Assoc RealKey (Values m)) ~ Assoc BoolConf m,
-    Rea (Assoc IntKey (Values m)) ~ Assoc RealKey (Values m),
-    IntR (Assoc RealKey (Values m)) ~ Assoc IntKey (Values m),
+    KeyIs (IntDomainWith (Assoc BoolKey (Values m)) (StrDom (SchemeVal m)) (Assoc RealKey (Values m))) (Values m) IntKey,
+    KeyIs (CharDomainWith (Assoc IntKey (Values m))) (Values m) CharKey,
     -- addresses
     Address (Assoc AdrConf m))
 
@@ -284,19 +288,16 @@ instance (IsSchemeValue m) => BoolDomain (SchemeVal m) where
 
 -- | An instance for the character domain assuming that our underlying representation
 -- for integers is shared with the underlying character domain that we are using.
-instance (IsSchemeValue m, IntC (Assoc CharKey (Values m)) ~ Assoc IntKey (Values m)) => CharDomain (SchemeVal m) where
-   type IntC (SchemeVal m) = (SchemeVal m)
-
-   downcase  = chars' (downcase >=> (return . injectChar))
-   upcase    = chars' ( upcase   >=> (return . injectChar))
+instance (IsSchemeValue m, CharDomain (Assoc CharKey (Values m)) (Assoc IntKey (Values m))) => CharDomain (SchemeVal m) (SchemeVal m) where
+   downcase  = chars' (downcase @_ @(Assoc IntKey (Values m)) >=> (return . injectChar))
+   upcase    = chars' ( upcase @_ @(Assoc IntKey (Values m))  >=> (return . injectChar))
    charToInt = chars' (charToInt >=> (return . injectInt))
-   isLower   = chars' isLower
-   isUpper   = chars' isUpper
-   charEq   a b = fromMaybe (escape WrongType) $ liftA2 charEq (chars a) (chars b)
-   charLt   a b = fromMaybe (escape WrongType) $ liftA2 charLt (chars a) (chars b)
-   charEqCI a b = fromMaybe (escape WrongType) $ liftA2 charEqCI (chars a) (chars b)
-   charLtCI a b = fromMaybe (escape WrongType) $ liftA2 charLtCI (chars a) (chars b)
-
+   isLower   = chars' (isLower @_ @(Assoc IntKey (Values m)))
+   isUpper   = chars' (isUpper @_ @(Assoc IntKey (Values m)))
+   charEq   a b = fromMaybe (escape WrongType) $ liftA2 (charEq @_ @(Assoc IntKey (Values m))) (chars a) (chars b)
+   charLt   a b = fromMaybe (escape WrongType) $ liftA2 (charLt @_ @(Assoc IntKey (Values m))) (chars a) (chars b)
+   charEqCI a b = fromMaybe (escape WrongType) $ liftA2 (charEqCI @_ @(Assoc IntKey (Values m))) (chars a) (chars b)
+   charLtCI a b = fromMaybe (escape WrongType) $ liftA2 (charLtCI @_ @(Assoc IntKey (Values m))) (chars a) (chars b)
 
 ------------------------------------------------------------
 -- Number domain
@@ -305,6 +306,7 @@ instance (IsSchemeValue m, IntC (Assoc CharKey (Values m)) ~ Assoc IntKey (Value
 type IntOf m = Assoc IntKey (Values m)
 type ReaOf m = Assoc RealKey (Values m)
 type BooOf m = Assoc BoolKey (Values m)
+type StrOf m = StrDom (SchemeVal m)
 type ValOf m k = Assoc k (Values m)
 
 coerce' :: forall (kt1 :: SchemeKey) (kt2 :: SchemeKey) schemeM m .
@@ -316,9 +318,9 @@ coerce' intOp realOp = prim2 select
    where select (SIntKey :&: v1) (SIntKey :&: v2)  =
             SchemeVal <$> HMap.singleton @kt1 <$> intOp v1 v2
          select (SRealKey :&: v1) (SIntKey :&: v2) =
-            toReal v2 >>= (fmap (SchemeVal . HMap.singleton @kt2) . realOp v1)
+            toReal @_ @(BooOf m) @(StrOf m) v2 >>= (fmap (SchemeVal . HMap.singleton @kt2) . realOp v1)
          select (SIntKey :&: v1) (SRealKey :&: v2) =
-            toReal v1 >>= (fmap (SchemeVal . HMap.singleton @kt2) . flip realOp v2)
+            toReal @_ @(BooOf m) @(StrOf m) v1 >>= (fmap (SchemeVal . HMap.singleton @kt2) . flip realOp v2)
          select (SRealKey :&: v1) (SRealKey :&: v2) =
             SchemeVal . HMap.singleton @kt2 <$> realOp v1 v2
          select _ _ = escape WrongType
@@ -340,9 +342,7 @@ prim2 :: (IsSchemeValue m, AbstractM schemeM)
       -> SchemeVal m -> SchemeVal m -> schemeM (SchemeVal m)
 prim2 f (SchemeVal hm1) (SchemeVal hm2) = mjoins $ map (uncurry f) $ liftA2 (,) (HMap.toList hm1) (HMap.toList hm2)
 
-type instance BoolFor (SchemeVal m) = SchemeVal m
-
-instance (IsSchemeValue m) => NumberDomain (SchemeVal m) where
+instance (IsSchemeValue m) => NumberDomain (SchemeVal m) (SchemeVal m) where
    isZero = mjoins . HMap.mapList select  . getSchemeVal
       where select :: forall (kt :: SchemeKey) schemeM .  (AbstractM schemeM) => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
             select SIntKey v  = SchemeVal <$> HMap.singleton @BoolKey <$> isZero v
@@ -350,14 +350,14 @@ instance (IsSchemeValue m) => NumberDomain (SchemeVal m) where
             select _ _ = escape WrongType
    random = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) schemeM . (AbstractM schemeM) => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
-            select SIntKey v = SchemeVal <$> HMap.singleton @IntKey <$> random v
-            select SRealKey v = SchemeVal <$> HMap.singleton @RealKey <$> random v
+            select SIntKey v = SchemeVal <$> HMap.singleton @IntKey <$> random @_ @(BooOf m) v
+            select SRealKey v = SchemeVal <$> HMap.singleton @RealKey <$> random @_ @(BooOf m) v
             select _ _ = escape WrongType
-   plus  = coerceNum plus plus
-   minus = coerceNum minus minus
-   times = coerceNum times times
-   div   = coerceNum div div
-   expt  = coerceNum expt expt
+   plus  = coerceNum (plus @_ @(BooOf m)) (plus @_ @(BooOf m))
+   minus = coerceNum (minus @_ @(BooOf m)) (minus @_ @(BooOf m))
+   times = coerceNum (times @_ @(BooOf m)) (times @_ @(BooOf m))
+   div   = coerceNum (div @_ @(BooOf m)) (div @_ @(BooOf m))
+   expt  = coerceNum (expt @_ @(BooOf m)) (expt @_ @(BooOf m))
    eq    = coerceBoo eq eq
    lt    = coerceBoo lt lt
 
@@ -369,17 +369,15 @@ typeErrorOp :: AbstractM m => b -> c -> m a
 typeErrorOp _ = const $ escape WrongType
 
 
-instance (IsSchemeValue m) => IntDomain (SchemeVal m) where
-   type Str (SchemeVal m) = ()
-   type Rea (SchemeVal m) = SchemeVal m
+instance (IsSchemeValue m, s ~ StrDom (SchemeVal m)) => IntDomain (SchemeVal m) (SchemeVal m) s (SchemeVal m) where
    toReal = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
-            select SIntKey v  = SchemeVal . HMap.singleton @RealKey <$> toReal v
+            select SIntKey v  = SchemeVal . HMap.singleton @RealKey <$> (toReal @_ @(BooOf m) @(StrOf m)) v
             select SRealKey v = return $ SchemeVal $ HMap.singleton @RealKey v
             select _ _ = escape WrongType
-   quotient  = coerceNum quotient  typeErrorOp
-   modulo    = coerceNum modulo    typeErrorOp
-   remainder = coerceNum remainder typeErrorOp
+   quotient  = coerceNum (quotient @_ @(BooOf m) @(StrOf m) @(ReaOf m))  typeErrorOp
+   modulo    = coerceNum (modulo @_ @(BooOf m) @(StrOf m) @(ReaOf m))    typeErrorOp
+   remainder = coerceNum (remainder @_ @(BooOf m) @(StrOf m) @(ReaOf m)) typeErrorOp
 
 ------------------------------------------------------------
 -- Real domain
@@ -391,27 +389,26 @@ coerce1R' :: forall schemeM m .
         -> SchemeVal m -> schemeM (SchemeVal m)
 coerce1R' f = mjoins . HMap.mapList select . getSchemeVal
    where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
-         select SIntKey v = SchemeVal . HMap.singleton @RealKey <$> (toReal v >>= f)
+         select SIntKey v = SchemeVal . HMap.singleton @RealKey <$> (toReal @_ @(BooOf m) @(StrOf m) v >>= f)
          select SRealKey v = SchemeVal . HMap.singleton @RealKey <$> f v
 
-instance (IsSchemeValue m) => RealDomain (SchemeVal m) where
-   type IntR (SchemeVal m) = SchemeVal m
+instance (IsSchemeValue m) => RealDomain (SchemeVal m) (SchemeVal m) (SchemeVal m) where
    toInt = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
             select SIntKey  v = return $ SchemeVal $ HMap.singleton @IntKey v
-            select SRealKey v = SchemeVal . HMap.singleton @IntKey <$> toInt v
+            select SRealKey v = SchemeVal . HMap.singleton @IntKey <$> toInt @_ @(BooOf m) v
             select _ _        = escape WrongType
-   ceiling = coerce1R' ceiling
-   floor   = coerce1R' floor
-   round   = coerce1R' round
-   log     = coerce1R' log
-   sin     = coerce1R' sin
-   asin    = coerce1R' asin
-   cos     = coerce1R' cos
-   acos    = coerce1R' acos
-   tan     = coerce1R' tan
-   atan    = coerce1R' atan
-   sqrt    = coerce1R' sqrt
+   ceiling = coerce1R' (ceiling @_ @(BooOf m) @(IntOf m))
+   floor   = coerce1R' (floor @_ @(BooOf m) @(IntOf m))
+   round   = coerce1R' (round @_ @(BooOf m) @(IntOf m))
+   log     = coerce1R' (log @_ @(BooOf m) @(IntOf m))
+   sin     = coerce1R' (sin @_ @(BooOf m) @(IntOf m))
+   asin    = coerce1R' (asin @_ @(BooOf m) @(IntOf m))
+   cos     = coerce1R' (cos @_ @(BooOf m) @(IntOf m))
+   acos    = coerce1R' (acos @_ @(BooOf m) @(IntOf m))
+   tan     = coerce1R' (tan @_ @(BooOf m) @(IntOf m))
+   atan    = coerce1R' (atan @_ @(BooOf m) @(IntOf m))
+   sqrt    = coerce1R' (sqrt @_ @(BooOf m) @(IntOf m))
 
 
 ------------------------------------------------------------
@@ -503,36 +500,41 @@ type ModularSchemeValue r i c b adr exp env = SchemeVal '[
 -- String domain specific to ModularSchemeValue
 ------------------------------------------------------------
 
-type IsSchemeString s m = (
-   StringDomain s,
-   -- booleans should refer back to the Scheme value
-   BoolFor s ~ Assoc BoolKey (Values m),
-   Assoc CharKey (Values m) ~ ChaS s,
-   Assoc IntKey (Values m)  ~ IntS s)
+type IsSchemeString s m = StringDomain s (Assoc BoolKey (Values m)) (Assoc IntKey (Values m)) (Assoc CharKey (Values m))
 
-type instance BoolFor (SchemeString s v) = v
 
-newtype SchemeString s v = SchemeString { sconst :: s } deriving (Show, Eq, Ord, Generic, NFData)
+newtype SchemeString s = SchemeString { sconst :: s } 
+   deriving (Show, Eq, Ord, Generic, NFData, TopLattice)
 
-instance (Joinable s) => Joinable (SchemeString s v) where
+instance (Joinable s) => Joinable (SchemeString s) where
    join a b = SchemeString (join (sconst a) (sconst b))
 
-instance (BottomLattice s) => BottomLattice (SchemeString s v) where
+instance (BottomLattice s) => BottomLattice (SchemeString s) where
    bottom = SchemeString bottom
-instance (StringDomain s) => Domain (SchemeString s v) String where
+instance (Domain s String) => Domain (SchemeString s) String where
    inject = SchemeString . inject
-instance Ord a => Trace a (SchemeString s v) where
+instance Ord a => Trace a (SchemeString s) where
    trace = const Set.empty
-instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s (SchemeVal m)) where
-   type IntS (SchemeString s (SchemeVal m)) = SchemeVal m
-   type ChaS (SchemeString s (SchemeVal m)) = SchemeVal m
+instance (IsSchemeValue m, IsSchemeString s m) => StringDomain (SchemeString s) (SchemeVal m) (SchemeVal m) (SchemeVal m) where
+   length = (length @_ @(Assoc BoolKey (Values m)) @(Assoc IntKey (Values m)) @(Assoc CharKey (Values m)) . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
+   append s1 s2 = SchemeString <$> append @_ @(Assoc BoolKey (Values m)) @(Assoc IntKey (Values m)) @(Assoc CharKey (Values m)) (sconst s1) (sconst s2)
+   ref s i = SchemeVal . HMap.singleton @CharKey <$> (ref @_ @(Assoc BoolKey (Values m)) @_ @_ (sconst s) =<< integers i)
+   stringLt s1 s2  = SchemeVal . HMap.singleton @BoolKey <$> stringLt @_ @_ @(Assoc IntKey (Values m)) @(Assoc CharKey (Values m)) (sconst s1) (sconst s2)
+   toNumber  = (toNumber @_ @(Assoc BoolKey (Values m)) @_ @(Assoc CharKey (Values m)) . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
+   topString = SchemeString (topString @_ @(Assoc BoolKey (Values m)) @(Assoc IntKey (Values m)) @(Assoc CharKey (Values m)))
+   -- TODO
+   -- set s i c = SchemeString <$> set @_ @(Assoc BoolKey (Values m)) @_ @(Assoc CharKey (Values m)) (sconst s) i c
+   -- makeString i c = SchemeString <$> makeString @_ @(Assoc BoolKey (Values m)) @_ @(Assoc CharKey (Values m)) i c
+instance (StringDomain s (CP Bool) (CP Integer) (CP Char)) => StringDomain (SchemeString s) (CP Bool) (CP Integer) (CP Char) where
+   length = length @_ @(CP Bool) @_ @(CP Char) . sconst 
+   append (SchemeString s1) (SchemeString s2) = SchemeString <$> append @_ @(CP Bool) @(CP Integer) @(CP Char) s1 s2 
+   ref (SchemeString s) = ref @_ @(CP Bool) @(CP Integer) s 
+   stringLt (SchemeString s1) (SchemeString s2) = stringLt @_ @_ @(CP Integer) @(CP Char) s1 s2
+   toNumber = toNumber @_ @(CP Bool) @_ @(CP Char) . sconst 
+   topString = SchemeString (topString @_ @(CP Bool) @(CP Integer) @(CP Char))
+   set s i c = SchemeString <$> set @_ @(CP Bool) @_ @(CP Char) (sconst s) i c
+   makeString i c = SchemeString <$> makeString @_ @(CP Bool) @_ @(CP Char) i c
 
-   length = (length . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
-   append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
-   ref s i = SchemeVal . HMap.singleton @CharKey <$> (ref (sconst s) =<< integers i)
-   stringLt s1 s2  = SchemeVal . HMap.singleton @BoolKey <$> stringLt (sconst s1) (sconst s2)
-   toNumber  = (toNumber . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
-   topString = SchemeString topString
 
 ------------------------------------------------------------
 -- Scheme values contain addresses (with contexts)

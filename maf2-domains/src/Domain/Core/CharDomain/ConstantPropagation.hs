@@ -10,8 +10,7 @@ import Domain.Core.BoolDomain.ConstantPropagation
 import Data.Char as Char
 import Control.Applicative 
 
-instance CharDomain (CP Char) where
-   type IntC (CP Char) = CP Integer
+instance CharDomain (CP Char) (CP Integer) where
    downcase = return . fmap toLower
    upcase = return . fmap toUpper
    charToInt = return .  fmap (fromIntegral . ord)

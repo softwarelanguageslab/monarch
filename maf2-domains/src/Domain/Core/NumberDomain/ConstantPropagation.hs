@@ -1,25 +1,25 @@
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Domain.Core.NumberDomain.ConstantPropagation where
 
 import Lattice 
 import Domain.Core.NumberDomain.Class 
-import Domain.Core.BoolDomain.Class (BoolFor)
 import Domain.Core.BoolDomain.ConstantPropagation () -- for CP Bool instance
 
 import Control.Applicative
 import Control.Monad.DomainError
 import Control.Monad.Join 
 import Control.Monad.AbstractM
+import Domain.Core.StringDomain.Class (StringDomain)
+import Domain.Class (Domain(..))
 
 ------------------------------------------------------------
 --- Integers
 ------------------------------------------------------------
 
-type instance BoolFor (CP Integer) = CP Bool
-
-instance NumberDomain (CP Integer) where
+instance NumberDomain (CP Integer) (CP Bool) where
    isZero = return . liftA2 (==) (Constant 0)
    random = return . const Top
    plus a b = return $ liftA2 (+) a b
@@ -30,11 +30,10 @@ instance NumberDomain (CP Integer) where
    lt a b = return $ liftA2 (<) a b
    eq a b = return $ liftA2 (==) a b
 
-instance IntDomain (CP Integer) where
-   type Str (CP Integer) = CP String
-   type Rea (CP Integer) = CP Double
+instance (TopLattice s, StringDomain s (CP Bool) (CP Integer) (CP Char)) => IntDomain (CP Integer) (CP Bool) s (CP Double) where
    toReal   = return . fmap fromIntegral
-   toString = return . fmap show
+   toString Top = return top
+   toString (Constant n) = return $ inject (show n)
    quotient a b = return $ liftA2 Prelude.div a b
    remainder a b =  return $ liftA2 rem a b
    modulo a b = return $ liftA2 mod a b
@@ -47,9 +46,7 @@ instance IntDomain (CP Integer) where
 between :: Ord a => a -> a -> a -> Bool
 between a b c = a <= c && c <= b
 
-type instance BoolFor (CP Double) = CP Bool
-
-instance NumberDomain (CP Double) where
+instance NumberDomain (CP Double) (CP Bool) where
    isZero = return . liftA2 (==) (Constant 0)
    random = return . const Top
    plus a b = return $ liftA2 (+) a b
@@ -60,8 +57,7 @@ instance NumberDomain (CP Double) where
    lt a b = return $ liftA2 (<) a b
    eq a b = return $ liftA2 (==) a b
 
-instance RealDomain (CP Double) where
-   type IntR (CP Double) = CP Integer
+instance RealDomain (CP Double) (CP Bool) (CP Integer) where
    toInt = return . fmap truncate
    ceiling = return . fmap (fromIntegral . Prelude.ceiling)
    floor = return . fmap (fromIntegral . Prelude.floor)

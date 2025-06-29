@@ -1,21 +1,19 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Domain.Core.CharDomain.TopLifted() where 
+module Domain.Core.CharDomain.TopLifted() where
 
 import Domain.Core.BoolDomain.Class (boolTop)
-import Domain.Core.CharDomain.Class 
+import Domain.Core.CharDomain.Class
 import Lattice.Class
 import Lattice.TopLiftedLattice
 
-instance (CharDomain a, TopLattice (IntC a)) => CharDomain (TopLifted a) where 
-   type IntC (TopLifted a) = IntC a
-
-   downcase = sequenceA . fmap downcase
-   upcase = sequenceA . fmap upcase
-   charToInt = fmap (fromTL top) . sequenceA . fmap charToInt
-   isLower = fmap (fromTL boolTop) . sequenceA .  fmap isLower
-   isUpper = fmap (fromTL boolTop) . sequenceA .  fmap isUpper
-   charEq a = fmap (fromTL boolTop) . sequenceA . liftA2 charEq a
-   charLt a = fmap (fromTL boolTop) . sequenceA . liftA2 charLt a
-   charEqCI a = fmap (fromTL boolTop) . sequenceA . liftA2 charEqCI a
-   charLtCI a = fmap (fromTL  boolTop) . sequenceA . liftA2 charLtCI a
+instance (CharDomain a int, TopLattice int) => CharDomain (TopLifted a) int where
+   downcase = traverse (downcase @_ @int)
+   upcase = traverse (upcase @_ @int)
+   charToInt = fmap (fromTL top) . traverse charToInt
+   isLower = fmap (fromTL boolTop) . traverse (isLower @_ @int)
+   isUpper = fmap (fromTL boolTop) . traverse (isUpper @_ @int)
+   charEq a = fmap (fromTL boolTop) . sequenceA . liftA2 (charEq @_ @int) a
+   charLt a = fmap (fromTL boolTop) . sequenceA . liftA2 (charLt @_ @int) a
+   charEqCI a = fmap (fromTL boolTop) . sequenceA . liftA2 (charEqCI @_ @int) a
+   charLtCI a = fmap (fromTL  boolTop) . sequenceA . liftA2 (charLtCI @_ @int) a
 

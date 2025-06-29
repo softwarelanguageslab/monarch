@@ -11,7 +11,7 @@ import Data.Maybe
 import Prelude hiding (exp)
 
 -- | Alias for values
-type V = (CPValue Adr Exp)
+type V = CPValue Adr Exp
 
 -- | Alias for address to variables
 type VariableAdr = Adr
@@ -21,5 +21,4 @@ cpAnalyze = analyze
 
 -- | Expose a function to run the analysis
 runAnalysis :: String -> AnlRes V
-runAnalysis program = analyze exp
-   where exp = fromJust $ parseString program
+runAnalysis = cpAnalyze . fromJust . parseString 

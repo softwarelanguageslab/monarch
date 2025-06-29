@@ -34,13 +34,6 @@ library
       Analysis.Symbolic.Monad
       Analysis.Symbolic.Monad.SymbolicStore
       Data.Map.Extra
-      Domain.Contract
-      Domain.Contract.Behavior
-      Domain.Contract.Communication
-      Domain.Contract.CP
-      Domain.Contract.Message
-      Domain.Contract.Store
-      Domain.Contract.Symbolic
       Domain.Symbolic
       Domain.Symbolic.Class
       Domain.Symbolic.CPDomain

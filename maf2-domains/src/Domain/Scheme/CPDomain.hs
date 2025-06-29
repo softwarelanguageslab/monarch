@@ -20,5 +20,9 @@ type CPValue adr exp = ModularSchemeValue
 
 type instance VarDom (CPValue adr exp) = CPValue adr exp
 type instance PaiDom (CPValue adr exp) = SimplePair (CPValue adr exp)
-type instance VecDom (CPValue adr exp) = PIVector (CPValue adr exp) (CPValue adr exp)
-type instance StrDom (CPValue adr exp) = SchemeString (CP String) (CPValue adr exp)
+type instance VecDom (CPValue adr exp) = PIVector (CPValue adr exp)  -- zo mooi! 
+                                                  (CPValue adr exp) 
+                                                  (CPValue adr exp) 
+                                                  (SchemeString (CP String))
+                                                  (CPValue adr exp)
+type instance StrDom (CPValue adr exp) = SchemeString (CP String) 

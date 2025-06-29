@@ -54,6 +54,7 @@ import Control.Monad.Trans.Writer (WriterT(..))
 import Control.Monad.Writer.Class (MonadWriter(tell))
 import Syntax (SpanOf(spanOf))
 import Analysis.Monad.Profiling
+import Domain.Core.PairDomain.TopLifted
 
 
 ------------------------------------------------------------

@@ -80,12 +80,9 @@ type AllAbs m = (AllJoin m,
                  PartialOrder (Assoc VluKey m),
                  Joinable     (Assoc VluKey m),
                  BoolDomain   (Assoc BlnKey m),
-                 IntDomain    (Assoc IntKey m),
-                 Domain.Rea   (Assoc IntKey m) ~ Assoc ReaKey m,
-                 Domain.Str   (Assoc IntKey m) ~ CP String,
-                 Domain.BoolFor (Assoc IntKey m) ~ Assoc BlnKey m,
-                 RealDomain   (Assoc ReaKey m),
-                 Domain.BoolFor (Assoc ReaKey m) ~ Assoc BlnKey m)
+                 IntDomain    (Assoc IntKey m) (Assoc BlnKey m) (CP String) (Assoc ReaKey m),
+                 RealDomain   (Assoc ReaKey m) (Assoc BlnKey m) (Assoc IntKey m),
+                 StringDomain (CP String) (Assoc BlnKey m) (Assoc IntKey m) (CP Char))
 
 deriving instance (Eq       (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Eq       (PyPrm m))) => Eq       (PyObjHMap m)
 instance          (Joinable (Assoc VluKey m), ForAll PyPrmKey (AtKey1 Joinable (PyPrm m))) => Joinable (PyObjHMap m) where

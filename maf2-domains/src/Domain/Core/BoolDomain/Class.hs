@@ -1,13 +1,10 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Domain.Core.BoolDomain.Class (BoolDomain(..), BoolFor) where 
+
+module Domain.Core.BoolDomain.Class (BoolDomain(..)) where 
 
 import Lattice.Class
 import Domain.Class 
 import Data.Kind
-
--- | Open type family for representing booleans associated with 
--- the given type.
-type family BoolFor (t :: Type) :: Type 
 
 ------------------------------------------------------------
 -- BoolDomain

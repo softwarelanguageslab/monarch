@@ -1,5 +1,14 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Domain.Scheme.Class (SchemeDomainPre, SchemeDomain(..), SchemeConstraints, SchemeValue, VarDom, VecDom, PaiDom, StrDom) where
+module Domain.Scheme.Class (
+  SchemeDomainPre, 
+  SchemeDomain(..), 
+  SchemeConstraints, 
+  SchemeValue, 
+  VarDom, 
+  VecDom, 
+  PaiDom, 
+  StrDom
+) where
 
 import Lattice 
 import Domain.Core 
@@ -12,21 +21,19 @@ import Data.Kind
 
 -- | Reusable pre-conditions for a valid Scheme domain
 type SchemeDomainPre v =
-  ( RealDomain v,
-    IntDomain v,
-    CharDomain v,
+  ( RealDomain v v v,
+    IntDomain v v (StrDom v) v,
+    CharDomain v v,
     BoolDomain v)
 
 
 -- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
-class (RealDomain v,
-       IntDomain v,
-       CharDomain v,
+class (RealDomain v v v,
+       IntDomain v v (StrDom v) v,
+       CharDomain v v,
        BoolDomain v,
-       BoolDomain (BoolFor v),
        -- all address type families should satisfy the address typeclass
-       Address (Adr v),
-       BoolFor v ~ v) => SchemeDomain v
+       Address (Adr v)) => SchemeDomain v
   where
   -- types of addresses 
   type Adr v :: Type
@@ -71,25 +78,26 @@ class (RealDomain v,
 
   -- | Differentiate between values
   -- Note that these predicates ought to be overapproximating, so they should return `True` if it could be a value of the given type
-  isInteger :: v -> BoolFor v
-  isReal    :: v -> BoolFor v
-  isChar    :: v -> BoolFor v
-  isVecPtr  :: v -> BoolFor v
-  isStrPtr  :: v -> BoolFor v
-  isPaiPtr  :: v -> BoolFor v
-  isSymbol  :: v -> BoolFor v
-  isClo     :: v -> BoolFor v
-  isBool    :: v -> BoolFor v
-  isNil     :: v -> BoolFor v
-  isUnsp    :: v -> BoolFor v
-  isPrim    :: v -> BoolFor v
-  isProc    :: v -> BoolFor v
+  isInteger :: v -> v
+  isReal    :: v -> v
+  isChar    :: v -> v
+  isVecPtr  :: v -> v
+  isStrPtr  :: v -> v
+  isPaiPtr  :: v -> v
+  isSymbol  :: v -> v
+  isClo     :: v -> v
+  isBool    :: v -> v
+  isNil     :: v -> v
+  isUnsp    :: v -> v
+  isPrim    :: v -> v
+  isProc    :: v -> v
   isProc v = or (isPrim v) (isClo v)
 
 -- | Types of values assigned to variables
 type family VarDom v :: Type
 -- | Compute the string domain for a particular type
 type family StrDom v :: Type
+
 -- | Compute the pair domain for a particular type
 type family PaiDom v :: Type
 -- | Compute the vector domain for a particular type
@@ -114,7 +122,7 @@ type SchemeValue v  = (
     -- the values should form a ShemeDomain
     SchemeDomain v,
     -- make sure that the strings adhere to the string domain
-    StringDomain (StrDom v),
+    StringDomain (StrDom v) v v v,
     -- make sure the vectors adhere to the vector domain
     VectorDomain (VecDom v),
     -- make sure that the pairs adhere to the pair domain 
@@ -124,9 +132,6 @@ type SchemeValue v  = (
     VContent (VecDom v) ~ v,
     -- make sure that `v` is used as an integer in the vector
     VIndex (VecDom v) ~ v,
-    -- make sure that `v` is used as the index and character in their corresponding lattices
-    IntS (StrDom v) ~ v,
-    ChaS (StrDom v) ~ v,
     -- variables should point to values
     VarDom v ~ v)
 

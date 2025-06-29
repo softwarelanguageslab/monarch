@@ -1,47 +1,50 @@
-module Domain.Core.NumberDomain.Class (NumberDomain(..), IntDomain(..), RealDomain(..)) where
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
+module Domain.Core.NumberDomain.Class (
+   NumberDomain(..), 
+   IntDomain(..), 
+   RealDomain(..)
+) where
 
 import Lattice.Class
 import Domain.Class 
 import Control.Monad.AbstractM
-import Domain.Core.BoolDomain.Class (BoolFor)
 import qualified Domain.Core.BoolDomain.Class as Bool
 
 import Data.Kind 
 import Lattice.BottomLiftedLattice
+import Control.Monad.Join (MonadBottom(..))
 
-class (Joinable n, Bool.BoolDomain (BoolFor n)) => NumberDomain n where
-   isZero :: AbstractM m => n -> m (BoolFor n)
+class (Joinable n, Bool.BoolDomain bln) => NumberDomain n bln where
+   isZero :: AbstractM m => n -> m bln
    random :: AbstractM m => n -> m n
    plus :: AbstractM m => n -> n -> m n
    minus :: AbstractM m => n -> n -> m n
    times :: AbstractM m => n -> n -> m n
    div :: AbstractM m => n -> n -> m n
    expt :: AbstractM m => n -> n -> m n
-   eq :: AbstractM m => n -> n -> m (BoolFor n)
-   ne :: AbstractM m => n -> n -> m (BoolFor n)
+   eq :: AbstractM m => n -> n -> m bln
+   ne :: AbstractM m => n -> n -> m bln
    ne a b = Bool.not <$> eq a b 
-   lt :: AbstractM m => n -> n -> m (BoolFor n)
-   gt :: AbstractM m => n -> n -> m (BoolFor n)
+   lt :: AbstractM m => n -> n -> m bln
+   gt :: AbstractM m => n -> n -> m bln
    gt = flip lt 
-   ge :: AbstractM m => n -> n -> m (BoolFor n)
+   ge :: AbstractM m => n -> n -> m bln
    ge a b = Bool.not <$> lt a b 
-   le :: AbstractM m => n -> n -> m (BoolFor n)
+   le :: AbstractM m => n -> n -> m bln
    le a b = Bool.not <$> gt a b 
 
-class (Domain i Integer, NumberDomain i) => IntDomain i where
-   type Str i :: Type
-   type Rea i :: Type
+class (Domain i Integer, NumberDomain i bln) => IntDomain i bln str rea where
    inc :: AbstractM m => i -> m i
-   inc = plus (inject @_ @Integer 1)
-   toReal :: AbstractM m => i -> m (Rea i)
-   toString :: AbstractM m => i -> m (Str i )
+   inc = plus @_ @bln (inject @_ @Integer 1)
+   toReal :: AbstractM m => i -> m rea
+   toString :: AbstractM m => i -> m str
    quotient :: AbstractM m => i -> i -> m i
    modulo :: AbstractM m => i -> i -> m i
    remainder :: AbstractM m => i -> i -> m i
 
-class (Domain r Double, NumberDomain r) => RealDomain r where
-   type IntR r :: Type
-   toInt :: AbstractM m => r -> m (IntR r)
+class (Domain r Double, NumberDomain r bln) => RealDomain r bln int where
+   toInt :: AbstractM m => r -> m int
    ceiling :: AbstractM m => r -> m r
    floor :: AbstractM m => r -> m r
    round :: AbstractM m => r -> m r
@@ -54,17 +57,16 @@ class (Domain r Double, NumberDomain r) => RealDomain r where
    atan :: AbstractM m => r -> m r
    sqrt :: AbstractM m => r -> m r
 
-type instance BoolFor (BottomLifted a) = BoolFor a
-instance (NumberDomain a, TopLattice a) => NumberDomain (BottomLifted a) where 
-   isZero Bottom = return Bool.false  
+instance (NumberDomain a bln, TopLattice a) => NumberDomain (BottomLifted a) bln where 
+   isZero Bottom    = mbottom
    isZero (Value a) = isZero a
    random _ = return $ Value top
 
-   plus = mapBL plus 
-   minus = mapBL minus 
-   times = mapBL times 
-   div = mapBL Domain.Core.NumberDomain.Class.div 
-   expt = mapBL expt 
+   plus = mapBL (plus @_ @bln) 
+   minus = mapBL (minus @_ @bln) 
+   times = mapBL (times @_ @bln) 
+   div = mapBL (Domain.Core.NumberDomain.Class.div @_ @bln)
+   expt = mapBL (expt @_ @bln) 
    eq = mapBLBool eq 
    ne = mapBLBool ne 
    lt = mapBLBool lt 

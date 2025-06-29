@@ -12,9 +12,6 @@ import qualified Data.List as List
 import Symbolic.AST
 import Syntax.Span
 import Domain.Symbolic.Class
-import Domain.Contract.Behavior
-import Domain.Contract (ContractDomain(..))
-import Domain.Contract.Communication
 import Lattice.Class
 import Data.Kind
 import qualified Data.Set as Set
@@ -80,8 +77,6 @@ instance (Ord adr) => Trace adr (SymbolicVal exp k i v) where
 -- NumberDomain instance
 ------------------------------------------------------------
 
-type instance BoolFor (SymbolicVal exp k i v) = (SymbolicVal exp k i v)
-
 simplifyArith :: String -> (forall a . Num a => a -> a -> a) -> Proposition i -> Proposition i -> Proposition i
 simplifyArith _ f (Literal (Num n1)) (Literal (Num n2)) = Literal $ Num $ f n1 n2
 simplifyArith _ f (Literal (Rea n1)) (Literal (Rea n2)) = Literal $ Rea $ f n1 n2
@@ -96,7 +91,8 @@ simplifyBool _ f (Literal (Rea n1)) (Literal (Num n2)) = Literal $ Boo $ f n1 (f
 simplifyBool _ f (Literal (Num n1)) (Literal (Rea n2)) = Literal $ Boo $ f (fromInteger n1) n2
 simplifyBool op _ n1 n2 = Predicate op [n1, n2]
 
-instance (Eq i, Ord i) => NumberDomain (SymbolicVal exp k i v) where
+instance (Eq i, Ord i) => NumberDomain (SymbolicVal exp k i v)
+                                       {- bln -} (SymbolicVal exp k i v)  where
    isZero (SymbolicVal n) = return $ SymbolicVal $ Predicate "zero?/v" [n]
    random _ = return $ SymbolicVal (Fresh Set.empty)
    plus (SymbolicVal n1) (SymbolicVal n2) =
@@ -120,14 +116,17 @@ instance (Eq i, Ord i) => NumberDomain (SymbolicVal exp k i v) where
 instance (Ord i, Eq i) => Domain (SymbolicVal exp k i v) Integer where
    inject = SymbolicVal . Literal . Num
 
-instance (Eq i, Ord i) => IntDomain (SymbolicVal exp k i v) where
-   type Str (SymbolicVal exp k i v) = ()
-   -- TODO: Str SymbolicVal is problematic here since it needs to refer 
-   -- to something that actually implements the string domain, perhaps
-   --  it is best to move toString into the string domain? Although
-   --  this creates an unnecesary dependency from the string domain
-   --  to the numeric domains.
-   type Rea (SymbolicVal exp k i v) = SymbolicVal exp k i v
+type instance StrDom (SymbolicVal exp k i v) = (StrDom v)
+
+-- TODO: Str SymbolicVal is problematic here since it needs to refer 
+-- to something that actually implements the string domain, perhaps
+--  it is best to move toString into the string domain? Although
+--  this creates an unnecesary dependency from the string domain
+--  to the numeric domains.
+instance (Eq i, Ord i, StrDom v ~ vs) => IntDomain (SymbolicVal exp k i v)
+                                    {- bln -} (SymbolicVal exp k i v)
+                                    {- str -} vs
+                                    {- rea -} (SymbolicVal exp k i v) where
    toReal (SymbolicVal n1) = return $ SymbolicVal $ Predicate "as-real/v" [n1]
    toString = undefined
    quotient (SymbolicVal n1) (SymbolicVal n2) =
@@ -145,8 +144,9 @@ instance (Eq i, Ord i) => IntDomain (SymbolicVal exp k i v) where
 instance (Eq i, Ord i) => Domain (SymbolicVal exp k i v) Double where
    inject n = SymbolicVal $ Literal (Rea n)
 
-instance (Eq i, Ord i) => RealDomain (SymbolicVal exp k i v) where
-   type IntR (SymbolicVal exp k i v) = SymbolicVal exp k i v
+instance (Eq i, Ord i) => RealDomain (SymbolicVal exp k i v)
+                                     {- bln -} (SymbolicVal exp k i v)
+                                     {- int -} (SymbolicVal exp k i v)  where
    toInt (SymbolicVal n1)   = return $ SymbolicVal $ Predicate "as-int/v"   [n1]
    ceiling (SymbolicVal n1) = return $ SymbolicVal $ Predicate "ceiling/v"  [n1]
    floor (SymbolicVal n1)   = return $ SymbolicVal $ Predicate "floor/v"    [n1]
@@ -183,8 +183,8 @@ instance (Eq i, Ord i) => BoolDomain (SymbolicVal exp k i v) where
 instance (Eq i, Ord i) => Domain (SymbolicVal exp k i v) Char where
    inject c = SymbolicVal $ Literal (Cha c)
 
-instance (Eq i, Ord i) => CharDomain (SymbolicVal exp k i v) where
-   type IntC (SymbolicVal exp k i v) = SymbolicVal exp k i v
+instance (Eq i, Ord i) => CharDomain (SymbolicVal exp k i v)
+                                     {- int -} (SymbolicVal exp k i v)  where
    downcase  (SymbolicVal c) = return $ SymbolicVal $ Predicate "downcase/v" [c]
    upcase    (SymbolicVal c) = return $ SymbolicVal $ Predicate "upcase/v"   [c]
    charToInt (SymbolicVal c) = return $ SymbolicVal $ Predicate "as-int/v"   [c]
@@ -265,49 +265,6 @@ instance (ActorDomain v, SymbolicARef (ARef v), SchemeValue (PairedSymbolic v ex
    -- a `Boo` type family member so that limit it to a symbolic domain here.
    isActorRef v = isActorRef (leftValue v)
    -- SchemePairedValue (isActorRef (leftValue v), SymbolicVal $ Predicate "actor?/v" [proposition $ rightValue v])
-
-
-------------------------------------------------------------
--- Contract domain
-------------------------------------------------------------
-
-instance (BehaviorContract v, SchemeValue v) => BehaviorContract (PairedSymbolic v exp k i) where 
-   type MAdr (PairedSymbolic v exp k i) = MAdr v
-
-   behaviorContract contracts =
-      SchemePairedValue (behaviorContract @_ contracts, bottom)
-
-   isBehaviorContract = isBehaviorContract @_ . leftValue
-   behaviorMessageContracts = behaviorMessageContracts . leftValue
-
-instance (CommunicationContract v) => CommunicationContract (PairedSymbolic v exp k i) where 
-   type MCAdr (PairedSymbolic v exp k i) = MCAdr v
-   isCommunicationContract = 
-      isCommunicationContract . leftValue
-   ensuresContract adrs = SchemePairedValue (ensuresContract adrs, bottom)
-   ensureMessageContracts = ensureMessageContracts . leftValue
-
-instance (SchemeValue (PairedSymbolic v exp k i), SchemeValue v, ContractDomain v) => ContractDomain (PairedSymbolic v exp k i) where
-   type FAdr (PairedSymbolic v exp k i) = FAdr v
-   type OAdr (PairedSymbolic v exp k i) = OAdr v
-
-   -- TODO: do we need to represent the message contract 
-   -- symbolically? Probably not...
-   messageContract adr = 
-      SchemePairedValue (messageContract adr, bottom) 
-   messageContracts    = messageContracts . leftValue
-   isMessageContract   = isMessageContract . leftValue
-
-   -- 
-   isFlat  = isFlat . leftValue
-   flats   = flats  . leftValue
-   flat a  = 
-      SchemePairedValue (flat a, bottom)
-
-   --
-   αmon v = SchemePairedValue (αmon v, SymbolicVal $ Literal Mon)
-   αmons  = αmons . leftValue
-   isαmon = isαmon . leftValue 
 
 ------------------------------------------------------------
 -- Symbolic value
