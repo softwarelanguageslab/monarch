@@ -31,6 +31,7 @@ import Data.Functor
 import Control.Monad.Cond (ifM)
 import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, trigger, currentCmp, register, DebugIntraAnalysisT)
 import qualified Control.Monad.State as State
+import qualified Debug.Trace as Debug
 
 
 -- | Receive messages of type 'v' in monadic context 'm'
@@ -105,7 +106,7 @@ instance (Mailbox mb v, BottomLattice mb, Joinable mb, Joinable v, MonadJoin m, 
   receive' ref = do
     self <- getSelf
     if self == ref then
-      mjoinMap (\(msg, mb) -> put mb $> msg) =<< gets (Set.toList . dequeue)
+      mjoinMap (\(msg, mb) -> put mb $> msg) =<< gets (Set.toList . Debug.traceShowWith Set.size . dequeue)
     else error "ref /= self, TODO: fix that `receive'` can no longer be called with other references"
 
 -- | Global mailbox parametrized by a mailbox abstraction

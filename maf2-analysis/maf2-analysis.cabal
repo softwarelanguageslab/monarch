@@ -96,6 +96,7 @@ library
       Control.Monad.State.IntPool
       Data.Graph
       Data.Print
+      Debug.Trace.Extra
       Interpreter.Actors
       Interpreter.Python.Eval
       Interpreter.Scheme

@@ -63,63 +63,66 @@ eval = fix evalCmp
          evalCmp recur (ActorExp e) = eval' recur e
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
-eval' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
-eval' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
-eval' _ (Literal lit _) = return (injectLit lit)
-eval' rec e@(App e1 es _) = do
+eval'' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
+eval'' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
+eval'' _ (Literal lit _) = return (injectLit lit)
+eval'' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
    v2 <- mapM (eval' rec) es
    apply rec e v1 v2
-eval' rec (Ite e1 e2 e3 _) =
+eval'' rec (Ite e1 e2 e3 _) =
    cond (eval' rec e1) (eval' rec e2) (eval' rec e3)
-eval' _rec (Spawn e _) =
+eval'' _rec (Spawn e _) =
    liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
-eval' _ (Terminate _) = terminate $> nil
-eval' rec (Receive pats _) = do
+eval'' _ (Terminate _) = terminate $> nil
+eval'' rec (Receive pats _) = do
    self <- getSelf
    receive self $
       matchList
          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
          pats
    where withEnv' e = withEnv (const e)
-eval' rec (Match e pats _) = do
+eval'' rec (Match e pats _) = do
    val <- eval' rec e
    matchList (\matchedExp -> allocMapping >=> (`withEnv'` eval' rec matchedExp))
              pats val
    where withEnv' ρ = withEnv (const ρ)
-eval' rec (Letrec bds e2 _) = do
+eval'' rec (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    mapM_ (\(ex, adr) -> writeVar adr =<< withExtendedEnv bds' (eval' rec ex)) (zip (map snd bds) ads)
    withExtendedEnv bds' (eval' rec e2)
-eval' rec (Parametrize bds e2 _) = do
+eval'' rec (Parametrize bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (eval' rec . snd) bds
    mapM_ (uncurry writeVar) (zip ads vs)
    withExtendedDynamic bds' (eval' rec e2)
-eval' rec (Begin exs _) =
+eval'' rec (Begin exs _) =
    if null exs
    then return nil
    else last <$> mapM (eval' rec) exs
-eval' rec e@(Pair e1 e2 _) =
+eval'' rec e@(Pair e1 e2 _) =
    stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
-eval' _ (Var (Ide x _)) =
+eval'' _ (Var (Ide x _)) =
    lookupEnv x >>= lookupVar >>= showIfBot (show x ++ " not in store")
-eval' _ (DynVar (Ide x _)) =
+eval'' _ (DynVar (Ide x _)) =
    lookupDynamic x >>= lookupVar >>= showIfBot (show x ++ " dyn not in store")
-eval' _ (Self _) = aref <$> getSelf @v
-eval' rec (Blame e loc) =
+eval'' _ (Self _) = aref <$> getSelf @v
+eval'' rec (Blame e loc) =
    eval' rec e >>= escape . flip BlameError loc . show
-eval' rec (Meta e _) =
+eval'' rec (Meta e _) =
    withMetaSet (eval' rec e)
    -- withMetaSet (withCtx (spanOf e:) (eval' rec e))
-eval' rec (Trace e _) = do
+eval'' rec (Trace e _) = do
    v <- eval' rec e
    (liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) v  $> v
-eval' rec (Error e loc) =
+eval'' rec (Error e loc) =
    eval' rec e >>= escape . flip BlameError loc . show
-eval' _ e = error $  "unsupported expression: " ++ show e
+eval'' _ e = error $  "unsupported expression: " ++ show e
+
+eval' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
+eval' = eval''
 
 trySend :: EvalM v k m => v -> v -> m ()
 trySend ref p =

@@ -138,7 +138,7 @@ analyzeCmd (InputOptions { filename, doTranslate, maxSteps  }) = do
    putStrLn "====="
    putStrLn $ printMap  show (const True) mbs
    putStrLn "====="
-   putStrLn $ printMap show (const True) (Profiling._profile seqProf) 
+   putStrLn $ printMap (show . spanOfCmp) (const True) (Profiling._profile seqProf) 
    putStrLn $ printMap show (const True) (Profiling._profile modProf) 
    return ()
 

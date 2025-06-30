@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module Analysis.Monad.Profiling(MonadProfiling(..), runProfilingT, runWithWorklistProfilingT, Profile(..)) where
+module Analysis.Monad.Profiling(MonadProfiling(..), runProfilingT, runWithWorklistProfilingT, Profile(..), emptyProfile) where
 
 import Analysis.Monad.WorkList
 import Control.Lens
@@ -29,8 +29,8 @@ newtype Profile cmp = ProfilingState { _profile :: Map cmp Int }
 
 $(makeLenses ''Profile)
 
-emptyProfilingState :: Profile cmp
-emptyProfilingState = ProfilingState Map.empty
+emptyProfile :: Profile cmp
+emptyProfile = ProfilingState Map.empty
                         
 
 -- | State monad-based profiling monad
@@ -41,7 +41,7 @@ instance (Ord cmp, Monad m) => MonadProfiling cmp (ProfilingT cmp m) where
   registerAnalysis = modify . over profile . flip (Map.insertWith (+)) 1 
 
 runProfilingT :: forall cmp m a . ProfilingT cmp m a -> m (a, Profile cmp)
-runProfilingT = flip runStateT emptyProfilingState . getProfilingT
+runProfilingT = flip runStateT emptyProfile . getProfilingT
 
 ------------------------------------------------------------
 -- Profiling of worklist
