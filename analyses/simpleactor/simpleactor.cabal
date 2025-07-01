@@ -92,6 +92,7 @@ library
     , maf2-scv
     , maf2-syntax
     , mtl
+    , parallel-io
     , process
     , random
     , rio
@@ -191,6 +192,7 @@ test-suite simpleactor-tests
     , hspec
     , hspec-contrib
     , maf2-analysis
+    , parallel-io
     , rio
     , simpleactor
     , singletons

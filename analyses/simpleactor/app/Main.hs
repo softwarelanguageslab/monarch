@@ -23,7 +23,7 @@ import qualified Analysis.Monad.Profiling as Profiling
 import System.TimeIt
 import qualified RIO.Set as Set
 import System.Exit
-import RIO (stdout)
+import RIO (stdout, IOMode(..))
 import RIO.Directory
 import System.ConcurrentHandle
 import Control.Concurrent.ParallelIO.Global
@@ -74,6 +74,14 @@ multipleInputOptions = MultipleInputOptions <$> strOption (   long "inputDir"
                                                           <> short 'i'
                                                           <> help "The directory containing the input files" )
 
+-- | Command-line options for output of benchmarks
+newtype OutputOptions = OutputOptions { outputFilename :: String } deriving (Show, Ord, Eq)
+
+outputOptions :: Parser OutputOptions
+outputOptions = OutputOptions <$> strOption (    long "outputFile"
+                                              <> short 'o'
+                                              <> help "The output filename" ) 
+
 
 commandParser :: Parser Command
 commandParser =
@@ -81,7 +89,7 @@ commandParser =
     (  command "analyze"       (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
     <> command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
     <> command "eval"          (info (interpret  <$> inputOptions) (progDesc "Run a program"))
-    <> command "precision"     (info (precision  <$> multipleInputOptions) (progDesc "Run the precision benchmarks")))
+    <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks")))
 
 
 ------------------------------------------------------------
@@ -176,13 +184,13 @@ inferCmd (InputOptions { filename, doTranslate }) = do
 -- Precision benchmarks
 ------------------------------------------------------------
 
-precision :: MultipleInputOptions -> IO ()
-precision MultipleInputOptions { .. } = do
+precision :: MultipleInputOptions -> OutputOptions -> IO ()
+precision MultipleInputOptions { .. } OutputOptions { .. } = do
    files <- ifM (doesDirectoryExist inputDirectory)
                 (filterM doesFileExist . map (inputDirectory ++) =<< getDirectoryContents inputDirectory)
                 (return [inputDirectory])
 
-   hdl <- protectHandle stdout
+   hdl <- openFile outputFilename WriteMode
    parallel_ (map (`Benchmark.Precision.runPrecision` hdl) files)
    stopGlobalPool
 
