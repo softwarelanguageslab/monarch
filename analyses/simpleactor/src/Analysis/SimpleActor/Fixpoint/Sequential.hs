@@ -53,7 +53,6 @@ import Analysis.Actors.Mailbox.GraphToSet (graphToSet)
 import Control.Monad.Trans.Writer (WriterT(..))
 import Control.Monad.Writer.Class (MonadWriter(tell))
 import Syntax (SpanOf(spanOf))
-import Analysis.Monad.Profiling
 import Domain.Core.PairDomain.TopLifted
 
 
@@ -143,8 +142,9 @@ instance (CtxM m K, MonadActorLocal ActorVlu m, Monad m) => CtxM (LocalMailboxT 
       withCtx f m = do
             ctx <- getCtx
             lowerM (withCtx (const (f ctx))) m
-      getCtx = return Empty -- AdrCtx <$> getSelf <*> State.get
-                        
+      getCtx = do (AdrCtx callSites maxCallSites _) <- upperM getCtx
+                  AdrCtx callSites maxCallSites <$> (ActorCtx <$> getSelf <*> State.get)
+
 ------------------------------------------------------------
 -- Mailbox abstractions influenced by the abstract reference count of actor references
 ------------------------------------------------------------
@@ -372,8 +372,8 @@ intra selfRef cmp = do
           -- liftIO (putStrLn $ "analyzing[intra] " ++ show (spanOfCmp cmp))
           inMbs  <- getMailboxes
           ((), (LatticeMonoid outMbs')) <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
-                        & runAlloc (\from -> const $ VarAdr from Empty) -- TODO: use the actual context
-                        & runAlloc (\from -> const $ PtrAdr from Empty) -- problem: current context is infinite
+                        & runAlloc VarAdr -- TODO: use the actual context
+                        & runAlloc PtrAdr -- problem: current context is infinite
                         & evalWithTransparentStoreT
                         & runDebugIntraAnalysis cmp
                         & runSetNonDetTIntercept (restore count inMbs) save
@@ -410,7 +410,7 @@ inter exp environment ref mb = iterateWL' initialCmp (intra ref)
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> mb                    -- initial mailboxes
                 <+> ref                   -- current `self`
-                <+> AdrCtx ref mb         -- address context
+                <+> initialContext 5      -- address context
                 -- <+> emptyPC
 
 

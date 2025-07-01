@@ -19,6 +19,7 @@ import qualified RIO.Map as Map
 import Analysis.Monad (MonadDependencyTrigger)
 import Domain.Core.AbstractCount (AbstractCount)
 import Analysis.Actors.Mailbox.GraphToSet (GraphToSet)
+import Analysis.SimpleActor.Monad (SimpleActorContext(..))
 
 ------------------------------------------------------------
 -- Shorthands
@@ -41,13 +42,6 @@ type ActorCou = Map ActorRef AbstractCount
 -- | The type of mailbox abstraction
 type MB = GraphToSet ActorVlu
 
--- | Context for address allocations and function calls.
---
--- Currently these addresses are sensitive to the actor they
--- were created in, and the current mailbox contents.
-data AdrCtx = AdrCtx ActorRef MB | Empty
-            deriving (Ord, Eq, Show) 
-
 ------------------------------------------------------------
 -- Utilities
 ------------------------------------------------------------
@@ -66,10 +60,33 @@ type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Const
 
 
 type ActorAdr = SchemeAdr Exp K
-type ActorVarAdr = SchemeAdr Exp K 
+type ActorVarAdr = SchemeAdr Exp K
 
 -- | Output address for writing individual actor results
 newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
+
+------------------------------------------------------------
+-- Contexts
+------------------------------------------------------------
+
+-- | Context for address allocations, function calls and actor references.
+data AdrCtx = AdrCtx [Span]   -- k-cfa call sites
+                     Int      -- ^ max number of elements in k-cfa
+                     ActorCtx -- ^ actor specific context sensitivity
+                    deriving (Ord, Eq, Show)
+
+-- | Context specific to the actor analysis
+data ActorCtx = ActorCtx ActorRef MB | Empty deriving (Ord, Eq, Show)
+
+-- | k-cfa instance for 'SimpleActorContext'
+instance SimpleActorContext AdrCtx where
+  pushCallSite s (AdrCtx callsites maxCallsites actCtx) = AdrCtx callsites' maxCallsites actCtx
+    where callsites' = take maxCallsites (s : callsites)
+
+-- | The initial context
+initialContext :: Int -> AdrCtx
+initialContext maxCallsites = AdrCtx [] maxCallsites Empty
+
 
 ------------------------------------------------------------
 -- Initial dynamic environment
@@ -111,7 +128,7 @@ type MonadActorStoreDependencyTracking m =
   (DependOn DependencyTrackingM m,
    DependOn MonadDependencyTriggerTracking m,
    DependOn MonadDependencyTrigger m)
-  
+
 
 -- | A store for each actor
 type MonadActorStore m = (MapM ActorRef ActorSto m)

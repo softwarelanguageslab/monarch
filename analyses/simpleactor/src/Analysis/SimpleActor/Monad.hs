@@ -3,6 +3,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module Analysis.SimpleActor.Monad
   ( MonadActor,
@@ -14,7 +15,6 @@ module Analysis.SimpleActor.Monad
     EvalM,
     Error (..),
     ActorError(..),
-    ActorError,
     MetaT,
     DynamicBindingT,
     DynamicBindingT',
@@ -23,7 +23,8 @@ module Analysis.SimpleActor.Monad
     isMatchError,
     Cmp(..),
     MonadIndexedMailbox(..),
-    runWithMailboxContributorIndexedT
+    runWithMailboxContributorIndexedT,
+    SimpleActorContext(..)
   )
 where
 
@@ -58,14 +59,13 @@ import Analysis.Actors.Monad
 import Control.DeepSeq
 import GHC.Generics
 import Analysis.Monad.AbstractCount (MonadAbstractCount)
-import Control.Monad.State (StateT, MonadState, modify, gets)
+import Control.Monad.State (StateT, MonadState, gets)
 import qualified Lattice.Class as L
 import Analysis.Actors.Mailbox (Mailbox)
 import qualified Analysis.Actors.Mailbox as MB
 import qualified Control.Monad.State as State
 import Control.Monad.Cond
 import Data.Functor
-import qualified Debug.Trace as Debug
 
 ------------------------------------------------------------
 -- 'Components'
@@ -203,6 +203,7 @@ type EvalM v k m =
     MonadEscape m,
     MonadFixpoint m Cmp v,
     CtxM m k,
+    SimpleActorContext k,
     Domain (Esc m) DomainError,
     Domain (Esc m) Error,
     BottomLattice (Esc m),
@@ -220,6 +221,15 @@ type EvalM v k m =
     ForAllStored Eq v,
     ForAllStored Ord v
   )
+
+------------------------------------------------------------
+-- Contexts
+------------------------------------------------------------
+
+-- | Type class where all context types 'k' should adhere to
+class SimpleActorContext k where
+  -- | Push a call site onto the context
+  pushCallSite :: Span -> k -> k
 
 ------------------------------------------------------------
 -- Instances
@@ -263,10 +273,6 @@ newtype MailboxContributorIndexedT ref v mb m a = MailboxContributorIndexedT (St
 runWithMailboxContributorIndexedT :: (Functor m, L.Joinable mb, L.BottomLattice mb) => MailboxContributorIndexedT ref v mb m a -> m (a, Map ref mb)
 runWithMailboxContributorIndexedT (MailboxContributorIndexedT m) = do
   (fmap . fmap) (L.joinMap snd . Map.toList) <$> State.runStateT m Map.empty
-
-diffValues mapA mapB = Map.filterWithKey
-               (\k v -> Map.lookup k mapB /= Just v)
-               (Map.intersection mapA mapB)
 
 instance (Monad m, L.Joinable mb, Eq mb, Show ref, Show mb, Ord ref) => MonadIndexedMailbox ref mb (MailboxContributorIndexedT ref v mb m) where
   joinMailboxes contributor recv mb = do

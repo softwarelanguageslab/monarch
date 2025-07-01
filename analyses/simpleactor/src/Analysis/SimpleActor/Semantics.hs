@@ -136,10 +136,10 @@ apply rec e v vs = conds
     (pure (isPrim v), mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))
 applyClosure :: EvalM v k m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
-applyClosure _e (lam@(Lam prs _ _), env) rec vs =
+applyClosure e(lam@(Lam prs _ _), env) rec vs =
    if length prs /= length vs then
       error "invalid number of arguments"
-   else {- withCtx (const [spanOf e]) $ -} do
+   else withCtx (pushCallSite (spanOf e)) $ do
             ads <- mapM alloc prs
             let bds = zip (map name prs) ads
             mapM_ (uncurry writeVar) (zip ads vs)
