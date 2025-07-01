@@ -1,4 +1,4 @@
-module Domain.Core.TaintDomain.Single where
+module Domain.Core.TaintDomain.Multi where
 
 import Domain.Core.TaintDomain.Class
 import Domain.Core.BoolDomain.ConstantPropagation 
