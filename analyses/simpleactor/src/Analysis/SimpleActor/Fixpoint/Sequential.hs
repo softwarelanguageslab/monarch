@@ -383,8 +383,8 @@ intra selfRef cmp = do
                         & runWriterT @(LatticeMonoid (Map (AbstractCount, ActorRef) MB))
 
           c <- readIORef count
-          when True $ do
-            liftIO (putStrLn $ "number of branches explored within intra " ++ show c ++ " in component at " ++ show (spanOfCmp cmp))
+          -- when True $ do
+            -- liftIO (putStrLn $ "number of branches explored within intra " ++ show c ++ " in component at " ++ show (spanOfCmp cmp))
           mapM_ (uncurry writeMai) (Map.toList outMbs')
       where eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
             save    = do

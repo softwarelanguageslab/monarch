@@ -106,7 +106,7 @@ instance (Mailbox mb v, BottomLattice mb, Joinable mb, Joinable v, MonadJoin m, 
   receive' ref = do
     self <- getSelf
     if self == ref then
-      mjoinMap (\(msg, mb) -> put mb $> msg) =<< gets (Set.toList . Debug.traceShowWith Set.size . dequeue)
+      mjoinMap (\(msg, mb) -> put mb $> msg) =<< gets (Set.toList . dequeue)
     else error "ref /= self, TODO: fix that `receive'` can no longer be called with other references"
 
 -- | Global mailbox parametrized by a mailbox abstraction
