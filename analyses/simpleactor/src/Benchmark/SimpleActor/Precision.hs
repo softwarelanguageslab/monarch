@@ -38,7 +38,7 @@ defaultInterpreterTimeout = 30*1000*1000*1000
 type InterpreterM m = (MonadIO m, MonadError String m)
 
 -- | Create a temporary file based on the given filename 
-createTemp :: FilePath -> IO FilePath
+createTemp :: FilePath -> String -> IO FilePath
 createTemp originalPath suffix = return tempFile
   where tempFile = originalPath ++ ".out" ++ suffix
 
