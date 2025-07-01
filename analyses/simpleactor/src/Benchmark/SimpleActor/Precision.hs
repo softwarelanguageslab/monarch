@@ -12,7 +12,7 @@ import Control.Monad.State
 import qualified Data.List as List
 import Syntax.Scheme.Parser
 import Syntax.Span
-import RIO
+import RIO hiding (Handle)
 import qualified RIO.Set as Set
 import qualified RIO.Map as Map
 import System.Directory
@@ -23,7 +23,7 @@ import qualified Analysis.SimpleActor.Fixpoint.Sequential as SeqAnalysis
 import Control.Monad.Escape
 import Analysis.SimpleActor.Monad
 import Data.Monoid
-import System.IO hiding (openFile, readFile)
+import System.ConcurrentHandle hiding (openFile)
 import Control.Monad.Trans.Maybe
 
 -------------------------------------------------------------

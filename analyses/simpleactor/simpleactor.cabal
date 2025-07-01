@@ -46,6 +46,7 @@ library
       Syntax.Compiler
       Syntax.ErlangToSimpleActor
       Syntax.Simplifier
+      System.ConcurrentHandle
   other-modules:
       Paths_simpleactor
   autogen-modules:
@@ -72,10 +73,11 @@ library
       FunctionalDependencies
       StandaloneDeriving
       RecordWildCards
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -threaded
   build-depends:
       base >=4.7 && <5
     , concurrency
+    , concurrent-extra
     , containers
     , deepseq
     , directory
@@ -129,6 +131,7 @@ executable simpleactor-exe
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , concurrent-extra
     , containers
     , deepseq
     , directory
@@ -140,6 +143,7 @@ executable simpleactor-exe
     , maf2-domains
     , maf2-syntax
     , optparse-applicative
+    , parallel-io
     , rio
     , simpleactor
     , singletons
@@ -180,6 +184,7 @@ test-suite simpleactor-tests
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , concurrent-extra
     , deepseq
     , directory
     , extra

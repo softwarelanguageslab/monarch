@@ -25,6 +25,8 @@ import qualified RIO.Set as Set
 import System.Exit
 import RIO (stdout)
 import RIO.Directory
+import System.ConcurrentHandle
+import Control.Concurrent.ParallelIO.Global
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -180,7 +182,9 @@ precision MultipleInputOptions { .. } = do
                 (filterM doesFileExist . map (inputDirectory ++) =<< getDirectoryContents inputDirectory)
                 (return [inputDirectory])
 
-   mapM_ (`Benchmark.Precision.runPrecision` stdout) files
+   hdl <- protectHandle stdout
+   parallel_ (map (`Benchmark.Precision.runPrecision` hdl) files)
+   stopGlobalPool
 
 ------------------------------------------------------------
 -- Main entrypoint
