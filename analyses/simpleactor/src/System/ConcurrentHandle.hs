@@ -1,6 +1,6 @@
 -- | Provides and manages file handles that can be accessed from several threads, can be used
 -- as a drop-in replacement for System.IO
-module System.ConcurrentHandle (ConcurrentHandle, Handle, openFile, hPutStr, hPutStrLn, protectHandle, module System.IO) where
+module System.ConcurrentHandle (ConcurrentHandle, Handle, openFile, hPutStr, hPutStrLn, hClose, protectHandle, module System.IO) where
 
 import System.IO (FilePath, IOMode)
 import qualified System.IO as IO
@@ -29,3 +29,7 @@ hPutStr ConcurrentHandle { .. } str = Lock.acquire lock >> IO.hPutStr handle str
 -- | Atomically write the given string followed by a newline
 hPutStrLn :: ConcurrentHandle -> String -> IO ()
 hPutStrLn hdl = hPutStr hdl . (++"\n")
+
+-- | Close the handle
+hClose :: Handle -> IO ()
+hClose = IO.hClose . handle

@@ -192,6 +192,7 @@ precision MultipleInputOptions { .. } OutputOptions { .. } = do
 
    hdl <- openFile outputFilename WriteMode
    parallel_ (map (`Benchmark.Precision.runPrecision` hdl) files)
+   hClose hdl
    stopGlobalPool
 
 ------------------------------------------------------------
