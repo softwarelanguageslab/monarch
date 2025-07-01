@@ -39,8 +39,8 @@ type InterpreterM m = (MonadIO m, MonadError String m)
 
 -- | Create a temporary file based on the given filename 
 createTemp :: FilePath -> IO FilePath
-createTemp originalPath = return tempFile
-  where tempFile = originalPath ++ ".out"
+createTemp originalPath suffix = return tempFile
+  where tempFile = originalPath ++ ".out" ++ suffix
 
 
 -- | Returns the environment variables required by the interpreter to run
@@ -52,9 +52,10 @@ interpreterEnv path = [("SIMPLEACTOR_OUT", path)]
 
 runInterpreter :: InterpreterM m
                => String   -- ^ the input file to run
+               -> Int      -- ^ the number of runs already processed
                -> m (Bool, [SExp]) -- ^ list of datums corresponding to the blames and message sends in the program
-runInterpreter filename = do
-    tempFile <- liftIO (createTemp filename)
+runInterpreter filename i = do
+    tempFile <- liftIO (createTemp filename ("." ++ show i))
     devNull <- liftIO (openFile "/dev/null" ReadWriteMode)
     (_, _, _, processHandle) <- liftIO (createProcess ((proc "racket" [filename]) { env = Just (interpreterEnv tempFile), std_out = UseHandle devNull }))
     isTimedOut <- fmap isNothing $ liftIO $ timeout defaultInterpreterTimeout (waitForProcess processHandle) -- TODO: do something with the exit code?
@@ -120,7 +121,7 @@ runConcrete :: String -> IO [(Bool, Results)]
 runConcrete file = fmap fold $  parallel $ map (\i -> fmap (either error id)  -- handle timeouts by reporting them and using partial results
                                                     $  runExceptT
                                                     $  List.singleton . fmap (convertAnalysisResult file)
-                                                   <$> runInterpreter (file ++ "." ++ show i)) [0..maxRuns]
+                                                   <$> runInterpreter file i) [0..maxRuns]
 
 -- | Same as 'runConcrete' but returns the results as a single
 -- set of blame locations.
