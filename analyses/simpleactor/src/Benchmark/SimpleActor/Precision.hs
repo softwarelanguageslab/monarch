@@ -117,10 +117,10 @@ maxRuns = 3
 
 -- | Run the given program in the concrete a number of times and return a set of results
 runConcrete :: String -> IO [(Bool, Results)]
-runConcrete file = fmap fold $  parallel $ map (const $  fmap (either error id)  -- handle timeouts by reporting them and using partial results
-                                                 $  runExceptT
-                                                 $  List.singleton . fmap (convertAnalysisResult file)
-                                                <$> runInterpreter file) [0..maxRuns]
+runConcrete file = fmap fold $  parallel $ map (\i -> fmap (either error id)  -- handle timeouts by reporting them and using partial results
+                                                    $  runExceptT
+                                                    $  List.singleton . fmap (convertAnalysisResult file)
+                                                   <$> runInterpreter (file ++ "." ++ show i)) [0..maxRuns]
 
 -- | Same as 'runConcrete' but returns the results as a single
 -- set of blame locations.
