@@ -51,8 +51,8 @@ interpreterEnv path = [("SIMPLEACTOR_OUT", path)]
 
 
 runInterpreter :: InterpreterM m
-               => String   -- ^ the input file to run
-               -> Int      -- ^ the number of runs already processed
+               => String           -- ^ the input file to run
+               -> Int              -- ^ the number of runs already processed
                -> m (Bool, [SExp]) -- ^ list of datums corresponding to the blames and message sends in the program
 runInterpreter filename i = do
     tempFile <- liftIO (createTemp filename ("." ++ show i))
