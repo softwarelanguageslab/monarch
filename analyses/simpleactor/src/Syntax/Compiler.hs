@@ -12,6 +12,8 @@ import Data.List ((\\))
 import Syntax.AST
 import Syntax.Span (SpanOf)
 import Syntax.Scheme.Parser (parseSexp')
+import Data.Foldable
+import qualified Debug.Trace as Debug
 
 type MonadCompile m = (MonadError String m)
 
@@ -77,6 +79,10 @@ compile ex@(Atom "receive" _ ::: pats ::: SNil _) =
    Receive <$> compilePats pats <*> pureSpan ex
 compile ex@(Atom "match" _ ::: on ::: pats ::: SNil _) =
    Match <$> compile on <*> compilePats pats <*> pureSpan ex
+-- case expressions can be treated in the same way as match expressions (ignoring performance implications)
+-- but with different syntax.
+compile ex@(Atom "case" _ ::: on ::: pats) =
+   Match <$> compile on <*> compileCaseClauses pats <*> pureSpan ex
 compile ex@(Atom "match" _ ::: _) =
    throwError $ "invalid syntax for 'match' " ++ show ex
 compile em@(Atom "meta" _ ::: e ::: SNil _) =
@@ -136,7 +142,7 @@ compile ex@(Quo (SNil _) _) = return $ Literal Nil (spanOf ex)
 compile ex@(Str str _) = return $ Literal (Symbol str) (spanOf ex)
 compile ex@(Cha c _) = return $ Literal  (Character c) (spanOf ex)
 compile ex@(Rea r _) = return $ Literal (Real r) (spanOf ex)
-compile e = throwError $ "invalid syntax " ++ show e ++ " at " ++ show (spanOf e)
+compile e = throwError $ "invalid syntax " ++ show e ++ " at " ++ show (spanOf e) ++ " in " ++ filename (spanOf e)
 
 compileBdn :: MonadError String m => SExp -> m (Ide, Exp)
 compileBdn ((Atom x s) ::: e ::: SNil _) =
@@ -154,6 +160,12 @@ compilePats = smapM compileHandler
          compileHandler (pat ::: e ::: SNil _) = compilePat pat >>= (\p -> fmap (p,) (compile e))
          compileHandler e = throwError $ "invalid handler " ++ show e
 
+compileCaseClauses :: MonadError String m => SExp -> m [(Pat, Exp)]
+compileCaseClauses = fmap fold . smapM compileClause
+   where compileClause :: MonadError String m => SExp -> m [(Pat, Exp)]
+         compileClause (atoms ::: e ::: SNil _) = smapM (\lit -> (ValuePat $ sexpToLit lit,) <$> compile e)  atoms
+         compileClause e = throwError $ "invalid clause for case expression at " ++ show (spanOf e) ++ " in " ++ filename (spanOf e)
+         
 compilePat :: MonadError String m => SExp -> m Pat
 compilePat (Atom "pair" _ ::: pat1 ::: pat2 ::: SNil _) =
    PairPat <$> compilePat pat1 <*> compilePat pat2

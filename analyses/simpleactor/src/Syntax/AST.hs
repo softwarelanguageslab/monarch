@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, DeriveGeneric #-}
-module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..), patternVariables) where
+module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..), patternVariables, sexpToLit) where
 
 import Data.List (intercalate)
 import qualified Data.Set as Set
@@ -11,6 +11,8 @@ import Syntax.FV
 import Control.DeepSeq
 import GHC.Generics
 import Lattice.Trace (Trace(..))
+import Syntax.Scheme.Parser (SExp)
+import qualified Syntax.Scheme.Parser as SExp
 
 -- | An expression
 data Exp = -- Program Semantics
@@ -45,6 +47,16 @@ instance NFData Exp
 
 -- | Literals are expressions that evaluate to themselves
 data Lit = Num Integer | Real Double | Character Char | Boolean Bool | Symbol String | String String | Nil deriving (Eq, Ord, Generic)
+
+sexpToLit :: SExp -> Lit
+sexpToLit = \case (SExp.Num i _) -> Num i
+                  (SExp.Rea r _) -> Real r
+                  (SExp.Cha c _) -> Character c
+                  (SExp.Bln b _) -> Boolean b
+                  (SExp.Atom a _) -> Symbol a
+                  (SExp.Str s _) -> String s
+                  (SExp.SNil _) -> Nil
+                  e -> error $ "invalid literal " ++ show e
 
 instance NFData Lit
 
