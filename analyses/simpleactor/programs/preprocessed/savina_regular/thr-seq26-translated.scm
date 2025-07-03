@@ -606,30 +606,97 @@
         (letrec ((N 3)
                  (R 10)
                  (threadring-actor
-                  (actor
-                   "thread-ring"
-                   (id actors-in-ring next-actor)
-                   (ping
-                    (pings-left)
-                    (if (> pings-left 0)
-                      (begin
-                        '()
-                        (threadring-actor id actors-in-ring next-actor))
-                      (begin
-                        '()
-                        (threadring-actor id actors-in-ring next-actor))))
-                   (data (next) (threadring-actor id actors-in-ring next))
-                   (exit
-                    (exits-left)
-                    (if (> exits-left 1)
-                      (next-actor (cons 'exit (- exits-left 1)))
-                      #f)
-                    (terminate))))
+                  (lambda (id actors-in-ring next-actor)
+                    (letrec ((real-self (self^)))
+                      (parametrize
+                       ((self (lambda (m) ((dyn send^) real-self m))))
+                       (receive
+                        (((cons 'ping pings-left)
+                          (begin
+                            (if (> pings-left 0)
+                              (begin
+                                '()
+                                (threadring-actor
+                                 id
+                                 actors-in-ring
+                                 next-actor))
+                              (begin
+                                '()
+                                (threadring-actor
+                                 id
+                                 actors-in-ring
+                                 next-actor)))))
+                         ((cons 'data next)
+                          (begin (threadring-actor id actors-in-ring next)))
+                         ((cons 'exit exits-left)
+                          (begin
+                            (if (> exits-left 1)
+                              (next-actor (cons 'exit (- exits-left 1)))
+                              #f)
+                            (terminate)))
+                         ((cons
+                           'enhanced
+                           (cons k7681 (cons j7685 (cons 'ping pings-left))))
+                          (letrec ((kc7682 (k7681 j7685))
+                                   (old-send7686 (dyn send^)))
+                            (parametrize
+                             ((send^
+                               (lambda (rcv7683 msg7684)
+                                 (old-send7686
+                                  kc7682
+                                  (cons rcv7683 msg7684)))))
+                             (begin (old-send7686 kc7682 'finish)))
+                            (if (> pings-left 0)
+                              (begin
+                                '()
+                                (threadring-actor
+                                 id
+                                 actors-in-ring
+                                 next-actor))
+                              (begin
+                                '()
+                                (threadring-actor
+                                 id
+                                 actors-in-ring
+                                 next-actor)))))
+                         ((cons
+                           'enhanced
+                           (cons k7688 (cons j7692 (cons 'data next))))
+                          (letrec ((kc7689 (k7688 j7692))
+                                   (old-send7693 (dyn send^)))
+                            (parametrize
+                             ((send^
+                               (lambda (rcv7690 msg7691)
+                                 (old-send7693
+                                  kc7689
+                                  (cons rcv7690 msg7691)))))
+                             (begin (old-send7693 kc7689 'finish)))
+                            (threadring-actor id actors-in-ring next)))
+                         ((cons
+                           'enhanced
+                           (cons k7695 (cons j7699 (cons 'exit exits-left))))
+                          (letrec ((kc7696 (k7695 j7699))
+                                   (old-send7700 (dyn send^)))
+                            (parametrize
+                             ((send^
+                               (lambda (rcv7697 msg7698)
+                                 (old-send7700
+                                  kc7696
+                                  (cons rcv7697 msg7698)))))
+                             (begin
+                               (if (> exits-left 1)
+                                 (next-actor (cons 'exit (- exits-left 1)))
+                                 #f)
+                               (old-send7700 kc7696 'finish)))
+                            (terminate)))))))))
                  (ring-actors
                   (vector
-                   (create threadring-actor 0 3 #f)
-                   (create threadring-actor 1 3 #f)
-                   (create threadring-actor 2 3 #f)))
+                   (letrec ((act (spawn^ (threadring-actor 0 3 #f))))
+                     (lambda (msg) ((dyn send^) act msg)))
+                   (letrec ((act (spawn^ (threadring-actor 1 3 #f))))
+                     (lambda (msg) ((dyn send^) act msg)))
+                   (letrec ((act (spawn^ (threadring-actor 2 3 #f))))
+                     (lambda (msg) ((dyn send^) act msg)))))
                  (loop-next
                   (lambda (i)
                     (if (= i N) 'done (begin '() (loop-next (+ i 1)))))))
