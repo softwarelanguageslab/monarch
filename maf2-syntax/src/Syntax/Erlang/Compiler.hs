@@ -1,15 +1,28 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 -- | Translates a parse tree in Erlang Abstract Format to 
 -- an AST that can be used for analysis.
-module Syntax.Erlang.Compiler(compile, compileString) where
+module Syntax.Erlang.Compiler(
+      compile,
+      compileString,
+      moduleInfos
+   ) where
 
-import Syntax.Erlang.AST
+import Syntax.Erlang.AST hiding (moduleName)
 import Syntax.Erlang.Parser (Term)
 import qualified Syntax.Erlang.Parser as T
 import Control.Monad ((>=>))
 import Control.Monad.Except
 import Syntax.Span
+import Control.Lens
+import Control.Monad.State
+import Data.Maybe (fromJust)
+import qualified Syntax.Ide as Ide
+import Syntax.Ide (Ide(..))
+import Data.Functor (void)
 
 ------------------------------------------------------------
 -- Utility functions
@@ -68,9 +81,9 @@ compileDecl :: CompileM m => Term -> m Declaration
 compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "export" _, T.List fns _] loc) =
    Export <$> mapM compileFnIdentifier fns <*> pure loc
 compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "import" _, T.Tuple [T.Atom name locNam, T.List fns _] _] loc) =
-   Import (Identifier name locNam) <$> mapM compileFnIdentifier fns <*> pure loc
+   Import (Ide name locNam) <$> mapM compileFnIdentifier fns <*> pure loc
 compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "module" _, T.Atom name nameSpan] loc) =
-   return (ModuleDecl (Identifier name nameSpan) loc)
+   return (ModuleDecl (Ide name nameSpan) loc)
 compileDecl (T.Tuple [T.Atom "attribute" _, _, T.Atom "file" _, T.Tuple [T.Atom file _, T.Number col _] _] loc) =
    return (File file col loc)
 compileDecl (T.Tuple [T.Atom "function" _, _, T.Atom name nameSpan, T.Number arity _, T.List clauses _] loc)=
@@ -108,7 +121,7 @@ compileLiteral e = raiseAtTerm NotALiteral e
 -- | Compile a pattern from a function head or bindings
 compilePattern :: CompileM m => Term -> m Pattern
 compilePattern (T.Tuple [T.Atom "var" _, _, T.Atom var varSpan] _) =
-   return (VariablePat (Identifier var varSpan))
+   return (VariablePat (Ide var varSpan))
 compilePattern (T.Tuple [T.Atom "match" _, _, pat1, pat2] _) =
    CompoundPat <$> compilePattern pat1 <*> compilePattern pat2
 compilePattern (T.Tuple [T.Atom "cons" _, _, pat1, pat2] _) =
@@ -133,7 +146,7 @@ compileTermAsSequence e = raiseAt InvalidSyntax (spanOf e)
 -- | Compiles an atom to an identifier (if it is a valid atom)
 compileIdent :: CompileM m => Term -> m Identifier
 compileIdent (T.Tuple [T.Atom "atom" _, _, T.Atom nam namSpan] _) =
-   return (Identifier nam namSpan)
+   return (Ide nam namSpan)
 compileIdent e = raiseAt InvalidSyntax (spanOf e)
 
 -- | Compile term to an expression
@@ -161,11 +174,11 @@ compileExpression (T.Tuple [T.Atom "receive" _, _, T.List clauses _, afterExp, T
 compileExpression (T.Tuple [T.Atom "tuple" _, _, T.List es _] loc) =
    Tuple <$> compileSequence es <*> pure loc
 compileExpression (T.Tuple [T.Atom "var" _, _, T.Atom varName varSpan] _) =
-   return (Var (Identifier varName varSpan))
+   return (Var (Ide varName varSpan))
 compileExpression (T.Tuple [T.Atom "cons" _, _, car, cdr] loc) =
    Cons <$> compileExpression car <*> compileExpression cdr <*> pure loc
-compileExpression (T.Tuple [T.Atom "op" _, _, T.Atom op opSpan, e1, e2] loc) = 
-   Call (Var (Identifier op opSpan)) <$> mapM compileExpression [e1, e2] <*> pure loc
+compileExpression (T.Tuple [T.Atom "op" _, _, T.Atom op opSpan, e1, e2] loc) =
+   Call (Var (Ide op opSpan)) <$> mapM compileExpression [e1, e2] <*> pure loc
 compileExpression lit = fmap Atomic (compileLiteral lit)
 
 -- | Compile a term that represents a module to an AST node
@@ -175,3 +188,72 @@ compile = compileModule
 -- | Compile a string representing the module to an AST node
 compileString :: String -> String -> Either CompileError Module
 compileString name = mapLeft ParseError . T.parseErlangTerm name >=> compile
+
+
+------------------------------------------------------------
+-- Post-compilation
+------------------------------------------------------------
+
+data PartialModuleInfo = PartialModuleInfo {
+      -- | The name of the module
+      _moduleName :: Maybe String,
+      -- | The module's exports (so far)
+      _moduleExports :: [FunctionIdentifier],
+      -- | The module's imports (so far), including
+      -- remote calls.
+      _moduleImports :: [QualifiedIdentifier],
+      -- | The module's unqualified imports (through import statements), so far
+      _moduleUnqualImports :: [(ModuleName, FunctionIdentifier)],
+      -- | The module currently under investigation
+      _currentModule :: Module
+   } deriving (Eq, Ord, Show)
+
+
+emptyPartialInfo :: Module -> PartialModuleInfo
+emptyPartialInfo = PartialModuleInfo Nothing [] [] []
+
+fullModuleInfo :: PartialModuleInfo -> ModuleInfo
+fullModuleInfo PartialModuleInfo { .. } = ModuleInfo _moduleExports  _moduleImports _moduleUnqualImports _currentModule (fromJust _moduleName)
+
+$(makeLenses ''PartialModuleInfo)
+
+-- | Collects all module information from the given list of modules
+moduleInfos :: [Module] -> [ModuleInfo]
+moduleInfos =  map (\mod  -> fullModuleInfo $ flip execState (emptyPartialInfo mod) $ extractInfo $ moduleDeclarations mod)
+   where extractInfo :: MonadState PartialModuleInfo m => [Declaration] -> m ()
+         extractInfo = mapM_ visitDecl
+         visitDecl :: MonadState PartialModuleInfo m => Declaration -> m ()
+         visitDecl = \case (Import moduleName' idens _) -> modify (over moduleUnqualImports (++ map (moduleName',) idens))
+                           (Export items _) -> modify (over moduleExports (items++))
+                           (Function _ clauses _) -> mapM_ visitClause clauses
+                           (ModuleDecl iden _) -> modify (set moduleName (Just $ Ide.name iden))
+                           decl -> error $ "unsupported declaration at " ++ show (spanOf decl)
+         visitClause (SimpleClause _ _ bdy) = visitBody bdy
+         visitBody :: MonadState PartialModuleInfo m => Body -> m ()
+         visitBody = mapM_ visitExpr
+         visitExpr :: MonadState PartialModuleInfo m => Expr -> m ()
+         visitExpr = \case (Atomic _) -> return ()
+                           (Block exs _) -> mapM_ visitExpr exs
+                           (Case expr clauses _) -> visitExpr expr >> mapM_ visitClause clauses
+                           (Catch expr _) -> visitExpr expr
+                           (Call operator operands _) -> visitExpr operator >> mapM_ visitExpr operands
+                           (If clauses _) -> mapM_ visitClause clauses
+                           (Match _ expr _ _) -> visitExpr expr
+                           (Receive clauses timeout _) -> mapM_ visitClause clauses >> maybe (return ()) (\(e, b) -> visitExpr e >> visitBody b) timeout
+                           (Tuple exs _) -> mapM_ visitExpr exs
+                           (Cons car cdr _) -> visitExpr car >> visitExpr cdr
+                           (Var _) -> return ()
+                           (ModVar moduleName' ident) -> modify (over moduleImports (QualifiedIdentifier moduleName' ident:))
+
+------------------------------------------------------------
+-- Erlang project utilities
+------------------------------------------------------------
+
+-- | Load, parse and compile all Erlang modules in the given directory and place them in a 'Modules' structure
+loadModules :: FilePath -> Modules
+loadModules = undefined
+
+-- | Compute a dependency graph from the given 'Modules' system
+dependencyGraph :: Modules -> ModuleDependencies
+dependencyGraph = undefined
+

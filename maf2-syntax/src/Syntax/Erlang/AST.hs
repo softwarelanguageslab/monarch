@@ -7,12 +7,15 @@ module Syntax.Erlang.AST where
 -- cases it did not. There also does not seem to be a standardized format
 -- for this field. Hence, we choice not to use it for identification purposes.
 import Syntax.Span (Span, SpanOf(..))
+import Syntax.Ide
+import Data.Set (Set)
+import Data.Map (Map)
 
 ------------------------------------------------------------
 -- Aliases for clarity
 ------------------------------------------------------------
 
--- | A name of a module
+-- | A name of a module
 type ModuleName = Identifier
 
 -- | The body of a function
@@ -23,21 +26,20 @@ type Body = [Expr]
 ------------------------------------------------------------
 
 -- | A module is a series of declarations and attributes
-newtype Module = Module [Declaration] 
+newtype Module = Module { moduleDeclarations :: [Declaration] }
                deriving (Eq, Ord, Show)
 
 -- | An identifier (e.g., variable, module name, ...)
-data Identifier = Identifier String Span 
-               deriving (Eq, Ord, Show)
-
-instance SpanOf Identifier where
-  spanOf (Identifier _ s) = s
-
+type Identifier = Ide
 
 -- | A function identifier is like an identifier
 -- but also keeps track of the arity of the function
 data FunctionIdentifier = FunctionIdentifier String Integer Span 
                         deriving (Eq, Ord, Show)
+
+data QualifiedIdentifier = QualifiedIdentifier ModuleName Identifier
+                         deriving (Eq, Ord, Show)
+
 
 instance SpanOf FunctionIdentifier where
   spanOf (FunctionIdentifier _ _ s) = s
@@ -127,10 +129,30 @@ instance SpanOf Expr where
 
 
 -- | A clause in a pattern match expression
-data Clause = SimpleClause Pattern [Body] Body 
+data Clause = SimpleClause Pattern -- ^ the pattern of the function head
+                           [Body]  -- ^ possible side conditions
+                           Body    -- ^ the body of the function when the head matches and the side-conditions pass
             deriving (Eq, Ord, Show)
 
 -- | Alias for the contents of a function declaration
 data Function = Fn FunctionIdentifier [Clause] Span
              deriving (Ord, Eq, Show)
 
+
+-- | An Erlang module alongside some information found it its declarations
+data ModuleInfo = ModuleInfo {
+                      exports :: [FunctionIdentifier],
+                      imports :: [QualifiedIdentifier],
+                      unqualifiedImports :: [(ModuleName, FunctionIdentifier)],
+                      erlangModule :: Module,
+                      moduleName :: String
+                 }
+                deriving (Ord, Eq, Show)
+
+-- | List of loaded Erlang modules
+newtype Modules = Modules { allModules :: Map String Module }
+                deriving (Ord, Eq, Show)
+
+-- | A dependency graph of loaded Erlang modules
+newtype ModuleDependencies = ModuleDependencies { moduleDependencies :: Map String (Set String) }
+                          deriving (Ord, Eq, Show)

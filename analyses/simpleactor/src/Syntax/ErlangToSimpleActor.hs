@@ -18,7 +18,9 @@ import qualified Data.Sequence as Sequence
 import Syntax.AST
 import qualified Syntax.Erlang.AST as Erl
 import Syntax.Span
+import Syntax.Ide
 import GHC.Exts
+import Control.Monad.Reader.Class
 
 ------------------------------------------------------------
 -- Shorthands
@@ -173,7 +175,7 @@ compileClause :: TranspilerM m => Erl.Clause -> m (Pat, Exp)
 compileClause (Erl.SimpleClause pat [] bdy) =
       liftA2 (,) (compilePat pat) (compileBody bdy)
   where compilePat (Erl.AtomicPat lit) = ValuePat . fst <$> compileLiteral lit 
-        compilePat (Erl.VariablePat (Erl.Identifier nam s)) = return (IdePat (Ide nam s))
+        compilePat (Erl.VariablePat (Ide nam s)) = return (IdePat (Ide nam s))
         compilePat (Erl.ConsPat pat1 pat2) = liftA2 PairPat (compilePat pat1) (compilePat pat2)
         compilePat _ = error "unsupported pattern"     
 compileClause (Erl.SimpleClause {}) = error "clauses with guards are currently not supported"
@@ -181,7 +183,7 @@ compileClause (Erl.SimpleClause {}) = error "clauses with guards are currently n
 -- | Compile an Erlang expression
 compile :: TranspilerM m => Erl.Expr -> m Exp
 compile (Erl.Atomic l) = uncurry Literal <$> compileLiteral l
-compile (Erl.Var (Erl.Identifier nam s)) = return $ Var (Ide nam s)
+compile (Erl.Var (Ide nam s)) = return $ Var (Ide nam s)
 compile (Erl.Call operator operands s) =
   App <$> compile operator <*> mapM compile operands <*> pure s
 compile (Erl.Block bdy s) =

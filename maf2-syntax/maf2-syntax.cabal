@@ -67,6 +67,7 @@ library
     , deepseq
     , file-embed
     , language-python
+    , lens
     , mtl ==2.3.*
     , parsec >=3.1
     , process
@@ -98,6 +99,7 @@ test-suite maf2-syntax-test
     , deepseq
     , file-embed
     , language-python
+    , lens
     , maf2-syntax
     , mtl ==2.3.*
     , parsec >=3.1
