@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM,  stoPai, stoStr, derefPai, derefVec, derefStr, writeVar, updateVar, lookupVar) where
+module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM,  stoPai, stoStr, stoVec, derefPai, derefVec, derefStr, writeVar, updateVar, lookupVar) where
 
 import Data.Functor
 import Syntax.Scheme.AST
@@ -27,6 +27,10 @@ stoPai ex v = alloc ex >>= (\adr -> writeAdr adr (PaiVal v) $> pptr adr)
 -- | Same as @stoPai@ but for strings
 stoStr :: SchemeDomainM e v m => e -> StrDom v -> m v
 stoStr ex v = alloc ex >>= (\adr -> writeAdr adr (StrVal v) $> sptr adr)
+-- | Same as @stoPai@ but for vectors
+stoVec :: SchemeDomainM e v m => e -> VecDom v -> m v
+stoVec ex v = alloc ex >>= (\adr -> writeAdr adr (VecVal v) $> vptr adr)
+
 
 -- | Dereference a pointer containing a pair value, resulting in an error
 -- if it is not a pair

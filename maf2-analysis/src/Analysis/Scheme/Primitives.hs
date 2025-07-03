@@ -18,15 +18,20 @@ import Analysis.Monad
 import Analysis.Scheme.Monad
 import Domain hiding (Exp, empty)
 import Control.Monad.Join
-import Control.Monad ((>=>))
+import Control.Monad ((>=>), foldM)
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Prelude hiding (or)
 import Domain.Scheme.Store (StoreVal(..))
+import GHC.Num.Integer
 
 data Prim v = Prim { primName :: String, run :: forall m e . PrimM e m v => e -> [v] -> m v }
 
 type PrimM e m v = (MonadEscape m, Domain (Esc m) DomainError, MonadJoin m, SchemeDomain v, SchemeDomainM e v m)
+
+-- | Variable number of arguments
+varg :: String -> ( forall m e . PrimM e m v => e -> [v] -> m v ) -> Prim v
+varg = Prim
 
 -- | No arguments
 fix0 :: String -> (forall m e . PrimM e m v => m v) -> Prim v
@@ -122,8 +127,8 @@ allPrimitives = [
    -- fix1 "symbol->string" todo, 
    fix1 "symbol?" (return . isSymbol), 
    fix1 "tan" (Domain.tan @_ @v @v),
-   -- fix2 "make-vector" todo,
-   -- varg "vector" todo, 
+   efix2 "make-vector" (\e siz -> stoVec e . makeVector siz) ,
+   varg "vector" (\e vs -> foldM (\vec (i, v)-> vectorSet vec v (inject $ integerFromInt i)) (makeVector (inject (integerFromInt $ Prelude.length vs)) nil) (zip [0..Prelude.length vs] vs) >>= stoVec e), 
    fix1 "vector-length" (vptrs >=> derefVec (const (return . vectorLength))),
    fix2 "vector-ref" (\adr i -> vptrs adr >>= derefVec (const (`vectorRef` i))),
    fix3 "vector-set!" (\adr i v -> vptrs adr >>= derefVec (\adr vec -> updateAdr adr . VecVal =<< vectorSet vec i v) >> return unsp),
