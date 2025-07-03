@@ -1,0 +1,13 @@
+programs/benchmarks/actors/savina/cham.scm
+programs/benchmarks/actors/savina/fjt-seq.scm
+programs/benchmarks/actors/savina/fjc-seq.scm
+programs/benchmarks/actors/savina/fjt-seq2.scm
+programs/benchmarks/actors/savina/count-seq.scm
+programs/benchmarks/actors/savina/big.scm
+programs/benchmarks/actors/savina/count.scm
+programs/benchmarks/actors/savina/fjc.scm
+programs/benchmarks/actors/savina/pp.scm
+programs/benchmarks/actors/savina/thr-seq.scm
+programs/benchmarks/actors/savina/fjt.scm
+programs/benchmarks/actors/savina/phil.scm
+programs/benchmarks/actors/savina/thr.scm

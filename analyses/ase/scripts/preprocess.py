@@ -18,6 +18,9 @@ def preprocess_pass(contents, script, additional_argv = []):
 
     proc = subprocess.Popen(["racket", script] + additional_argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text = True)
 
+    assert(proc.stdin != None)
+    assert(proc.stdout != None)
+
     #proc.stdin.write("(begin")
     proc.stdin.writelines(contents)
     #proc.stdin.write(")")

@@ -21,12 +21,13 @@
                                  (begin
                                    (send sink exit)
                                    (become big-actor id num-pings sink exp-pinger neighbors))
-                                 (let ((target (vector-ref neighbors (random (vector-length neighbors)))))
+                                 (let ((target-id (random (vector-length neighbors)))
+                                       (target (vector-ref neighbors target-id)))
                                    (send target ping id)
-                                   (become id (+ num-pings 1) sink target neighbors)))
+                                   (become big-actor id (+ num-pings 1) sink target-id neighbors)))
                              (error (format "expected ~a, but received ping from ~a" exp-pinger sender))))
                   (exit () (terminate))
-                  (neighbors (new-neighbors) (become big-actor id num-messages sink exp-pinger new-neighbors)))))
+                (neighbors (new-neighbors) (become big-actor id num-pings sink exp-pinger new-neighbors)))))
          (sink-actor
           (behavior (num-messages neighbors)
                  ((exit ()

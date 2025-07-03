@@ -4,14 +4,14 @@
                                 (let ((sint (+ 1 theta))) ; was (sint (sin theta)) in the original implementation
                                   (* sint sint))))
          (forkjoin-actor
-          (actor "forkjoin" ()
-                 (message ()
+          (behavior ()
+                 ((message ()
                           (perform-computation 37.2)
-                          (terminate))))
+                          (terminate)))))
           (loop (lambda (n)
                   (if (= n N)
                       'done
                       (begin
-                        (send (create forkjoin-actor) message)
+                        (send (spawn forkjoin-actor) message)
                         (loop (+ n 1)))))))
   (loop 0))

@@ -4,10 +4,10 @@
                                 (let ((sint (+ 1 theta))) ; was (sint (sin theta)) in the original implementation
                                   (* sint sint))))
          (forkjoin-actor
-          (actor "forkjoin" ()
-                 (message ()
+          (behavior ()
+                 ((message ()
                           (perform-computation 37.2)
-                          (terminate)))))
-  (send (create forkjoin-actor) message)
-  (send (create forkjoin-actor) message)
-  (send (create forkjoin-actor) message))
+                          (terminate))))))
+  (send (spawn forkjoin-actor) message)
+  (send (spawn forkjoin-actor) message)
+  (send (spawn forkjoin-actor) message))

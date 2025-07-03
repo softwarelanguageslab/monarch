@@ -268,19 +268,19 @@
                    xj7650
                    xk7651
                    (lambda (p) (orig-cdr p)))))
-               (cons
-                (letrec ((xj7656 'server) (xk7657 'client))
-                  ((lambda (j7660 k7661 f7662)
-                     (lambda (g7658 g7659)
-                       (pair?/c
-                        j7660
-                        k7661
-                        (f7662
-                         (any/c j7660 k7661 g7658)
-                         (any/c j7660 k7661 g7659)))))
-                   xj7656
-                   xk7657
-                   (lambda (a b) (orig-cons a b)))))
+               ; (cons
+               ;  (letrec ((xj7656 'server) (xk7657 'client))
+               ;    ((lambda (j7660 k7661 f7662)
+               ;       (lambda (g7658 g7659)
+               ;         (pair?/c
+               ;          j7660
+               ;          k7661
+               ;          (f7662
+               ;           (any/c j7660 k7661 g7658)
+               ;           (any/c j7660 k7661 g7659)))))
+               ;     xj7656
+               ;     xk7657
+               ;     (lambda (a b) (orig-cons a b)))))
                (vector?/c
                 (lambda (g7663 g7664 g7665)
                   (if (vector? g7665) g7665 (blame g7663 'vector?))))
