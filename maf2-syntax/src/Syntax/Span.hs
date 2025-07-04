@@ -22,7 +22,7 @@ data Span = Span {
 
 instance NFData Span
 instance Show Span where 
-   show Span { .. } = show startPosition ++ "-" ++ show endPosition
+   show Span { .. } = show startPosition ++ "-" ++ show endPosition ++ "@" ++ filename
 
 -- | Class of syntax trees that have 'Span' information for each
 -- of their nodes

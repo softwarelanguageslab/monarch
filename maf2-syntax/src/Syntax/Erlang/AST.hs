@@ -53,7 +53,7 @@ data Declaration = Import ModuleName [FunctionIdentifier] Span  -- ^ -import(...
                  | Function FunctionIdentifier [Clause] Span    -- ^ function definition
                  | ModuleDecl Identifier Span     -- ^ -module(...)
                  | File String Integer Span       -- ^ -file(FILE, LINE)
-                 | Record Identifier Field Span   -- ^ -record(Identifier, {Field ...})
+                 | Record Identifier [Field] Span   -- ^ -record(Identifier, {Field ...})
                  | Wild  String Span              -- ^ a 'wild' attribute, not parsed further
                  deriving (Eq, Ord, Show)
 
@@ -107,10 +107,12 @@ data Expr = Atomic Literal
           | Catch Expr Span
           | Call  Expr [Expr] Span
           | If [Clause] Span
-          | Match Pattern Expr Bool Span 
-          | Receive [Clause] (Maybe (Expr, Body)) Span 
+          | Match Pattern Expr Bool Span                -- ^  Pattern = Expr
+          | Receive [Clause] (Maybe (Expr, Body)) Span  -- ^ receive { clause* } after expr
           | Tuple [Expr] Span
           | Cons Expr Expr Span
+          | MapLiteral [(Identifier, Expr)] Span        -- ^ #{ (field = expr)* }
+          | MapUpdate Expr [(Identifier, Expr)] Span    -- ^ expr# { (field = expr)* }
           | Var Identifier
           | ModVar ModuleName Identifier
           deriving (Eq, Ord, Show)
@@ -126,14 +128,16 @@ instance SpanOf Expr where
   spanOf (Receive _ _ s) = s
   spanOf (Tuple _ s) = s
   spanOf (Cons _ _ s) = s
+  spanOf (MapLiteral _ s) = s
+  spanOf (MapUpdate _ _ s) = s
   spanOf (Var i) = spanOf i
   spanOf (ModVar _ i) = spanOf i
 
 
 -- | A clause in a pattern match expression
-data Clause = SimpleClause Pattern -- ^ the pattern of the function head
-                           [Body]  -- ^ possible side conditions
-                           Body    -- ^ the body of the function when the head matches and the side-conditions pass
+data Clause = SimpleClause [Pattern] -- ^ the pattern of the function head
+                           [Body]    -- ^ possible side conditions
+                           Body      -- ^ the body of the function when the head matches and the side-conditions pass
             deriving (Eq, Ord, Show)
 
 -- | Alias for the contents of a function declaration
