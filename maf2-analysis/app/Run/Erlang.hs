@@ -2,17 +2,16 @@ module Run.Erlang(Options, options, main) where
 
 import Options.Applicative
 import Text.Pretty.Simple
-import Syntax.Erlang.Parser
 import Syntax.Erlang.Compiler
 
-newtype Options = Options { filename :: String } deriving Show
+newtype Options = Options { directory :: String } deriving Show
 
 options = Options <$>
-   strOption (long "filename" <> short 'f' <> help "Name of the file to parse")
+   strOption (long "directory" <> short 'd' <> help "Path to the 'ebin' directory")
 
 main :: Options -> IO ()
-main (Options filename) = do
-   contents <- readFile filename
-   let parsed = compileString filename contents
-   pPrint parsed
+main (Options directory) = do
+   (modules, graph) <- elixirLibs >>= (`loadFromDir` directory)
+   pPrint modules
+   pPrint graph
 
