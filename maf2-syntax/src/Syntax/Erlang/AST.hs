@@ -10,6 +10,8 @@ import Syntax.Span (Span, SpanOf(..))
 import Syntax.Ide
 import Data.Set (Set)
 import Data.Map (Map)
+import qualified Data.Set as Set
+import qualified Data.Map as Map
 
 ------------------------------------------------------------
 -- Aliases for clarity
@@ -37,7 +39,7 @@ type Identifier = Ide
 data FunctionIdentifier = FunctionIdentifier String Integer Span 
                         deriving (Eq, Ord, Show)
 
-data QualifiedIdentifier = QualifiedIdentifier ModuleName Identifier
+data QualifiedIdentifier = QualifiedIdentifier { qualifiedName :: ModuleName, qualifiedIdent :: Identifier }
                          deriving (Eq, Ord, Show)
 
 
@@ -150,9 +152,17 @@ data ModuleInfo = ModuleInfo {
                 deriving (Ord, Eq, Show)
 
 -- | List of loaded Erlang modules
-newtype Modules = Modules { allModules :: Map String Module }
+newtype Modules = Modules { allModules :: Map String ModuleInfo }
                 deriving (Ord, Eq, Show)
 
 -- | A dependency graph of loaded Erlang modules
 newtype ModuleDependencies = ModuleDependencies { moduleDependencies :: Map String (Set String) }
                           deriving (Ord, Eq, Show)
+
+-- | Creates an empty dependency graph
+emptyDependencyGraph :: ModuleDependencies
+emptyDependencyGraph = ModuleDependencies Map.empty
+
+-- | Add a dependency to the dependency graph from the first argument to the second
+addDependency :: String -> String -> ModuleDependencies -> ModuleDependencies
+addDependency from to = ModuleDependencies . Map.insertWith Set.union from (Set.singleton to) . moduleDependencies

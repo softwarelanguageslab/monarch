@@ -65,7 +65,9 @@ library
     , containers
     , data-default
     , deepseq
+    , directory
     , file-embed
+    , filepath
     , language-python
     , lens
     , mtl ==2.3.*
@@ -97,7 +99,9 @@ test-suite maf2-syntax-test
     , containers
     , data-default
     , deepseq
+    , directory
     , file-embed
+    , filepath
     , language-python
     , lens
     , maf2-syntax

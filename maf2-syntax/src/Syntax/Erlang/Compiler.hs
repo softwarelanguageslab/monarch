@@ -8,10 +8,14 @@
 module Syntax.Erlang.Compiler(
       compile,
       compileString,
-      moduleInfos
+      moduleInfos,
+      loadModules,
+      dependencyGraph,
+      loadFromDir
    ) where
 
 import Syntax.Erlang.AST hiding (moduleName)
+import qualified Syntax.Erlang.AST as AST
 import Syntax.Erlang.Parser (Term)
 import qualified Syntax.Erlang.Parser as T
 import Control.Monad ((>=>))
@@ -22,7 +26,14 @@ import Control.Monad.State
 import Data.Maybe (fromJust)
 import qualified Syntax.Ide as Ide
 import Syntax.Ide (Ide(..))
-import Data.Functor (void)
+import System.Directory
+import Data.Either (fromRight)
+import qualified Data.Map as Map
+import System.FilePath
+import Text.Printf
+import System.Process
+import System.IO
+import Data.Bifunctor
 
 ------------------------------------------------------------
 -- Utility functions
@@ -31,6 +42,9 @@ import Data.Functor (void)
 mapLeft :: (a -> b) -> Either a c -> Either b c
 mapLeft f (Left a)  = Left (f a)
 mapLeft _ (Right c) = Right c
+
+dup :: a -> (a, a)
+dup a = (a, a)
 
 ------------------------------------------------------------
 -- Compiler
@@ -205,7 +219,7 @@ data PartialModuleInfo = PartialModuleInfo {
       -- | The module's unqualified imports (through import statements), so far
       _moduleUnqualImports :: [(ModuleName, FunctionIdentifier)],
       -- | The module currently under investigation
-      _currentModule :: Module
+      currentModule :: Module
    } deriving (Eq, Ord, Show)
 
 
@@ -213,17 +227,17 @@ emptyPartialInfo :: Module -> PartialModuleInfo
 emptyPartialInfo = PartialModuleInfo Nothing [] [] []
 
 fullModuleInfo :: PartialModuleInfo -> ModuleInfo
-fullModuleInfo PartialModuleInfo { .. } = ModuleInfo _moduleExports  _moduleImports _moduleUnqualImports _currentModule (fromJust _moduleName)
+fullModuleInfo PartialModuleInfo { .. } = ModuleInfo _moduleExports  _moduleImports _moduleUnqualImports currentModule (fromJust _moduleName)
 
 $(makeLenses ''PartialModuleInfo)
 
 -- | Collects all module information from the given list of modules
 moduleInfos :: [Module] -> [ModuleInfo]
-moduleInfos =  map (\mod  -> fullModuleInfo $ flip execState (emptyPartialInfo mod) $ extractInfo $ moduleDeclarations mod)
+moduleInfos =  map (\erlMod  -> fullModuleInfo $ flip execState (emptyPartialInfo erlMod) $ extractInfo $ moduleDeclarations erlMod)
    where extractInfo :: MonadState PartialModuleInfo m => [Declaration] -> m ()
          extractInfo = mapM_ visitDecl
          visitDecl :: MonadState PartialModuleInfo m => Declaration -> m ()
-         visitDecl = \case (Import moduleName' idens _) -> modify (over moduleUnqualImports (++ map (moduleName',) idens))
+         visitDecl = \case (Import moduleName' idens _) -> modify (over moduleUnqualImports (map (moduleName',) idens ++))
                            (Export items _) -> modify (over moduleExports (items++))
                            (Function _ clauses _) -> mapM_ visitClause clauses
                            (ModuleDecl iden _) -> modify (set moduleName (Just $ Ide.name iden))
@@ -246,14 +260,78 @@ moduleInfos =  map (\mod  -> fullModuleInfo $ flip execState (emptyPartialInfo m
                            (ModVar moduleName' ident) -> modify (over moduleImports (QualifiedIdentifier moduleName' ident:))
 
 ------------------------------------------------------------
+-- Erlang -> EAF 
+------------------------------------------------------------
+
+-- | Erlang script to dump the EAF code embedded in a BEAM module
+abstractFormatCode :: String -- ^ the name of the module to dump EAF code from
+                   -> String -- ^ the resulting Erlang code
+abstractFormatCode = printf template
+   where template = "{ok,{_,[{abstract_code,{_,AC}}]}} = beam_lib:chunks(\"%s\",[abstract_code]),io:format(\"~p~n\", [AC])."
+
+-- | Computes paths to Elixir libraries
+elixirLibs :: IO String
+elixirLibs = do
+   (_, Just out, _, h) <- createProcess (proc "elixir" ["-e", "IO.puts :code.lib_dir(:elixir)"]) { std_out = CreatePipe }
+   contents <- hGetContents out
+   _ <- waitForProcess h
+   return contents
+      
+
+-- | Dump EAF code from a BEAM file to a file of the same name suffixed with ".ec"
+dumpAbstractFormat :: FilePath -- ^ the file to dump the EAF for
+                   -> String   -- ^ Erlang libraries path
+                   -> IO ()
+dumpAbstractFormat modulePath erlLibs = do
+      (_, Just out, _, h) <- createProcess (proc "erl" ["-noinput", "-eval", abstractFormatCode moduleName', "-s", "init", "stop"]) { std_out = CreatePipe, env = Just [("ERL_LIBS", erlLibs)] }
+      contents <- hGetContents out
+      _ <- waitForProcess h
+      outputFile <- openFile (modulePath ++ ".ec") WriteMode
+      hPutStr outputFile contents
+      hClose outputFile
+   where moduleName' = takeBaseName modulePath
+         
+
+------------------------------------------------------------
 -- Erlang project utilities
 ------------------------------------------------------------
 
+-- | Checks whether the given 'FilePath' is a valid Erlang Abstract Format File,
+-- it does so by looking at its extension which should be `.ec`
+isValidErlangFile :: FilePath -> Bool
+isValidErlangFile = (== ".ec") . takeExtension
+
+-- | Checks whether the given 'FilePath' is a valid BEAM module
+isValidBeamFile :: FilePath -> Bool
+isValidBeamFile = (== ".beam") . takeExtension
+
+
 -- | Load, parse and compile all Erlang modules in the given directory and place them in a 'Modules' structure
-loadModules :: FilePath -> Modules
-loadModules = undefined
+loadModules :: FilePath -> IO Modules
+loadModules = listDirectory >=> fmap (asModules . moduleInfos) . mapM (\filename -> fromRight (error "error") . compileString filename <$> readFile filename) . filter isValidErlangFile
+   where asModules :: [ModuleInfo] -> Modules
+         asModules = Modules . Map.fromList . map (\modinfo@ModuleInfo {} -> (AST.moduleName modinfo, modinfo))
+
+-- | Check whether the given module provides the requested function
+doesImportResolve :: Modules -> String -> FunctionIdentifier -> Bool
+doesImportResolve = undefined
 
 -- | Compute a dependency graph from the given 'Modules' system
 dependencyGraph :: Modules -> ModuleDependencies
-dependencyGraph = undefined
+dependencyGraph = foldr resolveImports emptyDependencyGraph  . Map.toList . allModules
+   where resolveImports :: (String, ModuleInfo) -> ModuleDependencies -> ModuleDependencies
+         -- TODO: also check whether the module actually exports the identifier
+         resolveImports (_, modInfo) =
+            let importNames = map (Ide.name . qualifiedName) $ AST.imports modInfo
+                unqualNames = map (name . fst) $ AST.unqualifiedImports modInfo
+                allNames    = importNames ++ unqualNames
+            in flip (foldr (`addDependency` AST.moduleName modInfo)) allNames
 
+
+-- | Load modules from the given `ebin` directory  (i.e., a directory that contains BEAM files),
+-- writes `.ec` version (EAF versions) of the BEAM module to that directory in the process.
+loadFromDir :: String -- ^ Erlang library path (e.g., elixirLibs)
+            -> String -- ^ the path to the directory containing all beam files
+            -> IO (Modules, ModuleDependencies)
+loadFromDir erlLibs dir = listDirectory dir >>= mapM_ (`dumpAbstractFormat` erlLibs ). filter isValidBeamFile >> fmap (second dependencyGraph . dup) (loadModules dir)
+   

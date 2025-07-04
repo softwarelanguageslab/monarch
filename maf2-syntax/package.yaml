@@ -30,6 +30,8 @@ dependencies:
 - process
 - deepseq
 - lens
+- directory
+- filepath
 
 ghc-options:
 - -Wall
