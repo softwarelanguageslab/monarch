@@ -116,6 +116,7 @@ data Expr = Atomic Literal
           | MapUpdate Expr [(Identifier, Expr)] Span    -- ^ expr# { (field = expr)* }
           | Var Identifier
           | ModVar ModuleName Identifier
+          | Let [(Identifier, Expr)] Body Span          -- does not exists in EAF, added for translation reasons
           deriving (Eq, Ord, Show)
 
 instance SpanOf Expr where
@@ -133,6 +134,7 @@ instance SpanOf Expr where
   spanOf (MapUpdate _ _ s) = s
   spanOf (Var i) = spanOf i
   spanOf (ModVar _ i) = spanOf i
+  spanOf (Let _ _ s) = s
 
 
 -- | A clause in a pattern match expression

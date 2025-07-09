@@ -61,8 +61,6 @@ patternVariables = \case (AtomicPat _) -> Set.empty
                             Set.union (patternVariables pat1)
                                       (patternVariables pat2)
 
-
-
 -------------------------------------------------------------
 -- Qualification of program elements
 -------------------------------------------------------------
