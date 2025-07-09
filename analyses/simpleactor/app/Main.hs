@@ -89,7 +89,8 @@ commandParser =
     (  command "analyze"       (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
     <> command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
     <> command "eval"          (info (interpret  <$> inputOptions) (progDesc "Run a program"))
-    <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks")))
+    <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
+   <> command "erlang"         (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor")))
 
 
 ------------------------------------------------------------
@@ -194,6 +195,12 @@ precision MultipleInputOptions { .. } OutputOptions { .. } = do
    parallel_ (map (`Benchmark.Precision.runPrecision` hdl) files)
    hClose hdl
    stopGlobalPool
+
+------------------------------------------------------------
+-- Erlang analysis
+------------------------------------------------------------
+erlang :: InputOptions -> IO ()
+erlang = const $ putStrLn "hello world"
 
 ------------------------------------------------------------
 -- Main entrypoint

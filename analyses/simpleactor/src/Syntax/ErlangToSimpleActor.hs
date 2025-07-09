@@ -23,7 +23,7 @@ type TranspilerM m = (Monad m) :: Constraint
 
 -- | Compile a body
 compileBody :: TranspilerM m => Erl.Body -> m Exp
-compileBody bdy@(x:xs) = Begin <$> mapM compile bdy <*> pure (spanOf x)
+compileBody bdy@(x:_) = Begin <$> mapM compile bdy <*> pure (spanOf x)
 compileBody _ = error "cannot compile empty body"
 
 -- | Compile an Erlang literal

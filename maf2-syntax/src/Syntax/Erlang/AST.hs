@@ -12,6 +12,7 @@ import Data.Set (Set)
 import Data.Map (Map)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import Data.Maybe
 
 ------------------------------------------------------------
 -- Aliases for clarity
@@ -36,7 +37,7 @@ type Identifier = Ide
 
 -- | A function identifier is like an identifier
 -- but also keeps track of the arity of the function
-data FunctionIdentifier = FunctionIdentifier String Integer Span 
+data FunctionIdentifier = FunctionIdentifier String Integer Span
                         deriving (Eq, Ord, Show)
 
 data QualifiedIdentifier = QualifiedIdentifier { qualifiedName :: ModuleName, qualifiedIdent :: Identifier }
@@ -73,10 +74,10 @@ data Field = Field Identifier (Maybe Expr) Span
            deriving (Eq, Ord, Show)
 
 -- | Atomic literals
-data Literal = AtomLit  String  Span   
+data Literal = AtomLit  String  Span
              | CharLit  Char    Span
              | FloatLit Float   Span
-             | IntLit   Integer Span 
+             | IntLit   Integer Span
              | StrLit   String  Span
              | NilLit   Span
              deriving (Eq, Ord, Show)
@@ -101,7 +102,7 @@ data Pattern = AtomicPat Literal
 --
 --  If the compiler (from 'Syntax.Erlang.Compiler') encouters
 --  these unsupported expressions anyway, an error is reported.
-data Expr = Atomic Literal 
+data Expr = Atomic Literal
           | Block [Expr] Span
           | Case  Expr [Clause] Span
           | Catch Expr Span
@@ -145,7 +146,7 @@ data Function = Fn FunctionIdentifier [Clause] Span
              deriving (Ord, Eq, Show)
 
 
--- | An Erlang module alongside some information found it its declarations
+-- | An Erlang module alongside some information found in its declarations
 data ModuleInfo = ModuleInfo {
                       exports :: [FunctionIdentifier],
                       imports :: [QualifiedIdentifier],
@@ -170,3 +171,11 @@ emptyDependencyGraph = ModuleDependencies Map.empty
 -- | Add a dependency to the dependency graph from the first argument to the second
 addDependency :: String -> String -> ModuleDependencies -> ModuleDependencies
 addDependency from to = ModuleDependencies . Map.insertWith Set.union from (Set.singleton to) . moduleDependencies
+
+-- | Returns a list of identifiers declared at the top-level
+topLevelIdentifiers :: Module -> [FunctionIdentifier]
+topLevelIdentifiers = mapMaybe visitDecl . moduleDeclarations
+  where visitDecl :: Declaration -> Maybe FunctionIdentifier
+        visitDecl (Function ident _ _) = Just ident
+        visitDecl _ = Nothing
+
