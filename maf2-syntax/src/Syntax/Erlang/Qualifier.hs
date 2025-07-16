@@ -68,7 +68,7 @@ patternVariables = \case (AtomicPat _) -> Set.empty
 -- | Qualify an expression
 qualifyExpression :: MonadQualify m => Expr -> m Expr
 qualifyExpression = \case Block es s ->
-                              Block <$> mapM qualifyExpression es <*> pure s
+                              Block <$> qualifyBody es <*> pure s
                           Case expr clauses s ->
                               Case <$> qualifyExpression expr <*> mapM qualifyClause clauses <*> pure s
                           Catch expr s ->
@@ -77,6 +77,8 @@ qualifyExpression = \case Block es s ->
                               Call <$> qualifyExpression expr <*> mapM qualifyExpression exprs <*> pure s
                           If clauses s ->
                               If <$> mapM qualifyClause clauses <*> pure s
+                          Let bds bdy s ->
+                              Let <$> mapM (\(idn, bdn) -> (idn,) <$> qualifyExpression bdn) bds <*> qualifyBody bdy <*> pure s
                           Match {}  -> error "match expression should be eliminated in a previous phase"
                           Receive clauses timeout s ->
                              Receive <$> mapM qualifyClause clauses <*> maybe (return Nothing) qualify timeout <*> pure s
@@ -89,6 +91,13 @@ qualifyExpression = \case Block es s ->
                           MapUpdate expr bds s ->
                              MapUpdate <$> qualifyExpression expr <*> mapM (\(ide, ex) -> (ide,) <$> qualifyExpression ex) bds <*> pure s
                           Var _ide ->
+                             -- There are three possible cases
+                             -- (1) The referenced variable is local in which case no qualification is needed
+                             -- (2) The referenced variable comes from an import directive in which case it needs
+                             -- to be qualified with the imported module name.
+                             -- (3) The referenced variable is defined by the current module in which case it has to be prefixed
+                             -- by the current module's name.
+                             -- ifM (isLocal 
                              error "todo: most important case"
                           v@ModVar {} -> return v
                           l@Atomic {} -> return l
