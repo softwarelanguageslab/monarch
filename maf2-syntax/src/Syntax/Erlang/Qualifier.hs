@@ -90,7 +90,7 @@ qualifyExpression = \case Block es s ->
                              MapLiteral <$> mapM (\(ide, ex) -> (ide,) <$> qualifyExpression ex) bds <*> pure s
                           MapUpdate expr bds s ->
                              MapUpdate <$> qualifyExpression expr <*> mapM (\(ide, ex) -> (ide,) <$> qualifyExpression ex) bds <*> pure s
-                          Var _ide ->
+                          Var _ide _ ->
                              -- There are three possible cases
                              -- (1) The referenced variable is local in which case no qualification is needed
                              -- (2) The referenced variable comes from an import directive in which case it needs

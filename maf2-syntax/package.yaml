@@ -64,6 +64,7 @@ library:
     - Syntax.Erlang.AST
     - Syntax.Erlang.Parser
     - Syntax.Erlang.Compiler
+    - Syntax.Erlang.Overloader
 
 default-extensions:
   - StandaloneDeriving

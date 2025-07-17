@@ -24,11 +24,9 @@ import Control.Monad.Except
 import Syntax.Span
 import Control.Lens
 import Control.Monad.State
-import Data.Maybe (fromJust)
 import qualified Syntax.Ide as Ide
 import Syntax.Ide (Ide(..))
 import System.Directory
-import Data.Either (fromRight)
 import qualified Data.Map as Map
 import System.FilePath
 import Text.Printf
@@ -188,10 +186,12 @@ compileExpression (T.Tuple [T.Atom "case" _, _, expr, T.List clauses _] loc) =
    Case <$> compileExpression expr <*> mapM compileClauses clauses <*> pure loc
 compileExpression (T.Tuple [T.Atom "catch" _, _, expr] loc) =
    Catch <$> compileExpression expr <*> pure loc
+compileExpression (T.Tuple [T.Atom "call" _, _, T.Tuple [T.Atom "atom" _, _, atnam@(T.Atom name _)] _ , T.List operands _] loc) =
+   Call (Var (Ide name (spanOf atnam)) Nothing) <$> compileSequence operands <*> pure loc
 compileExpression (T.Tuple [T.Atom "call" _, _, operator, T.List operands _] loc) =
    Call <$> compileExpression operator <*> compileSequence operands <*> pure loc
 compileExpression (T.Tuple [T.Atom "remote" _, _, modName, funName] _) =
-   ModVar <$> compileIdent modName <*> compileIdent funName
+   ModVar <$> compileIdent modName <*> compileIdent funName <*> pure Nothing
 compileExpression (T.Tuple [T.Atom "if" _, _, T.List clauses _] loc) =
    If <$> mapM compileClauses clauses <*> pure loc
 compileExpression (T.Tuple [T.Atom "match" _, _, pat, matchExp] loc) =
@@ -205,11 +205,11 @@ compileExpression (T.Tuple [T.Atom "receive" _, _, T.List clauses _, afterExp, T
 compileExpression (T.Tuple [T.Atom "tuple" _, _, T.List es _] loc) =
    Tuple <$> compileSequence es <*> pure loc
 compileExpression (T.Tuple [T.Atom "var" _, _, T.Atom varName varSpan] _) =
-   return (Var (Ide varName varSpan))
+   return (Var (Ide varName varSpan) Nothing)
 compileExpression (T.Tuple [T.Atom "cons" _, _, car, cdr] loc) =
    Cons <$> compileExpression car <*> compileExpression cdr <*> pure loc
 compileExpression (T.Tuple [T.Atom "op" _, _, T.Atom opr opSpan, e1, e2] loc) =
-   Call (Var (Ide opr opSpan)) <$> mapM compileExpression [e1, e2] <*> pure loc
+   Call (Var (Ide opr opSpan) Nothing) <$> mapM compileExpression [e1, e2] <*> pure loc
 compileExpression (T.Tuple [T.Atom "map" _, _, T.List fields _] loc) =
    MapLiteral <$> mapM compileAssoc fields <*> pure loc
 compileExpression (T.Tuple [T.Atom "map" _, _, expr, T.List fields _] loc) =
@@ -262,7 +262,7 @@ moduleInfos =  map (\erlMod  -> fullModuleInfo $ flip execState (emptyPartialInf
                            (Export items _) -> modify (over moduleExports (items++))
                            (Function _ clauses _) -> mapM_ visitClause clauses
                            (ModuleDecl iden _) -> modify (set moduleName (Just $ Ide.name iden))
-                           decl -> return ()
+                           _ -> return ()
                            -- decl -> error $ "unsupported declaration at " ++ show (spanOf decl)
          visitClause (SimpleClause _ _ bdy) = visitBody bdy
          visitBody :: MonadState PartialModuleInfo m => Body -> m ()
@@ -278,8 +278,9 @@ moduleInfos =  map (\erlMod  -> fullModuleInfo $ flip execState (emptyPartialInf
                            (Receive clauses timeout _) -> mapM_ visitClause clauses >> maybe (return ()) (\(e, b) -> visitExpr e >> visitBody b) timeout
                            (Tuple exs _) -> mapM_ visitExpr exs
                            (Cons car cdr _) -> visitExpr car >> visitExpr cdr
-                           (Var _) -> return ()
-                           (ModVar moduleName' ident) -> modify (over moduleImports (QualifiedIdentifier moduleName' ident:))
+                           (Var _ _) -> return ()
+                           (Let bds bdy _) -> mapM_ (\(_, bdn) -> visitExpr bdn) bds >> visitBody bdy
+                           (ModVar moduleName' ident _) -> modify (over moduleImports (QualifiedIdentifier moduleName' ident:))
                            (MapLiteral fields _) ->  mapM_ (visitExpr . snd) fields
                            (MapUpdate expr fields _) -> visitExpr expr >> mapM_ (visitExpr . snd) fields
 

@@ -40,10 +40,10 @@ library
       Syntax.Erlang.AST
       Syntax.Erlang.Parser
       Syntax.Erlang.Compiler
+      Syntax.Erlang.Overloader
   other-modules:
       Control.Monad.Cond
       Lib
-      Syntax.Erlang.Overloader
       Syntax.Erlang.Qualifier
       Syntax.Python.Compiler
       Syntax.Python.Parser
