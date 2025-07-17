@@ -5,6 +5,7 @@ module Syntax.Erlang.Overloader where
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Syntax.Erlang.AST
+import Data.Bifunctor
 
 -- | Overload a single expression
 overloadExpr :: Expr -> Expr
@@ -17,13 +18,13 @@ overloadExpr = \case Block es s -> Block (overloadBdy es) s
                      Call {} -> error "todo: important case"
                      Match {} -> undefined
                      Receive {} -> undefined
-                     Tuple {} -> undefined
+                     Tuple es s -> Tuple (map overloadExpr es) s
                      Cons car cdr s -> Cons (overloadExpr car)
                                             (overloadExpr cdr)
                                             s
                      MapLiteral {} -> undefined
                      MapUpdate {} -> undefined
-                     Let {} -> undefined
+                     Let bds bdy s -> Let (map (second overloadExpr) bds) (overloadBdy bdy) s
                      i -> i
                                        
 -- | Overload a sequence of statements                  
@@ -31,10 +32,10 @@ overloadBdy :: Body -> Body
 overloadBdy = map overloadExpr
 
 overloadClause :: Clause -> Clause
-overloadClause = undefined
+overloadClause (SimpleClause pats side bdy) = SimpleClause pats (map overloadBdy side) (overloadBdy bdy)
 
 overloadClauses :: [Clause] -> [Clause]
-overloadClauses = undefined
+overloadClauses = map overloadClause
 
 overloadDecl :: Declaration -> Declaration
 overloadDecl = undefined
