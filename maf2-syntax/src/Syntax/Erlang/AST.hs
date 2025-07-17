@@ -114,8 +114,8 @@ data Expr = Atomic Literal
           | Cons Expr Expr Span
           | MapLiteral [(Identifier, Expr)] Span        -- ^ #{ (field = expr)* }
           | MapUpdate Expr [(Identifier, Expr)] Span    -- ^ expr# { (field = expr)* }
-          | Var Identifier
-          | ModVar ModuleName Identifier
+          | Var Identifier (Maybe Int)
+          | ModVar ModuleName Identifier (Maybe Int)
           | Let [(Identifier, Expr)] Body Span          -- does not exists in EAF, added for translation reasons
           deriving (Eq, Ord, Show)
 
@@ -132,8 +132,8 @@ instance SpanOf Expr where
   spanOf (Cons _ _ s) = s
   spanOf (MapLiteral _ s) = s
   spanOf (MapUpdate _ _ s) = s
-  spanOf (Var i) = spanOf i
-  spanOf (ModVar _ i) = spanOf i
+  spanOf (Var i _) = spanOf i
+  spanOf (ModVar _ i _) = spanOf i
   spanOf (Let _ _ s) = s
 
 

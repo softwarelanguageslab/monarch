@@ -3,6 +3,7 @@ module Run.Erlang(Options, options, main) where
 import Options.Applicative
 import Text.Pretty.Simple
 import Syntax.Erlang.Compiler
+import Syntax.Erlang.Overloader
 
 newtype Options = Options { directory :: String } deriving Show
 
@@ -12,6 +13,6 @@ options = Options <$>
 main :: Options -> IO ()
 main (Options directory) = do
    (modules, graph) <- elixirLibs >>= (`loadFromDir` directory)
-   pPrint modules
+   pPrint (overloadModules modules)
    pPrint graph
 
