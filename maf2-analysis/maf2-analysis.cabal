@@ -35,6 +35,7 @@ library
       Analysis.Context
       Analysis.Counting
       Analysis.Environment
+      Analysis.Erlang.BIF
       Analysis.Erlang.Monad
       Analysis.Erlang.Semantics
       Analysis.IO
