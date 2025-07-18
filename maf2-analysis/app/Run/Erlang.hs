@@ -4,6 +4,7 @@ import Options.Applicative
 import Text.Pretty.Simple
 import Syntax.Erlang.Compiler
 import Syntax.Erlang.Overloader
+import Syntax.Erlang.Qualifier
 
 newtype Options = Options { directory :: String } deriving Show
 
@@ -13,6 +14,6 @@ options = Options <$>
 main :: Options -> IO ()
 main (Options directory) = do
    (modules, graph) <- elixirLibs >>= (`loadFromDir` directory)
-   pPrint (overloadModules modules)
+   pPrint (qualifyModules $ overloadModules modules)
    pPrint graph
 

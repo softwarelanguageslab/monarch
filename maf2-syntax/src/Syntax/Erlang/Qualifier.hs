@@ -12,6 +12,12 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Syntax.Erlang.AST
 import qualified Syntax.Ide as Ide
+import Data.Maybe
+import Control.Monad.Cond (ifM)
+import Syntax.Ide (Ide(..))
+import Syntax.Span
+import qualified Data.List as List
+import GHC.Num
 
 -------------------------------------------------------------
 -- MonadQualify
@@ -45,6 +51,16 @@ withBindings bindings = local
 -- | Check whether the given variable is part of local variables
 isLocal :: MonadQualify m => String -> Int -> m Bool
 isLocal nam ari = asks (Set.member (nam, ari) . _locals)
+
+-- | Checks whether the given name is imported using an 'import' statement, and if so
+-- returns the module name that provides this import
+importedName :: MonadQualify m => String -> Int -> m (Maybe String)
+importedName nam arity = asks (fmap (name . fst) . List.find (matchingIdentifier . snd) . unqualifiedImports . currentModule)
+  where matchingIdentifier (FunctionIdentifier nam' arity' _) = nam' == nam && integerFromInt arity == arity'
+
+-- | Returns the name of the module currently under transformation
+getCurrentModule :: MonadQualify m => m String
+getCurrentModule = asks (moduleName . currentModule)
 
 -------------------------------------------------------------
 -- Utilities
@@ -90,15 +106,22 @@ qualifyExpression = \case Block es s ->
                              MapLiteral <$> mapM (\(ide, ex) -> (ide,) <$> qualifyExpression ex) bds <*> pure s
                           MapUpdate expr bds s ->
                              MapUpdate <$> qualifyExpression expr <*> mapM (\(ide, ex) -> (ide,) <$> qualifyExpression ex) bds <*> pure s
-                          Var _ide _ ->
+                          Var ide arity ->
                              -- There are three possible cases
                              -- (1) The referenced variable is local in which case no qualification is needed
                              -- (2) The referenced variable comes from an import directive in which case it needs
                              -- to be qualified with the imported module name.
                              -- (3) The referenced variable is defined by the current module in which case it has to be prefixed
                              -- by the current module's name.
-                             -- ifM (isLocal 
-                             error "todo: most important case"
+                             -- assume that the arity is zero if one is not defined
+                             let arity' = fromMaybe 0 arity
+                             in {- (1) -} ifM (isLocal (name ide) arity')
+                                          (return (Var ide arity))
+                                          ((ModVar . flip Ide (spanOf ide) <$> (maybe {- (3) -} getCurrentModule return =<<
+                                                                                      {- (2) -} importedName (name ide) arity'))
+                                                  <*> pure ide
+                                                  <*> pure arity)
+
                           v@ModVar {} -> return v
                           l@Atomic {} -> return l
     where qualify (expr, bdy) = Just <$> liftA2 (,) (qualifyExpression expr) (qualifyBody bdy)
