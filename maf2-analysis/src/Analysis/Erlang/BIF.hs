@@ -4,7 +4,7 @@
 --
 -- Use scripts/erlang/generate_bifs.py to regenrate the list in `allBifs'
 -- for newer versions of OTP.
-module Analysis.Erlang.BIF (BIF (..), allBifs, bifFrom, bifToTuple) where
+module Analysis.Erlang.BIF (BIF (..), allBifs, bifFrom, bifToTuple, implicitImports) where
 
 -- | A single bulit-in function
 data BIF = BIF
@@ -25,6 +25,11 @@ bifToTuple BIF { .. } = (bifModule, bifName, bifArity)
 -- | Checks whether the given BIF belongs to the given module name
 bifFrom :: String -> BIF -> Bool
 bifFrom name = (== name) . bifModule
+
+-- | List of implicit imports added by default to every Erlang module
+implicitImports :: [(String, String, Int)]
+implicitImports = map bifToTuple $ filter (bifFrom "erlang") allBifs
+
 
 allBifs :: [BIF]
 allBifs =

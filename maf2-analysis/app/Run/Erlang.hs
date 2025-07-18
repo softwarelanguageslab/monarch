@@ -13,9 +13,6 @@ newtype Options = Options { directory :: String } deriving Show
 options = Options <$>
    strOption (long "directory" <> short 'd' <> help "Path to the 'ebin' directory")
 
-implicitImports :: [(String, String, Int)]
-implicitImports = map bifToTuple $ filter (bifFrom "erlang") allBifs
-
 main :: Options -> IO ()
 main (Options directory) = do
    (modules, graph) <- elixirLibs >>= (`loadFromDir` directory)

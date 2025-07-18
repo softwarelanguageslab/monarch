@@ -50,7 +50,7 @@ compileClause (Erl.SimpleClause {}) = error "clauses with guards are currently n
 -- | Compile an Erlang expression
 compile :: TranspilerM m => Erl.Expr -> m Exp
 compile (Erl.Atomic l) = uncurry Literal <$> compileLiteral l
-compile (Erl.Var (Ide nam s)) = return $ Var (Ide nam s)
+compile (Erl.Var (Ide nam s) _) = return $ Var (Ide nam s)
 compile (Erl.Call operator operands s) =
     App <$> compile operator <*> (List.singleton . consify <$> mapM compile operands) <*> pure s
   where consify :: [Exp] -> Exp
@@ -68,6 +68,6 @@ compile (Erl.Tuple exs s)  =
   foldr (\x xs -> Pair x xs (spanOf x)) (Literal Nil s) <$> mapM compile exs
 compile (Erl.Cons car cdr s) =
   Pair <$> compile car <*> compile cdr <*> pure s
-compile (Erl.ModVar mod ident) = undefined
+compile (Erl.ModVar mod ident _) = undefined
 compile _ = error "unsupported Erlang AST node"
 
