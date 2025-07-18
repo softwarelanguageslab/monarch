@@ -42,6 +42,7 @@ library
       Syntax.Erlang.Compiler
       Syntax.Erlang.Overloader
       Syntax.Erlang.Qualifier
+      Syntax.Erlang.Preluder
   other-modules:
       Control.Monad.Cond
       Lib

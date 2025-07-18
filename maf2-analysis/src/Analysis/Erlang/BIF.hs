@@ -1,9 +1,10 @@
+{-# LANGUAGE RecordWildCards #-}
 -- | List of built-in functions in Erlang without implementation,
 -- current list is from OTP 28.0.1.
 --
 -- Use scripts/erlang/generate_bifs.py to regenrate the list in `allBifs'
 -- for newer versions of OTP.
-module Analysis.Erlang.BIF (BIF (..), allBifs) where
+module Analysis.Erlang.BIF (BIF (..), allBifs, bifFrom, bifToTuple) where
 
 -- | A single bulit-in function
 data BIF = BIF
@@ -15,6 +16,15 @@ data BIF = BIF
     bifArity :: Int
   }
   deriving (Ord, Eq, Show)
+
+-- | Converts the BIF to an isomorphic tuple
+bifToTuple :: BIF -> (String, String, Int)
+bifToTuple BIF { .. } = (bifModule, bifName, bifArity)
+
+
+-- | Checks whether the given BIF belongs to the given module name
+bifFrom :: String -> BIF -> Bool
+bifFrom name = (== name) . bifModule
 
 allBifs :: [BIF]
 allBifs =

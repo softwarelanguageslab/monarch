@@ -72,7 +72,7 @@ class Lexer:
 
 def parse_bif_line(line):
     """
-    Parse a line from the bif.tab file and return a tuple of (name, arity).
+    Parse a line from the bif.tab file and return a tuple of (module, name, arity).
     
     Arguments:
     line -- a line from the bif.tab file
@@ -82,8 +82,8 @@ def parse_bif_line(line):
 
     if not tokens:
         return None
-    if len(tokens) < 4 or (tokens[0] not in set(['bif', 'ubif', 'hbif'])):
-        raise ValueError("Invalid bif line format at line: {}".format(line))
+    if len(tokens) < 4 or (tokens[0] not in {'bif', 'ubif', 'hbif'}):
+        raise ValueError("Invalid bif line format at line: {} | tokens: {}".format(line, tokens))
     
     module = tokens[1]
     name = tokens[2]

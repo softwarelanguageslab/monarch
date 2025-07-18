@@ -66,6 +66,7 @@ library:
     - Syntax.Erlang.Compiler
     - Syntax.Erlang.Overloader
     - Syntax.Erlang.Qualifier
+    - Syntax.Erlang.Preluder
 
 default-extensions:
   - StandaloneDeriving
