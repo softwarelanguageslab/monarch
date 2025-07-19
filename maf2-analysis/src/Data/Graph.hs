@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Data.Graph (Graph(..), SimpleGraph, topSort) where
+module Data.Graph (Graph(..), SimpleGraph(..), topSort) where
 
 import Control.Lens
 import Control.Monad.State
@@ -110,7 +110,7 @@ pushNode node = modify (over order (node:))
 
 -- | The initial state for the BFS algorithm
 initialBfsState :: v -> BfsState v
-initialBfsState initial = BfsState Set.empty (Sequence.singleton initial) [initial]
+initialBfsState initial = BfsState Set.empty (Sequence.singleton initial) []
 
 -- | Run a BFS on the given graph for the purpose of topologically
 -- sorting the graph, the result of this BFS is a list of topologically sorted nodes
