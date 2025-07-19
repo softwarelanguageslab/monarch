@@ -145,6 +145,7 @@ executable simpleactor-exe
     , maf2-syntax
     , optparse-applicative
     , parallel-io
+    , pretty-simple
     , rio
     , simpleactor
     , singletons

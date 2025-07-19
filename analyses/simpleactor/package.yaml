@@ -105,6 +105,7 @@ executables:
     - filepath
     - time
     - timeit
+    - pretty-simple
     
 tests:
   simpleactor-tests:

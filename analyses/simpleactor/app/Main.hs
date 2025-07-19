@@ -28,6 +28,15 @@ import RIO.Directory
 import System.ConcurrentHandle
 import Control.Concurrent.ParallelIO.Global
 
+import Syntax.Erlang.Compiler
+import Syntax.Erlang.Overloader
+import Syntax.Erlang.Qualifier
+import Syntax.Erlang.Preluder
+import Analysis.Erlang.BIF
+import Syntax.ErlangToSimpleActor
+import Text.Pretty.Simple (pPrint)
+
+
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
 
@@ -199,8 +208,16 @@ precision MultipleInputOptions { .. } OutputOptions { .. } = do
 ------------------------------------------------------------
 -- Erlang analysis
 ------------------------------------------------------------
+
 erlang :: InputOptions -> IO ()
-erlang = const $ putStrLn "hello world"
+erlang InputOptions { .. } = do
+   (modules, deps) <- elixirLibs >>= (`loadFromDir` filename)
+   let modules' = qualifyModules $ preludeModules implicitImports $ overloadModules modules
+   pPrint deps
+   -- pPrint modules'
+   let exp = compileModules modules' deps "test" "main"
+   print exp
+
 
 ------------------------------------------------------------
 -- Main entrypoint

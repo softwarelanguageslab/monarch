@@ -170,6 +170,10 @@ newtype ModuleDependencies = ModuleDependencies { moduleDependencies :: Map Stri
 emptyDependencyGraph :: ModuleDependencies
 emptyDependencyGraph = ModuleDependencies Map.empty
 
+-- | Register a potential dependency in the graph
+registerDependency :: String -> ModuleDependencies -> ModuleDependencies
+registerDependency from = ModuleDependencies . Map.insertWith Set.union from Set.empty . moduleDependencies
+
 -- | Add a dependency to the dependency graph from the first argument to the second
 addDependency :: String -> String -> ModuleDependencies -> ModuleDependencies
 addDependency from to = ModuleDependencies . Map.insertWith Set.union from (Set.singleton to) . moduleDependencies

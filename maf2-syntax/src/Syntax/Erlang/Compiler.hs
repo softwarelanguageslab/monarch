@@ -356,7 +356,7 @@ dependencyGraph = foldr resolveImports emptyDependencyGraph  . Map.toList . allM
             let importNames = map (Ide.name . qualifiedName) $ AST.imports modInfo
                 unqualNames = map (name . fst) $ AST.unqualifiedImports modInfo
                 allNames    = importNames ++ unqualNames
-            in flip (foldr (`addDependency` AST.moduleName modInfo)) allNames
+            in flip (foldr (`addDependency` AST.moduleName modInfo)) allNames . registerDependency (AST.moduleName modInfo)
 
 
 -- | Load modules from the given `ebin` directory  (i.e., a directory that contains BEAM files),
