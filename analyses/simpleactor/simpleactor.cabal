@@ -24,6 +24,7 @@ source-repository head
 library
   exposed-modules:
       Analysis.SimpleActor
+      Analysis.SimpleActor.ErlangPrimitives
       Analysis.SimpleActor.Fixpoint.Common
       Analysis.SimpleActor.Fixpoint.Modular
       Analysis.SimpleActor.Fixpoint.Sequential
