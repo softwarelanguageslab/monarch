@@ -149,9 +149,9 @@ applyClosure e(lam@(Lam prs _ _), env) rec vs =
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 
-applyPrimitive :: forall v m k . (EvalM v k m) =>String -> Exp -> [v] -> m v
-applyPrimitive =
-   runPrimitive . fromJust . lookupPrimitive
+applyPrimitive :: forall v m k . (EvalM v k m) => String -> Exp -> [v] -> m v
+applyPrimitive prm =
+   runPrimitive $ fromMaybe (error $ "could not find " ++ prm) $ lookupPrimitive prm
 
 type Mapping v = Map Ide v
 
@@ -243,7 +243,7 @@ allPrimitiveFunctions = Map.unions [actorPrimitives,  schemePrimitives, erlangPr
 
 -- | Lookup a primitive starting from the actor primitives
 lookupPrimitive :: String -> Maybe (SimpleActorPrim v)
-lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
+lookupPrimitive = untilJust [ (`Map.lookup` erlangPrimitives), (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
 
 -- | Run the functions given as a list in the first argument on the 
 -- second argument until an output is found that is @Just@.

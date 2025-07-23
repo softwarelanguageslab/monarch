@@ -145,6 +145,10 @@ loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTem
 analyzeCmd :: InputOptions -> IO ()
 analyzeCmd (InputOptions { filename, doTranslate, maxSteps  }) = do
    ast <- loadFile' doTranslate filename
+   analyzeAst ast maxSteps
+
+analyzeAst :: Exp -> Maybe Int -> IO ()
+analyzeAst ast maxSteps =  do
    (AnalysisResult sequentialResults mbs seqProf modProf) <- analyze' maxSteps ast
    let sequentialResMap = fmap cmpRes sequentialResults
    let sequentialCouMap = fmap outCount sequentialResults
@@ -217,6 +221,7 @@ erlang InputOptions { .. } = do
    -- pPrint modules'
    let exp = compileModules modules' deps "test" "main"
    print exp
+   analyzeAst exp Nothing
 
 
 ------------------------------------------------------------
