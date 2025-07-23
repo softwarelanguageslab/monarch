@@ -33,6 +33,7 @@ library
       Analysis.SimpleActor.Infer.Domain
       Analysis.SimpleActor.Infer.Graph
       Analysis.SimpleActor.Monad
+      Analysis.SimpleActor.Primitives
       Analysis.SimpleActor.Semantics
       Benchmark.SimpleActor.Precision
       Control.Monad.Cond

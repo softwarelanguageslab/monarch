@@ -12,6 +12,8 @@ import qualified Data.Map as Map
 import Domain.Scheme.Class hiding (Exp)
 import Domain.Actor
 
+import qualified Analysis.SimpleActor.ErlangPrimitives as Erl
+
 import Analysis.SimpleActor.Monad
 import Analysis.Actors.Monad
 
@@ -49,6 +51,7 @@ import qualified Analysis.Store as Store
 import Control.Monad.IO.Class (liftIO)
 import Lattice.ConstantPropagationLattice (CP)
 import Syntax.FV
+import Analysis.SimpleActor.Primitives (SimpleActorPrim(Prm), SimpleActorPrimitive(..))
 
 ------------------------------------------------------------
 -- Evaluation
@@ -194,27 +197,28 @@ injectLit (String _)     = error "cannot inject a string"
 -- Primitives
 ------------------------------------------------------------
 
-data Primitive k v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim k v)
+newtype SAPrim v = SAPrim (forall k m . (Show (Env v), EvalM v k m) => [v] -> Exp -> m v)
 
-newtype SimpleActorPrim k v = SimpleActorPrim (forall m . (Show (Env v), EvalM v k m) => [v] -> Exp -> m v)
+instance SimpleActorPrimitive v (SAPrim v) where
+   runPrimitive (SAPrim p) = flip p
 
 -- | A nullary primitive
-aprim0 :: (forall m . (Show (Env v), EvalM v k m) => Exp -> m v) -> SimpleActorPrim k v
-aprim0 f = SimpleActorPrim $ const f
+aprim0 :: (forall k m . (Show (Env v), EvalM v k m) => Exp -> m v) -> SAPrim v
+aprim0 f = SAPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall m . EvalM v k m => v -> Exp -> m v) -> SimpleActorPrim k v
-aprim1 f = SimpleActorPrim $  \case [v] -> f v
-                                    vs -> const $ escape $ ArityMismatch 1 (length vs)
+aprim1 :: (forall k m . EvalM v k m => v -> Exp -> m v) -> SAPrim v
+aprim1 f = SAPrim $  \case [v] -> f v
+                           vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall m . EvalM v k m => v -> v -> Exp -> m v) -> SimpleActorPrim k v
-aprim2 f = SimpleActorPrim $ \case [v1, v2] -> f v1 v2
-                                   vs -> const $ escape $ ArityMismatch 2 (length vs)
+aprim2 :: (forall k m . EvalM v k m => v -> v -> Exp -> m v) -> SAPrim v
+aprim2 f = SAPrim $ \case [v1, v2] -> f v1 v2
+                          vs -> const $ escape $ ArityMismatch 2 (length vs)
 
 -- | Primitives specific to the simple actor language
-actorPrimitives :: Map String (Primitive k v)
-actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
+actorPrimitives :: forall v . Map String (SimpleActorPrim v)
+actorPrimitives =  Prm @v <$> Map.fromList [
    ("wait-until-all-finished", aprim0 $ const $ return nil ),
    ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
    ("list", aprim0 $ const $ return nil),
@@ -224,20 +228,22 @@ actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("print", aprim1 $ const $ const $ return nil) ]
 
 -- | Scheme primitives
-schemePrimitives :: Map String (Primitive k v)
-schemePrimitives = SchemePrimitive <$> primitivesByName
+schemePrimitives :: forall v . Map String (SimpleActorPrim v)
+schemePrimitives = Prm @v <$> primitivesByName @v
+
+erlangPrimitives :: forall v . Map String (SimpleActorPrim v)
+erlangPrimitives = Prm <$> Erl.erlangPrimitives  
 
 -- | The names of all primitives
 allPrimitives :: [String]
-allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives
+allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives ++ Map.keys erlangPrimitives
+
+allPrimitiveFunctions :: Map String (SimpleActorPrim v)
+allPrimitiveFunctions = Map.unions [actorPrimitives,  schemePrimitives, erlangPrimitives]
 
 -- | Lookup a primitive starting from the actor primitives
-lookupPrimitive :: String -> Maybe (Primitive k v)
+lookupPrimitive :: String -> Maybe (SimpleActorPrim v)
 lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
-
-runPrimitive :: ( EvalM v k m) =>Primitive k v -> Exp -> [v] -> m v
-runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
-runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = flip f
 
 -- | Run the functions given as a list in the first argument on the 
 -- second argument until an output is found that is @Just@.

@@ -4,7 +4,7 @@
 -- It expects the following calling convention:
 -- * BIFs are named after their module, function name and arity
 -- * The arguments are passed as linked lists in the Scheme memory and have to be dereferenced before use
-module Analysis.SimpleActor.ErlangPrimitives(erlangPrimitives, runPrimitive, allPrimitiveNames) where
+module Analysis.SimpleActor.ErlangPrimitives(erlangPrimitives, getPrimitive, allPrimitiveNames) where
 
 import Analysis.Erlang.BIF
 import Analysis.SimpleActor.Monad (EvalM)
@@ -24,6 +24,7 @@ import Domain.Class (Domain(inject))
 import Domain (RealDomain(..), PairDomain (..))
 import Analysis.Scheme.Monad (derefPai)
 import Lattice.Class (Joinable)
+import Analysis.SimpleActor.Primitives
 
 
 ------------------------------------------------------------
@@ -44,6 +45,7 @@ prim = ErlangPrim
 -- Parameter list utilities
 ------------------------------------------------------------
 
+-- | Access N elements from the given abstract list
 derefN' :: (Joinable a, PrimM v k m) => Int -> v -> [v] -> ([v] -> m a) ->  m a
 derefN' 0 v acc f = cond (pure $ isNil v)
                         (f $ reverse acc)
@@ -104,10 +106,12 @@ erlangPrimitives = Map.fromList [
     ("erlang:ceil/1", prim $ const $ deref1 (ceiling @_ @v @v))
    ]
 
--- | Runs the given primitive on the given arguments
-runPrimitive :: (PrimM v k m) => String -> Exp -> [v] -> m v
-runPrimitive nam
-  | Set.member nam allSupportedPrimitiveNames = getPrim $ fromJust $ Map.lookup nam erlangPrimitives
+
+
+-- | Returns the appropriate primitive for the given primitive name
+getPrimitive :: String -> ErlangPrim v
+getPrimitive nam
+  | Set.member nam allSupportedPrimitiveNames =  fromJust $ Map.lookup nam erlangPrimitives
   | Set.member nam allPrimitiveNames = error $ "erlang: primitive " ++ nam ++ " not supported"
   | otherwise = error $ "erlang: primitive " ++ nam ++ " does not exists"
 
@@ -122,4 +126,11 @@ allSupportedPrimitiveNames = Map.keysSet erlangPrimitives
 -- | A list with the names of all Erlang primitives
 allPrimitiveNames :: Set String
 allPrimitiveNames = Set.fromList $ map bifName allBifs
+
+------------------------------------------------------------
+-- SimpleActor primitives wrapper
+------------------------------------------------------------
+
+instance SimpleActorPrimitive v (ErlangPrim v) where
+  runPrimitive (ErlangPrim p) = p
 
