@@ -64,7 +64,7 @@ instance (Ord a) => Meetable (Interval a) where
    meet _ _ = BottomInterval
    
 -- TODO: move this to Domain.Core.NumberDomain.Interval
-instance NumberDomain (Interval Integer) (CP Bool) where  
+instance NumberLattice (Interval Integer) (CP Bool) where  
    random = const $ return top
    eq BottomInterval _ = mbottom 
    eq _ BottomInterval = mbottom

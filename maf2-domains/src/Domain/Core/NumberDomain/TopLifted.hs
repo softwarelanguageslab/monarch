@@ -1,15 +1,17 @@
 -- | Instance for @TopLifted@ of the @NumberDomain@ type classes
 {-# LANGUAGE LambdaCase, UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Domain.Core.NumberDomain.TopLifted() where
 
 import Prelude hiding (div, ceiling, floor, round, log, sin, asin, cos, acos, tan, atan, sqrt)
 
-import Domain.Core.BoolDomain.Class (boolTop)
+import Domain.Core.BoolDomain.Class
 import Domain.Core.NumberDomain.Class
 import Lattice.TopLiftedLattice (TopLifted(..), fromTL)
 import Lattice.Class
 
-instance (NumberDomain a bln) => NumberDomain (TopLifted a) bln where
+instance (NumberLattice a bln, BoolDomain bln) => NumberLattice (TopLifted a) bln where
    isZero  = fmap (fromTL boolTop) . traverse isZero
    random  = traverse (random @_ @bln)
    plus  a = sequenceA . liftA2 (plus @_ @bln) a
@@ -21,7 +23,7 @@ instance (NumberDomain a bln) => NumberDomain (TopLifted a) bln where
    lt    a = fmap (fromTL boolTop) . sequenceA . liftA2 lt a
 
 
-instance (IntDomain a bln str rea, TopLattice rea, TopLattice str) => IntDomain (TopLifted a) bln str rea where
+instance (IntLattice a bln str rea, TopLattice rea, TopLattice str, BoolDomain bln) => IntLattice (TopLifted a) bln str rea where
    toReal    = \case Top     -> pure top
                      Value v -> (toReal @_ @bln @str @rea) v
    toString  = \case Top     -> pure top
@@ -30,7 +32,7 @@ instance (IntDomain a bln str rea, TopLattice rea, TopLattice str) => IntDomain 
    modulo    a = sequenceA . liftA2 (modulo @_ @bln @str @rea) a
    remainder a = sequenceA . liftA2 (remainder @_ @bln @str @rea) a
 
-instance (RealDomain a bln int, TopLattice int) => RealDomain (TopLifted a) bln int where
+instance (RealLattice a bln int, TopLattice int, BoolDomain bln) => RealLattice (TopLifted a) bln int where
    toInt = fmap (fromTL top) . traverse (toInt @_ @bln @int)
    ceiling = traverse (ceiling @_ @bln @int)
    floor   = traverse (floor @_ @bln @int)

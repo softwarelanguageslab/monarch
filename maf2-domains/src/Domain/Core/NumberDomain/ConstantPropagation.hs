@@ -19,7 +19,7 @@ import Domain.Class (Domain(..))
 --- Integers
 ------------------------------------------------------------
 
-instance NumberDomain (CP Integer) (CP Bool) where
+instance NumberLattice (CP Integer) (CP Bool) where
    isZero = return . liftA2 (==) (Constant 0)
    random = return . const Top
    plus a b = return $ liftA2 (+) a b
@@ -30,7 +30,7 @@ instance NumberDomain (CP Integer) (CP Bool) where
    lt a b = return $ liftA2 (<) a b
    eq a b = return $ liftA2 (==) a b
 
-instance (TopLattice s, StringDomain s (CP Bool) (CP Integer) (CP Char)) => IntDomain (CP Integer) (CP Bool) s (CP Double) where
+instance (TopLattice s, StringDomain s (CP Bool) (CP Integer) (CP Char)) => IntLattice (CP Integer) (CP Bool) s (CP Double) where
    toReal   = return . fmap fromIntegral
    toString Top = return top
    toString (Constant n) = return $ inject (show n)
@@ -46,7 +46,7 @@ instance (TopLattice s, StringDomain s (CP Bool) (CP Integer) (CP Char)) => IntD
 between :: Ord a => a -> a -> a -> Bool
 between a b c = a <= c && c <= b
 
-instance NumberDomain (CP Double) (CP Bool) where
+instance NumberLattice (CP Double) (CP Bool) where
    isZero = return . liftA2 (==) (Constant 0)
    random = return . const Top
    plus a b = return $ liftA2 (+) a b
@@ -57,7 +57,7 @@ instance NumberDomain (CP Double) (CP Bool) where
    lt a b = return $ liftA2 (<) a b
    eq a b = return $ liftA2 (==) a b
 
-instance RealDomain (CP Double) (CP Bool) (CP Integer) where
+instance RealLattice (CP Double) (CP Bool) (CP Integer) where
    toInt = return . fmap truncate
    ceiling = return . fmap (fromIntegral . Prelude.ceiling)
    floor = return . fmap (fromIntegral . Prelude.floor)

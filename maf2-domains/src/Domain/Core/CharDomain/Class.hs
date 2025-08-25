@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-module Domain.Core.CharDomain.Class (CharDomain(..)) where
+module Domain.Core.CharDomain.Class (CharDomain, CharLattice(..)) where
 
 import Domain.Class 
 import Control.Monad.AbstractM
@@ -7,7 +7,9 @@ import Domain.Core.BoolDomain
 
 import Data.Kind 
 
-class (Domain c Char) => CharDomain c int where
+type CharDomain c int = (Domain c Char, CharLattice c int)
+
+class (Domain c Char) => CharLattice c int where
    downcase :: AbstractM m => c -> m c
    upcase :: AbstractM m => c -> m c
    charToInt :: AbstractM m => c -> m int 

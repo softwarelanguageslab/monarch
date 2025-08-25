@@ -3,10 +3,10 @@ module Domain.Core.StringDomain.TopLifted() where
 
 import Lattice.TopLiftedLattice
 import Lattice.Class (TopLattice (..))
-import Domain.Core.StringDomain.Class (StringDomain (..))
+import Domain.Core.StringDomain.Class
 import Prelude hiding (length)
 
-instance (TopLattice bln, TopLattice int, TopLattice chr, StringDomain a bln int chr) => StringDomain (TopLifted a) bln int chr where
+instance (TopLattice bln, TopLattice int, TopLattice chr, StringDomain a bln int chr) => StringLattice (TopLifted a) bln int chr where
   length = fmap (fromTL top) . traverse (length @_ @bln @int @chr)
   append a = sequenceA . liftA2 (append @_ @bln @int @chr) a
   ref s i = fromTL top <$> traverse (flip (ref @_ @bln @int @chr) i) s

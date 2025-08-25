@@ -18,7 +18,7 @@ replaceAt (_:xs) 0 c = c : xs
 replaceAt (x:xs) n c = x : replaceAt xs (n-1) c
 replaceAt [] _ _ = []
 
-instance StringDomain (CP String) (CP Bool) (CP Integer) (CP Char) where
+instance StringLattice (CP String) (CP Bool) (CP Integer) (CP Char) where
 
    length = return . fmap (fromIntegral . Prelude.length)
    append a b = return $ liftA2 (++) a b

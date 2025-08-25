@@ -4,7 +4,7 @@ module Domain.Core.TaintDomain.Class (
 
 import Lattice (Joinable, TopLifted)
 import Domain.Class 
-import Domain.Core.BoolDomain.Class (BoolDomain(..))
+import Domain.Core.BoolDomain.Class
 import Data.Set (Set)
 import Data.Set as Set 
 import Lattice.TopLiftedLattice (TopLifted(..))

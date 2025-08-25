@@ -1,6 +1,13 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-module Domain.Core.BoolDomain.Class (BoolDomain(..)) where 
+module Domain.Core.BoolDomain.Class (
+   BoolLattice(..),
+   BoolDomain, 
+   true,
+   false,
+   boolTop
+) where 
 
 import Lattice.Class
 import Domain.Class 
@@ -10,19 +17,20 @@ import Data.Kind
 -- BoolDomain
 ------------------------------------------------------------
 
-class (Joinable b, Domain b Bool) => BoolDomain b where
-   {-# MINIMAL not, and, or #-}
-   -- default implementations for convenience (can all be overriden with more efficient implementations)
-   true :: b
-   true = inject True
-   false :: b
-   false = inject False  
+type BoolDomain b = (BoolLattice b, Domain b Bool)
+
+true :: Domain b Bool => b
+true = inject True 
+
+false :: Domain b Bool => b
+false = inject False 
+
+boolTop :: Domain b Bool => b
+boolTop = true `join` false
+
+class (Joinable b) => BoolLattice b where
    isTrue ::  b -> Bool
-   isTrue = (`subsumes` true) 
    isFalse :: b -> Bool
-   isFalse = (`subsumes` false)
-   boolTop :: b 
-   boolTop = true `join` false  
    not :: b -> b
    and :: b -> b -> b
    or  :: b -> b -> b

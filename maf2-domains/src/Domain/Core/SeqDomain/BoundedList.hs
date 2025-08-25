@@ -14,6 +14,7 @@ import Data.List.Extra (zipWithLongest)
 import Control.Monad.Join
 import Data.Maybe
 import Domain.Class
+import Domain.Core.BoolDomain.Class
 
 maybeBot :: BottomLattice a => Maybe a -> a
 maybeBot = fromMaybe bottom
@@ -32,7 +33,7 @@ instance (BottomLattice a, Joinable a) => Joinable (BoundedList a) where
 instance (BottomLattice a) => BottomLattice (BoundedList a) where   
    bottom = BoundedList bottom []
 
-ref :: forall bln i a m . (NumberDomain i bln, Domain i Int, Joinable a, BottomLattice a, AbstractM m) => BoundedList a -> i -> m a
+ref :: forall bln i a m . (NumberDomain i bln, BoolDomain bln, Domain i Int, Joinable a, BottomLattice a, AbstractM m) => BoundedList a -> i -> m a
 ref (BoundedList length elements) i
       | length == bottom = mbottom
       | otherwise        = rangedRef length

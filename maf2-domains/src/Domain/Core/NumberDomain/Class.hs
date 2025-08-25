@@ -1,9 +1,13 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Domain.Core.NumberDomain.Class (
-   NumberDomain(..), 
-   IntDomain(..), 
-   RealDomain(..)
+   NumberLattice(..),
+   IntLattice(..),
+   RealLattice(..),
+   NumberDomain, 
+   IntDomain, 
+   RealDomain
 ) where
 
 import Lattice.Class
@@ -15,7 +19,12 @@ import Data.Kind
 import Lattice.BottomLiftedLattice
 import Control.Monad.Join (MonadBottom(..))
 
-class (Joinable n, Bool.BoolDomain bln) => NumberDomain n bln where
+-- X-domain = X-lattice + standard domain instance
+type NumberDomain n bln       = NumberLattice n bln
+type IntDomain i bln str rea  = (Domain i Integer, IntLattice i bln str rea)
+type RealDomain r bln int     = (Domain r Double, RealLattice r bln int)
+
+class (Joinable n, Bool.BoolLattice bln) => NumberLattice n bln where
    isZero :: AbstractM m => n -> m bln
    random :: AbstractM m => n -> m n
    plus :: AbstractM m => n -> n -> m n
@@ -34,16 +43,15 @@ class (Joinable n, Bool.BoolDomain bln) => NumberDomain n bln where
    le :: AbstractM m => n -> n -> m bln
    le a b = Bool.not <$> gt a b 
 
-class (Domain i Integer, NumberDomain i bln) => IntDomain i bln str rea where
+class (NumberLattice i bln) => IntLattice i bln str rea where
    inc :: AbstractM m => i -> m i
-   inc = plus @_ @bln (inject @_ @Integer 1)
    toReal :: AbstractM m => i -> m rea
    toString :: AbstractM m => i -> m str
    quotient :: AbstractM m => i -> i -> m i
    modulo :: AbstractM m => i -> i -> m i
    remainder :: AbstractM m => i -> i -> m i
 
-class (Domain r Double, NumberDomain r bln) => RealDomain r bln int where
+class (NumberLattice r bln) => RealLattice r bln int where
    toInt :: AbstractM m => r -> m int
    ceiling :: AbstractM m => r -> m r
    floor :: AbstractM m => r -> m r
@@ -57,7 +65,7 @@ class (Domain r Double, NumberDomain r bln) => RealDomain r bln int where
    atan :: AbstractM m => r -> m r
    sqrt :: AbstractM m => r -> m r
 
-instance (NumberDomain a bln, TopLattice a) => NumberDomain (BottomLifted a) bln where 
+instance (NumberLattice a bln, TopLattice a) => NumberLattice (BottomLifted a) bln where 
    isZero Bottom    = mbottom
    isZero (Value a) = isZero a
    random _ = return $ Value top
@@ -74,12 +82,12 @@ instance (NumberDomain a bln, TopLattice a) => NumberDomain (BottomLifted a) bln
    ge = mapBLBool ge 
    le = mapBLBool le
 
-mapBL :: Monad m => (t1 -> t2 -> m a) -> BottomLifted t1 -> BottomLifted t2 -> m (BottomLifted a)
-mapBL _ Bottom _ = return Bottom 
-mapBL _ _ Bottom = return Bottom 
-mapBL f (Value a) (Value b) = do v <- f a b; return $ Value v
+mapBL :: AbstractM m => (t1 -> t2 -> m a) -> BottomLifted t1 -> BottomLifted t2 -> m (BottomLifted a)
+mapBL _ Bottom _ = mbottom
+mapBL _ _ Bottom = mbottom
+mapBL f (Value a) (Value b) = Value <$> f a b
 
-mapBLBool :: (Monad m, Bool.BoolDomain a) => (t1 -> t2 -> m a) -> BottomLifted t1 -> BottomLifted t2 -> m a
+mapBLBool :: AbstractM m => (t1 -> t2 -> m a) -> BottomLifted t1 -> BottomLifted t2 -> m a
 mapBLBool f (Value a) (Value b) = f a b 
-mapBLBool _ Bottom _ = return Bool.boolTop 
-mapBLBool _ _ Bottom = return Bool.boolTop 
+mapBLBool _ Bottom _ = mbottom
+mapBLBool _ _ Bottom = mbottom

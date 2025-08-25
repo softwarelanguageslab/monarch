@@ -8,7 +8,9 @@ import Control.Monad.AbstractM
 
 import Data.Kind 
 
-class (Joinable s, Domain s String) => StringDomain s bln int chr where
+type StringDomain s bln int chr = (StringLattice s bln int chr, Domain s String)
+
+class (Joinable s) => StringLattice s bln int chr where
    length :: AbstractM m => s -> m int 
    append :: AbstractM m => s -> s -> m s
    ref :: AbstractM m => s -> int -> m chr

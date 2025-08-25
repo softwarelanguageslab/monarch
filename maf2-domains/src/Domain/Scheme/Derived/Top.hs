@@ -25,7 +25,7 @@ import Prelude hiding (length, acos, and, asin, atan, ceiling, cos, div, floor, 
 import Control.Monad.Join (MonadBottom(..))
 import Lattice.Trace (Trace (trace))
 import Domain.Address (AddressWithCtx (replaceCtx))
-import Domain.Core.StringDomain.Class (StringDomain (..))
+import Domain.Core.StringDomain.Class
 
 -- | Lifts a value @a@ from the Scheme domain into a @TopLifted@ value so that all Scheme values have a synthetic top element
 newtype SchemeTopLifted a = SchemeTopLifted {getTopLifted :: TopLifted a}
@@ -46,14 +46,14 @@ instance TopLattice (SchemeTopLifted a) where
 instance (Domain a b) => Domain (SchemeTopLifted a) b where
   inject = SchemeTopLifted . Value . inject
 
-instance (BoolDomain a) => BoolDomain (SchemeTopLifted a) where
+instance (BoolLattice a) => BoolLattice (SchemeTopLifted a) where
   isTrue (SchemeTopLifted v) = isTrue v
   isFalse (SchemeTopLifted v) = isFalse v
   not = fmap not
   and = liftA2 and
   or = liftA2 or
 
-instance (TopLattice bln, TopLattice int, TopLattice chr, StringDomain a bln int chr) => StringDomain (SchemeTopLifted a) bln int chr where
+instance (TopLattice bln, TopLattice int, TopLattice chr, StringDomain a bln int chr) => StringLattice (SchemeTopLifted a) bln int chr where
   length = length @_ @bln @int @chr . getTopLifted
   append (SchemeTopLifted a) (SchemeTopLifted b) = SchemeTopLifted <$> append @_ @bln @int @chr a b
   ref (SchemeTopLifted s) = ref @_ @bln @int @chr s
@@ -63,7 +63,7 @@ instance (TopLattice bln, TopLattice int, TopLattice chr, StringDomain a bln int
   topString = SchemeTopLifted (topString @_ @bln @int @chr)
   set (SchemeTopLifted s) i = fmap SchemeTopLifted . set @_ @bln @int @chr s i
 
-instance (CharDomain a int) => CharDomain (SchemeTopLifted a) (SchemeTopLifted int) where
+instance (CharLattice a int) => CharLattice (SchemeTopLifted a) (SchemeTopLifted int) where
 
   --- XXX: this is very close top the instance of @TopLifted@ in @Domain.Core.CharDomain.TopLifted@ see if
   -- some code can be shared
@@ -77,7 +77,7 @@ instance (CharDomain a int) => CharDomain (SchemeTopLifted a) (SchemeTopLifted i
   charEqCI a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 (charEqCI @_ @int) a
   charLtCI a = fmap (fromTL boolTop . getTopLifted) . sequenceA . liftA2 (charLtCI @_ @int) a
 
-instance (NumberDomain a bln) => NumberDomain (SchemeTopLifted a) (SchemeTopLifted bln) where
+instance (NumberLattice a bln) => NumberLattice (SchemeTopLifted a) (SchemeTopLifted bln) where
   isZero = traverse isZero
   random = traverse (random @_ @bln)
   plus a = sequenceA . liftA2 (plus @_ @bln) a
@@ -90,18 +90,18 @@ instance (NumberDomain a bln) => NumberDomain (SchemeTopLifted a) (SchemeTopLift
 
 type instance StrDom (SchemeTopLifted a) = (StrDom a)
 
-instance (IntDomain a bln str rea, str ~ StrDom a, TopLattice str) =>
-  IntDomain (SchemeTopLifted a)
-            (SchemeTopLifted bln)
-            str
-            (SchemeTopLifted rea) where
+instance (IntLattice a bln str rea, str ~ StrDom a, TopLattice str) =>
+  IntLattice (SchemeTopLifted a)
+             (SchemeTopLifted bln)
+             str
+             (SchemeTopLifted rea) where
   toReal = traverse (toReal @_ @bln @str)
   toString = fmap (fromTL top) . traverse (toString @_ @bln @_ @rea) . getTopLifted
   quotient a = sequenceA . liftA2 (quotient @_ @bln @str @rea) a
   modulo a = sequenceA . liftA2 (modulo @_ @bln @str @rea) a
   remainder a = sequenceA . liftA2 (remainder @_ @bln @str @rea) a
 
-instance (RealDomain a bln int) => RealDomain (SchemeTopLifted a) (SchemeTopLifted bln) (SchemeTopLifted int) where
+instance (RealLattice a bln int) => RealLattice (SchemeTopLifted a) (SchemeTopLifted bln) (SchemeTopLifted int) where
   toInt = traverse (toInt @_ @bln)
   ceiling = traverse (ceiling @_ @bln @int)
   floor = traverse (floor @_ @bln @int)

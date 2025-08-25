@@ -92,6 +92,9 @@ type ErlMapping c = '[
 data IntDomainWith bln str rea :: Type ~> Constraint
 type instance Apply (IntDomainWith bln str rea) i = IntDomain i bln str rea
 
+data BoolDomainWith :: Type ~> Constraint
+type instance Apply BoolDomainWith bln = BoolDomain bln
+
 type IsErlValue c =
    (AllAtKey1 Lattice (ErlMapping c),
     AllAtKey1 Eq (ErlMapping c),
@@ -100,7 +103,7 @@ type IsErlValue c =
     AllAtKey1 Ord (ErlMapping c),
     Ord (PidCfg c),
     KeyIs (IntDomainWith (Assoc BooKey (ErlMapping c)) (Assoc StrKey (ErlMapping c)) (Assoc ReaKey (ErlMapping c)))  (ErlMapping c) IntKey,
-    KeyIs1 BoolDomain (ErlMapping c) BooKey)
+    KeyIs BoolDomainWith (ErlMapping c) BooKey)
 
 newtype ErlValue c = ErlValue { getValue :: HMap (ErlMapping c) }
 
@@ -123,12 +126,12 @@ instance (IsErlValue c) => ActorDomain (ErlValue c) where
 instance (IsErlValue c) => Domain (ErlValue c) Bool where
    inject = ErlValue . singleton @BooKey . inject
 
-instance (IsErlValue c) => BoolDomain (ErlValue c) where
+instance (IsErlValue c) => BoolLattice (ErlValue c) where
 
 instance (IsErlValue c) => Domain (ErlValue c) Integer where
    inject = ErlValue . singleton @IntKey . inject
 
-instance (IsErlValue c) => NumberDomain (ErlValue c) (ErlValue c) where
+instance (IsErlValue c) => NumberLattice (ErlValue c) (ErlValue c) where
    isZero = mjoins . HMap.mapList select . getValue
       where select :: forall m (kt :: ValueKey) . AbstractM m => Sing kt -> Assoc kt (ErlMapping c) -> m (ErlValue c)
             select SIntKey i = ErlValue <$> (singleton @BooKey <$> isZero i)
@@ -166,7 +169,7 @@ instance (IsErlValue c) => NumberDomain (ErlValue c) (ErlValue c) where
             apply (SIntKey :&: x) (SIntKey :&: y) = singleton @BooKey <$> Domain.Core.lt x y
             apply _ _ = escape WrongType
 
-instance (IsErlValue c) => IntDomain (ErlValue c) (ErlValue c) (ErlValue c) (ErlValue c) where
+instance (IsErlValue c) => IntLattice (ErlValue c) (ErlValue c) (ErlValue c) (ErlValue c) where
    toReal = error "no reals available"
    toString = error "no strings available"
    quotient a b = ErlValue <$> binop apply (getValue a) (getValue b)

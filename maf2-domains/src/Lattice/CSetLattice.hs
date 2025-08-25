@@ -8,7 +8,7 @@ import Lattice.Split
 import Lattice.Equal
 import Lattice.Trace
 import Domain.Class
-import Domain.Core (BoolDomain(..))
+import Domain.Core
 
 import Data.Set (Set)
 import qualified Data.Set as Set

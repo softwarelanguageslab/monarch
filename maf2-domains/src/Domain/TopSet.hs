@@ -7,7 +7,7 @@ import qualified Data.Foldable as Foldable
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain.Class (Domain (..))
-import Domain.Core.BoolDomain.Class (BoolDomain (boolTop))
+import Domain.Core.BoolDomain.Class
 import Lattice.Class (TopLattice (top), Joinable (join), PartialOrder (..))
 import Lattice.SetLattice ()
 import Prelude hiding (map, foldr)

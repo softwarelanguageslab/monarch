@@ -46,7 +46,7 @@ class (Monad m) => MonadJoinable m where
 class (Monad m) => MonadBottom m where    
    mbottom :: m a 
 
-cond :: (MonadJoin m, BoolDomain b, Joinable v) => m b -> m v -> m v -> m v 
+cond :: (MonadJoin m, BoolLattice b, Joinable v) => m b -> m v -> m v -> m v 
 cond cnd csq alt = cnd >>= (\b -> mjoin (t b) (f b))
    where t b = if isTrue b then csq else mbottom
          f b = if isFalse b then alt else mbottom

@@ -86,7 +86,7 @@ instance (Trace adr l, Trace adr r) => Trace adr (SchemePairedValue l r) where
 -- NumberDomain instance
 ------------------------------------------------------------
 
-instance (NumberDomain l bl, NumberDomain r br) => NumberDomain (SchemePairedValue l r) (SchemePairedValue bl br) where
+instance (NumberDomain l bl, NumberDomain r br, BoolDomain bl, BoolDomain br) => NumberLattice (SchemePairedValue l r) (SchemePairedValue bl br) where
    isZero (SchemePairedValue (l, r)) =
       pairedValue <$> isZero l <*> isZero r
    random (SchemePairedValue (l, r)) =
@@ -114,8 +114,8 @@ type instance StrDom (SchemePairedValue l r) = (StrDom l)
 instance (Domain l Integer, Domain r Integer) => Domain (SchemePairedValue l r) Integer where
    inject i = pairedValue (inject i) (inject i)
 
-instance (IntDomain l bl s rl, IntDomain r br s rr, Joinable s, StrDom l ~ s, StrDom r ~ s) => 
-   IntDomain (SchemePairedValue l r) {- bln -} (SchemePairedValue bl br) {- str -} s {- rea -} (SchemePairedValue rl rr) where
+instance (IntDomain l bl s rl, IntDomain r br s rr, Joinable s, StrDom l ~ s, StrDom r ~ s, BoolDomain bl, BoolDomain br) => 
+   IntLattice (SchemePairedValue l r) {- bln -} (SchemePairedValue bl br) {- str -} s {- rea -} (SchemePairedValue rl rr) where
    toReal (SchemePairedValue (l, r)) =
       pairedValue <$> (toReal @_ @bl @s) l <*> (toReal @_ @br @s) r
    toString (SchemePairedValue (l, r)) =
@@ -131,8 +131,8 @@ instance (IntDomain l bl s rl, IntDomain r br s rr, Joinable s, StrDom l ~ s, St
 -- String Domain
 ------------------------------------------------------------
 
--- Left biased instance for the StringDoman
-instance {-# OVERLAPPABLE #-} (StringDomain s l l l, BottomLattice r, Joinable r, Eq r) => StringDomain (SchemeString s)
+-- Left biased instance for the StringDomain
+instance {-# OVERLAPPABLE #-} (StringLattice s l l l, BottomLattice r, Joinable r, Eq r) => StringLattice (SchemeString s)
                                         {- bln -} (SchemePairedValue l r)
                                         {- int -} (SchemePairedValue l r)
                                         {- chr -} (SchemePairedValue l r)  where
@@ -153,8 +153,8 @@ instance {-# OVERLAPPABLE #-} (StringDomain s l l l, BottomLattice r, Joinable r
 instance (Domain l Double, Domain r Double) => Domain (SchemePairedValue l r) Double where
    inject n = pairedValue (inject n) (inject n)
 
-instance (RealDomain l bl il, RealDomain r br ir) => 
-   RealDomain (SchemePairedValue l r) (SchemePairedValue bl br) (SchemePairedValue il ir) where
+instance (RealDomain l bl il, RealDomain r br ir, BoolDomain bl, BoolDomain br) => 
+   RealLattice (SchemePairedValue l r) (SchemePairedValue bl br) (SchemePairedValue il ir) where
    toInt (SchemePairedValue (l,r)) = pairedValue <$> (toInt @_ @bl) l <*> (toInt @_ @br) r
    ceiling (SchemePairedValue (l,r)) = pairedValue <$> (ceiling @_ @bl @il) l <*> (ceiling @_ @br @ir) r
    floor (SchemePairedValue (l,r)) = pairedValue <$> (floor @_ @bl @il) l <*> (floor @_ @br @ir) r
@@ -175,7 +175,7 @@ instance (RealDomain l bl il, RealDomain r br ir) =>
 instance (Domain l Bool, Domain r Bool) => Domain (SchemePairedValue l r) Bool where
    inject b = pairedValue (inject b) (inject b)
 
-instance (BoolDomain l, BoolDomain r) => BoolDomain (SchemePairedValue l r) where
+instance (BoolDomain l, BoolDomain r) => BoolLattice (SchemePairedValue l r) where
    isTrue (SchemePairedValue (l, r))  = isTrue l || isTrue r
    isFalse (SchemePairedValue (l, r)) = isFalse l || isFalse r
    not (SchemePairedValue (l, r))     = pairedValue (not l) (not r)
@@ -183,7 +183,6 @@ instance (BoolDomain l, BoolDomain r) => BoolDomain (SchemePairedValue l r) wher
       pairedValue (or l1 l2) (or r1 r2)
    and (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       pairedValue (and l1 l2) (and r1 r2)
-   boolTop                            = pairedValue boolTop boolTop
 
 ------------------------------------------------------------
 -- CharDomain instance
@@ -193,7 +192,7 @@ instance (Domain l Char, Domain r Char) => Domain (SchemePairedValue l r) Char w
    inject c = pairedValue (inject c) (inject c)
 
 
-instance (CharDomain l il, CharDomain r ir) => CharDomain (SchemePairedValue l r) (SchemePairedValue il ir) where
+instance (CharLattice l il, CharLattice r ir) => CharLattice (SchemePairedValue l r) (SchemePairedValue il ir) where
    downcase (SchemePairedValue (l, r))  = pairedValue <$> (downcase @_ @il) l <*> (downcase @_ @ir) r
    upcase (SchemePairedValue (l, r))    = pairedValue <$> (upcase @_ @il) l <*> (upcase @_ @ir) r
    charToInt (SchemePairedValue (l, r)) = pairedValue <$> charToInt l <*> charToInt r
