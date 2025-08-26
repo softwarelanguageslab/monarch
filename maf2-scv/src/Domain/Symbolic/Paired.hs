@@ -91,7 +91,7 @@ simplifyBool _ f (Literal (Rea n1)) (Literal (Num n2)) = Literal $ Boo $ f n1 (f
 simplifyBool _ f (Literal (Num n1)) (Literal (Rea n2)) = Literal $ Boo $ f (fromInteger n1) n2
 simplifyBool op _ n1 n2 = Predicate op [n1, n2]
 
-instance (Eq i, Ord i) => NumberDomain (SymbolicVal exp k i v)
+instance (Eq i, Ord i) => NumberLattice (SymbolicVal exp k i v)
                                        {- bln -} (SymbolicVal exp k i v)  where
    isZero (SymbolicVal n) = return $ SymbolicVal $ Predicate "zero?/v" [n]
    random _ = return $ SymbolicVal (Fresh Set.empty)
@@ -123,7 +123,7 @@ type instance StrDom (SymbolicVal exp k i v) = (StrDom v)
 --  it is best to move toString into the string domain? Although
 --  this creates an unnecesary dependency from the string domain
 --  to the numeric domains.
-instance (Eq i, Ord i, StrDom v ~ vs) => IntDomain (SymbolicVal exp k i v)
+instance (Eq i, Ord i, StrDom v ~ vs) => IntLattice (SymbolicVal exp k i v)
                                     {- bln -} (SymbolicVal exp k i v)
                                     {- str -} vs
                                     {- rea -} (SymbolicVal exp k i v) where
@@ -144,7 +144,7 @@ instance (Eq i, Ord i, StrDom v ~ vs) => IntDomain (SymbolicVal exp k i v)
 instance (Eq i, Ord i) => Domain (SymbolicVal exp k i v) Double where
    inject n = SymbolicVal $ Literal (Rea n)
 
-instance (Eq i, Ord i) => RealDomain (SymbolicVal exp k i v)
+instance (Eq i, Ord i) => RealLattice (SymbolicVal exp k i v)
                                      {- bln -} (SymbolicVal exp k i v)
                                      {- int -} (SymbolicVal exp k i v)  where
    toInt (SymbolicVal n1)   = return $ SymbolicVal $ Predicate "as-int/v"   [n1]
@@ -167,14 +167,12 @@ instance (Eq i, Ord i) => RealDomain (SymbolicVal exp k i v)
 instance (Eq i, Ord i) => Domain (SymbolicVal exp k i v) Bool where
    inject n = SymbolicVal $ Literal (Boo n)
 
-instance (Eq i, Ord i) => BoolDomain (SymbolicVal exp k i v) where
+instance (Eq i, Ord i) => BoolLattice (SymbolicVal exp k i v) where
    isTrue  = const False -- unknown status of whether it is fale or true, so neither is
    isFalse = const False
    not (SymbolicVal v) = SymbolicVal $ Predicate "not/v" [v]
    or  (SymbolicVal a) (SymbolicVal b)  = SymbolicVal $ simplify $ Predicate "or?/v" [a, b]
    and (SymbolicVal a) (SymbolicVal b) = SymbolicVal $ simplify $ Predicate "and?/v"  [a, b]
-   boolTop = SymbolicVal (Fresh Set.empty)
-
 
 ------------------------------------------------------------
 -- CharDomain instance
@@ -183,7 +181,7 @@ instance (Eq i, Ord i) => BoolDomain (SymbolicVal exp k i v) where
 instance (Eq i, Ord i) => Domain (SymbolicVal exp k i v) Char where
    inject c = SymbolicVal $ Literal (Cha c)
 
-instance (Eq i, Ord i) => CharDomain (SymbolicVal exp k i v)
+instance (Eq i, Ord i) => CharLattice (SymbolicVal exp k i v)
                                      {- int -} (SymbolicVal exp k i v)  where
    downcase  (SymbolicVal c) = return $ SymbolicVal $ Predicate "downcase/v" [c]
    upcase    (SymbolicVal c) = return $ SymbolicVal $ Predicate "upcase/v"   [c]
