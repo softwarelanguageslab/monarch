@@ -11,6 +11,8 @@ import Lattice.Split
 import qualified Data.Set as Set 
 import Lattice.Equal (EqualLattice(..))
 import Domain.Core.BoolDomain.Class
+import Lattice.ConstantPropagationLattice (CP(..))
+import Domain.Class
     
 -- | Joinable for pairs of values
 instance (Joinable v, Joinable w) => Joinable (v, w) where
@@ -35,3 +37,11 @@ instance (SplitLattice v, SplitLattice w, Ord v, Ord w) => SplitLattice (v, w) w
    split (v, w) = foldMap (foldMap (flip $ curry Set.singleton) wsplit) vsplit 
       where vsplit = split v
             wsplit = split w 
+            
+productBool :: BoolDomain b => CP Bool -> CP Bool -> b
+productBool Top            Top            = boolTop
+productBool (Constant a)   Top            = inject a
+productBool Top            (Constant b)   = inject b 
+productBool (Constant a)   (Constant b)
+   | a == b = inject a
+   | otherwise = error "Soundness issue: non-overlapping over-approximations in product"

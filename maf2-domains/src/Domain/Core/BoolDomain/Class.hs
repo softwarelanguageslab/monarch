@@ -28,7 +28,7 @@ false = inject False
 boolTop :: Domain b Bool => b
 boolTop = true `join` false
 
-class (Joinable b) => BoolLattice b where
+class Joinable b => BoolLattice b where
    isTrue ::  b -> Bool
    isFalse :: b -> Bool
    not :: b -> b

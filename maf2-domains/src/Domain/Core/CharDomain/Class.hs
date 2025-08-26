@@ -6,10 +6,11 @@ import Control.Monad.AbstractM
 import Domain.Core.BoolDomain
 
 import Data.Kind 
+import Lattice (Joinable)
 
 type CharDomain c int = (Domain c Char, CharLattice c int)
 
-class (Domain c Char) => CharLattice c int where
+class Joinable c => CharLattice c int where
    downcase :: AbstractM m => c -> m c
    upcase :: AbstractM m => c -> m c
    charToInt :: AbstractM m => c -> m int 

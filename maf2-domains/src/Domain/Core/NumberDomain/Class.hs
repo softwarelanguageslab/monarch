@@ -65,11 +65,11 @@ class (NumberLattice r bln) => RealLattice r bln int where
    atan :: AbstractM m => r -> m r
    sqrt :: AbstractM m => r -> m r
 
-instance (NumberLattice a bln, TopLattice a) => NumberLattice (BottomLifted a) bln where 
+instance (NumberLattice a bln) => NumberLattice (BottomLifted a) bln where 
    isZero Bottom    = mbottom
    isZero (Value a) = isZero a
-   random _ = return $ Value top
-
+   random Bottom    = mbottom
+   random (Value a) = Value <$> random @_ @bln a
    plus = mapBL (plus @_ @bln) 
    minus = mapBL (minus @_ @bln) 
    times = mapBL (times @_ @bln) 
