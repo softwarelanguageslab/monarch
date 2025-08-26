@@ -32,6 +32,7 @@ instance NumberLattice (CP Integer) (CP Bool) where
 
 instance (TopLattice s, StringDomain s (CP Bool) (CP Integer) (CP Char)) => IntLattice (CP Integer) (CP Bool) s (CP Double) where
    toReal   = return . fmap fromIntegral
+   inc      = plus @_ @(CP Bool) (Constant 1)
    toString Top = return top
    toString (Constant n) = return $ inject (show n)
    quotient a b = return $ liftA2 Prelude.div a b
