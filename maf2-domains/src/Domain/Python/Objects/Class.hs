@@ -66,6 +66,7 @@ class (
     Abs obj PrmPrm ~ Set (Either PyPrim XPyPrim), 
     Abs obj CloPrm ~ Set (Clo obj),
     Abs obj BndPrm ~ Map (Adr obj) (Ref obj),   -- TODO: this can be generalised  
+    BoolDomain     (Abs obj BlnPrm), 
     SeqDomain      (Abs obj LstPrm),
     SeqDomain.Vlu  (Abs obj LstPrm) ~ Ref obj, 
     SeqDomain.Idx  (Abs obj LstPrm) ~ Abs obj IntPrm, 

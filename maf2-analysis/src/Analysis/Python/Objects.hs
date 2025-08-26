@@ -20,7 +20,7 @@ import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
 import Control.Monad.Escape ( orElse )
-import Domain ( BoolDomain, BoolDomain(..) )
+import Domain ( BoolDomain, BoolLattice(..) )
 import Domain.Python.Objects
 import qualified Domain.Python.Objects as PyObj
 import Domain.Python.World
