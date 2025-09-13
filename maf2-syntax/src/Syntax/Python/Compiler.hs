@@ -164,7 +164,8 @@ compileStmt (Assign [Subscript e i a1] r a2) = pure $ flip (StmtExp ()) a2 $ Cal
                                                                                   a2
 compileStmt (Assign to expr _)            = Assg () <$> compileLhs to <*> return (compileExp expr)
 compileStmt (AugmentedAssign to op exp a) = compileStmt (Assign [to] (BinaryOp (translateOp op) to exp a) a)
-compileStmt (Decorated decs def _)        = compileStmt def -- TODO: don't ignore the decorator? 
+compileStmt (Decorated (Decorator (nam:_) _ _ : _) def a) = DecoratedStm () (ident_string nam) <$> compileStmt def <*> pure a  -- TODO: don't ignore the decorator? 
+compileStmt (Decorated _ def _)                           = compileStmt def  -- TODO: currently, other forms of decorators are ignored
 compileStmt (AST.Return expr a)           = pure $ Return () (fmap compileExp expr) a
 compileStmt (AST.Raise rexp a)            = pure $ Raise  () (compileRaiseExp rexp) a
 compileStmt (AST.Try bdy hds [] [] a)     = compileTry bdy hds a
@@ -514,6 +515,7 @@ lexicalStmt (Raise _ exp a)  = Raise () <$> lexicalExp exp <*> pure a
 lexicalStmt (Try _ bdy hds a) = Try () <$> lexicalStmt bdy
                                        <*> mapM (\(exc, hdl) -> (,) <$> lexicalExp exc <*> lexicalStmt hdl) hds
                                        <*> pure a
+lexicalStmt (DecoratedStm _ dec stm a) = DecoratedStm () dec <$> lexicalStmt stm <*> pure a  
 lexicalStmt (Conditional _ cls els a)  =
    Conditional () <$> mapM (bimapM lexicalExp lexicalStmt) cls <*> lexicalStmt els <*> pure a
 lexicalStmt (StmtExp _ e a)  = StmtExp () <$> lexicalExp e <*> pure a

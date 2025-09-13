@@ -85,7 +85,8 @@ methods FloatType = [(AddAttr,      FloatAdd),
                      (BoolAttr,     FloatBool)] 
 methods NoneType          = [(BoolAttr,     NoneBool)]
 methods BoolType          = [(BoolAttr,     BoolBool)]
-methods StringType        = [(AddAttr, StringAppend)]
+methods StringType        = [(AddAttr, StringAppend),
+                             (EqAttr, StringEq)]
 methods TupleType         = [] 
 methods PrimType          = []
 methods BoundType         = []
@@ -111,7 +112,12 @@ methods DataFrameType     = [(GetItemAttr, DataFrameGetItem),
                              (RenameAttr, DataFrameRename),
                              (DropNAAttr, DataFrameDropNA),
                              (AppendAttr, DataFrameAppend),
-                             (FromSeriesAttr, DataFrameFromSeries)]
+                             (FromSeriesAttr, DataFrameFromSeries),
+                             (MapAttr, DataFrameMap),
+                             (ApplyAverageAttr, DataFrameApplyAverage),
+                             (ApplyStatsPerMovement, DataFrameApplyStatsPerMovement),
+                             (RemoveOutliersAttr, DataFrameRemoveOutliers),
+                             (CalcIncDiffAttr, DataFrameCalcIncDiff)]
 methods SeriesType        = [(AsTypeAttr, SeriesAsType),
                              (MergeAttr,  SeriesMerge)]
 
@@ -158,6 +164,7 @@ data PyPrim     =
                 | ListIter 
                 -- string primitives
                 | StringAppend 
+                | StringEq 
                 -- stringlength?
                 -- list iterator primitives
                 | ListIteratorNext 
@@ -173,7 +180,15 @@ data PyPrim     =
                 | DataFrameGetItem
                 | DataFrameSetItem 
                 | DataFrameAppend 
+                | DataFrameMap
                 | DataFrameFromSeries
+                | DataFrameApplyAverage
+                | DataFrameApplyStatsPerMovement
+                | DataFrameRemoveOutliers
+                | DataFrameCalcIncDiff
+                | DataFrameWindowedPrim1
+                | DataFrameWindowedPrim2
+                | DataFrameWindowedPrim3
                 -- series primitives
                 | SeriesAsType 
                 | SeriesMerge
@@ -233,9 +248,14 @@ data PyAttr = ClassAttr
             | AsTypeAttr 
             | KeysAttr 
             | AppendAttr 
+            | BoolAttr
             | MergeAttr
             | FromSeriesAttr
-            | BoolAttr
+            | MapAttr 
+            | ApplyAverageAttr      -- TODO/alternatively: we can also analyze the definition of these directly ...
+            | ApplyStatsPerMovement
+            | RemoveOutliersAttr
+            | CalcIncDiffAttr        
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -280,8 +300,13 @@ attrStr AsTypeAttr    = "astype"
 attrStr KeysAttr      = "keys"
 attrStr AppendAttr    = "append"
 attrStr MergeAttr     = "merge"
-attrStr FromSeriesAttr = "from_series"
+attrStr MapAttr       = "map"
 attrStr BoolAttr      = "__bool__"
+attrStr FromSeriesAttr        = "from_series"
+attrStr ApplyAverageAttr      = "apply_average"
+attrStr ApplyStatsPerMovement = "apply_stats_per_movement"
+attrStr RemoveOutliersAttr    = "remove_outliers"
+attrStr CalcIncDiffAttr       = "calc_inc_diff"
 
 -- | Built-in objects in Python 
 data PyConstant = None

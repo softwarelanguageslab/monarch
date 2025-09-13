@@ -72,6 +72,7 @@ type instance XNlcl AfterSimplification      = ()
 type instance XGbl AfterSimplification       = ()
 type instance XRaise AfterSimplification     = ()
 type instance XTry AfterSimplification       = ()
+type instance XDec AfterSimplification       = () 
 type instance XIde AfterSimplification a     = Ide a
 
 -- | Syntax tree after lexical adressing
@@ -93,6 +94,7 @@ type instance XNlcl AfterLexicalAddressing       = Void   -- nonlocal is compile
 type instance XGbl  AfterLexicalAddressing       = Void   -- global is compiled away
 type instance XRaise AfterLexicalAddressing      = ()
 type instance XTry AfterLexicalAddressing        = ()
+type instance XDec AfterLexicalAddressing        = ()
 type instance XIde  AfterLexicalAddressing a     = IdeLex a
 
 -- | Alias for the final phase
@@ -143,13 +145,14 @@ type family XNlcl ξ
 type family XGbl ξ
 type family XRaise ξ
 type family XTry ξ
+type family XDec ξ
 type family XIde ξ a :: Type
 
 -- Creates a constraint that says that the given constraint should hold on all types of phase information
 type Holds (c :: Type -> Constraint) ξ a =
    (c (XAsgn ξ), c (XSeq ξ), c (XRet ξ), c (XLoop ξ), c (XBreak ξ),
     c (XContinue ξ), c (XCond ξ), c (XStmtExp ξ), c (XLam ξ a), c (XNlcl ξ), c (XGbl ξ),
-    c (XRaise ξ), c (XTry ξ), c (XIde ξ a), c a)
+    c (XRaise ξ), c (XTry ξ), c (XIde ξ a), c (XDec ξ), c a)
 
 -- | A statement is an assignment, block, sequence and loop
 -- it is indexed by a "phase" parameter called `ξ` and use 
@@ -166,6 +169,7 @@ data Stmt a ξ = Assg (XAsgn ξ) (Lhs a ξ) (Exp a ξ)
               | NonLocal (XNlcl ξ) (Ide a) a                                  -- ^ nonlocal
               | Global   (XGbl  ξ) (Ide a) a                                  -- ^ global
               | Conditional (XCond ξ) [(Exp a ξ, Stmt a ξ)] (Stmt a ξ) a      -- ^ if-elif-else
+              | DecoratedStm (XDec ξ) String (Stmt a ξ) a 
               | StmtExp (XStmtExp ξ) (Exp a ξ) a
    deriving (Generic)
 
@@ -311,6 +315,10 @@ instance Pretty (Stmt a AfterLexicalAddressing) where
       newline
       mapM_ (\(expr, body) -> out "except " >> pretty expr >> out ":" >> indented (pretty body)) hds
    pretty (StmtExp _ e _) = pretty e
+   pretty (DecoratedStm _ ann stm _) = do
+      out ("@" ++ ann)
+      newline
+      pretty stm
 
 instance Pretty (Exp a AfterLexicalAddressing) where
    pretty (Lam prs stmt _ _)  = do

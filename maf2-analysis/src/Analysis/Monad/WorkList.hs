@@ -66,7 +66,6 @@ iterateWL'' stopEarly f = unlessM (liftA2 (||) stopEarly done) (pop >>= f >> ite
 iterateWLInitial'' :: WorkListM m cmp => cmp -> m Bool -> (cmp -> m a) -> m ()
 iterateWLInitial'' initial stopEarly f = add initial >> iterateWL'' stopEarly f
 
-
 iterateWL :: WorkListM m cmp => (cmp -> m a) -> m ()
 iterateWL = iterateWL'' (return False)
 
