@@ -189,7 +189,7 @@ data Exp a ξ = Lam [Par a ξ] (Stmt a ξ) a (XLam ξ a)           -- ^ a less r
              | Read (Exp a ξ) (Ide a) a                        -- ^ field access e.x
              | Call (Exp a ξ) [Exp a ξ] [(Ide a, Exp a ξ)] a   -- ^ function call
              | Literal (Lit a ξ)                               -- ^ a value literal
-             | LogicOp (LOp a) [Exp a ξ] a           -- ^ a logical operator (and, or, not)
+             | LogicOp (LOp a) [Exp a ξ] a                     -- ^ a logical operator (and, or, not)
    deriving (Generic)                               
 
 deriving instance (Holds Show ξ a) => Show (Exp a ξ)
@@ -199,7 +199,7 @@ deriving instance (Holds Eq   ξ a) => Eq (Exp a ξ)
 instance (Holds NFData ξ a) => NFData (Exp a ξ) where
 
 -- | Function parameters
-data Par a ξ = Prm {parIde :: XIde ξ a, parAnnot :: a }
+data Par a ξ = Prm { parIde :: XIde ξ a, parAnnot :: a }
              | VarArg { parIde :: XIde ξ a, parAnnot :: a }
              | VarKeyword { parIde :: XIde ξ a, parAnnot :: a }
    deriving (Generic)
@@ -365,7 +365,7 @@ instance Pretty (Par a AfterLexicalAddressing) where
 instance Pretty (Lhs a AfterLexicalAddressing) where
    pretty (Field e x _) = pretty e >> out "." >> pretty x
    pretty (ListPat ps _) = out "[" >> sequence_ (intersperse (out ",") (map pretty ps)) >> out "]"
-   pretty (TuplePat ps _) = out "[" >> sequence_ (intersperse (out ",") (map pretty ps)) >> out "]"
+   pretty (TuplePat ps _) = out "(" >> sequence_ (intersperse (out ",") (map pretty ps)) >> out ")"
    pretty (IdePat x) = pretty x
 
 instance (Pretty (Stmt a ξ)) => Pretty (Program a ξ) where
