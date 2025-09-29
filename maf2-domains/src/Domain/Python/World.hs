@@ -31,6 +31,8 @@ data PyType = NoneType
             | FrameType 
             | DatabaseType 
             | DataFrameType
+            | DataFrameGroupByType
+            | DataFrameGroupByIteratorType
             | SeriesType  
   deriving (Eq, Ord, Enum, Bounded, Show, Generic) 
 
@@ -57,6 +59,8 @@ name ExceptionType    = "Exception"
 name StopIterationExceptionType = "StopIteration"
 name DatabaseType     = "Database"
 name DataFrameType    = "DataFrame"
+name DataFrameGroupByType = "DataFrameGroupBy"
+name DataFrameGroupByIteratorType = "DataFrameGroupByIteratorType"
 name SeriesType       = "Series"
 
 -- | The methods of a built-in Python type 
@@ -114,12 +118,15 @@ methods DataFrameType     = [(GetItemAttr, DataFrameGetItem),
                              (AppendAttr, DataFrameAppend),
                              (FromSeriesAttr, DataFrameFromSeries),
                              (MapAttr, DataFrameMap),
+                             (GroupByAttr, DataFrameGroupBy),
                              (ApplyAverageAttr, DataFrameApplyAverage),
                              (ApplyStatsPerMovement, DataFrameApplyStatsPerMovement),
                              (RemoveOutliersAttr, DataFrameRemoveOutliers),
                              (CalcIncDiffAttr, DataFrameCalcIncDiff)]
 methods SeriesType        = [(AsTypeAttr, SeriesAsType),
                              (MergeAttr,  SeriesMerge)]
+methods DataFrameGroupByType = [(IterAttr, DataFrameGroupByIter)]
+methods DataFrameGroupByIteratorType = [(NextAttr, DataFrameGroupByIteratorNext)]
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
@@ -181,14 +188,19 @@ data PyPrim     =
                 | DataFrameSetItem 
                 | DataFrameAppend 
                 | DataFrameMap
-                | DataFrameFromSeries
-                | DataFrameApplyAverage
+                | DataFrameFromSeries 
+                | DataFrameApplyAverage   -- TODO: replace these with annotated methods
                 | DataFrameApplyStatsPerMovement
                 | DataFrameRemoveOutliers
                 | DataFrameCalcIncDiff
-                | DataFrameWindowedPrim1
+                | DataFrameGroupBy
+                | DataFrameWindowedPrim1  -- TODO: move to XPrims 
                 | DataFrameWindowedPrim2
                 | DataFrameWindowedPrim3
+                -- dataframeGroupby
+                | DataFrameGroupByIter
+                -- dataframeGroupbyIterator
+                | DataFrameGroupByIteratorNext
                 -- series primitives
                 | SeriesAsType 
                 | SeriesMerge
@@ -252,6 +264,7 @@ data PyAttr = ClassAttr
             | MergeAttr
             | FromSeriesAttr
             | MapAttr 
+            | GroupByAttr
             | ApplyAverageAttr      -- TODO/alternatively: we can also analyze the definition of these directly ...
             | ApplyStatsPerMovement
             | RemoveOutliersAttr
@@ -301,6 +314,7 @@ attrStr KeysAttr      = "keys"
 attrStr AppendAttr    = "append"
 attrStr MergeAttr     = "merge"
 attrStr MapAttr       = "map"
+attrStr GroupByAttr   = "groupby"
 attrStr BoolAttr      = "__bool__"
 attrStr FromSeriesAttr        = "from_series"
 attrStr ApplyAverageAttr      = "apply_average"
@@ -346,8 +360,6 @@ data PyPrmKey = IntPrm
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData PyPrmKey where
-
-
 
 genHKeys ''PyPrmKey
 

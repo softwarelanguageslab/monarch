@@ -152,6 +152,11 @@ applyPrim DataFrameWindowedPrim2 = \loc -> \case
 applyPrim DataFrameWindowedPrim3 = \loc -> \case
                                              (df1:df2:df3:_) -> pyDeref2'' @DfrPrm @DfrPrm (\_ _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) df3) df1 df2
                                              _               -> pyError ArityError
+applyPrim DataFrameGroupBy = prim2 $ \loc dfr _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (new' DataFrameGroupByType [] [])) dfr
+applyPrim DataFrameGroupByIter = prim1 $ \loc dfg -> pyDeref' (\_ -> pyStore loc (new' DataFrameGroupByIteratorType [] [])) dfg
+applyPrim DataFrameGroupByIteratorNext = prim1 $ \loc -> pyDeref' $ \_ -> pyStore loc (from @DfrPrm Domain.false)
+                                                                         `mjoin`
+                                                                          pyStore (tagAs NxtExc loc) (new' StopIterationExceptionType [] [])
 -- Series primitives
 applyPrim SeriesAsType  = prim2 $ \_ self _ -> return self
 applyPrim SeriesMerge   = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1
