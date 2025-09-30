@@ -179,6 +179,9 @@
 (struct pid (tid exp) #:transparent)
 (define self (make-parameter #f))
 
+;; Continuation to jump out of the receive loop and terminate the actor
+(define *return-continuation* (make-parameter #f))
+
 (define-syntax (self^ stx)
   (syntax-parse stx
     [(_) #'(self)]))
@@ -191,11 +194,19 @@
                                      (atomic-modify *running-actors* (lambda (actors) (cons (current-thread) actors)))
                                      (with-handlers ([exn:fail? handle-top-level-error]) 
                                        (parameterize ([self (thread-receive)]) 
-                                         (begin body (atomic-counter-decrement *active-actor-count*)))))) (quote-syntax #,stx))))
+                                         (begin
+                                           (call-with-current-continuation (lambda (k)
+                                             (parameterize ((*return-continuation* k))
+                                               body)))
+                                           (atomic-counter-decrement *active-actor-count*)))))) (quote-syntax #,stx))))
 
           ; (atomic-counter-increment *active-actor-count*)
           (thread-send (pid-tid new-pid) new-pid)
           new-pid)])) 
+
+;; Terminates the current actor
+(define (terminate)
+  ((*return-continuation*) #f))
 
 (define-syntax (blame stx)
   (syntax-parse stx

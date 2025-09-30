@@ -72,7 +72,7 @@ instance (
   pyDeref f = unwrapTainted (deref f . addrs)
   pyDeref_ f = unwrapTainted_ (deref f . addrs)
   pyAssignAt k v a = addTaint v >>= \v' -> updateWith (setAttr k v') (setAttrWeak k v') a
-  pyAssign k v = unwrapTainted_ (mjoinMap (pyAssignAt k v) . addrs) --- !!! important
+  pyAssign k v = unwrapTainted_ (mjoinMap (pyAssignAt k v) . addrs) --- important
   pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do v' <- addTaint v
                                                   old <- getPrm s obj
                                                   upd <- f v' old
@@ -95,12 +95,15 @@ instance (
                                 [a] -> withTaint @Taint TopLattice.Top (addTaint a)
                                 _   -> pyError ArityError
   applyXPrim DatabaseRead loc = \case
-                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm Prelude.False)) str
+                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm Prelude.True)) str
                                   _        -> pyError ArityError
-                                  where toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
-                                        toTaint Lattice.Top            = TopLattice.Top
+                                  where 
+                                    toTaint :: CP String -> Taint 
+                                    toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
+                                    toTaint Lattice.Top            = TopLattice.Top
   applyXPrim DatabaseWrite _ = \case
                                   [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\dfr nam -> currentTaint @Taint >>= \t -> addEdges nam t dfr $> constant None) df str
                                   _            -> pyError ArityError
-                                  where addEdges to TopLattice.Top dfr = addEdge Lattice.Top to dfr
-                                        addEdges to (TopLattice.Value s) dfr = mapM_ (\source -> addEdge (Lattice.Constant source) to dfr) (Set.toList s)
+                                where 
+                                      addEdges to TopLattice.Top       dfr = addEdge Lattice.Top to dfr
+                                      addEdges to (TopLattice.Value s) dfr = mapM_ (\source -> addEdge (Lattice.Constant source) to dfr) (Set.toList s)

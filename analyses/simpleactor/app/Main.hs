@@ -19,12 +19,23 @@ import Analysis.SimpleActor.Monad ()
 import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, ActorRes(..))
 import Data.Tuple.Syntax
 import qualified Analysis.SimpleActor.Infer as Infer
+import qualified Analysis.Monad.Profiling as Profiling
 import System.TimeIt
 import qualified RIO.Set as Set
 import System.Exit
-import RIO (stdout)
+import RIO (stdout, IOMode(..))
 import RIO.Directory
-import Debug.Trace (traceShowId)
+import System.ConcurrentHandle
+import Control.Concurrent.ParallelIO.Global
+
+import Syntax.Erlang.Compiler
+import Syntax.Erlang.Overloader
+import Syntax.Erlang.Qualifier
+import Syntax.Erlang.Preluder
+import Analysis.Erlang.BIF
+import Syntax.ErlangToSimpleActor
+import Text.Pretty.Simple (pPrint)
+
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -38,9 +49,16 @@ type Command = IO ()
 
 -- | Command-line options for a single file
 data InputOptions = InputOptions {
+                  -- | The name of the file to analyze
                   filename :: String,
+                  -- | DEPRECATED: whether the Racket to the SimpleActor
+                  -- should be performed before running analysis, requires Racket to be installed.
                   doTranslate :: Bool,
-                  debug :: Bool
+                  -- | Whether debugging is enabled, this simply expands
+                  -- the output of the runPythonTaintAnalysisT
+                  debug :: Bool,
+                  -- | Maximum number of steps in the analysis            
+                  maxSteps :: Maybe Int 
               } deriving (Show, Ord, Eq)
 
 
@@ -51,6 +69,7 @@ inputOptions = InputOptions <$> strOption
                    <> help "Input file"
                   ) <*> flag True False ( long "no-translate" <> help "If present, disables translations" )
                   <*> flag False True ( long "debug" <> help "If present, enable debug output" )
+                  <*> optional (option auto (long "max" <> short 't' <> help "maximum number of analysis steps"))
 
 
 -- | Command-line for options for a list of files in a directory
@@ -64,6 +83,14 @@ multipleInputOptions = MultipleInputOptions <$> strOption (   long "inputDir"
                                                           <> short 'i'
                                                           <> help "The directory containing the input files" )
 
+-- | Command-line options for output of benchmarks
+newtype OutputOptions = OutputOptions { outputFilename :: String } deriving (Show, Ord, Eq)
+
+outputOptions :: Parser OutputOptions
+outputOptions = OutputOptions <$> strOption (    long "outputFile"
+                                              <> short 'o'
+                                              <> help "The output filename" ) 
+
 
 commandParser :: Parser Command
 commandParser =
@@ -71,7 +98,8 @@ commandParser =
     (  command "analyze"       (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
     <> command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
     <> command "eval"          (info (interpret  <$> inputOptions) (progDesc "Run a program"))
-    <> command "precision"     (info (precision  <$> multipleInputOptions) (progDesc "Run the precision benchmarks")))
+    <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
+   <> command "erlang"         (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor")))
 
 
 ------------------------------------------------------------
@@ -115,9 +143,13 @@ loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTem
 ------------------------------
 
 analyzeCmd :: InputOptions -> IO ()
-analyzeCmd (InputOptions { filename, doTranslate  }) = do
+analyzeCmd (InputOptions { filename, doTranslate, maxSteps  }) = do
    ast <- loadFile' doTranslate filename
-   (sequentialResults, mbs) <- analyze ast
+   analyzeAst ast maxSteps
+
+analyzeAst :: Exp -> Maybe Int -> IO ()
+analyzeAst ast maxSteps =  do
+   (AnalysisResult sequentialResults mbs seqProf modProf) <- analyze' maxSteps ast
    let sequentialResMap = fmap cmpRes sequentialResults
    let sequentialCouMap = fmap outCount sequentialResults
    putStrLn "====== Results per actor"
@@ -129,6 +161,9 @@ analyzeCmd (InputOptions { filename, doTranslate  }) = do
    -- putStrLn $ printMap printLoc (const True) res
    putStrLn "====="
    putStrLn $ printMap  show (const True) mbs
+   putStrLn "====="
+   putStrLn $ printMap (show . spanOfCmp) (const True) (Profiling._profile seqProf) 
+   putStrLn $ printMap show (const True) (Profiling._profile modProf) 
    return ()
 
 interpret :: InputOptions -> IO ()
@@ -163,13 +198,31 @@ inferCmd (InputOptions { filename, doTranslate }) = do
 -- Precision benchmarks
 ------------------------------------------------------------
 
-precision :: MultipleInputOptions -> IO ()
-precision MultipleInputOptions { .. } = do
+precision :: MultipleInputOptions -> OutputOptions -> IO ()
+precision MultipleInputOptions { .. } OutputOptions { .. } = do
    files <- ifM (doesDirectoryExist inputDirectory)
                 (filterM doesFileExist . map (inputDirectory ++) =<< getDirectoryContents inputDirectory)
                 (return [inputDirectory])
 
-   mapM_ (`Benchmark.Precision.runPrecision` stdout) files
+   hdl <- openFile outputFilename WriteMode
+   parallel_ (map (`Benchmark.Precision.runPrecision` hdl) files)
+   hClose hdl
+   stopGlobalPool
+
+------------------------------------------------------------
+-- Erlang analysis
+------------------------------------------------------------
+
+erlang :: InputOptions -> IO ()
+erlang InputOptions { .. } = do
+   (modules, deps) <- elixirLibs >>= (`loadFromDir` filename)
+   let modules' = qualifyModules $ preludeModules implicitImports $ overloadModules modules
+   pPrint deps
+   -- pPrint modules'
+   let exp = compileModules modules' deps "test" "main"
+   print exp
+   analyzeAst exp Nothing
+
 
 ------------------------------------------------------------
 -- Main entrypoint

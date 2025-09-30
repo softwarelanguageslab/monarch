@@ -164,7 +164,8 @@ compileStmt (Assign [Subscript e i a1] r a2) = pure $ flip (StmtExp ()) a2 $ Cal
                                                                                   a2
 compileStmt (Assign to expr _)            = Assg () <$> compileLhs to <*> return (compileExp expr)
 compileStmt (AugmentedAssign to op exp a) = compileStmt (Assign [to] (BinaryOp (translateOp op) to exp a) a)
-compileStmt (Decorated decs def _)        = compileStmt def -- TODO: don't ignore the decorator? 
+compileStmt (Decorated (Decorator (nam:_) _ _ : _) def a) = DecoratedStm () (ident_string nam) <$> compileStmt def <*> pure a  -- TODO: don't ignore the decorator? 
+compileStmt (Decorated _ def _)                           = compileStmt def  -- TODO: currently, other forms of decorators are ignored
 compileStmt (AST.Return expr a)           = pure $ Return () (fmap compileExp expr) a
 compileStmt (AST.Raise rexp a)            = pure $ Raise  () (compileRaiseExp rexp) a
 compileStmt (AST.Try bdy hds [] [] a)     = compileTry bdy hds a
@@ -201,14 +202,14 @@ compileSequence es = makeSeq <$> mapM compileStmt es
 
 -- | Compiles a for statement to a loop
 compileFor :: SimplifyM m PyLoc => [Expr PyLoc] -> Expr PyLoc -> Suite PyLoc -> Suite PyLoc -> PyLoc -> m (Stmt PyLoc AfterSimplification)
-compileFor [AST.Var nam _] gen bdy [] a   = do var <- gensym
-                                               let ide = Ide (Ident var a)
-                                               ass1 <- assign ide       (Call (Read (compileExp gen) (Ide (Ident "__iter__" a)) (tagAs ForItr a)) [] [] (tagAs ItrCll a))
-                                               ass2 <- assign (Ide nam) (Call (Read (Var ide)        (Ide (Ident "__next__" a)) (tagAs ForNxt a)) [] [] (tagAs NxtCll a))
-                                               let nxt = Try () ass2 [(Var (Ide (Ident "StopIteration" a)), Break () a)] a
-                                               bdy' <- makeSeq . (nxt:) . (:[]) <$> compileSequence bdy
-                                               let whi = Loop () (Literal (Bool True (tagAs ForBln a))) bdy' a
-                                               return $ makeSeq [ass1, whi]
+compileFor lhs gen bdy [] a = do var <- gensym
+                                 let ide = Ide (Ident var a)
+                                 ass1 <- assign ide (Call (Read (compileExp gen) (Ide (Ident "__iter__" a)) (tagAs ForItr a)) [] [] (tagAs ItrCll a))
+                                 ass2 <- Assg () <$> compileLhs lhs <*> pure (Call (Read (Var ide) (Ide (Ident "__next__" a)) (tagAs ForNxt a)) [] [] (tagAs NxtCll a))
+                                 let nxt = Try () ass2 [(Var (Ide (Ident "StopIteration" a)), Break () a)] a
+                                 bdy' <- makeSeq . (nxt:) . (:[]) <$> compileSequence bdy
+                                 let whi = Loop () (Literal (Bool True (tagAs ForBln a))) bdy' a
+                                 return $ makeSeq [ass1, whi]
 compileFor _ _ _ _ _                      = todo "unsupported for form"
 
 -- | Compile the parameters of a function
@@ -310,9 +311,15 @@ compileClassBdy nam = local (const $ Just nam) . compileSequence
 
 -- | Compiles the left-hand-side of an assignment
 compileLhs :: SimplifyM m PyLoc => [Expr PyLoc] -> m (Lhs PyLoc AfterSimplification)
-compileLhs [AST.Var ident _] = namespacedLhs (Ide ident)
-compileLhs [Dot e x a] = return $ Field (compileExp e) (Ide x) a
-compileLhs ex = error "unsupported expression as LHS in assignment"
+compileLhs []  = error "empty LHS"
+compileLhs [x] = compileLhs' x
+compileLhs es  = compileLhs' (AST.Tuple es (annot $ head es)) -- TODO: use a better location
+
+compileLhs' :: SimplifyM m PyLoc => Expr PyLoc -> m (Lhs PyLoc AfterSimplification)
+compileLhs' (AST.Var ident _) = namespacedLhs (Ide ident)
+compileLhs' (Dot e x a)       = return $ Field (compileExp e) (Ide x) a
+compileLhs' (AST.Tuple es a)  = TuplePat <$> mapM compileLhs' es <*> pure a
+compileLhs' lhs               = error $ "unsupported expression as LHS in assignment: " ++ show lhs
 
 compileBinaryOp :: Op PyLoc -> Expr PyLoc -> Expr PyLoc -> PyLoc -> Exp PyLoc AfterSimplification
 compileBinaryOp op left right a = case opToIde op of
@@ -514,6 +521,7 @@ lexicalStmt (Raise _ exp a)  = Raise () <$> lexicalExp exp <*> pure a
 lexicalStmt (Try _ bdy hds a) = Try () <$> lexicalStmt bdy
                                        <*> mapM (\(exc, hdl) -> (,) <$> lexicalExp exc <*> lexicalStmt hdl) hds
                                        <*> pure a
+lexicalStmt (DecoratedStm _ dec stm a) = DecoratedStm () dec <$> lexicalStmt stm <*> pure a  
 lexicalStmt (Conditional _ cls els a)  =
    Conditional () <$> mapM (bimapM lexicalExp lexicalStmt) cls <*> lexicalStmt els <*> pure a
 lexicalStmt (StmtExp _ e a)  = StmtExp () <$> lexicalExp e <*> pure a

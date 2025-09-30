@@ -31,6 +31,7 @@ import Data.Functor
 import Control.Monad.Cond (ifM)
 import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, trigger, currentCmp, register, DebugIntraAnalysisT)
 import qualified Control.Monad.State as State
+import qualified Debug.Trace as Debug
 
 
 -- | Receive messages of type 'v' in monadic context 'm'

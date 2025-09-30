@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module LatticeSpec(spec) where
 
 import Domain hiding (Bottom)
@@ -100,36 +101,36 @@ boolLattice boolGen = do
    it "∀ a: not(not(a)) == a" $
       forAll boolGen (\a -> Domain.not (Domain.not a) `shouldBe` a)
 
-numDomainTests :: forall n c . (Show n, Eq n, NumberDomain n, TopLattice n, Domain n c, Num c, Show c, AlmostEqLattice n) => Gen (BottomLifted n) -> Gen c ->  Spec
+numDomainTests :: forall n c b . (Show n, Eq n, NumberDomain n b, TopLattice n, Domain n c, Num c, Show c, AlmostEqLattice n) => Gen (BottomLifted n) -> Gen c ->  Spec
 numDomainTests numGen concNum = do
    -- plus is monotone
    it "∀ a,b,c : b ⊑ c → plus(a, b) ⊑ plus(a, c)" $
-      forAll (triples numGen) (\(a, b, c) -> subsumes c b ==> errBot (plus a c) `shouldSubsume` errBot (plus a b))
+      forAll (triples numGen) (\(a, b, c) -> subsumes c b ==> errBot (plus @_ @b a c) `shouldSubsume` errBot (plus @_ @b a b))
    -- plus is sound 
    it "∀ a, b: inject(a + b) ⊑ plus(inject(a), inject(b))" $
-      forAll (pairs concNum) (\(a, b) -> subsumes (errBot $ plus (inject @(BottomLifted n) a) (inject b)) (inject @(BottomLifted n) (a + b)))
+      forAll (pairs concNum) (\(a, b) -> subsumes (errBot $ plus @_ @b (inject @(BottomLifted n) a) (inject b)) (inject @(BottomLifted n) (a + b)))
    -- plus is associative
    it "∀ a, b, c: plus(a, plus(b, c)) == plus(plus(a, b), c)" $
-      forAll (triples numGen) (\(a, b, c) -> errBot (plus a (errBot (plus b c))) ~=~ errBot (plus (errBot (plus a b)) c))
+      forAll (triples numGen) (\(a, b, c) -> errBot (plus @_ @b a (errBot (plus @_ @b b c))) ~=~ errBot (plus @_ @b (errBot (plus @_ @b a b)) c))
 
 
     -- minus is monotone
    it "∀ a,b,c : b ⊑ c → minus(a, b) ⊑ minus(a, c)" $
-      forAll (triples numGen) (\(a, b, c) -> subsumes c b ==> errBot (minus a c) `shouldSubsume` errBot (minus a b))
+      forAll (triples numGen) (\(a, b, c) -> subsumes c b ==> errBot (minus @_ @b a c) `shouldSubsume` errBot (minus @_ @b a b))
    -- minus is sound 
    it "∀ a, b: inject(a - b) ⊑ minus(inject(a), inject(b))" $
-      forAll (pairs concNum) (\(a, b) -> subsumes (errBot $ minus (inject @(BottomLifted n) a) (inject b)) (inject @(BottomLifted n) (a - b)))
+      forAll (pairs concNum) (\(a, b) -> subsumes (errBot $ minus @_ @b (inject @(BottomLifted n) a) (inject b)) (inject @(BottomLifted n) (a - b)))
 
 
     -- times is monotone
    it "∀ a,b,c : b ⊑ c → times(a, b) ⊑ times(a, c)" $
-      forAll (triples numGen) (\(a, b, c) -> subsumes c b ==> errBot (times a c) `shouldSubsume` errBot (times a b))
+      forAll (triples numGen) (\(a, b, c) -> subsumes c b ==> errBot (times @_ @b a c) `shouldSubsume` errBot (times @_ @b a b))
    -- times is sound 
    it "∀ a, b: inject(a * b) ⊑ times(inject(a), inject(b))" $
-      forAll (pairs concNum) (\(a, b) -> subsumes (errBot $ times (inject @(BottomLifted n) a) (inject b)) (inject @(BottomLifted n) (a * b)))
+      forAll (pairs concNum) (\(a, b) -> subsumes (errBot $ times @_ @b (inject @(BottomLifted n) a) (inject b)) (inject @(BottomLifted n) (a * b)))
 
 -- Soundness for sequences
-seqDomainTests :: forall l v n . (Show n, Show v, Show l, SeqDomain l, IntDomain n, Idx l ~ n, PartialOrder v, Vlu l ~ v) => Gen (BottomLifted l) -> Gen v -> Gen n -> Spec 
+seqDomainTests :: forall l v n b s r . (Show n, Show v, Show l, SeqDomain l, IntDomain n b s r, Idx l ~ n, PartialOrder v, Vlu l ~ v) => Gen (BottomLifted l) -> Gen v -> Gen n -> Spec 
 seqDomainTests seqGen valGen numGen = do 
     -- the length of the empty list is 0
     it "0 ⊑ length(empty)" $ 
@@ -197,7 +198,7 @@ spec = do
    -- bool lattice operations
    describe "bool domain for CP Bool" $ boolLattice (arbitrary :: Gen (CP Bool))
    -- number lattice operations
-   describe "number domain for CP Integer" $ numDomainTests (arbitrary :: Gen (BottomLifted (CP Integer))) (arbitrary :: Gen Integer)
-   describe "number domain for CP Double" $ numDomainTests (arbitrary :: Gen (BottomLifted (CP Double))) (arbitrary :: Gen Double)
+   describe "number domain for CP Integer" $ numDomainTests @_ @_ @(CP Bool) (arbitrary :: Gen (BottomLifted (CP Integer))) (arbitrary :: Gen Integer)
+   describe "number domain for CP Double" $ numDomainTests @_ @_ @(CP Bool) (arbitrary :: Gen (BottomLifted (CP Double))) (arbitrary :: Gen Double)
    -- sequence domain operations
-   describe "sequence domain for CPList (CP Integer)" $ seqDomainTests (arbitrary :: Gen (BottomLifted (CPList (CP Integer)))) (arbitrary :: Gen (CP Integer)) (arbitrary :: Gen (CP Integer))
+   describe "sequence domain for CPList (CP Integer)" $ seqDomainTests @_ @_ @_ @(CP Bool) @(CP String) @(CP Double) (arbitrary :: Gen (BottomLifted (CPList (CP Integer)))) (arbitrary :: Gen (CP Integer)) (arbitrary :: Gen (CP Integer))

@@ -35,6 +35,7 @@ library
       Analysis.Context
       Analysis.Counting
       Analysis.Environment
+      Analysis.Erlang.BIF
       Analysis.Erlang.Monad
       Analysis.Erlang.Semantics
       Analysis.IO
@@ -50,34 +51,35 @@ library
       Analysis.Monad.Environment
       Analysis.Monad.Eval
       Analysis.Monad.Fix
+      Analysis.Monad.FunctionCharacteristics
       Analysis.Monad.Graph
       Analysis.Monad.IntraAnalysis
       Analysis.Monad.Join
       Analysis.Monad.JoinMap
       Analysis.Monad.Map
+      Analysis.Monad.Profiling
       Analysis.Monad.Span
       Analysis.Monad.Stack
       Analysis.Monad.Store
       Analysis.Monad.Taint
       Analysis.Monad.Widen
       Analysis.Monad.WorkList
-      Analysis.Monad.FunctionCharacteristics
       Analysis.Python
       Analysis.Python.Common
       Analysis.Python.Escape
-      Analysis.Python.Fixpoint.Core
       Analysis.Python.Fixpoint.Characteristics
+      Analysis.Python.Fixpoint.Core
       Analysis.Python.Fixpoint.Taint
-      Analysis.Python.Monad.Core
-      Analysis.Python.Monad.Class
-      Analysis.Python.Monad.Taint
       Analysis.Python.Monad.Characteristics
+      Analysis.Python.Monad.Class
+      Analysis.Python.Monad.Core
+      Analysis.Python.Monad.Taint
       Analysis.Python.Objects
       Analysis.Python.Primitives
+      Analysis.Python.Semantics.Characteristics
       Analysis.Python.Semantics.Class
       Analysis.Python.Semantics.Core
       Analysis.Python.Semantics.Taint
-      Analysis.Python.Semantics.Characteristics
       Analysis.Scheme
       Analysis.Scheme.Actors.Components
       Analysis.Scheme.Monad
@@ -87,22 +89,23 @@ library
       Analysis.Scheme.Store
       Analysis.Semantics
       Analysis.Store
-      Benchmark.Scheme.Programs
       Benchmark.Python.Programs
+      Benchmark.Scheme.Programs
       Control.Fixpoint.WorkList
       Control.Monad.Cond
       Control.Monad.Layer
       Control.Monad.State.IntPool
       Data.Graph
       Data.Print
+      Debug.Trace.Extra
       Interpreter.Actors
+      Interpreter.Python.Eval
       Interpreter.Scheme
       Interpreter.Scheme.Eval
       Interpreter.Scheme.Monad
       Interpreter.Scheme.Primitives
       Interpreter.Scheme.Semantics
       Interpreter.Scheme.Values
-      Interpreter.Python.Eval
       Test
   other-modules:
       Data.SetExtra
@@ -149,12 +152,12 @@ library
     , maf2-syntax
     , mtl ==2.3.*
     , optparse-applicative
+    , process
     , singletons
     , singletons-th
     , transformers
     , unordered-containers
     , vector
-    , process
   default-language: Haskell2010
 
 executable maf-exe
@@ -164,8 +167,8 @@ executable maf-exe
       Run.Actor
       Run.Erlang
       Run.Interpreter
-      Run.PythonInterpreter
       Run.Python
+      Run.PythonInterpreter
       Run.Scheme
       Run.SchemeCounting
       Paths_maf2_analysis
@@ -212,12 +215,12 @@ executable maf-exe
     , mtl ==2.3.*
     , optparse-applicative
     , pretty-simple
+    , process
     , singletons
     , singletons-th
     , transformers
     , unordered-containers
     , vector
-    , process
   default-language: Haskell2010
 
 test-suite maf2-analysis-test
@@ -225,6 +228,7 @@ test-suite maf2-analysis-test
   main-is: Spec.hs
   other-modules:
       MailboxSpec
+      PythonSmokeSpec
       SchemeSmokeSpec
       SoundnessSpec
       Paths_maf2_analysis
@@ -270,6 +274,7 @@ test-suite maf2-analysis-test
     , maf2-syntax
     , mtl ==2.3.*
     , optparse-applicative
+    , process
     , singletons
     , singletons-th
     , transformers

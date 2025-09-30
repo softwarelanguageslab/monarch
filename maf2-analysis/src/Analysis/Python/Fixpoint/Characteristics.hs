@@ -41,6 +41,7 @@ import Data.Foldable (traverse_)
 import Control.Monad.Escape (MayEscapeT)
 import Analysis.Python.Monad.Characteristics
 import Analysis.Monad.FunctionCharacteristics (runWithCharacteristics, CharacteristicsM, CharacteristicsMap)
+import Debug.Trace
 
 ---
 --- Python analysis fixpoint algorithm
@@ -87,24 +88,24 @@ intra :: forall obj m . (AnalysisM m obj) => PyCmp -> m ()
 intra cmp = m
               & runIntraAnalysis cmp
     where m = do s <- fromJust <$> Analysis.Monad.get (PyCmpStoreIn cmp)
-                 r <- cache cmp (\bdy -> evalBdy bdy
+                 r <- cache' cmp (\bdy -> evalBdy bdy
                                             & runPythonCharacteristicsAnalysisT
                                             & runCallT (uncurry callFix))
                         & runAlloc allocPtr
                         & runStoreT s
                         & runJoinT
                  case r of
-                    BL.Value (_, s') -> Analysis.Monad.put (PyCmpStoreOut cmp) s'
+                    BL.Value (_, s') -> Analysis.Monad.joinWith (PyCmpStoreOut cmp) s'
                     _                -> return ()
           callFix :: PyLoc -> PyBdy -> IntraT' obj m PyRef
           callFix _ bdy = do cmp' <- key bdy
                              spawn cmp'
                              changed <- Analysis.Monad.joinWith' (PyCmpStoreIn cmp') =<< currentStore
+                             rv <- cached cmp'
+                             rs <- Analysis.Monad.get (PyCmpStoreOut cmp')
                              if changed
                              then MJoin.mbottom
-                             else do rv <- cached cmp'
-                                     rs <- Analysis.Monad.get (PyCmpStoreOut cmp')
-                                     v <- maybe MJoin.mbottom return rv
+                             else do v <- maybe MJoin.mbottom return rv
                                      s <- maybe MJoin.mbottom return rs
                                      putStore s
                                      return v

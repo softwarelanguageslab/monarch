@@ -20,7 +20,7 @@ import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
 import Control.Monad.Escape ( orElse )
-import Domain ( BoolDomain, BoolDomain(..) )
+import Domain ( BoolDomain, BoolLattice(..) )
 import Domain.Python.Objects
 import qualified Domain.Python.Objects as PyObj
 import Domain.Python.World
@@ -34,7 +34,7 @@ import Data.Bifunctor
 import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad hiding (has)
 import Data.Map (Map)
-import Lattice ( join, eql, CP )
+import Lattice ( join, eql )
 
 --
 -- Python constants 
@@ -125,7 +125,7 @@ isInstanceOf = pyDeref2' (\obj cls -> getAttr (attrStr ClassAttr) obj >>= pyDere
 inMRO :: PyM pyM obj vlu => obj -> obj -> pyM vlu
 inMRO cls = getAttr (attrStr MROAttr) >=> pyDeref' (PyObj.get @TupPrm >=> anyCPList (pyDeref' $ clsEq cls))
 
--- TODO: this assumes that class name equality implies class equality! (not necessarily true in Python...)
+-- TODO: this assumes that class name equality implies class equality (not necessarily true in Python...)
 clsEq :: forall pyM obj vlu . PyM pyM obj vlu => obj -> obj -> pyM vlu
 clsEq cls1 cls2 = getClassName cls1
                       $ \nam1 -> getClassName cls2

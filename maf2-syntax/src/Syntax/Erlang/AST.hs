@@ -7,12 +7,18 @@ module Syntax.Erlang.AST where
 -- cases it did not. There also does not seem to be a standardized format
 -- for this field. Hence, we choice not to use it for identification purposes.
 import Syntax.Span (Span, SpanOf(..))
+import Syntax.Ide
+import Data.Set (Set)
+import Data.Map (Map)
+import qualified Data.Set as Set
+import qualified Data.Map as Map
+import Data.Maybe
 
 ------------------------------------------------------------
 -- Aliases for clarity
 ------------------------------------------------------------
 
--- | A name of a module
+-- | A name of a module
 type ModuleName = Identifier
 
 -- | The body of a function
@@ -23,21 +29,20 @@ type Body = [Expr]
 ------------------------------------------------------------
 
 -- | A module is a series of declarations and attributes
-newtype Module = Module [Declaration] 
+newtype Module = Module { moduleDeclarations :: [Declaration] }
                deriving (Eq, Ord, Show)
 
 -- | An identifier (e.g., variable, module name, ...)
-data Identifier = Identifier String Span 
-               deriving (Eq, Ord, Show)
-
-instance SpanOf Identifier where
-  spanOf (Identifier _ s) = s
-
+type Identifier = Ide
 
 -- | A function identifier is like an identifier
 -- but also keeps track of the arity of the function
-data FunctionIdentifier = FunctionIdentifier String Integer Span 
+data FunctionIdentifier = FunctionIdentifier String Integer Span
                         deriving (Eq, Ord, Show)
+
+data QualifiedIdentifier = QualifiedIdentifier { qualifiedName :: ModuleName, qualifiedIdent :: Identifier }
+                         deriving (Eq, Ord, Show)
+
 
 instance SpanOf FunctionIdentifier where
   spanOf (FunctionIdentifier _ _ s) = s
@@ -49,7 +54,7 @@ data Declaration = Import ModuleName [FunctionIdentifier] Span  -- ^ -import(...
                  | Function FunctionIdentifier [Clause] Span    -- ^ function definition
                  | ModuleDecl Identifier Span     -- ^ -module(...)
                  | File String Integer Span       -- ^ -file(FILE, LINE)
-                 | Record Identifier Field Span   -- ^ -record(Identifier, {Field ...})
+                 | Record Identifier [Field] Span   -- ^ -record(Identifier, {Field ...})
                  | Wild  String Span              -- ^ a 'wild' attribute, not parsed further
                  deriving (Eq, Ord, Show)
 
@@ -69,10 +74,10 @@ data Field = Field Identifier (Maybe Expr) Span
            deriving (Eq, Ord, Show)
 
 -- | Atomic literals
-data Literal = AtomLit  String  Span   
+data Literal = AtomLit  String  Span
              | CharLit  Char    Span
              | FloatLit Float   Span
-             | IntLit   Integer Span 
+             | IntLit   Integer Span
              | StrLit   String  Span
              | NilLit   Span
              deriving (Eq, Ord, Show)
@@ -97,18 +102,21 @@ data Pattern = AtomicPat Literal
 --
 --  If the compiler (from 'Syntax.Erlang.Compiler') encouters
 --  these unsupported expressions anyway, an error is reported.
-data Expr = Atomic Literal 
+data Expr = Atomic Literal
           | Block [Expr] Span
           | Case  Expr [Clause] Span
           | Catch Expr Span
           | Call  Expr [Expr] Span
           | If [Clause] Span
-          | Match Pattern Expr Bool Span 
-          | Receive [Clause] (Maybe (Expr, Body)) Span 
+          | Match Pattern Expr Bool Span                -- ^  Pattern = Expr
+          | Receive [Clause] (Maybe (Expr, Body)) Span  -- ^ receive { clause* } after expr
           | Tuple [Expr] Span
           | Cons Expr Expr Span
-          | Var Identifier
-          | ModVar ModuleName Identifier
+          | MapLiteral [(Identifier, Expr)] Span        -- ^ #{ (field = expr)* }
+          | MapUpdate Expr [(Identifier, Expr)] Span    -- ^ expr# { (field = expr)* }
+          | Var Identifier (Maybe Int)
+          | ModVar ModuleName Identifier (Maybe Int)
+          | Let [(Identifier, Expr)] Body Span          -- does not exists in EAF, added for translation reasons
           deriving (Eq, Ord, Show)
 
 instance SpanOf Expr where
@@ -122,15 +130,58 @@ instance SpanOf Expr where
   spanOf (Receive _ _ s) = s
   spanOf (Tuple _ s) = s
   spanOf (Cons _ _ s) = s
-  spanOf (Var i) = spanOf i
-  spanOf (ModVar _ i) = spanOf i
+  spanOf (MapLiteral _ s) = s
+  spanOf (MapUpdate _ _ s) = s
+  spanOf (Var i _) = spanOf i
+  spanOf (ModVar _ i _) = spanOf i
+  spanOf (Let _ _ s) = s
 
 
 -- | A clause in a pattern match expression
-data Clause = SimpleClause Pattern [Body] Body 
+data Clause = SimpleClause [Pattern] -- ^ the pattern of the function head
+                           [Body]    -- ^ possible side conditions
+                           Body      -- ^ the body of the function when the head matches and the side-conditions pass
             deriving (Eq, Ord, Show)
 
 -- | Alias for the contents of a function declaration
 data Function = Fn FunctionIdentifier [Clause] Span
              deriving (Ord, Eq, Show)
+
+
+-- | An Erlang module alongside some information found in its declarations
+data ModuleInfo = ModuleInfo {
+                      exports :: [FunctionIdentifier],
+                      imports :: [QualifiedIdentifier],
+                      unqualifiedImports :: [(ModuleName, FunctionIdentifier)],
+                      erlangModule :: Module,
+                      moduleName :: String
+                 }
+                deriving (Ord, Eq, Show)
+
+-- | List of loaded Erlang modules
+newtype Modules = Modules { allModules :: Map String ModuleInfo }
+                deriving (Ord, Eq, Show)
+
+-- | A dependency graph of loaded Erlang modules
+newtype ModuleDependencies = ModuleDependencies { moduleDependencies :: Map String (Set String) }
+                          deriving (Ord, Eq, Show)
+
+-- | Creates an empty dependency graph
+emptyDependencyGraph :: ModuleDependencies
+emptyDependencyGraph = ModuleDependencies Map.empty
+
+-- | Register a potential dependency in the graph
+registerDependency :: String -> ModuleDependencies -> ModuleDependencies
+registerDependency from = ModuleDependencies . Map.insertWith Set.union from Set.empty . moduleDependencies
+
+-- | Add a dependency to the dependency graph from the first argument to the second
+addDependency :: String -> String -> ModuleDependencies -> ModuleDependencies
+addDependency from to = ModuleDependencies . Map.insertWith Set.union from (Set.singleton to) . moduleDependencies
+
+-- | Returns a list of identifiers declared at the top-level
+topLevelIdentifiers :: Module -> [FunctionIdentifier]
+topLevelIdentifiers = mapMaybe visitDecl . moduleDeclarations
+  where visitDecl :: Declaration -> Maybe FunctionIdentifier
+        visitDecl (Function ident _ _) = Just ident
+        visitDecl _ = Nothing
 

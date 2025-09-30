@@ -34,5 +34,4 @@ class Joinable d => DictionaryDomain d where
    contains :: AbstractM m => BoolDomain b => DKey d -> d -> m b
    contains k d = (lookup k d >> return true) `orElse` return false 
 
-
    {-# MINIMAL empty, lookup, isEmpty, (update | updateWeak) #-}

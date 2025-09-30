@@ -91,5 +91,13 @@ pyDeref2'' f = pyDeref2' $ \o1 o2 -> do v1 <- get @k1 o1
 pyDeref3' :: forall m obj vlu . PyM m obj vlu => (obj -> obj -> obj -> m vlu) -> vlu -> vlu -> vlu -> m vlu
 pyDeref3' f a1 a2 a3 = pyDeref2' (\o1 o2 -> pyDeref' (f o1 o2) a3) a1 a2
 
+pyDerefN :: PyM m obj vlu => ([(ObjAdr, obj)] -> m vlu) -> [vlu] -> m vlu
+pyDerefN f []         = f []
+pyDerefN f (ref:refs) = pyDeref (\adr obj -> pyDerefN (f . ((adr,obj):)) refs) ref
+
+pyDerefN' :: forall k m obj vlu . (SingI k, PyM m obj vlu) => ([Abs obj k] -> m vlu) -> [vlu] -> m vlu
+pyDerefN' f []          = f []
+pyDerefN' f (ref:refs)  = pyDeref'' @k (\obj -> pyDerefN' @k (f . (obj:)) refs) ref
+
 pyStore :: PyM m obj vlu => PyLoc -> obj -> m vlu
 pyStore loc = fmap injectAdr . pyAlloc loc

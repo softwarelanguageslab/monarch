@@ -1,0 +1,3 @@
+This directory contains the benchmarks from Stiévenart et al. (2017) adapted to the contract language from Vandenbogaerde et al. (2024).
+The programs cannot be executed directly but must be first translated to the SimpleActor language for which the Monarch framework provides and interpreter.
+

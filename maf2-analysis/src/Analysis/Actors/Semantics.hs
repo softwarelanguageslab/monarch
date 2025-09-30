@@ -16,7 +16,7 @@ import qualified Analysis.Monad as Monad
 import Control.Monad.Join
 import Lattice.Class (Lattice, bottom)
 import Domain.Scheme.Actors.Message
-import Domain (BoolDomain(isTrue))
+import Domain (BoolLattice(isTrue))
 
  -- eval :: ActorEvalM m v msg mb => Exp -> m v
  -- eval (Spw beh args _) = initBehavior beh args spawn

@@ -9,10 +9,10 @@ MONARCH_DIR=$(dirname "$MONARCH_DIR")/..
 if [ -z $1 ] ; then
   echo "Please provide the Haskell package to build as a path relative to the project directory"
   echo "Usage: "
-  echo "$0 PACKAGE"`
+  echo "$0 PACKAGE"
   cat << EOF
 This scripts builds the given package inside a Docker container. Please use the provided Dockerfile to build a Docker image for the analysis package.
-  EOF
+EOF
   exit 1
 fi
 

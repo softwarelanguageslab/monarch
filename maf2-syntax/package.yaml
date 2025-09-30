@@ -22,6 +22,7 @@ dependencies:
 - base >= 4.17 && < 5
 - language-python
 - mtl >= 2.3 && <2.4
+- transformers
 - containers
 - parsec >= 3.1
 - data-default
@@ -29,6 +30,9 @@ dependencies:
 - template-haskell
 - process
 - deepseq
+- lens
+- directory
+- filepath
 
 ghc-options:
 - -Wall
@@ -60,6 +64,9 @@ library:
     - Syntax.Erlang.AST
     - Syntax.Erlang.Parser
     - Syntax.Erlang.Compiler
+    - Syntax.Erlang.Overloader
+    - Syntax.Erlang.Qualifier
+    - Syntax.Erlang.Preluder
 
 default-extensions:
   - StandaloneDeriving

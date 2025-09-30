@@ -36,6 +36,8 @@ import Text.Printf (printf)
 import Control.DeepSeq
 import Lattice.Trace (Trace (..))
 import Domain.Address (AddressWithCtx (..))
+import Domain.Scheme.Modular (SchemeString (..))
+import Domain.Scheme.Derived.Top (SchemeTopLifted)
 
 ------------------------------------------------------------
 -- Declaration
@@ -84,23 +86,21 @@ instance (Trace adr l, Trace adr r) => Trace adr (SchemePairedValue l r) where
 -- NumberDomain instance
 ------------------------------------------------------------
 
-type instance BoolFor (SchemePairedValue l r) = SchemePairedValue (BoolFor l) (BoolFor r)
-
-instance (NumberDomain l, NumberDomain r) => NumberDomain (SchemePairedValue l r) where
+instance (NumberDomain l bl, NumberDomain r br, BoolDomain bl, BoolDomain br) => NumberLattice (SchemePairedValue l r) (SchemePairedValue bl br) where
    isZero (SchemePairedValue (l, r)) =
       pairedValue <$> isZero l <*> isZero r
    random (SchemePairedValue (l, r)) =
-      pairedValue <$> random l <*> random r
+      pairedValue <$> (random @_ @bl) l <*> (random @_ @br) r
    plus  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      pairedValue <$> plus l1 l2 <*> plus r1 r2
+      pairedValue <$> (plus @_ @bl) l1 l2 <*> (plus @_ @br) r1 r2
    minus  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      pairedValue <$> minus l1 l2 <*> minus r1 r2
+      pairedValue <$> (minus @_ @bl) l1 l2 <*> (minus @_ @br) r1 r2
    times  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      pairedValue <$> times l1 l2 <*> times r1 r2
+      pairedValue <$> (times @_ @bl) l1 l2 <*> (times @_ @br) r1 r2
    div  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      pairedValue <$> div l1 l2 <*> div r1 r2
+      pairedValue <$> (div @_ @bl) l1 l2 <*> (div @_ @br) r1 r2
    expt  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      pairedValue <$> expt l1 l2 <*> expt r1 r2
+      pairedValue <$> (expt @_ @bl) l1 l2 <*> (expt @_ @br) r1 r2
    lt  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       pairedValue <$> lt l1 l2 <*> lt r1 r2
    eq  (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
@@ -109,23 +109,42 @@ instance (NumberDomain l, NumberDomain r) => NumberDomain (SchemePairedValue l r
 ------------------------------------------------------------
 -- IntegerDomain instance
 ------------------------------------------------------------
+type instance StrDom (SchemePairedValue l r) = (StrDom l)
 
 instance (Domain l Integer, Domain r Integer) => Domain (SchemePairedValue l r) Integer where
    inject i = pairedValue (inject i) (inject i)
 
-instance (IntDomain l, IntDomain r, Joinable (Str r)) => IntDomain (SchemePairedValue l r) where
-   type Str (SchemePairedValue l r) = SchemePairedValue (Str l) (Str r)
-   type Rea (SchemePairedValue l r) = SchemePairedValue (Rea l) (Rea r)
+instance (IntDomain l bl s rl, IntDomain r br s rr, Joinable s, StrDom l ~ s, StrDom r ~ s, BoolDomain bl, BoolDomain br) => 
+   IntLattice (SchemePairedValue l r) {- bln -} (SchemePairedValue bl br) {- str -} s {- rea -} (SchemePairedValue rl rr) where
    toReal (SchemePairedValue (l, r)) =
-      pairedValue <$> toReal l <*> toReal r
+      pairedValue <$> (toReal @_ @bl @s) l <*> (toReal @_ @br @s) r
    toString (SchemePairedValue (l, r)) =
-      curry SchemePairedValue <$> toString l <*> toString r
+      liftA2 join ((toString @_ @bl @_ @rl) l) ((toString @_ @br @_ @rr) r)
    quotient (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      pairedValue <$> quotient l1 l2 <*> quotient r1 r2
+      pairedValue <$> (quotient @_ @bl @s @rl) l1 l2 <*> (quotient @_ @br @s @rr) r1 r2
    modulo (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      pairedValue <$> modulo l1 l2 <*> modulo r1 r2
+      pairedValue <$> (modulo @_ @bl @s @rl) l1 l2 <*> (modulo @_ @br @s @rr) r1 r2
    remainder (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      pairedValue <$> remainder l1 l2 <*> remainder r1 r2
+      pairedValue <$> (remainder @_ @bl @s @rl) l1 l2 <*> (remainder @_ @br @s @rr) r1 r2
+
+------------------------------------------------------------
+-- String Domain
+------------------------------------------------------------
+
+-- Left biased instance for the StringDomain
+instance {-# OVERLAPPABLE #-} (StringLattice s l l l, BottomLattice r, Joinable r, Show r, Eq r) => StringLattice (SchemeString s)
+                                        {- bln -} (SchemePairedValue l r)
+                                        {- int -} (SchemePairedValue l r)
+                                        {- chr -} (SchemePairedValue l r)  where
+   length          = fmap mkLeft . Domain.Core.length @_ @l @l @l . sconst
+   append s1 s2    = SchemeString <$> append @_ @l @l @l (sconst s1) (sconst s2)
+   ref s i         = mkLeft <$> ref @_ @l @l @l (sconst s) (leftValue i)
+   stringLt s1 s2  = mkLeft <$> stringLt @_ @l @l @l (sconst s1) (sconst s2)
+   toNumber        = fmap mkLeft . toNumber @_ @l @l @l . sconst
+   set s i c       = SchemeString <$> set @_ @l @l @l (sconst s) (leftValue i) (leftValue c)
+   makeString i    = fmap SchemeString .  makeString @_ @l @l @l (leftValue i) . leftValue
+   topString       = SchemeString $ topString @_ @l @l @l
+
 
 ------------------------------------------------------------
 -- RealDomain instance
@@ -134,20 +153,20 @@ instance (IntDomain l, IntDomain r, Joinable (Str r)) => IntDomain (SchemePaired
 instance (Domain l Double, Domain r Double) => Domain (SchemePairedValue l r) Double where
    inject n = pairedValue (inject n) (inject n)
 
-instance (RealDomain l, RealDomain r) => RealDomain (SchemePairedValue l r) where
-   type IntR (SchemePairedValue l r) = SchemePairedValue (IntR l) (IntR r)
-   toInt (SchemePairedValue (l,r)) = pairedValue <$> toInt l <*> toInt r
-   ceiling (SchemePairedValue (l,r)) = pairedValue <$> ceiling l <*> ceiling r
-   floor (SchemePairedValue (l,r)) = pairedValue <$> floor l <*> floor r
-   round (SchemePairedValue (l,r)) = pairedValue <$> round l <*> round r
-   log (SchemePairedValue (l,r))  = pairedValue <$> log l <*> log r
-   sin (SchemePairedValue (l,r))  = pairedValue <$> sin l <*> sin r
-   asin (SchemePairedValue (l,r)) = pairedValue <$> asin l <*> asin r
-   cos (SchemePairedValue (l,r))  = pairedValue <$> cos l <*> cos r
-   acos (SchemePairedValue (l,r)) = pairedValue <$> acos l <*> acos r
-   tan (SchemePairedValue (l,r))  = pairedValue <$> tan l <*> tan r
-   atan (SchemePairedValue (l,r)) = pairedValue <$> floor l <*> floor r
-   sqrt (SchemePairedValue (l,r)) = pairedValue <$> sqrt l <*> sqrt r
+instance (RealDomain l bl il, RealDomain r br ir, BoolDomain bl, BoolDomain br) => 
+   RealLattice (SchemePairedValue l r) (SchemePairedValue bl br) (SchemePairedValue il ir) where
+   toInt (SchemePairedValue (l,r)) = pairedValue <$> (toInt @_ @bl) l <*> (toInt @_ @br) r
+   ceiling (SchemePairedValue (l,r)) = pairedValue <$> (ceiling @_ @bl @il) l <*> (ceiling @_ @br @ir) r
+   floor (SchemePairedValue (l,r)) = pairedValue <$> (floor @_ @bl @il) l <*> (floor @_ @br @ir) r
+   round (SchemePairedValue (l,r)) = pairedValue <$> (round @_ @bl @il) l <*> (round @_ @br @ir) r
+   log (SchemePairedValue (l,r))  = pairedValue <$> (log @_ @bl @il) l <*> (log @_ @br @ir) r
+   sin (SchemePairedValue (l,r))  = pairedValue <$> (sin @_ @bl @il) l <*> (sin @_ @br @ir) r
+   asin (SchemePairedValue (l,r)) = pairedValue <$> (asin @_ @bl @il) l <*> (asin @_ @br @ir) r
+   cos (SchemePairedValue (l,r))  = pairedValue <$> (cos @_ @bl @il) l <*> (cos @_ @br @ir) r
+   acos (SchemePairedValue (l,r)) = pairedValue <$> (acos @_ @bl @il) l <*> (acos @_ @br @ir) r
+   tan (SchemePairedValue (l,r))  = pairedValue <$> (tan @_ @bl @il) l <*> (tan @_ @br @ir) r
+   atan (SchemePairedValue (l,r)) = pairedValue <$> (floor @_ @bl @il) l <*> (floor @_ @br @ir) r
+   sqrt (SchemePairedValue (l,r)) = pairedValue <$> (sqrt @_ @bl @il) l <*> (sqrt @_ @br @ir) r
 
 ------------------------------------------------------------
 -- BoolDomain instance
@@ -156,7 +175,7 @@ instance (RealDomain l, RealDomain r) => RealDomain (SchemePairedValue l r) wher
 instance (Domain l Bool, Domain r Bool) => Domain (SchemePairedValue l r) Bool where
    inject b = pairedValue (inject b) (inject b)
 
-instance (BoolDomain l, BoolDomain r) => BoolDomain (SchemePairedValue l r) where
+instance (BoolDomain l, BoolDomain r) => BoolLattice (SchemePairedValue l r) where
    isTrue (SchemePairedValue (l, r))  = isTrue l || isTrue r
    isFalse (SchemePairedValue (l, r)) = isFalse l || isFalse r
    not (SchemePairedValue (l, r))     = pairedValue (not l) (not r)
@@ -164,7 +183,6 @@ instance (BoolDomain l, BoolDomain r) => BoolDomain (SchemePairedValue l r) wher
       pairedValue (or l1 l2) (or r1 r2)
    and (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
       pairedValue (and l1 l2) (and r1 r2)
-   boolTop                            = pairedValue boolTop boolTop
 
 ------------------------------------------------------------
 -- CharDomain instance
@@ -174,21 +192,20 @@ instance (Domain l Char, Domain r Char) => Domain (SchemePairedValue l r) Char w
    inject c = pairedValue (inject c) (inject c)
 
 
-instance (CharDomain l, CharDomain r) => CharDomain (SchemePairedValue l r) where
-   type IntC (SchemePairedValue l r)    = SchemePairedValue (IntC l) (IntC r)
-   downcase (SchemePairedValue (l, r))  = pairedValue <$> downcase l <*> downcase r
-   upcase (SchemePairedValue (l, r))    = pairedValue <$> upcase l <*> upcase r
+instance (CharLattice l il, CharLattice r ir) => CharLattice (SchemePairedValue l r) (SchemePairedValue il ir) where
+   downcase (SchemePairedValue (l, r))  = pairedValue <$> (downcase @_ @il) l <*> (downcase @_ @ir) r
+   upcase (SchemePairedValue (l, r))    = pairedValue <$> (upcase @_ @il) l <*> (upcase @_ @ir) r
    charToInt (SchemePairedValue (l, r)) = pairedValue <$> charToInt l <*> charToInt r
-   isLower (SchemePairedValue (l, r))   = join <$> isLower l <*> isLower r
-   isUpper (SchemePairedValue (l, r))   = join <$> isUpper l <*> isUpper r
+   isLower (SchemePairedValue (l, r))   = join <$> (isLower @_ @il) l <*> (isLower @_ @ir) r
+   isUpper (SchemePairedValue (l, r))   = join <$> (isUpper @_ @il) l <*> (isUpper @_ @ir) r
    charEq (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      join <$> charEq l1 l2 <*> charEq  r1 r2
+      join <$> (charEq @_ @il) l1 l2 <*> (charEq @_ @ir) r1 r2
    charLt (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      join <$> charLt l1 l2 <*> charLt  r1 r2
+      join <$> (charLt @_ @il) l1 l2 <*> (charLt @_ @ir) r1 r2
    charEqCI (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      join <$> charEqCI l1 l2 <*> charEqCI  r1 r2
+      join <$> (charEqCI @_ @il) l1 l2 <*> (charEqCI @_ @ir) r1 r2
    charLtCI (SchemePairedValue (l1, r1)) (SchemePairedValue (l2, r2)) =
-      join <$> charLtCI l1 l2 <*> charLtCI  r1 r2
+      join <$> (charLtCI @_ @il) l1 l2 <*> (charLtCI @_ @ir) r1 r2
 
 
 ------------------------------------------------------------
@@ -209,18 +226,18 @@ instance (-- both subdomains should talk about the same environment
           -- both subdomains should be scheme domains
           SchemeDomain l,
           SchemeDomain r,
-          Joinable (Str r),
+          Joinable (StrDom r),
           -- both subdomains should use the same pointers,
           -- consequently if `SchemeValue` is used 
           -- they will both point to the combined
           -- value and not their seperate values,
           -- making integration easier.
           Adr l  ~ Adr r,
+          StrDom l ~ StrDom r,
+          StrDom l ~ StrDom (SchemePairedValue l r),
           -- set-specific constraints
           Ord (Exp l),
-          Ord (Env l),
-          BottomLattice (BoolFor l),
-          BottomLattice (BoolFor r)
+          Ord (Env l)
    ) => SchemeDomain (SchemePairedValue l r) where
 
    type Adr (SchemePairedValue l r)  = Adr l

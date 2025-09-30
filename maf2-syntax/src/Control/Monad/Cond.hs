@@ -1,4 +1,4 @@
-module Control.Monad.Cond (condM, unlessM, whenM, otherwiseM) where
+module Control.Monad.Cond (condM, unlessM, whenM, otherwiseM, ifM) where
 
 import Control.Monad hiding (guard)
 
@@ -20,3 +20,7 @@ whenM mb m = mb >>= (`when` m)
 
 otherwiseM :: Monad m => m Bool 
 otherwiseM = return True
+
+ifM :: (Monad m) => m Bool -> m a -> m a -> m a
+ifM mb mcsq malt = mb >>= (\v -> if v then mcsq else malt)
+

@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM,  stoPai, stoStr, derefPai, derefVec, derefStr, writeVar, updateVar, lookupVar) where
+module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM,  stoPai, stoStr, stoVec, derefPai, derefVec, derefStr, writeVar, updateVar, lookupVar) where
 
 import Data.Functor
 import Syntax.Scheme.AST
@@ -16,6 +16,8 @@ import Analysis.Monad.Fix (MonadFixpoint)
 import Domain.Scheme.Store (StoreVal(..))
 import Data.Set (Set)
 import Lattice.Class
+import qualified Debug.Trace as Debug
+import qualified Data.Set as Set
 
 -- | Store a pair in the store by allocating a suiteable address
 --  storing the value on that address and returning a pointer to
@@ -25,11 +27,15 @@ stoPai ex v = alloc ex >>= (\adr -> writeAdr adr (PaiVal v) $> pptr adr)
 -- | Same as @stoPai@ but for strings
 stoStr :: SchemeDomainM e v m => e -> StrDom v -> m v
 stoStr ex v = alloc ex >>= (\adr -> writeAdr adr (StrVal v) $> sptr adr)
+-- | Same as @stoPai@ but for vectors
+stoVec :: SchemeDomainM e v m => e -> VecDom v -> m v
+stoVec ex v = alloc ex >>= (\adr -> writeAdr adr (VecVal v) $> vptr adr)
+
 
 -- | Dereference a pointer containing a pair value, resulting in an error
 -- if it is not a pair
 derefPai :: (StoreM (Adr v) (StoreVal v) m, SchemeDomainM e v m, Joinable r) => (Adr v -> PaiDom v -> m r) -> Set (Adr v) -> m r
-derefPai = lookups (fmap coerce . lookupAdr)
+derefPai f = lookups (fmap coerce . lookupAdr) f 
    where coerce (PaiVal v) = v
          coerce _  = error "derefPai: expected pair"
 derefVec :: (StoreM (Adr v) (StoreVal v) m, SchemeDomainM e v m, Joinable r) => (Adr v -> VecDom v -> m r) -> Set (Adr v) -> m r

@@ -12,7 +12,7 @@ import Control.Monad.State
 import qualified Data.List as List
 import Syntax.Scheme.Parser
 import Syntax.Span
-import RIO
+import RIO hiding (Handle)
 import qualified RIO.Set as Set
 import qualified RIO.Map as Map
 import System.Directory
@@ -23,8 +23,9 @@ import qualified Analysis.SimpleActor.Fixpoint.Sequential as SeqAnalysis
 import Control.Monad.Escape
 import Analysis.SimpleActor.Monad
 import Data.Monoid
-import System.IO hiding (openFile, readFile)
+import System.ConcurrentHandle hiding (openFile)
 import Control.Monad.Trans.Maybe
+import Control.Concurrent.ParallelIO.Global
 
 -------------------------------------------------------------
 -- Concrete interpreter
@@ -37,9 +38,9 @@ defaultInterpreterTimeout = 30*1000*1000*1000
 type InterpreterM m = (MonadIO m, MonadError String m)
 
 -- | Create a temporary file based on the given filename 
-createTemp :: FilePath -> IO FilePath
-createTemp originalPath = return tempFile
-  where tempFile = originalPath ++ ".out"
+createTemp :: FilePath -> String -> IO FilePath
+createTemp originalPath suffix = return tempFile
+  where tempFile = originalPath ++ ".out" ++ suffix
 
 
 -- | Returns the environment variables required by the interpreter to run
@@ -50,10 +51,11 @@ interpreterEnv path = [("SIMPLEACTOR_OUT", path)]
 
 
 runInterpreter :: InterpreterM m
-               => String   -- ^ the input file to run
+               => String           -- ^ the input file to run
+               -> Int              -- ^ the number of runs already processed
                -> m (Bool, [SExp]) -- ^ list of datums corresponding to the blames and message sends in the program
-runInterpreter filename = do
-    tempFile <- liftIO (createTemp filename)
+runInterpreter filename i = do
+    tempFile <- liftIO (createTemp filename ("." ++ show i))
     devNull <- liftIO (openFile "/dev/null" ReadWriteMode)
     (_, _, _, processHandle) <- liftIO (createProcess ((proc "racket" [filename]) { env = Just (interpreterEnv tempFile), std_out = UseHandle devNull }))
     isTimedOut <- fmap isNothing $ liftIO $ timeout defaultInterpreterTimeout (waitForProcess processHandle) -- TODO: do something with the exit code?
@@ -116,10 +118,10 @@ maxRuns = 3
 
 -- | Run the given program in the concrete a number of times and return a set of results
 runConcrete :: String -> IO [(Bool, Results)]
-runConcrete file = foldMapM (const $  fmap (either error id)  -- handle timeouts by reporting them and using partial results
-                                   $  runExceptT
-                                   $  List.singleton . fmap (convertAnalysisResult file)
-                                  <$> runInterpreter file) [0..maxRuns]
+runConcrete file = fmap fold $  parallel $ map (\i -> fmap (either error id)  -- handle timeouts by reporting them and using partial results
+                                                    $  runExceptT
+                                                    $  List.singleton . fmap (convertAnalysisResult file)
+                                                   <$> runInterpreter file i) [0..maxRuns]
 
 -- | Same as 'runConcrete' but returns the results as a single
 -- set of blame locations.
@@ -148,7 +150,8 @@ analyzeFile :: FilePath -> MaybeT IO Results
 analyzeFile inputFilename = do
     -- parse the file
     program <- liftIO (readFile inputFilename) <&> (either error id . parseFromString' (Just inputFilename))
-    (sequentialResults, _mbs) <- MaybeT $ timeout defaultAnalysisTimeout $ Analysis.analyze program
+    result <- MaybeT $ timeout defaultAnalysisTimeout $ Analysis.analyze program
+    let sequentialResults = Analysis.resultMap result
     liftIO (putStrLn $ "analysis of " ++ inputFilename ++ " completed")
 
     -- process results    

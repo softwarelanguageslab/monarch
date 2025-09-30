@@ -3,6 +3,7 @@ import os
 import optparse
 from pathlib import Path
 import subprocess
+from common import input_output_cmdline_parser, read_inputs
 
 ############################################################
 # Constants
@@ -14,7 +15,7 @@ SCRIPT_PATH = Path(__file__)
 MUTATE_PATH = SCRIPT_PATH.parent.parent / "racket" / "run" / "mutate.rkt"
 
 
-def generate(input_file, output_dir):
+def generate(input_file: Path, output_dir: Path) -> None:
     """
     Generate and output mutations based on the inputs file to the output directory
     """
@@ -26,8 +27,7 @@ def generate(input_file, output_dir):
 ############################################################
 
 if __name__ == "main": 
-    output_dir = args["output"]
-    inputs_file, output_dir = input_output_parser(input_desc = "Path to the file containing input programs on each line")
+    inputs_file, output_dir = input_output_cmdline_parser(input_desc = "Path to the file containing input programs on each line")
 
     ############################################################
     # Reading list of input files

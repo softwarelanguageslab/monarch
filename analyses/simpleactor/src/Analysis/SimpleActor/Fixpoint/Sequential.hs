@@ -15,6 +15,7 @@ import Analysis.Actors.Monad
 import Data.Functor.Identity
 
 import Analysis.Monad hiding (eval, spawn, store)
+import Analysis.Monad.Profiling
 import Analysis.Store
 import qualified Analysis.Store as Store
 import Syntax.AST hiding (Trace)
@@ -52,7 +53,7 @@ import Analysis.Actors.Mailbox.GraphToSet (graphToSet)
 import Control.Monad.Trans.Writer (WriterT(..))
 import Control.Monad.Writer.Class (MonadWriter(tell))
 import Syntax (SpanOf(spanOf))
-import Domain.Address (replaceCtx)
+import Domain.Core.PairDomain.TopLifted
 
 
 ------------------------------------------------------------
@@ -91,7 +92,7 @@ type SequentialT m = MonadStack '[
 
 type SequentialWidenedT m = MonadStack '[
                                    TransparentStoreT ActorSto ActorAdr (StoreVal ActorVlu),
-                                   IntraAnalysisT SequentialCmp,
+                                   DebugIntraAnalysisT SequentialCmp,
                                    SetNonDetT,
                                    RefCountMailboxT,
                                    AbstractCountT ActorRef
@@ -141,7 +142,8 @@ instance (CtxM m K, MonadActorLocal ActorVlu m, Monad m) => CtxM (LocalMailboxT 
       withCtx f m = do
             ctx <- getCtx
             lowerM (withCtx (const (f ctx))) m
-      getCtx = AdrCtx <$> getSelf <*> gets (Mailbox.mapMessages (replaceCtx Empty))
+      getCtx = do (AdrCtx callSites maxCallSites _) <- upperM getCtx
+                  AdrCtx callSites maxCallSites <$> (ActorCtx <$> getSelf <*> State.get)
 
 ------------------------------------------------------------
 -- Mailbox abstractions influenced by the abstract reference count of actor references
@@ -237,6 +239,7 @@ traceCmp (_ ::*:: env ::*:: dyn ::*:: _ ::*:: _ ::*:: mb ::*:: _) = Set.unions [
 gc :: forall m e .
       (MonadCache m,
        MonadBottom m,
+       MonadIO m,
        -- FLow sensitive store
        MapM (In (Key m e) ActorSto) ActorSto m,
        MapM (Out (Key m e) ActorSto) ActorSto m,
@@ -259,6 +262,7 @@ gc next traceKey e = do
   let adrs' = traceStore adrs (Map.map fst $ Store.store sto)
   -- restrict the store to those addresses going forward
   let rsto = restrictSto @ActorSto adrs' sto
+  -- liftIO (putStrLn $ "rsto has size " ++ show (Map.size (countingStoreValues rsto)))
   -- retrieve all reachable actor references
   let refs = foldMap (foldMap arefs' . varVals . snd) (Map.toList $ countingStoreValues rsto)
   -- registering the store 
@@ -266,6 +270,7 @@ gc next traceKey e = do
   -- restrict the counting mapping to only the reachable actor
   -- references.
   cma <- getCounts @ActorRef
+  -- liftIO (putStrLn $ "cma store has size" ++ show (Map.size $ Map.restrictKeys cma refs))
   MapM.joinWith @(In (Key m e) ActorCou) (In cmp) (Map.restrictKeys cma refs)
   -- compute the value and add its contributions to the original store
   v <- next e
@@ -315,6 +320,8 @@ type MonadActorModular m = (
     -- Global store for shared variables
     StoreM ActorAdr (StoreVal ActorVlu) m,
     StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m,
+    -- Profiling
+    MonadProfiling SequentialCmp m,
     -- Other constraints
     MonadBottom m,
     MonadIO m
@@ -361,19 +368,23 @@ spanOfCmp (exp ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
 intra selfRef cmp = do
+          count <- newIORef (0 :: Int)
           -- liftIO (putStrLn $ "analyzing[intra] " ++ show (spanOfCmp cmp))
           inMbs  <- getMailboxes
-          ((), LatticeMonoid outMbs') <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
-                        & runAlloc VarAdr
-                        & runAlloc PtrAdr
+          ((), (LatticeMonoid outMbs')) <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
+                        & runAlloc VarAdr -- TODO: use the actual context
+                        & runAlloc PtrAdr -- problem: current context is infinite
                         & evalWithTransparentStoreT
-                        & runIntraAnalysis cmp
-                        & runSetNonDetTIntercept (restore inMbs) save
+                        & runDebugIntraAnalysis cmp
+                        & runSetNonDetTIntercept (restore count inMbs) save
                         & runRefCountMailboxT inMbs
                         & runWithAbstractCountT
                         & void
                         & runWriterT @(LatticeMonoid (Map (AbstractCount, ActorRef) MB))
 
+          c <- readIORef count
+          -- when True $ do
+            -- liftIO (putStrLn $ "number of branches explored within intra " ++ show c ++ " in component at " ++ show (spanOfCmp cmp))
           mapM_ (uncurry writeMai) (Map.toList outMbs')
       where eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
             save    = do
@@ -384,7 +395,7 @@ intra selfRef cmp = do
             writeMai (cou, ref) = (case cou of
                                     CountOne -> putMailboxes
                                     CountInf -> joinMailboxes) selfRef ref
-            restore = State.put
+            restore count st = liftIO (modifyIORef count (+1)) >> State.put st
 -- | Inter-analysis
 inter :: InterAnalysisM m
       => Exp         -- ^ the actor expression to analyze
@@ -399,7 +410,7 @@ inter exp environment ref mb = iterateWL' initialCmp (intra ref)
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> mb                    -- initial mailboxes
                 <+> ref                   -- current `self`
-                <+> AdrCtx ref mb         -- address context
+                <+> initialContext 5      -- address context
                 -- <+> emptyPC
 
 
@@ -428,8 +439,10 @@ analyze exp env ref = do
             & runWithDependencyTracking @SequentialCmp @(Out SequentialCmp ActorSto)
             & runWithDependencyTracking @SequentialCmp @(In SequentialCmp ActorCou)
             & runWithDependencyTracking @SequentialCmp @(Out SequentialCmp ActorCou)
+            -- & runWithWorklistProfilingT @SequentialCmp
             & runWithWorkList @(LIFOWorklist SequentialCmp)
-            & runIntraAnalysis ref
+            & runDebugIntraAnalysis ref
+            -- & runIntraAnalysis ref
             -- & runStoreT @ActorSto @(SchemeAdr Exp K) @(StoreVal ActorVlu) sto
 
       MapM.put (ActorResOut ref) (extractVal res)

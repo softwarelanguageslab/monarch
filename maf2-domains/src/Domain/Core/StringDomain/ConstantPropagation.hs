@@ -6,7 +6,6 @@ module Domain.Core.StringDomain.ConstantPropagation where
 import Lattice
 import Domain.Core.StringDomain.Class
 import Domain.Core.BoolDomain.ConstantPropagation () -- for (CP Bool instance)
-import Domain.Core.BoolDomain.Class (BoolFor)
 import Control.Monad.AbstractM
 import Control.Monad.DomainError
 import Control.Monad.Join
@@ -19,11 +18,7 @@ replaceAt (_:xs) 0 c = c : xs
 replaceAt (x:xs) n c = x : replaceAt xs (n-1) c
 replaceAt [] _ _ = []
 
-type instance BoolFor (CP String) = CP Bool
-
-instance StringDomain (CP String) where
-   type IntS (CP String) = CP Integer
-   type ChaS (CP String) = CP Char
+instance StringLattice (CP String) (CP Bool) (CP Integer) (CP Char) where
 
    length = return . fmap (fromIntegral . Prelude.length)
    append a b = return $ liftA2 (++) a b

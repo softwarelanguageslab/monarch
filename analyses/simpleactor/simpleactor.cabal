@@ -24,6 +24,7 @@ source-repository head
 library
   exposed-modules:
       Analysis.SimpleActor
+      Analysis.SimpleActor.ErlangPrimitives
       Analysis.SimpleActor.Fixpoint.Common
       Analysis.SimpleActor.Fixpoint.Modular
       Analysis.SimpleActor.Fixpoint.Sequential
@@ -32,6 +33,7 @@ library
       Analysis.SimpleActor.Infer.Domain
       Analysis.SimpleActor.Infer.Graph
       Analysis.SimpleActor.Monad
+      Analysis.SimpleActor.Primitives
       Analysis.SimpleActor.Semantics
       Benchmark.SimpleActor.Precision
       Control.Monad.Cond
@@ -46,6 +48,7 @@ library
       Syntax.Compiler
       Syntax.ErlangToSimpleActor
       Syntax.Simplifier
+      System.ConcurrentHandle
   other-modules:
       Paths_simpleactor
   autogen-modules:
@@ -72,10 +75,11 @@ library
       FunctionalDependencies
       StandaloneDeriving
       RecordWildCards
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -threaded
   build-depends:
       base >=4.7 && <5
     , concurrency
+    , concurrent-extra
     , containers
     , deepseq
     , directory
@@ -90,6 +94,7 @@ library
     , maf2-scv
     , maf2-syntax
     , mtl
+    , parallel-io
     , process
     , random
     , rio
@@ -129,6 +134,7 @@ executable simpleactor-exe
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , concurrent-extra
     , containers
     , deepseq
     , directory
@@ -140,6 +146,8 @@ executable simpleactor-exe
     , maf2-domains
     , maf2-syntax
     , optparse-applicative
+    , parallel-io
+    , pretty-simple
     , rio
     , simpleactor
     , singletons
@@ -180,12 +188,14 @@ test-suite simpleactor-tests
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , concurrent-extra
     , deepseq
     , directory
     , extra
     , hspec
     , hspec-contrib
     , maf2-analysis
+    , parallel-io
     , rio
     , simpleactor
     , singletons

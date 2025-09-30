@@ -27,6 +27,8 @@ dependencies:
 - extra
 - singletons
 - directory
+- concurrent-extra
+- parallel-io
 
 
 ghc-options:
@@ -67,6 +69,8 @@ default-extensions:
   
 library:
   source-dirs: src
+  ghc-options:
+    - -threaded
   dependencies:
     - containers 
     - unordered-containers 
@@ -101,6 +105,7 @@ executables:
     - filepath
     - time
     - timeit
+    - pretty-simple
     
 tests:
   simpleactor-tests:

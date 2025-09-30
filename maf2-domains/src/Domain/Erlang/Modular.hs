@@ -1,6 +1,7 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE UndecidableInstances #-}
+
 module Domain.Erlang.Modular(ErlValue, EnvCfg, IntCfg, PidCfg) where
 
 import Data.TypeLevel.HMap hiding (map)
@@ -22,6 +23,7 @@ import Data.Kind
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Maybe (isJust, fromMaybe)
+import Data.Singletons
 
 ------------------------------------------------------------
 -- Configuration
@@ -38,6 +40,8 @@ type family PidCfg (c :: k) :: Type
 type family BooCfg (c :: k) :: Type
 -- | Type of abstract symbols
 type family SymCfg (c :: k) :: Type
+type family StrCfg (c :: k) :: Type
+type family ReaCfg (c :: k) :: Type 
 
 ------------------------------------------------------------
 -- Shorthands
@@ -68,6 +72,8 @@ data ValueKey = CloKey
               | BooKey
               | SymKey
               | NilKey
+              | StrKey
+              | ReaKey 
               deriving (Eq, Ord)
 
 $(genHKeys ''ValueKey)
@@ -75,12 +81,19 @@ $(genHKeys ''ValueKey)
 type ErlMapping c = '[
       CloKey ::-> Set (Clo c),
       IntKey ::-> IntCfg c,
+      ReaKey ::-> ReaCfg c,
+      StrKey ::-> StrCfg c,
       PidKey ::-> Set (PidCfg c),
       BooKey ::-> BooCfg c,
       SymKey ::-> Set String,
       NilKey ::-> ()
    ]
 
+data IntDomainWith bln str rea :: Type ~> Constraint
+type instance Apply (IntDomainWith bln str rea) i = IntDomain i bln str rea
+
+data BoolDomainWith :: Type ~> Constraint
+type instance Apply BoolDomainWith bln = BoolDomain bln
 
 type IsErlValue c =
    (AllAtKey1 Lattice (ErlMapping c),
@@ -89,9 +102,8 @@ type IsErlValue c =
     AllAtKey1 PartialOrder  (ErlMapping c),
     AllAtKey1 Ord (ErlMapping c),
     Ord (PidCfg c),
-    KeyIs1 IntDomain  (ErlMapping c) IntKey,
-    KeyIs1 BoolDomain (ErlMapping c) BooKey,
-    BoolFor (Assoc IntKey (ErlMapping c)) ~ Assoc BooKey (ErlMapping c))
+    KeyIs (IntDomainWith (Assoc BooKey (ErlMapping c)) (Assoc StrKey (ErlMapping c)) (Assoc ReaKey (ErlMapping c)))  (ErlMapping c) IntKey,
+    KeyIs BoolDomainWith (ErlMapping c) BooKey)
 
 newtype ErlValue c = ErlValue { getValue :: HMap (ErlMapping c) }
 
@@ -114,40 +126,39 @@ instance (IsErlValue c) => ActorDomain (ErlValue c) where
 instance (IsErlValue c) => Domain (ErlValue c) Bool where
    inject = ErlValue . singleton @BooKey . inject
 
-instance (IsErlValue c) => BoolDomain (ErlValue c) where
+instance (IsErlValue c) => BoolLattice (ErlValue c) where
 
 instance (IsErlValue c) => Domain (ErlValue c) Integer where
    inject = ErlValue . singleton @IntKey . inject
 
-type instance BoolFor (ErlValue c) = ErlValue c
-instance (IsErlValue c) => NumberDomain (ErlValue c) where
+instance (IsErlValue c) => NumberLattice (ErlValue c) (ErlValue c) where
    isZero = mjoins . HMap.mapList select . getValue
       where select :: forall m (kt :: ValueKey) . AbstractM m => Sing kt -> Assoc kt (ErlMapping c) -> m (ErlValue c)
             select SIntKey i = ErlValue <$> (singleton @BooKey <$> isZero i)
             select _ _ = escape WrongType
    random = mjoins . HMap.mapList select . getValue
       where select :: forall m (kt :: ValueKey) . AbstractM m => Sing kt -> Assoc kt (ErlMapping c) -> m (ErlValue c)
-            select SIntKey i = ErlValue <$> (singleton @IntKey <$> random i)
+            select SIntKey i = ErlValue <$> (singleton @IntKey <$> random @_ @(BooCfg c) i)
             select _ _ = escape WrongType
    plus a b = ErlValue <$> binop apply (getValue a) (getValue b)
       where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
-            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> plus x y
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> plus @_ @(BooCfg c) x y
             apply _ _ = escape WrongType
    minus a b = ErlValue <$> binop apply (getValue a) (getValue b)
       where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
-            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> minus x y
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> minus @_ @(BooCfg c) x y
             apply _ _ = escape WrongType
    times a b = ErlValue <$> binop apply (getValue a) (getValue b)
       where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
-            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> times x y
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> times @_ @(BooCfg c) x y
             apply _ _ = escape WrongType
    div a b = ErlValue <$> binop apply (getValue a) (getValue b)
       where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
-            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.div x y
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.div @_ @(BooCfg c) x y
             apply _ _ = escape WrongType
    expt a b = ErlValue <$> binop apply (getValue a) (getValue b)
       where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
-            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.expt x y
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.expt @_ @(BooCfg c) x y
             apply _ _ = escape WrongType
    eq a b = ErlValue <$> binop apply (getValue a) (getValue b)
       where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
@@ -158,22 +169,20 @@ instance (IsErlValue c) => NumberDomain (ErlValue c) where
             apply (SIntKey :&: x) (SIntKey :&: y) = singleton @BooKey <$> Domain.Core.lt x y
             apply _ _ = escape WrongType
 
-instance (IsErlValue c) => IntDomain (ErlValue c) where
-   type Str (ErlValue c) = Void
-   type Rea (ErlValue c) = Void
+instance (IsErlValue c) => IntLattice (ErlValue c) (ErlValue c) (ErlValue c) (ErlValue c) where
    toReal = error "no reals available"
    toString = error "no strings available"
    quotient a b = ErlValue <$> binop apply (getValue a) (getValue b)
       where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
-            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.quotient x y
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.quotient @_ @(BooCfg c) @(StrCfg c) @(ReaCfg c) x y
             apply _ _ = escape WrongType
    modulo a b = ErlValue <$> binop apply (getValue a) (getValue b)
       where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
-            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.modulo x y
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.modulo @_ @(BooCfg c) @(StrCfg c) @(ReaCfg c) x y
             apply _ _ = escape WrongType
    remainder a b = ErlValue <$> binop apply (getValue a) (getValue b)
       where apply :: forall m . AbstractM m => BindingFrom (ErlMapping c) -> BindingFrom (ErlMapping c) -> m (HMap (ErlMapping c))
-            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.remainder x y
+            apply (SIntKey :&: x) (SIntKey :&: y) = singleton @IntKey <$> Domain.Core.remainder @_ @(BooCfg c) @(StrCfg c) @(ReaCfg c) x y
             apply _ _ = escape WrongType
 
 ------------------------------------------------------------

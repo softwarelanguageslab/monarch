@@ -8,13 +8,11 @@ import Lattice.Class
 import Data.Set (Set)
 import qualified Data.Set as Set
 
-
 ------------------------------------------------------------
 --- SplitLattice
 ------------------------------------------------------------
-
-
 -- | Split operation for lattices
+-- cf. https://doi.org/10.1145/3589250.3596141
 class SplitLattice v where
    -- Splits the value into a set of values where each value contains only one subvalue
    split :: v -> Set v

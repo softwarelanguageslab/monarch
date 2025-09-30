@@ -43,6 +43,7 @@ dependencies:
 - singletons
 - singletons-th
 - layers-mtl
+- process
 
 default-extensions:
   - FlexibleContexts

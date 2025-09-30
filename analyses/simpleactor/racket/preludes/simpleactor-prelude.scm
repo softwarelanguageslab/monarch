@@ -104,9 +104,9 @@
    ;; Vectors
 
    (define vector?/c (flat vector?))
-   (define vector-ref (mon server client (-> vector?/c integer?/c) (lambda (v i) (orig-vector-ref v i))))
+   (define vector-ref (mon server client (-> vector?/c integer?/c any/c) (lambda (v i) (orig-vector-ref v i))))
 
-   (define vector-set! (mon server client (-> vector?/c integer?/c any/c) (lambda (vec i v) (orig-vector-set! vec i v))))
+   (define vector-set! (mon server client (-> vector?/c integer?/c any/c any/c) (lambda (vec i v) (orig-vector-set! vec i v))))
 
 
    ;; Other preluded functions

@@ -12,6 +12,8 @@ import qualified Data.Map as Map
 import Domain.Scheme.Class hiding (Exp)
 import Domain.Actor
 
+import qualified Analysis.SimpleActor.ErlangPrimitives as Erl
+
 import Analysis.SimpleActor.Monad
 import Analysis.Actors.Monad
 
@@ -49,6 +51,7 @@ import qualified Analysis.Store as Store
 import Control.Monad.IO.Class (liftIO)
 import Lattice.ConstantPropagationLattice (CP)
 import Syntax.FV
+import Analysis.SimpleActor.Primitives (SimpleActorPrim(Prm), SimpleActorPrimitive(..))
 
 ------------------------------------------------------------
 -- Evaluation
@@ -63,63 +66,66 @@ eval = fix evalCmp
          evalCmp recur (ActorExp e) = eval' recur e
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
-eval' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
-eval' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
-eval' _ (Literal lit _) = return (injectLit lit)
-eval' rec e@(App e1 es _) = do
+eval'' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
+eval'' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
+eval'' _ (Literal lit _) = return (injectLit lit)
+eval'' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
    v2 <- mapM (eval' rec) es
    apply rec e v1 v2
-eval' rec (Ite e1 e2 e3 _) =
+eval'' rec (Ite e1 e2 e3 _) =
    cond (eval' rec e1) (eval' rec e2) (eval' rec e3)
-eval' _rec (Spawn e _) =
+eval'' _rec (Spawn e _) =
    liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
-eval' _ (Terminate _) = terminate $> nil
-eval' rec (Receive pats _) = do
+eval'' _ (Terminate _) = terminate $> nil
+eval'' rec (Receive pats _) = do
    self <- getSelf
    receive self $
       matchList
          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
          pats
    where withEnv' e = withEnv (const e)
-eval' rec (Match e pats _) = do
+eval'' rec (Match e pats _) = do
    val <- eval' rec e
    matchList (\matchedExp -> allocMapping >=> (`withEnv'` eval' rec matchedExp))
              pats val
    where withEnv' ρ = withEnv (const ρ)
-eval' rec (Letrec bds e2 _) = do
+eval'' rec (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    mapM_ (\(ex, adr) -> writeVar adr =<< withExtendedEnv bds' (eval' rec ex)) (zip (map snd bds) ads)
    withExtendedEnv bds' (eval' rec e2)
-eval' rec (Parametrize bds e2 _) = do
+eval'' rec (Parametrize bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (eval' rec . snd) bds
    mapM_ (uncurry writeVar) (zip ads vs)
    withExtendedDynamic bds' (eval' rec e2)
-eval' rec (Begin exs _) =
+eval'' rec (Begin exs _) =
    if null exs
    then return nil
    else last <$> mapM (eval' rec) exs
-eval' rec e@(Pair e1 e2 _) =
+eval'' rec e@(Pair e1 e2 _) =
    stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
-eval' _ (Var (Ide x _)) =
+eval'' _ (Var (Ide x _)) =
    lookupEnv x >>= lookupVar >>= showIfBot (show x ++ " not in store")
-eval' _ (DynVar (Ide x _)) =
+eval'' _ (DynVar (Ide x _)) =
    lookupDynamic x >>= lookupVar >>= showIfBot (show x ++ " dyn not in store")
-eval' _ (Self _) = aref <$> getSelf @v
-eval' rec (Blame e loc) =
+eval'' _ (Self _) = aref <$> getSelf @v
+eval'' rec (Blame e loc) =
    eval' rec e >>= escape . flip BlameError loc . show
-eval' rec (Meta e _) =
+eval'' rec (Meta e _) =
    withMetaSet (eval' rec e)
    -- withMetaSet (withCtx (spanOf e:) (eval' rec e))
-eval' rec (Trace e _) = do
+eval'' rec (Trace e _) = do
    v <- eval' rec e
    (liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) v  $> v
-eval' rec (Error e loc) =
+eval'' rec (Error e loc) =
    eval' rec e >>= escape . flip BlameError loc . show
-eval' _ e = error $  "unsupported expression: " ++ show e
+eval'' _ e = error $  "unsupported expression: " ++ show e
+
+eval' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
+eval' = eval''
 
 trySend :: EvalM v k m => v -> v -> m ()
 trySend ref p =
@@ -133,19 +139,19 @@ apply rec e v vs = conds
     (pure (isPrim v), mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))
 applyClosure :: EvalM v k m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
-applyClosure _e (lam@(Lam prs _ _), env) rec vs =
+applyClosure e(lam@(Lam prs _ _), env) rec vs =
    if length prs /= length vs then
       error "invalid number of arguments"
-   else {- withCtx (const [spanOf e]) $ -} do
+   else withCtx (pushCallSite (spanOf e)) $ do
             ads <- mapM alloc prs
             let bds = zip (map name prs) ads
             mapM_ (uncurry writeVar) (zip ads vs)
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 
-applyPrimitive :: forall v m k . (EvalM v k m) =>String -> Exp -> [v] -> m v
-applyPrimitive =
-   runPrimitive . fromJust . lookupPrimitive
+applyPrimitive :: forall v m k . (EvalM v k m) => String -> Exp -> [v] -> m v
+applyPrimitive prm =
+   runPrimitive $ fromMaybe (error $ "could not find " ++ prm) $ lookupPrimitive prm
 
 type Mapping v = Map Ide v
 
@@ -191,27 +197,28 @@ injectLit (String _)     = error "cannot inject a string"
 -- Primitives
 ------------------------------------------------------------
 
-data Primitive k v = SchemePrimitive (Prim v) | SimpleActorPrimitive (SimpleActorPrim k v)
+newtype SAPrim v = SAPrim (forall k m . (Show (Env v), EvalM v k m) => [v] -> Exp -> m v)
 
-newtype SimpleActorPrim k v = SimpleActorPrim (forall m . (Show (Env v), EvalM v k m) => [v] -> Exp -> m v)
+instance SimpleActorPrimitive v (SAPrim v) where
+   runPrimitive (SAPrim p) = flip p
 
 -- | A nullary primitive
-aprim0 :: (forall m . (Show (Env v), EvalM v k m) => Exp -> m v) -> SimpleActorPrim k v
-aprim0 f = SimpleActorPrim $ const f
+aprim0 :: (forall k m . (Show (Env v), EvalM v k m) => Exp -> m v) -> SAPrim v
+aprim0 f = SAPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall m . EvalM v k m => v -> Exp -> m v) -> SimpleActorPrim k v
-aprim1 f = SimpleActorPrim $  \case [v] -> f v
-                                    vs -> const $ escape $ ArityMismatch 1 (length vs)
+aprim1 :: (forall k m . EvalM v k m => v -> Exp -> m v) -> SAPrim v
+aprim1 f = SAPrim $  \case [v] -> f v
+                           vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall m . EvalM v k m => v -> v -> Exp -> m v) -> SimpleActorPrim k v
-aprim2 f = SimpleActorPrim $ \case [v1, v2] -> f v1 v2
-                                   vs -> const $ escape $ ArityMismatch 2 (length vs)
+aprim2 :: (forall k m . EvalM v k m => v -> v -> Exp -> m v) -> SAPrim v
+aprim2 f = SAPrim $ \case [v1, v2] -> f v1 v2
+                          vs -> const $ escape $ ArityMismatch 2 (length vs)
 
 -- | Primitives specific to the simple actor language
-actorPrimitives :: Map String (Primitive k v)
-actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
+actorPrimitives :: forall v . Map String (SimpleActorPrim v)
+actorPrimitives =  Prm @v <$> Map.fromList [
    ("wait-until-all-finished", aprim0 $ const $ return nil ),
    ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
    ("list", aprim0 $ const $ return nil),
@@ -221,20 +228,22 @@ actorPrimitives =  SimpleActorPrimitive <$> Map.fromList [
    ("print", aprim1 $ const $ const $ return nil) ]
 
 -- | Scheme primitives
-schemePrimitives :: Map String (Primitive k v)
-schemePrimitives = SchemePrimitive <$> primitivesByName
+schemePrimitives :: forall v . Map String (SimpleActorPrim v)
+schemePrimitives = Prm @v <$> primitivesByName @v
+
+erlangPrimitives :: forall v . Map String (SimpleActorPrim v)
+erlangPrimitives = Prm <$> Erl.erlangPrimitives  
 
 -- | The names of all primitives
 allPrimitives :: [String]
-allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives
+allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives ++ Map.keys erlangPrimitives
+
+allPrimitiveFunctions :: Map String (SimpleActorPrim v)
+allPrimitiveFunctions = Map.unions [actorPrimitives,  schemePrimitives, erlangPrimitives]
 
 -- | Lookup a primitive starting from the actor primitives
-lookupPrimitive :: String -> Maybe (Primitive k v)
-lookupPrimitive = untilJust [ (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
-
-runPrimitive :: ( EvalM v k m) =>Primitive k v -> Exp -> [v] -> m v
-runPrimitive (SchemePrimitive (Prim _ f)) = ($) f
-runPrimitive (SimpleActorPrimitive (SimpleActorPrim f)) = flip f
+lookupPrimitive :: String -> Maybe (SimpleActorPrim v)
+lookupPrimitive = untilJust [ (`Map.lookup` erlangPrimitives), (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
 
 -- | Run the functions given as a list in the first argument on the 
 -- second argument until an output is found that is @Just@.

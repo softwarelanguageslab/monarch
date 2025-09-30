@@ -54,6 +54,10 @@ following publications:
   2016. [pdf](http://soft.vub.ac.be/Publications/2016/vub-soft-tr-16-13.pdf)
         , [doi](http://doi.acm.org/10.1145/2998392.3001579).
 
+**Monarch has been used for evaluating abstract interpretation-based static analysis approaches in the following publications:**
+
+* _Abstracting Concolic Execution for Soft Contract Verification_. SAS 2025. 
+
 **MAF has been used for evaluating modular static analysis approaches in the following publications:**
 
 * _A Parallel Worklist Algorithm and Its Exploration Heuristics for Static Modular Analyses_. Journal of Systems and Software, Volume 181. 2021. 

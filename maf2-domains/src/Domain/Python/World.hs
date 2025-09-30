@@ -31,6 +31,8 @@ data PyType = NoneType
             | FrameType 
             | DatabaseType 
             | DataFrameType
+            | DataFrameGroupByType
+            | DataFrameGroupByIteratorType
             | SeriesType  
   deriving (Eq, Ord, Enum, Bounded, Show, Generic) 
 
@@ -57,6 +59,8 @@ name ExceptionType    = "Exception"
 name StopIterationExceptionType = "StopIteration"
 name DatabaseType     = "Database"
 name DataFrameType    = "DataFrame"
+name DataFrameGroupByType = "DataFrameGroupBy"
+name DataFrameGroupByIteratorType = "DataFrameGroupByIteratorType"
 name SeriesType       = "Series"
 
 -- | The methods of a built-in Python type 
@@ -85,7 +89,8 @@ methods FloatType = [(AddAttr,      FloatAdd),
                      (BoolAttr,     FloatBool)] 
 methods NoneType          = [(BoolAttr,     NoneBool)]
 methods BoolType          = [(BoolAttr,     BoolBool)]
-methods StringType        = [(AddAttr, StringAppend)]
+methods StringType        = [(AddAttr, StringAppend),
+                             (EqAttr, StringEq)]
 methods TupleType         = [] 
 methods PrimType          = []
 methods BoundType         = []
@@ -111,9 +116,17 @@ methods DataFrameType     = [(GetItemAttr, DataFrameGetItem),
                              (RenameAttr, DataFrameRename),
                              (DropNAAttr, DataFrameDropNA),
                              (AppendAttr, DataFrameAppend),
-                             (FromSeriesAttr, DataFrameFromSeries)]
+                             (FromSeriesAttr, DataFrameFromSeries),
+                             (MapAttr, DataFrameMap),
+                             (GroupByAttr, DataFrameGroupBy),
+                             (ApplyAverageAttr, DataFrameApplyAverage),
+                             (ApplyStatsPerMovement, DataFrameApplyStatsPerMovement),
+                             (RemoveOutliersAttr, DataFrameRemoveOutliers),
+                             (CalcIncDiffAttr, DataFrameCalcIncDiff)]
 methods SeriesType        = [(AsTypeAttr, SeriesAsType),
                              (MergeAttr,  SeriesMerge)]
+methods DataFrameGroupByType = [(IterAttr, DataFrameGroupByIter)]
+methods DataFrameGroupByIteratorType = [(NextAttr, DataFrameGroupByIteratorNext)]
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
@@ -158,6 +171,7 @@ data PyPrim     =
                 | ListIter 
                 -- string primitives
                 | StringAppend 
+                | StringEq 
                 -- stringlength?
                 -- list iterator primitives
                 | ListIteratorNext 
@@ -173,7 +187,20 @@ data PyPrim     =
                 | DataFrameGetItem
                 | DataFrameSetItem 
                 | DataFrameAppend 
-                | DataFrameFromSeries
+                | DataFrameMap
+                | DataFrameFromSeries 
+                | DataFrameApplyAverage   -- TODO: replace these with annotated methods
+                | DataFrameApplyStatsPerMovement
+                | DataFrameRemoveOutliers
+                | DataFrameCalcIncDiff
+                | DataFrameGroupBy
+                | DataFrameWindowedPrim1  -- TODO: move to XPrims 
+                | DataFrameWindowedPrim2
+                | DataFrameWindowedPrim3
+                -- dataframeGroupby
+                | DataFrameGroupByIter
+                -- dataframeGroupbyIterator
+                | DataFrameGroupByIteratorNext
                 -- series primitives
                 | SeriesAsType 
                 | SeriesMerge
@@ -233,9 +260,15 @@ data PyAttr = ClassAttr
             | AsTypeAttr 
             | KeysAttr 
             | AppendAttr 
+            | BoolAttr
             | MergeAttr
             | FromSeriesAttr
-            | BoolAttr
+            | MapAttr 
+            | GroupByAttr
+            | ApplyAverageAttr      -- TODO/alternatively: we can also analyze the definition of these directly ...
+            | ApplyStatsPerMovement
+            | RemoveOutliersAttr
+            | CalcIncDiffAttr        
   deriving (Eq, Ord, Enum, Bounded)
 
 attrStr :: PyAttr -> String 
@@ -280,8 +313,14 @@ attrStr AsTypeAttr    = "astype"
 attrStr KeysAttr      = "keys"
 attrStr AppendAttr    = "append"
 attrStr MergeAttr     = "merge"
-attrStr FromSeriesAttr = "from_series"
+attrStr MapAttr       = "map"
+attrStr GroupByAttr   = "groupby"
 attrStr BoolAttr      = "__bool__"
+attrStr FromSeriesAttr        = "from_series"
+attrStr ApplyAverageAttr      = "apply_average"
+attrStr ApplyStatsPerMovement = "apply_stats_per_movement"
+attrStr RemoveOutliersAttr    = "remove_outliers"
+attrStr CalcIncDiffAttr       = "calc_inc_diff"
 
 -- | Built-in objects in Python 
 data PyConstant = None
@@ -321,8 +360,6 @@ data PyPrmKey = IntPrm
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData PyPrmKey where
-
-
 
 genHKeys ''PyPrmKey
 

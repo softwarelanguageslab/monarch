@@ -1,5 +1,6 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ImpredicativeTypes #-}
 
 module Control.Monad.Join (
    MonadJoin,
@@ -35,6 +36,8 @@ import Control.Monad.Trans.Identity
 import Control.Applicative (liftA2)
 import Data.Functor.Identity
 import Lattice.BottomLiftedLattice (BottomLifted(..))
+import Debug.Trace (trace)
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | Non-deterministic computations that can be joined together into a single computation
 class (Monad m) => MonadJoinable m where
@@ -46,7 +49,7 @@ class (Monad m) => MonadJoinable m where
 class (Monad m) => MonadBottom m where    
    mbottom :: m a 
 
-cond :: (MonadJoin m, BoolDomain b, Joinable v) => m b -> m v -> m v -> m v 
+cond :: (MonadJoin m, BoolLattice b, Joinable v) => m b -> m v -> m v -> m v 
 cond cnd csq alt = cnd >>= (\b -> mjoin (t b) (f b))
    where t b = if isTrue b then csq else mbottom
          f b = if isFalse b then alt else mbottom
@@ -93,7 +96,6 @@ msplitOn p ft ff vs = do (t, f) <- splitOnM p vs
 
 msplitOnCP :: (MonadJoin m, Lattice v, Lattice a, SplitLattice a) => (a -> m (CP Bool)) -> (a -> m v) -> (a -> m v) -> a -> m v
 msplitOnCP = msplitOn
-
 
 
 -- Some instances for convenience

@@ -6,9 +6,9 @@ module Analysis.Monad.WorkList (
     WorkListM(..),
     WorkListT,
     runWithWorkList,
-    runWithWorkListProfiling,
     iterateWL,
     iterateWL',
+    iterateWLInitial'',
     iterateWLDebug
 ) where
 
@@ -63,6 +63,9 @@ runWithWorkList (WorkListT m) = fst <$> runStateT m WL.empty
 iterateWL'' :: WorkListM m cmp => m Bool -> (cmp -> m a) -> m ()
 iterateWL'' stopEarly f = unlessM (liftA2 (||) stopEarly done) (pop >>= f >> iterateWL'' stopEarly f)
 
+iterateWLInitial'' :: WorkListM m cmp => cmp -> m Bool -> (cmp -> m a) -> m ()
+iterateWLInitial'' initial stopEarly f = add initial >> iterateWL'' stopEarly f
+
 iterateWL :: WorkListM m cmp => (cmp -> m a) -> m ()
 iterateWL = iterateWL'' (return False)
 
@@ -76,45 +79,3 @@ iterateWLDebug initial f = add initial >> loop 0
             when (total `mod` 100 == 0) (debug total)
             pop >>= f >> loop (total+1)
          debug total = components >>= liftIO . putStrLn . (\v -> "Number of seen states " ++ v ++ " iterations count " ++ show total) . show .  Set.size
-
--------------------------------------------------------------
--- Worklist with profiling
--------------------------------------------------------------
-
--- | State when profiling the worklist
-data ProfilingState cmp w = ProfilingState {
-                               -- | Keep track of the worklist
-                               _worklist :: w,
-                               -- | Keeps track of how many times a component
-                               -- has been popped from the worklist
-                               _profile  :: Map cmp Int
-                          } deriving (Ord, Eq, Show)
-
-$(makeLenses ''ProfilingState)
-
--- | Constructs an empty state for the profiler
-emptyProfilingState :: forall wl cmp . WorkList wl cmp => ProfilingState cmp wl
-emptyProfilingState = ProfilingState (WL.empty @wl) Map.empty
-
--- | A worklist layer with profiling that tracks how often each component is analyzed before
--- a fix point is reached.
-newtype WorkListProfilingT cmp w m a = WorkListProfilingT {
-                                            getWorkListProfilingT :: StateT (ProfilingState cmp w) m a
-                                     } deriving (Monad, Applicative, Functor, MonadLayer, MonadState (ProfilingState cmp w))
-
-
-instance (Monad m, WorkList w cmp, Ord cmp) => WorkListM (WorkListProfilingT cmp w m) cmp where
-  done  = gets (WL.isEmpty . _worklist)
-  pop   = do
-        maybe (error "worklist is too empty") registerProfile  . WL.pop =<< gets _worklist
-    where registerProfile (e, wl') = do
-            modify (over profile (Map.insertWith (+) e 1))
-            modify (over worklist (const wl'))
-            return e
-  add e = modify (over worklist (WL.add e))
-
-
--- | Run the worklist profiling layer
-runWithWorkListProfiling :: forall cmp w m a . (Functor m, WorkList w cmp) => WorkListProfilingT cmp w m a -> m (a, Map cmp Int)
-runWithWorkListProfiling = fmap (second _profile) . flip runStateT (emptyProfilingState @w) . getWorkListProfilingT
-

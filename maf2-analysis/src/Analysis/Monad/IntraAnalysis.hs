@@ -91,11 +91,11 @@ instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM cmp a m, M
     updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger a)
     hasAdr = upperM . hasAdr @a @v
 
-instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM cmp k m, MonadDependencyTrigger cmp k m, WorkListM m cmp, Show v, Typeable v)
+instance {-# OVERLAPPING #-} (MapM k v m, Eq v, DependencyTrackingM cmp k m, MonadDependencyTrigger cmp k m, WorkListM m cmp, Show v, Typeable v, Typeable k)
     => MapM k v (DebugIntraAnalysisT cmp m) where
         get k = currentCmp >>= upperM . register k >> upperM (get k)
         put k v = whenM (upperM $ put' k v) (notrace ("put " ++ show v) $ upperM $ trigger k)
-        joinWith k v = whenM (upperM $ joinWith' k v) (notrace ("joinWith" ++ show (typeOf v)) $ upperM $ trigger k)
+        joinWith k v = whenM (upperM $ joinWith' k v) (notrace ("joinWith" ++ show (typeOf k)) $ upperM $ trigger k)
         getAll = upperM getAll
 
 runDebugIntraAnalysis :: cmp -> DebugIntraAnalysisT cmp m a -> m a

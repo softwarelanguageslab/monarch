@@ -72,18 +72,18 @@ library
       Domain.Core.StringDomain
       Domain.Core.StringDomain.Class
       Domain.Core.StringDomain.ConstantPropagation
+      Domain.Core.StringDomain.TopLifted
       Domain.Core.TaintDomain
       Domain.Core.TaintDomain.Class
+      Domain.Core.TaintDomain.Multi
       Domain.Core.TaintDomain.Simple
+      Domain.Core.TaintDomain.Single
       Domain.Core.VectorDomain
       Domain.Core.VectorDomain.Class
       Domain.Core.VectorDomain.PIVector
       Domain.Erlang.Class
       Domain.Erlang.Modular
       Domain.Python
-      Domain.Python.DataFrameDomain
-      Domain.Python.DataFrameDomain.Class
-      Domain.Python.DataFrameDomain.DataFrameSet
       Domain.Python.Objects
       Domain.Python.Objects.Class
       Domain.Python.Objects.PyObjHMap

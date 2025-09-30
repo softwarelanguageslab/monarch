@@ -95,7 +95,7 @@ intra cmp =  runFixT @(IntraT (IntraAnalysisT Cmp m)) eval cmp
 inter :: forall v m .  (InstSchemeDomain Adr v, InterAnalysisM v m) => Exp -> m ()
 inter exp = lfp intra ((exp, analysisEnv), [])
 
-analyze :: forall v . (InstSchemeDomain (Adr) v) =>  Exp -> AnlRes v
+analyze :: forall v . (InstSchemeDomain Adr v) =>  Exp -> AnlRes v
 analyze exp = let (((), varSto), resMap) =
                        inter @v exp
                      & runStoreT @(Sto v) @Adr @(StoreVal v) (VarVal <$> P.initialSto analysisEnv)

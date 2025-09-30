@@ -16,14 +16,14 @@ def read_inputs(inputs_file):
 
     return input_files
 
-def input_output_parser(input_desc, output_desc = "Path to the output directory"):
+def input_output_cmdline_parser(input_desc, output_desc = "Path to the output directory"):
     """
     Command-line parser for commands that use an INPUT and OUTPUT argument
     """
 
     parser = argparse.ArgumentParser()
     parser.add_argument("inputs", help = input_desc)
-    parser.add_argument("output" ,help = "Path to the output directory")
+    parser.add_argument("output" ,help = output_desc)
     args = parser.parse_args()
     return Path(args.inputs), Path(args.output)
 

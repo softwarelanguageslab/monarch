@@ -9,7 +9,7 @@ import Domain.Actor
 import Domain.Core
 import Data.HashMap.Strict (HashMap)
 
-type CPActorMapping adr ctx exp =
+type CPActorMapping str adr ctx exp =
     '[ RealConf ::-> CP Double,
        IntConf ::-> CP Integer,
        CharConf ::-> CP Char,
@@ -17,16 +17,21 @@ type CPActorMapping adr ctx exp =
        EnvConf ::-> HashMap String (adr ctx),
        ExpConf ::-> exp,
        AdrConf ::-> adr ctx,
-       PidConf ::-> Pid exp ctx
+       PidConf ::-> Pid exp ctx,
+       StrConf ::-> str
      ]
 
 -- | Type of values in the analysis
-type CPActorValue adr ctx exp =
-  SchemeVal (CPActorMapping adr ctx exp)
+type CPActorValue str adr ctx exp =
+  SchemeVal (CPActorMapping str adr ctx exp)
 
 
-type instance VarDom (CPActorValue adr ctx exp) = CPActorValue adr  ctx exp
-type instance PaiDom (CPActorValue adr ctx exp) = SimplePair (CPActorValue adr ctx exp)
-type instance VecDom (CPActorValue adr ctx exp) = PIVector (CPActorValue adr ctx exp) (CPActorValue adr ctx exp) 
-type instance StrDom (CPActorValue adr ctx exp) = SchemeString (CP String) (CPActorValue adr ctx exp) 
+type instance VarDom (CPActorValue str adr ctx exp) = CPActorValue str adr  ctx exp
+type instance PaiDom (CPActorValue str adr ctx exp) = SimplePair (CPActorValue str adr ctx exp)
+type instance VecDom (CPActorValue str adr ctx exp) = PIVector (CPActorValue str adr ctx exp) 
+                                                               (CPActorValue str adr ctx exp)
+                                                               (CPActorValue str adr ctx exp) 
+                                                               str
+                                                               (CPActorValue str adr ctx exp)  
+type instance StrDom (CPActorValue str adr ctx exp) =  str
 

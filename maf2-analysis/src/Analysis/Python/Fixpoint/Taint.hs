@@ -40,18 +40,17 @@ import Data.Graph
 import Analysis.Store (CountingMap)
 import Data.Foldable (traverse_)
 import Control.DeepSeq (NFData)
+import Control.Monad.Join
+import Debug.Trace (trace)
 
----
---- Python analysis fixpoint algorithm
----
-
+type PyCtx = [PyLoc]
 type Store obj = CountingMap ObjAdr obj
 
 type IntraT obj m  = MonadStack '[
                         MayEscapeTaintedT Taint (Set (PyEsc PyRefTaint)),
-                        AllocT PyLoc [PyLoc] ObjAdr, 
+                        AllocT PyLoc PyCtx ObjAdr, 
                         EnvT PyEnv,
-                        CtxT [PyLoc],
+                        CtxT PyCtx,
                         CacheT,
                         TaintT Taint,
                         StoreT (Store obj) ObjAdr obj,
@@ -88,29 +87,29 @@ type PyRes = Val (IntraT () Identity) PyRefTaint
 
 intra :: forall obj m . AnalysisM m obj => PyCmp -> m ()
 intra cmp = m 
-              & runIntraAnalysis cmp 
+                & runIntraAnalysis cmp 
     where m = do t <- fromJust <$> Analysis.Monad.get (PyCmpTaint cmp)
                  s <- fromJust <$> Analysis.Monad.get (PyCmpStoreIn cmp)
-                 r <- cache cmp (\bdy -> evalBdy bdy 
+                 r <- cache' cmp (\bdy -> evalBdy bdy 
                                             & runPythonTaintAnalysisT
-                                            & runCallT (uncurry callFix)) 
+                                            & runCallT (uncurry callFix))
                         & runAlloc allocPtr
                         & runWithTaint t 
                         & runStoreT s 
                         & runJoinT
                  case r of 
-                    BL.Value (_, s') -> Analysis.Monad.put (PyCmpStoreOut cmp) s'
-                    _                -> return ()
+                    BL.Bottom        -> return ()
+                    BL.Value (_, s') -> Analysis.Monad.joinWith (PyCmpStoreOut cmp) s'
           callFix :: PyLoc -> PyBdy -> IntraT' obj m PyRefTaint
           callFix _ bdy = do cmp' <- key bdy
                              spawn cmp' 
                              Analysis.Monad.joinWith (PyCmpTaint cmp') =<< currentTaint 
                              changed <- Analysis.Monad.joinWith' (PyCmpStoreIn cmp') =<< currentStore
-                             if changed
+                             rv <- cached cmp'
+                             rs <- Analysis.Monad.get (PyCmpStoreOut cmp')
+                             if changed 
                              then MJoin.mbottom 
-                             else do rv <- cached cmp'
-                                     rs <- Analysis.Monad.get (PyCmpStoreOut cmp')
-                                     v <- maybe MJoin.mbottom return rv
+                             else do v <- maybe MJoin.mbottom return rv
                                      s <- maybe MJoin.mbottom return rs 
                                      putStore s 
                                      return v 

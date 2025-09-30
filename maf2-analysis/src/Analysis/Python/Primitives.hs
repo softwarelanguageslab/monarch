@@ -1,14 +1,14 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE UndecidableInstances       #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE QuantifiedConstraints      #-}
+{-# LANGUAGE AllowAmbiguousTypes        #-}
+{-# LANGUAGE PolyKinds                  #-}
+{-# LANGUAGE LambdaCase                 #-}
 
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds   #-}
 
 
 module Analysis.Python.Primitives (applyPrim) where
@@ -17,7 +17,7 @@ import Domain.Python.World
 import Domain.Python.Objects
 
 import Lattice
-import Domain ( NumberDomain, BoolDomain(..) )
+import Domain ( NumberDomain, BoolDomain, BoolLattice(..), boolTop)
 import Domain.Class ()
 import qualified Domain.Core.SeqDomain as SeqDomain
 import qualified Domain
@@ -42,13 +42,14 @@ import qualified Data.Map as Map
 
 applyPrim :: forall pyM obj vlu . PyM pyM obj vlu => PyPrim -> PyLoc -> [vlu] -> pyM vlu
 -- int primitives
-applyPrim IntAdd        = prim2'' $ intBinop' Domain.plus
-applyPrim IntSub        = prim2'' $ intBinop' Domain.minus
-applyPrim IntMul        = prim2'' $ intBinop' Domain.times
-applyPrim IntTrueDiv    = prim2'' $ intBinop @ReaPrm @ReaPrm intDiv Domain.div
+applyPrim IntAdd        = prim2'' $ intBinop' (Domain.plus @_ @(Abs obj BlnPrm))
+applyPrim IntSub        = prim2'' $ intBinop' (Domain.minus @_ @(Abs obj BlnPrm))
+applyPrim IntMul        = prim2'' $ intBinop' (Domain.times @_ @(Abs obj BlnPrm))
+applyPrim IntTrueDiv    = prim2'' $ intBinop @ReaPrm @ReaPrm intDiv (Domain.div @_ @(Abs obj BlnPrm))
   where
         intDiv :: Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj ReaPrm)
-        intDiv a b = Monad.join $ liftM2 Domain.div (Domain.toReal a) (Domain.toReal b)
+        intDiv a b = Monad.join $ liftM2 (Domain.div @_ @(Abs obj BlnPrm)) (Domain.toReal @_ @(Abs obj BlnPrm) @(Abs obj StrPrm) a) 
+                                                                           (Domain.toReal @_ @(Abs obj BlnPrm) @(Abs obj StrPrm) b)
 applyPrim IntBool       = prim1'' @IntPrm @BlnPrm (\o -> Domain.ne o (Domain.inject (0::Integer)))
 applyPrim IntEq         = prim2'' $ intBinop'' @BlnPrm Domain.eq
 applyPrim IntNe         = prim2'' $ intBinop'' @BlnPrm Domain.ne
@@ -57,10 +58,10 @@ applyPrim IntGt         = prim2'' $ intBinop'' @BlnPrm Domain.gt
 applyPrim IntLe         = prim2'' $ intBinop'' @BlnPrm Domain.le
 applyPrim IntGe         = prim2'' $ intBinop'' @BlnPrm Domain.ge
 -- float primitives
-applyPrim FloatAdd      = prim2'' $ floatBinop @ReaPrm Domain.plus
-applyPrim FloatSub      = prim2'' $ floatBinop @ReaPrm Domain.minus
-applyPrim FloatMul      = prim2'' $ floatBinop @ReaPrm Domain.times
-applyPrim FloatTrueDiv  = prim2'' $ floatBinop @ReaPrm Domain.div
+applyPrim FloatAdd      = prim2'' $ floatBinop @ReaPrm (Domain.plus @_ @(Abs obj BlnPrm))
+applyPrim FloatSub      = prim2'' $ floatBinop @ReaPrm (Domain.minus @_ @(Abs obj BlnPrm))
+applyPrim FloatMul      = prim2'' $ floatBinop @ReaPrm (Domain.times @_ @(Abs obj BlnPrm))
+applyPrim FloatTrueDiv  = prim2'' $ floatBinop @ReaPrm (Domain.div @_ @(Abs obj BlnPrm))
 applyPrim FloatEq       = prim2'' $ floatBinop @BlnPrm Domain.eq
 applyPrim FloatNe       = prim2'' $ floatBinop @BlnPrm Domain.ne
 applyPrim FloatLt       = prim2'' $ floatBinop @BlnPrm Domain.lt
@@ -69,7 +70,8 @@ applyPrim FloatLe       = prim2'' $ floatBinop @BlnPrm Domain.le
 applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
 applyPrim FloatBool     = prim1'' @ReaPrm @BlnPrm (\o -> Domain.ne o (Domain.inject (0::Double)))
 -- string primitives
-applyPrim StringAppend  = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc . from @StrPrm =<< Domain.append s1 s2
+applyPrim StringAppend  = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc . from @StrPrm =<< Domain.append @_ @(Abs obj BlnPrm) @(Abs obj IntPrm) @(CP Char) s1 s2
+applyPrim StringEq      = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc (from @BlnPrm boolTop) -- TODO: StringDomain does not support equality yet
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookup
 applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (Domain.updateWeak k) v a1) a2
@@ -98,7 +100,7 @@ applyPrim ListIteratorNext = prim1 $ pyDeref . next
               advance :: PyLoc -> ObjAdr -> vlu -> vlu -> pyM vlu
               advance loc adr = pyDeref2'' @LstPrm @IntPrm $
                                         \l i -> do v <- SeqDomain.ref i l
-                                                   n <- Domain.inc i
+                                                   n <- Domain.inc @_ @(Abs obj BlnPrm) @(Abs obj StrPrm) @(Abs obj ReaPrm) i
                                                    idx <- pyStore (tagAs NxtIdx loc) $ from @IntPrm n
                                                    pyAssignAt (attrStr IndexAttr) idx adr
                                                    return v
@@ -113,19 +115,51 @@ applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr
 applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
 applyPrim ObjectBool = prim1 $ \_ _ -> return $ constant True
 -- DataFrame primitives
-applyPrim DataFrameGetItem = prim2' @DfrPrm @StrPrm $ \loc dfr _ -> pyStore loc (from @SrsPrm dfr)
-applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref2'' @StrPrm @SrsPrm (\_ srs -> none $ pyAssignInPrm SDfrPrm (assignSeries srs) a3 a1) a2 a3
+applyPrim DataFrameGetItem = prim2 $ \loc a1 a2 -> pyDeref'' @DfrPrm (\dep -> pyDeref' (getWithIndex loc dep) a2) a1 
+        where
+             getWithIndex :: PyLoc -> CP Bool -> obj -> pyM vlu
+             getWithIndex loc dep obj = condCP (return $ has @StrPrm obj)               -- if the second arg is a float ...
+                                               (pyStore loc $ from @SrsPrm dep)                 
+                                               (condCP (return $ has @LstPrm obj)       
+                                                       (pyStore loc $ from @DfrPrm dep) 
+                                                       mbottom) -- TODO: improve error reporting here 
+applyPrim DataFrameSetItem = prim3 $ \_ a1 _ a3 -> pyDeref' (\obj -> none $ pyAssignInPrm SDfrPrm (assignWith obj) a3 a1) a3
         where 
-             assignSeries :: CP Bool -> vlu -> CP Bool -> pyM (CP Bool)
-             assignSeries srs _ dfr = return (join dfr srs)
-applyPrim DataFrameEmpty   = prim1' @DfrPrm $ \loc _ -> pyStore loc (from @BlnPrm boolTop)
-applyPrim DataFrameRename  = prim2' @DfrPrm @DctPrm $ \loc df _ -> pyStore loc (from @DfrPrm df)
-applyPrim DataFrameDropNA  = prim1' @DfrPrm $ \loc df -> pyStore loc (from @DfrPrm df)
-applyPrim DataFrameAppend  = prim2' @DfrPrm @DfrPrm $ \loc df1 df2 -> pyStore loc (from @DfrPrm $ df1 `join` df2)
-applyPrim DataFrameFromSeries = prim1' @SrsPrm $ \loc srs -> pyStore loc (from @DfrPrm $ srs)
+             assignWith :: obj -> vlu -> CP Bool -> pyM (CP Bool)
+             assignWith obj _ dfr = condCP (return $ has @SrsPrm obj)
+                                          (do srs <- get @SrsPrm obj
+                                              return $ join srs dfr)
+                                              (condCP (return $ has @DfrPrm obj)
+                                                      (do df2 <- get @DfrPrm obj
+                                                          return $ join dfr df2)
+                                                      mbottom) -- TODO: improve error reporting here 
+applyPrim DataFrameEmpty        = prim1' @DfrPrm          $ \loc _        -> pyStore loc (from @BlnPrm boolTop)
+applyPrim DataFrameRename       = prim2' @DfrPrm @DctPrm  $ \loc dep _    -> pyStore loc (from @DfrPrm dep)
+applyPrim DataFrameDropNA       = prim1' @DfrPrm          $ \loc dep      -> pyStore loc (from @DfrPrm dep)
+applyPrim DataFrameAppend       = prim2' @DfrPrm @DfrPrm  $ \loc dp1 dp2  -> pyStore loc (from @DfrPrm $ dp1 `Domain.or` dp2)
+applyPrim DataFrameFromSeries   = prim1' @SrsPrm          $ \loc dep      -> pyStore loc (from @DfrPrm $ dep)
+applyPrim DataFrameMap          = prim2  $ \loc a1 _    -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm) a1   -- TODO: should also deref 2nd arg
+applyPrim DataFrameRemoveOutliers = prim4 $ \loc a1 _ _ _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) a1  
+applyPrim DataFrameApplyAverage = prim3 $ \loc a1 _ _   -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) a1
+applyPrim DataFrameApplyStatsPerMovement = prim3 $ \loc a1 _ _  -> pyDeref'' @DfrPrm  (\_ -> pyStore loc (from @DfrPrm Domain.false)) a1  
+applyPrim DataFrameCalcIncDiff = prim2 $ \loc a1 _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) a1
+applyPrim DataFrameWindowedPrim1 = \loc -> \case
+                                             (dfr:_) -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) dfr
+                                             _       -> pyError ArityError
+applyPrim DataFrameWindowedPrim2 = \loc -> \case
+                                             (df1:df2:_) -> pyDeref2'' @DfrPrm @DfrPrm (\_ _ -> pyStore loc (from @DfrPrm Domain.false)) df1 df2
+                                             _           -> pyError ArityError
+applyPrim DataFrameWindowedPrim3 = \loc -> \case
+                                             (df1:df2:df3:_) -> pyDeref2'' @DfrPrm @DfrPrm (\_ _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) df3) df1 df2
+                                             _               -> pyError ArityError
+applyPrim DataFrameGroupBy = prim2 $ \loc dfr _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (new' DataFrameGroupByType [] [])) dfr
+applyPrim DataFrameGroupByIter = prim1 $ \loc dfg -> pyDeref' (\_ -> pyStore loc (new' DataFrameGroupByIteratorType [] [])) dfg
+applyPrim DataFrameGroupByIteratorNext = prim1 $ \loc -> pyDeref' $ \_ -> pyStore loc (from @DfrPrm Domain.false)
+                                                                         `mjoin`
+                                                                          pyStore (tagAs NxtExc loc) (new' StopIterationExceptionType [] [])
 -- Series primitives
-applyPrim SeriesAsType    = prim2 $ \_ self _ -> return self
-applyPrim SeriesMerge     = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1
+applyPrim SeriesAsType  = prim2 $ \_ self _ -> return self
+applyPrim SeriesMerge   = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1
 -- other primitives
 applyPrim NoneBool = prim1 $ \_ _ -> return $ constant False
 applyPrim BoolBool = prim1'' @BlnPrm @BlnPrm return
@@ -198,9 +232,9 @@ intBinop :: forall r1 r2 pyM obj vlu . (PyM pyM obj vlu, SingI r1, SingI r2)
           => (Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj r1))   -- the function for integers
           -> (Abs obj ReaPrm -> Abs obj ReaPrm -> pyM (Abs obj r2))   -- the function for floats
           -> obj -> obj -> pyM obj
-intBinop fi fr o1 o2 = condCP (return $ has @ReaPrm o2)  -- if the second arg is a float ...
+intBinop fi fr o1 o2 = condCP (return $ has @ReaPrm o2)      -- if the second arg is a float ...
                               (do n1 <- get @IntPrm o1       -- ... coerce the first arg to a float as well 
-                                  r1 <- Domain.toReal n1
+                                  r1 <- Domain.toReal @_ @(Abs obj BlnPrm) @(Abs obj StrPrm)  n1
                                   let r2 = at @ReaPrm o2
                                   from @r2 <$> fr r1 r2)
                               (do n1 <- get @IntPrm o1
@@ -208,12 +242,12 @@ intBinop fi fr o1 o2 = condCP (return $ has @ReaPrm o2)  -- if the second arg is
                                   from @r1 <$> fi n1 n2)
 
 intBinop' :: forall pyM obj vlu . (PyM pyM obj vlu)
-          => (forall d . NumberDomain d => d -> d -> pyM d) -- a common case: the same function (e.g., from NumberDomain)
+          => (forall d . NumberDomain d (Abs obj BlnPrm) => d -> d -> pyM d) -- a common case: the same function (e.g., from NumberDomain)
           -> obj -> obj -> pyM obj
 intBinop' f = intBinop @IntPrm @ReaPrm f f
 
 intBinop'' :: forall r pyM obj vlu . (PyM pyM obj vlu, SingI r)
-          => (forall d . (NumberDomain d, Domain.BoolFor d ~ Abs obj BlnPrm) => d -> d -> pyM (Abs obj r)) -- another common case
+          => (forall d . (NumberDomain d (Abs obj BlnPrm)) => d -> d -> pyM (Abs obj r)) -- another common case
           -> obj -> obj -> pyM obj
 intBinop'' f = intBinop @r @r f f
 
@@ -223,7 +257,7 @@ floatBinop :: forall r pyM obj vlu . (PyM pyM obj vlu, SingI r)
 floatBinop f o1 o2 = condCP (return $ has @IntPrm o2)   -- if the second arg is an int ...
                             (do r1 <- get @ReaPrm o1        -- ... coerce it to a float 
                                 let n2 = at @IntPrm o2
-                                r2 <- Domain.toReal n2
+                                r2 <- Domain.toReal @_ @(Abs obj BlnPrm) @(Abs obj StrPrm) n2
                                 from @r <$> f r1 r2)
                             (do r1 <- get @ReaPrm o1
                                 r2 <- get @ReaPrm o2

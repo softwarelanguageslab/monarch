@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 -- | A bounded list abstraction abstracts lists of bounded length. 
 module Domain.Core.SeqDomain.BoundedList(BoundedList(elements), ref, fromList) where
 
@@ -13,6 +14,7 @@ import Data.List.Extra (zipWithLongest)
 import Control.Monad.Join
 import Data.Maybe
 import Domain.Class
+import Domain.Core.BoolDomain.Class
 
 maybeBot :: BottomLattice a => Maybe a -> a
 maybeBot = fromMaybe bottom
@@ -31,18 +33,18 @@ instance (BottomLattice a, Joinable a) => Joinable (BoundedList a) where
 instance (BottomLattice a) => BottomLattice (BoundedList a) where   
    bottom = BoundedList bottom []
 
-ref :: (NumberDomain i, Domain i Int, Joinable a, BottomLattice a, AbstractM m) => BoundedList a -> i -> m a
+ref :: forall bln i a m . (NumberDomain i bln, BoolDomain bln, Domain i Int, Joinable a, BottomLattice a, AbstractM m) => BoundedList a -> i -> m a
 ref (BoundedList length elements) i
       | length == bottom = mbottom
-      | otherwise        = rangedRef length
+      | otherwise        = rangedRef length
    where rangedRef (Interval (Bounded l1) (Bounded u1)) = 
             let values = mjoins (zipWith lookup [0..u1] elements)
-            in conds
+            in conds @bln
                [(lt i (inject l1),  values),
                 (gt i (inject u1), escape IndexOutOfBounds)]
                (mjoin values (escape IndexOutOfBounds))
          rangedRef _ = error "unreachable" -- this case is unreachable since we never make unbounded lengths
-         lookup n e = cond (eq i (inject n)) (return e) (return bottom)
+         lookup n e = cond (eq @_ @bln i (inject n)) (return e) (return bottom)
 
 fromList :: [a] -> BoundedList a
 fromList as = BoundedList (inject (Prelude.length as)) as
