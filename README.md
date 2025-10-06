@@ -19,7 +19,7 @@ Alternatively, the repository can be used as a set of libraries. This usage is i
 
 ## Structure
 
-The project is structured as a monorepository containing several indepent libraries.
+The project is structured as a monorepository containing several independent libraries.
 The idea behind this structure is to enable re-use of each of the components in our 
 framework, allowing them to be easily used in smaller experiments. The libraries
 that make up our framework are as follows:
@@ -35,6 +35,8 @@ Each library contains additional documentation about their structure and usage
 in third-party libraries/applications.
 
 ## References and Relevant publications
+
+Monarch has been presented at SAS 2025 in a paper entitled "Monarch, A Modular Framework for Abstract Definitional Interpreters in Haskell".
 
 The original idea behind ModX comes from the following work on modular analysis: [Effect-Driven Flow Analysis](https://doi.org/10.1007/978-3-030-11245-5_12), and [A general method for rendering static analyses for diverse concurrency models modular](https://doi.org/10.1016/j.jss.2018.10.001).
 
