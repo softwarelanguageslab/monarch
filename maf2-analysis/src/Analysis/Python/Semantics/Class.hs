@@ -25,6 +25,7 @@ import Prelude hiding (break, exp, lookup, True, False)
 import Data.Functor (($>))
 import Analysis.Environment (extends)
 import Control.Monad.Escape (orElse)
+import Debug.Trace
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -55,11 +56,12 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     -- | Execute a single statement
     exec :: PyStm -> m ()
     exec (Assg _ lhs rhs)            = execAss lhs rhs
-    exec (Return _ exp loc)          = execRet exp loc
+    exec (Return _ exp _)            = execRet exp
     exec (Conditional _ brs els loc) = execIff loc brs els
     exec (StmtExp _ e _)             = execExp e
     exec (Loop _ cnd bdy loc)        = execWhi cnd bdy loc
     exec (Seq _ sts)                 = execSeq sts
+    exec (DecoratedStm _ dec stm _)  = execDec dec stm
     exec (Break _ _)                 = execBrk
     exec (Continue _ _)              = execCnt
     exec (Raise _ exp _)             = execRai exp
@@ -81,24 +83,25 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
                                                        (checkHandlers rst exc)
     execAss :: PyLhs -> PyExp -> m ()
     execAss lhs rhs = eval rhs >>= assignTo lhs
-        where
-         assignTo :: PyLhs -> vlu -> m ()
-         assignTo (IdePat ide) vlu     = do (frm, nam) <- frame ide
-                                            pyAssignAt nam vlu frm
-         assignTo (Field e nam _) vlu  = eval e >>= pyAssign (ideName nam) vlu
-         assignTo (ListPat _ _) vlu    = todo "list assignment"
-         assignTo (TuplePat _ _) vlu   = todo "tuple assignment"
+    assignTo :: PyLhs -> vlu -> m ()
+    assignTo (IdePat ide) vlu     = do (frm, nam) <- frame ide
+                                       pyAssignAt nam vlu frm
+    assignTo (Field e nam _) vlu  = eval e >>= pyAssign (ideName nam) vlu
+    assignTo (ListPat _ _) vlu    = todo "list assignment"
+    assignTo (TuplePat _ _) vlu   = todo "tuple assignment"
     execIff :: PyLoc -> [(PyExp, PyStm)] -> PyStm -> m ()
     execIff _ [] els = exec els
     execIff loc ((prd, bdy):rst) els =
         pyIf'_ loc  (eval prd)
                     (exec bdy)
                     (execIff (tagAs IffNxt loc) rst els)
+    execDec :: String -> PyStm -> m ()
+    execDec _ = exec -- ignore the decorator in standard semantics 
     execSeq :: [PyStm] -> m () 
     execSeq = mapM_ exec
-    execRet :: Maybe PyExp -> PyLoc -> m ()
-    execRet (Just exp) _    = eval exp >>= pyReturn
-    execRet Nothing loc     = pyReturn (constant None)
+    execRet :: Maybe PyExp -> m ()
+    execRet (Just exp)  = eval exp >>= pyReturn
+    execRet Nothing     = pyReturn (constant None)
     execBrk :: m ()
     execBrk = pyBreak
     execCnt :: m ()
@@ -110,7 +113,7 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     evalWhi cnd bdy loc = pyWithCtx loc $ pyCall loc (LoopBdy loc cnd bdy)  
     eval :: PyExp -> m vlu
     eval (Lam prs bdy loc lcl)  = evalLam prs bdy loc lcl
-    eval (Var ide)              = evalVar ide
+    eval (Var ide)              = evalVar ide 
     eval (Literal lit)          = evalLit lit
     eval (Call fun arg kwa loc) = evalCll fun arg kwa loc
     eval (Read obj nam loc)     = evalRea obj (ideName nam) loc

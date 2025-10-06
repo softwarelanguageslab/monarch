@@ -44,7 +44,7 @@ import Domain.Core.TaintDomain
 import Data.Singletons (SingI, sing)
 import Domain.Class (Domain)
 import qualified Domain.Class as Domain
-import Domain (CPDictionary, CPDataFrame)
+import Domain (CPDictionary)
 import Lattice.BottomLiftedLattice (BottomLifted)
 import Lattice.TopLattice
 import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)), Assoc, get)
@@ -155,7 +155,7 @@ type PyDomain obj vlu = (PyVal vlu,
                          Abs obj TupPrm ~ CPList vlu,
                          Abs obj StrPrm ~ CP String,
                          Abs obj DctPrm ~ CPDictionary String vlu, 
-                         Abs obj DfrPrm ~ CPDataFrame vlu,
+                         Abs obj DfrPrm ~ CP Bool,
                          Abs obj SrsPrm ~ CP Bool)
 
 new'' :: PyDomain obj vlu => vlu -> [(String, vlu)] -> [BindingFrom (PyPrmMap obj)] -> obj

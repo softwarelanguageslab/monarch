@@ -132,7 +132,7 @@ instance (IntDomain l bl s rl, IntDomain r br s rr, Joinable s, StrDom l ~ s, St
 ------------------------------------------------------------
 
 -- Left biased instance for the StringDomain
-instance {-# OVERLAPPABLE #-} (StringLattice s l l l, BottomLattice r, Joinable r, Eq r) => StringLattice (SchemeString s)
+instance {-# OVERLAPPABLE #-} (StringLattice s l l l, BottomLattice r, Joinable r, Show r, Eq r) => StringLattice (SchemeString s)
                                         {- bln -} (SchemePairedValue l r)
                                         {- int -} (SchemePairedValue l r)
                                         {- chr -} (SchemePairedValue l r)  where

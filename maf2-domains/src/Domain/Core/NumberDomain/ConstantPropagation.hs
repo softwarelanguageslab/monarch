@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+
 {-# LANGUAGE UndecidableInstances #-}
 
 module Domain.Core.NumberDomain.ConstantPropagation where
@@ -8,7 +9,6 @@ import Lattice
 import Domain.Core.NumberDomain.Class 
 import Domain.Core.BoolDomain.ConstantPropagation () -- for CP Bool instance
 
-import Control.Applicative
 import Control.Monad.DomainError
 import Control.Monad.Join 
 import Control.Monad.AbstractM

@@ -1,4 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+
 module Domain.Core.NumberDomain.Pair where
 
 import Domain.Core.NumberDomain.Class (NumberLattice(..), IntLattice (..), RealLattice (..))

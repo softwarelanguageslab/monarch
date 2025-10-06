@@ -4,8 +4,6 @@
 module Analysis.Store(
    Store(..),
    CountingMap(..),
-   store,
-   restrictSto,
    printSto,
    emptyCountingMap,
    traceStore,
@@ -43,7 +41,7 @@ class Joinable v => Store s a v | s -> a v where
    --updateStoWith fs _ adr s = let v' = fs (lookupSto adr s) in updateSto adr v' s
    -- | Left-biased union of two stores
    union :: s -> s -> s
-   {-# MINIMAL size, emptySto, lookupSto, extendSto, updateStoWith, restrictSto #-}
+   {-# MINIMAL size, emptySto, union, lookupSto, extendSto, updateStoWith, restrictSto #-}
 
 
 -- | Simple map-based instance of the store with weak updates

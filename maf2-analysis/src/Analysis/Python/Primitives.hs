@@ -71,6 +71,7 @@ applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
 applyPrim FloatBool     = prim1'' @ReaPrm @BlnPrm (\o -> Domain.ne o (Domain.inject (0::Double)))
 -- string primitives
 applyPrim StringAppend  = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc . from @StrPrm =<< Domain.append @_ @(Abs obj BlnPrm) @(Abs obj IntPrm) @(CP Char) s1 s2
+applyPrim StringEq      = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc (from @BlnPrm boolTop) -- TODO: StringDomain does not support equality yet
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookup
 applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (Domain.updateWeak k) v a1) a2
@@ -114,19 +115,51 @@ applyPrim TypeInit = prim4 $ \loc typ nam sup _ -> do pyAssign (attrStr NameAttr
 applyPrim ObjectInit = prim1 $ \_ _ -> return $ constant None
 applyPrim ObjectBool = prim1 $ \_ _ -> return $ constant True
 -- DataFrame primitives
-applyPrim DataFrameGetItem = prim2' @DfrPrm @StrPrm $ \loc dfr _ -> pyStore loc (from @SrsPrm undefined)
-applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref2'' @StrPrm @SrsPrm (\_ srs -> none $ pyAssignInPrm SDfrPrm undefined a3 a1) a2 a3
+applyPrim DataFrameGetItem = prim2 $ \loc a1 a2 -> pyDeref'' @DfrPrm (\dep -> pyDeref' (getWithIndex loc dep) a2) a1 
+        where
+             getWithIndex :: PyLoc -> CP Bool -> obj -> pyM vlu
+             getWithIndex loc dep obj = condCP (return $ has @StrPrm obj)               -- if the second arg is a float ...
+                                               (pyStore loc $ from @SrsPrm dep)                 
+                                               (condCP (return $ has @LstPrm obj)       
+                                                       (pyStore loc $ from @DfrPrm dep) 
+                                                       mbottom) -- TODO: improve error reporting here 
+applyPrim DataFrameSetItem = prim3 $ \_ a1 _ a3 -> pyDeref' (\obj -> none $ pyAssignInPrm SDfrPrm (assignWith obj) a3 a1) a3
         where 
-             assignSeries :: CP Bool -> vlu -> CP Bool -> pyM (CP Bool)
-             assignSeries srs _ dfr = return (join dfr srs)
-applyPrim DataFrameEmpty   = prim1' @DfrPrm $ \loc _ -> pyStore loc (from @BlnPrm boolTop)
-applyPrim DataFrameRename  = prim2' @DfrPrm @DctPrm $ \loc df _ -> pyStore loc (from @DfrPrm df)
-applyPrim DataFrameDropNA  = prim1' @DfrPrm $ \loc df -> pyStore loc (from @DfrPrm df)
-applyPrim DataFrameAppend  = prim2' @DfrPrm @DfrPrm $ \loc df1 df2 -> pyStore loc (from @DfrPrm $ df1 `join` df2)
-applyPrim DataFrameFromSeries = prim1' @SrsPrm $ \loc srs -> pyStore loc (from @DfrPrm $ undefined)
+             assignWith :: obj -> vlu -> CP Bool -> pyM (CP Bool)
+             assignWith obj _ dfr = condCP (return $ has @SrsPrm obj)
+                                          (do srs <- get @SrsPrm obj
+                                              return $ join srs dfr)
+                                              (condCP (return $ has @DfrPrm obj)
+                                                      (do df2 <- get @DfrPrm obj
+                                                          return $ join dfr df2)
+                                                      mbottom) -- TODO: improve error reporting here 
+applyPrim DataFrameEmpty        = prim1' @DfrPrm          $ \loc _        -> pyStore loc (from @BlnPrm boolTop)
+applyPrim DataFrameRename       = prim2' @DfrPrm @DctPrm  $ \loc dep _    -> pyStore loc (from @DfrPrm dep)
+applyPrim DataFrameDropNA       = prim1' @DfrPrm          $ \loc dep      -> pyStore loc (from @DfrPrm dep)
+applyPrim DataFrameAppend       = prim2' @DfrPrm @DfrPrm  $ \loc dp1 dp2  -> pyStore loc (from @DfrPrm $ dp1 `Domain.or` dp2)
+applyPrim DataFrameFromSeries   = prim1' @SrsPrm          $ \loc dep      -> pyStore loc (from @DfrPrm $ dep)
+applyPrim DataFrameMap          = prim2  $ \loc a1 _    -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm) a1   -- TODO: should also deref 2nd arg
+applyPrim DataFrameRemoveOutliers = prim4 $ \loc a1 _ _ _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) a1  
+applyPrim DataFrameApplyAverage = prim3 $ \loc a1 _ _   -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) a1
+applyPrim DataFrameApplyStatsPerMovement = prim3 $ \loc a1 _ _  -> pyDeref'' @DfrPrm  (\_ -> pyStore loc (from @DfrPrm Domain.false)) a1  
+applyPrim DataFrameCalcIncDiff = prim2 $ \loc a1 _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) a1
+applyPrim DataFrameWindowedPrim1 = \loc -> \case
+                                             (dfr:_) -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) dfr
+                                             _       -> pyError ArityError
+applyPrim DataFrameWindowedPrim2 = \loc -> \case
+                                             (df1:df2:_) -> pyDeref2'' @DfrPrm @DfrPrm (\_ _ -> pyStore loc (from @DfrPrm Domain.false)) df1 df2
+                                             _           -> pyError ArityError
+applyPrim DataFrameWindowedPrim3 = \loc -> \case
+                                             (df1:df2:df3:_) -> pyDeref2'' @DfrPrm @DfrPrm (\_ _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (from @DfrPrm Domain.false)) df3) df1 df2
+                                             _               -> pyError ArityError
+applyPrim DataFrameGroupBy = prim2 $ \loc dfr _ -> pyDeref'' @DfrPrm (\_ -> pyStore loc (new' DataFrameGroupByType [] [])) dfr
+applyPrim DataFrameGroupByIter = prim1 $ \loc dfg -> pyDeref' (\_ -> pyStore loc (new' DataFrameGroupByIteratorType [] [])) dfg
+applyPrim DataFrameGroupByIteratorNext = prim1 $ \loc -> pyDeref' $ \_ -> pyStore loc (from @DfrPrm Domain.false)
+                                                                         `mjoin`
+                                                                          pyStore (tagAs NxtExc loc) (new' StopIterationExceptionType [] [])
 -- Series primitives
-applyPrim SeriesAsType    = prim2 $ \_ self _ -> return self
-applyPrim SeriesMerge     = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1
+applyPrim SeriesAsType  = prim2 $ \_ self _ -> return self
+applyPrim SeriesMerge   = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm df)) self a1
 -- other primitives
 applyPrim NoneBool = prim1 $ \_ _ -> return $ constant False
 applyPrim BoolBool = prim1'' @BlnPrm @BlnPrm return

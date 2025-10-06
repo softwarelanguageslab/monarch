@@ -25,6 +25,7 @@ import Control.Monad (ap)
 import Data.Functor ((<&>))
 import Control.Monad.Escape
 import Control.Monad.Trans.Class
+import Debug.Trace (trace)
 
 ------------------------------------------------------------
 --- The TaintM typeclass
