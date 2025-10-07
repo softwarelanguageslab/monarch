@@ -36,7 +36,9 @@ in third-party libraries/applications.
 
 ## References and Relevant publications
 
-Monarch has been presented at SAS 2025 in a paper entitled "Monarch, A Modular Framework for Abstract Definitional Interpreters in Haskell".
+Monarch has been presented in the following publications:
+
+* _Monarch, A Modular Framework for Abstract Definitional Interpreters in Haskell_. SAS 2025 [pdf](https://soft.vub.ac.be/Publications/2025/vub-tr-soft-25-09.pdf)
 
 The original idea behind ModX comes from the following work on modular analysis: [Effect-Driven Flow Analysis](https://doi.org/10.1007/978-3-030-11245-5_12), and [A general method for rendering static analyses for diverse concurrency models modular](https://doi.org/10.1016/j.jss.2018.10.001).
 
