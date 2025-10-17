@@ -117,6 +117,7 @@ newtype TaintResult = TaintResult {
 
 instance PrintResult TaintResult where
    printResult (TaintResult (rsto, osto, graph)) = do
+      putStrLn "\nRESULTS PER COMPONENT:\n"
       putStrLn (printRSto rsto True osto)
       putStrLn "\nOBJECT STORE RESULTS:\n"
       putStrLn (printOSto osto)
