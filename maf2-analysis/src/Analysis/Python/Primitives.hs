@@ -17,7 +17,7 @@ import Domain.Python.World
 import Domain.Python.Objects
 
 import Lattice
-import Domain ( NumberDomain, BoolDomain, BoolLattice(..), boolTop)
+import Domain ( NumberDomain, BoolLattice(..), boolTop)
 import Domain.Class ()
 import qualified Domain.Core.SeqDomain as SeqDomain
 import qualified Domain

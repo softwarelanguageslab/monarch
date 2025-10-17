@@ -11,7 +11,7 @@ import Analysis.Python.Objects
 import Analysis.Python.Common
 import Analysis.Python.Monad.Class
 import Analysis.Python.Primitives
-import Control.Monad ((>=>), (<=<), void)
+import Control.Monad ((>=>), void)
 import qualified Domain.Core.SeqDomain as SeqDomain
 import qualified Domain.Core.DictionaryDomain as DctDomain
 import Lattice
@@ -24,8 +24,6 @@ import qualified Data.Set as Set
 import Prelude hiding (break, exp, lookup, True, False)
 import Data.Functor (($>))
 import Analysis.Environment (extends)
-import Control.Monad.Escape (orElse)
-import Debug.Trace
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
