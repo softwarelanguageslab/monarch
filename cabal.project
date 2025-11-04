@@ -1,4 +1,4 @@
-with-compiler: ghc-9.6.6
+with-compiler: ghc-9.6.7
 
 source-repository-package
    type: git
