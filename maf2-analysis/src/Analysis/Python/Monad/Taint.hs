@@ -27,6 +27,8 @@ import qualified Lattice.TopLiftedLattice as TopLattice
 import Lattice.TopLattice()
 import Domain.Python.Objects.Class
 import Control.Monad.Identity
+import Domain.Core.TaintDomain.Class
+import qualified Debug.Trace as Debug
 
 newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (IdentityT m a)
   deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache)
@@ -91,6 +93,13 @@ instance (
   pyLookupEnv = lookupEnv
   pyLookupSto = lookupAdr
   pyWithCtx loc = withCtx (take kcfa . (loc:))
+
+  applyXPrim TaintSink loc = \case
+                              [_, v@(Tainted _ t)] -> do
+                                 condCP (pure $ Debug.traceWith (("isTainted>> " ++) . show) $ isTainted t)
+                                        (pyAlloc loc (new' TaintedValueExceptionType [] []) >>= pyRaise . injectAdr)
+                                        (return v)
+                              _ -> Debug.trace "arity error" $ pyError ArityError
   applyXPrim ObjectTaint _ = \case
                                 [a] -> withTaint @Taint TopLattice.Top (addTaint a)
                                 _   -> pyError ArityError

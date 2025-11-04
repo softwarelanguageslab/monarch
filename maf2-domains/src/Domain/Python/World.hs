@@ -9,6 +9,7 @@ import Prelude hiding (True, False, all)
 import Data.Singletons (Sing)
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
+import Syntax.Python (PyLoc)
 
 
 -- | Built-in types in Python
@@ -33,7 +34,9 @@ data PyType = NoneType
             | DataFrameType
             | DataFrameGroupByType
             | DataFrameGroupByIteratorType
-            | SeriesType  
+            | SeriesType
+            | TaintType
+            | TaintedValueExceptionType
   deriving (Eq, Ord, Enum, Bounded, Show, Generic) 
 
 instance NFData PyType where
@@ -57,11 +60,13 @@ name ObjectType       = "object"
 name TypeType         = "type"
 name ExceptionType    = "Exception"
 name StopIterationExceptionType = "StopIteration"
+name TaintedValueExceptionType = "TaintedValueException"
 name DatabaseType     = "Database"
 name DataFrameType    = "DataFrame"
 name DataFrameGroupByType = "DataFrameGroupBy"
 name DataFrameGroupByIteratorType = "DataFrameGroupByIteratorType"
 name SeriesType       = "Series"
+name TaintType        = "Taint"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -127,11 +132,15 @@ methods SeriesType        = [(AsTypeAttr, SeriesAsType),
                              (MergeAttr,  SeriesMerge)]
 methods DataFrameGroupByType = [(IterAttr, DataFrameGroupByIter)]
 methods DataFrameGroupByIteratorType = [(NextAttr, DataFrameGroupByIteratorNext)]
+methods TaintType = []
+methods TaintedValueExceptionType = []
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
 extraMethods DatabaseType = [(ReadAttr, DatabaseRead),
                              (WriteAttr, DatabaseWrite)]
+extraMethods TaintType    = [(TaintSinkAttr, TaintSink)]
+
 extraMethods _ = [] 
 
 -- | Built-in primitives in Python
@@ -215,6 +224,7 @@ instance NFData PyPrim where
 data XPyPrim = ObjectTaint 
              | DatabaseRead 
              | DatabaseWrite
+             | TaintSink
   deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance NFData XPyPrim where
@@ -268,8 +278,10 @@ data PyAttr = ClassAttr
             | ApplyAverageAttr      -- TODO/alternatively: we can also analyze the definition of these directly ...
             | ApplyStatsPerMovement
             | RemoveOutliersAttr
-            | CalcIncDiffAttr        
-  deriving (Eq, Ord, Enum, Bounded)
+            | CalcIncDiffAttr
+            -- Taint tracking
+            | TaintSinkAttr
+  deriving (Eq, Ord, Enum, Show, Bounded)
 
 attrStr :: PyAttr -> String 
 attrStr ClassAttr     = "__class__"
@@ -321,6 +333,8 @@ attrStr ApplyAverageAttr      = "apply_average"
 attrStr ApplyStatsPerMovement = "apply_stats_per_movement"
 attrStr RemoveOutliersAttr    = "remove_outliers"
 attrStr CalcIncDiffAttr       = "calc_inc_diff"
+-- Taint
+attrStr TaintSinkAttr         = "sink"
 
 -- | Built-in objects in Python 
 data PyConstant = None
@@ -384,4 +398,5 @@ data PyError = AttributeNotFound
              | ArityError
              | TypeMismatch
              | InvalidMRO
+             | TaintError PyLoc -- TODO: move this to Monad/Taint.hs and have the errors wrapped
   deriving (Eq, Ord, Show)
