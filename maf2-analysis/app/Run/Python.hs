@@ -142,7 +142,9 @@ printRSto m deref osto
          showVal _ (Escape e) = "[!!: "++show e++"]"
          showVal False (Value v) = show v
          showVal False (MayBoth v e) = "[!!: "++show e++"]" ++ show v
+         showVal True (MayBoth v e) = "[!!: "++show e++"]" ++ showDereferencedVal v
          showVal True (Value v) = showDereferencedVal v
+         showVal a b = error $ "non-covered value " ++ show a ++ " and " ++ show b
          showDereferencedVal v =
             let as = Set.toList (adrs v)
                 rawsto = store osto
