@@ -91,6 +91,12 @@ instance (
   pyLookupEnv = lookupEnv
   pyLookupSto = lookupAdr
   pyWithCtx loc = withCtx (take kcfa . (loc:))
+
+  applyXPrim TaintSink loc = \case
+                              [v] -> condCP (isTainted v)
+                                    (pyError (TaintError))
+                                    (return v)
+                              _ -> pyError ArityError
   applyXPrim ObjectTaint _ = \case
                                 [a] -> withTaint @Taint TopLattice.Top (addTaint a)
                                 _   -> pyError ArityError
