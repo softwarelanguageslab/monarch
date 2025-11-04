@@ -35,7 +35,8 @@ data PyType = NoneType
             | DataFrameGroupByType
             | DataFrameGroupByIteratorType
             | SeriesType
-            | TaintType 
+            | TaintType
+            | TaintedValueExceptionType
   deriving (Eq, Ord, Enum, Bounded, Show, Generic) 
 
 instance NFData PyType where
@@ -59,6 +60,7 @@ name ObjectType       = "object"
 name TypeType         = "type"
 name ExceptionType    = "Exception"
 name StopIterationExceptionType = "StopIteration"
+name TaintedValueExceptionType = "TaintedValueException"
 name DatabaseType     = "Database"
 name DataFrameType    = "DataFrame"
 name DataFrameGroupByType = "DataFrameGroupBy"
@@ -131,6 +133,7 @@ methods SeriesType        = [(AsTypeAttr, SeriesAsType),
 methods DataFrameGroupByType = [(IterAttr, DataFrameGroupByIter)]
 methods DataFrameGroupByIteratorType = [(NextAttr, DataFrameGroupByIteratorNext)]
 methods TaintType = []
+methods TaintedValueExceptionType = []
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
@@ -278,7 +281,7 @@ data PyAttr = ClassAttr
             | CalcIncDiffAttr
             -- Taint tracking
             | TaintSinkAttr
-  deriving (Eq, Ord, Enum, Bounded)
+  deriving (Eq, Ord, Enum, Show, Bounded)
 
 attrStr :: PyAttr -> String 
 attrStr ClassAttr     = "__class__"

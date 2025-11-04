@@ -61,9 +61,12 @@ injectPyConstant (TypeName typ)    = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm)  = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left prm)
 injectPyConstant (XPrimObject prm) = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Right prm)
 injectPyConstant (TypeMRO typ)     = from  @TupPrm (SeqDomain.fromList $ map typeVal mro)
+  -- TODO: we probably shouldn't encode all built-in MROs here.
+  -- this should be moved to the 'World' module.
   where mro = case typ of
                 ObjectType  -> [ObjectType]
                 StopIterationExceptionType -> [StopIterationExceptionType, ExceptionType, ObjectType]
+                TaintedValueExceptionType -> [TaintedValueExceptionType, ExceptionType, ObjectType] 
                 _           -> [typ, ObjectType]
 injectPyConstant (TypeObject typ) = new' TypeType allAttrs []
   where typeAttrs        = [(NameAttr, TypeName typ), (MROAttr, TypeMRO typ)]

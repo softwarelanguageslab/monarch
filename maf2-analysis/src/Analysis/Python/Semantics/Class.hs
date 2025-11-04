@@ -24,6 +24,7 @@ import qualified Data.Set as Set
 import Prelude hiding (break, exp, lookup, True, False)
 import Data.Functor (($>))
 import Analysis.Environment (extends)
+import qualified Debug.Trace as Debug
 
 -- | Throws an error that the operation must still be implemented
 todo :: String -> a
@@ -184,7 +185,7 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     callPrm :: PyLoc -> [vlu] -> Set (Either PyPrim XPyPrim) -> m vlu
     callPrm pos ags = mjoinMap apply
         where apply (Left prm)  = applyPrim prm pos ags
-              apply (Right prm) = applyXPrim prm pos ags  
+              apply (Right prm) = applyXPrim (Debug.traceShowId prm) pos ags  
 
     callBnd :: PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Map ObjAdr vlu -> m vlu
     callBnd loc pos kwa = mjoinMap apply . Map.toList
