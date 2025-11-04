@@ -2,9 +2,22 @@ module LSP(run) where
 
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Language.LSP.Protocol.Lens hiding (publishDiagnostics, options)
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
+import Analysis qualified as A
+import Relude.Extra.Lens
+import Relude.Unsafe (fromJust)
+import Language.LSP.Diagnostics (partitionBySource)
+import Language.LSP.VFS
+
+-------------------------------
+-- Analysis results processing
+-------------------------------
+
+analysisResultToDiagnostic :: A.AnalysisResult -> [Diagnostic]
+analysisResultToDiagnostic = undefined
 
 -------------------------------
 -- LSP handlers
@@ -14,37 +27,35 @@ handlers :: Handlers (LspM ())
 handlers =
   mconcat
     [ notificationHandler SMethod_Initialized $ \_not -> do
-        let params =
-              ShowMessageRequestParams
-                MessageType_Info
-                "Turn on code lenses?"
-                (Just [MessageActionItem "Turn on", MessageActionItem "Don't"])
-        _ <- sendRequest SMethod_WindowShowMessageRequest params $ \case
-          Right (InL (MessageActionItem "Turn on")) -> do
-            let regOpts = CodeLensRegistrationOptions (InR Null) Nothing (Just False)
-
-            _ <- registerCapability mempty SMethod_TextDocumentCodeLens regOpts $ \_req responder -> do
-              let cmd = Command "Say hello" "lsp-hello-command" Nothing
-                  rsp = [CodeLens (mkRange 0 0 0 100) (Just cmd) Nothing]
-              responder $ Right $ InL rsp
-            pure ()
-          Right _ ->
-            sendNotification SMethod_WindowShowMessage (ShowMessageParams MessageType_Info "Not turning on code lenses")
-          Left err ->
-            sendNotification SMethod_WindowShowMessage (ShowMessageParams MessageType_Error $ "Something went wrong!\n" <> (show err))
         pure ()
-    , requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        let TRequestMessage _ _ _ (HoverParams _doc pos _workDone) = req
-            Position _l _c' = pos
-            rsp = Hover (InL ms) (Just range)
-            ms = mkMarkdown "Hello world"
-            range = Range pos pos
-        responder (Right $ InL rsp)
+    , notificationHandler SMethod_TextDocumentDidChange $ \notification -> do
+        let uri' =  notification ^. params . textDocument . uri
+        mdoc <- getVirtualFile (toNormalizedUri uri')
+        case mdoc of
+          Just vf@(VirtualFile {}) ->
+            let contents = virtualFileText vf
+                analysisResults = A.analyze (show uri') (T.unpack contents)
+                diagnostics = analysisResultToDiagnostic $ fromJust analysisResults
+            in  publishDiagnostics (Prelude.length diagnostics)
+                                   (toNormalizedUri uri')
+                                   Nothing
+                                   (partitionBySource diagnostics)
+
     ]
 
 -------------------------------
 -- Running the Language Server
 -------------------------------
+
+lspOptions :: Options
+lspOptions = defaultOptions {
+    optTextDocumentSync =
+            Just $ TextDocumentSyncOptions (Just False)
+                                           (Just TextDocumentSyncKind_Full)
+                                           Nothing
+                                           Nothing
+                                           Nothing
+  }
 
 run :: IO ()
 run =
@@ -55,9 +66,9 @@ run =
       , defaultConfig = ()
       , configSection = "monarch-python"
       , doInitialize = \env _req -> pure $ Right env
-      , staticHandlers = \_caps -> handlers
+      , staticHandlers = const handlers
       , interpretHandler = \env -> Iso (runLspT env) liftIO
-      , options = defaultOptions
+      , options = lspOptions
       }
 
 

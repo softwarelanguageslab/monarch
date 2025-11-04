@@ -36,7 +36,7 @@ import "maf2-analysis" Data.Graph
 -- Analysis results and reporting
 -------------------------------
 
-data AnalysisResult 
+data AnalysisResult
 
 type TaintResult = (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
 toResult :: TaintResult -> AnalysisResult
@@ -52,4 +52,4 @@ analyze :: String -- ^ name of the file to analyze (for correctly assigning file
         -> String -- ^ contents of the file to analyze
         -> Maybe AnalysisResult
 analyze filename contents =
-  parse filename contents <&> Taint.analyzeCP <&> toResult
+  parse filename contents <&> toResult . Taint.analyzeCP
