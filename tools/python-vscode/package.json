@@ -1,0 +1,64 @@
+{
+  "name": "python-ifc-lsp",
+  "displayName": "Python Information Flow Control Language Server",
+  "description": "Language server for detecting information flows and leakage in Python",
+  "version": "0.1.0",
+  "publisher": "monarch",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "Python IFC Language Server",
+      "properties": {
+        "pythonIfcLsp.serverPath": {
+          "type": "string",
+          "default": "python-ifc-lsp",
+          "description": "Path to the python-ifc-lsp executable. Defaults to 'python-ifc-lsp' which will look for the executable in PATH."
+        },
+        "pythonIfcLsp.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        },
+        "pythonIfcLsp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable the Python IFC Language Server"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.0"
+  }
+}

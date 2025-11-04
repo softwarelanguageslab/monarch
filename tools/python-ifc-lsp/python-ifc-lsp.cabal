@@ -1,0 +1,29 @@
+cabal-version: 2.2
+
+name: python-ifc-lsp
+version: 0.1.0.0
+
+
+executable python-ifc-lsp
+  main-is: Main.hs
+  other-modules:  LSP
+                , Analysis
+  hs-source-dirs: app
+  build-depends:   base > 4.7 && < 5
+                 , directory
+                 , maf2-syntax
+                 , maf2-domains
+                 , maf2-analysis
+                 , language-python
+                 , lsp
+                 , lsp-types
+                 , relude
+  default-extensions:  LambdaCase
+                     , ImportQualifiedPost
+                     , OverloadedStrings
+                     , PackageImports
+                     , EmptyDataDecls
+  mixins: base hiding (Prelude)
+        , relude (Relude as Prelude)
+        , relude
+
