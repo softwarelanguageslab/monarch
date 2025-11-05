@@ -156,6 +156,7 @@ library
     , process
     , singletons
     , singletons-th
+    , temporary
     , transformers
     , unordered-containers
     , vector
@@ -219,6 +220,7 @@ executable maf-exe
     , process
     , singletons
     , singletons-th
+    , temporary
     , transformers
     , unordered-containers
     , vector
@@ -278,6 +280,7 @@ test-suite maf2-analysis-test
     , process
     , singletons
     , singletons-th
+    , temporary
     , transformers
     , unordered-containers
     , vector

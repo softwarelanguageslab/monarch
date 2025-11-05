@@ -96,14 +96,15 @@ pythonSoundness :: Spec
 pythonSoundness = describe "Python soundness" $ mapM_ (soundBenchmark
             "Python analysis"
             defaultTimeout
-            (return . analyzeCP . snd)           -- analyze
+            (return . ignoreDiagnostics . analyzeCP . snd)           -- analyze
             (evalPythonProgram . fst)            -- concrete interpreter
             (\concreteSto (_, abstractSto, _) -> -- the analysis result should subsume the concrete result
                 return True) -- TODO
             (\ program -> return (fmap (program,) $ maybeToEither "parse error" $ parse "" program))) 
             PythonBenchmarks.soundnessBenchmarks
+    where ignoreDiagnostics (a, b, c, _) = (a, b, c)
 
 spec :: Spec 
 spec = do
     schemeSoundness
-    -- pythonSoundness
+    pythonSoundness
