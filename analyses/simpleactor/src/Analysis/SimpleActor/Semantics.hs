@@ -253,3 +253,10 @@ untilJust fs a = foldl (`maybe` Just) Nothing (fmap ($ a) fs)
 -- | Compute a store containing the set of primitives
 initialSto :: (Store s (Adr v) v, SchemeDomain v) => [String] -> (String -> Adr v) ->  s
 initialSto prms allocPrm = Store.from $ fmap (\nam -> (allocPrm nam, prim nam)) prms
+
+------------------------------------------------------------
+-- MonadCall
+------------------------------------------------------------
+
+newtype SemanticsT v m a = SemanticsT (IdentityT m a)
+                         deriving (Applicative, Functor, Monad, MonadLayer, MonadTrans)

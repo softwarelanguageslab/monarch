@@ -26,11 +26,11 @@ import qualified Language.Python.Common as Py
 pyLocToRange :: Py.PyLoc -> Maybe Range
 pyLocToRange (Py.PyLoc span _) =
   case span of
-      Py.SpanCoLinear {..} -> Just $ Range (Position (fromIntegral span_row) (fromIntegral span_start_column))
-                                           (Position (fromIntegral span_row ) (fromIntegral span_end_column))
-      Py.SpanMultiLine {..} -> Just $ Range (Position (fromIntegral span_start_row) (fromIntegral span_start_column))
-                                            (Position (fromIntegral span_end_row) (fromIntegral span_end_column))
-      Py.SpanPoint {..} ->  let point = Position (fromIntegral span_row) (fromIntegral span_column)
+      Py.SpanCoLinear {..} -> Just $ Range (Position (fromIntegral $ span_row - 1) (fromIntegral $ span_start_column - 1))
+                                           (Position (fromIntegral $ span_row -1) (fromIntegral $ span_end_column - 1))
+      Py.SpanMultiLine {..} -> Just $ Range (Position (fromIntegral $ span_start_row - 1) (fromIntegral $ span_start_column - 1))
+                                            (Position (fromIntegral $ span_end_row - 1) (fromIntegral $ span_end_column  - 1))
+      Py.SpanPoint {..} ->  let point = Position (fromIntegral $ span_row - 1) (fromIntegral $ span_column - 1)
                             in Just $ Range point point
       Py.SpanEmpty -> Nothing
 
@@ -58,7 +58,7 @@ analysisResultToDiagnostic defaultRange A.AnalysisResult {..} =
 -------------------------------
 
 diagnosticsSource :: Text
-diagnosticsSource = "monarch-lsp"
+diagnosticsSource = "Monarch"
 
 -- | Get the whole program range for a given document
 getWholeProgramRange :: Text  -> Range

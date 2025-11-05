@@ -32,6 +32,7 @@ import Data.Kind (Type)
 import Analysis.Monad.FunctionCharacteristics
 import "maf2-analysis" Data.Graph hiding (fromList)
 import Syntax.Python qualified as Py
+import Analysis.Python.Diagnostics
 import Analysis.Python.Monad.Taint (PyRefTaint)
 import Analysis.Python.Fixpoint.Taint qualified as Py hiding (analyze)
 import qualified Analysis.Python.Escape as Py
@@ -46,20 +47,16 @@ newtype AnalysisResult = AnalysisResult {
     messagePerLine :: Map PyLoc (Set String)
   } deriving (Ord, Eq, Show)
 
-type TaintResult = (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
+type TaintResult = (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
 toResult :: TaintResult -> AnalysisResult
-toResult (rsto, _, _) =
+toResult (_, _, _, diagnostics) =
     AnalysisResult $
       Map.fromList
-    $ map (first (fromMaybe Py.emptyPyLoc . Py.locOfCmp))
-    $ Map.toList
-    $ fmap (Set.map show . asException) rsto
-  where asException :: MayEscape (Tainted t (Set (PyEsc PyRefTaint))) v -> Set PyRefTaint
-        asException = \case Escape es -> getExceptions es
-                            MayBoth _ es -> getExceptions es
-                            _   -> Set.empty
-        getExceptions = foldMap (\case (Py.Exception e) -> Set.singleton e ; _ -> Set.empty)  . getValue
-        getValue (Tainted v _) = v
+    $ map diagnosticToTuple (Set.toList diagnostics)
+  where
+    diagnosticToTuple :: PyTaintDiagnostic -> (PyLoc, Set String)
+    diagnosticToTuple (Diagnostic reason loc) = (loc, Set.singleton $ show reason)
+    
 
 -------------------------------
 -- Run an analysis

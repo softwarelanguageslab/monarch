@@ -39,6 +39,7 @@ import Data.Typeable
 import Data.Graph
 import Analysis.Store (CountingMap)
 import Data.Foldable (traverse_)
+import Analysis.Python.Diagnostics
 
 type PyCtx = [PyLoc]
 type Store obj = CountingMap ObjAdr obj
@@ -67,6 +68,7 @@ type AnalysisM m obj = (PyDomain obj PyRefTaint,
                         MonadDependencyTracking PyCmp PyCmpTaint m,
                         MonadDependencyTracking PyCmp PyCmpStoreIn m,
                         MonadDependencyTracking PyCmp PyCmpStoreOut m,
+                        MonadReport (DiagnosticType PyRefTaint) m,
                         GraphM (CP String) (CP Bool) m,
                         WorkListM m PyCmp,
                         Typeable obj,
@@ -119,9 +121,11 @@ inter prg = do let cmp = ((Main prg, initialEnv), [])
                iterateWL (intra @obj)                                              -- start the analysis 
                Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
 
-analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool))
-analyze prg = (rsto, osto, graph)
-    where ((osto, graph), rsto) = inter @obj prg
+type PyTaintDiagnostic = Diagnostic (DiagnosticType PyRefTaint)
+
+analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
+analyze prg = (rsto, osto, graph, reports)
+    where (((osto, graph), rsto), reports) = inter @obj prg
                                     & runWithGraph @(SimpleGraph (CP String) (CP Bool))
                                     & runWithMapping' @PyCmpStoreIn
                                     & runWithMapping' @PyCmpStoreOut 
@@ -134,6 +138,7 @@ analyze prg = (rsto, osto, graph)
                                     & runWithDependencyTracking @PyCmp @PyCmpStoreOut
                                     & runWithComponentTracking @PyCmp
                                     & runWithWorkList @(Set PyCmp)
+                                    & runReportT @(DiagnosticType PyRefTaint)
                                     & runIdentity
                                     
 
@@ -158,6 +163,7 @@ analyzeREPL read display =
             & runWithDependencyTracking @PyCmp @PyCmpStoreIn 
             & runWithDependencyTracking @PyCmp @PyCmpStoreOut 
             & runWithComponentTracking @PyCmp
+            & runReportT @(DiagnosticType PyRefTaint)
             & runWithWorkList @(Set PyCmp)
     where repl = forever $ do prg <- addImplicitReturn <$> liftIO read
                               let cmp = ((Main prg, initialEnv), [])
@@ -184,5 +190,5 @@ locOfCmp ((FuncBdy loc _, _), _) = Just loc
 
 type PyDomainCP = PyObjCP PyRefTaint ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
+analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
 analyzeCP = analyze @PyDomainCP

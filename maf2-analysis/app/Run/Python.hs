@@ -6,6 +6,7 @@
 
 module Run.Python(main, Options, options, runREPL, runBenchmarks) where
 
+import Data.Set (Set)
 import Syntax.Python
 import Options.Applicative
 import Data.Maybe
@@ -112,11 +113,11 @@ instance PrintResult CharacteristicsResult where
 -----------------------------------------
 
 newtype TaintResult = TaintResult {
-      taintResult :: (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
+      taintResult :: (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
    }
 
 instance PrintResult TaintResult where
-   printResult (TaintResult (rsto, osto, graph)) = do
+   printResult (TaintResult (rsto, osto, graph, _)) = do
       putStrLn "\nRESULTS PER COMPONENT:\n"
       putStrLn (printRSto rsto True osto)
       putStrLn "\nOBJECT STORE RESULTS:\n"
@@ -181,7 +182,7 @@ runFile' :: String -> IO ()
 runFile' fileName =
    do program <- readFile fileName
       let Just parsed = parse "testje" program
-      let (rsto, osto, graph) = analyzeCP parsed
+      let (rsto, osto, graph, _) = analyzeCP parsed
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
@@ -196,7 +197,7 @@ runFile :: String -> IO ()
 runFile fileName =
    do program <- readFile fileName
       let Just parsed = parse "testje" program
-      let (rsto, osto, characteristics) = analyzeCP parsed
+      let (rsto, osto, characteristics) = Characteristics.analyzeCP parsed
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
       putStrLn "\nRESULTS PER COMPONENT:\n"
@@ -218,7 +219,7 @@ generateGraph files =
       putStrLn "}"
    where generateGraphForFile file = do program <- readFile file
                                         let Just parsed = parse "testje" program
-                                        let (_, _, graph) = analyzeCP parsed
+                                        let (_, _, graph, _) = analyzeCP parsed
                                         printGraph file graph
          printGraph file graph = mapM_ (putStrLn . showEdge file) (edges graph)
          showEdge file (from, to, dep) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show ("[" ++ toType dep ++ "] " ++ shortFileName file) ++ "];"

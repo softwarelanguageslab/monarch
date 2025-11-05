@@ -216,6 +216,7 @@ type EvalM v k m =
     MonadIO m,
     Show (Env v),
     MonadAbstractCount (ARef v) m,
+    MonadCall v m,
     -- Domain constraints
     ForAllStored Show v,
     ForAllStored Eq v,

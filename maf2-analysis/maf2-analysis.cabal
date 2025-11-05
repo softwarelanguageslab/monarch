@@ -66,6 +66,7 @@ library
       Analysis.Monad.WorkList
       Analysis.Python
       Analysis.Python.Common
+      Analysis.Python.Diagnostics
       Analysis.Python.Escape
       Analysis.Python.Fixpoint.Characteristics
       Analysis.Python.Fixpoint.Core

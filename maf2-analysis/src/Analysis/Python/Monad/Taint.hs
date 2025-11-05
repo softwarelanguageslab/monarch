@@ -29,6 +29,7 @@ import Domain.Python.Objects.Class
 import Control.Monad.Identity
 import Domain.Core.TaintDomain.Class
 import qualified Debug.Trace as Debug
+import Analysis.Python.Diagnostics
 
 newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (IdentityT m a)
   deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache)
@@ -65,6 +66,7 @@ instance (
           EnvM m ObjAdr PyEnv,
           AllocM m PyLoc ObjAdr,
           GraphM (CP String) (CP Bool) m,
+          MonadReport (DiagnosticType vlu) m,
           StoreM ObjAdr obj m)
           =>
           PyM (PythonTaintAnalysisT m) obj vlu where
@@ -97,7 +99,7 @@ instance (
   applyXPrim TaintSink loc = \case
                               [_, v@(Tainted _ t)] -> do
                                  condCP (pure $ Debug.traceWith (("isTainted>> " ++) . show) $ isTainted t)
-                                        (pyAlloc loc (new' TaintedValueExceptionType [] []) >>= pyRaise . injectAdr)
+                                        (reportDiagnostic loc (TaintViolation v) >> return v)
                                         (return v)
                               _ -> Debug.trace "arity error" $ pyError ArityError
   applyXPrim ObjectTaint _ = \case
