@@ -39,9 +39,6 @@ import Data.Typeable
 import Data.Graph
 import Analysis.Store (CountingMap)
 import Data.Foldable (traverse_)
-import Control.DeepSeq (NFData)
-import Control.Monad.Join
-import Debug.Trace (trace)
 
 type PyCtx = [PyLoc]
 type Store obj = CountingMap ObjAdr obj
@@ -171,6 +168,15 @@ analyzeREPL read display =
                               putStore =<< Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
                               res <- fromJust <$> Analysis.Monad.get @PyCmp @PyRes cmp 
                               traverse_ ((\(Tainted s _) -> mapM lookupAdr (Set.toList (addrs s))) >=> liftIO . display . joins1) res 
+
+--
+-- Extract information from components
+-- 
+
+locOfCmp :: PyCmp -> Maybe PyLoc
+locOfCmp ((Main _, _), _) = Nothing
+locOfCmp ((LoopBdy loc _ _, _), _) = Just loc
+locOfCmp ((FuncBdy loc _, _), _) = Just loc
 
 ---
 --- CP instantiation

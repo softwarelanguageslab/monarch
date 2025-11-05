@@ -1,10 +1,10 @@
 -- | Interaction with the Monarch analysis
-module Analysis where
+module Analysis(AnalysisResult(..), analyze) where
 
 import Syntax.Python
 import Data.Maybe
-import Analysis.Python.Fixpoint.Taint
-import qualified Analysis.Python.Fixpoint.Taint as Taint
+import Analysis.Python.Fixpoint.Taint hiding (analyze)
+import qualified Analysis.Python.Fixpoint.Taint as Taint hiding (analyze)
 import qualified Analysis.Python.Fixpoint.Characteristics as Characteristics
 import Analysis.Python.Common
 import Data.List
@@ -30,17 +30,36 @@ import Control.Monad
 import Lattice.Tainted
 import Data.Kind (Type)
 import Analysis.Monad.FunctionCharacteristics
-import "maf2-analysis" Data.Graph
+import "maf2-analysis" Data.Graph hiding (fromList)
+import Syntax.Python qualified as Py
+import Analysis.Python.Monad.Taint (PyRefTaint)
+import Analysis.Python.Fixpoint.Taint qualified as Py hiding (analyze)
+import qualified Analysis.Python.Escape as Py
+import qualified Data.Map.Lazy as Data.Map
+import qualified Data.Map.Lazy as Map
 
 -------------------------------
 -- Analysis results and reporting
 -------------------------------
 
-data AnalysisResult
+newtype AnalysisResult = AnalysisResult {
+    messagePerLine :: Map PyLoc (Set String)
+  } deriving (Ord, Eq, Show)
 
 type TaintResult = (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool))
 toResult :: TaintResult -> AnalysisResult
-toResult = undefined
+toResult (rsto, _, _) =
+    AnalysisResult $
+      Map.fromList
+    $ map (first (fromMaybe Py.emptyPyLoc . Py.locOfCmp))
+    $ Map.toList
+    $ fmap (Set.map show . asException) rsto
+  where asException :: MayEscape (Tainted t (Set (PyEsc PyRefTaint))) v -> Set PyRefTaint
+        asException = \case Escape es -> getExceptions es
+                            MayBoth _ es -> getExceptions es
+                            _   -> Set.empty
+        getExceptions = foldMap (\case (Py.Exception e) -> Set.singleton e ; _ -> Set.empty)  . getValue
+        getValue (Tainted v _) = v
 
 -------------------------------
 -- Run an analysis

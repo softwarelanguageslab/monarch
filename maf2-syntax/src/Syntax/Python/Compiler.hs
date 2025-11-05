@@ -7,7 +7,14 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 -- | Reduced Python Syntax and its compiler
-module Syntax.Python.Compiler(compile, parse, lexical, PyLoc(..), PyTag(..), tagAs) where
+module Syntax.Python.Compiler(
+      compile
+    , parse
+    , lexical
+    , PyLoc(..)
+    , PyTag(..)
+    , tagAs
+    , emptyPyLoc) where
 
 
 import Syntax.Python.AST
@@ -17,8 +24,8 @@ import Control.Monad
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Applicative (liftA2, asum)
-import Syntax.Python.Parser (parseFile, SrcSpan(..))
+import Control.Applicative (asum)
+import Syntax.Python.Parser (parseFile, SrcSpan)
 import Language.Python.Common.AST hiding (None, List, Handler, Try, Raise, Conditional, Pass, Continue, Break, Return, Call, Var, Bool, Tuple, Global, NonLocal)
 import qualified Language.Python.Common.AST as AST
 import Data.Map (Map)
@@ -31,6 +38,7 @@ import Data.Bifunctor (Bifunctor(second, first))
 import Data.Function ((&))
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData (rnf))
+import qualified Language.Python.Common as PyParser
 
 
 todo :: String -> a
@@ -53,6 +61,9 @@ instance NFData SrcSpan where
 
 data PyLoc = PyLoc SrcSpan (Maybe PyTag)
    deriving (Eq, Ord, Generic)
+
+emptyPyLoc :: PyLoc
+emptyPyLoc = PyLoc PyParser.SpanEmpty Nothing
 
 instance NFData PyLoc where
 data PyTag = FrmTag
