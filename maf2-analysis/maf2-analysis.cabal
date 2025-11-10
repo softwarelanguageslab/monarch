@@ -71,10 +71,12 @@ library
       Analysis.Python.Fixpoint.Characteristics
       Analysis.Python.Fixpoint.Core
       Analysis.Python.Fixpoint.Taint
+      Analysis.Python.Fixpoint.TaintTracked
       Analysis.Python.Monad.Characteristics
       Analysis.Python.Monad.Class
       Analysis.Python.Monad.Core
       Analysis.Python.Monad.Taint
+      Analysis.Python.Monad.TaintTracked
       Analysis.Python.Objects
       Analysis.Python.Primitives
       Analysis.Python.Semantics.Characteristics

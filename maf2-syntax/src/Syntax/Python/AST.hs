@@ -9,6 +9,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE RecordWildCards #-}
 module Syntax.Python.AST(
    -- ast nodes
    Parameter(..), 
@@ -39,6 +40,7 @@ import Control.Monad.Reader
 import Control.Monad.Writer
 import Data.List (intersperse)
 import Control.DeepSeq (NFData)
+import Syntax.Span
 
 -------------------------------------------------------------------------------
 -- Compilation phases
@@ -173,6 +175,25 @@ data Stmt a ξ = Assg (XAsgn ξ) (Lhs a ξ) (Exp a ξ)
               | StmtExp (XStmtExp ξ) (Exp a ξ) a
    deriving (Generic)
 
+-- | Compatibility with Syntax.Span
+instance (SpanOf (XIde ξ a), SpanOf a) => SpanOf (Stmt a ξ) where 
+   spanOf (Assg _ lhs _) = spanOf lhs 
+   spanOf (Seq _ stmts) = case stmts of 
+      [] -> error "SpanOf Stmt Seq: empty sequence has no span"
+      expr : _ -> spanOf expr
+   spanOf (Return _ _ a) = spanOf a 
+   spanOf (Loop _ _ _ a) = spanOf a
+   spanOf (Break _ a)    = spanOf a
+   spanOf (Continue _ a) = spanOf a
+   spanOf (Raise _ _ a)  = spanOf a
+   spanOf (Try _ _ _ a)  = spanOf a
+   spanOf (NonLocal _ _ a) = spanOf a
+   spanOf (Global _ _ a) = spanOf a
+   spanOf (Conditional _ _ _ a) = spanOf a
+   spanOf (DecoratedStm _ _ _ a) = spanOf a
+   spanOf (StmtExp _ _ a) = spanOf a
+   
+
 deriving instance (Holds Show ξ a) => Show (Stmt a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Stmt a ξ)
 deriving instance (Holds Eq   ξ a) => Eq (Stmt a ξ)
@@ -230,7 +251,13 @@ deriving instance (Holds Show ξ a) => Show (Lhs a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Lhs a ξ)
 deriving instance (Holds Eq   ξ a) => Eq (Lhs a ξ)
 
-instance (Holds NFData ξ a) => NFData (Lhs a ξ) where
+instance (SpanOf (XIde ξ a), SpanOf a) => SpanOf (Lhs a ξ) where 
+   spanOf (Field _ _ a) = spanOf a
+   spanOf (ListPat _ a) = spanOf a
+   spanOf (TuplePat _ a) = spanOf a
+   spanOf (IdePat x) = spanOf x
+
+instance (Holds NFData ξ a) => NFData (Lhs a ξ) 
 
 -- | Value literals
 data Lit a ξ = Bool Bool a 

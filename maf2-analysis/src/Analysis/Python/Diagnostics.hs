@@ -24,6 +24,9 @@ import Data.Set
 import qualified Data.Set as Set
 import GHC.Generics (Generic)
 import Syntax.Python
+import Lattice (TopLifted)
+import Lattice.TopLiftedLattice (fromTL)
+import Syntax.Span
 
 -----------------------------------------
 -- Definition of diagnostic information
@@ -33,14 +36,14 @@ import Syntax.Python
 -- data. For instance, a "TaintViolation" could store the value
 -- that lead to the taint violation.
 data DiagnosticType vlu
-  = TaintViolation vlu
+  = TaintViolation (TopLifted (Set (Span, Set Span))) vlu
   | ArityViolation {expectedArity :: Int, actualArity :: Int}
   deriving (Ord, Eq, Generic)
 
 instance (NFData vlu) => NFData (DiagnosticType vlu)
 
 instance Show (DiagnosticType vlu) where
-  show (TaintViolation _) = "a tainted value flowed to this sink"
+  show (TaintViolation locs _) = "a tainted value flowed to this sink\nSources: " ++ unlines (Set.toList $ Set.map show $ fromTL Set.empty locs)
   show (ArityViolation expected actual) = "arity violation, expected " ++ show expected ++ " actual " ++ show actual
 
 -- | The diagnostic itself carries a diagnostic type 'd' and a

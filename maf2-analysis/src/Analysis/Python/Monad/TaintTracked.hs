@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Analysis.Python.Monad.Taint where 
+module Analysis.Python.Monad.TaintTracked where 
 
 import Lattice
 import Domain.Class
@@ -21,21 +21,27 @@ import Control.Monad ((>=>))
 import Analysis.Monad.Call (CallM(..))
 import Lattice.Tainted (Tainted(..))
 import Data.Set (Set)
-import Data.Functor (($>))
-import qualified Data.Set as Set
 import qualified Lattice.TopLiftedLattice as TopLattice
 import Lattice.TopLattice()
 import Domain.Python.Objects.Class
-import Control.Monad.Identity
 import Domain.Core.TaintDomain.Class
 import qualified Debug.Trace as Debug
 import Analysis.Python.Diagnostics
+import qualified Data.Set as Set
+import Control.Monad.Reader
+import Syntax.Span
+import Control.Lens
+import qualified Lattice.TopLiftedLattice as TopLifted
 
-newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (IdentityT m a)
-  deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache)
+-- | This is the same as the 'Analysis.Python.Monad.Taint' monad, but also keeps track
+-- of an execution context that is used for correlating tainted values to the source
+-- locations manipulating them.
+newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (ReaderT (Maybe Span) m a)
+  deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache, MonadReader (Maybe Span))
+
 
 runPythonTaintAnalysisT :: PythonTaintAnalysisT m a -> m a
-runPythonTaintAnalysisT (PythonTaintAnalysisT m) = runIdentityT m
+runPythonTaintAnalysisT (PythonTaintAnalysisT m) = runReaderT m Nothing
 
 
 -- Taint analysis instance
@@ -45,9 +51,29 @@ runPythonTaintAnalysisT (PythonTaintAnalysisT m) = runIdentityT m
 kcfa :: Int
 kcfa = 10
 
-type Taint = TopLifted (Set String)
-type PyRefTaint = Tainted Taint ObjAddrSet
+type Taint = TopLifted (Set TaintTracking)
 
+data TaintTracking = TaintTracking { _sourceSpan :: Span, _dependentsSpan :: Set Span }
+                   deriving (Ord, Eq, Show)
+$(makeLenses ''TaintTracking)
+
+trackingToTuple :: TaintTracking -> (Span, Set Span)
+trackingToTuple (TaintTracking sourceSpan dependentSpan) = (sourceSpan, dependentSpan)
+
+-- | Create a source
+source :: SpanOf a => a -> Taint
+source = TopLifted.Value . Set.singleton . flip TaintTracking Set.empty . spanOf
+
+-- | Executes the given computation by extending the tainted value with the current execution context
+withExecutionContext :: (MonadReader (Maybe Span) m, TaintM Taint m) => m a -> m a
+withExecutionContext m = do
+  t   <- currentTaint
+  maybe m (flip withTaint m . extendTaint t) =<< ask
+
+extendTaint :: Taint -> Span -> Taint
+extendTaint t s = Set.map (over dependentsSpan (Set.insert s)) <$> t
+
+type PyRefTaint = Tainted Taint ObjAddrSet
 type PyRetTaint = Tainted Taint (Set (PyEsc PyRefTaint))
 
 instance (
@@ -96,21 +122,14 @@ instance (
   pyLookupSto = lookupAdr
   pyWithCtx loc = withCtx (take kcfa . (loc:))
 
-  applyXPrim ObjectTaint _ = \case
-                                [a] -> withTaint @Taint TopLattice.Top (addTaint a)
+  applyXPrim TaintSink loc = \case
+                              [_, v@(Tainted _ t)] -> do
+                                 condCP (pure $ Debug.traceWith (("isTainted>> " ++) . show) $ isTainted t)
+                                        (reportDiagnostic loc (TaintViolation (fmap (Set.map trackingToTuple) t) v) >> return v)
+                                        (return v)
+                              _ -> Debug.trace "arity error" $ pyError ArityError
+  applyXPrim ObjectTaint loc = \case
+                                [a] -> withTaint @Taint (source loc) (addTaint a)
                                 _   -> pyError ArityError
-  applyXPrim DatabaseRead loc = \case
-                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm Prelude.True)) str
-                                  _        -> pyError ArityError
-                                  where 
-                                    toTaint :: CP String -> Taint 
-                                    toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
-                                    toTaint Lattice.Top            = TopLattice.Top
-  applyXPrim DatabaseWrite _ = \case
-                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\dfr nam -> currentTaint @Taint >>= \t -> addEdges nam t dfr $> constant None) df str
-                                  _            -> pyError ArityError
-                                where 
-                                      addEdges to TopLattice.Top       dfr = addEdge Lattice.Top to dfr
-                                      addEdges to (TopLattice.Value s) dfr = mapM_ (\source -> addEdge (Lattice.Constant source) to dfr) (Set.toList s)
-
   applyXPrim _ _ = error "primitive not implemented"
+
