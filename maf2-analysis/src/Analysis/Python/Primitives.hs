@@ -163,7 +163,7 @@ applyPrim SeriesMerge   = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm
 -- other primitives
 applyPrim NoneBool = prim1 $ \_ _ -> return $ constant False
 applyPrim BoolBool = prim1'' @BlnPrm @BlnPrm return
-
+applyPrim RandomNumber = prim0 (\loc -> pyStore loc $ from @IntPrm top)
 --
 -- Primitive helpers 
 --

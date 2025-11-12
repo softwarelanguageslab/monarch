@@ -51,11 +51,24 @@ initConstant c = writeAdr (allocCst c) (injectPyConstant c)
 
 initialCst :: [(String, PyConstant)]
 initialCst = map (\typ -> (name typ, TypeObject typ)) (all :: [PyType])
+          -- TODO: this is probably the wrong place to add things like this,
+          -- but it is something that worked at the time.
+          --
+          -- The main issue is that it is very clear how to add primitive
+          -- classes and types (through the Python.World module) but it is
+          -- not so clear how to add primitive functions. So I treated them
+          -- here as constants. The downside is that constants are not added
+          -- to the global frame by default, so this is why I added this list here.
+          --
+          -- If somebody has a better idea, or knows where to add primitive functions
+          -- ergonomically, please change this. Signed off: @bramvdbogaerde.
+          ++ [("random", Random)]
 
 injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
 injectPyConstant True              = from' @BlnPrm Prelude.True
 injectPyConstant False             = from' @BlnPrm Prelude.False
 injectPyConstant None              = new' NoneType [] [] 
+injectPyConstant Random            = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left RandomNumber)
 injectPyConstant GlobalFrame       = new' FrameType (map (second constant) initialCst) [] 
 injectPyConstant (TypeName typ)    = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm)  = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left prm)

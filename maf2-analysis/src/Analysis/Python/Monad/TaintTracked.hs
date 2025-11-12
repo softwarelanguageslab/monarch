@@ -32,16 +32,18 @@ import Control.Monad.Reader
 import Syntax.Span
 import Control.Lens
 import qualified Lattice.TopLiftedLattice as TopLifted
+import qualified Data.List as List
+
 
 -- | This is the same as the 'Analysis.Python.Monad.Taint' monad, but also keeps track
 -- of an execution context that is used for correlating tainted values to the source
 -- locations manipulating them.
-newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (ReaderT (Maybe Span) m a)
-  deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache, MonadReader (Maybe Span))
+newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (ReaderT [Span] m a)
+  deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache, MonadReader [Span])
 
 
 runPythonTaintAnalysisT :: PythonTaintAnalysisT m a -> m a
-runPythonTaintAnalysisT (PythonTaintAnalysisT m) = runReaderT m Nothing
+runPythonTaintAnalysisT (PythonTaintAnalysisT m) = runReaderT m []
 
 
 -- Taint analysis instance
@@ -65,17 +67,20 @@ source :: SpanOf a => a -> Taint
 source = TopLifted.Value . Set.singleton . flip TaintTracking Set.empty . spanOf
 
 -- | Changes the execution context of the given computation
-withExecutionContext :: (MonadReader (Maybe Span) m) => Span -> m a -> m a
-withExecutionContext ctx = local (const $ Just ctx)
+withExecutionContext :: (MonadReader [Span] m) => Span -> m a -> m a
+withExecutionContext ctx = local (ctx:)
 
 -- | Executes the given computation by extending the tainted value with the current execution context
-addExecutionContext :: (MonadReader (Maybe Span) m, TaintM Taint m) => m a -> m a
+addExecutionContext :: (MonadReader [Span] m, TaintM Taint m) => m a -> m a
 addExecutionContext m = do
   t   <- currentTaint
-  maybe m (flip withTaint m . extendTaint t) =<< ask
+  (flip withTaint m . extendTaint t . Set.fromList) =<< ask
 
-extendTaint :: Taint -> Span -> Taint
-extendTaint t s = Set.map (over dependentsSpan (Set.insert s)) <$> t
+extendTaint :: Taint -> Set Span -> Taint
+extendTaint t s = Set.map (over dependentsSpan (Set.union s)) <$> t
+
+extendTainted :: PyRefTaint -> Set Span -> PyRefTaint
+extendTainted (Tainted a t) s = Tainted a (extendTaint t s)
 
 type PyRefTaint = Tainted Taint ObjAddrSet
 type PyRetTaint = Tainted Taint (Set (PyEsc PyRefTaint))
@@ -105,8 +110,11 @@ instance (
   pyAlloc = store
   pyDeref f = unwrapTainted (deref f . addrs)
   pyDeref_ f = unwrapTainted_ (deref f . addrs)
-  pyAssignAt k v a = addTaint v >>= \v' -> updateWith (setAttr k v') (setAttrWeak k v') a
-  pyAssign k v = unwrapTainted_ (mjoinMap (pyAssignAt k v) . addrs) --- important
+  pyAssignAt k v a = do
+    ctx <- asks Set.fromList 
+    addTaint (extendTainted v ctx) >>= \v' -> updateWith (setAttr k v') (setAttrWeak k v') a
+  pyAssign k v =
+    unwrapTainted_ (mjoinMap (pyAssignAt k v) . addrs) --- important
   pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do v' <- addTaint v
                                                   old <- getPrm s obj
                                                   upd <- f v' old

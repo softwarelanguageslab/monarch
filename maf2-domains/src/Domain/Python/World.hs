@@ -216,6 +216,8 @@ data PyPrim     =
                 -- 
                 | NoneBool
                 | BoolBool
+                --
+                | RandomNumber
   deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance NFData PyPrim where
@@ -346,12 +348,13 @@ data PyConstant = None
                 | TypeMRO     PyType 
                 | PrimObject  PyPrim 
                 | XPrimObject XPyPrim
+                | Random
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData PyConstant where
 
 instance Finite PyConstant where
-  all = [None, True, False, GlobalFrame] 
+  all = [None, True, False, GlobalFrame, Random] 
         ++ map TypeObject  all 
         ++ map TypeName    all 
         ++ map TypeMRO     all

@@ -18,6 +18,8 @@ executable python-ifc-lsp
                  , lsp
                  , lsp-types
                  , relude
+                 , aeson
+                 , data-default
   default-extensions:  LambdaCase
                      , ImportQualifiedPost
                      , OverloadedStrings

@@ -13,5 +13,9 @@ import Syntax.Python.AST (Stmt (..))
 import Syntax.Span
 
 instance (PyM (PythonTaintAnalysisT m) obj vlu, TaintM Taint m) => PySemantics (PythonTaintAnalysisT m) obj vlu where
+  -- do not attach the span of the entire sequence to the tainted value
+  exec stm@(Seq {}) = exec' stm
+  exec stm@(Conditional {}) = exec' stm
   exec stm = withExecutionContext (spanOf stm) $ addExecutionContext $ exec' stm
+  execBranch spanPrd bdy = withExecutionContext spanPrd $ addExecutionContext $ exec bdy
   execDec _ = exec

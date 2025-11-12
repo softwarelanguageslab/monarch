@@ -23,10 +23,10 @@ instance SpanOf PyLoc where
       case span of
             Py.SpanCoLinear {..} -> 
                Span span_filename
-                     (Position span_start_column
-                               span_row)
-                     (Position span_end_column
-                               span_row)
+                     (Position span_row 
+                               span_start_column)
+                     (Position span_row
+                               span_end_column)
             Py.SpanMultiLine {..} ->
                Span span_filename
                      (Position span_start_row

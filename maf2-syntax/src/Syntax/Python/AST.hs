@@ -10,8 +10,10 @@
 {-# OPTIONS_GHC -Wno-partial-fields #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 module Syntax.Python.AST(
-   -- ast nodes
+   -- * AST nodes
    Parameter(..), 
    Ident(..), 
    Lit(..), 
@@ -25,12 +27,14 @@ module Syntax.Python.AST(
    prettyString, 
    IdeLex(..), 
    Par(..),
-   -- phases
+   -- * Phases
    AfterSimplification,
    AfterLexicalAddressing,
    Micro,
+   -- * Utility functions
    makeSeq,
-   ideLoc
+   ideLoc,
+   AnnotateLoc(..) 
 ) where
 
 import Data.Void
@@ -107,6 +111,9 @@ type Micro = AfterLexicalAddressing
 -- AST
 -------------------------------------------------------------------------------
 
+class AnnotateLoc a t | t -> a where
+   annotateLoc :: a -> t -> t
+
 -- | A program is a series of statements
 newtype Program a ξ = Program { programStmt :: Stmt a ξ }
    deriving (Generic)
@@ -132,6 +139,9 @@ ideLoc :: Ide a -> a
 ideLoc (Ide (Ident _ a)) = a
 ideLoc (NamespacedIde ident _) = ideLoc ident
 
+instance AnnotateLoc a (Ide a) where
+   annotateLoc a (Ide (Ident nam _)) = Ide (Ident nam a)
+   annotateLoc a (NamespacedIde ident namespace) = NamespacedIde (annotateLoc a ident) namespace
 
 instance SpanOf a => SpanOf (Ide a) where
    spanOf (Ide ident) = spanOf ident
@@ -143,6 +153,11 @@ instance (NFData a) => NFData (Ide a) where
 data IdeLex a = IdeLex { lexIde :: Ide a, num :: Int } 
               | IdeGbl String a
    deriving (Eq, Show, Ord, Generic)
+
+instance AnnotateLoc a (IdeLex a) where
+   annotateLoc a (IdeLex ide n) = IdeLex (annotateLoc a ide) n
+   annotateLoc a (IdeGbl str _) = IdeGbl str a
+   
 
 instance (SpanOf a) => SpanOf (IdeLex a) where
    spanOf (IdeLex ide _) = spanOf ide
@@ -195,9 +210,7 @@ data Stmt a ξ = Assg (XAsgn ξ) (Lhs a ξ) (Exp a ξ)
 -- | Compatibility with Syntax.Span
 instance (SpanOf (XIde ξ a), SpanOf a) => SpanOf (Stmt a ξ) where 
    spanOf (Assg _ _ rhs) = spanOf rhs 
-   spanOf (Seq _ stmts) = case stmts of 
-      [] -> error "SpanOf Stmt Seq: empty sequence has no span"
-      expr : _ -> spanOf expr
+   spanOf (Seq _ stmts) = spanOf stmts
    spanOf (Return _ _ a) = spanOf a 
    spanOf (Loop _ _ _ a) = spanOf a
    spanOf (Break _ a)    = spanOf a

@@ -3,7 +3,7 @@ def main():
     y = 0
     z = 0
     try:
-        x = 1
+        x = random()
         x = x.__taint__()
         if x == 0:
             raise Exception()

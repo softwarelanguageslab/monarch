@@ -1,14 +1,13 @@
 
 # Example program showing taint analysis on an integer's __taint__ method
 def main():
-    n = 42
+    n = random()
     tainted = n.__taint__()
-    if tainted:
-        y = 1
-    else: 
-        y = 2
-    # return tainted
-    return Taint().sink(y) 
+    z = 4
+    if tainted == 0:
+        z = 5
+
+    return Taint().sink(z)
 
 # The taint error does not propagate to the main component as we are catching all exceptions
 try:

@@ -24,6 +24,7 @@ import qualified Data.Set as Set
 import Prelude hiding (break, exp, lookup, True, False)
 import Data.Functor (($>))
 import Analysis.Environment (extends)
+import Syntax.Span
 import qualified Debug.Trace as Debug
 
 -- | Throws an error that the operation must still be implemented
@@ -73,8 +74,17 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     exec' (Global x _ _)              = absurd x          -- these can't occur in microPython
     execExp :: PyExp -> m ()
     execExp = void . eval
+    -- TODO: the variations on the method names (such execRai and execRai') are
+    -- there so that when overriding the behavior one can still call the original
+    -- behavior. The issue is that this becomes unwieldy very quickly, the best
+    -- approach is probably to have a stack of semantics monad (or something similar)
+    -- so that the upper one can call the lower ones to use their behavior.
+    -- This also ensures that different semantics are easily composable, which
+    -- is currently not the case, causing a lot of code duplication.
     execRai :: PyExp -> m ()
-    execRai = eval >=> pyRaise
+    execRai = execRai'
+    execRai' :: PyExp -> m ()
+    execRai' = eval >=> pyRaise
     execTry :: PyStm -> [(PyExp, PyStm)] -> m ()
     execTry bdy hds = exec bdy `pyCatchExc` checkHandlers hds
         where
@@ -96,8 +106,10 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     execIff _ [] els = exec els
     execIff loc ((prd, bdy):rst) els =
         pyIf'_ loc  (eval prd)
-                    (exec bdy)
+                    (execBranch (spanOf prd) bdy)
                     (execIff (tagAs IffNxt loc) rst els)
+    execBranch :: Span -> PyStm -> m ()
+    execBranch _ = exec
     execDec :: String -> PyStm -> m ()
     execDec _ = exec -- ignore the decorator in standard semantics 
     execSeq :: [PyStm] -> m () 

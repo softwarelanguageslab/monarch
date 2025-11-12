@@ -540,11 +540,11 @@ lexicalStmt (StmtExp _ e a)  = StmtExp () <$> lexicalExp e <*> pure a
 -- | Lookup a string and return the corresponding lexical identifier
 lookupLexIde :: (LexicalM m a) => Ide a -> m (Either (IdeLex a, Ide a) (IdeLex a))
 lookupLexIde ide = condM [
-      (isNonLocal name, asks (Right . lookupEnv loc name . nonlocalEnv)),
+      (isNonLocal name, asks (Right . annotateLoc loc . lookupEnv loc name . nonlocalEnv)),
       (isGlobal name, return $ Right (IdeGbl name loc)),
       (pure True, case ide of
-                    Ide i -> asks (Right . lookupEnv loc name)
-                    NamespacedIde i ns -> asks (Left . (, i) . lookupEnv loc (ideName ns)))]
+                    Ide i -> asks (Right . annotateLoc loc . lookupEnv loc name)
+                    NamespacedIde i ns -> asks (Left . (, i) . annotateLoc loc .  lookupEnv loc (ideName ns)))]
    where name = ideName ide
          loc  = ideLoc ide
 

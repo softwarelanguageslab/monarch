@@ -83,6 +83,7 @@ library
       Analysis.Python.Semantics.Class
       Analysis.Python.Semantics.Core
       Analysis.Python.Semantics.Taint
+      Analysis.Python.Semantics.TaintTracked
       Analysis.Scheme
       Analysis.Scheme.Actors.Components
       Analysis.Scheme.Monad

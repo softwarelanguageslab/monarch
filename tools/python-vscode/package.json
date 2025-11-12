@@ -16,6 +16,18 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "monarch.showInfluencedLines",
+        "title": "Show Influenced Lines",
+        "category": "Monarch"
+      },
+      {
+        "command": "monarch.resetDecorations",
+        "title": "Reset Line Highlighting",
+        "category": "Monarch"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Python IFC Language Server",

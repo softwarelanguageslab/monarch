@@ -10,8 +10,8 @@ import Data.Set (Set)
 import Syntax.Python
 import Options.Applicative
 import Data.Maybe
-import Analysis.Python.Fixpoint.Taint
-import qualified Analysis.Python.Fixpoint.Taint as Taint
+import Analysis.Python.Fixpoint.TaintTracked
+import qualified Analysis.Python.Fixpoint.TaintTracked as Taint
 import qualified Analysis.Python.Fixpoint.Characteristics as Characteristics
 import Data.Map (Map)
 import qualified Data.Map as Map
