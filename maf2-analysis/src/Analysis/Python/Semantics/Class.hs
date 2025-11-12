@@ -48,25 +48,29 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
 
     -- | Variable to frame object
     frame :: PyIde -> m (ObjAdr, String)
-    frame (IdeGbl nam)   = return (globalFrame, nam)
+    frame (IdeGbl nam _)   = return (globalFrame, nam)
     frame (IdeLex ide _) = (,nam) <$> pyLookupEnv nam
         where nam = ideName ide
 
+
     -- | Execute a single statement
     exec :: PyStm -> m ()
-    exec (Assg _ lhs rhs)            = execAss lhs rhs
-    exec (Return _ exp _)            = execRet exp
-    exec (Conditional _ brs els loc) = execIff loc brs els
-    exec (StmtExp _ e _)             = execExp e
-    exec (Loop _ cnd bdy loc)        = execWhi cnd bdy loc
-    exec (Seq _ sts)                 = execSeq sts
-    exec (DecoratedStm _ dec stm _)  = execDec dec stm
-    exec (Break _ _)                 = execBrk
-    exec (Continue _ _)              = execCnt
-    exec (Raise _ exp _)             = execRai exp
-    exec (Try _ bdy hds _)           = execTry bdy hds
-    exec (NonLocal x _ _)            = absurd x          -- these can't occur in microPython
-    exec (Global x _ _)              = absurd x          -- these can't occur in microPython
+    exec = exec'
+    
+    exec' :: PyStm -> m ()
+    exec' (Assg _ lhs rhs)            = execAss lhs rhs
+    exec' (Return _ exp _)            = execRet exp
+    exec' (Conditional _ brs els loc) = execIff loc brs els
+    exec' (StmtExp _ e _)             = execExp e
+    exec' (Loop _ cnd bdy loc)        = execWhi cnd bdy loc
+    exec' (Seq _ sts)                 = execSeq sts
+    exec' (DecoratedStm _ dec stm _)  = execDec dec stm
+    exec' (Break _ _)                 = execBrk
+    exec' (Continue _ _)              = execCnt
+    exec' (Raise _ exp _)             = execRai exp
+    exec' (Try _ bdy hds _)           = execTry bdy hds
+    exec' (NonLocal x _ _)            = absurd x          -- these can't occur in microPython
+    exec' (Global x _ _)              = absurd x          -- these can't occur in microPython
     execExp :: PyExp -> m ()
     execExp = void . eval
     execRai :: PyExp -> m ()

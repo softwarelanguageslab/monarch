@@ -64,9 +64,13 @@ trackingToTuple (TaintTracking sourceSpan dependentSpan) = (sourceSpan, dependen
 source :: SpanOf a => a -> Taint
 source = TopLifted.Value . Set.singleton . flip TaintTracking Set.empty . spanOf
 
+-- | Changes the execution context of the given computation
+withExecutionContext :: (MonadReader (Maybe Span) m) => Span -> m a -> m a
+withExecutionContext ctx = local (const $ Just ctx)
+
 -- | Executes the given computation by extending the tainted value with the current execution context
-withExecutionContext :: (MonadReader (Maybe Span) m, TaintM Taint m) => m a -> m a
-withExecutionContext m = do
+addExecutionContext :: (MonadReader (Maybe Span) m, TaintM Taint m) => m a -> m a
+addExecutionContext m = do
   t   <- currentTaint
   maybe m (flip withTaint m . extendTaint t) =<< ask
 

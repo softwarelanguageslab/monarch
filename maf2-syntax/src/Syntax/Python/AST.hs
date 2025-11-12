@@ -30,6 +30,7 @@ module Syntax.Python.AST(
    AfterLexicalAddressing,
    Micro,
    makeSeq,
+   ideLoc
 ) where
 
 import Data.Void
@@ -118,18 +119,34 @@ deriving instance (Holds Ord ξ a) => Ord (Program a ξ)
 
 deriving instance Generic (Ident a)
 instance (NFData a) => NFData (Ident a) where
+instance SpanOf a => SpanOf (Ident a) where
+   spanOf (Ident _ a) = spanOf a
 
 -- | An identifier is backed by the Language.Python identifier
 data Ide a = Ide { getIdeIdent :: Ident a } 
            | NamespacedIde { getIdent :: Ide a, namespace :: Ide a } 
    deriving (Eq, Ord, Show, Generic)
 
+-- | Returns the location in the AST of the identifier
+ideLoc :: Ide a -> a
+ideLoc (Ide (Ident _ a)) = a
+ideLoc (NamespacedIde ident _) = ideLoc ident
+
+
+instance SpanOf a => SpanOf (Ide a) where
+   spanOf (Ide ident) = spanOf ident
+   spanOf (NamespacedIde ident _) = spanOf ident
+
 instance (NFData a) => NFData (Ide a) where
 
 -- | An identifier that is augmented with lexical addressing information
 data IdeLex a = IdeLex { lexIde :: Ide a, num :: Int } 
-              | IdeGbl String 
+              | IdeGbl String a
    deriving (Eq, Show, Ord, Generic)
+
+instance (SpanOf a) => SpanOf (IdeLex a) where
+   spanOf (IdeLex ide _) = spanOf ide
+   spanOf (IdeGbl _ a) = spanOf a
 
 instance (NFData a) => NFData (IdeLex a) where
 
@@ -177,7 +194,7 @@ data Stmt a ξ = Assg (XAsgn ξ) (Lhs a ξ) (Exp a ξ)
 
 -- | Compatibility with Syntax.Span
 instance (SpanOf (XIde ξ a), SpanOf a) => SpanOf (Stmt a ξ) where 
-   spanOf (Assg _ lhs _) = spanOf lhs 
+   spanOf (Assg _ _ rhs) = spanOf rhs 
    spanOf (Seq _ stmts) = case stmts of 
       [] -> error "SpanOf Stmt Seq: empty sequence has no span"
       expr : _ -> spanOf expr
@@ -206,12 +223,20 @@ makeSeq lst = Seq () lst
 
 -- | A reduced set of expressions
 data Exp a ξ = Lam [Par a ξ] (Stmt a ξ) a (XLam ξ a)           -- ^ a less restricted version of Python's lambda
-             | Var (XIde ξ a)                                  -- ^ a variable 
+             | Var (XIde ξ a)                                -- ^ a variable 
              | Read (Exp a ξ) (Ide a) a                        -- ^ field access e.x
              | Call (Exp a ξ) [Exp a ξ] [(Ide a, Exp a ξ)] a   -- ^ function call
              | Literal (Lit a ξ)                               -- ^ a value literal
              | LogicOp (LOp a) [Exp a ξ] a                     -- ^ a logical operator (and, or, not)
    deriving (Generic)                               
+
+instance (SpanOf (XIde ξ a), SpanOf a) => SpanOf (Exp a ξ) where
+   spanOf (Lam _ _ a _) = spanOf a
+   spanOf (Var v) = spanOf v
+   spanOf (Read _ _ a) = spanOf a
+   spanOf (Call _ _ _ a) = spanOf a
+   spanOf (Literal l) = spanOf l
+   spanOf (LogicOp _ _ a) = spanOf a
 
 deriving instance (Holds Show ξ a) => Show (Exp a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Exp a ξ)
@@ -244,7 +269,7 @@ instance (Holds NFData ξ a) => NFData (Par a ξ) where
 data Lhs a ξ = Field (Exp a ξ) (Ide a) a -- ^ assignment to a field
              | ListPat [Lhs a ξ] a 
              | TuplePat [Lhs a ξ] a 
-             | IdePat (XIde ξ a)
+             | IdePat (XIde ξ a) 
    deriving (Generic)
 
 deriving instance (Holds Show ξ a) => Show (Lhs a ξ)
@@ -255,7 +280,7 @@ instance (SpanOf (XIde ξ a), SpanOf a) => SpanOf (Lhs a ξ) where
    spanOf (Field _ _ a) = spanOf a
    spanOf (ListPat _ a) = spanOf a
    spanOf (TuplePat _ a) = spanOf a
-   spanOf (IdePat x) = spanOf x
+   spanOf (IdePat ide)  = spanOf ide
 
 instance (Holds NFData ξ a) => NFData (Lhs a ξ) 
 
@@ -269,6 +294,16 @@ data Lit a ξ = Bool Bool a
              | List [Exp a ξ] a
              | None a 
    deriving (Generic)
+
+instance SpanOf a => SpanOf (Lit a ξ) where
+   spanOf (Bool _ a) = spanOf a
+   spanOf (Integer _ a) = spanOf a
+   spanOf (Real _ a) = spanOf a
+   spanOf (String _ a) = spanOf a
+   spanOf (Tuple _ a) = spanOf a
+   spanOf (Dict _ a) = spanOf a
+   spanOf (List _ a) = spanOf a
+   spanOf (None a) = spanOf a
 
 deriving instance (Holds Show ξ a) => Show (Lit a ξ)
 deriving instance (Holds Ord  ξ a) => Ord (Lit a ξ)
@@ -380,7 +415,7 @@ instance Pretty (Lit a AfterLexicalAddressing) where
    pretty (None _)      = out "None"
 instance Pretty (IdeLex a) where
    pretty (IdeLex ide at) = out (ideName ide) >> out "@" >> out (show at)
-   pretty (IdeGbl nam) = out nam >> out "@" >> out "gbl"
+   pretty (IdeGbl nam _) = out nam >> out "@" >> out "gbl"
 instance Pretty (Ide a) where
    pretty = out . ideName
 

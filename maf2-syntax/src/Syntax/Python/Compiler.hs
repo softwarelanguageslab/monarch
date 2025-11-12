@@ -144,7 +144,7 @@ compileLam prs bdy a = do (bdy', ids) <- capture $ local (const Nothing) (compil
 -- | Generate a (potentially namespaced) lhs pattern
 namespacedLhs :: SimplifyM m PyLoc => Ide PyLoc -> m (Lhs PyLoc AfterSimplification)
 namespacedLhs nam = ask >>= lhs
-   where lhs (Just v) = return $ IdePat (NamespacedIde nam v)
+   where lhs (Just v) = return $ IdePat (NamespacedIde nam v) 
          lhs Nothing  = tell [nam] >> return (IdePat nam)
 
 -- | Generate an assignment
@@ -438,8 +438,8 @@ lookupFrm :: String -> Frame a -> Maybe (IdeLex a)
 lookupFrm nam = Map.lookup nam . getFrame
 
 -- | Look something up in the environment
-lookupEnv ::  String -> Env a -> IdeLex a
-lookupEnv nam env  = fromMaybe (IdeGbl nam) (asum $ map (lookupFrm nam) env)
+lookupEnv :: a -> String -> Env a -> IdeLex a
+lookupEnv loc nam env  = fromMaybe (IdeGbl nam loc) (asum $ map (lookupFrm nam) env)
 
 -- | Returns the nonlocal environment (i.e. skips the global frame)
 nonlocalEnv :: Env a -> Env a
@@ -540,12 +540,13 @@ lexicalStmt (StmtExp _ e a)  = StmtExp () <$> lexicalExp e <*> pure a
 -- | Lookup a string and return the corresponding lexical identifier
 lookupLexIde :: (LexicalM m a) => Ide a -> m (Either (IdeLex a, Ide a) (IdeLex a))
 lookupLexIde ide = condM [
-      (isNonLocal name, asks (Right . lookupEnv name . nonlocalEnv)),
-      (isGlobal name, return $ Right (IdeGbl name)),
+      (isNonLocal name, asks (Right . lookupEnv loc name . nonlocalEnv)),
+      (isGlobal name, return $ Right (IdeGbl name loc)),
       (pure True, case ide of
-                    Ide i -> asks (Right . lookupEnv name)
-                    NamespacedIde i ns -> asks (Left . (, i) . lookupEnv (ideName ns)))]
+                    Ide i -> asks (Right . lookupEnv loc name)
+                    NamespacedIde i ns -> asks (Left . (, i) . lookupEnv loc (ideName ns)))]
    where name = ideName ide
+         loc  = ideLoc ide
 
 -- | Run the lexical addresser on the given expression
 lexicalExp :: forall m a . (LexicalM m a) => Exp a AfterSimplification -> m (Exp a AfterLexicalAddressing)

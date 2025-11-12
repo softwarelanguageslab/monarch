@@ -1,13 +1,17 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Analysis.Python.Semantics.TaintTracked where 
+{-# OPTIONS_GHC -Wno-orphans #-}
 
-import Analysis.Python.Semantics.Class 
-import Analysis.Python.Monad.TaintTracked
-import Analysis.Python.Monad.Class (PyM)
-import Syntax.Python.AST (Stmt(..))
+module Analysis.Python.Semantics.TaintTracked where
+
+import Analysis.Monad.Taint
 import Analysis.Python.Common (constant)
-import Domain.Python.World (PyConstant(..), PyPrim (..))
+import Analysis.Python.Monad.Class (PyM)
+import Analysis.Python.Monad.TaintTracked
+import Analysis.Python.Semantics.Class
+import Domain.Python.World (PyConstant (..), PyPrim (..))
+import Syntax.Python.AST (Stmt (..))
+import Syntax.Span
 
-instance (PyM (PythonTaintAnalysisT m) obj vlu) => PySemantics (PythonTaintAnalysisT m) obj vlu where
-    execDec _            stm            = exec stm 
+instance (PyM (PythonTaintAnalysisT m) obj vlu, TaintM Taint m) => PySemantics (PythonTaintAnalysisT m) obj vlu where
+  exec stm = withExecutionContext (spanOf stm) $ addExecutionContext $ exec' stm
+  execDec _ = exec
