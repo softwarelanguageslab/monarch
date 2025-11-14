@@ -62,13 +62,15 @@ initialCst = map (\typ -> (name typ, TypeObject typ)) (all :: [PyType])
           --
           -- If somebody has a better idea, or knows where to add primitive functions
           -- ergonomically, please change this. Signed off: @bramvdbogaerde.
-          ++ [("random", Random)]
+          ++ [("random", Random),
+              ("log",    LogFunction)]
 
 injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
 injectPyConstant True              = from' @BlnPrm Prelude.True
 injectPyConstant False             = from' @BlnPrm Prelude.False
 injectPyConstant None              = new' NoneType [] [] 
 injectPyConstant Random            = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left RandomNumber)
+injectPyConstant LogFunction       = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Right Log) 
 injectPyConstant GlobalFrame       = new' FrameType (map (second constant) initialCst) [] 
 injectPyConstant (TypeName typ)    = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm)  = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left prm)

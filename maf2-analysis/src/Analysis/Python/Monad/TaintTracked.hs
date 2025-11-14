@@ -140,6 +140,13 @@ instance (
                                         (reportDiagnostic loc (TaintViolation (fmap (Set.map trackingToTuple) t) v) >> return v)
                                         (return v)
                               _ -> Debug.trace "arity error" $ pyError ArityError
+
+  applyXPrim Log loc = \case
+                              [v@(Tainted _ t)] -> do
+                                 condCP (pure $ Debug.traceWith (("isTainted>> " ++) . show) $ isTainted t)
+                                        (reportDiagnostic loc (TaintViolation (fmap (Set.map trackingToTuple) t) v) >> return v)
+                                        (return v)
+                              _ -> Debug.trace "arity error" $ pyError ArityError
   applyXPrim ObjectTaint loc = \case
                                 [a] -> withTaint @Taint (source loc) (addTaint a)
                                 _   -> pyError ArityError

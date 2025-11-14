@@ -19,12 +19,12 @@
     "commands": [
       {
         "command": "monarch.showInfluencedLines",
-        "title": "Show Influenced Lines",
+        "title": "Explain taint flow",
         "category": "Monarch"
       },
       {
         "command": "monarch.resetDecorations",
-        "title": "Reset Line Highlighting",
+        "title": "Remove taint explanations",
         "category": "Monarch"
       }
     ],

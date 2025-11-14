@@ -1,14 +1,15 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module LSP (run) where
 
-import Data.Proxy (Proxy(..))
-
 import Analysis qualified as A
 import Control.Monad.IO.Class
+import Data.Aeson (FromJSON, ToJSON, object, (.:), (.=))
+import Data.Aeson qualified as Aeson
 import Data.Map.Lazy qualified as Map
+import Data.Proxy (Proxy (..))
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Language.LSP.Diagnostics (partitionBySource)
@@ -18,13 +19,11 @@ import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Language.LSP.VFS
+import Language.Python.Common qualified as Py
 import Relude.Extra.Lens
 import Relude.Unsafe (fromJust)
 import Syntax.Python qualified as Py
-import qualified Language.Python.Common as Py
-import Data.Aeson (FromJSON, ToJSON, object, (.=), (.:))
-import Data.Aeson qualified as Aeson
-import Syntax.Span (Span(..))
+import Syntax.Span (Span (..))
 import Syntax.Span qualified as Span
 
 -------------------------------
@@ -33,78 +32,87 @@ import Syntax.Span qualified as Span
 
 -- Custom LSP command for getting influenced lines
 data GetInfluencedLinesParams = GetInfluencedLinesParams
-  { textDocumentUri :: Uri
-  , position :: Position
-  } deriving (Show, Eq)
+  { textDocumentUri :: Uri,
+    position :: Position
+  }
+  deriving (Show, Eq)
 
 instance FromJSON GetInfluencedLinesParams where
   parseJSON = Aeson.withObject "GetInfluencedLinesParams" $ \o -> do
     textDocumentUri <- o .: "textDocumentUri"
     position <- o .: "position"
-    return GetInfluencedLinesParams{..}
+    return GetInfluencedLinesParams {..}
 
 instance ToJSON GetInfluencedLinesParams where
-  toJSON GetInfluencedLinesParams{..} =
+  toJSON GetInfluencedLinesParams {..} =
     object ["textDocumentUri" .= textDocumentUri, "position" .= position]
 
 -- Response containing the influenced lines
 data SpanInfo = SpanInfo
-  { startLine :: Int
-  , startColumn :: Int
-  , endLine :: Int
-  , endColumn :: Int
-  } deriving (Show, Eq)
+  { startLine :: Int,
+    startColumn :: Int,
+    endLine :: Int,
+    endColumn :: Int
+  }
+  deriving (Show, Eq)
 
 instance ToJSON SpanInfo where
-  toJSON SpanInfo{..} =
+  toJSON SpanInfo {..} =
     object
-      [ "startLine" .= startLine
-      , "startColumn" .= startColumn
-      , "endLine" .= endLine
-      , "endColumn" .= endColumn
+      [ "startLine" .= startLine,
+        "startColumn" .= startColumn,
+        "endLine" .= endLine,
+        "endColumn" .= endColumn
       ]
 
 newtype InfluencedLinesResponse = InfluencedLinesResponse
-  { influencedSpans :: [SpanInfo] } deriving (Show, Eq)
+  {influencedSpans :: [SpanInfo]}
+  deriving (Show, Eq)
 
 instance ToJSON InfluencedLinesResponse where
-  toJSON InfluencedLinesResponse{..} =
+  toJSON InfluencedLinesResponse {..} =
     object ["influencedSpans" .= influencedSpans]
 
 -- Convert a Syntax.Span to SpanInfo
 spanToSpanInfo :: Span -> SpanInfo
-spanToSpanInfo Span{..} =
+spanToSpanInfo Span {..} =
   SpanInfo
-    { startLine = Span.line startPosition
-    , startColumn = Span.column startPosition
-    , endLine = Span.line endPosition
-    , endColumn = Span.column endPosition
+    { startLine = Span.line startPosition,
+      startColumn = Span.column startPosition,
+      endLine = Span.line endPosition,
+      endColumn = Span.column endPosition
     }
 
 -- Check if an LSP Position is within a Syntax.Span
 positionInSpan :: Language.LSP.Protocol.Types.Position -> Span -> Bool
-positionInSpan (Language.LSP.Protocol.Types.Position lspLine lspCol) Span{..} =
-  let line' = fromIntegral lspLine + 1  -- Convert to 1-indexed
-      col' = fromIntegral lspCol + 1    -- Convert to 1-indexed
+positionInSpan (Language.LSP.Protocol.Types.Position lspLine lspCol) Span {..} =
+  let line' = fromIntegral lspLine + 1 -- Convert to 1-indexed
+      col' = fromIntegral lspCol + 1 -- Convert to 1-indexed
       startL = Span.line startPosition
       startC = Span.column startPosition
       endL = Span.line endPosition
       endC = Span.column endPosition
-  in (startL < line' || (startL == line' && startC <= col'))
-       && (endL > line' || (endL == line' && endC >= col'))
+   in (startL < line' || (startL == line' && startC <= col'))
+        && (endL > line' || (endL == line' && endC >= col'))
 
 -- | Transform a Python location (span) to an LSP range
 pyLocToRange :: Py.PyLoc -> Maybe Range
 pyLocToRange (Py.PyLoc span _) =
   case span of
-      Py.SpanCoLinear {..} -> Just $ Range (Position (fromIntegral $ span_row - 1) (fromIntegral $ span_start_column - 1))
-                                           (Position (fromIntegral $ span_row -1) (fromIntegral $ span_end_column - 1))
-      Py.SpanMultiLine {..} -> Just $ Range (Position (fromIntegral $ span_start_row - 1) (fromIntegral $ span_start_column - 1))
-                                            (Position (fromIntegral $ span_end_row - 1) (fromIntegral $ span_end_column  - 1))
-      Py.SpanPoint {..} ->  let point = Position (fromIntegral $ span_row - 1) (fromIntegral $ span_column - 1)
-                            in Just $ Range point point
-      Py.SpanEmpty -> Nothing
-
+    Py.SpanCoLinear {..} ->
+      Just $
+        Range
+          (Position (fromIntegral $ span_row - 1) (fromIntegral $ span_start_column - 1))
+          (Position (fromIntegral $ span_row - 1) (fromIntegral $ span_end_column - 1))
+    Py.SpanMultiLine {..} ->
+      Just $
+        Range
+          (Position (fromIntegral $ span_start_row - 1) (fromIntegral $ span_start_column - 1))
+          (Position (fromIntegral $ span_end_row - 1) (fromIntegral $ span_end_column - 1))
+    Py.SpanPoint {..} ->
+      let point = Position (fromIntegral $ span_row - 1) (fromIntegral $ span_column - 1)
+       in Just $ Range point point
+    Py.SpanEmpty -> Nothing
 
 analysisResultToDiagnostic :: Range -> A.AnalysisResult -> [Diagnostic]
 analysisResultToDiagnostic defaultRange A.AnalysisResult {..} =
@@ -132,27 +140,27 @@ diagnosticsSource :: Text
 diagnosticsSource = "Monarch"
 
 -- | Get the whole program range for a given document
-getWholeProgramRange :: Text  -> Range
+getWholeProgramRange :: Text -> Range
 getWholeProgramRange contents =
-        if contents == ""
-        then
-          Range (Position 0 0) (Position 0 0)
-        else
-          let lineCount = T.count "\n" contents
-              lastLineLength = T.length $ fromJust $ viaNonEmpty last $ T.lines contents
-           in Range (Position 0 0) (Position (fromIntegral lineCount) (fromIntegral lastLineLength))
-
+  if contents == ""
+    then
+      Range (Position 0 0) (Position 0 0)
+    else
+      let lineCount = T.count "\n" contents
+          lastLineLength = T.length $ fromJust $ viaNonEmpty last $ T.lines contents
+       in Range (Position 0 0) (Position (fromIntegral lineCount) (fromIntegral lastLineLength))
 
 analyzeAndPublish :: NormalizedUri -> Text -> LspM () ()
-analyzeAndPublish uri' contents  = do
-      flushDiagnosticsBySource 0 (Just diagnosticsSource)
-      forM_ diagnostics (publishDiagnostics 1 uri' Nothing . partitionBySource)
-    where analysisResults = A.analyze (T.unpack $ getUri $ fromNormalizedUri uri') (T.unpack contents)
-          diagnostics     = analysisResultToDiagnostic (getWholeProgramRange contents) <$> analysisResults
+analyzeAndPublish uri' contents = do
+  flushDiagnosticsBySource 0 (Just diagnosticsSource)
+  forM_ diagnostics (publishDiagnostics 1 uri' Nothing . partitionBySource)
+  where
+    analysisResults = A.analyze (T.unpack $ getUri $ fromNormalizedUri uri') (T.unpack contents)
+    diagnostics = analysisResultToDiagnostic (getWholeProgramRange contents) <$> analysisResults
 
 -- Handler for getting influenced lines at a specific position
 handleGetInfluencedLines :: GetInfluencedLinesParams -> LspM () (Either (TResponseError (Method_CustomMethod "monarch/getInfluencedLines")) Aeson.Value)
-handleGetInfluencedLines GetInfluencedLinesParams{..} = do
+handleGetInfluencedLines GetInfluencedLinesParams {..} = do
   let uri' = toNormalizedUri textDocumentUri
   mdoc <- getVirtualFile uri'
   case mdoc of
@@ -161,7 +169,7 @@ handleGetInfluencedLines GetInfluencedLinesParams{..} = do
       let filename = T.unpack $ getUri textDocumentUri
       let analysisResults = A.analyze filename (T.unpack contents)
       case analysisResults of
-        Just A.AnalysisResult{..} -> do
+        Just A.AnalysisResult {..} -> do
           -- Find all spans that contain the current position
           let matchingSpans = Map.filterWithKey (\span _ -> positionInSpan position span) influencedLines
           -- Collect all influenced spans
@@ -189,18 +197,18 @@ handleCodeAction req = do
     else do
       -- Create a code action to highlight influenced lines using direct construction
       let cmd = Command "Show influenced lines" "monarch.showInfluencedLines" (Just [Aeson.toJSON uri', Aeson.toJSON (range' ^. L.start)])
-      let codeAction = CodeAction
-            { _title = "Show influenced lines"
-            , _kind = Just (CodeActionKind_Custom "monarch.showInfluencedLines")
-            , _diagnostics = Just ourDiagnostics
-            , _isPreferred = Just False
-            , _disabled = Nothing
-            , _edit = Nothing
-            , _command = Just cmd
-            , _data_ = Nothing
-            }
+      let codeAction =
+            CodeAction
+              { _title = "Show influenced lines",
+                _kind = Just (CodeActionKind_Custom "monarch.showInfluencedLines"),
+                _diagnostics = Just ourDiagnostics,
+                _isPreferred = Just False,
+                _disabled = Nothing,
+                _edit = Nothing,
+                _command = Just cmd,
+                _data_ = Nothing
+              }
       return $ Right $ InL [InR codeAction]
-
 
 handlers :: Handlers (LspM ())
 handlers =
@@ -209,11 +217,11 @@ handlers =
         pure (),
       notificationHandler SMethod_TextDocumentDidOpen $ \notification -> do
         let contents = notification ^. params . textDocument . text
-        let uri'     = toNormalizedUri $ notification ^. params . textDocument . uri
+        let uri' = toNormalizedUri $ notification ^. params . textDocument . uri
         analyzeAndPublish uri' contents,
       notificationHandler SMethod_TextDocumentDidSave $ \notification -> do
-        let contents = notification ^. params .  text
-        let uri'     = toNormalizedUri $ notification ^. params . textDocument . uri
+        let contents = notification ^. params . text
+        let uri' = toNormalizedUri $ notification ^. params . textDocument . uri
         forM_ contents (analyzeAndPublish uri'),
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ const $ return (),
       notificationHandler SMethod_TextDocumentDidChange $ \notification -> do
@@ -222,9 +230,9 @@ handlers =
         case mdoc of
           Just vf@(VirtualFile {}) ->
             let contents = virtualFileText vf
-            in analyzeAndPublish (toNormalizedUri uri') contents
+             in analyzeAndPublish (toNormalizedUri uri') contents
           Nothing ->
-              sendNotification SMethod_WindowShowMessage (ShowMessageParams MessageType_Error (T.pack $ "file at " ++ T.unpack (getUri uri') ++ " not found by the LSP")),
+            sendNotification SMethod_WindowShowMessage (ShowMessageParams MessageType_Error (T.pack $ "file at " ++ T.unpack (getUri uri') ++ " not found by the LSP")),
       -- Custom command handler for getting influenced lines
       requestHandler (SMethod_CustomMethod (Proxy :: Proxy "monarch/getInfluencedLines")) $ \req responder -> do
         let paramsValue = req ^. L.params
