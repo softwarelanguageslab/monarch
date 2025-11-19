@@ -44,10 +44,12 @@ library
       Domain.Core.BoolDomain.BottomLifted
       Domain.Core.BoolDomain.Class
       Domain.Core.BoolDomain.ConstantPropagation
+      Domain.Core.BoolDomain.Pair
       Domain.Core.BoolDomain.TopLifted
       Domain.Core.CharDomain
       Domain.Core.CharDomain.Class
       Domain.Core.CharDomain.ConstantPropagation
+      Domain.Core.CharDomain.Pair
       Domain.Core.CharDomain.TopLifted
       Domain.Core.DictionaryDomain
       Domain.Core.DictionaryDomain.Class
@@ -59,6 +61,7 @@ library
       Domain.Core.NumberDomain
       Domain.Core.NumberDomain.Class
       Domain.Core.NumberDomain.ConstantPropagation
+      Domain.Core.NumberDomain.Pair
       Domain.Core.NumberDomain.TopLifted
       Domain.Core.PairDomain
       Domain.Core.PairDomain.Class
@@ -72,6 +75,7 @@ library
       Domain.Core.StringDomain
       Domain.Core.StringDomain.Class
       Domain.Core.StringDomain.ConstantPropagation
+      Domain.Core.StringDomain.Pair
       Domain.Core.StringDomain.TopLifted
       Domain.Core.TaintDomain
       Domain.Core.TaintDomain.Class
@@ -121,6 +125,7 @@ library
       Lattice.SetLattice
       Lattice.Split
       Lattice.Tainted
+      Lattice.TH
       Lattice.TopLattice
       Lattice.TopLiftedLattice
       Lattice.Trace
@@ -176,7 +181,9 @@ test-suite maf2-domains-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Lattice.THSpec
       LatticeSpec
+      Test.Generator.Lattice
       Paths_maf2_domains
   hs-source-dirs:
       test
