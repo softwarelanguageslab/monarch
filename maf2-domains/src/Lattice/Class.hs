@@ -73,8 +73,8 @@ class BottomLattice v where
 -- | A type alias for convenience, combines
 -- the constraints that we normally need throughout 
 -- our analyses
-class (BottomLattice v, PartialOrder v, Joinable v, Eq v, Show v) => Lattice v
-instance (BottomLattice v, PartialOrder v, Joinable v, Eq v, Show v) => Lattice v
+class (BottomLattice v, PartialOrder v, Joinable v, Eq v) => Lattice v
+instance (BottomLattice v, PartialOrder v, Joinable v, Eq v) => Lattice v
 
 -- | All values that are joinable and implement `eq` are also 
 -- partially ordered

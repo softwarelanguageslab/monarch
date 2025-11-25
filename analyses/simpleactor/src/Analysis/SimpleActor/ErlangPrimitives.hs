@@ -18,7 +18,7 @@ import Domain.Scheme.Class hiding (Exp, prim)
 import Syntax.AST
 import Analysis.Actors.Monad (MonadActorLocal(..))
 import Domain.Actor (aref)
-import Domain.Core (NumberDomain(..), IntDomain (..))
+import Domain.Core.NumberDomain.Class
 import Prelude hiding (ceiling, div, floor, round)
 import Domain.Class (Domain(inject))
 import Domain (RealDomain(..), PairDomain (..))

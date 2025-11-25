@@ -20,6 +20,7 @@ import Analysis.Actors.Monad
 import Control.Monad ((>=>), foldM)
 import Control.Monad.Escape
 import Control.Monad.Join
+import Control.Monad.Layer
 import Data.Functor ( ($>) )
 
 import Analysis.Monad.Allocation
@@ -35,6 +36,8 @@ import Data.Maybe
 import Debug.Trace
 import Lattice.Class (bottom)
 import Analysis.Scheme.Monad
+import Control.Monad.Trans.Identity
+import Lattice.Equal
 
 -- TODO: we are replacing the @cond@ operation 
 -- here in order to track conditions symbolically, 
@@ -177,7 +180,7 @@ match (IdePat nam) val = return $ Map.fromList [(nam, val)]
 match (ValuePat lit) v =
    -- TODO: replace @cond@ by @choice@ so that conditions are tracked symbolically
    -- This is currently disabled because there is a bug causing some feasible paths to become infeasible.
-   cond (return $ equal (injectLit lit) v) (return Map.empty) (escape MatchError)
+   cond (fromBL @(CP Bool) $ eql (injectLit lit) v) (return Map.empty) (escape MatchError)
 match (PairPat pat1 pat2) v =
    cond (return $ isPaiPtr v) (pptrs v >>= derefPai (const matchPair)) (escape MatchError)
    where matchPair vp =
@@ -197,13 +200,13 @@ injectLit (String _)     = error "cannot inject a string"
 -- Primitives
 ------------------------------------------------------------
 
-newtype SAPrim v = SAPrim (forall k m . (Show (Env v), EvalM v k m) => [v] -> Exp -> m v)
+newtype SAPrim v = SAPrim (forall k m . (EvalM v k m) => [v] -> Exp -> m v)
 
 instance SimpleActorPrimitive v (SAPrim v) where
    runPrimitive (SAPrim p) = flip p
 
 -- | A nullary primitive
-aprim0 :: (forall k m . (Show (Env v), EvalM v k m) => Exp -> m v) -> SAPrim v
+aprim0 :: (forall k m . (EvalM v k m) => Exp -> m v) -> SAPrim v
 aprim0 f = SAPrim $ const f
 
 -- | A primitive on one argument
@@ -224,7 +227,7 @@ actorPrimitives =  Prm @v <$> Map.fromList [
    ("list", aprim0 $ const $ return nil),
    ("print-env", aprim0 $ const $ (liftIO . print =<< getEnv) $> nil),
    -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
-   ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeVar adr (var adr v) ; return $ var adr v }),
+   -- ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeVar adr (var adr v) ; return $ var adr v }),
    ("print", aprim1 $ const $ const $ return nil) ]
 
 -- | Scheme primitives

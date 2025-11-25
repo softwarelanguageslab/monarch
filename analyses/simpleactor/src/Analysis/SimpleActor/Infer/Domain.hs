@@ -29,8 +29,8 @@ import Domain.Core.BoolDomain.Class
 import GHC.Generics
 import Lattice.Class (Joinable, PartialOrder, TopLattice, BottomLattice)
 import qualified Lattice.Class as L
-import RIO hiding (trace)
 import qualified RIO.Set as Set
+import RIO  hiding (trace)
 import qualified RIO.Map as Map
 import Syntax.AST hiding (Trace)
 import Syntax.Span
@@ -128,8 +128,9 @@ instance Domain V Bool where
   inject = const $ TopValue L.bottom
 
 -- | For simplicity the 'BoolDomain' implementation for 'V' is always top
-instance BoolDomain V where
-  boolTop = TopValue L.bottom
+instance BoolLattice V where
+  isTrue = const True
+  isFalse = const False
   not = const boolTop
   and = const $ const boolTop
   or  = const $ const boolTop

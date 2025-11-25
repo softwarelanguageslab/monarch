@@ -27,7 +27,7 @@ import qualified Data.TypeLevel.HMap as HMap
 import Lattice.Class hiding (join)
 import qualified Lattice.Trace as T
 import qualified Lattice.Class as L
-import RIO hiding (view, over)
+import RIO hiding (view, over, or)
 import qualified RIO.Map as Map
 import Syntax.AST
 import Syntax.Span (spanOf)

@@ -23,7 +23,7 @@ dependencies:
 - hspec
 - hspec-contrib
 - deepseq
-- rio
+- rio <= 1.22.0
 - extra
 - singletons
 - directory

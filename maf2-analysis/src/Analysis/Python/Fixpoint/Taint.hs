@@ -71,8 +71,7 @@ type AnalysisM m obj = (PyDomain obj PyRefTaint,
                         MonadReport (DiagnosticType PyRefTaint) m,
                         GraphM (CP String) (CP Bool) m,
                         WorkListM m PyCmp,
-                        Typeable obj,
-                        Show obj)
+                        Typeable obj)
 
 newtype PyCmpTaint = PyCmpTaint PyCmp
     deriving (Eq, Ord, Show)
@@ -123,7 +122,7 @@ inter prg = do let cmp = ((Main prg, initialEnv), [])
 
 type PyTaintDiagnostic = Diagnostic (DiagnosticType PyRefTaint)
 
-analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
+analyze :: forall obj . (Typeable obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
 analyze prg = (rsto, osto, graph, reports)
     where (((osto, graph), rsto), reports) = inter @obj prg
                                     & runWithGraph @(SimpleGraph (CP String) (CP Bool))
@@ -145,7 +144,7 @@ analyze prg = (rsto, osto, graph, reports)
 initialStore :: forall m obj . AnalysisM m obj => m (Store obj)
 initialStore = snd <$> runWithStore @(Store obj) @ObjAdr @obj init
 
-analyzeREPL :: forall obj . (PyDomain obj PyRefTaint, Typeable obj, Show obj)
+analyzeREPL :: forall obj . (PyDomain obj PyRefTaint, Typeable obj)
     => IO PyPrg         -- a read function
     -> (obj -> IO ())   -- a display function
     -> IO ()

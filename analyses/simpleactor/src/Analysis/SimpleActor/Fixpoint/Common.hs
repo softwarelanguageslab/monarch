@@ -28,7 +28,7 @@ import Analysis.SimpleActor.Monad (SimpleActorContext(..))
 type K = AdrCtx
 type ActorExp = Exp
 type ActorRef = Pid Exp K
-type ActorVlu = ActorValue K (SchemeAdr Exp K)
+type ActorVlu = ActorValue K (SchemeAdr Exp)
 type ActorEnv = HashMap String (SchemeAdr Exp K)
 -- | Global mailboxes
 type ActorMai = Map ActorRef (GraphToSet ActorVlu)

@@ -47,7 +47,7 @@ import qualified Syntax.Ide as Ide
 import Analysis.Monad.Fix (MonadFixpoint)
 import Domain (SchemeDomain(Env))
 import Lattice.Equal (EqualLattice)
-import Domain.Core.BoolDomain.Class (BoolDomain (true, false, boolTop))
+import Domain.Core.BoolDomain.Class (true, false, boolTop, BoolDomain)
 import Lattice.Split (SplitLattice)
 import Syntax.Span (SpanOf(..))
 import Syntax.FV
@@ -212,11 +212,11 @@ type EvalM v k m =
     ActorDomain v,
     EqualLattice v,
     Show v,
-    SymbolicM (Adr v) m v,
+    -- SymbolicM (Adr v) m v,
     MonadIO m,
     Show (Env v),
     MonadAbstractCount (ARef v) m,
-    MonadCall v m,
+    -- MonadCall v m,
     -- Domain constraints
     ForAllStored Show v,
     ForAllStored Eq v,
