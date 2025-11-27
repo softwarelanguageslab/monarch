@@ -299,176 +299,189 @@ expression : '<' anno_expressions '>' { ValuesExpr $2 (spanning $1 $3) }
 expression : single_expression { $1 }
 -- 
 single_expression : atomic_constant { LitExpr $1 (spanOf $1)  }
--- single_expression -> tuple : '$1'.
--- single_expression -> cons : '$1'.
--- single_expression -> binary : '$1'.
--- single_expression -> variable : '$1'.
--- single_expression -> function_name : '$1'.
--- single_expression -> fun_literal : '$1'.
--- single_expression -> fun_expr : '$1'.
--- single_expression -> let_expr : '$1'.
--- single_expression -> letrec_expr : '$1'.
--- single_expression -> case_expr : '$1'.
--- single_expression -> receive_expr : '$1'.
--- single_expression -> application_expr : '$1'.
--- single_expression -> call_expr : '$1'.
--- single_expression -> primop_expr : '$1'.
--- single_expression -> try_expr : '$1'.
--- single_expression -> sequence : '$1'.
--- single_expression -> catch_expr : '$1'.
--- single_expression -> map_expr : '$1'.
+single_expression : tuple { $1 }
+single_expression : cons { $1 }
+single_expression : binary { $1 }
+single_expression : anno_variable { VarExpr $1 (spanOf $1) }
+single_expression : function_name { FunNameExpr $1 (spanOf $1) }
+single_expression : fun_literal { $1 }
+single_expression : fun_expr { $1 }
+single_expression : let_expr { $1 }
+single_expression : letrec_expr { $1 }
+single_expression : case_expr { $1 }
+single_expression : receive_expr { $1 }
+single_expression : application_expr { $1 }
+single_expression : call_expr { $1 }
+single_expression : primop_expr { $1 }
+single_expression : try_expr { $1 }
+single_expression : sequence { $1 }
+single_expression : catch_expr { $1 }
+single_expression : map_expr { $1 }
 -- 
 literal : constant { LitExpr $1 (spanOf $1) }
--- XX: Literal is the same a constant?
 
--- literal -> atomic_literal : '$1'.
--- literal -> tuple_literal : '$1'.
--- literal -> cons_literal : '$1'.
+literals : literal ',' literals { $1 : $3 }
+literals : literal { [$1] }
+
+fun_literal : 'fun' atom ':' atom '/' integer
+    { LitExpr (AtomLit (Atom "fun_literal" (spanning $1 $6)) (spanning $1 $6)) (spanning $1 $6) }
+
+tuple : '{' '}' { TupleExpr [] (spanning $1 $2) }
+tuple : '{' anno_expressions '}' { TupleExpr $2 (spanning $1 $3) }
 -- 
--- literals -> literal ',' literals : ['$1' | '$3'].
--- literals -> literal : ['$1'].
--- 
--- atomic_literal -> char : #c_literal{val=tok_val('$1')}.
--- atomic_literal -> integer : #c_literal{val=tok_val('$1')}.
--- atomic_literal -> float : #c_literal{val=tok_val('$1')}.
--- atomic_literal -> atom : #c_literal{val=tok_val('$1')}.
--- atomic_literal -> string : #c_literal{val=tok_val('$1')}.
--- atomic_literal -> nil : #c_literal{val=[]}.
--- 
--- tuple_literal -> '{' '}' : c_tuple([]).
--- tuple_literal -> '{' literals '}' : c_tuple('$2').
--- 
--- cons_literal -> '[' literal tail_literal : c_cons('$2', '$3').
--- 
--- tail_literal -> ']' : #c_literal{val=[]}.
--- tail_literal -> '|' literal ']' : '$2'.
--- tail_literal -> ',' literal tail_literal : c_cons('$2', '$3').
--- 
--- fun_literal -> 'fun' atom ':' atom '/' integer :
--- 	#c_literal{val = erlang:make_fun(tok_val('$2'), tok_val('$4'), tok_val('$6'))}.
--- 
--- tuple -> '{' '}' : c_tuple([]).
--- tuple -> '{' anno_expressions '}' : c_tuple('$2').
--- 
--- map_expr -> '~' '{' '}' '~' : c_map([]).
--- map_expr -> '~' '{' map_pairs '}' '~' : c_map('$3').
--- map_expr -> '~' '{' map_pairs '|' anno_variable '}' '~' : ann_c_map([], '$5', '$3').
--- map_expr -> '~' '{' map_pairs '|' anno_map_expr '}' '~' : ann_c_map([], '$5', '$3').
--- 
--- anno_map_expr -> map_expr : '$1'.
--- anno_map_expr -> '(' map_expr '-|' annotation ')' : cerl:set_ann('$2', '$4').
--- 
--- map_pairs -> anno_map_pair : ['$1'].
--- map_pairs -> anno_map_pair ',' map_pairs : ['$1' | '$3'].
--- 
--- anno_map_pair -> map_pair : '$1'.
--- anno_map_pair -> '(' map_pair '-|' annotation ')' : cerl:set_ann('$2', '$4').
--- 
--- map_pair -> map_pair_assoc : '$1'.
--- map_pair -> map_pair_exact : '$1'.
--- 
--- map_pair_assoc -> anno_expression '=>' anno_expression :
--- 		#c_map_pair{op=#c_literal{val=assoc},key='$1',val='$3'}.
--- map_pair_exact -> anno_expression ':=' anno_expression :
--- 		#c_map_pair{op=#c_literal{val=exact},key='$1',val='$3'}.
--- 
--- cons -> '[' anno_expression tail : c_cons('$2', '$3').
--- 
--- tail -> ']' : #c_literal{val=[]}.
--- tail -> '|' anno_expression ']' : '$2'.
--- tail -> ',' anno_expression tail : c_cons('$2', '$3').
--- 
--- binary -> '#' '{' '}' '#' : #c_literal{val = <<>>}.
--- binary -> '#' '{' segments '}' '#' : make_binary('$3').
--- 
--- segments -> anno_segment ',' segments : ['$1' | '$3'].
--- segments -> anno_segment : ['$1'].
--- 
--- anno_segment -> segment : '$1'.
--- anno_segment -> '(' segment '-|' annotation ')' : cerl:set_ann('$2', '$4').
--- 
--- segment -> '#' '<' anno_expression '>' '(' anno_expressions ')':
--- 	case '$6' of
--- 	    [S,U,T,Fs] ->
--- 		#c_bitstr{val='$3',size=S,unit=U,type=T,flags=Fs};
--- 	    true ->
--- 		return_error(tok_line('$1'),
--- 			     "expected 4 arguments in binary segment")
--- 	end.
--- 
+map_expr : '~' '{' '}' '~' { MapExpr [] Nothing (spanning $1 $4) }
+map_expr : '~' '{' map_pairs '}' '~' { MapExpr $3 Nothing (spanning $1 $5) }
+map_expr : '~' '{' map_pairs '|' anno_variable '}' '~'
+    { MapExpr $3 (Just (Constr (VarExpr $5 (spanOf $5)))) (spanning $1 $7) }
+map_expr : '~' '{' map_pairs '|' anno_map_expr '}' '~'
+    { MapExpr $3 (Just $5) (spanning $1 $7) }
+
+anno_map_expr : map_expr { Constr $1 }
+anno_map_expr : '(' map_expr '-|' annotation ')' { Ann $2 $4 }
+
+map_pairs : anno_map_pair ',' map_pairs { $1 : $3 }
+map_pairs : anno_map_pair { [$1] }
+
+anno_map_pair : map_pair { Constr $1 }
+anno_map_pair : '(' map_pair '-|' annotation ')' { Ann $2 $4 }
+
+map_pair : map_pair_assoc { $1 }
+map_pair : map_pair_exact { $1 }
+
+map_pair_assoc : anno_expression '=>' anno_expression
+    { MapPairAssoc $1 $3 (spanning $1 $3) }
+map_pair_exact : anno_expression ':=' anno_expression
+    { MapPairExact $1 $3 (spanning $1 $3) }
+
+cons : '[' anno_expression tail { ConsExpr $2 $3 (spanning $1 $3) }
+
+tail : ']' { Constr (LitExpr (NilLit (spanOf $1)) (spanOf $1)) }
+tail : '|' anno_expression ']' { $2 }
+tail : ',' anno_expression tail { Constr (ConsExpr $2 $3 (spanning $1 $3)) }
+
+binary : '#' '{' '}' '#' { BinaryExpr [] (spanning $1 $4) }
+binary : '#' '{' segments '}' '#' { BinaryExpr $3 (spanning $1 $5) }
+
+segments : anno_segment ',' segments { $1 : $3 }
+segments : anno_segment { [$1] }
+
+anno_segment : segment { Constr $1 }
+anno_segment : '(' segment '-|' annotation ')' { Ann $2 $4 }
+
+segment : '#' '<' anno_expression '>' '(' anno_expressions ')'
+    { Bitstr $3 $6 (spanning $1 $7) }
+
+anno_pattern : '(' other_pattern '-|' annotation ')' { Ann $2 $4 }
+anno_pattern : other_pattern { Constr $1 }
+anno_pattern : anno_variable { Constr (VarPat $1 (spanOf $1)) }
+
+anno_patterns : anno_pattern ',' anno_patterns { $1 : $3 }
+anno_patterns : anno_pattern { [$1] }
+
+other_pattern : atomic_pattern { $1 }
+other_pattern : tuple_pattern { $1 }
+other_pattern : map_pattern { $1 }
+other_pattern : cons_pattern { $1 }
+other_pattern : binary_pattern { $1 }
+other_pattern : anno_variable '=' anno_pattern { AliasPat $1 $3 (spanning $1 $3) }
+
+atomic_pattern : atomic_constant { AtomicPat $1 (spanOf $1) }
+
+tuple_pattern : '{' '}' { TuplePat [] (spanning $1 $2) }
+tuple_pattern : '{' anno_patterns '}' { TuplePat $2 (spanning $1 $3) }
+
+map_pattern : '~' '{' '}' '~' { MapPat [] Nothing (spanning $1 $4) }
+map_pattern : '~' '{' map_pair_patterns '}' '~'
+    { MapPat $3 Nothing (spanning $1 $5) }
+map_pattern : '~' '{' map_pair_patterns '|' anno_map_expr '}' '~'
+    { MapPat $3 (Just $5) (spanning $1 $7) }
+
+map_pair_patterns : map_pair_pattern ',' map_pair_patterns { $1 : $3 }
+map_pair_patterns : map_pair_pattern { [$1] }
+
+map_pair_pattern : anno_expression ':=' anno_pattern
+    { Constr (MapPairPat $1 $3 (spanning $1 $3)) }
+map_pair_pattern : '(' anno_expression ':=' anno_pattern '-|' annotation ')'
+    { Ann (MapPairPat $2 $4 (spanning $1 $7)) $6 }
+
+cons_pattern : '[' anno_pattern tail_pattern { ConsPat $2 $3 (spanning $1 $3) }
+
+tail_pattern : ']' { Constr (AtomicPat (NilLit (spanOf $1)) (spanOf $1)) }
+tail_pattern : '|' anno_pattern ']' { $2 }
+tail_pattern : ',' anno_pattern tail_pattern { Constr (ConsPat $2 $3 (spanning $1 $3)) }
+
+binary_pattern : '#' '{' '}' '#' { BinaryPat [] (spanning $1 $4) }
+binary_pattern : '#' '{' segment_patterns '}' '#' { BinaryPat $3 (spanning $1 $5) }
+
+segment_patterns : anno_segment_pattern ',' segment_patterns { $1 : $3 }
+segment_patterns : anno_segment_pattern { [$1] }
+
+anno_segment_pattern : segment_pattern { Constr $1 }
+anno_segment_pattern : '(' segment_pattern '-|' annotation ')' { Ann $2 $4 }
+
+segment_pattern : '#' '<' anno_pattern '>' '(' anno_expressions ')'
+    { BitstrPat $3 $6 (spanning $1 $7) }
+
 function_name : atom '/' integer { Function $1 (Tok.intVal $3) (spanning $1 $3) }
 -- 
 anno_function_name : function_name { Constr $1 }
 anno_function_name : '(' function_name '-|' annotation ')' { Ann $2 $4 }
--- 
--- let_vars -> anno_variable : ['$1'].
--- let_vars -> '<' '>' : [].
--- let_vars -> '<' anno_variables '>' : '$2'.
--- 
--- sequence -> 'do' anno_expression anno_expression :
--- 	#c_seq{arg='$2',body='$3'}.
--- 
+
+let_vars : anno_variable { [$1] }
+let_vars : '<' '>' { [] }
+let_vars : '<' anno_variables '>' { $2 }
+
+sequence : 'do' anno_expression anno_expression { SeqExpr $2 $3 (spanning $1 $3) }
+
 fun_expr : 'fun' '(' ')' '->' anno_expression { FunExpr [] $5 (spanning $1 $5) }
 fun_expr : 'fun' '(' anno_variables ')' '->' anno_expression { FunExpr $3 $6 (spanning $1 $6) }
--- 
--- let_expr -> 'let' let_vars '=' anno_expression 'in' anno_expression :
--- 	#c_let{vars='$2',arg='$4',body='$6'}.
--- 
--- letrec_expr -> 'letrec' function_definitions 'in' anno_expression :
--- 	#c_letrec{defs='$2',body='$4'}.
--- 
--- case_expr -> 'case' anno_expression 'of' anno_clauses 'end' :
--- 	#c_case{arg='$2',clauses='$4'}.
--- 
--- anno_clauses -> anno_clause anno_clauses : ['$1' | '$2'].
--- anno_clauses -> anno_clause : ['$1'].
--- 
--- anno_clause -> clause : '$1'.
--- anno_clause -> '(' clause '-|' annotation ')' :
--- 	cerl:set_ann('$2', '$4').
--- 
--- clause -> clause_pattern 'when' anno_expression '->' anno_expression :
--- 	#c_clause{pats='$1',guard='$3',body='$5'}.
--- 
--- clause_pattern -> anno_pattern : ['$1'].
--- clause_pattern -> '<' '>' : [].
--- clause_pattern -> '<' anno_patterns '>' : '$2'.
--- 
--- application_expr -> 'apply' anno_expression arg_list :
--- 	#c_apply{op='$2',args='$3'}.
--- 
--- call_expr ->
---     'call' anno_expression ':' anno_expression arg_list :
--- 	#c_call{module='$2',name='$4',args='$5'}.
--- 
--- primop_expr -> 'primop' anno_expression arg_list :
--- 	#c_primop{name='$2',args='$3'}.
--- 
--- arg_list -> '(' ')' : [].
--- arg_list -> '(' anno_expressions ')' : '$2'.
--- 
--- try_expr ->
---     'try' anno_expression 'of' let_vars '->' anno_expression
--- 	'catch' let_vars '->' anno_expression :
--- 	Len = length('$8'),
---         if Len =:= 2; Len =:= 3 ->
--- 		#c_try{arg='$2',vars='$4',body='$6',evars='$8',handler='$10'};
--- 	   true ->
--- 		return_error(tok_line('$7'),
--- 			     "expected 2 or 3 exception variables in 'try'")
--- 	end.
--- 
--- catch_expr -> 'catch' anno_expression : #c_catch{body='$2'}.
--- 
--- receive_expr -> 'receive' timeout : 
--- 	{T,A} = '$2',
--- 	#c_receive{clauses=[],timeout=T,action=A}.
--- receive_expr -> 'receive' anno_clauses timeout : 
--- 	{T,A} = '$3',
--- 	#c_receive{clauses='$2',timeout=T,action=A}.
--- 
--- timeout ->
---     'after' anno_expression '->' anno_expression : {'$2','$4'}.
+
+let_expr : 'let' let_vars '=' anno_expression 'in' anno_expression
+    { LetExpr $2 $4 $6 (spanning $1 $6) }
+
+letrec_expr : 'letrec' function_definitions 'in' anno_expression
+    { LetRecExpr $2 $4 (spanning $1 $4) }
+
+case_expr : 'case' anno_expression 'of' anno_clauses 'end'
+    { CaseExpr $2 $4 (spanning $1 $5) }
+
+anno_clauses : anno_clause anno_clauses { $1 : $2 }
+anno_clauses : anno_clause { [$1] }
+
+anno_clause : clause { Constr $1 }
+anno_clause : '(' clause '-|' annotation ')' { Ann $2 $4 }
+
+clause : clause_pattern 'when' anno_expression '->' anno_expression
+    { Clause $1 $3 $5 (spanning $2 $5) }
+
+clause_pattern : anno_pattern { [$1] }
+clause_pattern : '<' '>' { [] }
+clause_pattern : '<' anno_patterns '>' { $2 }
+
+application_expr : 'apply' anno_expression arg_list
+    { ApplyExpr $2 $3 (spanning $1 (if $3 == [] then $2 else (last $3))) }
+
+call_expr : 'call' anno_expression ':' anno_expression arg_list
+    { CallExpr $2 $4 $5 (spanning $1 $5) }
+
+primop_expr : 'primop' anno_expression arg_list
+    { PrimOpExpr $2 $3 (spanning $1 (if $3 == [] then $2 else (last $3))) }
+
+arg_list : '(' ')' { [] }
+arg_list : '(' anno_expressions ')' { $2 }
+
+try_expr : 'try' anno_expression 'of' let_vars '->' anno_expression
+           'catch' let_vars '->' anno_expression
+    { TryExpr $2 $4 $6 $8 $10 (spanning $1 $10) }
+
+catch_expr : 'catch' anno_expression { CatchExpr $2 (spanning $1 $2) }
+
+receive_expr : 'receive' timeout
+    { let (t, a) = $2 in ReceiveExpr [] t a (spanning $1 a) }
+receive_expr : 'receive' anno_clauses timeout
+    { let (t, a) = $3 in ReceiveExpr $2 t a (spanning $1 a) }
+
+timeout : 'after' anno_expression '->' anno_expression { ($2, $4) }
 -- 
 
 {

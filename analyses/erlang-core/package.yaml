@@ -23,4 +23,5 @@ executable:
     - optparse-applicative
     - base >= 4.17 && < 5
     - erlang-analyzer
+    - pretty-simple
 

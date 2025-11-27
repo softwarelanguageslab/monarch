@@ -3,6 +3,7 @@ module Main where
 import Options.Applicative
 import Syntax.Erlang.Lexer
 import Syntax.Erlang.Parser
+import Text.Pretty.Simple
 
 parseFilename :: Parser String
 parseFilename =
@@ -16,4 +17,4 @@ parser = info parseFilename (header "Erlang Core Parser")
 
 main :: IO ()
 main =
-  execParser parser >>= (\filename -> readFile filename >>= print . parse . tokenize' filename)
+  execParser parser >>= (\filename -> readFile filename >>= pPrint . parse . tokenize' filename)
