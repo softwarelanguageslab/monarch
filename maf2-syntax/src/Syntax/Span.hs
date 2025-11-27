@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Syntax.Span(Span(..), SpanOf(..), Position(..)) where   
+module Syntax.Span(Span(..), SpanOf(..), Position(..), mkSpan) where   
 
 import GHC.Generics
 import Control.DeepSeq
@@ -37,3 +37,7 @@ instance SpanOf a => SpanOf [a] where
                     (startPosition $ spanOf (head xs))
                     (endPosition $ spanOf (last xs))
    
+-- | Construct a span from two elements that have a span, using the first element
+-- as the start of the new span, and the second element as its end.
+mkSpan :: (SpanOf a) => a -> a -> Span
+mkSpan  start end = spanOf [start, end] 
