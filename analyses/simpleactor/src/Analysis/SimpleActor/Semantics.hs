@@ -180,7 +180,9 @@ match (IdePat nam) val = return $ Map.fromList [(nam, val)]
 match (ValuePat lit) v =
    -- TODO: replace @cond@ by @choice@ so that conditions are tracked symbolically
    -- This is currently disabled because there is a bug causing some feasible paths to become infeasible.
-   cond (fromBL @(CP Bool) $ eql (injectLit lit) v) (return Map.empty) (escape MatchError)
+   cond (fromBL @(CP Bool) $ eql (injectLit lit) v)
+        (return Map.empty)
+        (escape MatchError)
 match (PairPat pat1 pat2) v =
    cond (return $ isPaiPtr v) (pptrs v >>= derefPai (const matchPair)) (escape MatchError)
    where matchPair vp =
