@@ -1,4 +1,4 @@
-with-compiler: ghc-9.4.8
+with-compiler: ghc-9.6.7
 
 packages:
    ../../maf2-analysis/
@@ -10,4 +10,4 @@ packages:
 source-repository-package
    type: git
    location: https://github.com/bramvdbogaerde/layers-mtl.git
-   tag: 5201fd1814053630f762c382a79e49b7bf14df8f
+   tag: e02ee49ca80b419595f14399c44c61db2327b2b9

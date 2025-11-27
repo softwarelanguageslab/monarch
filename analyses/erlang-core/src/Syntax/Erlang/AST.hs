@@ -94,7 +94,7 @@ instance SpanOf Module where
 -- | A Core Erlang expression
 data Expr = FunExpr ![Ann Ide] !(Ann Expr) !Span  -- ^ fun(a, b) -> bdy
           | ValuesExpr ![Ann Expr] !Span          -- ^ <e1, e2, e3>
-          | TupleExpr  ![Ann Expr] !Span          -- ^ {e1, e2, e3}
+          | TupleExpr  ![Ann Expr] !Span          -- ^ {e1, e2, e3}
           | LitExpr    !Lit        !Span
           deriving (Eq, Ord, Show)
 

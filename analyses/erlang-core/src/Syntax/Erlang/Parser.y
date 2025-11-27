@@ -69,7 +69,7 @@ import Syntax.Ide
 -- 
 -- Terminals
 
-%name parse
+%name parse module_definition
 %tokentype { Tok.Token }
 
 %token
@@ -129,14 +129,12 @@ atom : atomT { Atom (Tok.atomName $1) (spanOf $1) }
 
 nil : '[' ']' { Tok.Nil (Tok.srcSpan $1) } 
 
--- Grammar
--- HERE
 module_definition :
     'module' atom module_export module_attribute module_defs 'end' 
-        { Constr (Module $2 $3 $4 $5) }
+        { Constr (Module $2 $3 $4 $5 (mkSpan $1 $6)) }
 module_definition :
     '(' 'module' atom module_export module_attribute module_defs 'end' '-|' annotation ')' {
-            Ann (Module $3 $4 $5 $6) $9
+            Ann (Module $3 $4 $5 $6 (mkSpan $1 $7)) $9
         }
 
 module_export : '[' ']' { [] }
@@ -168,7 +166,7 @@ annotation : '[' constants ']' { Annotation $2 (spanning $1 $3) }
 -- 
 function_definitions :
     function_definition function_definitions { $1 : $2 }
-function_definitions : eof { [] }
+function_definitions : { [] }
 -- 
 function_definition :
     anno_function_name '=' anno_fun { FunDef $1 $3 (spanning $1 $3) }
