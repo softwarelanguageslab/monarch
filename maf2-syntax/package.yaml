@@ -70,6 +70,10 @@ library:
     - Syntax.Erlang.Overloader
     - Syntax.Erlang.Qualifier
     - Syntax.Erlang.Preluder
+  verbatim:
+      build-tools:
+        happy
+
 
 default-extensions:
   - StandaloneDeriving
