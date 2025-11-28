@@ -24,10 +24,10 @@
 -- Have explicit productions for annotated phrases named anno_XXX.
 -- This just does an XXX and adds the annotation.
 {
-module Syntax.Erlang.Parser where
+module Syntax.CoreErlang.Parser where
 
-import qualified Syntax.Erlang.Tokens as Tok
-import Syntax.Erlang.AST
+import qualified Syntax.CoreErlang.Tokens as Tok
+import Syntax.CoreErlang.AST
 import Syntax.Span
 import Syntax.Ide
 }

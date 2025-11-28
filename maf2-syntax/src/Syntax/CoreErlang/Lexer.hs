@@ -1,7 +1,7 @@
 -- | Erlang Lexer, adapted from https://github.com/erlang/otp/blob/master/lib/compiler/src/core_scan.erl
-module Syntax.Erlang.Lexer(tokenize, tokenize') where 
+module Syntax.CoreErlang.Lexer(tokenize, tokenize') where
 
-import Syntax.Erlang.Tokens
+import Syntax.CoreErlang.Tokens
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec hiding (Token, token)
 import Text.Megaparsec.Char
@@ -15,22 +15,22 @@ import Data.Void
 -- Utility functions
 ------------------------------------------------------------
 
-statePosition :: SourcePos -> (String, Int, Int) 
+statePosition :: SourcePos -> (String, Int, Int)
 statePosition positionInfo  = (sourceName positionInfo, unPos $ sourceLine positionInfo, unPos $ sourceColumn positionInfo)
 
 withSpan :: Parser (SrcSpan -> a) -> Parser a
 withSpan m = do
    (name, line, col) <- fmap statePosition getSourcePos
-   result <- m 
-   (_, line', col') <- fmap statePosition getSourcePos 
+   result <- m
+   (_, line', col') <- fmap statePosition getSourcePos
    return (result (SrcSpan name line col line' col'))
-   
+
 
 ------------------------------------------------------------
 -- Character predicates
 ------------------------------------------------------------
 
-isUpper :: Char -> Bool 
+isUpper :: Char -> Bool
 isUpper c = (c >= 'A' && c <= 'Z')
          || (c >= 'À' && c <= 'Þ' && c /= '×')
 
@@ -38,19 +38,19 @@ isLower :: Char -> Bool
 isLower c = (c >= 'a' && c <= 'z')
          || (c >= 'ß' && c <= 'ÿ' && c /= '÷')
 
-isNumeric :: Char -> Bool 
+isNumeric :: Char -> Bool
 isNumeric c = c >= '0' && c <= '9'
 
-isSpecial :: Char -> Bool 
-isSpecial c = c == '_' || c == '@' 
+isSpecial :: Char -> Bool
+isSpecial c = c == '_' || c == '@'
 
-isLetter :: Char -> Bool 
+isLetter :: Char -> Bool
 isLetter c = isUpper c || isLower c
 
-isNameChar :: Char -> Bool 
-isNameChar c = isLetter c || isNumeric c || isSpecial c
+isNameChar :: Char -> Bool
+isNameChar c = isLetter c || isNumeric c || isSpecial c
 
-isVarStart :: Char -> Bool 
+isVarStart :: Char -> Bool
 isVarStart c = isUpper c || c == '_'
 
 ------------------------------------------------------------
@@ -260,18 +260,13 @@ token =  lexeme (  keyword
                <|> atom
                <|> variable)
 
--- | Adds an EOF token to the end of the stream in a lazy manner
-addEOF :: [Token] -> [Token]
-addEOF [] = [EOF]
-addEOF (a:as) = a : (addEOF as)
-
 -- | Run the lexer on the input string
 tokenize :: String -> String -> Either (ParseErrorBundle String Error) [Token]
-tokenize filename = runParser (do 
+tokenize = runParser (do
    -- many spaceConsumer 
-   tokens <- many token  
+   tokens' <- many token
    eof
-   return tokens) filename
+   return tokens')
 
 tokenize' :: String -> String -> [Token]
-tokenize' inputName = either (error . errorBundlePretty)  id . tokenize inputName 
+tokenize' inputName = either (error . errorBundlePretty)  id . tokenize inputName

@@ -1,8 +1,0 @@
-'c'/3 =
-    fun (_@c2,_@c1,_@c0) ->
-	case <_@c2,_@c1,_@c0> of
-	  <'inc',Base,N> when 'true' ->
-	      call 'erlang':'+'(Base, N)
-	  <_@c6,Base,_@c7> when 'true' ->
-	      Base
-	end

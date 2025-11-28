@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Syntax.Erlang.AST where
+module Syntax.CoreErlang.AST where
 
 import Syntax.Span
 import Syntax.Ide

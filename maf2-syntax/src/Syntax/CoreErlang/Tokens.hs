@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 -- | Core Erlang tokens, derived from https://github.com/erlang/otp/blob/master/lib/compiler/src/
-module Syntax.Erlang.Tokens(Token(..), SrcSpan(..)) where
+module Syntax.CoreErlang.Tokens(Token(..), SrcSpan(..)) where
 
 import Syntax.Span
 

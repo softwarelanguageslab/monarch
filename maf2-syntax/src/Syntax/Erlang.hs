@@ -1,3 +1,4 @@
+-- | Erlang Abstract Format
 module Syntax.Erlang (module Syntax.Erlang.AST, compileString, compile, Loc) where
 
 import Syntax.Erlang.Parser

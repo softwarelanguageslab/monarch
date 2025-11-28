@@ -46,6 +46,11 @@ library
   other-modules:
       Control.Monad.Cond
       Lib
+      Syntax.CoreErlang
+      Syntax.CoreErlang.AST
+      Syntax.CoreErlang.Lexer
+      Syntax.CoreErlang.Parser
+      Syntax.CoreErlang.Tokens
       Syntax.Python.Compiler
       Syntax.Python.Parser
       Syntax.Scheme.TH
@@ -64,15 +69,18 @@ library
       RankNTypes
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >=4.17 && <5
+      array ==0.5.*
+    , base >=4.17 && <5
     , containers
     , data-default
     , deepseq
     , directory
+    , extra
     , file-embed
     , filepath
     , language-python
     , lens
+    , megaparsec ==9.7.*
     , mtl ==2.3.*
     , parsec >=3.1
     , process
@@ -99,16 +107,19 @@ test-suite maf2-syntax-test
       RankNTypes
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.17 && <5
+      array ==0.5.*
+    , base >=4.17 && <5
     , containers
     , data-default
     , deepseq
     , directory
+    , extra
     , file-embed
     , filepath
     , language-python
     , lens
     , maf2-syntax
+    , megaparsec ==9.7.*
     , mtl ==2.3.*
     , parsec >=3.1
     , process
