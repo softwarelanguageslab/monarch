@@ -27,6 +27,10 @@ class (Ord m, Eq m) => Mailbox m msg | m -> msg where
   -- Returns a set of possible messages and updated mailboxes
   dequeue :: m -> Set (msg, m)
 
+  -- | Return the first element that would be dequeued from the queue
+  -- Returns a set of possible messages that could be dequeued first.
+  peek :: m -> Set msg
+
   -- | Create an empty mailbox
   empty :: m
 
@@ -47,6 +51,7 @@ class (Ord m, Eq m) => Mailbox m msg | m -> msg where
 instance (Ord msg) => Mailbox (Set msg) msg where
   enqueue = Set.insert
   dequeue m = Set.map (,m) m
+  peek = id
   empty = Set.empty
   hasMessage' msg m
     | Set.member msg m = boolTop

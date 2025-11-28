@@ -47,16 +47,20 @@ popMessage g@MessageGraph { .. } = maybe Set.empty successors bottom
         updateGraph next = g { bottom = Just next }
         emptyToNothing s = if Set.null s then Nothing else Just s
 
+-- | Returns the first message that would be popped from the message graph
+peekMessage :: Ord msg => MessageGraph msg -> Set msg
+peekMessage = Set.map fst . popMessage 
+
 -- | Map a function over the messages in the mailbox
 mapMessages' :: Ord msg => (msg -> msg) -> MessageGraph msg -> MessageGraph msg
-mapMessages' f g@MessageGraph { .. } =
+mapMessages' f MessageGraph { .. } =
   MessageGraph { top = fmap f top,
                  bottom = fmap f bottom,
                  edges = Map.fromList $ map (bimap f (Set.map f))(Map.toList edges)
                }
 
 -- | Compute the bounds of the mailbox
-size :: (Domain Integer i, TopLattice i) => MessageGraph msg -> i
+size :: MessageGraph msg -> i
 size = undefined -- TODO compute a path from bottom to top if any exist
 
 -- | Checks whether the graph has the given message
@@ -93,6 +97,7 @@ instance (Ord msg, Trace adr msg) => Trace adr (GraphMailbox msg) where
 instance (Ord msg) => Mailbox (GraphMailbox msg) msg where
   enqueue msg = GraphMailbox . Set.map (pushMessage msg) . getMessageGraphs
   dequeue = foldMap (Set.map (fmap (GraphMailbox . Set.singleton)) . popMessage) . getMessageGraphs
+  peek = foldMap peekMessage . getMessageGraphs
   empty = GraphMailbox $ Set.singleton emptyGraph
   hasMessage' msg = joinMap (hasMessage msg) . getMessageGraphs
   mapMessages f = GraphMailbox . Set.map (mapMessages' f) . getMessageGraphs
