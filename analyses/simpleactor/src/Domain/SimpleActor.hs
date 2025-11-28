@@ -5,19 +5,9 @@ module Domain.SimpleActor(ActorValue) where
 
 import Prelude hiding (length)
 import Lattice.ConstantPropagationLattice
-import qualified Lattice.TopLiftedLattice as TL
 import Domain.Scheme hiding (Exp, Env)
-import Domain.Scheme.Store
-import Domain.Scheme.Derived.Top
-import Domain.Symbolic.Paired
-import Domain.Core.VectorDomain.PIVector
-import Domain.Core.StringDomain.Class
 import Domain.Core.StringDomain.ConstantPropagation ()
-import Domain.Core.PairDomain
 import Syntax.AST
-import Data.Kind
-import Control.Monad
-import Lattice.Class
 
 
 -- | A SimpleActor abstract value

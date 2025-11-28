@@ -3,7 +3,7 @@
 {-# HLINT ignore "Move brackets to avoid $" #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Analysis.SimpleActor.Semantics(eval, allPrimitives, initialSto) where
+module Analysis.SimpleActor.Semantics(eval, allPrimitives, allPrimitiveFunctions, initialSto) where
 
 import Syntax.AST
 import Syntax.Span
@@ -28,7 +28,7 @@ import Analysis.Monad.Environment
 
 import Analysis.Monad.Fix
 import Domain.Core.PairDomain (cons, car ,cdr)
-import Analysis.Scheme.Primitives (Prim(..), primitivesByName)
+import Analysis.Scheme.Primitives (primitivesByName)
 import Domain (Domain(inject))
 import Analysis.Environment ( Environment(..) )
 import Analysis.Monad.Context (CtxM(..))
@@ -44,11 +44,9 @@ import Lattice.Equal
 -- this limits the applicability of the semantics 
 -- to one with symbolic constraints. We should 
 -- remove this and make the @cond@ more general.
-import Analysis.Symbolic.Monad (choices)
 -- | Same problem here, we really want to use @eql@
 -- but we cannot do that since a generic boolean 
 -- is required for its implementation.
-import Domain.Symbolic (equal, var)
 import Analysis.Store (Store)
 import qualified Analysis.Store as Store
 import Control.Monad.IO.Class (liftIO)
@@ -195,8 +193,10 @@ injectLit (Boolean b)    = inject b
 injectLit (Symbol s)     = symbol s
 injectLit (Num n)        = inject n
 injectLit (Character c)  = inject c
+injectLit (Real r)       = inject r
 injectLit Nil            = nil
 injectLit (String _)     = error "cannot inject a string"
+
 
 ------------------------------------------------------------
 -- Primitives

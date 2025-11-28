@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric, UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 -- | Abstract domain used in the "Infer" pre-analysis.
 module Analysis.SimpleActor.Infer.Domain(
     -- * Accessors

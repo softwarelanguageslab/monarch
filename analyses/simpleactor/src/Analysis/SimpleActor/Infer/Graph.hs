@@ -21,7 +21,7 @@ module Analysis.SimpleActor.Infer.Graph(
   ) where
 
 import Analysis.SimpleActor.Infer.Common
-import Data.List as List
+import qualified Data.List as List
 import GHC.Generics
 import qualified RIO.Map as Map
 import qualified RIO.Set as Set

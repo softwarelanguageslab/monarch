@@ -37,7 +37,7 @@ ghc-options:
 - -Widentities
 - -Wincomplete-record-updates
 - -Wincomplete-uni-patterns
-- -Wmissing-export-lists
+- -Wno-missing-export-lists
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -O3
@@ -45,6 +45,7 @@ ghc-options:
 - -fexpose-all-unfoldings
 - -flate-dmd-anal
 - -Wredundant-constraints
+- -Werror
 
 default-extensions:
   - ConstraintKinds

@@ -1,9 +1,12 @@
 {-# LANGUAGE UndecidableInstances, PolyKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 -- | This module is used to make inferences about certain parts
 -- of the program.
-module Analysis.SimpleActor.Infer(infer, module Analysis.SimpleActor.Infer.Graph, Inferred(..), localActors, injectInitialActor) where
+module Analysis.SimpleActor.Infer(infer, module Analysis.SimpleActor.Infer.Graph, Inferred(..), localActors, injectInitialActor, valueNodes) where
 
 import qualified  Analysis.Environment as Environment
 import Analysis.SimpleActor.Monad (MonadDynamic(..), runDynamicT)

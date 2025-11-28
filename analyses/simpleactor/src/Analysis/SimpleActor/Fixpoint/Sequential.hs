@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- | Analysis to analyse the inner actor semantics
-module Analysis.SimpleActor.Fixpoint.Sequential(analyze, SequentialCmp, SequentialRes, ActorRes(..), MB, escapeRes) where
+module Analysis.SimpleActor.Fixpoint.Sequential(analyze, spanOfCmp, SequentialCmp, SequentialRes, ActorRes(..), MB, escapeRes) where
 
 ------------------------------------------------------------
 -- Imports
@@ -53,7 +53,7 @@ import Analysis.Actors.Mailbox.GraphToSet (graphToSet)
 import Control.Monad.Trans.Writer (WriterT(..))
 import Control.Monad.Writer.Class (MonadWriter(tell))
 import Syntax (SpanOf(spanOf))
-import Domain.Core.PairDomain.TopLifted
+import Domain.Core.PairDomain.TopLifted ()
 
 
 ------------------------------------------------------------
@@ -186,8 +186,8 @@ newtype CountSpawnT m a = CountSpawnT (IdentityT m a)
                         deriving (MonadJoinable, MonadBottom, Applicative, Functor, Monad, MonadCache, MonadLayer)
 
 -- | Run the given computation in a 'CountSpawnT' context
-runCountSpawnT :: CountSpawnT m a -> m a
-runCountSpawnT (CountSpawnT ma)  = runIdentityT ma
+-- runCountSpawnT :: CountSpawnT m a -> m a
+-- runCountSpawnT (CountSpawnT ma)  = runIdentityT ma
 
 instance  (MonadAbstractCount ActorRef m, MonadSpawn ActorVlu K m) => MonadSpawn ActorVlu K (CountSpawnT m) where
       spawn expr env ctx = upperM (spawn expr env ctx) >>= (\ref -> countIncrement ref $> ref)
@@ -239,7 +239,6 @@ traceCmp (_ ::*:: env ::*:: dyn ::*:: _ ::*:: _ ::*:: mb ::*:: _) = Set.unions [
 gc :: forall m e .
       (MonadCache m,
        MonadBottom m,
-       MonadIO m,
        -- FLow sensitive store
        MapM (In (Key m e) ActorSto) ActorSto m,
        MapM (Out (Key m e) ActorSto) ActorSto m,
@@ -368,21 +367,21 @@ spanOfCmp (exp ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
 intra selfRef cmp = do
-          count <- newIORef (0 :: Int)
+          count' <- newIORef (0 :: Int)
           -- liftIO (putStrLn $ "analyzing[intra] " ++ show (spanOfCmp cmp))
           inMbs  <- getMailboxes
-          ((), (LatticeMonoid outMbs')) <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
+          ((), LatticeMonoid outMbs') <- flowStore @SequentialCmp @ActorSto @ActorAdr (runFixT @(SequentialT (SequentialWidenedT (WriterT (LatticeMonoid (Map (AbstractCount, ActorRef) MB)) m))) eval'') cmp
                         & runAlloc VarAdr -- TODO: use the actual context
                         & runAlloc PtrAdr -- problem: current context is infinite
                         & evalWithTransparentStoreT
                         & runDebugIntraAnalysis cmp
-                        & runSetNonDetTIntercept (restore count inMbs) save
+                        & runSetNonDetTIntercept (restore count' inMbs) save
                         & runRefCountMailboxT inMbs
                         & runWithAbstractCountT
                         & void
                         & runWriterT @(LatticeMonoid (Map (AbstractCount, ActorRef) MB))
 
-          c <- readIORef count
+          -- c <- readIORef count'
           -- when True $ do
             -- liftIO (putStrLn $ "number of branches explored within intra " ++ show c ++ " in component at " ++ show (spanOfCmp cmp))
           mapM_ (uncurry writeMai) (Map.toList outMbs')
@@ -395,7 +394,8 @@ intra selfRef cmp = do
             writeMai (cou, ref) = (case cou of
                                     CountOne -> putMailboxes
                                     CountInf -> joinMailboxes) selfRef ref
-            restore count st = liftIO (modifyIORef count (+1)) >> State.put st
+            restore count' st = liftIO (modifyIORef count' (+1)) >> State.put st
+
 -- | Inter-analysis
 inter :: InterAnalysisM m
       => Exp         -- ^ the actor expression to analyze

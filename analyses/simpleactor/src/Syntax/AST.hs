@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase, DeriveGeneric #-}
 module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..), patternVariables, sexpToLit) where
 
-import Data.List (intercalate)
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Text.Printf
@@ -18,6 +17,7 @@ import qualified Syntax.Scheme.Parser as SExp
 data Exp = -- Program Semantics
            Lam [Ide] Exp Span                -- ^ λ (x*) . e 
          | App Exp [Exp] Span                -- ^ e(e*)
+         | AppQual Ide Ide [Exp] Span        -- ^ module:name(e*)
          | Spawn Exp Span                    -- ^ spawn e 
          | Letrec [Binding] Exp Span         -- ^ letrec { (x := e)* } in e
          | Terminate Span                    -- ^ terminate
@@ -46,7 +46,14 @@ data Exp = -- Program Semantics
 instance NFData Exp
 
 -- | Literals are expressions that evaluate to themselves
-data Lit = Num Integer | Real Double | Character Char | Boolean Bool | Symbol String | String String | Nil deriving (Eq, Ord, Generic)
+data Lit = Num Integer
+         | Real Double
+         | Character Char
+         | Boolean Bool
+         | Symbol String
+         | String String
+         | Nil
+          deriving (Eq, Ord, Generic)
 
 sexpToLit :: SExp -> Lit
 sexpToLit = \case (SExp.Num i _) -> Num i
@@ -70,7 +77,9 @@ instance Show Lit where
    show Nil = "'()"
 
 -- | Pattern language
-data Pat = PairPat Pat Pat | IdePat Ide | ValuePat Lit deriving (Eq, Ord, Show, Generic)
+data Pat = PairPat Pat Pat
+         | IdePat Ide
+         | ValuePat Lit deriving (Eq, Ord, Show, Generic)
 
 -- | Compute the set of variables in the patern
 patternVariables :: Pat -> Set Ide
@@ -79,10 +88,11 @@ patternVariables (PairPat pat1 pat2) =
 patternVariables (IdePat ide) = Set.singleton ide
 patternVariables _ = Set.empty
 
-instance NFData Pat 
+instance NFData Pat
 
 -- | Labels for blame assignment
-newtype Label = Label { getLabelName :: String } deriving (Eq, Ord, Show, NFData)
+newtype Label = Label { getLabelName :: String }
+               deriving (Eq, Ord, Show, NFData)
 
 -- | A binding from an identifier to an expression, used in the so-called 
 -- 'binding-forms' to introduce values to which free variables within 
@@ -94,6 +104,7 @@ instance SpanOf Exp where
    spanOf = \case
                (Lam _ _ s) -> s
                (App _ _ s) -> s
+               (AppQual _ _ _ s) -> s
                (Spawn _ s) -> s
                (Letrec _ _ s) -> s
                (Terminate s) -> s
@@ -119,8 +130,9 @@ instance SpanOf Exp where
 
 instance Show Exp where
    show = \case
-            (Lam x e _)       -> printf "(lam (%s) %s)" (intercalate " " (map name x)) (show e)
+            (Lam x e _)       -> printf "(lam (%s) %s)" (unwords (map name x)) (show e)
             (App e1 es _)     -> printf "(%s %s)" (show e1) (unwords (map show es))
+            (AppQual modname nam es _) -> printf "(%s:%s %es)" (show modname) (show nam) (unwords (map show es))
             (Spawn e1 _)      -> printf "(spawn^ %s)" (show e1)
             (Letrec bds es _) -> printf "(letrec (%s) %s)" (show bds) (show es)
             (Terminate _)     -> "(terminate)"
@@ -145,25 +157,26 @@ instance Show Exp where
             (Error e _)       -> printf "(error %s)" (show e)
 
 
-variables :: Pat -> Set String 
-variables (PairPat e1 e2) = Set.union (variables e1) (variables e2) 
+variables :: Pat -> Set String
+variables (PairPat e1 e2) = Set.union (variables e1) (variables e2)
 variables (IdePat x)      = Set.singleton $ name x
 variables (ValuePat _)    = Set.empty
 
-instance FreeVariables (Pat, Exp) where    
+instance FreeVariables (Pat, Exp) where
    fv (pat, expr) = Set.difference (fv expr) (variables pat)
 
 instance FreeVariables Exp where
    fv (Lam xs e _)  = Set.difference (fv e) (Set.fromList (map name xs))
    fv (App e1 es _) = Set.unions $ fv e1 : map fv es
+   fv (AppQual _ _ es _) = Set.unions $ map fv es
    fv (Spawn e1 _)  = fv e1
    fv (Letrec bds es _) =
-      Set.difference (Set.unions $ (fv es) : (map (fv . snd) bds)) (Set.fromList (map (name . fst) bds))
-   fv Terminate {}      = Set.empty 
+      Set.difference (Set.unions $ fv es : map (fv . snd) bds) (Set.fromList (map (name . fst) bds))
+   fv Terminate {}      = Set.empty
    fv Self {}           = Set.empty
-   fv (Pair e1 e2 _)    = Set.unions [fv e1, fv e2] 
+   fv (Pair e1 e2 _)    = Set.unions [fv e1, fv e2]
    fv (Parametrize _ bdy _) = fv bdy
-   fv Blame {}          = Set.empty
+   fv Blame {}          = Set.empty
    fv (Receive pats _)  = Set.unions (map fv pats)
    fv (Match v pats _)  = Set.unions $ fv v : map fv pats
    fv (Literal _ _)     = Set.empty

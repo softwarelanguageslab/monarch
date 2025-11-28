@@ -18,7 +18,7 @@ import qualified RIO.Set as Set
 import Analysis.Actors.Monad (MonadMailbox, MonadSend(..), MonadReceive(..), MonadMailbox'(..), MailboxDep(..))
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
-import Analysis.Monad (runDebugIntraAnalysis, runIntraAnalysis,MonadIntraAnalysis (currentCmp), StoreM(..), StoreM'(..), runStoreT)
+import Analysis.Monad (runDebugIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), StoreM'(..), runStoreT)
 import Analysis.Monad.Profiling
 import qualified Analysis.Monad.ComponentTracking as C
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
@@ -56,11 +56,11 @@ newtype AnalysisState = AnalysisState {
   }
 $(makeLenses ''AnalysisState)
 
-spawnWL :: (Ord cmp, ComponentTrackingM m cmp, MonadIO m, WorkListM m cmp) => cmp -> m ()
+spawnWL :: (Ord cmp, ComponentTrackingM m cmp, WorkListM m cmp) => cmp -> m ()
 spawnWL cmp = ifM (Set.member cmp <$> C.components) (return ()) (C.spawn cmp >> add cmp)
 
-instance (Monad m, ComponentTrackingM m ActorRef, MonadIO m, WorkListM m ActorRef) => MonadSpawn ActorVlu K (StateT AnalysisState m) where
-  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env))) $> pid) <* spawnWL pid
+instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef) => MonadSpawn ActorVlu K (StateT AnalysisState m) where
+  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env'))) $> pid) <* spawnWL pid
     where pid  = Pid expr ctx
           env' = env -- HashMap.restrictKeys env (fv expr)  
 
@@ -103,8 +103,8 @@ initialGlobalStore :: ActorSto
 initialGlobalStore = VarVal <$> initialSto allPrimitives PrrAdr
 
 -- | Initial per-actor stores
-initialPerActorSto :: Map ActorRef ActorSto
-initialPerActorSto = Map.singleton EntryPid  initialGlobalStore
+-- initialPerActorSto :: Map ActorRef ActorSto
+-- initialPerActorSto = Map.singleton EntryPid  initialGlobalStore
 
 -- | The initial analysis environment
 initialEnv :: ActorEnv

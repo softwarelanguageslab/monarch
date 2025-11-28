@@ -17,8 +17,8 @@ import Control.Lens hiding (Context)
 import Data.Maybe
 import Data.Kind
 import Data.Bifunctor
-import Debug.Trace (traceShowId, trace)
-import Syntax.Span (spanOf, Span(..), Position(..))
+import Debug.Trace (traceShowId)
+import Syntax.Span (spanOf, Position(..))
 
 -- | A concrete environment
 type Env = Map String Adr
@@ -298,10 +298,10 @@ prim :: (forall m . EvalM m => [Value m] -> m (Value m)) -> Prim
 prim f = Prim $ \args -> f args
 
 prim1 :: (forall m . EvalM m => Value m -> m (Value m)) -> Prim
-prim1 f = prim match
-   where match :: forall m . EvalM m => [Value m] -> m (Value m)
-         match [v] = f v
-         match vs  = printError ("expected 1 argument, got " ++ show (length vs) ++ " arguments")
+prim1 f = prim matchAgs
+   where matchAgs :: forall m . EvalM m => [Value m] -> m (Value m)
+         matchAgs [v] = f v
+         matchAgs vs  = printError ("expected 1 argument, got " ++ show (length vs) ++ " arguments")
 
 allPrimitives :: Map String Prim
 allPrimitives = Map.fromList [

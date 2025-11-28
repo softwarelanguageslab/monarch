@@ -51,7 +51,6 @@ import Domain.Core.BoolDomain.Class (true, false, boolTop, BoolDomain)
 import Lattice.Split (SplitLattice)
 import Syntax.Span (SpanOf(..))
 import Syntax.FV
-import Analysis.Symbolic.Monad (SymbolicM)
 import Domain.Scheme hiding (Exp, Env)
 import Domain.Scheme.Store (StoreVal(..), ForAllStored)
 import Domain.Actor

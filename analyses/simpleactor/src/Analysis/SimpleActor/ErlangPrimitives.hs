@@ -21,7 +21,7 @@ import Domain.Actor (aref)
 import Domain.Core.NumberDomain.Class
 import Prelude hiding (ceiling, div, floor, round)
 import Domain.Class (Domain(inject))
-import Domain (RealDomain(..), PairDomain (..))
+import Domain (PairDomain (..))
 import Analysis.Scheme.Monad (derefPai)
 import Lattice.Class (Joinable)
 import Analysis.SimpleActor.Primitives
@@ -35,7 +35,7 @@ import Analysis.SimpleActor.Primitives
 type PrimM v k m = (Monad m, EvalM v k m)
 
 -- | A wrapper for functions representing Erlang primitives
-newtype ErlangPrim v = ErlangPrim { getPrim :: forall k m . (SchemeDomain v, PrimM v k m) => Exp -> [v] -> m v}
+newtype ErlangPrim v = ErlangPrim { _getPrim :: forall k m . (SchemeDomain v, PrimM v k m) => Exp -> [v] -> m v}
 
 -- | Convience alias for 'ErlangPrimM'
 prim :: (forall k m . (SchemeDomain v, PrimM v k m) => Exp -> [v] -> m v) -> ErlangPrim v
@@ -68,9 +68,9 @@ deref2 f [v] = derefN 2 (\[v1, v2] -> f v1 v2) v
 deref2 _ _   = mbottom -- TODO: raise error
 
 -- | Dereference a parameter list with three parameters
-deref3 :: (PrimM v k m) =>(v -> v -> v -> m v) -> [v] -> m v
-deref3 f [v] = derefN 3 (\[v1, v2, v3] -> f v1 v2 v3) v
-deref3 _ _ = mbottom -- TODO: raiase error
+-- deref3 :: (PrimM v k m) =>(v -> v -> v -> m v) -> [v] -> m v
+-- deref3 f [v] = derefN 3 (\[v1, v2, v3] -> f v1 v2 v3) v
+-- deref3 _ _ = mbottom -- TODO: raise  error
  
 ------------------------------------------------------------
 -- Primitives

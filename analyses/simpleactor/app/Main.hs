@@ -8,7 +8,6 @@ import Data.Map (Map)
 import Data.List (intercalate)
 import Text.Printf
 import qualified Data.Map as Map
-import Syntax.Span hiding (filename)
 import Syntax.Simplifier
 import Analysis.SimpleActor
 import Options.Applicative
@@ -16,14 +15,13 @@ import Syntax.AST hiding (filename)
 import Interpreter hiding (PrmAdr, store)
 import Control.Monad
 import Analysis.SimpleActor.Monad ()
-import Analysis.SimpleActor.Fixpoint.Sequential (SequentialCmp, ActorRes(..))
-import Data.Tuple.Syntax
+import Analysis.SimpleActor.Fixpoint.Sequential (ActorRes(..), spanOfCmp)
 import qualified Analysis.SimpleActor.Infer as Infer
 import qualified Analysis.Monad.Profiling as Profiling
 import System.TimeIt
 import qualified RIO.Set as Set
 import System.Exit
-import RIO (stdout, IOMode(..))
+import RIO (IOMode(..))
 import RIO.Directory
 import System.ConcurrentHandle
 import Control.Concurrent.ParallelIO.Global
@@ -120,10 +118,6 @@ printCmpMap printKey keepKey cmp m = do
    print cmp
    putStrLn (printMap printKey keepKey m)
 
--- | Compute the span of a sequential component
-spanOfCmp :: SequentialCmp -> Span
-spanOfCmp (cmp ::*:: _env ::*:: _dyn ::*:: _k ::*:: _meta ::*::  _mb ::*:: _ref) = spanOf cmp
-
 ------------------------------------------------------------
 -- Entrypoints
 ------------------------------------------------------------
@@ -132,8 +126,8 @@ writeTempFileId :: String -> IO String
 writeTempFileId contents =
    writeFile "/tmp/in.scm" contents >> return contents
 
-loadFile :: String -> IO Exp
-loadFile = loadFile' True
+-- loadFile :: String -> IO Exp
+-- loadFile = loadFile' True
 
 loadFile' :: Bool -> String -> IO Exp
 loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTempFileId else return) >=> return . either (error . ("error while parsing: " ++)) id . parseFromString
@@ -219,9 +213,9 @@ erlang InputOptions { .. } = do
    let modules' = qualifyModules $ preludeModules implicitImports $ overloadModules modules
    pPrint deps
    -- pPrint modules'
-   let exp = compileModules modules' deps "test" "main"
-   print exp
-   analyzeAst exp Nothing
+   let expr = compileModules modules' deps "test" "main"
+   print expr
+   analyzeAst expr Nothing
 
 
 ------------------------------------------------------------

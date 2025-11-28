@@ -3,7 +3,6 @@
 -- | Compiles S-expression syntax to a SimpleActor AST
 module Syntax.Compiler(compile, parseFromString', parseFromString) where
 
-import Control.Monad ((>=>))
 import Syntax.Scheme.Parser
 import qualified Syntax.Scheme.Parser as SExp
 import Control.Monad.Except
@@ -11,9 +10,8 @@ import qualified Data.Set as Set
 import Data.List ((\\))
 import Syntax.AST
 import Syntax.Span (SpanOf)
-import Syntax.Scheme.Parser (parseSexp')
 import Data.Foldable
-import qualified Debug.Trace as Debug
+import Control.Monad
 
 type MonadCompile m = (MonadError String m)
 
@@ -32,11 +30,9 @@ checkDuplicates :: MonadCompile m => SExp -> m ()
 checkDuplicates e = do
       lst <- smapM name e
       let s = Set.fromList lst
-      if (Set.size s) < (length lst)
-      then throwError $ "duplicates found at " ++ show (spanOf e) ++ ": " ++ show (lst \\ (Set.toList s))
-      else return ()
+      when (Set.size s < length lst) $ throwError $ "duplicates found at " ++ show (spanOf e) ++ ": " ++ show (lst \\ Set.toList s)
    where name (Atom x _ ::: _) = return x
-         name e = throwError $ "Invalid binding at " ++ show (spanOf e)
+         name expr = throwError $ "Invalid binding at " ++ show (spanOf expr)
 
 compile :: MonadCompile m => SExp -> m Exp
 compile ex@(Atom "lambda" _ ::: args ::: es) =
@@ -165,7 +161,7 @@ compileCaseClauses = fmap fold . smapM compileClause
    where compileClause :: MonadError String m => SExp -> m [(Pat, Exp)]
          compileClause (atoms ::: e ::: SNil _) = smapM (\lit -> (ValuePat $ sexpToLit lit,) <$> compile e)  atoms
          compileClause e = throwError $ "invalid clause for case expression at " ++ show (spanOf e) ++ " in " ++ filename (spanOf e)
-         
+
 compilePat :: MonadError String m => SExp -> m Pat
 compilePat (Atom "pair" _ ::: pat1 ::: pat2 ::: SNil _) =
    PairPat <$> compilePat pat1 <*> compilePat pat2
@@ -175,7 +171,7 @@ compilePat ex@(Atom x _) = return (IdePat (Ide x (spanOf ex)))
 compilePat (SExp.Num n _) = return (ValuePat $ Syntax.AST.Num n)
 compilePat (SExp.Bln b _) = return (ValuePat $ Syntax.AST.Boolean b)
 compilePat (SExp.SNil _) = return (ValuePat Syntax.AST.Nil)
-compilePat (SExp.Atom "list" _ ::: SNil _) = return (ValuePat $ Syntax.AST.Nil)
+compilePat (SExp.Atom "list" _ ::: SNil _) = return (ValuePat Syntax.AST.Nil)
 compilePat (Quo (Atom s _) _) = return (ValuePat $ Syntax.AST.Symbol s)
 compilePat (Atom "quote" _ ::: Atom s _ ::: SNil _) = return (ValuePat $ Syntax.AST.Symbol s)
 compilePat e = throwError $ "invalid pattern " ++ show e ++ " at  " ++ show (spanOf e) ++ " in " ++ filename (spanOf e)
