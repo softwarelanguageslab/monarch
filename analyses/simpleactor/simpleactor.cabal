@@ -102,6 +102,7 @@ library
     , pretty-simple
     , process
     , random
+    , regex-compat
     , rio <=1.22.0
     , singletons
     , transformers
@@ -153,6 +154,7 @@ executable simpleactor-exe
     , optparse-applicative
     , parallel-io
     , pretty-simple
+    , regex-compat
     , rio <=1.22.0
     , simpleactor
     , singletons
@@ -202,6 +204,7 @@ test-suite simpleactor-tests
     , maf2-analysis
     , parallel-io
     , pretty-simple
+    , regex-compat
     , rio <=1.22.0
     , simpleactor
     , singletons

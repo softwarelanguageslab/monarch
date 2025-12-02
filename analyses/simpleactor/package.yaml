@@ -30,6 +30,7 @@ dependencies:
 - concurrent-extra
 - parallel-io
 - pretty-simple
+- regex-compat
 
 
 ghc-options:
