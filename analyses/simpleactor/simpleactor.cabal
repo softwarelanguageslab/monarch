@@ -35,8 +35,11 @@ library
       Analysis.SimpleActor.Monad
       Analysis.SimpleActor.Primitives
       Analysis.SimpleActor.Semantics
+      Analysis.SimpleActor.Smallstep.ModConc
       Analysis.SimpleActor.Smallstep.StateSpace
       Analysis.SimpleActor.Smallstep.StateSpace.Class
+      Analysis.SimpleActor.Smallstep.StateSpace.Effect
+      Analysis.SimpleActor.Smallstep.StateSpace.ModConc
       Analysis.SimpleActor.Smallstep.StateSpace.Partitioned
       Benchmark.SimpleActor.Precision
       Control.Monad.Cond
