@@ -50,6 +50,7 @@ library
       Syntax.AST
       Syntax.Compiler
       Syntax.ErlangToSimpleActor
+      Syntax.SimpleActor.CoreToSimpleActor
       Syntax.Simplifier
       System.ConcurrentHandle
   other-modules:
@@ -98,6 +99,7 @@ library
     , maf2-syntax
     , mtl
     , parallel-io
+    , pretty-simple
     , process
     , random
     , rio <=1.22.0
@@ -199,6 +201,7 @@ test-suite simpleactor-tests
     , hspec-contrib
     , maf2-analysis
     , parallel-io
+    , pretty-simple
     , rio <=1.22.0
     , simpleactor
     , singletons

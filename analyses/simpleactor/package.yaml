@@ -29,6 +29,7 @@ dependencies:
 - directory
 - concurrent-extra
 - parallel-io
+- pretty-simple
 
 
 ghc-options:

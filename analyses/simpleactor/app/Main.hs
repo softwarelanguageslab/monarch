@@ -33,6 +33,9 @@ import Syntax.Erlang.Preluder
 import Analysis.Erlang.BIF
 import Syntax.ErlangToSimpleActor
 import Text.Pretty.Simple (pPrint)
+import qualified Syntax.SimpleActor.CoreToSimpleActor as CoreToSimpleActor
+import qualified Syntax.CoreErlang as CoreErlang
+
 
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
@@ -97,7 +100,8 @@ commandParser =
     <> command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
     <> command "eval"          (info (interpret  <$> inputOptions) (progDesc "Run a program"))
     <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
-   <> command "erlang"         (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor")))
+    <> command "erlang"        (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
+    <> command "core-erlang"   (info (coreErlang <$> inputOptions) (progDesc "Translate Core Erlang to SimpleActor")))
 
 
 ------------------------------------------------------------
@@ -217,6 +221,26 @@ erlang InputOptions { .. } = do
    print expr
    analyzeAst expr Nothing
 
+------------------------------------------------------------
+-- Core Erlang to SimpleActor translation
+------------------------------------------------------------
+
+coreErlang :: InputOptions -> IO ()
+coreErlang InputOptions { .. } = do
+   contents <- readFile filename
+   case CoreErlang.parseProgram filename contents of
+     Left err -> do
+       putStrLn "Parse error:"
+       print err
+       exitFailure
+     Right coreModule -> do
+       let bindings = CoreToSimpleActor.translate coreModule
+       let exports = CoreToSimpleActor.moduleExports coreModule
+       putStrLn "-- Translated bindings:"
+       mapM_ (\(ide, expr) -> putStrLn (show ide ++ " := ") >> pPrint expr) bindings
+       putStrLn ""
+       putStrLn "-- Module exports:"
+       print exports
 
 ------------------------------------------------------------
 -- Main entrypoint

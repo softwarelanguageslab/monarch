@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase, DeriveGeneric #-}
-module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..), patternVariables, sexpToLit) where
+module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..), Binding, patternVariables, sexpToLit) where
 
 import qualified Data.Set as Set
 import Data.Set (Set)
@@ -79,13 +79,15 @@ instance Show Lit where
 -- | Pattern language
 data Pat = PairPat Pat Pat
          | IdePat Ide
-         | ValuePat Lit deriving (Eq, Ord, Show, Generic)
+         | ValuePat Lit
+         | AliasPat Ide Pat deriving (Eq, Ord, Show, Generic)
 
 -- | Compute the set of variables in the patern
 patternVariables :: Pat -> Set Ide
 patternVariables (PairPat pat1 pat2) =
    patternVariables pat1 `Set.union` patternVariables pat2
 patternVariables (IdePat ide) = Set.singleton ide
+patternVariables (AliasPat ide pat) = Set.insert ide (patternVariables pat)
 patternVariables _ = Set.empty
 
 instance NFData Pat
@@ -132,7 +134,7 @@ instance Show Exp where
    show = \case
             (Lam x e _)       -> printf "(lam (%s) %s)" (unwords (map name x)) (show e)
             (App e1 es _)     -> printf "(%s %s)" (show e1) (unwords (map show es))
-            (AppQual modname nam es _) -> printf "(%s:%s %es)" (show modname) (show nam) (unwords (map show es))
+            (AppQual modname nam es _) -> printf "(%s:%s %s)" (show modname) (show nam) (unwords (map show es))
             (Spawn e1 _)      -> printf "(spawn^ %s)" (show e1)
             (Letrec bds es _) -> printf "(letrec (%s) %s)" (show bds) (show es)
             (Terminate _)     -> "(terminate)"
@@ -160,6 +162,7 @@ instance Show Exp where
 variables :: Pat -> Set String
 variables (PairPat e1 e2) = Set.union (variables e1) (variables e2)
 variables (IdePat x)      = Set.singleton $ name x
+variables (AliasPat x p)  = Set.insert (name x) (variables p)
 variables (ValuePat _)    = Set.empty
 
 instance FreeVariables (Pat, Exp) where

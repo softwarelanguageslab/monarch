@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DeriveFunctor #-}
 module Syntax.CoreErlang.AST where
 
 import Syntax.Span
@@ -65,7 +66,7 @@ instance SpanOf Lit where
 -- | An annotated Core Erlang node
 data Ann a = Constr a
            | Ann a Annotation
-           deriving (Eq, Ord, Show)
+           deriving (Eq, Ord, Show, Functor)
 
 instance (SpanOf a) => SpanOf (Ann a) where
    spanOf (Constr a) = spanOf a

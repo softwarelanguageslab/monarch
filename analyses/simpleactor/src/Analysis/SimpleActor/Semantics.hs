@@ -187,6 +187,11 @@ match (PairPat pat1 pat2) v =
             Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
                       <$> match pat1 (car vp)
                       <*> match pat2 (cdr vp)
+match (AliasPat ide pat) v =
+   -- Match both the variable and the inner pattern
+   Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
+             <$> match (IdePat ide) v
+             <*> match pat v
 
 injectLit :: SchemeDomain v => Lit -> v
 injectLit (Boolean b)    = inject b

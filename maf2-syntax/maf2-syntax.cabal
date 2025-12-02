@@ -43,10 +43,10 @@ library
       Syntax.Erlang.Overloader
       Syntax.Erlang.Qualifier
       Syntax.Erlang.Preluder
+      Syntax.CoreErlang
   other-modules:
       Control.Monad.Cond
       Lib
-      Syntax.CoreErlang
       Syntax.CoreErlang.AST
       Syntax.CoreErlang.Lexer
       Syntax.CoreErlang.Parser

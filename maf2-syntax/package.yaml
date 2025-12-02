@@ -70,6 +70,7 @@ library:
     - Syntax.Erlang.Overloader
     - Syntax.Erlang.Qualifier
     - Syntax.Erlang.Preluder
+    - Syntax.CoreErlang
   verbatim:
       build-tools:
         happy
