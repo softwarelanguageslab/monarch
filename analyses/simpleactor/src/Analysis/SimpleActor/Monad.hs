@@ -26,7 +26,9 @@ module Analysis.SimpleActor.Monad
     Cmp(..),
     MonadIndexedMailbox(..),
     runWithMailboxContributorIndexedT,
-    SimpleActorContext(..)
+    SimpleActorContext(..),
+    MonadModules(..),
+    runModuleCtxT
   )
 where
 
@@ -59,7 +61,7 @@ import Domain.Actor
 import Analysis.Actors.Monad
 import Control.DeepSeq
 import GHC.Generics
-import Analysis.Monad.AbstractCount (MonadAbstractCount)
+-- import Analysis.Monad.AbstractCount (MonadAbstractCount)
 import Control.Monad.State (StateT, MonadState, gets)
 import qualified Lattice.Class as L
 import Analysis.Actors.Mailbox (Mailbox)
@@ -194,8 +196,8 @@ instance
 -- Monad
 ------------------------------------------------------------
 
--- | Primitive monad
-type PrimM v k m =
+-- | Minimal set of constraints needed to evaluate the primitives
+type PrimM' v k m =
   ( MonadJoinable m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
@@ -215,17 +217,22 @@ type PrimM v k m =
     -- SymbolicM (Adr v) m v,
     MonadIO m,
     Show (Env v),
-    MonadAbstractCount (ARef v) m,
-    -- MonadCall v m,
+    -- MonadAbstractCount (ARef v) m,
     -- Domain constraints
     ForAllStored Show v,
     ForAllStored Eq v,
     ForAllStored Ord v
   )
 
+-- | Same as PrimM' but with access to the "apply" function
+type PrimM v k m = (
+    PrimM' v k m,
+    MonadApply v m
+  )
+
 -- | Evaluation monad
 type EvalM v k m =
-  ( PrimM v k m,
+  ( PrimM' v k m,
     MonadFixpoint m Cmp v )
 
 ------------------------------------------------------------
@@ -345,3 +352,22 @@ class MonadApply v m | m -> v where
   -- | Applies the function in the second argument to the list
   -- of arguments in the third and returns its result
   applyFun :: Exp -> v -> [v] -> m v
+
+-------------------------------------------------------------
+-- Module context
+-------------------------------------------------------------
+
+class MonadModules v m | m -> v where
+  -- | Looks up the identifier of the second argument
+  -- in the namespace of the first
+  lookupIdeInModule :: String -> String -> m v
+
+-- | A module is a collection of functions
+type Module v = Map String v
+type Modules v = Map String (Module v)
+
+newtype ModuleCtxT v m a = ModuleCtxT { runModuleCtxT' :: ReaderT (Modules v) m a}
+                         deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer, MonadReader (Modules v), MonadEscape)
+
+runModuleCtxT :: Modules v -> ModuleCtxT v m a -> m a
+runModuleCtxT modules = flip runReaderT modules . runModuleCtxT'

@@ -27,7 +27,9 @@ library
       Analysis.SimpleActor.ErlangPrimitives
       Analysis.SimpleActor.Fixpoint.Common
       Analysis.SimpleActor.Fixpoint.Modular
+      Analysis.SimpleActor.Fixpoint.ModularModConc
       Analysis.SimpleActor.Fixpoint.Sequential
+      Analysis.SimpleActor.Fixpoint.SequentialModConc
       Analysis.SimpleActor.Infer
       Analysis.SimpleActor.Infer.Common
       Analysis.SimpleActor.Infer.Domain
@@ -115,6 +117,7 @@ library
 executable simpleactor-exe
   main-is: Main.hs
   other-modules:
+      TracePartitioning.Benchmark
       Paths_simpleactor
   autogen-modules:
       Paths_simpleactor

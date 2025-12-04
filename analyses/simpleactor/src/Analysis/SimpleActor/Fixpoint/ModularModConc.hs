@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# LANGUAGE UndecidableInstances #-}
 -- | Actor-modular analysis
-module Analysis.SimpleActor.Fixpoint.Modular(analyze, analyze', AnalysisResult(..)) where
+module Analysis.SimpleActor.Fixpoint.ModularModConc(analyze, analyze', AnalysisResult(..)) where
 
 import Analysis.SimpleActor.Fixpoint.Common
-import Analysis.SimpleActor.Fixpoint.Sequential (ActorRes)
-import qualified Analysis.SimpleActor.Fixpoint.Sequential as Sequential
+import Analysis.SimpleActor.Fixpoint.SequentialModConc (ActorRes)
+import qualified Analysis.SimpleActor.Fixpoint.SequentialModConc as Sequential
 import Control.Lens.TH
 import RIO hiding (view)
 import qualified Data.Map as Map
@@ -15,11 +15,10 @@ import Analysis.SimpleActor.Semantics (allPrimitives, initialSto)
 import Control.Monad.State
 import RIO.Partial (fromJust)
 import qualified RIO.Set as Set
-import Analysis.Actors.Monad (MonadMailbox, MonadSend(..), MonadReceive(..), MonadMailbox'(..), MailboxDep(..))
+import Analysis.Actors.Monad (MonadMailbox, MonadSend(..), MonadReceive(..), MonadMailbox'(..), MailboxDep(..), runWithMailboxT)
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
 import Analysis.Monad (runDebugIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), StoreM'(..), runStoreT)
-import Analysis.Monad.Profiling
 import qualified Analysis.Monad.ComponentTracking as C
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import Analysis.Monad.Map
@@ -29,7 +28,7 @@ import Control.Monad.Trans.Identity
 import Analysis.Monad.WorkList
 import Analysis.Monad.Join (runJoinT)
 import Data.Tuple.Syntax
-import Analysis.SimpleActor.Monad (MonadSpawn (spawn), MonadIndexedMailbox(..), runWithMailboxContributorIndexedT)
+import Analysis.SimpleActor.Monad (MonadSpawn (spawn))
 import qualified Symbolic.SMT as SMT
 import qualified Debug.Trace as Debug
 import Control.Monad.Cond
@@ -43,9 +42,7 @@ import qualified Data.HashMap.Strict as HashMap
 -- The analysis result
 data AnalysisResult = AnalysisResult {
                          resultMap :: Map ActorResOut ActorRes,
-                         mailboxes ::  ActorMai,
-                         profileSeq :: Profile Sequential.SequentialCmp,
-                         profileMod :: Profile ActorRef
+                         mailboxes ::  ActorMai
                       } deriving (Ord, Eq, Show)
 
 -- | State kept during the analysis that falls outside the
@@ -122,8 +119,9 @@ type ModularInterM m = (MonadState AnalysisState m,
                         MonadDependencyTracking ActorRef (MailboxDep ActorRef MB) m,
                         WorkListM m ActorRef,
                         -- MonadMailbox ActorVlu m,
-                        MonadIndexedMailbox ActorRef MB m,
                         MonadMailbox' (ARef ActorVlu) MB m,
+                        MonadReceive ActorVlu m,
+                        MonadSend ActorVlu m,
                         -- Z3 Solvin g
                         FormulaSolver ActorVarAdr m,
                         -- Tracking actor spawns
@@ -133,8 +131,6 @@ type ModularInterM m = (MonadState AnalysisState m,
                         -- Global store
                         StoreM ActorAdr (StoreVal ActorVlu) m,
                         StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m,
-                        -- Profiling
-                        MonadProfiling Sequential.SequentialCmp m,
                         -- For debugging
                         MonadIO m)
 
@@ -167,16 +163,12 @@ analyze' maxSteps expr = fmap toAnalysisResult $ inter maxSteps
              & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef MB)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr
-             & runWithMailboxContributorIndexedT
-             -- & runWithMailboxT @ActorVlu @MB
+             & runWithMailboxT @ActorVlu @MB
              & C.runWithComponentTracking
-             & runWithWorklistProfilingT @ActorRef
              & runWithWorkList @(LIFOWorklist _)
-             & runProfilingT @Sequential.SequentialCmp
-             & runProfilingT @ActorRef
              & runCachedSolver
              & runZ3SolverWithSetup SMT.prelude
-  where toAnalysisResult (_res ::*:: _varSto ::*:: resOut ::*:: mb ::*:: profileSeq ::*:: profileMod) = AnalysisResult resOut mb profileSeq profileMod
+  where toAnalysisResult (_res ::*:: _varSto ::*:: resOut ::*:: mb) = AnalysisResult resOut mb
 
 analyze :: ActorExp -> IO AnalysisResult
 analyze = analyze' Nothing

@@ -27,8 +27,10 @@ library
   exposed-modules:
       Analysis.Actors
       Analysis.Actors.Mailbox
+      Analysis.Actors.Mailbox.Class
       Analysis.Actors.Mailbox.Graph
       Analysis.Actors.Mailbox.GraphToSet
+      Analysis.Actors.Mailbox.Partitioned
       Analysis.Actors.Message
       Analysis.Actors.Monad
       Analysis.Actors.Semantics

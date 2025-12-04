@@ -63,6 +63,8 @@ translateLit :: Core.Lit -> Exp
 translateLit lit@(Core.CharLit c _) = Literal (Character c) (spanOf lit)
 translateLit lit@(Core.IntegerLit i _) = Literal (Num i) (spanOf lit)
 translateLit lit@(Core.FloatLit f _) = Literal (Real (realToFrac f)) (spanOf lit)
+translateLit lit@(Core.AtomLit (Core.Atom "true" _) _) = Literal (Boolean True) (spanOf lit)
+translateLit lit@(Core.AtomLit (Core.Atom "false" _) _) = Literal (Boolean False) (spanOf lit)
 translateLit lit@(Core.AtomLit (Core.Atom str _) _) = Literal (Symbol str) (spanOf lit)
 translateLit lit@(Core.StringLit str _) = Literal (String str) (spanOf lit)
 translateLit lit@(Core.NilLit _) = Literal Nil (spanOf lit)
@@ -107,6 +109,8 @@ litToPat :: Core.Lit -> Pat
 litToPat (Core.CharLit c _) = ValuePat (Character c)
 litToPat (Core.IntegerLit i _) = ValuePat (Num i)
 litToPat (Core.FloatLit f _) = ValuePat (Real (realToFrac f))
+litToPat (Core.AtomLit (Core.Atom "true"_) _) = ValuePat (Boolean True)
+litToPat (Core.AtomLit (Core.Atom "false" _) _) = ValuePat (Boolean False)
 litToPat (Core.AtomLit (Core.Atom str _) _) = ValuePat (Symbol str)
 litToPat (Core.StringLit str _) = ValuePat (String str)
 litToPat (Core.NilLit _) = ValuePat Nil
@@ -154,7 +158,7 @@ translateExpr annExpr =
 
     Core.FunNameExpr (Core.Function (Core.Atom name _) arity _) _ ->
       -- Function names are represented as symbols with arity
-      pure $ Literal (Symbol (name ++ "/" ++ show arity)) sp
+      pure $ Var (Ide (name ++ "/" ++ show arity) sp)
 
     -- Let and letrec expressions
     Core.LetExpr vars arg body _ ->
@@ -206,7 +210,7 @@ translateExpr annExpr =
       case unAnn nameExpr of
         Core.LitExpr (Core.AtomLit (Core.Atom primName _) _) _ -> do
           translatedArgs <- traverse translateExpr args
-          pure $ App (Var (Ide "primop" sp)) (Literal (String primName) sp : translatedArgs) sp
+          pure $ AppQual (Ide "primop" sp) (Ide primName sp) translatedArgs sp
         _ ->
           error "Dynamic primop names are not supported"
 

@@ -74,7 +74,7 @@ instance Show Lit where
    show (String str) = show str
    show (Real r)     = show r
    show (Character c) = "\\#" ++ show c
-   show Nil = "'()"
+   show Nil = "[]"
 
 -- | Pattern language
 data Pat = PairPat Pat Pat
