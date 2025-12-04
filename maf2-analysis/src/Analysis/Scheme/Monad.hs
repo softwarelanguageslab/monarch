@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds #-}
-module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM,  stoPai, stoStr, stoVec, derefPai, derefVec, derefStr, writeVar, updateVar, lookupVar) where
+module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM, SchemeDomainStoreM, stoPai, stoStr, stoVec, derefPai, derefVec, derefStr, writeVar, updateVar, lookupVar) where
 
 import Data.Functor
 import Syntax.Scheme.AST
@@ -11,13 +11,10 @@ import Control.Monad.DomainError
 import Control.Monad.Escape
 import Syntax.Ide
 import Lattice.Equal
-import Analysis.Monad.Call
 import Analysis.Monad.Fix (MonadFixpoint)
 import Domain.Scheme.Store (StoreVal(..))
 import Data.Set (Set)
 import Lattice.Class
-import qualified Debug.Trace as Debug
-import qualified Data.Set as Set
 
 -- | Store a pair in the store by allocating a suiteable address
 --  storing the value on that address and returning a pointer to
@@ -34,15 +31,15 @@ stoVec ex v = alloc ex >>= (\adr -> writeAdr adr (VecVal v) $> vptr adr)
 
 -- | Dereference a pointer containing a pair value, resulting in an error
 -- if it is not a pair
-derefPai :: (StoreM (Adr v) (StoreVal v) m, SchemeDomainM e v m, Joinable r) => (Adr v -> PaiDom v -> m r) -> Set (Adr v) -> m r
-derefPai f = lookups (fmap coerce . lookupAdr) f 
+derefPai :: (SchemeDomainStoreM e v m, Joinable r) => (Adr v -> PaiDom v -> m r) -> Set (Adr v) -> m r
+derefPai = lookups (fmap coerce . lookupAdr)
    where coerce (PaiVal v) = v
          coerce _  = error "derefPai: expected pair"
-derefVec :: (StoreM (Adr v) (StoreVal v) m, SchemeDomainM e v m, Joinable r) => (Adr v -> VecDom v -> m r) -> Set (Adr v) -> m r
+derefVec :: (SchemeDomainStoreM e v m, Joinable r) => (Adr v -> VecDom v -> m r) -> Set (Adr v) -> m r
 derefVec = lookups (fmap coerce . lookupAdr)
    where coerce (VecVal v) = v
          coerce _  = error "derefVec: expected pair"
-derefStr :: (StoreM (Adr v) (StoreVal v) m, SchemeDomainM e v m, Joinable r) => (Adr v -> StrDom v -> m r) -> Set (Adr v) -> m r
+derefStr :: (SchemeDomainStoreM e v m, Joinable r) => (Adr v -> StrDom v -> m r) -> Set (Adr v) -> m r
 derefStr = lookups (fmap coerce . lookupAdr)
    where coerce (StrVal v) = v
          coerce _  = error "derefStr: expected pair"
@@ -56,15 +53,12 @@ updateVar adr = updateAdr adr . VarVal
 
 -- | Lookup a variable from the store, errors if the address  does not have a variable value
 lookupVar :: (StoreM (Adr v) (StoreVal v) m ) => Adr v -> m (VarDom v)
-lookupVar = fmap coerce . lookupAdr 
+lookupVar = fmap coerce . lookupAdr
    where coerce (VarVal v) = v
-         coerce _ = error "lookupVar: not a variable value at the given address"          
+         coerce _ = error "lookupVar: not a variable value at the given address"
 
 
--- | Minimal Scheme monad for expressing primitive operations.
--- It is more general than SchemeM since it does not impose any
--- constraints on calling semantics, evaluation semantics and expression representations.
-type SchemeDomainM e v m = (
+type SchemeDomainStoreM e v m = (
    -- Domain
    SchemeValue v,
    MonadJoin m,
@@ -74,10 +68,17 @@ type SchemeDomainM e v m = (
    EqualLattice v,
    -- Store interactions
    StoreM (Adr v) (StoreVal v) m,
+   S.Exp v ~ e
+  )
+
+-- | Minimal Scheme monad for expressing primitive operations.
+-- It is more general than SchemeM since it does not impose any
+-- constraints on calling semantics, evaluation semantics and expression representations.
+type SchemeDomainM e v m = (
+   SchemeDomainStoreM e v m,
    -- Allocation
    AllocM m e (Adr v),    -- address allocation
-   AllocM m Ide (Adr v),  -- generate addresses out of identifiers
-   S.Exp v ~ e
+   AllocM m Ide (Adr v)  -- generate addresses out of identifiers
    )
 
 type SchemeEM' e v m = (

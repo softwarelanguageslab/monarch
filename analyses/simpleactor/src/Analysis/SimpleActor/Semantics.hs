@@ -3,7 +3,12 @@
 {-# HLINT ignore "Move brackets to avoid $" #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Analysis.SimpleActor.Semantics(eval, allPrimitives, allPrimitiveFunctions, initialSto) where
+module Analysis.SimpleActor.Semantics(
+     eval
+   , allPrimitives
+   , allPrimitiveFunctions
+   , initialSto
+   ) where
 
 import Syntax.AST
 import Syntax.Span
@@ -49,10 +54,37 @@ import Lattice.Equal
 -- is required for its implementation.
 import Analysis.Store (Store)
 import qualified Analysis.Store as Store
-import Control.Monad.IO.Class (liftIO)
 import Lattice.ConstantPropagationLattice (CP)
 import Syntax.FV
 import Analysis.SimpleActor.Primitives (SimpleActorPrim(Prm), SimpleActorPrimitive(..))
+import Lattice (Joinable)
+import Control.Monad.DomainError (DomainError)
+import qualified Domain.Core.PairDomain.Class as Pair
+import Analysis.Monad.Store (StoreM)
+import Domain.Scheme.Store (StoreVal)
+import Control.Monad.Reader
+import qualified Syntax.Ide as Ide
+
+------------------------------------------------------------
+-- Implementation of polymorphic evaluation functions
+------------------------------------------------------------
+
+newtype ApplyT v m a = ApplyT {runApplyT' :: ReaderT (Cmp -> m v) m a}
+                     deriving (Applicative, Functor, Monad, MonadJoinable, MonadEscape)
+
+instance MonadLayer (ApplyT v) where
+   lowerM f m = ApplyT $ ReaderT (f . (runReaderT . runApplyT') m)
+   upperM = ApplyT . lift
+
+instance MonadTrans (ApplyT v) where
+   lift = upperM
+
+instance (EvalM v k m) => MonadApply v (ApplyT v m) where
+   applyFun expr fun ops = ApplyT ask >>= (\cmp -> lift $ apply cmp expr fun ops)
+
+
+runApplyT :: (Cmp -> m v) -> ApplyT v m a -> m a
+runApplyT r = flip runReaderT r . runApplyT'
 
 ------------------------------------------------------------
 -- Evaluation
@@ -74,6 +106,11 @@ eval'' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
    v2 <- mapM (eval' rec) es
    apply rec e v1 v2
+eval'' rec e@(AppQual namespace funName es s) = do
+   let name = Var $ Ide (Ide.name namespace ++ ":" ++ Ide.name funName) s
+   v1 <- eval' rec name
+   vs <- mapM (eval' rec) es
+   apply rec e v1 vs
 eval'' rec (Ite e1 e2 e3 _) =
    cond (eval' rec e1) (eval' rec e2) (eval' rec e3)
 eval'' _rec (Spawn e _) =
@@ -128,7 +165,7 @@ eval'' _ e = error $  "unsupported expression: " ++ show e
 eval' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
 eval' = eval''
 
-trySend :: EvalM v k m => v -> v -> m ()
+trySend :: PrimM v k m => v -> v -> m ()
 trySend ref p =
    cond   (fromBL @(CP Bool) (isActorRef ref))
           (mjoinMap (`send'` p) (arefs' ref))
@@ -137,7 +174,7 @@ trySend ref p =
 apply :: EvalM v k m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
 apply rec e v vs = conds
    [(pure (isClo v), mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
-    (pure (isPrim v), mjoinMap (\nam -> applyPrimitive nam e vs) (prims v))]
+    (pure (isPrim v), mjoinMap (\nam -> applyPrimitive rec nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))
 applyClosure :: EvalM v k m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e(lam@(Lam prs _ _), env) rec vs =
@@ -150,9 +187,9 @@ applyClosure e(lam@(Lam prs _ _), env) rec vs =
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 
-applyPrimitive :: forall v m k . (EvalM v k m) => String -> Exp -> [v] -> m v
-applyPrimitive prm =
-   runPrimitive $ fromMaybe (error $ "could not find " ++ prm) $ lookupPrimitive prm
+applyPrimitive :: forall v m k . (EvalM v k m) => (Cmp -> m v) -> String -> Exp -> [v] -> m v
+applyPrimitive rec prm expr ops =
+   runApplyT rec $ (runPrimitive $ fromMaybe (error $ "could not find " ++ prm) $ lookupPrimitive prm) expr ops
 
 type Mapping v = Map Ide v
 
@@ -172,8 +209,25 @@ matchList f ((pat, e):pats) value =
    -- TODO: don't rethrow the error, use `catchOn` for this
    (match pat value >>= f e) `catchOn` (fromBL . isMatchError, const $ matchList f pats value)
 
+type MatchM v m = (
+   -- Monadic constraints
+   MonadEscape m,
+   MonadJoin m,
+   MonadBottom m,
+   Domain (Esc m) DomainError,
+   Domain (Esc m) Error,
+   StoreM (Adr v) (StoreVal v) m,
+   -- Value domain constraints
+   Joinable v,
+   EqualLattice v,
+   SchemeValue v,
+   ActorDomain v,
+   Pair.Content (PaiDom v) ~ v,
+   VarDom v ~ v
+   )
+
 -- | Match a pattern against a value
-match :: forall v m k . EvalM v k m => Pat -> v -> m (Mapping v)
+match :: forall v m . MatchM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
 match (ValuePat lit) v =
    -- TODO: replace @cond@ by @choice@ so that conditions are tracked symbolically
@@ -207,22 +261,22 @@ injectLit (String _)     = error "cannot inject a string"
 -- Primitives
 ------------------------------------------------------------
 
-newtype SAPrim v = SAPrim (forall k m . (EvalM v k m) => [v] -> Exp -> m v)
+newtype SAPrim v = SAPrim (forall k m . (PrimM v k m) => [v] -> Exp -> m v)
 
 instance SimpleActorPrimitive v (SAPrim v) where
    runPrimitive (SAPrim p) = flip p
 
 -- | A nullary primitive
-aprim0 :: (forall k m . (EvalM v k m) => Exp -> m v) -> SAPrim v
+aprim0 :: (forall k m . (PrimM v k m) => Exp -> m v) -> SAPrim v
 aprim0 f = SAPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall k m . EvalM v k m => v -> Exp -> m v) -> SAPrim v
+aprim1 :: (forall k m . PrimM v k m => v -> Exp -> m v) -> SAPrim v
 aprim1 f = SAPrim $  \case [v] -> f v
                            vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall k m . EvalM v k m => v -> v -> Exp -> m v) -> SAPrim v
+aprim2 :: (forall k m . PrimM v k m => v -> v -> Exp -> m v) -> SAPrim v
 aprim2 f = SAPrim $ \case [v1, v2] -> f v1 v2
                           vs -> const $ escape $ ArityMismatch 2 (length vs)
 
@@ -242,7 +296,7 @@ schemePrimitives :: forall v . Map String (SimpleActorPrim v)
 schemePrimitives = Prm @v <$> primitivesByName @v
 
 erlangPrimitives :: forall v . Map String (SimpleActorPrim v)
-erlangPrimitives = Prm <$> Erl.erlangPrimitives  
+erlangPrimitives = Prm <$> Erl.erlangPrimitives
 
 -- | The names of all primitives
 allPrimitives :: [String]

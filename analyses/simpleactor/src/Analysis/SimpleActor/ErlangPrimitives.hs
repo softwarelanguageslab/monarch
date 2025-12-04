@@ -16,7 +16,6 @@ where
 import Analysis.Actors.Monad (MonadActorLocal (..))
 import Analysis.Erlang.BIF
 import Analysis.Scheme.Monad (derefPai)
-import Analysis.SimpleActor.Monad (EvalM)
 import Analysis.SimpleActor.Primitives
 import Control.Monad.Join
 import Data.Map (Map)
@@ -33,16 +32,14 @@ import Lattice.Class (Joinable)
 import Syntax.AST
 import Prelude hiding (ceiling, div, floor, round)
 import Text.Regex
+import Analysis.SimpleActor.Monad (PrimM)
 
 ------------------------------------------------------------
 -- Monadic contexts
 ------------------------------------------------------------
 
--- | Monadic context in which primitives are executed
-type PrimM v k m = (Monad m, EvalM v k m)
-
 -- | A wrapper for functions representing Erlang primitives
-newtype ErlangPrim v = ErlangPrim {_getPrim :: forall k m. (SchemeDomain v, PrimM v k m) => Exp -> [v] -> m v}
+newtype ErlangPrim v = ErlangPrim { _getPrim :: forall k m. (SchemeDomain v, PrimM v k m) => Exp -> [v] -> m v}
 
 -- | Convience alias for 'ErlangPrimM'
 prim :: (forall k m. (SchemeDomain v, PrimM v k m) => Exp -> [v] -> m v) -> ErlangPrim v

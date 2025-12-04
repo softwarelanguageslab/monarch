@@ -11,8 +11,10 @@ module Analysis.SimpleActor.Monad
     MonadDynamic(..),
     ifMetaSet,
     MonadSpawn,
+    MonadApply(..),
     spawn,
     EvalM,
+    PrimM,
     Error (..),
     ActorError(..),
     MetaT,
@@ -192,15 +194,14 @@ instance
 -- Monad
 ------------------------------------------------------------
 
--- | Evaluation monad
-type EvalM v k m =
+-- | Primitive monad
+type PrimM v k m =
   ( MonadJoinable m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
     StoreM (Adr v) (StoreVal v) m,
     MonadActor v k m,
     MonadEscape m,
-    MonadFixpoint m Cmp v,
     CtxM m k,
     SimpleActorContext k,
     Domain (Esc m) DomainError,
@@ -221,6 +222,11 @@ type EvalM v k m =
     ForAllStored Eq v,
     ForAllStored Ord v
   )
+
+-- | Evaluation monad
+type EvalM v k m =
+  ( PrimM v k m,
+    MonadFixpoint m Cmp v )
 
 ------------------------------------------------------------
 -- Contexts
@@ -331,3 +337,11 @@ instance (MonadDependencyTracking cmp (MailboxDep ref mb) m, MonadIndexedMailbox
         (trigger (MailboxDep @ref @mb recv) $> True)
         (return False)
 
+-------------------------------------------------------------
+-- Function application semantics
+-------------------------------------------------------------
+
+class MonadApply v m | m -> v where
+  -- | Applies the function in the second argument to the list
+  -- of arguments in the third and returns its result
+  applyFun :: Exp -> v -> [v] -> m v
