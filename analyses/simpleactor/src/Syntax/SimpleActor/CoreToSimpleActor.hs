@@ -1,5 +1,9 @@
 -- | Compiler from Core Erlang to the SimpleActor language
-module Syntax.SimpleActor.CoreToSimpleActor(translate, moduleExports) where
+module Syntax.SimpleActor.CoreToSimpleActor(
+  translate,
+  translateModule,
+  translateModules,
+  moduleExports) where
 
 import Syntax.CoreErlang (Ann(..), Module)
 import qualified Syntax.CoreErlang as Core
@@ -52,6 +56,10 @@ unAnn (Ann a _) = a
 -- | Get a dummy span for generated code
 dummySpan :: Span
 dummySpan = Span "" (Position 0 0) (Position 0 0)
+
+-- | Retrieve the value of an atom
+atomValue :: Core.Atom -> String
+atomValue (Core.Atom s _) = s
 
 ------------------------------------------------------------
 -- Literal Translation
@@ -276,6 +284,21 @@ translate annMod =
       defs = Core.moduleDefinitions mod'
   in evalState (traverse translateFunDef defs) initTransState
 
+-- | Translate the module into a "module function" that accepts the name
+-- of the function as a parameter (a symbol) and returns the function itself
+translateModule :: Ann Module -> Exp
+translateModule annMod =
+  let bds  = translate annMod
+      exports = moduleExports annMod
+      exportPats = map (\(nam, arity) -> ValuePat (Symbol $ nam ++ "/" ++ show arity)) exports
+      exportNames = map (\(nam, arity) -> Var (Ide (nam ++ "/" ++ show arity) dummySpan)) exports
+  in Letrec bds (Lam [Ide "$funname" (spanOf annMod)]
+                     (Match (Var (Ide "$funname" dummySpan))
+                            (zip exportPats exportNames)
+                            dummySpan)
+                     dummySpan)
+                dummySpan
+
 -- | Extract the exports from a Core Erlang module
 moduleExports :: Ann Module -> [(String, Int)]
 moduleExports annMod =
@@ -286,4 +309,25 @@ moduleExports annMod =
     extractFunctionNameAndArity annFun =
       case unAnn annFun of
         Core.Function (Core.Atom name _) arity _ -> (name, fromInteger arity)
+
+------------------------------------------------------------
+-- Multi-module translation
+------------------------------------------------------------
+
+-- | Generates one simple actor program that contains all the modules and inserts
+-- a call to the given module and function as the main body. Currently only functions
+-- with arity zero are supported for this purpose.
+translateModules :: [Ann Module] -- ^ list of modules to translate
+                 -> String       -- ^ the name of the module to call
+                 -> String       -- ^ the name of the function to call, including its arity
+                 -> Exp
+translateModules modules modName funName =
+    Letrec (zip moduleNames moduleExpr) (App (App (Var (Ide modName dummySpan))
+                                                  [Literal (Symbol funName) dummySpan]
+                                                  dummySpan)
+                                             [] dummySpan)
+           dummySpan
+  where moduleNames = map (flip Ide dummySpan . atomValue . Core.moduleName . unAnn) modules
+        moduleExpr  = map translateModule modules
+
 

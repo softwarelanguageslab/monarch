@@ -37,7 +37,6 @@ import qualified Syntax.SimpleActor.CoreToSimpleActor as CoreToSimpleActor
 import qualified Syntax.CoreErlang as CoreErlang
 
 
-
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
 
@@ -234,14 +233,14 @@ coreErlang InputOptions { .. } = do
        print err
        exitFailure
      Right coreModule -> do
-       let bindings = CoreToSimpleActor.translate coreModule
        let exports = CoreToSimpleActor.moduleExports coreModule
-       putStrLn "-- Translated bindings:"
-       mapM_ (\(ide, expr) -> putStrLn (show ide ++ " := ") >> pPrint expr) bindings
+       let expr = CoreToSimpleActor.translateModules [coreModule] "Elixir.Test" "foo/1"
        putStrLn ""
        putStrLn "-- Module exports:"
        print exports
-
+       putStrLn "-- Expression: "
+       pPrint expr
+   
 ------------------------------------------------------------
 -- Main entrypoint
 ------------------------------------------------------------
