@@ -3,24 +3,28 @@
 {-# HLINT ignore "Redundant bracket" #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Lattice.Class (
-   Joinable(..), 
+   Joinable(..),
    TopLattice(..),
-   WidenLattice(..), 
+   WidenLattice(..),
    BottomLattice(..),
    PartialOrder(..),
    Lattice,
    Meetable(..),
    LatticeMonoid(..),
-   justOrBot, 
+   justOrBot,
    overlap,
    joins,
    joins1,
    joinMap,
    joinMapM,
+   allOrderings,
+   minimalElements
 ) where
 
 import Data.Void
 import Data.Foldable (foldrM)
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 ------------------------------------------------------------
 --- Joinable / JoinLattice
@@ -32,7 +36,7 @@ class Joinable v where
 
 -- | Denotes a class of values `v` that 
 -- have a partial order `leq` between them
-class PartialOrder v where 
+class PartialOrder v where
    -- | Returns true if the first argument 
    -- is smaller or equal to the second
    leq :: v -> v -> Bool
@@ -48,24 +52,24 @@ joins :: (Joinable v, BottomLattice v, Foldable t) => t v -> v
 joins = foldr join bottom
 
 joins1 :: (Joinable v, Foldable t) => t v -> v
-joins1 = foldr1 join 
+joins1 = foldr1 join
 
 -- | Like foldMap, folding all mapped values using a join
-joinMap :: (Joinable v, BottomLattice v, Foldable t) => (a -> v) -> t a -> v  
-joinMap f = foldr (join . f) bottom 
+joinMap :: (Joinable v, BottomLattice v, Foldable t) => (a -> v) -> t a -> v
+joinMap f = foldr (join . f) bottom
 
 -- | A version of @joinMap@ that is monadic in its return value
 joinMapM :: (Monad m, Joinable v, BottomLattice v, Foldable t) => (a -> m v) -> t a -> m v
 joinMapM f = foldrM (\x v -> join <$> (f x) <*> return v) bottom
 
 -- | A lattice with a top element
-class TopLattice v where 
+class TopLattice v where
    -- | Returns the top value of the lattice,
    -- such that forall v, `subsumes top v` is true.
    top :: v
 
 -- | A lattice with a bottom element
-class BottomLattice v where 
+class BottomLattice v where
    -- | Returns the bottom value of the lattice
    -- such that forall v, `subsumes v bottom` is true
    bottom :: v
@@ -91,7 +95,7 @@ justOrBot _ = bottom
 --- WidenLattice
 ------------------------------------------------------------
 
-class (Joinable v) => WidenLattice v where 
+class (Joinable v) => WidenLattice v where
    -- | A widening operator, can be implemented
    -- for infinite domains. 
    widen :: v   -- ^ left value 
@@ -107,20 +111,20 @@ class Meetable v where
    meet :: v -> v -> v
 
 overlap :: (Meetable v, BottomLattice v, Eq v) => v -> v -> Bool
-overlap v1 v2 = v1 `meet` v2 /= bottom 
+overlap v1 v2 = v1 `meet` v2 /= bottom
 
 ------------------------------------------------------------
 -- Misc instances
 ------------------------------------------------------------
 
-instance Joinable Void where 
+instance Joinable Void where
    join = absurd
 -- | Void cannot have a bottom value since it does 
 -- not have any inhabitants. This instance is here 
 -- to satisfy unreachable code paths but it is inherentely unsafe!
-instance BottomLattice Void where 
+instance BottomLattice Void where
    bottom = error "void does not have a bottom"
-instance Meetable Void where  
+instance Meetable Void where
    meet = absurd
 
 ------------------------------------------------------------
@@ -128,11 +132,11 @@ instance Meetable Void where
 ------------------------------------------------------------
 
 -- |  A join lattice is also a @Semigroup@
-instance  {-# OVERLAPPABLE #-} (Joinable a) => Semigroup a where   
+instance  {-# OVERLAPPABLE #-} (Joinable a) => Semigroup a where
    (<>) = join
- 
+
 -- | A structure with a join and a bottom is also a @Monoid@
-instance {-# OVERLAPPABLE #-} (Joinable a, BottomLattice a) => Monoid a where    
+instance {-# OVERLAPPABLE #-} (Joinable a, BottomLattice a) => Monoid a where
    mempty = bottom
 
 -- | Newtype wrapper for forcing the `Monoid` instance using `Joinable` and `BottomLattice`
@@ -142,5 +146,27 @@ instance (Joinable a) => Semigroup (LatticeMonoid a) where
    (<>) (LatticeMonoid a) (LatticeMonoid b) = LatticeMonoid $ join a b
 
 instance (Joinable a, BottomLattice a) => Monoid (LatticeMonoid a) where
-   mempty = LatticeMonoid $ bottom
+   mempty = LatticeMonoid bottom
 
+------------------------------------------------------------
+-- Enumeration of all orderings
+------------------------------------------------------------
+
+-- | Returns the set of minimal elements in the given set.
+-- This set contains all elements that have no smaller element in the given set.
+minimalElements :: (Ord a, PartialOrder a) => Set a -> Set a
+minimalElements elements = Set.filter isMinimal elements
+   where isMinimal el = Set.null $ Set.filter (\y -> y /= el && y `leq` el) elements
+   
+-- | Given a list of unordered elemens, returns all possible partial orderings
+-- of that list.
+allOrderings  :: forall a . (Ord a, PartialOrder a) => [a] -> [[a]]
+allOrderings allElements = go (Set.fromList allElements) []
+  where
+    go :: Set a -> [a] -> [[a]]
+    go remaining builtPrefix
+      | Set.null remaining = [reverse builtPrefix]
+      | otherwise =
+            Set.foldr (\m acc ->
+                go (Set.delete m remaining) (m : builtPrefix) ++ acc
+            ) [] (minimalElements remaining)
