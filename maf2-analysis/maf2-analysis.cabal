@@ -59,6 +59,7 @@ library
       Analysis.Monad.Join
       Analysis.Monad.JoinMap
       Analysis.Monad.Map
+      Analysis.Monad.Partition
       Analysis.Monad.Profiling
       Analysis.Monad.Span
       Analysis.Monad.Stack
@@ -66,6 +67,7 @@ library
       Analysis.Monad.Taint
       Analysis.Monad.Widen
       Analysis.Monad.WorkList
+      Analysis.Partition
       Analysis.Python
       Analysis.Python.Common
       Analysis.Python.Diagnostics
