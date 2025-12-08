@@ -38,6 +38,8 @@ instance (Ord msg) => Mailbox (GraphToSet msg) msg where
                       GraphAbstraction s -> GraphAbstraction $ enqueue msg s
   dequeue = \case SetAbstraction s -> Set.map (fmap SetAbstraction) $ dequeue s
                   GraphAbstraction s -> Set.map (fmap GraphAbstraction) $ dequeue s
+  peek    = \case SetAbstraction s -> peek s
+                  GraphAbstraction s -> peek  s
   empty = GraphAbstraction empty
   hasMessage' msg = \case SetAbstraction s -> hasMessage' msg s
                           GraphAbstraction s -> hasMessage' msg s

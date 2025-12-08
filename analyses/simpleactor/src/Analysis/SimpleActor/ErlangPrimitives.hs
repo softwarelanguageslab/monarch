@@ -91,7 +91,7 @@ erlangPrimitives =
       ("erlang:exit_signal/2", prim $ const $ const mbottom),
       ("erlang:self/0", prim $ const $ const $ fmap aref getSelf),
       ("erlang:spawn/1", prim $ const $ prim1 $ \fun -> do
-        let applyLam = \case (Lam [] ex _, env) -> (getCtx >>= spawn ex env) $> nil
+        let applyLam = \case (Lam [] ex _, env) -> aref <$> (getCtx >>= spawn ex env)
                              (Lam prs _ _, _)   -> escape $ ArityMismatch 0 (length prs)
                              _ -> error "unexpected case"
         mjoinMap applyLam (clos fun)
@@ -103,7 +103,7 @@ erlangPrimitives =
       ),
       -- TODO: important: spawn and spawn_link, need call functionality in monad to do that
       -- TODO: send/2, send/3
-      ("erlang:!", prim $ const $ prim2 $ \rcv val -> (arefs (fmap (BL.Value . CP.Constant) . flip send val) rcv >>= fromBL) $> nil),
+      ("erlang:!/2", prim $ const $ prim2 $ \rcv val -> (arefs (fmap (BL.Value . CP.Constant) . flip send val) rcv >>= fromBL) $> nil),
       ("erlang:>/2", prim $ const $ prim2 gt),
       ("erlang:>=/2", prim $ const $ prim2 ge),
       ("erlang:</2", prim $ const $ prim2 lt),

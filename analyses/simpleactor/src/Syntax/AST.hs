@@ -171,7 +171,7 @@ instance FreeVariables (Pat, Exp) where
 instance FreeVariables Exp where
    fv (Lam xs e _)  = Set.difference (fv e) (Set.fromList (map name xs))
    fv (App e1 es _) = Set.unions $ fv e1 : map fv es
-   fv (AppQual _ _ es _) = Set.unions $ map fv es
+   fv (AppQual modName funName es _) = Set.singleton (name modName ++ ":" ++ name funName) `Set.union` Set.unions (map fv es)
    fv (Spawn e1 _)  = fv e1
    fv (Letrec bds es _) =
       Set.difference (Set.unions $ fv es : map (fv . snd) bds) (Set.fromList (map (name . fst) bds))
