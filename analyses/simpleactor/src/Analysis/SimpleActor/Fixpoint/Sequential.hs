@@ -48,7 +48,7 @@ import Analysis.Monad.AbstractCount
 import Control.Monad.State
 import Domain.Core.AbstractCount (AbstractCount(..))
 import qualified Control.Monad.State as State
-import qualified Analysis.Actors.Mailbox as Mailbox
+import qualified Analysis.Actors.Mailbox.Class as Mailbox
 import Analysis.Actors.Mailbox.GraphToSet (graphToSet)
 import Control.Monad.Trans.Writer (WriterT(..))
 import Control.Monad.Writer.Class (MonadWriter(tell))
@@ -209,6 +209,7 @@ instance (MonadSend ActorVlu m, StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m,
             upperM (send receiver msg)
 
 instance (MonadReceive ActorVlu m, StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m, MonadAbstractCount ActorRef m) => MonadReceive ActorVlu (CountSpawnT m) where
+      peek' = undefined
       receive' ref = do
             -- Receive the message from the underlying layer
             -- find the actor references in the message and

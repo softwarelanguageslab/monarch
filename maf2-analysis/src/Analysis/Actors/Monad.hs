@@ -5,6 +5,7 @@ module Analysis.Actors.Monad(
    MonadSend(..),
    MonadReceive(..),
    receive,
+   peek,
    MonadActorLocal(..),
    GlobalMailboxT,
    runWithMailboxT,
@@ -25,24 +26,31 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
-import Control.Monad.State (StateT (StateT), gets, modify, runStateT, MonadState (put))
+import Control.Monad.State (StateT (StateT), gets, runStateT, MonadState (put))
 import Analysis.Actors.Mailbox (Mailbox (hasMessage), dequeue, enqueue, empty)
 import Data.Functor
 import Control.Monad.Cond (ifM)
-import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, trigger, currentCmp, register, DebugIntraAnalysisT)
+import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, register, DebugIntraAnalysisT)
 import qualified Control.Monad.State as State
-import qualified Debug.Trace as Debug
+import qualified Analysis.Actors.Mailbox.Class as MB
 
 
 -- | Receive messages of type 'v' in monadic context 'm'
 class MonadReceive v m | m -> v where
   -- | Non-deterministically receive a message from the mailbox
   receive' :: ARef v -> m v
+  -- | Non-deterministically peek at the first message of the mailbox
+  peek' :: ARef v -> m v
 
 
 -- | CPS version of "receive'"
 receive :: (MonadReceive v m, Monad m) => ARef v -> (v -> m a) -> m a
 receive ref = (receive' ref >>=)
+
+-- | CPS version of "peek"
+peek :: (MonadReceive v m, Monad m) => ARef v -> (v -> m a) -> m a
+peek ref = (peek' ref >>=)
+
 
 -- | Send a message of type 'v' in the monadic context 'm'
 class MonadSend v m | m -> v where
@@ -85,6 +93,7 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSend v m) => MonadSen
 
 instance {-# OVERLAPPABLE #-} (Monad m ,MonadLayer t, MonadReceive v m) => MonadReceive v (t m) where
   receive' = upperM . receive'
+  peek'    = upperM . peek'
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox' ref mb m) => MonadMailbox' ref mb (t m) where
   getMailbox = upperM . getMailbox
@@ -108,6 +117,11 @@ instance (Mailbox mb v, BottomLattice mb, Joinable mb, Joinable v, MonadJoin m, 
     if self == ref then
       mjoinMap (\(msg, mb) -> put mb $> msg) =<< gets (Set.toList . dequeue)
     else error "ref /= self, TODO: fix that `receive'` can no longer be called with other references"
+  peek' ref = do
+    self <- getSelf
+    if self == ref then
+      mjoinMap return =<< gets (Set.toList . MB.peek)
+    else error "ref /= self, TODO: fix that `receive'` can no longer be called with other references"
 
 -- | Global mailbox parametrized by a mailbox abstraction
 newtype GlobalMailboxT v mb m a = GlobalMailboxT {_runGlobalMailboxT' :: StateT (MailboxMap v mb) m a}
@@ -128,6 +142,7 @@ instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef 
   -- TODO: investigate how we can prevent monadic computations to be transported down in the stack
   -- so that they no longer skip the `JoinT` layer.
   receive' ref = GlobalMailboxT $ gets (foldr L.join bottom . Set.toList . Set.map fst . dequeue . fromMaybe empty . Map.lookup ref)
+  peek' ref = GlobalMailboxT $ gets (foldr L.join bottom . Set.toList .  MB.peek . fromMaybe empty . Map.lookup ref)
 
 instance (ref ~ ARef v, Mailbox mb v, Ord ref, Monad m) => MonadMailbox' ref mb (GlobalMailboxT v mb m) where
   getMailbox ref = GlobalMailboxT $ gets (fromMaybe empty . Map.lookup ref)

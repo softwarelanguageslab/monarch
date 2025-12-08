@@ -82,6 +82,7 @@ instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadDependencyTra
 
 instance ( MonadMailbox ActorVlu m, MonadIntraAnalysis cmp m, MonadDependencyTracking cmp ActorRef m, MonadDependencyTriggerTracking cmp ActorRef m) => MonadReceive ActorVlu (ModularIntraAnalysisT cmp m) where
   receive' ref = currentCmp >>= register @cmp ref >> upperM (receive' ref)
+  peek' ref = currentCmp >>= register @cmp ref >> upperM (peek' ref)
 
 runModularIntraAnalysisT :: ModularIntraAnalysisT cmp m a -> m a
 runModularIntraAnalysisT (ModularIntraAnalysisT m) = runIdentityT m
@@ -93,7 +94,7 @@ runModularIntraAnalysisT (ModularIntraAnalysisT m) = runIdentityT m
 -- | Construct the initial analysis state
 initialAnalysisState :: ActorExp -> AnalysisState
 initialAnalysisState expr =
-  AnalysisState (Map.singleton EntryPid (expr, initialEnv))
+  AnalysisState (Map.singleton EntryPid (expr, Debug.traceShowId initialEnv))
 
 -- | Initial global store
 initialGlobalStore :: ActorSto

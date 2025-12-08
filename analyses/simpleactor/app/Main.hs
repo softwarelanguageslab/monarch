@@ -58,7 +58,7 @@ data InputOptions = InputOptions {
                   -- the output of the runPythonTaintAnalysisT
                   debug :: Bool,
                   -- | Maximum number of steps in the analysis            
-                  maxSteps :: Maybe Int 
+                  maxSteps :: Maybe Int
               } deriving (Show, Ord, Eq)
 
 
@@ -89,7 +89,7 @@ newtype OutputOptions = OutputOptions { outputFilename :: String } deriving (Sho
 outputOptions :: Parser OutputOptions
 outputOptions = OutputOptions <$> strOption (    long "outputFile"
                                               <> short 'o'
-                                              <> help "The output filename" ) 
+                                              <> help "The output filename" )
 
 
 commandParser :: Parser Command
@@ -100,7 +100,7 @@ commandParser =
     <> command "eval"          (info (interpret  <$> inputOptions) (progDesc "Run a program"))
     <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
     <> command "erlang"        (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
-    <> command "core-erlang"   (info (coreErlang <$> inputOptions) (progDesc "Translate Core Erlang to SimpleActor")))
+    <> command "core-erlang"   (info (coreErlang <$> coreErlangParser) (progDesc "Translate Core Erlang to SimpleActor")))
 
 
 ------------------------------------------------------------
@@ -159,8 +159,8 @@ analyzeAst ast maxSteps =  do
    putStrLn "====="
    putStrLn $ printMap  show (const True) mbs
    putStrLn "====="
-   putStrLn $ printMap (show . spanOfCmp) (const True) (Profiling._profile seqProf) 
-   putStrLn $ printMap show (const True) (Profiling._profile modProf) 
+   putStrLn $ printMap (show . spanOfCmp) (const True) (Profiling._profile seqProf)
+   putStrLn $ printMap show (const True) (Profiling._profile modProf)
    return ()
 
 interpret :: InputOptions -> IO ()
@@ -221,26 +221,45 @@ erlang InputOptions { .. } = do
    analyzeAst expr Nothing
 
 ------------------------------------------------------------
--- Core Erlang to SimpleActor translation
+-- Core Erlang analysis
 ------------------------------------------------------------
 
-coreErlang :: InputOptions -> IO ()
-coreErlang InputOptions { .. } = do
-   contents <- readFile filename
-   case CoreErlang.parseProgram filename contents of
+data CoreErlangOptions = CoreErlangOptions {
+      coreErlangMainMod :: String,
+      coreErlangMainFun :: String,
+      coreErlangInputOptions :: InputOptions
+   }
+
+-- | Parses the command-line arguments into a "CoreErlangOptions"
+-- record type.
+coreErlangParser :: Parser CoreErlangOptions
+coreErlangParser = CoreErlangOptions
+                <$> strOption (long "main-module" <> short 'm')
+                <*> strOption (long "main-function")
+                <*> inputOptions
+
+coreErlang :: CoreErlangOptions -> IO ()
+coreErlang CoreErlangOptions { .. } = do
+   -- TODO: support more than one module, perhaps based on a directory
+   -- of modules.
+   let inputName = filename coreErlangInputOptions 
+   contents <- readFile inputName
+   case CoreErlang.parseProgram inputName contents of
      Left err -> do
        putStrLn "Parse error:"
        print err
        exitFailure
      Right coreModule -> do
        let exports = CoreToSimpleActor.moduleExports coreModule
-       let expr = CoreToSimpleActor.translateModules [coreModule] "Elixir.Test" "foo/1"
+       let expr = CoreToSimpleActor.translateModules [coreModule] coreErlangMainMod coreErlangMainFun
        putStrLn ""
        putStrLn "-- Module exports:"
        print exports
        putStrLn "-- Expression: "
        pPrint expr
-   
+       analyzeAst expr Nothing
+      
+
 ------------------------------------------------------------
 -- Main entrypoint
 ------------------------------------------------------------

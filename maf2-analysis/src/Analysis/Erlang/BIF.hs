@@ -2,7 +2,7 @@
 -- | List of built-in functions in Erlang without implementation,
 -- current list is from OTP 28.0.1.
 --
--- Use scripts/erlang/generate_bifs.py to regenrate the list in `allBifs'
+-- Use scripts/erlang/generate_bifs.py to regenerate the list in `allBifs'
 -- for newer versions of OTP.
 module Analysis.Erlang.BIF (BIF (..), allBifs, bifFrom, bifToTuple, implicitImports) where
 

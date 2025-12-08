@@ -305,16 +305,16 @@ allPrimitives = Map.keys actorPrimitives ++ Map.keys schemePrimitives ++ Map.key
 allPrimitiveFunctions :: Map String (SimpleActorPrim v)
 allPrimitiveFunctions = Map.unions [actorPrimitives,  schemePrimitives, erlangPrimitives]
 
--- | Lookup a primitive starting from the actor primitives
+-- | Lookup a primitive starting from the actor primitives
 lookupPrimitive :: String -> Maybe (SimpleActorPrim v)
 lookupPrimitive = untilJust [ (`Map.lookup` erlangPrimitives), (`Map.lookup` actorPrimitives), (`Map.lookup` schemePrimitives) ]
 
--- | Run the functions given as a list in the first argument on the 
+-- | Run the functions given as a list in the first argument on the 
 -- second argument until an output is found that is @Just@.
 untilJust :: [a -> Maybe b] -> a -> Maybe b
 untilJust fs a = foldl (`maybe` Just) Nothing (fmap ($ a) fs)
 
--- | Compute a store containing the set of primitives
+-- | Compute a store containing the set of primitives
 initialSto :: (Store s (Adr v) v, SchemeDomain v) => [String] -> (String -> Adr v) ->  s
 initialSto prms allocPrm = Store.from $ fmap (\nam -> (allocPrm nam, prim nam)) prms
 
