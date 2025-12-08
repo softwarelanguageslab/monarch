@@ -35,7 +35,6 @@ import qualified Analysis.Monad.Map as MapM
 import RIO hiding (exp, trace, join)
 import Control.Fixpoint.WorkList (LIFOWorklist)
 import Domain.Actor (ARef)
-import qualified Control.Monad.State as State
 import Syntax (SpanOf(spanOf))
 import Domain.Core.PairDomain.TopLifted ()
 import qualified Lattice.BottomLiftedLattice as BL
@@ -104,7 +103,7 @@ instance (CtxM m K, MonadActorLocal ActorVlu m, Monad m) => CtxM (LocalMailboxT 
             ctx <- getCtx
             lowerM (withCtx (const (f ctx))) m
       getCtx = do (AdrCtx callSites maxCallSites _) <- upperM getCtx
-                  AdrCtx callSites maxCallSites <$> (ActorCtx <$> getSelf <*> State.get)
+                  AdrCtx callSites maxCallSites <$> (ActorCtx <$> getSelf)
 
 ------------------------------------------------------------
 -- Actor modular requirements

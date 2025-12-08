@@ -143,7 +143,7 @@ instance (CtxM m K, MonadActorLocal ActorVlu m, Monad m) => CtxM (LocalMailboxT 
             ctx <- getCtx
             lowerM (withCtx (const (f ctx))) m
       getCtx = do (AdrCtx callSites maxCallSites _) <- upperM getCtx
-                  AdrCtx callSites maxCallSites <$> (ActorCtx <$> getSelf <*> State.get)
+                  AdrCtx callSites maxCallSites . ActorCtx <$> getSelf
 
 ------------------------------------------------------------
 -- Mailbox abstractions influenced by the abstract reference count of actor references

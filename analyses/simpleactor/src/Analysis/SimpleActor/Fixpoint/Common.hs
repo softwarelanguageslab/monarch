@@ -76,7 +76,7 @@ data AdrCtx = AdrCtx [Span]   -- k-cfa call sites
                     deriving (Ord, Eq, Show)
 
 -- | Context specific to the actor analysis
-data ActorCtx = ActorCtx ActorRef MB | Empty deriving (Ord, Eq, Show)
+data ActorCtx = ActorCtx ActorRef | Empty deriving (Ord, Eq, Show)
 
 -- | k-cfa instance for 'SimpleActorContext'
 instance SimpleActorContext AdrCtx where
