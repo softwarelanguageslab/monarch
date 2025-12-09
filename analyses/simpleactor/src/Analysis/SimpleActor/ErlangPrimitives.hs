@@ -33,12 +33,13 @@ import Analysis.SimpleActor.Monad (PrimM, Error (ArityMismatch), MonadApply (..)
 import Control.Monad.Escape (escape)
 import Data.Functor
 import Control.Monad ((<=<))
-import Analysis.Scheme.Monad (lookupVar)
+import Analysis.Scheme.Monad (lookupVar, stoPai)
 import Analysis.Monad.Environment (EnvM(..))
 import Analysis.Monad.Context (CtxM(..))
 import Lattice.Equal (EqualLattice(eql))
 import qualified Lattice.BottomLiftedLattice as BL
 import qualified Lattice.ConstantPropagationLattice as CP
+import Domain.Core.PairDomain (cons)
 
 ------------------------------------------------------------
 -- Monadic contexts
@@ -121,7 +122,8 @@ erlangPrimitives =
       ("math:floor/1", prim $ const $ prim1 (floor @_ @v @v)),
       ("math:ceil/1", prim $ const $ prim1 (ceiling @_ @v @v)),
       ("erlang:ceil/1", prim $ const $ prim1 (ceiling @_ @v @v)),
-      ("primop:recv_peek_message", prim $ const $ prim0 $ getSelf >>= peek'),
+      ("primop:recv_peek_message", prim $ \ex -> prim0 $
+         getSelf >>= peek' >>= (stoPai ex . cons (inject True))),
       -- TODO: This is correct but VERY imprecise as every message will be considered
       -- even though we might be in a program state that already includes a message
       ("primop:remove_message", prim $ const $ prim0 $ (getSelf >>= receive') $> nil),

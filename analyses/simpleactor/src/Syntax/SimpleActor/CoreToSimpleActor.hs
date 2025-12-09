@@ -78,10 +78,12 @@ translateLit lit@(Core.AtomLit (Core.Atom str _) _) = Literal (Symbol str) (span
 translateLit lit@(Core.StringLit str _) = Literal (String str) (spanOf lit)
 translateLit lit@(Core.NilLit _) = Literal Nil (spanOf lit)
 translateLit lit@(Core.TupleLit lits _) =
-  -- Encode tuple as nested pairs: {a, b, c} => (a, (b, (c, nil)))
-  foldr (\l acc -> Pair (translateLit l) acc (spanOf lit))
-        (Literal Nil (spanOf lit))
-        lits
+  case lits of
+    [] -> Literal Nil (spanOf lit)
+    xs ->
+      -- Encode tuple as nested pairs: {a, b, c} => (a, (b, c))
+      foldr1 (\el acc -> Pair el acc (spanOf el))
+             (map translateLit xs)
 translateLit lit@(Core.ConsLit hd tl _) =
   -- Encode cons as a pair: [H|T] => (H, T)
   Pair (translateLit hd) (translateLit tl) (spanOf lit)
@@ -97,11 +99,11 @@ translatePat annPat =
   case pat of
     Core.VarPat ide _ -> IdePat (unAnn ide)
     Core.AtomicPat lit _ -> litToPat lit
-    Core.TuplePat pats _ ->
-      -- Encode tuple pattern as nested pair patterns: {a, b, c} => (a, (b, (c, nil)))
-      foldr (PairPat . translatePat)
-            (ValuePat Nil)
-            pats
+    Core.TuplePat pats _ -> case pats of
+        [] -> ValuePat Nil
+        xs -> -- Encode tuple pattern as nested pair patterns: {a, b, c} => (a, (b, (c)))
+          foldr1 PairPat
+                 (map translatePat xs)
     Core.ConsPat hd tl _ ->
       -- Encode cons pattern as pair pattern: [H|T] => (H, T)
       PairPat (translatePat hd) (translatePat tl)
@@ -154,9 +156,8 @@ translateExpr annExpr =
 
     -- Tuple and list construction
     Core.TupleExpr exprs _ ->
-      -- Encode tuple as nested pairs: {e1, e2, e3} => (e1, (e2, (e3, nil)))
-      foldrM (\e acc -> Pair <$> translateExpr e <*> pure acc <*> pure sp) (Literal Nil sp) exprs
-
+      -- Encode tuple as nested pairs: {e1, e2, e3} => (e1, (e2, (e3)))
+      foldr1 (\ex acc -> Pair ex acc (spanOf ex)) <$> mapM translateExpr exprs
     Core.ConsExpr hd tl _ ->
       -- Encode cons as a pair: [H|T] => (H, T)
       Pair <$> translateExpr hd <*> translateExpr tl <*> pure sp
@@ -181,7 +182,7 @@ translateExpr annExpr =
           tempVar <- freshVar "_letvals"
           argExpr <- translateExpr arg
           bodyExpr <- translateExpr body
-          let pat = foldr (PairPat . IdePat . unAnn) (ValuePat Nil) vars
+          let pat = foldr1 PairPat (map (IdePat . unAnn) vars)
           pure $ Letrec [(tempVar, argExpr)] (Match (Var tempVar) [(pat, bodyExpr)] sp) sp
 
     Core.LetRecExpr defs body _ -> do

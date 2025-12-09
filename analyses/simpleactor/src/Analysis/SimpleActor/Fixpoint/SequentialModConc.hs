@@ -168,7 +168,7 @@ inter exp environment ref mb = iterateWL' initialCmp (intra ref)
                 <+> environment           -- initial lexical environment
                 <+> initialDynEnvironment -- initial dynamic environment 
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
-                <+> mb                    -- initial mailboxes
+                <+> mb                    -- initial mailbox
                 <+> ref                   -- current `self`
                 <+> initialContext 5      -- address context
                 -- <+> emptyPC
