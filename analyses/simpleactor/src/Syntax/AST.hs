@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase, DeriveGeneric #-}
-module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span(..), Binding, patternVariables, sexpToLit) where
+{-# LANGUAGE PatternSynonyms #-}
+module Syntax.AST(Ide(..), Exp(..), Lit(..), Pat(..), Label(..), Span, pattern Span, Binding, patternVariables, sexpToLit) where
 
 import qualified Data.Set as Set
 import Data.Set (Set)

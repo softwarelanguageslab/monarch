@@ -7,10 +7,11 @@ import Syntax.Ide
 
 -- | Auxilary function to created a span over multiple tokens/nodes
 spanning :: (SpanOf a, SpanOf b) => a -> b -> Span
-spanning a b = Span {
+spanning a b = ESpan {
       filename = filename s1,
       startPosition = startPosition s1,
-      endPosition = endPosition s2 }
+      endPosition = endPosition s2,
+      annotation = () }
    where s1 = spanOf a
          s2 = spanOf b
 

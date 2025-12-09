@@ -15,10 +15,11 @@ withLoc m = do
    return (f $ fromSourcePos start)
 
 fromSourcePos :: SourcePos -> Loc 
-fromSourcePos pos = Span {
+fromSourcePos pos = ESpan {
    filename = sourceName pos,
    startPosition = Position (sourceLine pos) (sourceColumn pos),
-   endPosition = Position (sourceLine pos) (sourceColumn pos) 
+   endPosition = Position (sourceLine pos) (sourceColumn pos),
+   annotation = ()
 }
 
 data Term = Tuple [Term] Loc   -- ^ { t1, t2, ..., tn }

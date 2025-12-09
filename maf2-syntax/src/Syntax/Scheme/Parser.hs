@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 -- | Parser to S-expressions
-module Syntax.Scheme.Parser(SExp(..), Span(..), parseSexp', parseSexp, parseDatum, spanOf, pattern (:::), smap, smapM) where
+module Syntax.Scheme.Parser(SExp(..), Span, ESpan(..), parseSexp', parseSexp, parseDatum, spanOf, pattern (:::), smap, smapM) where
 
 import Data.Functor
 import Text.ParserCombinators.Parsec
@@ -17,7 +17,7 @@ import Data.Maybe (fromMaybe)
 
 -- | Location information
 fromSourcePos :: SourcePos -> Span
-fromSourcePos pos = Span {
+fromSourcePos pos = ESpan {
    filename = sourceName pos,
    startPosition = Position {
       line = sourceLine pos,
@@ -26,7 +26,8 @@ fromSourcePos pos = Span {
    endPosition = Position {
       line = sourceLine pos,
       column = sourceColumn pos
-   }
+   },
+   annotation = ()
 }
 
 -- | Runs the given parser and provides the source location of the parsed expression to it

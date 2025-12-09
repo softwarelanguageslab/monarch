@@ -16,7 +16,7 @@ data SrcSpan = SrcSpan {
 
 instance SpanOf Token where
    spanOf tok = getSpan (srcSpan tok)
-      where getSpan SrcSpan { .. } = Span {
+      where getSpan SrcSpan { .. } = ESpan {
             filename = filename, 
             startPosition = Position {
                line = startLine,
@@ -25,7 +25,8 @@ instance SpanOf Token where
             endPosition = Position {
                line = endLine, 
                column = endCol
-            }
+            },
+            annotation = ()
          }
 
 data Token = LPar { srcSpan :: !SrcSpan }

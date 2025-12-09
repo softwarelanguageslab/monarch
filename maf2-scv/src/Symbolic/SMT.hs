@@ -7,7 +7,7 @@ module Symbolic.SMT(prelude, translate, parseResult, parseModel, SolverResult(..
 import Text.Printf
 import Symbolic.AST
 import Data.FileEmbed
-import Syntax.Span (Span(..), Position(..))
+import Syntax.Span (ESpan(..), pattern Span, Position(..))
 import Solver
 import Control.Monad.Reader
 import Data.Map (Map)

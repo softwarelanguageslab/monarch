@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 -- | Compiler from Core Erlang to the SimpleActor language
 module Syntax.SimpleActor.CoreToSimpleActor(
   translate,
@@ -9,7 +10,7 @@ import Syntax.CoreErlang (Ann(..), Module)
 import qualified Syntax.CoreErlang as Core
 import Syntax.AST (Exp(..), Lit(..), Pat(..), Binding)
 import Syntax.Ide (Ide(..))
-import Syntax.Span (Span(..), SpanOf(..), Position(..))
+import Syntax.Span (Span, pattern Span, SpanOf(..), Position(..))
 import Control.Monad.State
 import Data.Foldable
 
@@ -180,8 +181,8 @@ translateExpr annExpr =
           tempVar <- freshVar "_letvals"
           argExpr <- translateExpr arg
           bodyExpr <- translateExpr body
-          let pattern = foldr (PairPat . IdePat . unAnn) (ValuePat Nil) vars
-          pure $ Letrec [(tempVar, argExpr)] (Match (Var tempVar) [(pattern, bodyExpr)] sp) sp
+          let pat = foldr (PairPat . IdePat . unAnn) (ValuePat Nil) vars
+          pure $ Letrec [(tempVar, argExpr)] (Match (Var tempVar) [(pat, bodyExpr)] sp) sp
 
     Core.LetRecExpr defs body _ -> do
       -- letrec defs in body

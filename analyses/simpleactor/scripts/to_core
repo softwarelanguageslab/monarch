@@ -1,0 +1,186 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -pa .
+
+-mode(compile).
+
+main([]) ->
+    usage();
+main(["-h"]) ->
+    usage();
+main(["--help"]) ->
+    usage();
+main([File]) ->
+    main([File, []]);
+main([File | _]) ->
+    case filelib:is_regular(File) of
+        false ->
+            io:format("Error: File ~s not found~n", [File]),
+            halt(1);
+        true ->
+            compile_with_columns(File)
+    end.
+
+usage() ->
+    io:format(standard_error, "Usage: core_with_columns <erlang_file>~n", []),
+    io:format(standard_error, "~n", []),
+    io:format(standard_error, "Compiles an Erlang file to Core Erlang with line and column information.~n", []),
+    io:format(standard_error, "~n", []),
+    io:format(standard_error, "Example:~n", []),
+    io:format(standard_error, "  ./core_with_columns my_module.erl~n", []),
+    halt(0).
+
+compile_with_columns(File) ->
+    io:format(standard_error, "Compiling ~s with column information...~n", [File]),
+    
+    %% Read the source file
+    case file:read_file(File) of
+        {ok, Source} ->
+            SourceStr = binary_to_list(Source),
+            
+            %% Tokenize with column information
+            case erl_scan:string(SourceStr, {1, 1}, [text]) of
+                {ok, Tokens, _EndLoc} ->
+                    %% Parse the tokens
+                    case parse_with_locations(File, Tokens) of
+                        {ok, Forms} ->
+                            %% Compile to Core Erlang
+                            compile_to_core(File, Forms);
+                        {error, Reason} ->
+                            io:format("Parse error: ~p~n", [Reason]),
+                            halt(1)
+                    end;
+                {error, ErrorInfo, _ErrorLocation} ->
+                    io:format("Scan error: ~p~n", [ErrorInfo]),
+                    halt(1)
+            end;
+        {error, Reason} ->
+            io:format("Error reading file: ~p~n", [Reason]),
+            halt(1)
+    end.
+
+parse_with_locations(File, _) ->
+    %% Use epp to parse with includes and macros
+    case epp:parse_file(File, [], []) of
+        {ok, Forms} ->
+            {ok, Forms};
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+compile_to_core(File, Forms) ->
+    %% Read source file for column extraction
+    {ok, SourceBinary} = file:read_file(File),
+    SourceStr = binary_to_list(SourceBinary),
+    
+    %% Compile to Core Erlang
+    CompileOpts = [to_core, return_errors, return_warnings],
+    case compile:forms(Forms, CompileOpts) of
+        {ok, _ModuleName, Core, Warnings} ->
+            print_warnings(Warnings),
+            
+            LineMap = build_line_map(SourceStr),
+
+            %% Add column info to actual annotations in the AST
+            EnhancedCore = add_column_to_annotations(Core, LineMap),
+            
+            %% Pretty print with enhanced location info
+            FinalOutput = core_pp:format(EnhancedCore),
+                     
+            %% Write to .core file
+            OutFile = filename:rootname(File) ++ ".core",
+            case file:write_file(OutFile, FinalOutput) of
+                ok ->
+                    io:format("~s~n", [FinalOutput]),
+                    io:format(standard_error, "Core Erlang written to: ~s~n", [OutFile]);
+                {error, Reason} ->
+                    io:format(standard_error, "Error writing output: ~p~n", [Reason]),
+                    halt(1)
+            end;
+        {error, Errors, Warnings} ->
+            print_warnings(Warnings),
+            print_errors(Errors),
+            halt(1)
+    end.
+
+%% Add column information to Core Erlang AST annotations
+add_column_to_annotations(Core, LineMap) ->
+    %% Walk and enhance all nodes
+    cerl_trees:map(fun(Node) -> enhance_ast_node(Node, LineMap) end, Core).
+
+enhance_ast_node(Node, LineMap) ->
+    Ann = cerl:get_ann(Node),
+    NewAnn = enhance_ast_annotation(Ann, LineMap),
+    cerl:set_ann(Node, NewAnn).
+
+enhance_ast_annotation(Ann, LineMap) ->
+    %% Annotations can have line numbers in two formats:
+    %% 1. As a tuple: {line, Line}
+    %% 2. As a bare integer in the list
+    case lists:keyfind(line, 1, Ann) of
+        {line, Line} ->
+            %% Format 1: {line, Line}
+            Column = find_column_for_line(Line, LineMap),
+            case lists:keyfind(column, 1, Ann) of
+                false ->
+                    [{line, Line}, {column, Column} | lists:keydelete(line, 1, Ann)];
+                _ ->
+                    Ann  % Already has column
+            end;
+        false ->
+            %% Check for format 2: bare integer (filter out 0 and negative)
+            Integers = lists:filter(fun(X) -> is_integer(X) andalso X > 0 end, Ann),
+            case Integers of
+                [Line | _] ->
+                    %% Found a line number as bare integer
+                    Column = find_column_for_line(Line, LineMap),
+                    %% Add both line and column as proper tuples
+                    [{line, Line}, {column, Column} | Ann];
+                _ ->
+                    Ann  % No line info
+            end
+    end.
+
+find_column_for_line(Line, LineMap) ->
+    case maps:get(Line, LineMap, undefined) of
+        undefined -> 1;
+        SourceLine -> find_first_non_whitespace_col(SourceLine, 1)
+    end.
+
+find_first_non_whitespace_col([], _Col) -> 1;
+find_first_non_whitespace_col([C | Rest], Col) when C =:= $\s; C =:= $\t ->
+    find_first_non_whitespace_col(Rest, Col + 1);
+find_first_non_whitespace_col(_, Col) -> Col.
+
+build_line_map(SourceStr) ->
+    Lines = string:split(SourceStr, "\n", all),
+    maps:from_list(lists:zip(lists:seq(1, length(Lines)), Lines)).
+
+
+%% find_first_column(Line) ->
+%%     find_first_column(Line, 1).
+
+%% find_first_column([], _Col) ->
+%%     1;
+%% find_first_column([C | Rest], Col) when C =:= $\s; C =:= $\t ->
+%%     find_first_column(Rest, Col + 1);
+%% find_first_column(_, Col) ->
+%%     Col.
+
+print_warnings([]) -> ok;
+print_warnings(Warnings) ->
+    io:format("~nWarnings:~n"),
+    lists:foreach(fun({_File, Ws}) ->
+        lists:foreach(fun({Line, Module, Desc}) ->
+            io:format(standard_error, "  Line ~p: ~s~n", [Line, Module:format_error(Desc)])
+        end, Ws)
+    end, Warnings).
+
+print_errors([]) -> ok;
+print_errors(Errors) ->
+    io:format("~nErrors:~n"),
+    lists:foreach(fun({_File, Es}) ->
+        lists:foreach(fun({Line, Module, Desc}) ->
+            io:format(standard_error, "  Line ~p: ~s~n", [Line, Module:format_error(Desc)])
+        end, Es)
+    end, Errors).

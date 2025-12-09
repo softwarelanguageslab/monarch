@@ -1,5 +1,5 @@
 -- | Erlang Lexer, adapted from https://github.com/erlang/otp/blob/master/lib/compiler/src/core_scan.erl
-module Syntax.CoreErlang.Lexer(tokenize, tokenize') where
+module Syntax.CoreErlang.Lexer(tokenize, tokenize', prettyErrorBundle) where
 
 import Syntax.CoreErlang.Tokens
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -270,3 +270,7 @@ tokenize = runParser (do
 
 tokenize' :: String -> String -> [Token]
 tokenize' inputName = either (error . errorBundlePretty)  id . tokenize inputName
+
+-- | Pretty print a ParserErrorBundle
+prettyErrorBundle :: ParseErrorBundle String Error -> String
+prettyErrorBundle = errorBundlePretty

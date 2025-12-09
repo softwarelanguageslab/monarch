@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- | Convience function that re-exports some key modules
 module Syntax.Python (
@@ -15,7 +16,7 @@ import Syntax.Python.Parser
 
 
 import qualified Language.Python.Common.SrcLocation as Py
-import Syntax.Span  (SpanOf(..), Span(..), Position(..))
+import Syntax.Span  (SpanOf(..), Position(..), pattern Span)
 
 
 instance SpanOf PyLoc where 
