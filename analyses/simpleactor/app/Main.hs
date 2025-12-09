@@ -9,15 +9,13 @@ import Data.List (intercalate)
 import Text.Printf
 import qualified Data.Map as Map
 import Syntax.Simplifier
-import Analysis.SimpleActor
+import Analysis.SimpleActor.Fixpoint.ModularModConc
 import Options.Applicative
-import Syntax.AST hiding (filename)
-import Interpreter hiding (PrmAdr, store)
+import Syntax.AST  
 import Control.Monad
 import Analysis.SimpleActor.Monad ()
-import Analysis.SimpleActor.Fixpoint.Sequential (ActorRes(..), spanOfCmp)
+import Analysis.SimpleActor.Fixpoint.SequentialModConc (ActorRes(..), spanOfCmp)
 import qualified Analysis.SimpleActor.Infer as Infer
-import qualified Analysis.Monad.Profiling as Profiling
 import System.TimeIt
 import qualified RIO.Set as Set
 import System.Exit
@@ -97,7 +95,6 @@ commandParser =
    subparser
     (  command "analyze"       (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
     <> command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
-    <> command "eval"          (info (interpret  <$> inputOptions) (progDesc "Run a program"))
     <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
     <> command "erlang"        (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
     <> command "core-erlang"   (info (coreErlang <$> coreErlangParser) (progDesc "Translate Core Erlang to SimpleActor")))
@@ -146,26 +143,16 @@ analyzeCmd (InputOptions { filename, doTranslate, maxSteps  }) = do
 
 analyzeAst :: Exp -> Maybe Int -> IO ()
 analyzeAst ast maxSteps =  do
-   (AnalysisResult sequentialResults mbs seqProf modProf) <- analyze' maxSteps ast
+   (AnalysisResult sequentialResults mbs) <- analyze' maxSteps ast
    let sequentialResMap = fmap cmpRes sequentialResults
-   let sequentialCouMap = fmap outCount sequentialResults
    putStrLn "====== Results per actor"
    mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialResMap)
-   putStrLn "====== CountMap per Actor"
-   -- putStrLn $ Store.printSto show (\case (PrmAdr _) -> False ; _ -> True) sto
-   mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialCouMap)
    -- putStrLn "====="
    -- putStrLn $ printMap printLoc (const True) res
    putStrLn "====="
    putStrLn $ printMap  show (const True) mbs
    putStrLn "====="
-   putStrLn $ printMap (show . spanOfCmp) (const True) (Profiling._profile seqProf)
-   putStrLn $ printMap show (const True) (Profiling._profile modProf)
    return ()
-
-interpret :: InputOptions -> IO ()
-interpret (InputOptions { .. }) =
-   loadFile' doTranslate filename >>= runEval . eval >>= print
 
 
 ------------------------------------------------------------
@@ -247,7 +234,7 @@ coreErlang CoreErlangOptions { .. } = do
    case CoreErlang.parseProgram inputName contents of
      Left err -> do
        putStrLn "Parse error:"
-       print err
+       print $ CoreErlang.prettyErrorBundle  err
        exitFailure
      Right coreModule -> do
        let exports = CoreToSimpleActor.moduleExports coreModule

@@ -50,7 +50,6 @@ library
       Domain.SimpleActor
       Domain.SimpleActor.Class
       Domain.SimpleActor.Modular
-      Interpreter
       Lib
       Syntax.AST
       Syntax.Compiler
