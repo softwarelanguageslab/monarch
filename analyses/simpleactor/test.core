@@ -1,0 +1,132 @@
+module 'Elixir.Test' ['__info__'/1,
+		      'foo'/1,
+		      'module_info'/0,
+		      'module_info'/1,
+		      'receive_loop'/1]
+    attributes [%% Line 1
+		'file' =
+		    %% Line 1
+		    [{[116|[101|[115|[116|[46|[101|[120]]]]]]],1}],
+		%% Line 1
+		'compile' =
+		    %% Line 1
+		    ['no_auto_import'],
+		%% Line 1
+		'spec' =
+		    %% Line 1
+		    [{{'__info__',1},[{'type',1,'fun',[{'type',1,'product',[{'type',1,'union',[{'atom',1,'attributes'}|[{'atom',1,'compile'}|[{'atom',1,'functions'}|[{'atom',1,'macros'}|[{'atom',1,'md5'}|[{'atom',1,'exports_md5'}|[{'atom',1,'module'}|[{'atom',1,'deprecated'}|[{'atom',1,'struct'}]]]]]]]]]}]}|[{'type',1,'any',[]}]]}]}]]
+'__info__'/1 =
+    ( fun (_0) ->
+	  ( case ( _0
+		   -| [{'function',{'__info__',1}}] ) of
+	      <'module'> when 'true' ->
+		  'Elixir.Test'
+	      <'functions'> when 'true' ->
+		  [{'foo',1}|[{'receive_loop',1}]]
+	      <'macros'> when 'true' ->
+		  []
+	      <'struct'> when 'true' ->
+		  'nil'
+	      <Key = 'attributes'> when 'true' ->
+		  call 'erlang':'get_module_info'
+		      ('Elixir.Test', Key)
+	      <Key = 'compile'> when 'true' ->
+		  call 'erlang':'get_module_info'
+		      ('Elixir.Test', Key)
+	      <Key = 'md5'> when 'true' ->
+		  call 'erlang':'get_module_info'
+		      ('Elixir.Test', Key)
+	      <'deprecated'> when 'true' ->
+		  []
+	      ( <_1> when 'true' ->
+		    ( primop 'match_fail'
+			  (( {'function_clause',_1}
+			     -| [{'function',{'__info__',1}}] ))
+		      -| [{'function',{'__info__',1}}] )
+		-| ['compiler_generated'] )
+	    end
+	    -| [{'function',{'__info__',1}}] )
+      -| [{'function',{'__info__',1}}] )
+'foo'/1 =
+    %% Line 8
+    ( fun (_0) ->
+	  let <_X_pid@1> =
+	      call %% Line 9
+		   ( 'erlang'
+		     -| ['result_not_wanted'] ):%% Line 9
+						( 'spawn'
+						  -| ['result_not_wanted'] )
+		  (%% Line 9
+		   ( 'Elixir.Test'
+		     -| ['result_not_wanted'] ), %% Line 9
+						 ( 'receive_loop'
+						   -| ['result_not_wanted'] ), %% Line 9
+									       ( [0]
+										 -| ['result_not_wanted'] ))
+	  in  %% Line 10
+	      call 'erlang':'send'
+		  (_X_pid@1, {'increment',1})
+      -| [{'function',{'foo',1}}] )
+'receive_loop'/1 =
+    %% Line 2
+    ( fun (_0) ->
+	  ( letrec
+		'recv$^0'/0 =
+		    fun () ->
+			let <_5,_3> =
+			    primop 'recv_peek_message'
+				()
+			in  case _5 of
+			      <'true'> when 'true' ->
+				  %% Line 3
+				  case _3 of
+				    %% Line 4
+				    <{'increment',_X_n@1}> when 'true' ->
+					do  primop 'remove_message'
+						()
+					    let <_1> =
+						call 'erlang':'+'
+						    (( _0
+						       -| [{'function',{'receive_loop',1}}] ), _X_n@1)
+					    in  apply 'receive_loop'/1
+						    (_1)
+				    ( <Other> when 'true' ->
+					  do  primop 'recv_next'
+						  ()
+					      ( apply 'recv$^0'/0
+						    ()
+						-| ['dialyzer_ignore'] )
+				      -| ['compiler_generated','dialyzer_ignore'] )
+				  end
+			      ( <'false'> when 'true' ->
+				    let <_4> =
+					primop 'recv_wait_timeout'
+					    ('infinity')
+				    in  case _4 of
+					  <'true'> when 'true' ->
+					      'true'
+					  ( <'false'> when 'true' ->
+						( apply 'recv$^0'/0
+						      ()
+						  -| ['dialyzer_ignore'] )
+					    -| ['dialyzer_ignore'] )
+					end
+				-| ['dialyzer_ignore'] )
+			    end
+	    in  ( apply 'recv$^0'/0
+		      ()
+		  -| ['dialyzer_ignore'] )
+	    -| ['letrec_goto','no_inline'] )
+      -| [{'function',{'receive_loop',1}}] )
+'module_info'/0 =
+    ( fun () ->
+	  call 'erlang':'get_module_info'
+	      ('Elixir.Test')
+      -| [{'function',{'module_info',0}}] )
+'module_info'/1 =
+    ( fun (_0) ->
+	  call 'erlang':'get_module_info'
+	      ('Elixir.Test', ( _0
+				-| [{'function',{'module_info',1}}] ))
+      -| [{'function',{'module_info',1}}] )
+end

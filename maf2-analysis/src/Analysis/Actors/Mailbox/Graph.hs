@@ -1,7 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 module Analysis.Actors.Mailbox.Graph(
-  GraphMailbox,
+  GraphMailbox(..),
   messages,
+  toDot,
 ) where
 
 import Analysis.Actors.Mailbox hiding (hasMessage)
@@ -105,3 +106,48 @@ instance (Ord msg) => Mailbox (GraphMailbox msg) msg where
 -- | Return the powerset of messages represented by this graph
 messages :: Ord msg => GraphMailbox msg -> Set msg
 messages = foldMap graphMessages . getMessageGraphs
+
+-----------------------------------------------------------
+-- DOT graph visualization
+-----------------------------------------------------------
+
+-- | Shows the given data type but escapes its use of quotes
+-- so that the data type be shown in a quoted context
+showEscape :: Show a => a -> String
+showEscape = foldMap escape . show
+  where escape c
+          | c == '"' = "\\\""
+          | otherwise = [c]
+
+-- | Convert a MessageGraph to DOT format for visualization
+toDot :: (Show msg, Eq msg) => MessageGraph msg -> String
+toDot MessageGraph { .. } =
+  unlines $
+    ["digraph MessageGraph {",
+     "  rankdir=LR;",
+     "  node [shape=box];",
+     ""] ++
+    topNode ++
+    bottomNode ++
+    [""] ++
+    edgeList ++
+    ["}"]
+  where
+    -- Highlight the top (most recently enqueued) node
+    topNode = case top of
+      Nothing -> []
+      Just t -> ["  \"" ++ showEscape t ++ "\" [style=filled, fillcolor=lightgreen, label=\"TOP\\n" ++ showEscape t ++ "\"];"]
+
+    -- Highlight the bottom (next to be dequeued) node
+    bottomNode = case bottom of
+      Nothing -> []
+      Just b | Just b /= top -> ["  \"" ++ showEscape b ++ "\" [style=filled, fillcolor=lightblue, label=\"BOTTOM\\n" ++ showEscape b ++ "\"];"]
+             | otherwise -> [] -- Already marked as top
+
+    -- Generate edges from the graph
+    edgeList = concatMap generateEdges (Map.toList edges)
+
+    generateEdges (from, tos) =
+      if Set.null tos
+        then ["  \"" ++ showEscape from ++ "\";"] -- Node with no outgoing edges
+        else map (\to -> "  \"" ++ showEscape from ++ "\" -> \"" ++ showEscape to ++ "\";") (Set.toList tos)

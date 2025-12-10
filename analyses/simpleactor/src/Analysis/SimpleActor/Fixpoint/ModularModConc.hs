@@ -94,7 +94,7 @@ runModularIntraAnalysisT (ModularIntraAnalysisT m) = runIdentityT m
 -- | Construct the initial analysis state
 initialAnalysisState :: ActorExp -> AnalysisState
 initialAnalysisState expr =
-  AnalysisState (Map.singleton EntryPid (expr, Debug.traceShowId initialEnv))
+  AnalysisState (Map.singleton EntryPid (expr, initialEnv))
 
 -- | Initial global store
 initialGlobalStore :: ActorSto

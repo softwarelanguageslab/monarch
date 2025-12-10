@@ -544,3 +544,5 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 perses_output/
+output_dot/
+output-dot/
