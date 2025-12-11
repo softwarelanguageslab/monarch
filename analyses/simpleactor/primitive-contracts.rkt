@@ -1,8 +1,0 @@
-real?
-boolean?
-number?
-image?
-cons?
-integer?
-and/c
-pair?
