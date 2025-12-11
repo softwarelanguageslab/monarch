@@ -141,7 +141,11 @@ class MonadSpawn v k m | m -> v k where
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v k m) => MonadSpawn v k (t m) where
   spawn e env = upperM . spawn e env
 
-type MonadActor v k m = (MonadMailbox v m, MonadSpawn v k m, MonadActorLocal v m, MonadMeta m, MonadDynamic (Adr v) m)
+type MonadActor v k m =
+  (MonadSpawn v k m,
+   MonadActorLocal v m,
+   MonadMeta m,
+   MonadDynamic (Adr v) m)
 
 -- | Global mailbox indexed per contributor so that strong updates of the global mailbox are allowed whenever
 -- there are no conflicting interleavings
@@ -197,11 +201,12 @@ instance
 ------------------------------------------------------------
 
 -- | Minimal set of constraints needed to evaluate the primitives
-type PrimM' v k m =
+type PrimM' e mb v k m =
   ( MonadJoinable m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
     StoreM (Adr v) (StoreVal v) m,
+    MonadMailboxPartitioning e v mb m,
     MonadActor v k m,
     MonadEscape m,
     CtxM m k,
@@ -225,14 +230,14 @@ type PrimM' v k m =
   )
 
 -- | Same as PrimM' but with access to the "apply" function
-type PrimM v k m = (
-    PrimM' v k m,
+type PrimM e mb v k m = (
+    PrimM' e mb v k m,
     MonadApply v m
   )
 
 -- | Evaluation monad
-type EvalM v k m =
-  ( PrimM' v k m,
+type EvalM e mb v k m =
+  ( PrimM' e mb v k m,
     MonadFixpoint m Cmp v )
 
 ------------------------------------------------------------

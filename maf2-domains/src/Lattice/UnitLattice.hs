@@ -31,4 +31,7 @@ instance SplitLattice () where
 
 -- | Domain instance for Unit
 instance Domain () () where 
-   inject = id 
+   inject = id
+
+instance BottomLattice () where
+   bottom = ()

@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 -- | Precision benchmarks by comparing blame errors against blame errors in a concrete interpreter.
 --
 -- These benchmarks assume that the `simpleactor` language is installed by running `raco pkg install`
@@ -14,12 +15,8 @@ import Syntax.Scheme.Parser
 import Syntax.Span
 import RIO hiding (Handle)
 import qualified RIO.Set as Set
-import qualified RIO.Map as Map
 import System.Directory
 import System.Process
-import Syntax.Compiler (parseFromString')
-import qualified Analysis.SimpleActor.Fixpoint.Modular as Analysis
-import qualified Analysis.SimpleActor.Fixpoint.Sequential as SeqAnalysis
 import Control.Monad.Escape
 import Analysis.SimpleActor.Monad
 import Data.Monoid
@@ -147,18 +144,18 @@ getBlames = \case MayBoth _ es -> foldMap extractBlames (Set.toList es)
 -- | Analyze the given file, returns 'Nothing' if the analysis
 -- of that file times out (according to 'defaultAnalysisTimeout')
 analyzeFile :: FilePath -> MaybeT IO Results
-analyzeFile inputFilename = do
+analyzeFile _inputFilename = undefined
     -- parse the file
-    program <- liftIO (readFile inputFilename) <&> (either error id . parseFromString' (Just inputFilename))
-    result <- MaybeT $ timeout defaultAnalysisTimeout $ Analysis.analyze program
-    let sequentialResults = Analysis.resultMap result
-    liftIO (putStrLn $ "analysis of " ++ inputFilename ++ " completed")
+    -- program <- liftIO (readFile inputFilename) <&> (either error id . parseFromString' (Just inputFilename))
+    -- result <- MaybeT $ timeout defaultAnalysisTimeout $ Analysis.analyze program
+    -- let sequentialResults = Analysis.resultMap result
+    -- liftIO (putStrLn $ "analysis of " ++ inputFilename ++ " completed")
 
-    -- process results    
-    let sequentialResMap = fmap SeqAnalysis.cmpRes sequentialResults
-    let blameRes = foldMap (foldMap (getBlames . SeqAnalysis.escapeRes . snd) . Map.toList . snd) (Map.toList sequentialResMap)
+    -- -- process results    
+    -- let sequentialResMap = fmap SeqAnalysis.cmpRes sequentialResults
+    -- let blameRes = foldMap (foldMap (getBlames . SeqAnalysis.escapeRes . snd) . Map.toList . snd) (Map.toList sequentialResMap)
 
-    return $ Results blameRes
+    -- return $ Results blameRes
 
 ------------------------------------------------------------
 -- Precision results

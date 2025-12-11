@@ -10,7 +10,6 @@ import Text.Printf
 import qualified Data.Map as Map
 import Syntax.Simplifier
 import Analysis.SimpleActor.Fixpoint.ModularModConc
-import Analysis.SimpleActor.Fixpoint.Common (ActorMai)
 import Options.Applicative
 import Syntax.AST  
 import Control.Monad
@@ -34,8 +33,6 @@ import Syntax.ErlangToSimpleActor
 import Text.Pretty.Simple (pPrint)
 import qualified Syntax.SimpleActor.CoreToSimpleActor as CoreToSimpleActor
 import qualified Syntax.CoreErlang as CoreErlang
-import qualified Analysis.Actors.Mailbox.Graph as Graph
-import Analysis.Actors.Mailbox.GraphToSet (GraphToSet(..))
 
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
@@ -260,34 +257,34 @@ coreErlang CoreErlangOptions { .. } = do
        createDirectoryIfMissing True coreErlangOutputDir
 
        -- Write DOT graphs for each actor's mailbox
-       writeDotGraphs coreErlangOutputDir mbs
+       -- writeDotGraphs coreErlangOutputDir mbs
 
-       putStrLn $ "DOT graphs written to " ++ coreErlangOutputDir
+       -- putStrLn $ "DOT graphs written to " ++ coreErlangOutputDir
 
 
 -- | Write DOT graphs for all mailboxes to the specified output directory
-writeDotGraphs :: String -> ActorMai -> IO ()
-writeDotGraphs outputDir mailboxes = do
-  forM_ (Map.toList mailboxes) $ \(actorRef, mailbox) -> do
-    let actorName = sanitizeFilename (show actorRef)
-    case mailbox of
-      GraphAbstraction graphMailbox -> do
-        let messageGraphs = Set.toList $ Graph.getMessageGraphs graphMailbox
-        forM_ (zip [1..] messageGraphs) $ \(idx :: Int, messageGraph) -> do
-          let dotContent = Graph.toDot messageGraph
-          let filename = outputDir ++ "/" ++ actorName ++ "_graph_" ++ show idx ++ ".dot"
-          writeFile filename dotContent
-          putStrLn $ "  Written: " ++ filename
-      SetAbstraction _ ->
-        putStrLn $ "  Skipping " ++ actorName ++ " (SetAbstraction, no graph structure)"
+-- writeDotGraphs :: String -> ActorMai -> IO ()
+-- writeDotGraphs outputDir mailboxes = do
+--   forM_ (Map.toList mailboxes) $ \(actorRef, mailbox) -> do
+--     let actorName = sanitizeFilename (show actorRef)
+--     case mailbox of
+--       GraphAbstraction graphMailbox -> do
+--         let messageGraphs = Set.toList $ Graph.getMessageGraphs graphMailbox
+--         forM_ (zip [1..] messageGraphs) $ \(idx :: Int, messageGraph) -> do
+--           let dotContent = Graph.toDot messageGraph
+--           let filename = outputDir ++ "/" ++ actorName ++ "_graph_" ++ show idx ++ ".dot"
+--           writeFile filename dotContent
+--           putStrLn $ "  Written: " ++ filename
+--       SetAbstraction _ ->
+--         putStrLn $ "  Skipping " ++ actorName ++ " (SetAbstraction, no graph structure)"
 
 -- | Sanitize a filename by replacing problematic characters
-sanitizeFilename :: String -> String
-sanitizeFilename = map sanitizeChar
-  where
-    sanitizeChar c
-      | c `elem` ['/', '\\', ':', '*', '?', '"', '<', '>', '|'] = '_'
-      | otherwise = c
+-- sanitizeFilename :: String -> String
+-- sanitizeFilename = map sanitizeChar
+--   where
+--     sanitizeChar c
+--       | c `elem` ['/', '\\', ':', '*', '?', '"', '<', '>', '|'] = '_'
+--       | otherwise = c
 
 
 ------------------------------------------------------------

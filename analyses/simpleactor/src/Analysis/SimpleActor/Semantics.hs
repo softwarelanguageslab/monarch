@@ -79,7 +79,7 @@ instance MonadLayer (ApplyT v) where
 instance MonadTrans (ApplyT v) where
    lift = upperM
 
-instance (EvalM v k m) => MonadApply v (ApplyT v m) where
+instance (EvalM e mb v k m) => MonadApply v (ApplyT v m) where
    applyFun expr fun ops = ApplyT ask >>= (\cmp -> lift $ apply cmp expr fun ops)
 
 
@@ -90,16 +90,16 @@ runApplyT r = flip runReaderT r . runApplyT'
 -- Evaluation
 ------------------------------------------------------------
 
-showIfBot :: EvalM v k m => String -> v -> m v
+showIfBot :: EvalM e mb v k m => String -> v -> m v
 showIfBot s v = (if v == bottom then trace s else id) (return v)
 
-eval :: forall v m k . EvalM v k m => Cmp -> m v
+eval :: forall v m k e mb  . EvalM e mb v k m => Cmp -> m v
 eval = fix evalCmp
    where evalCmp recur (FuncBdy (Lam _ bdy _)) = eval' recur bdy
          evalCmp recur (ActorExp e) = eval' recur e
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
-eval'' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
+eval'' :: forall v m k e mb . EvalM e mb v k m => (Cmp -> m v) -> Exp -> m v
 eval'' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
 eval'' _ (Literal lit _) = return (injectLit lit)
 eval'' rec e@(App e1 es _) = do
@@ -117,8 +117,7 @@ eval'' _rec (Spawn e _) =
    liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
 eval'' _ (Terminate _) = terminate $> nil
 eval'' rec (Receive pats _) = do
-   self <- getSelf
-   receive self $
+   receivePartitioned $  
       matchList
          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
          pats
@@ -162,21 +161,21 @@ eval'' rec (Error e loc) =
    eval' rec e >>= escape . flip BlameError loc . show
 eval'' _ e = error $  "unsupported expression: " ++ show e
 
-eval' :: forall v m k . EvalM v k m => (Cmp -> m v) -> Exp -> m v
+eval' :: forall v m k e mb . EvalM e mb v k m => (Cmp -> m v) -> Exp -> m v
 eval' = eval''
 
-trySend :: PrimM v k m => v -> v -> m ()
+trySend :: PrimM e mb v k m => v -> v -> m ()
 trySend ref p =
    cond   (fromBL @(CP Bool) (isActorRef ref))
-          (mjoinMap (`send'` p) (arefs' ref))
+          (mjoinMap (`sendPartitioned` p) (arefs' ref))
           (escape NotAnActorReference)
 
-apply :: EvalM v k m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
+apply :: EvalM e mb v k m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
 apply rec e v vs = conds
    [(pure (isClo v), mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
     (pure (isPrim v), mjoinMap (\nam -> applyPrimitive rec nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))
-applyClosure :: EvalM v k m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
+applyClosure :: EvalM e mb v k m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e(lam@(Lam prs _ _), env) rec vs =
    if length prs /= length vs then
       error "invalid number of arguments"
@@ -187,13 +186,13 @@ applyClosure e(lam@(Lam prs _ _), env) rec vs =
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _ _ = error "invalid closure"
 
-applyPrimitive :: forall v m k . (EvalM v k m) => (Cmp -> m v) -> String -> Exp -> [v] -> m v
+applyPrimitive :: forall v m k e mb . (EvalM e mb v k m) => (Cmp -> m v) -> String -> Exp -> [v] -> m v
 applyPrimitive rec prm expr ops =
    runApplyT rec $ (runPrimitive $ fromMaybe (error $ "could not find " ++ prm) $ lookupPrimitive prm) expr ops
 
 type Mapping v = Map Ide v
 
-allocMapping :: EvalM v k m => Map Ide v -> m (Env v)
+allocMapping :: EvalM e mb v k m => Map Ide v -> m (Env v)
 allocMapping bds = do
    -- TODO: clean this up
    env <- getEnv
@@ -203,7 +202,7 @@ allocMapping bds = do
 -- against a value.
 --
 -- NOTE: written in CPS because @Exp@ is not @Joinable@
-matchList :: EvalM v k m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
+matchList :: EvalM e mb v k m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
 matchList _ [] _ = escape MatchError
 matchList f ((pat, e):pats) value =
    -- TODO: don't rethrow the error, use `catchOn` for this
@@ -261,22 +260,22 @@ injectLit (String _)     = error "cannot inject a string"
 -- Primitives
 ------------------------------------------------------------
 
-newtype SAPrim v = SAPrim (forall k m . (PrimM v k m) => [v] -> Exp -> m v)
+newtype SAPrim v = SAPrim (forall e mb k m . (PrimM e mb v k m) => [v] -> Exp -> m v)
 
 instance SimpleActorPrimitive v (SAPrim v) where
    runPrimitive (SAPrim p) = flip p
 
 -- | A nullary primitive
-aprim0 :: (forall k m . (PrimM v k m) => Exp -> m v) -> SAPrim v
+aprim0 :: (forall e mb k m . (PrimM e mb v k m) => Exp -> m v) -> SAPrim v
 aprim0 f = SAPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall k m . PrimM v k m => v -> Exp -> m v) -> SAPrim v
+aprim1 :: (forall e mb k m . PrimM e mb v k m => v -> Exp -> m v) -> SAPrim v
 aprim1 f = SAPrim $  \case [v] -> f v
                            vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall k m . PrimM v k m => v -> v -> Exp -> m v) -> SAPrim v
+aprim2 :: (forall e mb k m . PrimM e mb v k m => v -> v -> Exp -> m v) -> SAPrim v
 aprim2 f = SAPrim $ \case [v1, v2] -> f v1 v2
                           vs -> const $ escape $ ArityMismatch 2 (length vs)
 

@@ -26,9 +26,7 @@ library
       Analysis.SimpleActor
       Analysis.SimpleActor.ErlangPrimitives
       Analysis.SimpleActor.Fixpoint.Common
-      Analysis.SimpleActor.Fixpoint.Modular
       Analysis.SimpleActor.Fixpoint.ModularModConc
-      Analysis.SimpleActor.Fixpoint.Sequential
       Analysis.SimpleActor.Fixpoint.SequentialModConc
       Analysis.SimpleActor.Infer
       Analysis.SimpleActor.Infer.Common

@@ -18,6 +18,7 @@ import Analysis.Actors.Mailbox.Class (Mailbox)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
+import Lattice.Class (BottomLattice)
 
 -- | A mailbox partitioned according to partion "e"
 -- and mailbox "mb".
@@ -27,9 +28,11 @@ import qualified Data.Set as Set
 -- messages within a partitioning can be ordered and can have multiplicity
 -- but this is up to the used abstraction.
 newtype PartitionedMailbox e msg mb = PartitionedMailbox (Map e mb)
+                                    deriving (Show)
 
 -- | Point-wise joining
 deriving instance (Ord e, Ord mb, Joinable mb) => Joinable (PartitionedMailbox e msg mb)
+deriving instance (Ord e, Ord mb, BottomLattice mb) => BottomLattice (PartitionedMailbox e msg mb)
 deriving instance (Eq e, Eq msg, Eq mb) => Eq (PartitionedMailbox e msg mb)
 deriving instance (Ord e, Ord msg, Ord mb) => Ord (PartitionedMailbox e msg mb)
 
@@ -77,4 +80,3 @@ dequeue (PartitionedMailbox mbs) = foldMap (\e -> Set.map (updateMailbox e) $ MB
 -- | Partitions based on the unit (or isomorphic datatype) group all
 -- partitions into a single one, leading to the most imprecise partitioning.
 type UnitPartitionedMailbox msg mb = PartitionedMailbox () msg mb
-

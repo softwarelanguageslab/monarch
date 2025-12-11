@@ -20,6 +20,7 @@ import Analysis.Monad (MonadDependencyTrigger)
 import Domain.Core.AbstractCount (AbstractCount)
 import Analysis.Actors.Mailbox.GraphToSet (GraphToSet)
 import Analysis.SimpleActor.Monad (SimpleActorContext(..))
+import Analysis.Actors.Mailbox.Partitioned (PartitionedMailbox)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -31,7 +32,7 @@ type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (SchemeAdr Exp)
 type ActorEnv = HashMap String (SchemeAdr Exp K)
 -- | Global mailboxes
-type ActorMai = Map ActorRef (GraphToSet ActorVlu)
+type ActorMai = Map ActorRef PMB
 type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
 -- | Type of path constraints used in the "SimpleActor" analysis
 type ActorPC  = PC (SchemeAdr Exp K)
@@ -41,6 +42,9 @@ type ActorCou = Map ActorRef AbstractCount
 
 -- | The type of mailbox abstraction
 type MB = GraphToSet ActorVlu
+
+type Partition = ()
+type PMB = PartitionedMailbox Partition ActorVlu MB
 
 ------------------------------------------------------------
 -- Utilities

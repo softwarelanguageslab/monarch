@@ -1,4 +1,4 @@
-module Analysis.SimpleActor(module Analysis.SimpleActor.Fixpoint.Modular) where 
+module Analysis.SimpleActor(module Analysis.SimpleActor.Fixpoint.ModularModConc) where 
    
-import Analysis.SimpleActor.Fixpoint.Modular
+import Analysis.SimpleActor.Fixpoint.ModularModConc
 

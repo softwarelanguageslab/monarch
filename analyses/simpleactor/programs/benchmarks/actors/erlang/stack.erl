@@ -1,3 +1,5 @@
+-module(stack).
+
 display_actor()->
     receive
         {message, _} -> display_actor()
@@ -11,7 +13,7 @@ stack_node(Content, Link)->
 
 stack_node_empty()->
     receive
-        {pop, _} -> ?soter_error("popping an empty stack");
+        {pop, _} -> error("popping an empty stack");
         {push, Content} -> stack_node(Content, stack_node_empty)
     end.
 

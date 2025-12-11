@@ -15,7 +15,7 @@ import Analysis.SimpleActor.Semantics (allPrimitives, initialSto)
 import Control.Monad.State
 import RIO.Partial (fromJust)
 import qualified RIO.Set as Set
-import Analysis.Actors.Monad (MonadMailbox, MonadSend(..), MonadReceive(..), MonadMailbox'(..), MailboxDep(..), runWithMailboxT)
+import Analysis.Actors.Monad (MonadMailbox, MonadSend(..), MonadReceive(..), MonadMailbox'(..), MailboxDep(..),  MonadPartitionedMailboxSend, runGlobalPartitionedMailboxT)
 import Solver (FormulaSolver, runCachedSolver)
 import Solver.Z3 (runZ3SolverWithSetup)
 import Analysis.Monad (runDebugIntraAnalysis, MonadIntraAnalysis (currentCmp), StoreM(..), StoreM'(..), runStoreT)
@@ -117,12 +117,11 @@ type ModularInterM m = (MonadState AnalysisState m,
                         MonadDependencyTracking ActorRef ActorRef m,
                         MonadDependencyTriggerTracking ActorRef ActorRef m,
                         MonadDependencyTracking ActorRef ActorResOut m,
-                        MonadDependencyTracking ActorRef (MailboxDep ActorRef MB) m,
+                        MonadDependencyTracking ActorRef (MailboxDep ActorRef PMB) m,
                         WorkListM m ActorRef,
                         -- MonadMailbox ActorVlu m,
-                        MonadMailbox' (ARef ActorVlu) MB m,
-                        MonadReceive ActorVlu m,
-                        MonadSend ActorVlu m,
+                        MonadMailbox' (ARef ActorVlu) PMB m,
+                        MonadPartitionedMailboxSend Partition ActorRef ActorVlu MB m,
                         -- Z3 Solvin g
                         FormulaSolver ActorVarAdr m,
                         -- Tracking actor spawns
@@ -161,10 +160,10 @@ analyze' maxSteps expr = fmap toAnalysisResult $ inter maxSteps
              & runWithDependencyTracking @ActorRef @ActorVarAdr
              & runWithDependencyTracking @ActorRef @ActorRef
              & runWithDependencyTracking @ActorRef @ActorResOut
-             & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef MB)
+             & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef PMB)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr
-             & runWithMailboxT @ActorVlu @MB
+             & runGlobalPartitionedMailboxT @Partition @ActorRef @ActorVlu @MB
              & C.runWithComponentTracking
              & runWithWorkList @(LIFOWorklist _)
              & runCachedSolver

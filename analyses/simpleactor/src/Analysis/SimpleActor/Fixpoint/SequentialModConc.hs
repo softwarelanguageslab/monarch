@@ -38,6 +38,8 @@ import Domain.Actor (ARef)
 import Syntax (SpanOf(spanOf))
 import Domain.Core.PairDomain.TopLifted ()
 import qualified Lattice.BottomLiftedLattice as BL
+import Analysis.Monad.Partition (PartitionT)
+import qualified Analysis.Partition as Partition
 
 ------------------------------------------------------------
 -- Shorthands
@@ -49,7 +51,7 @@ type SequentialRes = Val (SequentialT Identity) ActorVlu
 
 escapeRes :: SequentialRes -> MayEscape (Set ActorError) ActorVlu
 escapeRes = \case BL.Bottom -> Escape Set.empty
-                  BL.Value (a ::*:: _) -> a
+                  BL.Value (a ::*:: _ ::*:: _) -> a
 
 ------------------------------------------------------------
 -- Monad stack
@@ -62,9 +64,10 @@ type SequentialT m = MonadStack '[
                        AllocT Ide K (SchemeAdr Exp K),
                        AllocT Exp K (SchemeAdr Exp K),
                        MetaT,
-                       LocalMailboxT ActorVlu MB,
+                       LocalPartitionedMailboxT Partition ActorVlu MB,
                        ActorLocalT ActorVlu,
                        CtxT K,
+                       PartitionT Partition,
                        JoinT,
                        CacheT
                   ] m
@@ -81,14 +84,14 @@ type InterAnalysisM m = (MonadSchemeStore m,
                              Pid Exp K
                            ],
                          -- MonadMailbox ActorVlu m,
-                         MonadMailbox' ActorRef MB m,
+                         MonadMailbox' ActorRef PMB m,
                          MonadSpawn ActorVlu K m,
                          MonadIO m,
                          -- Flow sensitive stores
                          StoreM ActorAdr (StoreVal ActorVlu) m,
                          -- Mailboxes
-                         MonadDependencyTracking ActorRef (MailboxDep ActorRef MB) m,
-                         MonadSend ActorVlu m
+                         MonadDependencyTracking ActorRef (MailboxDep ActorRef PMB) m,
+                         MonadPartitionedMailboxSend Partition ActorRef ActorVlu MB m
                         )
 
 
@@ -103,7 +106,7 @@ instance (CtxM m K, MonadActorLocal ActorVlu m, Monad m) => CtxM (LocalMailboxT 
             ctx <- getCtx
             lowerM (withCtx (const (f ctx))) m
       getCtx = do (AdrCtx callSites maxCallSites _) <- upperM getCtx
-                  AdrCtx callSites maxCallSites <$> (ActorCtx <$> getSelf)
+                  AdrCtx callSites maxCallSites . ActorCtx <$> getSelf
 
 ------------------------------------------------------------
 -- Actor modular requirements
@@ -112,20 +115,20 @@ instance (CtxM m K, MonadActorLocal ActorVlu m, Monad m) => CtxM (LocalMailboxT 
 -- | Collected results
 newtype ActorRes = ActorRes {
             -- | Result for each component in the inner-actor analysis
-            cmpRes :: Map SequentialCmp SequentialRes    
+            cmpRes :: Map SequentialCmp SequentialRes
       } deriving (Ord, Eq, Show)
 
 type MonadActorModular m = (
     -- Dependencies can be tracked between the stores
     -- of each actor, in order to find which memory is shared.
     MonadActorStoreDependencyTracking m,
-    MonadDependencyTracking ActorRef (MailboxDep ActorRef MB) m,
+    MonadDependencyTracking ActorRef (MailboxDep ActorRef PMB) m,
     -- The sequential analysis can trigger new actors to be spawned
     WorkListM m ActorRef,
     -- Global mailboxes
     -- MonadMailbox ActorVlu m,
-    MonadMailbox' (ARef ActorVlu) MB m,
-    MonadSend ActorVlu m,
+    MonadMailbox' (ARef ActorVlu) PMB m,
+    MonadPartitionedMailboxSend Partition ActorRef ActorVlu MB m,
     -- Spawning actors
     MonadSpawn ActorVlu K m,
     -- Keep track of results for each function call within
@@ -144,16 +147,18 @@ type MonadActorModular m = (
 ------------------------------------------------------------
 
 spanOfCmp :: SequentialCmp -> Span
-spanOfCmp (exp ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
+spanOfCmp (exp ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
 
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
-intra _ cmp = do
-          runFixT @(SequentialT (IntraAnalysisT SequentialCmp m)) eval cmp
-                        & runAlloc VarAdr -- TODO: use the actual context
-                        & runAlloc PtrAdr -- problem: current context is infinite
-                        & runIntraAnalysis cmp
-                        & void
+intra _ cmp =
+         runFixT @(SequentialT (IntraAnalysisT SequentialCmp m))
+                  (eval @_ @_ @_ @Partition @MB)
+                  cmp
+       & runAlloc VarAdr -- TODO: use the actual context
+       & runAlloc PtrAdr -- problem: current context is infinite
+       & runIntraAnalysis cmp
+       & void
 
 
 -- | Inter-analysis
@@ -161,7 +166,7 @@ inter :: InterAnalysisM m
       => Exp         -- ^ the actor expression to analyze
       -> ActorEnv    -- ^ the environment of variables captured by the actor expression
       -> ActorRef    -- ^ the current actor reference
-      -> MB          -- ^ the initial mailbox
+      -> PMB         -- ^ the initial mailbox
       -> m ()
 inter exp environment ref mb = iterateWL' initialCmp (intra ref)
   where initialCmp = ActorExp exp         -- component to analyze
@@ -171,9 +176,8 @@ inter exp environment ref mb = iterateWL' initialCmp (intra ref)
                 <+> mb                    -- initial mailbox
                 <+> ref                   -- current `self`
                 <+> initialContext 5      -- address context
+                <+> Partition.empty       -- the empty partition
                 -- <+> emptyPC
-
-
 
 -- | Analyze a single actor until a fix point is reached
 analyze :: forall m  . MonadActorModular m
@@ -198,4 +202,4 @@ analyze exp env ref = do
             -- & runStoreT @ActorSto @(SchemeAdr Exp K) @(StoreVal ActorVlu) sto
 
       MapM.put (ActorResOut ref) (extractVal res)
-  where extractVal (_ ::*:: res) = ActorRes res 
+  where extractVal (_ ::*:: res) = ActorRes res

@@ -1,0 +1,301 @@
+module 'stack' ['module_info'/0,
+		'module_info'/1]
+    attributes [%% Line 1
+		( 'file'
+		  -| [{'line',1},{'column',1}] ) =
+		    %% Line 1
+		    ( [{[47|[85|[115|[101|[114|[115|[47|[98|[114|[97|[109|[47|[100|[101|[118|[101|[108|[111|[112|[109|[101|[110|[116|[47|[109|[97|[102|[50|[47|[97|[110|[97|[108|[121|[115|[101|[115|[47|[115|[105|[109|[112|[108|[101|[97|[99|[116|[111|[114|[47|[112|[114|[111|[103|[114|[97|[109|[115|[47|[98|[101|[110|[99|[104|[109|[97|[114|[107|[115|[47|[97|[99|[116|[111|[114|[115|[47|[101|[114|[108|[97|[110|[103|[47|[115|[116|[97|[99|[107|[46|[101|[114|[108]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]],1}]
+		      -| [{'line',1},{'column',1}] )]
+'display_actor'/0 =
+    %% Line 3
+    ( fun () ->
+	  ( letrec
+		'recv$^0'/0 =
+		    fun () ->
+			let <_3,_1> =
+			    primop 'recv_peek_message'
+				()
+			in  case _3 of
+			      <'true'> when 'true' ->
+				  %% Line 4
+				  ( case _1 of
+				      %% Line 5
+				      ( <( {( 'message'
+					      -| [{'line',5},{'column',9}] ),( _0
+									       -| [{'line',5},{'column',9}] )}
+					   -| [{'line',5},{'column',9}] )> when 'true' ->
+					    do  primop 'remove_message'
+						    ()
+						( apply ( 'display_actor'/0
+							  -| [{'line',5},{'column',9}] )
+						      ()
+						  -| [{'line',5},{'column',9}] )
+					-| [{'line',5},{'column',9}] )
+				      ( <Other> when 'true' ->
+					    do  primop 'recv_next'
+						    ()
+						( apply 'recv$^0'/0
+						      ()
+						  -| ['dialyzer_ignore'] )
+					-| ['compiler_generated','dialyzer_ignore'] )
+				    end
+				    -| [{'line',4},{'column',5}] )
+			      ( <'false'> when 'true' ->
+				    let <_2> =
+					primop 'recv_wait_timeout'
+					    ('infinity')
+				    in  case _2 of
+					  <'true'> when 'true' ->
+					      'true'
+					  ( <'false'> when 'true' ->
+						( apply 'recv$^0'/0
+						      ()
+						  -| ['dialyzer_ignore'] )
+					    -| ['dialyzer_ignore'] )
+					end
+				-| ['dialyzer_ignore'] )
+			    end
+	    in  ( apply 'recv$^0'/0
+		      ()
+		  -| ['dialyzer_ignore'] )
+	    -| ['letrec_goto','no_inline'] )
+      -| [{'line',3},{'column',1},{'function',{'display_actor',0}}] )
+'stack_node'/2 =
+    %% Line 8
+    ( fun (( _0
+	     -| [{'line',8},{'column',1}] ),( _1
+					      -| [{'line',8},{'column',1}] )) ->
+	  ( letrec
+		'recv$^1'/0 =
+		    fun () ->
+			let <_7,_5> =
+			    primop 'recv_peek_message'
+				()
+			in  case _7 of
+			      <'true'> when 'true' ->
+				  %% Line 9
+				  ( case _5 of
+				      %% Line 10
+				      ( <( {( 'pop'
+					      -| [{'line',10},{'column',9}] ),( Customer
+										-| [{'line',10},{'column',9}] )}
+					   -| [{'line',10},{'column',9}] )> when 'true' ->
+					    do  primop 'remove_message'
+						    ()
+						do  ( call ( 'erlang'
+							     -| [{'line',10},{'column',9}] ):( '!'
+											       -| [{'line',10},{'column',9}] )
+							  (( Customer
+							     -| [{'line',10},{'column',9}] ), ( {( 'message'
+												   -| [{'line',10},{'column',9}] ),( _0
+																     -| [{'line',8},{'column',1}] )}
+												-| [{'line',10},{'column',9}] ))
+						      -| [{'line',10},{'column',9}] )
+						    ( apply ( _1
+							      -| [{'line',8},{'column',1}] )
+							  ()
+						      -| [{'line',10},{'column',9}] )
+					-| [{'line',10},{'column',9}] )
+				      %% Line 11
+				      ( <( {( 'push'
+					      -| [{'line',11},{'column',9}] ),( NewContent
+										-| [{'line',11},{'column',9}] )}
+					   -| [{'line',11},{'column',9}] )> when 'true' ->
+					    do  primop 'remove_message'
+						    ()
+						let <_2> =
+						    fun () ->
+							( apply ( 'stack_node'/2
+								  -| [{'line',11},{'column',9}] )
+							      (( _0
+								 -| [{'line',8},{'column',1}] ), ( _1
+												   -| [{'line',8},{'column',1}] ))
+							  -| [{'line',11},{'column',9}] )
+						in  ( apply ( 'stack_node'/2
+							      -| [{'line',11},{'column',9}] )
+							  (( NewContent
+							     -| [{'line',11},{'column',9}] ), ( _2
+												-| [{'line',11},{'column',9}] ))
+						      -| [{'line',11},{'column',9}] )
+					-| [{'line',11},{'column',9}] )
+				      ( <Other> when 'true' ->
+					    do  primop 'recv_next'
+						    ()
+						( apply 'recv$^1'/0
+						      ()
+						  -| ['dialyzer_ignore'] )
+					-| ['compiler_generated','dialyzer_ignore'] )
+				    end
+				    -| [{'line',9},{'column',5}] )
+			      ( <'false'> when 'true' ->
+				    let <_6> =
+					primop 'recv_wait_timeout'
+					    ('infinity')
+				    in  case _6 of
+					  <'true'> when 'true' ->
+					      'true'
+					  ( <'false'> when 'true' ->
+						( apply 'recv$^1'/0
+						      ()
+						  -| ['dialyzer_ignore'] )
+					    -| ['dialyzer_ignore'] )
+					end
+				-| ['dialyzer_ignore'] )
+			    end
+	    in  ( apply 'recv$^1'/0
+		      ()
+		  -| ['dialyzer_ignore'] )
+	    -| ['letrec_goto','no_inline'] )
+      -| [{'line',8},{'column',1},{'function',{'stack_node',2}}] )
+'stack_node_empty'/0 =
+    %% Line 14
+    ( fun () ->
+	  ( letrec
+		'recv$^0'/0 =
+		    fun () ->
+			let <_3,_1> =
+			    primop 'recv_peek_message'
+				()
+			in  case _3 of
+			      <'true'> when 'true' ->
+				  %% Line 15
+				  ( case _1 of
+				      %% Line 16
+				      ( <( {( 'pop'
+					      -| [{'line',16},{'column',9}] ),( _0
+										-| [{'line',16},{'column',9}] )}
+					   -| [{'line',16},{'column',9}] )> when 'true' ->
+					    do  primop 'remove_message'
+						    ()
+						( call ( 'erlang'
+							 -| [{'line',16},{'column',9}] ):( 'error'
+											   -| [{'line',16},{'column',9}] )
+						      (( [112|[111|[112|[112|[105|[110|[103|[32|[97|[110|[32|[101|[109|[112|[116|[121|[32|[115|[116|[97|[99|[107]]]]]]]]]]]]]]]]]]]]]]
+							 -| [{'line',16},{'column',9}] ))
+						  -| [{'line',16},{'column',9}] )
+					-| [{'line',16},{'column',9}] )
+				      %% Line 17
+				      ( <( {( 'push'
+					      -| [{'line',17},{'column',9}] ),( Content
+										-| [{'line',17},{'column',9}] )}
+					   -| [{'line',17},{'column',9}] )> when 'true' ->
+					    do  primop 'remove_message'
+						    ()
+						( apply ( 'stack_node'/2
+							  -| [{'line',17},{'column',9}] )
+						      (( Content
+							 -| [{'line',17},{'column',9}] ), ( 'stack_node_empty'
+											    -| [{'line',17},{'column',9}] ))
+						  -| [{'line',17},{'column',9}] )
+					-| [{'line',17},{'column',9}] )
+				      ( <Other> when 'true' ->
+					    do  primop 'recv_next'
+						    ()
+						( apply 'recv$^0'/0
+						      ()
+						  -| ['dialyzer_ignore'] )
+					-| ['compiler_generated','dialyzer_ignore'] )
+				    end
+				    -| [{'line',15},{'column',5}] )
+			      ( <'false'> when 'true' ->
+				    let <_2> =
+					primop 'recv_wait_timeout'
+					    ('infinity')
+				    in  case _2 of
+					  <'true'> when 'true' ->
+					      'true'
+					  ( <'false'> when 'true' ->
+						( apply 'recv$^0'/0
+						      ()
+						  -| ['dialyzer_ignore'] )
+					    -| ['dialyzer_ignore'] )
+					end
+				-| ['dialyzer_ignore'] )
+			    end
+	    in  ( apply 'recv$^0'/0
+		      ()
+		  -| ['dialyzer_ignore'] )
+	    -| ['letrec_goto','no_inline'] )
+      -| [{'line',14},{'column',1},{'function',{'stack_node_empty',0}}] )
+'main'/0 =
+    %% Line 21
+    ( fun () ->
+	  let <_0> =
+	      fun () ->
+		  %% Line 22
+		  ( apply ( 'stack_node_empty'/0
+			    -| [{'line',22},{'column',5}] )
+			()
+		    -| [{'line',22},{'column',5}] )
+	  in  let <P> =
+		  call %% Line 22
+		       ( 'erlang'
+			 -| [{'line',22},{'column',5}] ):%% Line 22
+							 ( 'spawn'
+							   -| [{'line',22},{'column',5}] )
+		      (%% Line 22
+		       ( _0
+			 -| [{'line',22},{'column',5}] ))
+	      in  let <_2> =
+		      fun () ->
+			  %% Line 23
+			  ( apply ( 'display_actor'/0
+				    -| [{'line',23},{'column',5}] )
+				()
+			    -| [{'line',23},{'column',5}] )
+		  in  let <Disp> =
+			  call %% Line 23
+			       ( 'erlang'
+				 -| [{'line',23},{'column',5}] ):%% Line 23
+								 ( 'spawn'
+								   -| [{'line',23},{'column',5}] )
+			      (%% Line 23
+			       ( _2
+				 -| [{'line',23},{'column',5}] ))
+		      in  do  %% Line 24
+			      ( call ( 'erlang'
+				       -| [{'line',24},{'column',5}] ):( '!'
+									 -| [{'line',24},{'column',5}] )
+				    (( P
+				       -| [{'line',24},{'column',5}] ), ( {'push',1}
+									  -| [{'line',24},{'column',5}] ))
+				-| [{'line',24},{'column',5}] )
+			      do  %% Line 25
+				  ( call ( 'erlang'
+					   -| [{'line',25},{'column',5}] ):( '!'
+									     -| [{'line',25},{'column',5}] )
+					(( P
+					   -| [{'line',25},{'column',5}] ), ( {'push',2}
+									      -| [{'line',25},{'column',5}] ))
+				    -| [{'line',25},{'column',5}] )
+				  do  %% Line 26
+				      ( call ( 'erlang'
+					       -| [{'line',26},{'column',5}] ):( '!'
+										 -| [{'line',26},{'column',5}] )
+					    (( P
+					       -| [{'line',26},{'column',5}] ), ( {'push',3}
+										  -| [{'line',26},{'column',5}] ))
+					-| [{'line',26},{'column',5}] )
+				      %% Line 27
+				      ( call ( 'erlang'
+					       -| [{'line',27},{'column',5}] ):( '!'
+										 -| [{'line',27},{'column',5}] )
+					    (( P
+					       -| [{'line',27},{'column',5}] ), ( {( 'pop'
+										     -| [{'line',27},{'column',5}] ),( Disp
+														       -| [{'line',27},{'column',5}] )}
+										  -| [{'line',27},{'column',5}] ))
+					-| [{'line',27},{'column',5}] )
+      -| [{'line',21},{'column',1},{'function',{'main',0}}] )
+'module_info'/0 =
+    ( fun () ->
+	  call 'erlang':'get_module_info'
+	      ('stack')
+      -| [{'function',{'module_info',0}}] )
+'module_info'/1 =
+    ( fun (_0) ->
+	  call 'erlang':'get_module_info'
+	      ('stack', ( _0
+			  -| [{'function',{'module_info',1}}] ))
+      -| [{'function',{'module_info',1}}] )
+end
