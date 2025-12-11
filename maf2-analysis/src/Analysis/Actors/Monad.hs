@@ -12,7 +12,7 @@ module Analysis.Actors.Monad(
    ActorLocalT,
    send',
    LocalMailboxT,
-   MailboxDep(..)
+   MailboxDep(..),
 ) where
 
 import Domain.Actor
@@ -33,6 +33,11 @@ import Control.Monad.Cond (ifM)
 import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, register, DebugIntraAnalysisT)
 import qualified Control.Monad.State as State
 import qualified Analysis.Actors.Mailbox.Class as MB
+import Data.Set (Set)
+import Analysis.Monad.Partition (MonadPartition)
+import Analysis.Actors.Mailbox.Partitioned (PartitionedMailbox)
+import qualified Analysis.Actors.Mailbox.Partitioned as Partitioned
+import qualified Analysis.Monad.Partition as MonadPartition
 
 
 -- | Receive messages of type 'v' in monadic context 'm'
@@ -133,7 +138,7 @@ deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinabl
 instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadSend v (GlobalMailboxT v mb m) where
   send ref v = GlobalMailboxT $ ifM (liftA2 (==) mbs mbs') (return False) ((State.put =<< mbs') >> return True)
     where mbs  =  State.get
-          mbs' =  gets (Map.insertWith (\_ old ->  enqueue v old) ref (enqueue v empty))   
+          mbs' =  gets (Map.insertWith (\_ old ->  enqueue v old) ref (enqueue v empty))
 
 instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadReceive v (GlobalMailboxT v mb m) where
   -- NOTE: we cannot use `MonadJoin` here since we have passed the `JoinT` layer in the monadic stack,
@@ -183,3 +188,65 @@ instance (MonadMailbox' ref mb m, MonadDependencyTracking cmp (MailboxDep ref mb
 -- instance (MonadMailbox v m, WorkListM m cmp, MonadIO m, Show cmp, MonadDependencyTracking cmp (Dep v) m) => MonadMailbox v (IntraAnalysisT cmp m) where
 --   send to msg = (currentCmp >>= (liftIO . putStrLn . ("cmp: " ++) . show)) >> trigger @cmp to >> upperM (send to msg)
 --   receive' ref = dependent @cmp ref >> upperM (receive' ref)
+
+------------------------------------------------------------
+-- Partitioned mailboxes
+------------------------------------------------------------
+
+
+-- Unfortunately, we have to duplicate all the abstractions (i.e., "MonadSend", "MonadReceive", ...) so that
+-- they work for partitioned mailboxes.
+--
+-- This is because using partitioned mailboxes is not entirely transparent as their partitions have
+-- to be integrated so that the traces also become partitioned.
+--
+-- Since partitioned mailboxes can express the same semantics as non-partitioned ones (i.e., by using the unit partition)
+-- the non-partitioned mailboxes will become deprecated and will be removed from the implementation in the future.
+
+
+-- | The API to a partitioned mailbox is similar to a state monad, this is so that the monadic actions
+-- are easily implemented by a 'MonadLayer' instance. A higher-level API is then given as a set of polymorphic
+-- functions, this API also manages the partitioned trace using the 'MonadPartition' type class.
+class MonadPartitionedMailbox e ref msg mb m | mb -> msg e where
+  getsPartitionedMailbox :: (PartitionedMailbox e msg mb -> a) -> ref -> m a
+  -- | Modifies the given maiblox, returns "True" if the mailbox was modified, and "False" otherwise
+  modifyPartitionedMailbox :: (PartitionedMailbox e msg mb -> PartitionedMailbox e msg mb) -> ref -> m Bool
+
+instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad m, MonadPartitionedMailbox e ref msg mb m) => MonadPartitionedMailbox e ref msg mb (t m) where
+  getsPartitionedMailbox f = upperM . getsPartitionedMailbox f
+  modifyPartitionedMailbox f = upperM . modifyPartitionedMailbox f
+
+
+type MonadMailboxPartitioning e v mb m = (
+  -- Monadic constraints
+  MonadPartition e m,
+  MonadPartitionedMailbox e (ARef v) v mb m,
+  MonadActorLocal v m,
+  MonadJoinable m,
+  MonadBottom m,
+  Monad m,
+  -- Constraints on values and partitions
+  Ord e,
+  Ord v,
+  Joinable v,
+  PartialOrder e,
+  Mailbox mb v)
+
+
+-- | Receives a message from the partitioned mailbox
+receivePartitioned :: forall e v mb m .  MonadMailboxPartitioning e v mb m => (v-> m v) -> m v
+receivePartitioned f =  do
+  ref <- getSelf
+  getsPartitionedMailbox @_ @_ @_ @mb Partitioned.dequeue ref >>= mjoins . map (\(msg, e, mb') -> MonadPartition.integrate e >> modifyPartitionedMailbox (const mb') ref >> f msg) . Set.toList
+
+
+-- | Peeks at the top of the message queue
+peekPartitioned :: forall e v mb m . MonadMailboxPartitioning e v mb m => (v -> m v) -> m v
+peekPartitioned f = 
+  getSelf >>= getsPartitionedMailbox @_ @_ @_ @mb Partitioned.peek >>= mjoins . map (\(msg, e) -> MonadPartition.integrate e >> f msg) . Set.toList
+
+-- | Sends a message to the given actor reference
+sendMessage :: forall e v mb m . MonadMailboxPartitioning e v mb m  => ARef v -> v -> m ()
+sendMessage ref msg = do
+  currentPartition <- MonadPartition.get
+  void $ modifyPartitionedMailbox @_ @_ @_ @mb (Partitioned.enqueue currentPartition msg) ref
