@@ -13,6 +13,10 @@ module Analysis.Actors.Monad(
    send',
    LocalMailboxT,
    MailboxDep(..),
+   MonadMailboxPartitioning,
+   peekPartitioned,
+   receivePartitioned,
+   sendPartitioned  
 ) where
 
 import Domain.Actor
@@ -246,7 +250,7 @@ peekPartitioned f =
   getSelf >>= getsPartitionedMailbox @_ @_ @_ @mb Partitioned.peek >>= mjoins . map (\(msg, e) -> MonadPartition.integrate e >> f msg) . Set.toList
 
 -- | Sends a message to the given actor reference
-sendMessage :: forall e v mb m . MonadMailboxPartitioning e v mb m  => ARef v -> v -> m ()
-sendMessage ref msg = do
+sendPartitioned :: forall e v mb m . MonadMailboxPartitioning e v mb m  => ARef v -> v -> m ()
+sendPartitioned ref msg = do
   currentPartition <- MonadPartition.get
   void $ modifyPartitionedMailbox @_ @_ @_ @mb (Partitioned.enqueue currentPartition msg) ref
