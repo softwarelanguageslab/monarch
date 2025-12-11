@@ -31,13 +31,13 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
 import Control.Monad.State (StateT (StateT), gets, runStateT, MonadState (put))
-import Analysis.Actors.Mailbox (Mailbox (hasMessage), dequeue, enqueue, empty)
+import Analysis.Actors.Mailbox.Class
+    ( Mailbox(enqueue, empty, dequeue) )
 import Data.Functor
 import Control.Monad.Cond (ifM)
 import Analysis.Monad (IntraAnalysisT, MonadDependencyTracking, register, DebugIntraAnalysisT)
 import qualified Control.Monad.State as State
 import qualified Analysis.Actors.Mailbox.Class as MB
-import Data.Set (Set)
 import Analysis.Monad.Partition (MonadPartition)
 import Analysis.Actors.Mailbox.Partitioned (PartitionedMailbox)
 import qualified Analysis.Actors.Mailbox.Partitioned as Partitioned
