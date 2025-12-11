@@ -27,6 +27,7 @@ import qualified Data.Set as Set
 -- messages within a partitioning can be ordered and can have multiplicity
 -- but this is up to the used abstraction.
 newtype PartitionedMailbox e msg mb = PartitionedMailbox (Map e mb)
+                                    deriving (Show)
 
 -- | Point-wise joining
 deriving instance (Ord e, Ord mb, Joinable mb) => Joinable (PartitionedMailbox e msg mb)
