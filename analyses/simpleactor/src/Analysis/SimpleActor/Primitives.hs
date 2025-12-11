@@ -11,7 +11,7 @@ data SimpleActorPrim v where
 
 -- | Primitives must be able to provide a function to run them
 class SimpleActorPrimitive v p | p -> v where
-  runPrimitive :: forall k m . PrimM v k m => p -> (Exp -> [v] -> m v)
+  runPrimitive :: forall e mb k m . PrimM e mb v k m => p -> (Exp -> [v] -> m v)
   
 -- | 'SimpleActorPrim' objects are also primitives
 instance SimpleActorPrimitive v (SimpleActorPrim v) where
