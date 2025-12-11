@@ -67,6 +67,9 @@ type SequentialRes = Val (SequentialT Identity) ActorVlu
 escapeRes :: SequentialRes -> MayEscape (Set ActorError) ActorVlu
 escapeRes (escapeValue ::*:: _) = escapeValue
 
+-- For testing: use the unit partition
+type Partition = ()
+
 ------------------------------------------------------------
 -- Monad stack
 ------------------------------------------------------------
@@ -386,7 +389,7 @@ intra selfRef cmp = do
           -- when True $ do
             -- liftIO (putStrLn $ "number of branches explored within intra " ++ show c ++ " in component at " ++ show (spanOfCmp cmp))
           mapM_ (uncurry writeMai) (Map.toList outMbs')
-      where eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval
+      where eval'' = runAroundT @_ @Cmp (`gc` traceCmp) . eval @_ @_ @_ @Partition
             save    = do
                   mbs <- State.get
                   cou <- getCounts
