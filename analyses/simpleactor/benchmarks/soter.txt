@@ -1,0 +1,15 @@
+file;main_module;main_function
+cell.erl;cell;main/0
+factorial.erl;factorial;main/0
+stack.erl;stack;main/0
+soter/parikh.erl;;
+soter/pipe-seq.erl;;
+soter/safe_send.erl;;
+soter/state_factory.erl;;
+soter/stutter.erl;;
+soter/unsafe_send.erl;;
+savina/count-seq.erl;;
+savina/count.erl;;
+savina/fjc-seq.erl;;
+savina/fjt-seq.erl;;
+savina/pp.erl;;

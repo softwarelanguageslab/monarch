@@ -10,7 +10,7 @@ display_actor()->
 stack_node(Content, Link)->
     receive
         {pop, Customer} -> Customer ! {message, Content}, Link();
-        {push, NewContent} -> stack_node(NewContent, fun()->stack_node(Content, Link) end)
+        {push, NewContent} -> stack_node(NewContent, fun() -> stack_node(Content, Link) end)
     end.
 
 stack_node_empty()->

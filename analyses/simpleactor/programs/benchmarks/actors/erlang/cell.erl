@@ -1,8 +1,11 @@
+-module(cell).
 -uncoverable("cell_mail > 2").
 -uncoverable("disp_mail > 1").
+-export([main/0]).
+
 
 cell(Content) ->
-    ?label_mail("cell_mail"),
+    monarch:label_mail("cell_mail"),
     receive
         {put, NewContent} ->
             cell(NewContent);
@@ -12,12 +15,12 @@ cell(Content) ->
     end.
 
 disp() ->
-    ?label_mail("disp_mail"),
+    monarch:label_mail("disp_mail"),
     receive
         {value, Content} ->
             if 
                 Content == 2 -> disp();
-                true -> ?soter_error("Error!")
+                true -> monarch:error("Error!")
             end
     end.
 

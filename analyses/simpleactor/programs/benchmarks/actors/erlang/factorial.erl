@@ -1,10 +1,10 @@
-%-module(factorial).
-%-export([main/0]).
+-module(factorial).
+-export([main/0]).
 -uncoverable("factorial_mail > 6").
 -uncoverable("customer_mail > 1").
 
 fact() ->
-    ?label_mail("factorial_mail"),
+    monarch:label_mail("factorial_mail"),
     receive
         {compute, 0, Customer} ->
             Customer ! {result, 1};
@@ -15,7 +15,7 @@ fact() ->
     fact().
 
 customer(N, Customer) ->
-    ?label_mail("customer_mail"),
+    monarch:label_mail("customer_mail"),
     receive
         {result, K} ->
             io:format("got result ~p on pid ~p ~n", [K, self()]),
