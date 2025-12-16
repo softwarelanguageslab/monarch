@@ -46,6 +46,7 @@ library
       Domain.Core.BoolDomain.ConstantPropagation
       Domain.Core.BoolDomain.Pair
       Domain.Core.BoolDomain.TopLifted
+      Domain.Core.BoundedCount
       Domain.Core.CharDomain
       Domain.Core.CharDomain.Class
       Domain.Core.CharDomain.ConstantPropagation

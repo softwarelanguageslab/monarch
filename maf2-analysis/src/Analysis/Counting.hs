@@ -9,8 +9,9 @@ import qualified Data.Map as Map
 import Data.Maybe (isNothing)
 
 -- | A mapping from elements to their count
-newtype CountMap e = CountingMap {getCountingMap :: Map e AbstractCount}
-                  deriving (Joinable, PartialOrder, BottomLattice, Eq, Ord)
+newtype CountMap e = CountingMap {
+  getCountingMap :: Map e AbstractCount
+  } deriving (Joinable, PartialOrder, BottomLattice, Eq, Ord)
 
 -- | Mark an entry in the counting map as "Infinte"
 markInfty :: Ord e => e -> CountMap e -> CountMap e
