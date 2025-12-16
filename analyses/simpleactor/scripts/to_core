@@ -169,7 +169,7 @@ build_line_map(SourceStr) ->
 
 print_warnings([]) -> ok;
 print_warnings(Warnings) ->
-    io:format("~nWarnings:~n"),
+    io:format(standard_error, "~nWarnings:~n", []),
     lists:foreach(fun({_File, Ws}) ->
         lists:foreach(fun({Line, Module, Desc}) ->
             io:format(standard_error, "  Line ~p: ~s~n", [Line, Module:format_error(Desc)])

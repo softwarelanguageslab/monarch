@@ -1,5 +1,7 @@
 -module(stack).
 
+-export([main/0]).
+
 display_actor()->
     receive
         {message, _} -> display_actor()
