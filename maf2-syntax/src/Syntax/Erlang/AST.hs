@@ -154,7 +154,7 @@ data ModuleInfo = ModuleInfo {
                       imports :: [QualifiedIdentifier],
                       unqualifiedImports :: [(ModuleName, FunctionIdentifier)],
                       erlangModule :: Module,
-                      moduleName :: String
+                      moduleName :: String,
                  }
                 deriving (Ord, Eq, Show)
 

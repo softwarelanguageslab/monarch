@@ -50,6 +50,7 @@ library
       Syntax.CoreErlang.AST
       Syntax.CoreErlang.Lexer
       Syntax.CoreErlang.Parser
+      Syntax.CoreErlang.Soter
       Syntax.CoreErlang.Tokens
       Syntax.Python.Compiler
       Syntax.Python.Parser
@@ -83,6 +84,7 @@ library
     , megaparsec ==9.7.*
     , mtl ==2.3.*
     , parsec >=3.1
+    , parser-combinators
     , process
     , template-haskell
     , transformers
@@ -123,6 +125,7 @@ test-suite maf2-syntax-test
     , megaparsec ==9.7.*
     , mtl ==2.3.*
     , parsec >=3.1
+    , parser-combinators
     , process
     , template-haskell
     , transformers

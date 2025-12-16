@@ -36,6 +36,7 @@ dependencies:
 - directory
 - filepath
 - extra
+- parser-combinators
 
 ghc-options:
 - -Wall
