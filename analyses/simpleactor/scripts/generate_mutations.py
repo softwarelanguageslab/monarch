@@ -3,7 +3,7 @@ import os
 import optparse
 from pathlib import Path
 import subprocess
-from common import input_output_cmdline_parser, read_inputs
+from preprocess.common import input_output_cmdline_parser, read_inputs
 
 ############################################################
 # Constants

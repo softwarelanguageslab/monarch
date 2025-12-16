@@ -50,14 +50,7 @@ def preprocess(input: Path, output_dir: Path, prefix: str | None = None, log_dir
     print(f"[*] Benchmark {input} successfully written to {output_path}")
 
 
-#############################################################
-## Entrypoint
-#############################################################
-
-if __name__ == "__main__":
-    ## Command-line parsing
-    args = common.input_output_cmdline_parser_full("Preprocess Erlang benchmarks from the given file")
-
+def main(args):
     benchmark_txt    = args.inputs_file
     benchmark_prefix = args.prefix
     output_dir       = args.outputs_dir
@@ -81,5 +74,13 @@ if __name__ == "__main__":
         print(f"[*] Processing {input_path}")
         preprocess(input_path, output_dir, benchmark_prefix, args.logging_dir)
     
-else:
-    raise Exception("Cannot use preprocess_erlang_benchmarks as a module")
+
+
+#############################################################
+## Entrypoint
+#############################################################
+
+if __name__ == "__main__":
+    ## Command-line parsing
+    args = common.input_output_cmdline_parser_full("Preprocess Erlang benchmarks from the given file")
+    main(args)
