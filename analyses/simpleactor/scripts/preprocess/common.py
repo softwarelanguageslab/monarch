@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 from dataclasses import dataclass
+import pandas as pd
 
 @dataclass 
 class CmdlineArgs:
@@ -36,10 +37,8 @@ def read_inputs(inputs_file):
     if not inputs_file.exists():
         raise RuntimeError("inputs file does not exists")
     
-    with open(inputs_file) as f:
-        input_files = [ Path(line.strip()) for line in f.readlines() ]
-
-    return input_files
+    df = pd.read_csv(inputs_file)
+    return df["filename"]
 
 def input_output_cmdline_parser_full(input_desc, output_desc = "Path the the output directory"):
     """
