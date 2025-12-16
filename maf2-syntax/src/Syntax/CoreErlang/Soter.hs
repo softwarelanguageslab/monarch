@@ -16,6 +16,9 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Data.Void
 import Control.Monad.Combinators.Expr
+import qualified Syntax.CoreErlang.AST as CoreErlang
+import Data.Either (fromRight)
+import Data.Maybe (fromJust)
 
 ------------------------------------------------------------
 -- Data Types
@@ -23,12 +26,11 @@ import Control.Monad.Combinators.Expr
 
 -- | A SOTER predicate
 data Predicate = Conj Predicate Predicate
-               | Pred Exp  
+               | Pred Exp
                deriving (Ord, Eq, Show)
 
 -- | The language that is actually supported in these "uncoverable" annotations
--- is not clearly documented in the SOTER papers, so we assume that a simple arithmic
--- and language is used.
+-- is not clearly documented in the SOTER papers, so we assume that a simple arithmic language is used.
 data Exp = Add Exp Exp
               | Sub Exp Exp
               | Lte Exp Exp
@@ -120,3 +122,18 @@ parsePredicate = do
   where
     parseBasicPredicate = parens parsePredicate
                       <|> (Pred <$> parseExp)
+
+parseFromString :: String -> Maybe Predicate
+parseFromString = either (const Nothing) Just . parse parsePredicate "<unknown>"
+
+-------------------------------------------------------------
+-- Parse "uncoverable" attributes from a Core Erlang module
+-------------------------------------------------------------
+
+
+fromAttributes :: CoreErlang.Module -> [Predicate]
+fromAttributes mod =
+    map (parseAttribute . CoreErlang.attributeLiteral) attrs
+  where attrs = filter ((== "uncoverable") . CoreErlang.attributeName) $ CoreErlang.moduleAttributes mod
+        parseAttribute = fromJust . parseFromString . fromJust . CoreErlang.litToString
+

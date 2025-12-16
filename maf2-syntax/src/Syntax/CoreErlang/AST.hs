@@ -4,6 +4,7 @@ module Syntax.CoreErlang.AST where
 
 import Syntax.Span
 import Syntax.Ide
+import Data.Char
 
 -- | Auxilary function to created a span over multiple tokens/nodes
 spanning :: (SpanOf a, SpanOf b) => a -> b -> Span
@@ -17,6 +18,10 @@ spanning a b = ESpan {
 
 data Atom = Atom String Span
           deriving (Eq, Ord, Show)
+
+-- | Extract the name of an atom
+atomName :: Atom -> String
+atomName (Atom nam _) = nam
 
 instance SpanOf Atom where
    spanOf (Atom _ span) = span
@@ -40,6 +45,15 @@ instance SpanOf FunDef where
 data Attribute = Attribute (Ann Atom) (Ann Lit) Span
                deriving (Eq, Ord, Show)
 
+-- | Extract the name of an attribute
+attributeName :: Attribute -> String
+attributeName (Attribute annNam _ _) =
+   atomName $ unAnn annNam
+
+attributeLiteral :: Attribute -> Lit
+attributeLiteral (Attribute _ lit _) =
+   unAnn lit
+
 instance SpanOf Attribute where
    spanOf (Attribute _ _ span) = span
 
@@ -53,6 +67,19 @@ data Lit = CharLit Char Span
          | TupleLit [Lit] Span
          | ConsLit  Lit Lit Span
          deriving (Ord, Eq, Show)
+
+-- | Converts string literals and tuples of ASCII values into strings
+litToString :: Lit -> Maybe String
+litToString = \case CharLit c _ -> Just [c]
+                    StringLit s _ -> Just s
+                    TupleLit lits _ ->
+                        mapM (fmap chr . litToInt) lits
+                    _ -> Nothing
+
+-- | Extracts an integer from the literal if the literal is an integer, otherwise returns Nothing
+litToInt :: Lit -> Maybe Int
+litToInt = \case IntegerLit i _ -> Just (fromIntegral i)
+                 _ -> Nothing             
 
 instance SpanOf Lit where
    spanOf = \case CharLit _ s -> s
@@ -68,6 +95,11 @@ instance SpanOf Lit where
 data Ann a = Constr a
            | Ann a Annotation
            deriving (Eq, Ord, Show, Functor)
+
+-- | Extract the value from the annotation
+unAnn :: Ann a -> a
+unAnn = \case Constr a -> a
+              Ann a _ -> a
 
 instance (SpanOf a) => SpanOf (Ann a) where
    spanOf (Constr a) = spanOf a
