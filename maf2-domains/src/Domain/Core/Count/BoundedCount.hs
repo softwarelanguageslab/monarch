@@ -1,30 +1,33 @@
 -- | Bounded counting
-module Domain.Core.BoundedCount(
+module Domain.Core.Count.BoundedCount(
     BoundedCount,
-    inc,
-    zero,
-    infty
+    zero
   ) where
 
 import Lattice.Class
+import Domain.Core.Count.Class
+import GHC.Generics
+import Control.DeepSeq (NFData)
 
 -- | A monotonically increasing counter with a particular bound after which it is set to infinity
 data BoundedCount = Count Int Int | Infty
-                  deriving (Ord, Eq, Show)
+                  deriving (Ord, Eq, Show, Generic)
 
--- | Increment the counter
-inc :: BoundedCount -> BoundedCount
-inc Infty = Infty
-inc (Count n limit) =
-  if n < limit then Count (n + 1) limit else Infty
+
+
+instance NFData BoundedCount
+
+instance Count BoundedCount where
+  inc Infty = Infty
+  inc (Count n limit) =
+    if n < limit then Count (n + 1) limit else Infty
+
+  one = Count 1 1
+  infty = Infty
 
 -- | Create an zero counter with the given limit
 zero :: Int -> BoundedCount
 zero = flip Count 0
-
--- | Create an infinite value
-infty :: BoundedCount
-infty = Infty
 
 instance Joinable BoundedCount where
   join Infty _ = Infty
