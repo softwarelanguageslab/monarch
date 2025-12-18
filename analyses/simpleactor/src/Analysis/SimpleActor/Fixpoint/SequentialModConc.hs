@@ -24,7 +24,6 @@ import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)
 import Domain.Scheme.Store
 import Domain.Scheme.Class (Adr)
-import qualified RIO.Set as Set
 import Data.Tuple.Syntax
 
 import Analysis.SimpleActor.Fixpoint.Common
@@ -37,9 +36,11 @@ import Control.Fixpoint.WorkList (LIFOWorklist)
 import Domain.Actor (ARef)
 import Syntax (SpanOf(spanOf))
 import Domain.Core.PairDomain.TopLifted ()
-import qualified Lattice.BottomLiftedLattice as BL
 import Analysis.Monad.Partition (PartitionT)
 import qualified Analysis.Partition as Partition
+import Analysis.Monad.AbstractCount
+import Analysis.Counting (CountMap')
+import Domain.Core.Count.BoundedCount
 
 ------------------------------------------------------------
 -- Shorthands
@@ -50,8 +51,7 @@ type SequentialCmp = Key (SequentialT Identity) Cmp
 type SequentialRes = Val (SequentialT Identity) ActorVlu
 
 escapeRes :: SequentialRes -> MayEscape (Set ActorError) ActorVlu
-escapeRes = \case BL.Bottom -> Escape Set.empty
-                  BL.Value (a ::*:: _ ::*:: _) -> a
+escapeRes = \case (a ::*:: _ ::*:: _) -> a
 
 ------------------------------------------------------------
 -- Monad stack
@@ -68,20 +68,25 @@ type SequentialT m = MonadStack '[
                        ActorLocalT ActorVlu,
                        CtxT K,
                        PartitionT Partition,
-                       JoinT,
-                       CacheT
+                       CacheT,
+                       AbstractCountT MailboxLabel BoundedCount, 
+                       JoinT
                   ] m
 
 -- | SequentialIntraM denotes the remaining constraints needed for running the intra
 -- analysis.
 type InterAnalysisM m = (MonadSchemeStore m,
                          MapM SequentialCmp SequentialRes m,
+                         MapM CountIn (CountMap' MailboxLabel BoundedCount) m,
+                         MapM CountOut (CountMap' MailboxLabel BoundedCount) m,
                          WorkListM m SequentialCmp,
                          ComponentTrackingM m SequentialCmp,
                          DependsOn m SequentialCmp '[
                              SequentialCmp ,
                              SchemeAdr Exp K,
-                             Pid Exp K
+                             Pid Exp K,
+                             CountIn,
+                             CountOut
                            ],
                          -- MonadMailbox ActorVlu m,
                          MonadMailbox' ActorRef PMB m,
@@ -134,6 +139,7 @@ type MonadActorModular m = (
     -- Keep track of results for each function call within
     -- the actor.
     MapM ActorResOut ActorRes m,
+    MapM CountIn (CountMap' MailboxLabel BoundedCount) m,
     -- Global store for shared variables
     StoreM ActorAdr (StoreVal ActorVlu) m,
     -- Other constraints
@@ -149,14 +155,34 @@ type MonadActorModular m = (
 spanOfCmp :: SequentialCmp -> Span
 spanOfCmp (exp ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
 
+newtype CountIn = CountIn SequentialCmp
+                deriving (Ord, Eq, Show)
+newtype CountOut = CountOut SequentialCmp
+                deriving (Ord, Eq, Show)
+type LabelCount = CountMap' MailboxLabel BoundedCount
+
+-- | Add flow-sensitive counting of mailbox labels
+counting :: (MonadCache m,
+             MonadAbstractCount MailboxLabel BoundedCount m,
+             MapM CountIn LabelCount m,
+             MapM CountOut LabelCount m)
+         => (Cmp -> m ActorVlu)
+         -> Cmp -> m ActorVlu
+counting inner cmp = undefined           
+      
+      
+type IntraT m = SequentialT (IntraAnalysisT SequentialCmp m)
+
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
-intra _ cmp =
-         runFixT @(SequentialT (IntraAnalysisT SequentialCmp m))
-                  (eval @_ @_ @_ @Partition @MB)
-                  cmp
+intra _ cmp = do    
+         runFixT @(IntraT m)
+                 (eval @_ @_ @_ @Partition @MB <=< counting)
+                 cmp
        & runAlloc VarAdr -- TODO: use the actual context
        & runAlloc PtrAdr -- problem: current context is infinite
+       & evalWithAbstractCountT
+       & runJoinT
        & runIntraAnalysis cmp
        & void
 
@@ -191,10 +217,14 @@ analyze exp env ref = do
       -- compute the analysis of the actor and all its turns (according to its mailbox)
       res  <- inter exp env ref mb
             & runWithMapping @SequentialCmp @SequentialRes
+            & runWithMapping @CountIn @LabelCount
+            & runWithMapping @CountOut @LabelCount
             & runWithComponentTracking @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @(SchemeAdr Exp K)
             & runWithDependencyTracking @SequentialCmp @ActorRef
+            & runWithDependencyTracking @SequentialCmp @CountIn
+            & runWithDependencyTracking @SequentialCmp @CountOut
             -- & runWithWorklistProfilingT @SequentialCmp
             & runWithWorkList @(LIFOWorklist SequentialCmp)
             & runDebugIntraAnalysis ref
@@ -202,4 +232,4 @@ analyze exp env ref = do
             -- & runStoreT @ActorSto @(SchemeAdr Exp K) @(StoreVal ActorVlu) sto
 
       MapM.put (ActorResOut ref) (extractVal res)
-  where extractVal (_ ::*:: res) = ActorRes res
+  where extractVal (_ ::*:: res ::*:: _ ::*:: _) = ActorRes res
