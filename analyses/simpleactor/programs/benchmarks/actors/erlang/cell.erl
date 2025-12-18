@@ -5,7 +5,7 @@
 
 
 cell(Content) ->
-    monarch:label_mail("cell_mail"),
+    monarch:label_mail('cell_mail'),
     receive
         {put, NewContent} ->
             cell(NewContent);
@@ -15,7 +15,7 @@ cell(Content) ->
     end.
 
 disp() ->
-    monarch:label_mail("disp_mail"),
+    monarch:label_mail('disp_mail'),
     receive
         {value, Content} ->
             if 

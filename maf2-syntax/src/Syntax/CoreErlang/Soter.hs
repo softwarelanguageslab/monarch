@@ -1,14 +1,26 @@
+{-# LANGUAGE LambdaCase #-}
 -- | Parses Soter's "uncoverable" predicates
 -- See: Emanuele D'Osualdo, Jonathan Kochems, and Luke Ong. Automatic verification of erlang-
 -- style concurrency. In Static Analysis - 20th International Symposium, SAS 2013
 -- and "Soter: An Automatic Safety Verifier for Erlang"
 module Syntax.CoreErlang.Soter(
+    -- * AST
     Predicate(..),
     Exp(..),
     Constant(..),
+    getNum,
+    getFloat,
+    getBln,
+    conjunctions,
+    -- * Parsing
     parsePredicate,
     parseExp,
-    parseConstant
+    parseConstant,
+    parseFromString,
+    fromAttributes,
+    -- * Bounds extraction
+    extractBoundsPredicate,
+    extractBoundsPredicates,
   ) where
 
 import Text.Megaparsec
@@ -17,8 +29,12 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Data.Void
 import Control.Monad.Combinators.Expr
 import qualified Syntax.CoreErlang.AST as CoreErlang
-import Data.Either (fromRight)
 import Data.Maybe (fromJust)
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Data.Map (Map)
+import qualified Data.Map as Map
+import qualified Debug.Trace as Debug
 
 ------------------------------------------------------------
 -- Data Types
@@ -29,22 +45,42 @@ data Predicate = Conj Predicate Predicate
                | Pred Exp
                deriving (Ord, Eq, Show)
 
+-- Return all expressions in a conjunction as a set
+conjunctions :: Predicate -> Set Exp
+conjunctions (Pred expr) = Set.singleton expr
+conjunctions (Conj p1 p2) =
+  conjunctions p1 `Set.union` conjunctions p2
+
 -- | The language that is actually supported in these "uncoverable" annotations
 -- is not clearly documented in the SOTER papers, so we assume that a simple arithmic language is used.
 data Exp = Add Exp Exp
-              | Sub Exp Exp
-              | Lte Exp Exp
-              | Gte Exp Exp
-              | Lt Exp Exp
-              | Gt Exp Exp
-              | Const Constant
-              | Var String
-              deriving (Ord, Eq, Show)
+          | Sub Exp Exp
+          | Lte Exp Exp
+          | Gte Exp Exp
+          | Lt Exp Exp
+          | Gt Exp Exp
+          | Const Constant
+          | Var String
+         deriving (Ord, Eq, Show)
 
 -- | A literal
 data Constant = Num Int
               | Floa Float
+              | Bln Bool
               deriving (Ord, Eq, Show)
+
+getNum :: Constant -> Maybe Int
+getNum = \case Num n -> Just n
+               _ -> Nothing
+
+
+getFloat :: Constant -> Maybe Float
+getFloat = \case Floa f -> Just f
+                 _ -> Nothing 
+
+getBln :: Constant -> Maybe Bool
+getBln = \case Bln b -> Just b
+               _ -> Nothing
 
 ------------------------------------------------------------
 -- Parser
@@ -76,7 +112,7 @@ float :: Parser Float
 float = lexeme L.float
 
 identifier :: Parser String
-identifier = lexeme ((:) <$> letterChar <*> many alphaNumChar) <?> "variable"
+identifier = lexeme ((:) <$> letterChar <*> many (alphaNumChar <|> char '_')) <?> "variable"
 
 ------------------------------------------------------------
 -- Expression Parser
@@ -90,8 +126,8 @@ parseVar :: Parser Exp
 parseVar = Var <$> identifier
 
 parseTerm :: Parser Exp
-parseTerm = parens parseExp
-        <|> (Const <$> parseConstant)
+parseTerm = (try $ parens parseExp)
+        <|> (try $ Const <$> parseConstant)
         <|> parseVar
 
 -- Operator table for expression parsing
@@ -117,23 +153,60 @@ parseExp = makeExprParser parseTerm exprTable
 parsePredicate :: Parser Predicate
 parsePredicate = do
   spaceConsumer
-  predicates <- many (symbol "," *> parseBasicPredicate)
+  predicates <- sepBy1 parseBasicPredicate (symbol ",") <* eof
   return $ foldl1 Conj predicates
   where
     parseBasicPredicate = parens parsePredicate
                       <|> (Pred <$> parseExp)
 
 parseFromString :: String -> Maybe Predicate
-parseFromString = either (const Nothing) Just . parse parsePredicate "<unknown>"
+parseFromString = either (const Nothing) Just . Debug.traceShowId . parse parsePredicate "<unknown>"
 
 -------------------------------------------------------------
 -- Parse "uncoverable" attributes from a Core Erlang module
 -------------------------------------------------------------
 
-
 fromAttributes :: CoreErlang.Module -> [Predicate]
-fromAttributes mod =
+fromAttributes modl =
     map (parseAttribute . CoreErlang.attributeLiteral) attrs
-  where attrs = filter ((== "uncoverable") . CoreErlang.attributeName) $ CoreErlang.moduleAttributes mod
-        parseAttribute = fromJust . parseFromString . fromJust . CoreErlang.litToString
+  where attrs = filter ((== "uncoverable") . CoreErlang.attributeName) $ CoreErlang.moduleAttributes modl
+        parseAttribute = fromJust . Debug.traceShowId . parseFromString . fromJust . Debug.traceShowId . CoreErlang.litToString  
+
+-------------------------------------------------------------
+-- Reasoning about SOTER predicates
+-------------------------------------------------------------
+
+-- | Extract bounds from the given expression
+-- A bound is a combination of a variable and how much precision we wish to have for that variable.
+-- e.g.,
+-- -uncoverable(X > 10)
+-- then we have a bound X=10, because we want to count at least to 10 to elliminate false positives.
+--
+-- NOTE: relational expressions and arithmic expressions
+-- are not supported (i.e., each expression should contain
+-- at most one variable)
+extractBound :: Exp -> (String, Int)
+extractBound =
+  \case Lte (Var nam) (Const (Num n)) -> (nam, n)
+        Lte (Const (Num n)) (Var nam) -> (nam, n)
+        Gte (Const (Num n)) (Var nam) -> (nam, n)
+        Gte (Var nam) (Const (Num n)) -> (nam, n)
+        Lt (Var nam) (Const (Num n))  -> (nam, n)
+        Gt (Const (Num n)) (Var nam)  -> (nam, n)
+        Gt (Var nam) (Const (Num n))  -> (nam, n)
+        e -> error $ "unsupported expression " ++ show e
+
+-- | Extract bounds from a predicate, if a variable
+-- occurs more than once in a predicate's conjunction
+-- than its maximum bound is taken
+extractBoundsPredicate :: Predicate -> Map String Int
+extractBoundsPredicate =
+  foldr (uncurry (Map.insertWith max) . extractBound) Map.empty . Set.toList . conjunctions
+
+
+-- | Extract the bounds from a list of predicates
+extractBoundsPredicates :: [Predicate] -> Map String Int
+extractBoundsPredicates =
+  foldr (Map.unionWith max . extractBoundsPredicate) Map.empty
+
 

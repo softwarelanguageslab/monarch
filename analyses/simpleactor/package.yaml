@@ -42,7 +42,7 @@ ghc-options:
 - -Wno-missing-export-lists
 - -Wmissing-home-modules
 - -Wpartial-fields
-- -O3
+- -O0
 - -fspecialise
 - -fexpose-all-unfoldings
 - -flate-dmd-anal

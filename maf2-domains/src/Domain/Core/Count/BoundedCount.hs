@@ -1,13 +1,16 @@
 -- | Bounded counting
 module Domain.Core.Count.BoundedCount(
-    BoundedCount,
-    zero
+    BoundedCount(..),
+    zero,
+    max
   ) where
 
 import Lattice.Class
 import Domain.Core.Count.Class
 import GHC.Generics
 import Control.DeepSeq (NFData)
+import Prelude hiding (max)
+import qualified Prelude 
 
 -- | A monotonically increasing counter with a particular bound after which it is set to infinity
 data BoundedCount = Count Int Int | Infty
@@ -45,3 +48,10 @@ instance PartialOrder BoundedCount where
     | a == b && limit1 == limit2 = True
     | otherwise = False
   leq _ _ = False
+
+max :: BoundedCount -> BoundedCount -> BoundedCount
+max _ Infty = Infty
+max Infty _ = Infty
+max (Count n1 l1) (Count n2 l2) =
+  Count (Prelude.max n1 n2)
+        (Prelude.max l1 l2)

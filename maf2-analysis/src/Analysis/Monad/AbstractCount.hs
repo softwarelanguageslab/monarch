@@ -3,6 +3,7 @@ module Analysis.Monad.AbstractCount(
   MonadAbstractCount(..),
   AbstractCountT,
   evalWithAbstractCountT,
+  runAbstractCountT,
   runWithAbstractCountT)  where
 
 import Analysis.Counting
@@ -56,6 +57,9 @@ instance (Count c, Ord e, Monad m) => MonadAbstractCount e c (AbstractCountT e c
 
 runWithAbstractCountT :: AbstractCountT e c m a -> m (a, CountMap' e c)
 runWithAbstractCountT  (AbstractCountT ma) = runStateT ma emptyCountMap
+
+runAbstractCountT :: CountMap' e c -> AbstractCountT e c m a -> m (a, CountMap' e c)
+runAbstractCountT countMap (AbstractCountT ma) = runStateT ma countMap
 
 evalWithAbstractCountT :: Monad m => AbstractCountT e c m a -> m a
 evalWithAbstractCountT (AbstractCountT ma) = evalStateT ma emptyCountMap

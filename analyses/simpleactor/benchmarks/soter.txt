@@ -1,4 +1,4 @@
-file;main_module;main_function
+filename;main_module;main_function
 cell.erl;cell;main/0
 factorial.erl;factorial;main/0
 stack.erl;stack;main/0

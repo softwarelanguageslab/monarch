@@ -37,8 +37,8 @@ def read_inputs(inputs_file):
     if not inputs_file.exists():
         raise RuntimeError("inputs file does not exists")
     
-    df = pd.read_csv(inputs_file)
-    return df["filename"]
+    df = pd.read_csv(inputs_file, sep = ";")
+    return df["filename"].apply(Path)
 
 def input_output_cmdline_parser_full(input_desc, output_desc = "Path the the output directory"):
     """

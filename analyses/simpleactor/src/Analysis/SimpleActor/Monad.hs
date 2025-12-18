@@ -28,7 +28,8 @@ module Analysis.SimpleActor.Monad
     runWithMailboxContributorIndexedT,
     SimpleActorContext(..),
     MonadModules(..),
-    runModuleCtxT
+    runModuleCtxT,
+    MailboxLabel(..)
   )
 where
 
@@ -69,6 +70,8 @@ import qualified Analysis.Actors.Mailbox as MB
 import qualified Control.Monad.State as State
 import Control.Monad.Cond
 import Data.Functor
+import Domain.Core.Count.BoundedCount (BoundedCount)
+import Analysis.Monad.AbstractCount (MonadAbstractCount)
 
 ------------------------------------------------------------
 -- 'Components'
@@ -89,6 +92,20 @@ instance FreeVariables Cmp where
    fv (FuncBdy (Lam xs e _)) = Set.union (Set.fromList (map Ide.name xs)) (fv e)
    fv (FuncBdy _) = error "imposible value"
    fv (ActorExp e) = fv e
+
+
+------------------------------------------------------------
+-- Labels
+------------------------------------------------------------
+
+-- | Labels are counters that are incremented through "monarch:count" calls
+-- and are local to each actor meaning that each actor has its own count.
+--
+-- Based on these counts an "uncoverable" attribute is resolved by taking
+-- the maximum of all counts associated with a particular label and checking
+-- the comparison in the "uncoverable" attribute.
+newtype MailboxLabel = MailboxLabel { getMailboxLabel :: String }
+                       deriving (Ord, Eq, Show)
 
 ------------------------------------------------------------
 -- Errors
@@ -222,11 +239,12 @@ type PrimM' e mb v k m =
     -- SymbolicM (Adr v) m v,
     MonadIO m,
     Show (Env v),
-    -- MonadAbstractCount (ARef v) m,
     -- Domain constraints
     ForAllStored Show v,
     ForAllStored Eq v,
-    ForAllStored Ord v
+    ForAllStored Ord v,
+    -- Other monadic constraints
+    MonadAbstractCount MailboxLabel BoundedCount m
   )
 
 -- | Same as PrimM' but with access to the "apply" function

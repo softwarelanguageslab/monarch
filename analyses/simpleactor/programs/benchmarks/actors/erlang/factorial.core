@@ -1,0 +1,372 @@
+module 'factorial' ['main'/0,
+		    'module_info'/0,
+		    'module_info'/1]
+    attributes [%% Line 1
+		( 'file'
+		  -| [{'line',1},{'column',1}] ) =
+		    %% Line 1
+		    ( [{[47|[104|[111|[109|[101|[47|[98|[114|[97|[109|[47|[112|[104|[100|[47|[99|[111|[100|[101|[47|[109|[111|[110|[97|[114|[99|[104|[47|[97|[110|[97|[108|[121|[115|[101|[115|[47|[115|[105|[109|[112|[108|[101|[97|[99|[116|[111|[114|[47|[112|[114|[111|[103|[114|[97|[109|[115|[47|[98|[101|[110|[99|[104|[109|[97|[114|[107|[115|[47|[97|[99|[116|[111|[114|[115|[47|[101|[114|[108|[97|[110|[103|[47|[102|[97|[99|[116|[111|[114|[105|[97|[108|[46|[101|[114|[108]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]],1}]
+		      -| [{'line',1},{'column',1}] ),
+		%% Line 3
+		( 'uncoverable'
+		  -| [{'line',3},{'column',1}] ) =
+		    %% Line 3
+		    ( [102|[97|[99|[116|[111|[114|[105|[97|[108|[95|[109|[97|[105|[108|[32|[62|[32|[54]]]]]]]]]]]]]]]]]]
+		      -| [{'line',3},{'column',1}] ),
+		%% Line 4
+		( 'uncoverable'
+		  -| [{'line',4},{'column',1}] ) =
+		    %% Line 4
+		    ( [99|[117|[115|[116|[111|[109|[101|[114|[95|[109|[97|[105|[108|[32|[62|[32|[49]]]]]]]]]]]]]]]]]
+		      -| [{'line',4},{'column',1}] )]
+'fact'/0 =
+    %% Line 6
+    ( fun () ->
+	  do  %% Line 7
+	      ( call ( 'monarch'
+		       -| [{'line',7},{'column',5}] ):( 'label_mail'
+							-| [{'line',7},{'column',5}] )
+		    (( [102|[97|[99|[116|[111|[114|[105|[97|[108|[95|[109|[97|[105|[108]]]]]]]]]]]]]]
+		       -| [{'line',7},{'column',5}] ))
+		-| [{'line',7},{'column',5}] )
+	      do  ( letrec
+			'recv$^1'/0 =
+			    fun () ->
+				let <_6,_4> =
+				    primop 'recv_peek_message'
+					()
+				in  case _6 of
+				      <'true'> when 'true' ->
+					  %% Line 8
+					  ( case _4 of
+					      %% Line 9
+					      ( <( {( 'compute'
+						      -| [{'line',9},{'column',9}] ),( 0
+										       -| [{'line',9},{'column',9}] ),( Customer
+															-| [{'line',9},{'column',9}] )}
+						   -| [{'line',9},{'column',9}] )> when 'true' ->
+						    do  primop 'remove_message'
+							    ()
+							%% Line 10
+							( call ( 'erlang'
+								 -| [{'line',10},{'column',13}] ):( '!'
+												    -| [{'line',10},{'column',13}] )
+							      (( Customer
+								 -| [{'line',10},{'column',13}] ), ( {'result',1}
+												     -| [{'line',10},{'column',13}] ))
+							  -| [{'line',10},{'column',13}] )
+						-| [{'line',9},{'column',9}] )
+					      %% Line 11
+					      ( <( {( 'compute'
+						      -| [{'line',11},{'column',9}] ),( N
+											-| [{'line',11},{'column',9}] ),( Customer
+															  -| [{'line',11},{'column',9}] )}
+						   -| [{'line',11},{'column',9}] )> when 'true' ->
+						    do  primop 'remove_message'
+							    ()
+							let <_0> =
+							    fun () ->
+								%% Line 12
+								( apply ( 'customer'/2
+									  -| [{'line',12},{'column',13}] )
+								      (( N
+									 -| [{'line',12},{'column',13}] ), ( Customer
+													     -| [{'line',12},{'column',13}] ))
+								  -| [{'line',12},{'column',13}] )
+							in  let <C> =
+								call %% Line 12
+								     ( 'erlang'
+								       -| [{'line',12},{'column',13}] ):%% Line 12
+													( 'spawn'
+													  -| [{'line',12},{'column',13}] )
+								    (%% Line 12
+								     ( _0
+								       -| [{'line',12},{'column',13}] ))
+							    in  let <_3> =
+								    call %% Line 13
+									 ( 'erlang'
+									   -| [{'line',13},{'column',13}] ):%% Line 13
+													    ( 'self'
+													      -| [{'line',13},{'column',13}] )
+									()
+								in  let <_2> =
+									call %% Line 13
+									     ( 'erlang'
+									       -| [{'line',13},{'column',13}] ):%% Line 13
+														( '-'
+														  -| [{'line',13},{'column',13}] )
+									    (%% Line 13
+									     ( N
+									       -| [{'line',13},{'column',13}] ), %% Line 13
+														 ( 1
+														   -| [{'line',13},{'column',13}] ))
+								    in  %% Line 13
+									( call ( 'erlang'
+										 -| [{'line',13},{'column',13}] ):( '!'
+														    -| [{'line',13},{'column',13}] )
+									      (( _3
+										 -| [{'line',13},{'column',13}] ), ( {( 'compute'
+															-| [{'line',13},{'column',13}] ),( _2
+																			   -| [{'line',13},{'column',13}] ),( C
+																							      -| [{'line',13},{'column',13}] )}
+														     -| [{'line',13},{'column',13}] ))
+									  -| [{'line',13},{'column',13}] )
+						-| [{'line',11},{'column',9}] )
+					      ( <Other> when 'true' ->
+						    do  primop 'recv_next'
+							    ()
+							( apply 'recv$^1'/0
+							      ()
+							  -| ['dialyzer_ignore'] )
+						-| ['compiler_generated','dialyzer_ignore'] )
+					    end
+					    -| [{'line',8},{'column',5}] )
+				      ( <'false'> when 'true' ->
+					    let <_5> =
+						primop 'recv_wait_timeout'
+						    ('infinity')
+					    in  case _5 of
+						  <'true'> when 'true' ->
+						      'ok'
+						  ( <'false'> when 'true' ->
+							( apply 'recv$^1'/0
+							      ()
+							  -| ['dialyzer_ignore'] )
+						    -| ['dialyzer_ignore'] )
+						end
+					-| ['dialyzer_ignore'] )
+				    end
+		    in  ( apply 'recv$^1'/0
+			      ()
+			  -| ['dialyzer_ignore'] )
+		    -| ['letrec_goto','no_inline'] )
+		  %% Line 15
+		  ( apply ( 'fact'/0
+			    -| [{'line',15},{'column',5}] )
+			()
+		    -| [{'line',15},{'column',5}] )
+      -| [{'line',6},{'column',1},{'function',{'fact',0}}] )
+'customer'/2 =
+    %% Line 17
+    ( fun (( _0
+	     -| [{'line',17},{'column',1}] ),( _1
+					       -| [{'line',17},{'column',1}] )) ->
+	  do  %% Line 18
+	      ( call ( 'monarch'
+		       -| [{'line',18},{'column',5}] ):( 'label_mail'
+							 -| [{'line',18},{'column',5}] )
+		    (( [99|[117|[115|[116|[111|[109|[101|[114|[95|[109|[97|[105|[108]]]]]]]]]]]]]
+		       -| [{'line',18},{'column',5}] ))
+		-| [{'line',18},{'column',5}] )
+	      ( letrec
+		    'recv$^0'/0 =
+			fun () ->
+			    let <_8,_6> =
+				primop 'recv_peek_message'
+				    ()
+			    in  case _8 of
+				  <'true'> when 'true' ->
+				      %% Line 19
+				      ( case _6 of
+					  %% Line 20
+					  ( <( {( 'result'
+						  -| [{'line',20},{'column',9}] ),( K
+										    -| [{'line',20},{'column',9}] )}
+					       -| [{'line',20},{'column',9}] )> when 'true' ->
+						do  primop 'remove_message'
+							()
+						    let <_2> =
+							call %% Line 21
+							     ( 'erlang'
+							       -| [{'line',21},{'column',13}] ):%% Line 21
+												( 'self'
+												  -| [{'line',21},{'column',13}] )
+							    ()
+						    in  do  %% Line 21
+							    ( call ( 'io'
+								     -| [{'line',21},{'column',13}] ):( 'format'
+													-| [{'line',21},{'column',13}] )
+								  (( [103|[111|[116|[32|[114|[101|[115|[117|[108|[116|[32|[126|[112|[32|[111|[110|[32|[112|[105|[100|[32|[126|[112|[32|[126|[110]]]]]]]]]]]]]]]]]]]]]]]]]]
+								     -| [{'line',21},{'column',13}] ), ( [( K
+													    -| [{'line',21},{'column',13}] )|( [( _2
+																		  -| [{'line',21},{'column',13}] )|( []
+																						     -| [{'line',21},{'column',13}] )]
+																	       -| [{'line',21},{'column',13}] )]
+													 -| [{'line',21},{'column',13}] ))
+							      -| [{'line',21},{'column',13}] )
+							    let <_3> =
+								call %% Line 22
+								     ( 'erlang'
+								       -| [{'line',22},{'column',13}] ):%% Line 22
+													( '*'
+													  -| [{'line',22},{'column',13}] )
+								    (( _0
+								       -| [{'line',17},{'column',1}] ), %% Line 22
+													( K
+													  -| [{'line',22},{'column',13}] ))
+							    in  do  %% Line 22
+								    ( call ( 'erlang'
+									     -| [{'line',22},{'column',13}] ):( '!'
+														-| [{'line',22},{'column',13}] )
+									  (( _1
+									     -| [{'line',17},{'column',1}] ), ( {( 'result'
+														   -| [{'line',22},{'column',13}] ),( _3
+																		      -| [{'line',22},{'column',13}] )}
+														-| [{'line',22},{'column',13}] ))
+								      -| [{'line',22},{'column',13}] )
+								    %% Line 23
+								    ( apply ( 'customer'/2
+									      -| [{'line',23},{'column',13}] )
+									  (( _0
+									     -| [{'line',17},{'column',1}] ), ( _1
+														-| [{'line',17},{'column',1}] ))
+								      -| [{'line',23},{'column',13}] )
+					    -| [{'line',20},{'column',9}] )
+					  ( <Other> when 'true' ->
+						do  primop 'recv_next'
+							()
+						    ( apply 'recv$^0'/0
+							  ()
+						      -| ['dialyzer_ignore'] )
+					    -| ['compiler_generated','dialyzer_ignore'] )
+					end
+					-| [{'line',19},{'column',5}] )
+				  ( <'false'> when 'true' ->
+					let <_7> =
+					    primop 'recv_wait_timeout'
+						('infinity')
+					in  case _7 of
+					      <'true'> when 'true' ->
+						  'true'
+					      ( <'false'> when 'true' ->
+						    ( apply 'recv$^0'/0
+							  ()
+						      -| ['dialyzer_ignore'] )
+						-| ['dialyzer_ignore'] )
+					    end
+				    -| ['dialyzer_ignore'] )
+				end
+		in  ( apply 'recv$^0'/0
+			  ()
+		      -| ['dialyzer_ignore'] )
+		-| ['letrec_goto','no_inline'] )
+      -| [{'line',17},{'column',1},{'function',{'customer',2}}] )
+'display'/0 =
+    %% Line 26
+    ( fun () ->
+	  ( letrec
+		'recv$^0'/0 =
+		    fun () ->
+			let <_2,_0> =
+			    primop 'recv_peek_message'
+				()
+			in  case _2 of
+			      <'true'> when 'true' ->
+				  %% Line 27
+				  ( case _0 of
+				      %% Line 28
+				      ( <( {( 'result'
+					      -| [{'line',28},{'column',9}] ),( N
+										-| [{'line',28},{'column',9}] )}
+					   -| [{'line',28},{'column',9}] )> when 'true' ->
+					    do  primop 'remove_message'
+						    ()
+						%% Line 29
+						( call ( 'io'
+							 -| [{'line',29},{'column',14}] ):( 'format'
+											    -| [{'line',29},{'column',14}] )
+						      (( [126|[112|[126|[110]]]]
+							 -| [{'line',29},{'column',14}] ), ( [( N
+												-| [{'line',29},{'column',14}] )|( []
+																   -| [{'line',29},{'column',14}] )]
+											     -| [{'line',29},{'column',14}] ))
+						  -| [{'line',29},{'column',14}] )
+					-| [{'line',28},{'column',9}] )
+				      ( <Other> when 'true' ->
+					    do  primop 'recv_next'
+						    ()
+						( apply 'recv$^0'/0
+						      ()
+						  -| ['dialyzer_ignore'] )
+					-| ['compiler_generated','dialyzer_ignore'] )
+				    end
+				    -| [{'line',27},{'column',5}] )
+			      ( <'false'> when 'true' ->
+				    let <_1> =
+					primop 'recv_wait_timeout'
+					    ('infinity')
+				    in  case _1 of
+					  <'true'> when 'true' ->
+					      'true'
+					  ( <'false'> when 'true' ->
+						( apply 'recv$^0'/0
+						      ()
+						  -| ['dialyzer_ignore'] )
+					    -| ['dialyzer_ignore'] )
+					end
+				-| ['dialyzer_ignore'] )
+			    end
+	    in  ( apply 'recv$^0'/0
+		      ()
+		  -| ['dialyzer_ignore'] )
+	    -| ['letrec_goto','no_inline'] )
+      -| [{'line',26},{'column',1},{'function',{'display',0}}] )
+'main'/0 =
+    %% Line 32
+    ( fun () ->
+	  let <_0> =
+	      fun () ->
+		  %% Line 33
+		  ( apply ( 'fact'/0
+			    -| [{'line',33},{'column',5}] )
+			()
+		    -| [{'line',33},{'column',5}] )
+	  in  let <F> =
+		  call %% Line 33
+		       ( 'erlang'
+			 -| [{'line',33},{'column',5}] ):%% Line 33
+							 ( 'spawn'
+							   -| [{'line',33},{'column',5}] )
+		      (%% Line 33
+		       ( _0
+			 -| [{'line',33},{'column',5}] ))
+	      in  let <_2> =
+		      fun () ->
+			  %% Line 34
+			  ( apply ( 'display'/0
+				    -| [{'line',34},{'column',5}] )
+				()
+			    -| [{'line',34},{'column',5}] )
+		  in  let <Disp> =
+			  call %% Line 34
+			       ( 'erlang'
+				 -| [{'line',34},{'column',5}] ):%% Line 34
+								 ( 'spawn'
+								   -| [{'line',34},{'column',5}] )
+			      (%% Line 34
+			       ( _2
+				 -| [{'line',34},{'column',5}] ))
+		      in  %% Line 35
+			  ( call ( 'erlang'
+				   -| [{'line',35},{'column',5}] ):( '!'
+								     -| [{'line',35},{'column',5}] )
+				(( F
+				   -| [{'line',35},{'column',5}] ), ( {( 'compute'
+									 -| [{'line',35},{'column',5}] ),( 5
+													   -| [{'line',35},{'column',5}] ),( Disp
+																	     -| [{'line',35},{'column',5}] )}
+								      -| [{'line',35},{'column',5}] ))
+			    -| [{'line',35},{'column',5}] )
+      -| [{'line',32},{'column',1},{'function',{'main',0}}] )
+'module_info'/0 =
+    ( fun () ->
+	  call 'erlang':'get_module_info'
+	      ('factorial')
+      -| [{'function',{'module_info',0}}] )
+'module_info'/1 =
+    ( fun (_0) ->
+	  call 'erlang':'get_module_info'
+	      ('factorial', ( _0
+			      -| [{'function',{'module_info',1}}] ))
+      -| [{'function',{'module_info',1}}] )
+end

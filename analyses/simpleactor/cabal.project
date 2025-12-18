@@ -14,6 +14,6 @@ source-repository-package
    location: https://github.com/bramvdbogaerde/layers-mtl.git
    tag: c97f821c81c2301008ddf8dcfb52470d597f3a2f
 
-optimization: 2
+optimization: 0
 package *
-  optimization: 2
+  optimization: 0

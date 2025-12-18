@@ -34,6 +34,7 @@ import qualified Debug.Trace as Debug
 import Control.Monad.Cond
 import Control.Fixpoint.WorkList (LIFOWorklist)
 import qualified Data.HashMap.Strict as HashMap
+import qualified Domain.Core.Count.BoundedCount as Count
 
 ------------------------------------------------------------
 -- Analysis data
@@ -42,7 +43,8 @@ import qualified Data.HashMap.Strict as HashMap
 -- The analysis result
 data AnalysisResult = AnalysisResult {
                          resultMap :: Map ActorResOut ActorRes,
-                         mailboxes ::  ActorMai
+                         mailboxes ::  ActorMai,
+                         maxLabelCounts :: LabelCounts
                       } deriving (Ord, Eq, Show)
 
 -- | State kept during the analysis that falls outside the
@@ -114,8 +116,12 @@ initialEnv = HashMap.fromList (fmap (\nam -> (nam, PrrAdr nam)) allPrimitives)
 
 type ModularInterM m = (MonadState AnalysisState m,
                         MonadActorStoreDependencyTracking m,
+                        -- Actor mailboxes
                         MonadDependencyTracking ActorRef ActorRef m,
                         MonadDependencyTriggerTracking ActorRef ActorRef m,
+                        -- Counts
+                        MonadDependencyTracking ActorRef Sequential.CountMax m,
+                        -- Actor results
                         MonadDependencyTracking ActorRef ActorResOut m,
                         MonadDependencyTracking ActorRef (MailboxDep ActorRef PMB) m,
                         WorkListM m ActorRef,
@@ -128,6 +134,7 @@ type ModularInterM m = (MonadState AnalysisState m,
                         MonadSpawn ActorVlu K m,
                         -- Actor results
                         MapM ActorResOut ActorRes m,
+                        MapM Sequential.CountMax LabelCounts m,
                         -- Global store
                         StoreM ActorAdr (StoreVal ActorVlu) m,
                         StoreM' ActorSto ActorAdr (StoreVal ActorVlu) m,
@@ -135,8 +142,8 @@ type ModularInterM m = (MonadState AnalysisState m,
                         MonadIO m)
 
 -- | "intra"-analysis
-intra :: ModularInterM m => ActorRef -> m ()
-intra ref = (gets (fromJust . Map.lookup ref . _pidToProcess) >>= flip (uncurry Sequential.analyze) (Debug.traceWith (("analyzing: " ++) . show) ref))
+intra :: ModularInterM m => LabelCounts -> ActorRef -> m ()
+intra labelCounts ref = (gets (fromJust . Map.lookup ref . _pidToProcess) >>= flip (uncurry (Sequential.analyze labelCounts)) (Debug.traceWith (("analyzing: " ++) . show) ref))
           & runModularIntraAnalysisT
           & runDebugIntraAnalysis ref
           & runJoinT
@@ -147,28 +154,32 @@ newtype MaxStepsT m a = MaxStepsT { getMaxStepsT :: StateT Int m a } deriving (F
 evalMaxStepsT :: Monad m => MaxStepsT m a -> m a
 evalMaxStepsT = flip evalStateT 0 . getMaxStepsT
 
-inter :: ModularInterM m => Maybe Int -> m ()
-inter maxSteps = evalMaxStepsT $ iterateWLInitial'' EntryPid (maybe (return False) maxReached maxSteps) intra
+inter :: ModularInterM m => LabelCounts -> Maybe Int -> m ()
+inter labelCounts maxSteps = evalMaxStepsT $ iterateWLInitial'' EntryPid (maybe (return False) maxReached maxSteps) (intra labelCounts)
   where maxReached maxSteps' = MaxStepsT (modify (+1)) >> MaxStepsT (gets (> maxSteps'))
 
 -- | Analyze the whole actor program
-analyze' :: Maybe Int -> ActorExp -> IO AnalysisResult
-analyze' maxSteps expr = fmap toAnalysisResult $ inter maxSteps
+analyze' :: LabelCounts -> Maybe Int -> ActorExp -> IO AnalysisResult
+analyze' labelCounts maxSteps expr = fmap toAnalysisResult $ inter labelCounts maxSteps
              & flip evalStateT (initialAnalysisState expr)
              & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore
              & runWithMapping @ActorResOut @ActorRes
+             & runWithMapping @(Sequential.CountMax) @LabelCounts 
              & runWithDependencyTracking @ActorRef @ActorVarAdr
              & runWithDependencyTracking @ActorRef @ActorRef
              & runWithDependencyTracking @ActorRef @ActorResOut
+             & runWithDependencyTracking @ActorRef @(Sequential.CountMax)
              & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef PMB)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
+             & runWithDependencyTriggerTrackingT @ActorRef @(Sequential.CountMax)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr
              & runGlobalPartitionedMailboxT @Partition @ActorRef @ActorVlu @MB
              & C.runWithComponentTracking
              & runWithWorkList @(LIFOWorklist _)
              & runCachedSolver
              & runZ3SolverWithSetup SMT.prelude
-  where toAnalysisResult (_res ::*:: _varSto ::*:: resOut ::*:: mb) = AnalysisResult resOut mb
+  where toAnalysisResult (_res ::*:: _varSto ::*:: resOut ::*:: counts ::*:: mb) = AnalysisResult resOut mb (maxCounts counts)
+        maxCounts = foldr (Map.unionWith Count.max) Map.empty . Map.elems
 
 analyze :: ActorExp -> IO AnalysisResult
-analyze = analyze' Nothing
+analyze = analyze' Map.empty Nothing

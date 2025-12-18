@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 module Main (main) where
 
 import qualified Benchmark.SimpleActor.Precision as Benchmark.Precision
@@ -33,7 +34,11 @@ import Syntax.ErlangToSimpleActor
 import Text.Pretty.Simple (pPrint)
 import qualified Syntax.SimpleActor.CoreToSimpleActor as CoreToSimpleActor
 import qualified Syntax.CoreErlang as CoreErlang
-
+import qualified Syntax.CoreErlang.Soter as Soter
+import qualified Analysis.CoreErlang.Soter as Soter
+import qualified Domain.Core.Count.BoundedCount as Count
+import Data.Bifunctor
+import Analysis.SimpleActor.Monad (MailboxLabel(..))
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -143,7 +148,7 @@ analyzeCmd (InputOptions { filename, doTranslate, maxSteps  }) = do
 
 analyzeAst :: Exp -> Maybe Int -> IO ()
 analyzeAst ast maxSteps =  do
-   (AnalysisResult sequentialResults mbs) <- analyze' maxSteps ast
+   (AnalysisResult sequentialResults mbs _) <- analyze' Map.empty maxSteps ast
    let sequentialResMap = fmap cmpRes sequentialResults
    putStrLn "====== Results per actor"
    mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialResMap)
@@ -243,8 +248,12 @@ coreErlang CoreErlangOptions { .. } = do
        putStrLn "-- Expression: "
        pPrint expr
 
+       -- Initialize soter predicates
+       let predicates = Soter.fromAttributes (CoreErlang.unAnn coreModule)
+       let bounds = Map.fromList $ map (bimap MailboxLabel Count.zero) $ Map.toList $ Soter.extractBoundsPredicates predicates
+
        -- Run analysis and write DOT graphs
-       (AnalysisResult sequentialResults mbs) <- analyze' Nothing expr
+       (AnalysisResult sequentialResults mbs countMax) <- analyze' bounds Nothing expr
        let sequentialResMap = fmap cmpRes sequentialResults
 
        putStrLn "====== Results per actor"
@@ -252,6 +261,14 @@ coreErlang CoreErlangOptions { .. } = do
        putStrLn "====="
        putStrLn $ printMap  show (const True) mbs
        putStrLn "====="
+
+       -- Print SOTER results
+       let countOutMapping =
+            Map.mapKeys getMailboxLabel $ Map.mapMaybe (\case { Count.Count v _ -> Just v ; _ -> Nothing }) countMax
+       let predicateHoldMapping = Map.fromList (zip predicates (map (Soter.predicateHolds countOutMapping) predicates))
+       putStrLn $ printMap show (const True) predicateHoldMapping
+       putStrLn "====="
+       putStrLn $ printMap show (const True) countOutMapping
 
        -- Create output directory if it doesn't exist
        createDirectoryIfMissing True coreErlangOutputDir

@@ -19,8 +19,9 @@ import qualified RIO.Map as Map
 import Analysis.Monad (MonadDependencyTrigger)
 import Domain.Core.AbstractCount (AbstractCount)
 import Analysis.Actors.Mailbox.GraphToSet (GraphToSet)
-import Analysis.SimpleActor.Monad (SimpleActorContext(..))
+import Analysis.SimpleActor.Monad (SimpleActorContext(..), MailboxLabel)
 import Analysis.Actors.Mailbox.Partitioned (PartitionedMailbox)
+import Domain.Core.Count.BoundedCount (BoundedCount)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -45,6 +46,8 @@ type MB = GraphToSet ActorVlu
 
 type Partition = ()
 type PMB = PartitionedMailbox Partition ActorVlu MB
+
+type LabelCounts = Map MailboxLabel BoundedCount
 
 ------------------------------------------------------------
 -- Utilities

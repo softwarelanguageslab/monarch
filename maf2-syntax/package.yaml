@@ -72,6 +72,7 @@ library:
     - Syntax.Erlang.Qualifier
     - Syntax.Erlang.Preluder
     - Syntax.CoreErlang
+    - Syntax.CoreErlang.Soter
   verbatim:
       build-tools:
         happy

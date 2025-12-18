@@ -13,6 +13,8 @@ module Analysis.SimpleActor.ErlangPrimitives
   )
 where
 
+
+import Control.Monad
 import Analysis.Actors.Monad (MonadActorLocal (..), peekPartitioned, receivePartitioned, sendPartitioned)
 import Analysis.Erlang.BIF
 import Analysis.SimpleActor.Primitives
@@ -29,10 +31,14 @@ import Domain.Scheme.Class hiding (Exp, prim)
 import Syntax.AST
 import Prelude hiding (ceiling, div, floor, round)
 import Text.Regex
-import Analysis.SimpleActor.Monad (PrimM, Error (ArityMismatch), MonadApply (..), MonadSpawn (spawn))
+import Analysis.SimpleActor.Monad
+    ( PrimM,
+      Error(ArityMismatch),
+      MonadApply(..),
+      MonadSpawn(spawn),
+      MailboxLabel(MailboxLabel) )
 import Control.Monad.Escape (escape)
 import Data.Functor
-import Control.Monad ((<=<))
 import Analysis.Scheme.Monad (lookupVar, stoPai)
 import Analysis.Monad.Environment (EnvM(..))
 import Analysis.Monad.Context (CtxM(..))
@@ -40,6 +46,7 @@ import Lattice.Equal (EqualLattice(eql))
 import qualified Lattice.BottomLiftedLattice as BL
 import qualified Lattice.ConstantPropagationLattice as CP
 import Domain.Core.PairDomain (cons)
+import Analysis.Monad.AbstractCount (countIncrement)
 
 ------------------------------------------------------------
 -- Monadic contexts
@@ -131,7 +138,11 @@ erlangPrimitives =
       ("primop:recv_wait_timeout", prim $ const $ prim1 $ const $ return nil),
       -- TODO: not sure what "recv_next" is supposed to mean, perhaps it is similar to "yield"?
       -- Nonetheless, I don't think it is relevant here.
-      ("primop:recv_next", prim $ const $ prim0 $ return nil)
+      ("primop:recv_next", prim $ const $ prim0 $ return nil),
+      -- Monarch-specific primitives (for testing properties)
+      -- TODO: move these primitives somewhere else
+      ("monarch:error/1", undefined),
+      ("monarch:label_mail/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil)))
     ]
 
 -- | Returns a qualified list mapping of primitive names to their implementation

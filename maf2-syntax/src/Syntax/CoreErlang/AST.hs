@@ -68,12 +68,20 @@ data Lit = CharLit Char Span
          | ConsLit  Lit Lit Span
          deriving (Ord, Eq, Show)
 
+-- | Convert a linked list to a tuple
+listLitToList :: Lit -> Maybe [Lit]
+listLitToList (NilLit _) = return []
+listLitToList (ConsLit car cdr _) = (car: ) <$> listLitToList cdr
+listLitToList _ = Nothing
+
 -- | Converts string literals and tuples of ASCII values into strings
 litToString :: Lit -> Maybe String
 litToString = \case CharLit c _ -> Just [c]
                     StringLit s _ -> Just s
                     TupleLit lits _ ->
                         mapM (fmap chr . litToInt) lits
+                    c@(ConsLit {}) ->
+                        mapM (fmap chr . litToInt) =<< (listLitToList c)
                     _ -> Nothing
 
 -- | Extracts an integer from the literal if the literal is an integer, otherwise returns Nothing

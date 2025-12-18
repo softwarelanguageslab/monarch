@@ -6,12 +6,12 @@ module Domain.Core.BoolDomain.Class (
    BoolDomain, 
    true,
    false,
-   boolTop
+   boolTop,
+   isDefinitelyTrue,
 ) where 
 
 import Lattice.Class
 import Domain.Class 
-import Data.Kind
 
 ------------------------------------------------------------
 -- BoolDomain
@@ -27,6 +27,10 @@ false = inject False
 
 boolTop :: Domain b Bool => b
 boolTop = true `join` false
+
+isDefinitelyTrue :: BoolLattice b => b -> Bool
+isDefinitelyTrue b =
+   isTrue b && Prelude.not (isFalse b)
 
 class Joinable b => BoolLattice b where
    isTrue ::  b -> Bool

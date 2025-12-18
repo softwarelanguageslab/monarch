@@ -23,6 +23,7 @@ source-repository head
 
 library
   exposed-modules:
+      Analysis.CoreErlang.Soter
       Analysis.SimpleActor
       Analysis.SimpleActor.ErlangPrimitives
       Analysis.SimpleActor.Fixpoint.Common
@@ -81,7 +82,7 @@ library
       FunctionalDependencies
       StandaloneDeriving
       RecordWildCards
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded
   build-depends:
       base >=4.7 && <5
     , concurrency
@@ -140,7 +141,7 @@ executable simpleactor-exe
       FunctionalDependencies
       StandaloneDeriving
       RecordWildCards
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , concurrent-extra
@@ -195,7 +196,7 @@ test-suite simpleactor-tests
       FunctionalDependencies
       StandaloneDeriving
       RecordWildCards
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O3 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , concurrent-extra
