@@ -27,7 +27,14 @@ class CmdlineArgs:
     """
     logging_dir: Path | None
 
-def read_inputs(inputs_file):
+
+    """
+    Optional path to a CSV file to which the original table
+    will be written together with the path to the translated file
+    """
+    output_csv: Path | None
+  
+def read_inputs(inputs_file, full_df = False):
     """
     Reads the input files from a newline-seperate input file
 
@@ -38,7 +45,8 @@ def read_inputs(inputs_file):
         raise RuntimeError("inputs file does not exists")
     
     df = pd.read_csv(inputs_file, sep = ";")
-    return df["filename"].apply(Path)
+    df["filename"] = df["filename"].apply(Path)
+    return df if full_df else df["filename"]
 
 def input_output_cmdline_parser_full(input_desc, output_desc = "Path the the output directory"):
     """
@@ -50,13 +58,15 @@ def input_output_cmdline_parser_full(input_desc, output_desc = "Path the the out
     parser.add_argument("output" ,help = output_desc)
     parser.add_argument("--prefix", default = None)
     parser.add_argument("--log", default = None)
+    parser.add_argument("--output-list", default = None, help = "Write a CSV file to the given path containing the full translated paths as well as the columns in the original table")
     args = parser.parse_args()
 
     return CmdlineArgs(
         inputs_file = Path(args.inputs),
         outputs_dir = Path(args.output),
         prefix = args.prefix,
-        logging_dir = Path(args.log) if args.log else None
+        logging_dir = Path(args.log) if args.log else None,
+        output_csv = Path(args.output_list) if args.output_list else None
     )
 
 def input_output_cmdline_parser(input_desc, output_desc = "Path to the output directory"):

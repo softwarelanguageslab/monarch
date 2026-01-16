@@ -9,6 +9,8 @@ In contrast to the script `preprocess_benchmarks.py`, this script does not gener
 import common
 from pathlib import Path
 import subprocess
+import os
+import pandas as pd
 
 #############################################################
 ## Constants
@@ -23,7 +25,14 @@ TO_CORE_SCRIPT = (SCRIPT_PATH.parent / "to_core").resolve().as_posix()
 #############################################################
 
 
-def preprocess(input: Path, output_dir: Path, prefix: str | None = None, log_dir: Path | None = None) -> None:
+def preprocess(input: Path, output_dir: Path, prefix: str | None = None, log_dir: Path | None = None) -> Path:
+    """
+    Proceprocesses the file at the given input path and outputs it to the 'output_dir',
+    uses 'prefix' if set to determine the prefix to the input path and logs to 'log_dir' with
+    the name of the input file followed by ".log".
+
+    This function returns the path to the output file.
+    """
     if not prefix:
         prefix = ""
 
@@ -39,7 +48,7 @@ def preprocess(input: Path, output_dir: Path, prefix: str | None = None, log_dir
             print(f"[*] Logging failure to {log_path}")
             with open(log_path, "wb") as f:
                 f.write(result.stderr)
-        return
+        return Path(output_path)
 
     output = result.stdout
 
@@ -54,6 +63,7 @@ def main(args):
     benchmark_txt    = args.inputs_file
     benchmark_prefix = args.prefix
     output_dir       = args.outputs_dir
+    rel_parent       = Path(os.getcwd())
 
     ## Actual preprocessing
     print(f"[*] Preprocessing benchmarks from {benchmark_txt}", end='')
@@ -62,7 +72,8 @@ def main(args):
     else:
         print("")
 
-    inputs = common.read_inputs(benchmark_txt)
+    df = common.read_inputs(benchmark_txt)
+    inputs = df["inputs"]
 
     if not output_dir.exists():
         output_dir.mkdir()
@@ -70,11 +81,18 @@ def main(args):
     if args.logging_dir and not args.logging_dir.exists():
         args.logging_dir.mkdir()
 
+    output_paths = []
     for input_path in inputs:
         print(f"[*] Processing {input_path}")
-        preprocess(input_path, output_dir, benchmark_prefix, args.logging_dir)
-    
+        output_path = preprocess(input_path, output_dir, benchmark_prefix, args.logging_dir)
+        output_paths.append(output_path)
 
+
+    if args.output_csv:
+        print(f"[*] Writing output to {args.output_csv}")
+        df["output_paths"] = pd.Series(output_paths).apply(lambda p: p.relative_to(rel_parent))
+        df.to_csv(args.output_csv)
+    
 
 #############################################################
 ## Entrypoint
