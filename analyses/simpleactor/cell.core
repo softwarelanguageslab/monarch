@@ -1,0 +1,198 @@
+module 'cell' ['main'/0,
+	       'module_info'/0,
+	       'module_info'/1]
+    attributes [%% Line 1
+		'file' =
+		    %% Line 1
+		    [{[112|[114|[111|[103|[114|[97|[109|[115|[47|[98|[101|[110|[99|[104|[109|[97|[114|[107|[115|[47|[97|[99|[116|[111|[114|[115|[47|[101|[114|[108|[97|[110|[103|[47|[99|[101|[108|[108|[46|[101|[114|[108]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]],1}],
+		%% Line 2
+		'uncoverable' =
+		    %% Line 2
+		    [99|[101|[108|[108|[95|[109|[97|[105|[108|[32|[62|[32|[50]]]]]]]]]]]]],
+		%% Line 3
+		'uncoverable' =
+		    %% Line 3
+		    [100|[105|[115|[112|[95|[109|[97|[105|[108|[32|[62|[32|[49]]]]]]]]]]]]]]
+'cell'/1 =
+    %% Line 7
+    ( fun (_0) ->
+	  do  %% Line 8
+	      call 'monarch':'label_mail'
+		  ([99|[101|[108|[108|[95|[109|[97|[105|[108]]]]]]]]])
+	      ( letrec
+		    'recv$^0'/0 =
+			fun () ->
+			    let <_4,_2> =
+				primop 'recv_peek_message'
+				    ()
+			    in  case _4 of
+				  <'true'> when 'true' ->
+				      %% Line 9
+				      case _2 of
+					%% Line 10
+					<{'put',NewContent}> when 'true' ->
+					    do  primop 'remove_message'
+						    ()
+						%% Line 11
+						apply 'cell'/1
+						    (NewContent)
+					%% Line 12
+					<{'get',To}> when 'true' ->
+					    do  primop 'remove_message'
+						    ()
+						do  %% Line 13
+						    call 'erlang':'!'
+							(To, {'value',( _0
+									-| [{'function',{'cell',1}}] )})
+						    %% Line 14
+						    apply 'cell'/1
+							(( _0
+							   -| [{'function',{'cell',1}}] ))
+					( <Other> when 'true' ->
+					      do  primop 'recv_next'
+						      ()
+						  ( apply 'recv$^0'/0
+							()
+						    -| ['dialyzer_ignore'] )
+					  -| ['compiler_generated','dialyzer_ignore'] )
+				      end
+				  ( <'false'> when 'true' ->
+					let <_3> =
+					    primop 'recv_wait_timeout'
+						('infinity')
+					in  case _3 of
+					      <'true'> when 'true' ->
+						  'true'
+					      ( <'false'> when 'true' ->
+						    ( apply 'recv$^0'/0
+							  ()
+						      -| ['dialyzer_ignore'] )
+						-| ['dialyzer_ignore'] )
+					    end
+				    -| ['dialyzer_ignore'] )
+				end
+		in  ( apply 'recv$^0'/0
+			  ()
+		      -| ['dialyzer_ignore'] )
+		-| ['letrec_goto','no_inline'] )
+      -| [{'function',{'cell',1}}] )
+'disp'/0 =
+    %% Line 17
+    ( fun () ->
+	  do  %% Line 18
+	      call 'monarch':'label_mail'
+		  ([100|[105|[115|[112|[95|[109|[97|[105|[108]]]]]]]]])
+	      ( letrec
+		    'recv$^0'/0 =
+			fun () ->
+			    let <_2,_0> =
+				primop 'recv_peek_message'
+				    ()
+			    in  case _2 of
+				  <'true'> when 'true' ->
+				      %% Line 19
+				      case _0 of
+					%% Line 20
+					<{'value',Content}> when 'true' ->
+					    do  primop 'remove_message'
+						    ()
+						%% Line 21
+						case <> of
+						  %% Line 22
+						  <>
+						      when call 'erlang':'=='
+							    (Content,
+							     2) ->
+						      apply 'disp'/0
+							  ()
+						  %% Line 23
+						  <> when 'true' ->
+						      call 'monarch':'error'
+							  ([69|[114|[114|[111|[114|[33]]]]]])
+						end
+					( <Other> when 'true' ->
+					      do  primop 'recv_next'
+						      ()
+						  ( apply 'recv$^0'/0
+							()
+						    -| ['dialyzer_ignore'] )
+					  -| ['compiler_generated','dialyzer_ignore'] )
+				      end
+				  ( <'false'> when 'true' ->
+					let <_1> =
+					    primop 'recv_wait_timeout'
+						('infinity')
+					in  case _1 of
+					      <'true'> when 'true' ->
+						  'true'
+					      ( <'false'> when 'true' ->
+						    ( apply 'recv$^0'/0
+							  ()
+						      -| ['dialyzer_ignore'] )
+						-| ['dialyzer_ignore'] )
+					    end
+				    -| ['dialyzer_ignore'] )
+				end
+		in  ( apply 'recv$^0'/0
+			  ()
+		      -| ['dialyzer_ignore'] )
+		-| ['letrec_goto','no_inline'] )
+      -| [{'function',{'disp',0}}] )
+'main'/0 =
+    %% Line 27
+    ( fun () ->
+	  let <_0> =
+	      fun () ->
+		  %% Line 28
+		  apply 'cell'/1
+		      (1)
+	  in  let <C1> =
+		  call %% Line 28
+		       'erlang':%% Line 28
+				'spawn'
+		      (%% Line 28
+		       _0)
+	      in  let <_2> =
+		      fun () ->
+			  %% Line 29
+			  apply 'cell'/1
+			      (2)
+		  in  let <C2> =
+			  call %% Line 29
+			       'erlang':%% Line 29
+					'spawn'
+			      (%% Line 29
+			       _2)
+		      in  let <_4> =
+			      fun () ->
+				  %% Line 30
+				  apply 'disp'/0
+				      ()
+			  in  let <Disp> =
+				  call %% Line 30
+				       'erlang':%% Line 30
+						'spawn'
+				      (%% Line 30
+				       _4)
+			      in  do  %% Line 31
+				      call 'erlang':'!'
+					  (C1, {'put',2})
+				      do  %% Line 32
+					  call 'erlang':'!'
+					      (C2, {'put',5})
+					  %% Line 33
+					  call 'erlang':'!'
+					      (C1, {'get',Disp})
+      -| [{'function',{'main',0}}] )
+'module_info'/0 =
+    ( fun () ->
+	  call 'erlang':'get_module_info'
+	      ('cell')
+      -| [{'function',{'module_info',0}}] )
+'module_info'/1 =
+    ( fun (_0) ->
+	  call 'erlang':'get_module_info'
+	      ('cell', ( _0
+			 -| [{'function',{'module_info',1}}] ))
+      -| [{'function',{'module_info',1}}] )
+end

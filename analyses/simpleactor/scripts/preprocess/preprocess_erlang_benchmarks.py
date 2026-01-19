@@ -25,7 +25,7 @@ TO_CORE_SCRIPT = (SCRIPT_PATH.parent / "to_core").resolve().as_posix()
 #############################################################
 
 
-def preprocess(input: Path, output_dir: Path, prefix: str | None = None, log_dir: Path | None = None) -> Path:
+def preprocess(input: Path, output_dir: Path, prefix: str | None = None, log_dir: Path | None = None) -> tuple[Path, bool]:
     """
     Proceprocesses the file at the given input path and outputs it to the 'output_dir',
     uses 'prefix' if set to determine the prefix to the input path and logs to 'log_dir' with
@@ -48,7 +48,7 @@ def preprocess(input: Path, output_dir: Path, prefix: str | None = None, log_dir
             print(f"[*] Logging failure to {log_path}")
             with open(log_path, "wb") as f:
                 f.write(result.stderr)
-        return Path(output_path)
+        return Path(output_path), False
 
     output = result.stdout
 
@@ -56,7 +56,17 @@ def preprocess(input: Path, output_dir: Path, prefix: str | None = None, log_dir
     with open(output_path, "wb") as f:
         f.write(output)
 
+    # If the output was successfully generated, the Erlang script also generates
+    # a .core file in the same directory as the original file, so we have to remove
+    # it in order to clean the intermediate outputs up.
+    print(input_name)
+    intermediate_output = Path(actual_input_path.parent / (Path(input_name).stem + ".core"))
+    if intermediate_output.exists():
+        intermediate_output.unlink()
+        print(f"[*] Removed intermediate output {intermediate_output}")
+
     print(f"[*] Benchmark {input} successfully written to {output_path}")
+    return Path(output_path), True
 
 
 def main(args):
@@ -72,8 +82,8 @@ def main(args):
     else:
         print("")
 
-    df = common.read_inputs(benchmark_txt)
-    inputs = df["inputs"]
+    df = common.read_inputs(benchmark_txt, full_df = True)
+    inputs = df["filename"]
 
     if not output_dir.exists():
         output_dir.mkdir()
@@ -82,15 +92,18 @@ def main(args):
         args.logging_dir.mkdir()
 
     output_paths = []
+    successes = []
     for input_path in inputs:
         print(f"[*] Processing {input_path}")
-        output_path = preprocess(input_path, output_dir, benchmark_prefix, args.logging_dir)
+        output_path, success = preprocess(input_path, output_dir, benchmark_prefix, args.logging_dir)
+        successes.append(success)
         output_paths.append(output_path)
 
 
     if args.output_csv:
         print(f"[*] Writing output to {args.output_csv}")
         df["output_paths"] = pd.Series(output_paths).apply(lambda p: p.relative_to(rel_parent))
+        df["success"] = pd.Series(successes)
         df.to_csv(args.output_csv)
     
 
