@@ -1,7 +1,11 @@
+-module(pp).
+-export([main/0]).
+
 -uncoverable("ping_mail > 1").
 -uncoverable("pong_mail > 1").
+
 ping(Count, Pong) ->
-    ?label_mail("ping_mail"),
+    monarch:label_mail("ping_mail"),
     receive
         {start} ->
             Pong ! {send_ping, self()},
@@ -19,7 +23,7 @@ ping(Count, Pong) ->
     end.
 
 pong(Count) ->
-    %?label_mail("pong_mail"),
+    monarch:label_mail("pong_mail"),
     receive
         {stop} -> done;
         {send_ping, To} -> 

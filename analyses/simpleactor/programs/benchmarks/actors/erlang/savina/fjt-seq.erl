@@ -1,21 +1,21 @@
-%-module(fjt).
-%-export([main/0]).
+-module(fjt_seq).
+-export([main/0]).
 -uncoverable("throughput_mail > 3").
 
--define(N, 10).
+%% -define(N, 10). INLINED
 
 perform_computation(Theta) ->
     Theta.
 
 throughput(9) ->
-    ?label_mail("throughput_mail"),
+    monarch:label_mail("throughput_mail"),
     receive
         {message} ->
             perform_computation(37),
             done
     end;
 throughput(Processed) ->
-    ?label_mail("throughput_mail"),
+    monarch:label_mail("throughput_mail"),
     receive
       {message} ->
             perform_computation(37),
@@ -31,4 +31,4 @@ main() ->
     A1 = spawn(fun() -> throughput(0) end),
     A2 = spawn(fun() -> throughput(0) end),
     A3 = spawn(fun() -> throughput(0) end),
-    loop_send(?N, A1, A2, A3).
+    loop_send(10, A1, A2, A3).

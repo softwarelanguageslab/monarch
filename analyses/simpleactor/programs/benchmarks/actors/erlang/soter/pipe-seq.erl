@@ -1,4 +1,6 @@
--soter_config(peano).
+%% -soter_config(peano). % NOT SURE WHAT THIS IS, SO DISABLING THIS FOR NOW
+-module(pipe_seq).
+-export([main/0]).
 
 -uncoverable("mail>=2").
 
@@ -12,7 +14,7 @@ main()->
 pipe_node(Fun, Next) ->
     % this will label every mailbox
     % of every process running `pipe_node`
-    ?label_mail('mail',self()),
+    monarch:label_mail('mail',self()),
     receive
         Msg -> Next ! Fun(Msg),
                pipe_node(Fun, Next)

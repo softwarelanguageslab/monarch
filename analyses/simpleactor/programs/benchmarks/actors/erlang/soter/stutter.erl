@@ -1,8 +1,11 @@
+-module(stutter).
+-export([main/0]).
+
 main() ->
     P = spawn(fun()-> stutter(fun(Msg)-> dosmt(Msg) end) end),
     sendA(P).
 
-dosmt(a) -> ?soter_error("We abhorr 'a's.");
+dosmt(a) -> monarch:error("We abhorr 'a's.");
 dosmt(b) -> 'we love b'.
 
 sendB(P) -> P!b, sendA(P).

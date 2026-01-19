@@ -1,5 +1,5 @@
-%-module(count).
-%-export([main/0]).
+-module(count).
+-export([main/0]).
 -uncoverable("producer_mail > 1").
 -uncoverable("counting_mail > 11").
 
@@ -15,23 +15,23 @@ loop_send(Cur, Target) ->
     end.
 
 producer(Counter) ->
-    ?label_mail("producer_mail"),
+    monarch:label_mail("producer_mail"),
     receive
         {increment} ->
             io:format("received increment~n"),
-            loop_send(?N, Counter),
+            loop_send(10, Counter),
             Counter ! {retrieve, self()},
             producer(Counter);
         {result, Res} ->
             io:format("received result~n"),
             if
-                Res == ?N -> done;
-                true -> io:format("error~n"), ?soter_error("Error!")
+                Res == 10 -> done;
+                true -> io:format("error~n"), monarch:error("Error!")
             end
     end.
 
 counting(Count) ->
-    ?label_mail("counting_mail"),
+    monarch:label_mail("counting_mail"),
     receive 
         {increment} ->
             io:format("count received increment~n"),

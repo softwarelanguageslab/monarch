@@ -1,8 +1,10 @@
+-module(count_seq).
+-export([main/0]).
 -uncoverable("producer_mail > 1").
 -uncoverable("counting_mail > 2").
 
 producer(Counter) ->
-    ?label_mail("producer_mail"),
+    monarch:label_mail("producer_mail"),
     receive
         {increment} ->
             Counter ! {increment},
@@ -11,12 +13,12 @@ producer(Counter) ->
         {result, N} ->
             if
                 N == 1 -> done;
-                true -> ?soter_error("Error!")
+                true -> monarch:error("Error!")
             end
     end.
 
 counting(Count) ->
-    ?label_mail("counting_mail"),
+    monarch:label_mail("counting_mail"),
     receive 
         {increment} ->
             counting(Count + 1);

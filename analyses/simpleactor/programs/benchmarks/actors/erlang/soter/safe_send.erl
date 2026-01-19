@@ -1,3 +1,6 @@
+-module(safe_send).
+-epxort([main/0]).
+
 main() ->
     ME = self(),
     S = spawn(fun()-> receive {_,X} -> ME ! ok, server(X) end end),
@@ -11,6 +14,6 @@ server(State) ->
     receive
         {X, P} -> P ! State, % This call would throw an exception if matching P=zero.
                   server(X);
-        bye    -> ?label(stop_server), ok
+        bye    -> monarch:label(stop_server), ok
     end.
 

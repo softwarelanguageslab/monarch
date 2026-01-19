@@ -1,10 +1,13 @@
+-module(fjc_seq).
+-export([main/0]).
 -uncoverable("forkjoin_mail > 1").
+
 perform_computation(Theta) ->
     Sint = Theta + 1,
     Sint * Sint.
 
 forkjoin() ->
-    ?label_mail("forkjoin_mail"),
+    monarch:label_mail("forkjoin_mail"),
     receive
         {message} ->
             perform_computation(37),

@@ -1,3 +1,6 @@
+-module(parikh).
+-export([main/0]).
+
 main() ->
     S = spawn(fun()-> server() end),
     S ! {init, self(), a},
@@ -15,7 +18,7 @@ server() ->
 do_serve(X) ->
     receive
         {init, _, _} ->
-            ?soter_error("We should be already initialized!");
+            monarch:error("We should be already initialized!");
         {set, Y} ->
             do_serve(Y);
         {get, P} ->
