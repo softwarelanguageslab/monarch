@@ -59,8 +59,8 @@ def preprocess(input: Path, output_dir: Path, prefix: str | None = None, log_dir
     # If the output was successfully generated, the Erlang script also generates
     # a .core file in the same directory as the original file, so we have to remove
     # it in order to clean the intermediate outputs up.
-    print(input_name)
-    intermediate_output = Path(actual_input_path.parent / (Path(input_name).stem + ".core"))
+    intermediate_output = actual_input_path.parent / Path(actual_input_path.stem + ".core")
+    print(intermediate_output)
     if intermediate_output.exists():
         intermediate_output.unlink()
         print(f"[*] Removed intermediate output {intermediate_output}")
@@ -102,9 +102,9 @@ def main(args):
 
     if args.output_csv:
         print(f"[*] Writing output to {args.output_csv}")
-        df["output_paths"] = pd.Series(output_paths).apply(lambda p: p.relative_to(rel_parent))
+        df["output_path"] = pd.Series(output_paths).apply(lambda p: p.relative_to(rel_parent))
         df["success"] = pd.Series(successes)
-        df.to_csv(args.output_csv)
+        df.to_csv(args.output_csv, index = False)
     
 
 #############################################################
