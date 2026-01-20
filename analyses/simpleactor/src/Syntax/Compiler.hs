@@ -159,7 +159,7 @@ compilePats = smapM compileHandler
 compileCaseClauses :: MonadError String m => SExp -> m [(Pat, Exp)]
 compileCaseClauses = fmap fold . smapM compileClause
    where compileClause :: MonadError String m => SExp -> m [(Pat, Exp)]
-         compileClause (atoms ::: e ::: SNil _) = smapM (\lit -> (ValuePat $ sexpToLit lit,) <$> compile e)  atoms
+         compileClause (atoms ::: e ::: SNil _) = smapM (\lit -> (flip ValuePat (spanOf e) $ sexpToLit lit,) <$> compile e)  atoms
          compileClause e = throwError $ "invalid clause for case expression at " ++ show (spanOf e) ++ " in " ++ filename (spanOf e)
 
 compilePat :: MonadError String m => SExp -> m Pat
@@ -168,10 +168,10 @@ compilePat (Atom "pair" _ ::: pat1 ::: pat2 ::: SNil _) =
 compilePat (Atom "cons" _ ::: pat1 ::: pat2 ::: SNil _) =
    PairPat <$> compilePat pat1 <*> compilePat pat2
 compilePat ex@(Atom x _) = return (IdePat (Ide x (spanOf ex)))
-compilePat (SExp.Num n _) = return (ValuePat $ Syntax.AST.Num n)
-compilePat (SExp.Bln b _) = return (ValuePat $ Syntax.AST.Boolean b)
-compilePat (SExp.SNil _) = return (ValuePat Syntax.AST.Nil)
-compilePat (SExp.Atom "list" _ ::: SNil _) = return (ValuePat Syntax.AST.Nil)
-compilePat (Quo (Atom s _) _) = return (ValuePat $ Syntax.AST.Symbol s)
-compilePat (Atom "quote" _ ::: Atom s _ ::: SNil _) = return (ValuePat $ Syntax.AST.Symbol s)
+compilePat ex@(SExp.Num n _) = return (ValuePat (Syntax.AST.Num n) $ spanOf ex) 
+compilePat ex@(SExp.Bln b _) = return (ValuePat (Syntax.AST.Boolean b) $ spanOf ex)
+compilePat ex@(SExp.SNil _) = return (ValuePat Syntax.AST.Nil $ spanOf ex)
+compilePat ex@(SExp.Atom "list" _ ::: SNil _) = return (ValuePat Syntax.AST.Nil $ spanOf ex)
+compilePat ex@(Quo (Atom s _) _) = return (ValuePat (Syntax.AST.Symbol s) $ spanOf ex)
+compilePat ex@(Atom "quote" _ ::: Atom s _ ::: SNil _) = return (ValuePat (Syntax.AST.Symbol s) $ spanOf ex)
 compilePat e = throwError $ "invalid pattern " ++ show e ++ " at  " ++ show (spanOf e) ++ " in " ++ filename (spanOf e)

@@ -99,8 +99,8 @@ translatePat annPat =
   case pat of
     Core.VarPat ide _ -> IdePat (unAnn ide)
     Core.AtomicPat lit _ -> litToPat lit
-    Core.TuplePat pats _ -> case pats of
-        [] -> ValuePat Nil
+    Core.TuplePat pats s -> case pats of
+        [] -> ValuePat Nil s
         xs -> -- Encode tuple pattern as nested pair patterns: {a, b, c} => (a, (b, (c)))
           foldr1 PairPat
                  (map translatePat xs)
@@ -117,18 +117,18 @@ translatePat annPat =
 
 -- | Convert a Core Erlang literal to a SimpleActor pattern
 litToPat :: Core.Lit -> Pat
-litToPat (Core.CharLit c _) = ValuePat (Character c)
-litToPat (Core.IntegerLit i _) = ValuePat (Num i)
-litToPat (Core.FloatLit f _) = ValuePat (Real (realToFrac f))
-litToPat (Core.AtomLit (Core.Atom "true"_) _) = ValuePat (Boolean True)
-litToPat (Core.AtomLit (Core.Atom "false" _) _) = ValuePat (Boolean False)
-litToPat (Core.AtomLit (Core.Atom str _) _) = ValuePat (Symbol str)
-litToPat (Core.StringLit str _) = ValuePat (String str)
-litToPat (Core.NilLit _) = ValuePat Nil
-litToPat (Core.TupleLit lits _) =
+litToPat ex@(Core.CharLit c _) = ValuePat (Character c) $ spanOf ex
+litToPat ex@(Core.IntegerLit i _) = ValuePat (Num i) $ spanOf ex
+litToPat ex@(Core.FloatLit f _) = ValuePat (Real (realToFrac f)) $ spanOf ex
+litToPat ex@(Core.AtomLit (Core.Atom "true"_) _) = ValuePat (Boolean True) $ spanOf ex
+litToPat ex@(Core.AtomLit (Core.Atom "false" _) _) = ValuePat (Boolean False) $ spanOf ex
+litToPat ex@(Core.AtomLit (Core.Atom str _) _) = ValuePat (Symbol str) $ spanOf ex
+litToPat ex@(Core.StringLit str _) = ValuePat (String str) $ spanOf ex
+litToPat ex@(Core.NilLit _) = ValuePat Nil $ spanOf ex
+litToPat ex@(Core.TupleLit lits _) =
   -- Encode tuple literal pattern as nested pairs: {1, 2, 3} => (1, (2, (3, nil)))
   foldr (PairPat . litToPat)
-        (ValuePat Nil)
+        (ValuePat Nil (spanOf ex))
         lits
 litToPat (Core.ConsLit hd tl _) =
   -- Encode cons literal pattern as pair: [1|2] => (1, 2)
@@ -253,10 +253,10 @@ translateClause :: Ann Core.Clause -> TransM (Pat, Exp)
 translateClause annClause =
   let clauseSpan = spanOf annClause in
   case unAnn annClause of
-    Core.Clause pats guard body _ -> do
+    Core.Clause pats guard body s -> do
       let pat = case pats of
             [p] -> translatePat p
-            _ -> foldr (PairPat . translatePat) (ValuePat Nil) pats
+            _ -> foldr (PairPat . translatePat) (ValuePat Nil s) pats
       bodyExpr <- translateExpr body
       guardedBody <- case unAnn guard of
         Core.LitExpr (Core.AtomLit (Core.Atom "true" _) _) _ ->
@@ -292,7 +292,7 @@ translateModule :: Ann Module -> Exp
 translateModule annMod =
   let bds  = translate annMod
       exports = moduleExports annMod
-      exportPats = map (\(nam, arity) -> ValuePat (Symbol $ nam ++ "/" ++ show arity)) exports
+      exportPats = map (\(nam, arity) -> ValuePat (Symbol $ nam ++ "/" ++ show arity) dummySpan) exports
       exportNames = map (\(nam, arity) -> Var (Ide (nam ++ "/" ++ show arity) dummySpan)) exports
   in Letrec bds (Lam [Ide "$funname" (spanOf annMod)]
                      (Match (Var (Ide "$funname" dummySpan))

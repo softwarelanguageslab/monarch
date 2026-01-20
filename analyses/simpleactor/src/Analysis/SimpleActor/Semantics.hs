@@ -15,6 +15,7 @@ import Syntax.Span
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Domain.Scheme.Class hiding (Exp)
+import qualified Domain.Scheme.Class as DomainClass
 import Domain.Actor
 
 import qualified Analysis.SimpleActor.ErlangPrimitives as Erl
@@ -101,7 +102,7 @@ eval = fix evalCmp
 
 eval'' :: forall v m k e mb . EvalM e mb v k m => (Cmp -> m v) -> Exp -> m v
 eval'' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
-eval'' _ (Literal lit _) = return (injectLit lit)
+eval'' _ ex@(Literal lit _) =  injectLit lit ex
 eval'' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
    v2 <- mapM (eval' rec) es
@@ -117,7 +118,7 @@ eval'' _rec (Spawn e _) =
    liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
 eval'' _ (Terminate _) = terminate $> nil
 eval'' rec (Receive pats _) = do
-   receivePartitioned $  
+   receivePartitioned $
       matchList
          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
          pats
@@ -216,6 +217,8 @@ type MatchM v m = (
    Domain (Esc m) DomainError,
    Domain (Esc m) Error,
    StoreM (Adr v) (StoreVal v) m,
+   AllocM m (DomainClass.Exp v) (Adr v),
+   DomainClass.Exp v ~ Exp,
    -- Value domain constraints
    Joinable v,
    EqualLattice v,
@@ -228,10 +231,10 @@ type MatchM v m = (
 -- | Match a pattern against a value
 match :: forall v m . MatchM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
-match (ValuePat lit) v =
+match (ValuePat lit s) v =
    -- TODO: replace @cond@ by @choice@ so that conditions are tracked symbolically
    -- This is currently disabled because there is a bug causing some feasible paths to become infeasible.
-   cond (fromBL @(CP Bool) $ eql (injectLit lit) v)
+   cond (fromBL @(CP Bool) =<< (eql <$> injectLit lit (Literal lit s) <*> pure v))
         (return Map.empty)
         (escape MatchError)
 match (PairPat pat1 pat2) v =
@@ -246,14 +249,14 @@ match (AliasPat ide pat) v =
              <$> match (IdePat ide) v
              <*> match pat v
 
-injectLit :: SchemeDomain v => Lit -> v
-injectLit (Boolean b)    = inject b
-injectLit (Symbol s)     = symbol s
-injectLit (Num n)        = inject n
-injectLit (Character c)  = inject c
-injectLit (Real r)       = inject r
-injectLit Nil            = nil
-injectLit (String _)     = error "cannot inject a string"
+injectLit :: MatchM v m => Lit -> DomainClass.Exp v -> m v
+injectLit (Boolean b)    = const $ return $ inject b
+injectLit (Symbol s)     = const $ return $ symbol s
+injectLit (Num n)        = const $ return $ inject n
+injectLit (Character c)  = const $ return $ inject c
+injectLit (Real r)       = const $ return $ inject r
+injectLit Nil            = const $ return nil
+injectLit (String s)     = flip stoStr (inject s)
 
 
 ------------------------------------------------------------

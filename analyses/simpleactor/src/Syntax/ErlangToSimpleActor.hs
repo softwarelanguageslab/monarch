@@ -58,11 +58,11 @@ compileLiteral (Erl.NilLit s)       = return (Nil, s)
 compileClause :: TranspilerM m => Erl.Clause -> m (Pat, Exp)
 compileClause (Erl.SimpleClause pats [] bdy) =
       liftA2 (,) (consify <$> mapM compilePat pats) (compileBody bdy)
-  where compilePat (Erl.AtomicPat lit) = ValuePat . fst <$> compileLiteral lit
+  where compilePat (Erl.AtomicPat lit) = flip ValuePat dummySpan . fst <$> compileLiteral lit
         compilePat (Erl.VariablePat (Ide nam s)) = return (IdePat (Ide nam s))
         compilePat (Erl.ConsPat pat1 pat2) = liftA2 PairPat (compilePat pat1) (compilePat pat2)
         compilePat _ = error "unsupported pattern"
-        consify = foldr PairPat (ValuePat Nil)
+        consify = foldr PairPat (ValuePat Nil dummySpan)
 compileClause (Erl.SimpleClause {}) = error "clauses with guards are currently not supported"
 
 -- | Compîle a list of clauses into a single match expression on the given expression

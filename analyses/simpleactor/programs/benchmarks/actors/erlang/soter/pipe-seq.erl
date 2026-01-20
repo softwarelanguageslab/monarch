@@ -14,7 +14,7 @@ main()->
 pipe_node(Fun, Next) ->
     % this will label every mailbox
     % of every process running `pipe_node`
-    monarch:label_mail('mail',self()),
+    monarch:label_mail('mail'), % We do not support this yet, but would be interesting, would require a counter for each PID, which we kind of already have. --> ,self()),
     receive
         Msg -> Next ! Fun(Msg),
                pipe_node(Fun, Next)

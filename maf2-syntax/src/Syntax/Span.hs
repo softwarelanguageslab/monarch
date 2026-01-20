@@ -2,7 +2,16 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternSynonyms #-}
-module Syntax.Span(pattern Span, Span, ESpan(..), ESpanOf(..), SpanOf(..), Position(..), mkSpan) where
+module Syntax.Span(
+      pattern Span,
+      Span,
+      ESpan(..),
+      ESpanOf(..),
+      SpanOf(..),
+      Position(..),
+      mkSpan,
+      dummySpan
+   ) where
 
 import GHC.Generics
 import Control.DeepSeq
@@ -55,3 +64,7 @@ instance SpanOf a => SpanOf [a] where
 -- as the start of the new span, and the second element as its end.
 mkSpan :: (SpanOf a) => a -> a -> Span
 mkSpan  start end = spanOf [start, end]
+
+-- | A dummy Span, can be used when no syntactic location information is available
+dummySpan :: Span 
+dummySpan = Span "<dummy>" (Position (-1) (-1)) (Position (-1) (-1))

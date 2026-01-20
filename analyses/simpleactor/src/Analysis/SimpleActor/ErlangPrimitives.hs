@@ -147,7 +147,8 @@ erlangPrimitives =
       ("monarch:any_nat/0", prim $ const $ prim0 $ random @_ @v (inject (1000 :: Integer))),
       
       -- I/O primitives
-      ("io:format/2", prim $ const $ const $ return nil)
+      ("io:format/2", prim $ const $ const $ return nil),
+      ("io:format/1", prim $ const $ const $ return nil)
     ]
 
 -- | Returns a qualified list mapping of primitive names to their implementation

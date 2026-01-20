@@ -80,7 +80,7 @@ instance Show Lit where
 -- | Pattern language
 data Pat = PairPat Pat Pat
          | IdePat Ide
-         | ValuePat Lit
+         | ValuePat Lit Span
          | AliasPat Ide Pat deriving (Eq, Ord, Show, Generic)
 
 -- | Compute the set of variables in the patern
@@ -161,10 +161,10 @@ instance Show Exp where
 
 
 variables :: Pat -> Set String
-variables (PairPat e1 e2) = Set.union (variables e1) (variables e2)
-variables (IdePat x)      = Set.singleton $ name x
-variables (AliasPat x p)  = Set.insert (name x) (variables p)
-variables (ValuePat _)    = Set.empty
+variables (PairPat e1 e2)  = Set.union (variables e1) (variables e2)
+variables (IdePat x)       = Set.singleton $ name x
+variables (AliasPat x p)   = Set.insert (name x) (variables p)
+variables (ValuePat _ _)   = Set.empty
 
 instance FreeVariables (Pat, Exp) where
    fv (pat, expr) = Set.difference (fv expr) (variables pat)

@@ -16,13 +16,17 @@ import Domain.Scheme.Store (StoreVal(..))
 import Data.Set (Set)
 import Lattice.Class
 
+-- | Monadic constraints needed for storing values (strings, pairs and vectors)
+-- into the Scheme store 
+type SchemeStoreM e v m = (AllocM m e (Adr v), StoreM (Adr v) (StoreVal v) m, SchemeDomain v)
+
 -- | Store a pair in the store by allocating a suiteable address
 --  storing the value on that address and returning a pointer to
 -- the resulting allocated address
 stoPai :: SchemeDomainM e v m => e -> PaiDom v -> m v
 stoPai ex v = alloc ex >>= (\adr -> writeAdr adr (PaiVal v) $> pptr adr)
 -- | Same as @stoPai@ but for strings
-stoStr :: SchemeDomainM e v m => e -> StrDom v -> m v
+stoStr :: SchemeStoreM e v m => e -> StrDom v -> m v
 stoStr ex v = alloc ex >>= (\adr -> writeAdr adr (StrVal v) $> sptr adr)
 -- | Same as @stoPai@ but for vectors
 stoVec :: SchemeDomainM e v m => e -> VecDom v -> m v
