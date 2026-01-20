@@ -141,8 +141,13 @@ erlangPrimitives =
       ("primop:recv_next", prim $ const $ prim0 $ return nil),
       -- Monarch-specific primitives (for testing properties)
       -- TODO: move these primitives somewhere else
-      ("monarch:error/1", undefined),
-      ("monarch:label_mail/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil)))
+      ("monarch:error/1", prim $ const $ prim1 $ const mbottom), -- TODO: errors should be tracked so that we can check for them in the analysis result
+      ("monarch:label/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
+      ("monarch:label_mail/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
+      ("monarch:any_nat/0", prim $ const $ prim0 $ random @_ @v (inject (1000 :: Integer))),
+      
+      -- I/O primitives
+      ("io:format/2", prim $ const $ const $ return nil)
     ]
 
 -- | Returns a qualified list mapping of primitive names to their implementation
