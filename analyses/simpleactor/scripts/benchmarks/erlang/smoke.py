@@ -10,10 +10,14 @@ import pandas as pd
 from pathlib import Path
 import sys
 import subprocess
+from enum import Enum
+
 
 SCRIPT_PATH = Path(__file__)
 SIMPLEACTOR_CWD = SCRIPT_PATH.parent.parent.parent.parent
 GHC_DEBUG = True
+TIMEOUT = 20 # IN SECONDS
+
 
 if GHC_DEBUG:
     GHC_OPTS = ["--enable-profiling"]
@@ -22,7 +26,24 @@ else:
     GHC_OPTS = []
     RUN_OPTS = []
 
+class SmokeTestResult(Enum):
+    FAILURE = 0
+    SUCCESS = 1
+    TIMEOUT = 2 
 
+    @staticmethod
+    def is_success(result) -> bool:
+        return result == SmokeTestResult.SUCCESS
+
+    def print(self):
+        match self:
+           case SmokeTestResult.FAILURE:
+               return "FAILURE"
+           case SmokeTestResult.SUCCESS:
+               return "SUCCESS"
+           case SmokeTestResult.TIMEOUT:
+               return "TIMEOUT"
+    
 class SmokeTestRunner:
     __log_dir: Path | None
 
@@ -56,22 +77,26 @@ class SmokeTestRunner:
             write_to(stderr_log, stderr)
         
         
-    def smoke_test(self, main_module, main_function, output_path, **kwargs):
+    def smoke_test(self, main_module, main_function, output_path, **kwargs) -> SmokeTestResult:
         """
-        Returns true if the smoke test passed for the given benchmark file
+        Returns SmokeTestResult.SUCCESS if the smoke test passed for the given benchmark file
         """
         print(f"[*] Testing {output_path} ... ", end = '', flush = True)
         # TODO: add reason for failure to the output?
         try:
-            p = subprocess.run(["cabal" ,"run"] + GHC_OPTS + [".", "--"] + RUN_OPTS + ["core-erlang", "-f" , output_path, "--main-module", main_module, "--main-function", main_function, "-o" , "output"], cwd = SIMPLEACTOR_CWD, check = True, capture_output=True, text = True)
+            p = subprocess.run(["cabal" ,"run"] + GHC_OPTS + [".", "--"] + RUN_OPTS + ["core-erlang", "-f" , output_path, "--main-module", main_module, "--main-function", main_function, "-o" , "output"], cwd = SIMPLEACTOR_CWD, check = True, capture_output=True, text = True, timeout = TIMEOUT)
             stdout, stderr = p.stdout, p.stderr
-            success = True
-        except subprocess.CalledProcessError as e:
+            success = SmokeTestResult.SUCCESS
+        except (subprocess.CalledProcessError) as e:
             stdout, stderr = e.stdout, e.stderr
-            success = False
+            success = SmokeTestResult.FAILURE
+        except (subprocess.TimeoutExpired) as e:
+            assert(e.stdout is not None and e.stderr is not None)
+            stdout, stderr = e.stdout.decode(), e.stderr.decode()
+            success = SmokeTestResult.TIMEOUT
 
         self.output_captured_log(Path(output_path), stdout, stderr)
-        print("SUCCESS" if success else "FAILURE")
+        print(success.print())
         return success
         
 
@@ -95,7 +120,7 @@ def main():
     
     smoke_successes = []
     for benchmark in success_benchmarks:
-        smoke_successes.append(runner.smoke_test(**benchmark))
+        smoke_successes.append(runner.smoke_test(**benchmark).print())
 
     df["smoke_success"] = pd.Series(smoke_successes)
 
