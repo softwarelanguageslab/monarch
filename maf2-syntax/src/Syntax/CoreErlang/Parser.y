@@ -462,7 +462,7 @@ application_expr : 'apply' anno_expression arg_list
     { ApplyExpr $2 $3 (spanning $1 (if $3 == [] then $2 else (last $3))) }
 
 call_expr : 'call' anno_expression ':' anno_expression arg_list
-    { CallExpr $2 $4 $5 (spanning $1 $5) }
+    { CallExpr $2 $4 $5 (if $5 == [] then (spanOf $1) else (spanning $1 $5)) }
 
 primop_expr : 'primop' anno_expression arg_list
     { PrimOpExpr $2 $3 (spanning $1 (if $3 == [] then $2 else (last $3))) }
