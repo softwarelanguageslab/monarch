@@ -238,7 +238,7 @@ inter labelCounts exp environment ref mb = do
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> mb                    -- initial mailbox
                 <+> ref                   -- current `self`
-                <+> initialContext 5      -- address context
+                <+> initialContext 1      -- address context
                 <+> Partition.empty       -- the empty partition
                 -- <+> emptyPC
 

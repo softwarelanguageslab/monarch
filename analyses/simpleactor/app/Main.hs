@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE LambdaCase #-}
+
 module Main (main) where
 
 import qualified Benchmark.SimpleActor.Precision as Benchmark.Precision
@@ -12,9 +12,8 @@ import qualified Data.Map as Map
 import Syntax.Simplifier
 import Analysis.SimpleActor.Fixpoint.ModularModConc
 import Options.Applicative
-import Syntax.AST  
+import Syntax.AST
 import Control.Monad
-import Analysis.SimpleActor.Monad ()
 import Analysis.SimpleActor.Fixpoint.SequentialModConc (ActorRes(..), spanOfCmp)
 import qualified Analysis.SimpleActor.Infer as Infer
 import System.TimeIt
@@ -32,13 +31,8 @@ import Syntax.Erlang.Preluder
 import Analysis.Erlang.BIF
 import Syntax.ErlangToSimpleActor
 import Text.Pretty.Simple (pPrint)
-import qualified Syntax.SimpleActor.CoreToSimpleActor as CoreToSimpleActor
-import qualified Syntax.CoreErlang as CoreErlang
-import qualified Syntax.CoreErlang.Soter as Soter
-import qualified Analysis.CoreErlang.Soter as Soter
-import qualified Domain.Core.Count.BoundedCount as Count
-import Data.Bifunctor
-import Analysis.SimpleActor.Monad (MailboxLabel(..))
+import CommandLine.Options hiding (outputOptions, OutputOptions)
+import qualified Runnables.CoreErlang as CoreErlang
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -48,31 +42,6 @@ ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
 ------------------------------------------------------------
 
 type Command = IO ()
-
-
--- | Command-line options for a single file
-data InputOptions = InputOptions {
-                  -- | The name of the file to analyze
-                  filename :: String,
-                  -- | DEPRECATED: whether the Racket to the SimpleActor
-                  -- should be performed before running analysis, requires Racket to be installed.
-                  doTranslate :: Bool,
-                  -- | Whether debugging is enabled, this simply expands
-                  -- the output of the runPythonTaintAnalysisT
-                  debug :: Bool,
-                  -- | Maximum number of steps in the analysis            
-                  maxSteps :: Maybe Int
-              } deriving (Show, Ord, Eq)
-
-
-inputOptions :: Parser InputOptions
-inputOptions = InputOptions <$> strOption
-                  (   long "file"
-                   <> short 'f'
-                   <> help "Input file"
-                  ) <*> flag True False ( long "no-translate" <> help "If present, disables translations" )
-                  <*> flag False True ( long "debug" <> help "If present, enable debug output" )
-                  <*> optional (option auto (long "max" <> short 't' <> help "maximum number of analysis steps"))
 
 
 -- | Command-line for options for a list of files in a directory
@@ -102,7 +71,7 @@ commandParser =
     <> command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
     <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
     <> command "erlang"        (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
-    <> command "core-erlang"   (info (coreErlang <$> coreErlangParser) (progDesc "Translate Core Erlang to SimpleActor")))
+    <> command "core-erlang"   (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor")))
 
 
 ------------------------------------------------------------
@@ -211,98 +180,6 @@ erlang InputOptions { .. } = do
    let expr = compileModules modules' deps "test" "main"
    print expr
    analyzeAst expr Nothing
-
-------------------------------------------------------------
--- Core Erlang analysis
-------------------------------------------------------------
-
-data CoreErlangOptions = CoreErlangOptions {
-      coreErlangMainMod :: String,
-      coreErlangMainFun :: String,
-      coreErlangOutputDir :: String,
-      coreErlangInputOptions :: InputOptions
-   }
-
--- | Parses the command-line arguments into a "CoreErlangOptions"
--- record type.
-coreErlangParser :: Parser CoreErlangOptions
-coreErlangParser = CoreErlangOptions
-                <$> strOption (long "main-module" <> short 'm')
-                <*> strOption (long "main-function")
-                <*> strOption (long "output-dir" <> short 'o' <> help "Output directory for DOT graphs")
-                <*> inputOptions
-
-coreErlang :: CoreErlangOptions -> IO ()
-coreErlang CoreErlangOptions { .. } = do
-   -- TODO: support more than one module, perhaps based on a directory
-   -- of modules.
-   let inputName = filename coreErlangInputOptions
-   contents <- readFile inputName
-   case CoreErlang.parseProgram inputName contents of
-     Left err -> do
-       putStrLn "Parse error:"
-       print $ CoreErlang.prettyErrorBundle  err
-       exitFailure
-     Right coreModule -> do
-       let expr = CoreToSimpleActor.translateModules [coreModule] coreErlangMainMod coreErlangMainFun
-       putStrLn "-- Expression: "
-       pPrint expr
-
-       -- Initialize soter predicates
-       let predicates = Soter.fromAttributes (CoreErlang.unAnn coreModule)
-       let bounds = Map.fromList $ map (bimap MailboxLabel Count.zero) $ Map.toList $ Soter.extractBoundsPredicates predicates
-
-       -- Run analysis and write DOT graphs
-       (AnalysisResult sequentialResults mbs countMax) <- analyze' bounds Nothing expr
-       let sequentialResMap = fmap cmpRes sequentialResults
-
-       putStrLn "====== Results per actor"
-       mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialResMap)
-       putStrLn "====="
-       putStrLn $ printMap  show (const True) mbs
-       putStrLn "====="
-
-       -- Print SOTER results
-       let countOutMapping =
-            Map.mapKeys getMailboxLabel $ Map.mapMaybe (\case { Count.Count v _ -> Just v ; _ -> Nothing }) countMax
-       let predicateHoldMapping = Map.fromList (zip predicates (map (Soter.predicateHolds countOutMapping) predicates))
-       putStrLn $ printMap show (const True) predicateHoldMapping
-       putStrLn "====="
-       putStrLn $ printMap show (const True) countOutMapping
-
-       -- Create output directory if it doesn't exist
-       createDirectoryIfMissing True coreErlangOutputDir
-
-       -- Write DOT graphs for each actor's mailbox
-       -- writeDotGraphs coreErlangOutputDir mbs
-
-       -- putStrLn $ "DOT graphs written to " ++ coreErlangOutputDir
-
-
--- | Write DOT graphs for all mailboxes to the specified output directory
--- writeDotGraphs :: String -> ActorMai -> IO ()
--- writeDotGraphs outputDir mailboxes = do
---   forM_ (Map.toList mailboxes) $ \(actorRef, mailbox) -> do
---     let actorName = sanitizeFilename (show actorRef)
---     case mailbox of
---       GraphAbstraction graphMailbox -> do
---         let messageGraphs = Set.toList $ Graph.getMessageGraphs graphMailbox
---         forM_ (zip [1..] messageGraphs) $ \(idx :: Int, messageGraph) -> do
---           let dotContent = Graph.toDot messageGraph
---           let filename = outputDir ++ "/" ++ actorName ++ "_graph_" ++ show idx ++ ".dot"
---           writeFile filename dotContent
---           putStrLn $ "  Written: " ++ filename
---       SetAbstraction _ ->
---         putStrLn $ "  Skipping " ++ actorName ++ " (SetAbstraction, no graph structure)"
-
--- | Sanitize a filename by replacing problematic characters
--- sanitizeFilename :: String -> String
--- sanitizeFilename = map sanitizeChar
---   where
---     sanitizeChar c
---       | c `elem` ['/', '\\', ':', '*', '?', '"', '<', '>', '|'] = '_'
---       | otherwise = c
-
 
 ------------------------------------------------------------
 -- Main entrypoint

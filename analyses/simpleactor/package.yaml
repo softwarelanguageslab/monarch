@@ -6,6 +6,8 @@ author:              "Author name here"
 maintainer:          "bram@vdb.space"
 copyright:           "2024 Bram Vandenbogaerde"
 
+language: GHC2021
+
 extra-source-files:
 - README.md
 
@@ -50,25 +52,14 @@ ghc-options:
 - -Werror
 
 default-extensions:
-  - ConstraintKinds
   - TypeFamilies
-  - MultiParamTypeClasses
-  - FlexibleContexts
-  - FlexibleInstances
   - DataKinds
-  - TypeOperators
   - GeneralizedNewtypeDeriving
   - TemplateHaskell
-  - StandaloneKindSignatures
-  - EmptyCase
   - GADTs
-  - TypeApplications
-  - TupleSections
-  - RankNTypes
-  - ScopedTypeVariables
   - FunctionalDependencies
-  - StandaloneDeriving
   - RecordWildCards
+  - LambdaCase # supported by GHC2024
   
 library:
   source-dirs: src
@@ -109,6 +100,8 @@ executables:
     - time
     - timeit
     - pretty-simple
+    - mtl
+    - aeson
     
 tests:
   simpleactor-tests:

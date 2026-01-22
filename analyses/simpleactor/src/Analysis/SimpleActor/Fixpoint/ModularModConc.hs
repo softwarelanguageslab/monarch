@@ -144,7 +144,7 @@ type ModularInterM m = (MonadState AnalysisState m,
 -- | "intra"-analysis
 intra :: ModularInterM m => LabelCounts -> ActorRef -> m ()
 intra labelCounts ref = (gets (fromJust . Map.lookup ref . _pidToProcess) >>= flip (uncurry (Sequential.analyze labelCounts)) (Debug.traceWith (("analyzing: " ++) . show) ref))
-          & runModularIntraAnalysisT
+          & runModularIntraAnalysisT @ActorRef
           & runDebugIntraAnalysis ref
           & runJoinT
           & void
@@ -164,14 +164,14 @@ analyze' labelCounts maxSteps expr = fmap toAnalysisResult $ inter labelCounts m
              & flip evalStateT (initialAnalysisState expr)
              & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore
              & runWithMapping @ActorResOut @ActorRes
-             & runWithMapping @(Sequential.CountMax) @LabelCounts 
-             & runWithDependencyTracking @ActorRef @ActorVarAdr
-             & runWithDependencyTracking @ActorRef @ActorRef
-             & runWithDependencyTracking @ActorRef @ActorResOut
-             & runWithDependencyTracking @ActorRef @(Sequential.CountMax)
-             & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef PMB)
+             & runWithMapping @Sequential.CountMax @LabelCounts
+             & runWithDependencyTracingTracking @ActorRef @ActorVarAdr
+             & runWithDependencyTracingTracking @ActorRef @ActorRef
+             & runWithDependencyTracingTracking @ActorRef @ActorResOut
+             & runWithDependencyTracingTracking @ActorRef @Sequential.CountMax
+             & runWithDependencyTracingTracking @ActorRef @(MailboxDep ActorRef PMB)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
-             & runWithDependencyTriggerTrackingT @ActorRef @(Sequential.CountMax)
+             & runWithDependencyTriggerTrackingT @ActorRef @Sequential.CountMax
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr
              & runGlobalPartitionedMailboxT @Partition @ActorRef @ActorVlu @MB
              & C.runWithComponentTracking

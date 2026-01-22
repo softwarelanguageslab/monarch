@@ -1,5 +1,8 @@
 -- | Module for common options used in commands
-module Options(FileOptions(..), fileOptions) where
+module Options(
+      FileOptions(..),
+      fileOptions,
+      outputOptions) where
 
 import Options.Applicative
 

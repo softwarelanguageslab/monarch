@@ -63,25 +63,14 @@ library
   hs-source-dirs:
       src
   default-extensions:
-      ConstraintKinds
       TypeFamilies
-      MultiParamTypeClasses
-      FlexibleContexts
-      FlexibleInstances
       DataKinds
-      TypeOperators
       GeneralizedNewtypeDeriving
       TemplateHaskell
-      StandaloneKindSignatures
-      EmptyCase
       GADTs
-      TypeApplications
-      TupleSections
-      RankNTypes
-      ScopedTypeVariables
       FunctionalDependencies
-      StandaloneDeriving
       RecordWildCards
+      LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded
   build-depends:
       base >=4.7 && <5
@@ -110,11 +99,14 @@ library
     , singletons
     , transformers
     , unordered-containers
-  default-language: Haskell2010
+  default-language: GHC2021
 
 executable simpleactor-exe
   main-is: Main.hs
   other-modules:
+      CommandLine.Options
+      CommandLine.Output
+      Runnables.CoreErlang
       TracePartitioning.Benchmark
       Paths_simpleactor
   autogen-modules:
@@ -122,28 +114,18 @@ executable simpleactor-exe
   hs-source-dirs:
       app
   default-extensions:
-      ConstraintKinds
       TypeFamilies
-      MultiParamTypeClasses
-      FlexibleContexts
-      FlexibleInstances
       DataKinds
-      TypeOperators
       GeneralizedNewtypeDeriving
       TemplateHaskell
-      StandaloneKindSignatures
-      EmptyCase
       GADTs
-      TypeApplications
-      TupleSections
-      RankNTypes
-      ScopedTypeVariables
       FunctionalDependencies
-      StandaloneDeriving
       RecordWildCards
+      LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , concurrent-extra
     , containers
     , deepseq
@@ -155,6 +137,7 @@ executable simpleactor-exe
     , maf2-analysis
     , maf2-domains
     , maf2-syntax
+    , mtl
     , optparse-applicative
     , parallel-io
     , pretty-simple
@@ -164,7 +147,7 @@ executable simpleactor-exe
     , singletons
     , time
     , timeit
-  default-language: Haskell2010
+  default-language: GHC2021
 
 test-suite simpleactor-tests
   type: exitcode-stdio-1.0
@@ -177,25 +160,14 @@ test-suite simpleactor-tests
   hs-source-dirs:
       test
   default-extensions:
-      ConstraintKinds
       TypeFamilies
-      MultiParamTypeClasses
-      FlexibleContexts
-      FlexibleInstances
       DataKinds
-      TypeOperators
       GeneralizedNewtypeDeriving
       TemplateHaskell
-      StandaloneKindSignatures
-      EmptyCase
       GADTs
-      TypeApplications
-      TupleSections
-      RankNTypes
-      ScopedTypeVariables
       FunctionalDependencies
-      StandaloneDeriving
       RecordWildCards
+      LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -212,4 +184,4 @@ test-suite simpleactor-tests
     , rio <=1.22.0
     , simpleactor
     , singletons
-  default-language: Haskell2010
+  default-language: GHC2021
