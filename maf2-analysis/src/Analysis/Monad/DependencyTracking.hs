@@ -10,7 +10,9 @@ module Analysis.Monad.DependencyTracking (
     MonadDependencyTracking,
     runWithDependencyTracking,
     runWithDependencyTracking',
-    runWithDependencyTriggerTrackingT
+    runWithDependencyTriggerTrackingT,
+    runWithDependencyTracingTracking,
+    runWithDependencyTracingTracking'
 ) where
 
 import Control.Monad ((>=>))
@@ -24,7 +26,7 @@ import Control.Monad.State
 import Control.Monad.Layer
 import Data.Maybe (fromMaybe)
 import Analysis.Monad.Cache (MonadCache)
-import Data.Kind
+import qualified Debug.Trace as Debug
 
 
 ---
@@ -82,6 +84,31 @@ runWithDependencyTracking (DependencyTrackingT m) = fst <$> runStateT m Map.empt
 -- | Same as @runWithDependencyTracking@ but returns the dependent mapping
 runWithDependencyTracking' :: forall cmp dep m a . DependencyTrackingT cmp dep m a -> m (a, Map dep (Set cmp))
 runWithDependencyTracking' (DependencyTrackingT m) = runStateT m Map.empty
+
+--
+-- Dependency tracking with logging
+-- 
+
+
+newtype DependencyTrackingTracingT cmp dep m a = DependencyTrackingTracingT (StateT (Map dep (Set cmp)) m a)
+    deriving (Functor, Applicative, Monad, MonadState (Map dep (Set cmp)), MonadTrans, MonadLayer, MonadTransControl, MonadCache)
+
+instance {-# OVERLAPPING #-} (Monad m, Ord dep, Ord cmp) => DependencyTrackingM cmp dep (DependencyTrackingTracingT cmp dep m) where
+    register d = modify . Map.insertWith Set.union d . Set.singleton
+    dependent d = gets (fromMaybe Set.empty . Map.lookup d)
+
+instance {-# OVERLAPPING #-} (Ord dep, Ord cmp, Show dep, Monad m, WorkListM m cmp) => MonadDependencyTrigger cmp dep (DependencyTrackingTracingT cmp dep m) where
+    trigger dep = dependent (Debug.traceShowId dep) >>= adds
+
+
+-- | Run a dependency tracking monad transformer
+runWithDependencyTracingTracking :: forall cmp dep m a . Monad m => DependencyTrackingTracingT cmp dep m a -> m a
+runWithDependencyTracingTracking (DependencyTrackingTracingT m) = fst <$> runStateT m Map.empty
+
+-- | Same as @runWithDependencyTracking@ but returns the dependent mapping
+runWithDependencyTracingTracking' :: forall cmp dep m a . DependencyTrackingTracingT cmp dep m a -> m (a, Map dep (Set cmp))
+runWithDependencyTracingTracking' (DependencyTrackingTracingT m) = runStateT m Map.empty
+
 
 --
 -- Dependency trigger tracking monad

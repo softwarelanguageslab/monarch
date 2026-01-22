@@ -51,6 +51,7 @@ import Analysis.Actors.Mailbox.Partitioned (PartitionedMailbox)
 import qualified Analysis.Actors.Mailbox.Partitioned as Partitioned
 import qualified Analysis.Monad.Partition as MonadPartition
 import Control.Monad (when)
+import qualified Debug.Trace as Debug
 
 
 -- | Receive messages of type 'v' in monadic context 'm'
@@ -303,9 +304,10 @@ newtype GlobalPartitionedMailboxT e ref msg mb m a = GlobalPartitionedMailbox (S
 runGlobalPartitionedMailboxT :: GlobalPartitionedMailboxT e ref msg mb m a -> m (a, Map ref (PartitionedMailbox e msg mb))
 runGlobalPartitionedMailboxT (GlobalPartitionedMailbox m) = runStateT m Map.empty
 
-instance (Monad m, Ord ref, Ord e, Eq (PartitionedMailbox e msg mb)) => MonadPartitionedMailboxSend e ref msg mb (GlobalPartitionedMailboxT e ref msg mb m) where
+instance (Monad m, Ord ref, Ord e, Show ref, Eq (PartitionedMailbox e msg mb), Show e, Show mb) => MonadPartitionedMailboxSend e ref msg mb (GlobalPartitionedMailboxT e ref msg mb m) where
   modifyPartitionedMailbox f ref = GlobalPartitionedMailbox $ do
     state <- State.get
+    -- State.put (Map.insert (Debug.traceWith (("ref>>> " ++) . show) ref) (Debug.traceShowId $ f (Debug.traceWith (("state>> " ++) . show) $ fromMaybe Partitioned.empty $ Map.lookup ref state)) state)
     State.put (Map.insert ref (f (fromMaybe Partitioned.empty $ Map.lookup ref state)) state)
     state' <- State.get
     return (state /= state')
