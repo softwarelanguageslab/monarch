@@ -11,7 +11,7 @@ from pathlib import Path
 import sys
 import subprocess
 import tempfile
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import json
 

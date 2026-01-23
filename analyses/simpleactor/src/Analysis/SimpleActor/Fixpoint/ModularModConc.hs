@@ -165,11 +165,11 @@ analyze' labelCounts maxSteps expr = fmap toAnalysisResult $ inter labelCounts m
              & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore
              & runWithMapping @ActorResOut @ActorRes
              & runWithMapping @Sequential.CountMax @LabelCounts
-             & runWithDependencyTracingTracking @ActorRef @ActorVarAdr
-             & runWithDependencyTracingTracking @ActorRef @ActorRef
-             & runWithDependencyTracingTracking @ActorRef @ActorResOut
-             & runWithDependencyTracingTracking @ActorRef @Sequential.CountMax
-             & runWithDependencyTracingTracking @ActorRef @(MailboxDep ActorRef PMB)
+             & runWithDependencyTracking @ActorRef @ActorVarAdr
+             & runWithDependencyTracking @ActorRef @ActorRef
+             & runWithDependencyTracking @ActorRef @ActorResOut
+             & runWithDependencyTracking @ActorRef @Sequential.CountMax
+             & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef PMB)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
              & runWithDependencyTriggerTrackingT @ActorRef @Sequential.CountMax
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr

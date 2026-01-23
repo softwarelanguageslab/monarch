@@ -11,10 +11,10 @@ import CommandLine.Options
 import CommandLine.Options qualified as Options
 import CommandLine.Output qualified as Output
 import Control.Exception
+import Control.Monad (join)
 import Control.Monad.Error.Class
 import Control.Monad.Except
 import Control.Monad.IO.Class
-import Control.Monad (join)
 import Data.Aeson (ToJSON)
 import Data.Bifunctor
 import Data.Map qualified as Map
@@ -75,6 +75,8 @@ analyzeOptions CoreErlangOptions {..} = do
       let countOutMapping =
             Map.mapKeys getMailboxLabel $ Map.mapMaybe (\case Count.Count v _ -> Just v; _ -> Nothing) countMax
       let predicateHolds = map (Soter.predicateHolds countOutMapping) predicates
+
+      liftIO $ print countOutMapping
 
       return $
         AnalysisOutput

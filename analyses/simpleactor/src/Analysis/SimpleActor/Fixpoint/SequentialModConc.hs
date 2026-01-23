@@ -54,6 +54,7 @@ import Data.Maybe (fromJust)
 import qualified Lattice.BottomLiftedLattice as BL
 import qualified Domain.Core.Count.BoundedCount as Count
 import qualified Data.Map as Map
+import Domain.Core.AbstractCount (AbstractCount)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -81,10 +82,15 @@ type SequentialT m = MonadStack '[
                        ActorLocalT ActorVlu,
                        CtxT K,
                        PartitionT Partition,
-                       CacheT,
-                       AbstractCountT MailboxLabel BoundedCount, 
-                       JoinT
+                       CacheT
                   ] m
+
+type UncachedSequentialT m =
+      MonadStack '[
+           AbstractCountT MailboxLabel BoundedCount,
+           AbstractCountT SequentialCmp AbstractCount,
+           JoinT
+      ] m
 
 -- | SequentialIntraM denotes the remaining constraints needed for running the intra
 -- analysis.
@@ -199,12 +205,13 @@ counting inner cmp = do
 spanOfCmp :: SequentialCmp -> Span
 spanOfCmp (exp ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
 
-type IntraT m = SequentialT (IntraAnalysisT SequentialCmp m)
+type IntraT m = SequentialT (UncachedSequentialT (IntraAnalysisT SequentialCmp m))
 
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
 intra _ cmp = do    
       countIn <- fromJust <$> MapM.get (CountIn cmp)
+      cmpCountIn <- fromJust <$> MapM.get (CountIn cmp)
       result <- runFixT @(IntraT m)
                  (runAroundT
                     counting
@@ -213,6 +220,7 @@ intra _ cmp = do
                  cmp
        & runAlloc VarAdr -- TODO: use the actual context
        & runAlloc PtrAdr -- problem: current context is infinite
+       & runAbstractCountT cmpCountIn
        & runAbstractCountT countIn 
        & runJoinT
        & runIntraAnalysis cmp
@@ -238,7 +246,7 @@ inter labelCounts exp environment ref mb = do
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> mb                    -- initial mailbox
                 <+> ref                   -- current `self`
-                <+> initialContext 1      -- address context
+                <+> initialContext 0      -- address context
                 <+> Partition.empty       -- the empty partition
                 -- <+> emptyPC
 
