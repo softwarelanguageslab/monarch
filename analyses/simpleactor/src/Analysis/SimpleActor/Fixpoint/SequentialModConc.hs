@@ -54,6 +54,9 @@ import Data.Maybe (fromJust)
 import qualified Lattice.BottomLiftedLattice as BL
 import qualified Domain.Core.Count.BoundedCount as Count
 import qualified Data.Map as Map
+import Domain.Core.AbstractCount (AbstractCount)
+import qualified Analysis.Counting as CountMap
+import Lattice.Class (PartialOrder(leq))
 
 ------------------------------------------------------------
 -- Shorthands
@@ -62,6 +65,7 @@ import qualified Data.Map as Map
 -- | A component in the sequential analysis
 type SequentialCmp = Key (SequentialT Identity) Cmp
 type SequentialRes = Val (SequentialT Identity) ActorVlu
+type SeqCmpCount   = CountMap' SequentialCmp AbstractCount
 
 escapeRes :: SequentialRes -> MayEscape (Set ActorError) ActorVlu
 escapeRes = \case (a ::*:: _ ::*:: _) -> a
@@ -81,17 +85,30 @@ type SequentialT m = MonadStack '[
                        ActorLocalT ActorVlu,
                        CtxT K,
                        PartitionT Partition,
-                       CacheT,
-                       AbstractCountT MailboxLabel BoundedCount, 
-                       JoinT
+                       CacheT
                   ] m
+
+type UncachedSequentialT m =
+      MonadStack '[
+           AbstractCountT MailboxLabel BoundedCount,
+           AbstractCountT SequentialCmp AbstractCount,
+           JoinT
+      ] m
 
 -- | SequentialIntraM denotes the remaining constraints needed for running the intra
 -- analysis.
 type InterAnalysisM m = (MonadSchemeStore m,
                          MapM SequentialCmp SequentialRes m,
+                         -- Count how many times the label is reachable according to the analysis.
+                         -- Whenever precision of the analysis increases, these counts will also
+                         -- be more precise.
                          MapM CountIn (CountMap' MailboxLabel BoundedCount) m,
                          MapM CountOut (CountMap' MailboxLabel BoundedCount) m,
+                         -- To accurately track these, abstract counts related to components
+                         -- need to be tracked. And if component count > 1 then the label
+                         -- count needs to be marked infinite as well. (otherwise the result is unsound)
+                         MapM CmpCountIn (CountMap' SequentialCmp AbstractCount) m,
+                         MapM CmpCountOut (CountMap' SequentialCmp AbstractCount) m,
                          WorkListM m SequentialCmp,
                          ComponentTrackingM m SequentialCmp,
                          DependsOn m SequentialCmp '[
@@ -99,7 +116,9 @@ type InterAnalysisM m = (MonadSchemeStore m,
                              SchemeAdr Exp K,
                              Pid Exp K,
                              CountIn,
-                             CountOut
+                             CountOut,
+                             CmpCountIn,
+                             CmpCountOut
                            ],
                          -- MonadMailbox ActorVlu m,
                          MonadMailbox' ActorRef PMB m,
@@ -171,26 +190,55 @@ newtype CountOut = CountOut SequentialCmp
                 deriving (Ord, Eq, Show)
 newtype CountMax = CountMax ActorRef
                 deriving (Ord, Eq, Show)
+newtype CmpCountIn = CmpCountIn SequentialCmp
+                   deriving (Ord, Eq, Show)
+newtype CmpCountOut = CmpCountOut SequentialCmp
+                    deriving (Ord, Eq, Show)
 type LabelCount = CountMap' MailboxLabel BoundedCount
 
 -- | Add flow-sensitive counting of mailbox labels
 counting :: (MonadAbstractCount MailboxLabel BoundedCount m,
+             MonadAbstractCount SequentialCmp AbstractCount m,
              MapM CountIn LabelCount m,
              MapM CountOut LabelCount m,
+             MapM CmpCountIn SeqCmpCount m,
+             MapM CmpCountOut SeqCmpCount m,
              MonadBottom m,
              MonadCache m,
              Key m Cmp ~ SequentialCmp)
-         => (Cmp -> AroundT Cmp ActorVlu m ActorVlu)
+         => SequentialCmp
+         -> (Cmp -> AroundT Cmp ActorVlu m ActorVlu)
          -> Cmp -> AroundT Cmp ActorVlu m ActorVlu
-counting inner cmp = do
+counting outerCmp inner cmp = do
       k <- upperM $ key cmp
       counts <- getCounts
+      cmpCounts <- getCounts
+
+      _ <- MapM.get (CountIn k) -- TODO: this seems to be necessary for a correct result, it could be related to dependency tracking which means that some things are not triggered correctly,
+      -- if so this is just a bandaid... 
+      outCount <- fromMaybe CountMap.emptyCountMap <$> MapM.get (CountOut outerCmp)
+
+      -- TODO: it should actually be an invariant that the outCount is actually
+      -- always smaller or equal, otherwise we are overwriting data.
+      -- Normally the semantics of the analysis ensure this, but this does not seem
+      -- to be the case here, perhaps due to branching? So for now always keep the biggest
+      -- one which should be sound.
+      if not (leq (CountingMap counts) outCount)
+      then MapM.put (CountOut outerCmp) (CountingMap counts)
+      else return ()
+
       MapM.joinWith (CountIn k) (CountingMap counts)
+      MapM.joinWith (CmpCountIn k) (CountingMap cmpCounts)
+
       v <- inner cmp
+
       countOut <- maybe mbottom return =<< MapM.get (CountOut k)
+      cmpCountOut <- maybe mbottom return =<< MapM.get (CmpCountOut k)
+
       putCounts (getCountingMap countOut)
+      putCounts (getCountingMap cmpCountOut)
       return v
-                       
+
 
 ------------------------------------------------------------
 -- Sequential analysis
@@ -199,26 +247,31 @@ counting inner cmp = do
 spanOfCmp :: SequentialCmp -> Span
 spanOfCmp (exp ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
 
-type IntraT m = SequentialT (IntraAnalysisT SequentialCmp m)
+type IntraT m = SequentialT (UncachedSequentialT (IntraAnalysisT SequentialCmp m))
 
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
-intra _ cmp = do    
+intra _ cmp = do
       countIn <- fromJust <$> MapM.get (CountIn cmp)
+      cmpCountIn <- fromJust <$> MapM.get (CmpCountIn cmp)
+      MapM.put (CmpCountIn cmp) (CountMap.increment cmp cmpCountIn)
       result <- runFixT @(IntraT m)
                  (runAroundT
-                    counting
+                    (counting cmp)
                     .
                     (eval @_ @_ @_ @Partition @MB))
                  cmp
        & runAlloc VarAdr -- TODO: use the actual context
        & runAlloc PtrAdr -- problem: current context is infinite
-       & runAbstractCountT countIn 
+       & runAbstractCountT @MailboxLabel countIn
+       & runAbstractCountT @SequentialCmp cmpCountIn
        & runJoinT
        & runIntraAnalysis cmp
       case result of
             BL.Bottom -> return ()
-            BL.Value ((), count') -> MapM.put (CountOut cmp)  count'
+            BL.Value (((), count'), cmpCount') -> do
+                  MapM.put (CountOut cmp)  count'
+                  MapM.put (CmpCountOut cmp) cmpCount'
 
 
 -- | Inter-analysis
@@ -231,6 +284,7 @@ inter :: InterAnalysisM m
       -> m ()
 inter labelCounts exp environment ref mb = do
       MapM.put (CountIn initialCmp) (CountingMap labelCounts)
+      MapM.put (CmpCountIn initialCmp) CountMap.emptyCountMap
       iterateWL' initialCmp (intra ref)
   where initialCmp = ActorExp exp         -- component to analyze
                 <+> environment           -- initial lexical environment
@@ -238,13 +292,13 @@ inter labelCounts exp environment ref mb = do
                 <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> mb                    -- initial mailbox
                 <+> ref                   -- current `self`
-                <+> initialContext 1      -- address context
+                <+> initialContext 0      -- address context
                 <+> Partition.empty       -- the empty partition
                 -- <+> emptyPC
 
 -- | Analyze a single actor until a fix point is reached
 analyze :: forall m  . MonadActorModular m
-        => LabelCounts 
+        => LabelCounts
         -> ActorExp             -- ^ the program of the actor
         -> ActorEnv             -- ^ contains only the captured variables of the actor
         -> ActorRef             -- ^ the current actor reference
@@ -257,12 +311,16 @@ analyze labelCounts exp env ref = do
             & runWithMapping @SequentialCmp @SequentialRes
             & runWithMapping @CountIn @LabelCount
             & runWithMapping @CountOut @LabelCount
+            & runWithMapping @CmpCountIn @SeqCmpCount
+            & runWithMapping @CmpCountOut @SeqCmpCount
             & runWithComponentTracking @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @SequentialCmp
             & runWithDependencyTracking @SequentialCmp @(SchemeAdr Exp K)
             & runWithDependencyTracking @SequentialCmp @ActorRef
             & runWithDependencyTracking @SequentialCmp @CountIn
             & runWithDependencyTracking @SequentialCmp @CountOut
+            & runWithDependencyTracking @SequentialCmp @CmpCountIn
+            & runWithDependencyTracking @SequentialCmp @CmpCountOut
             -- & runWithWorklistProfilingT @SequentialCmp
             & runWithWorkList @(LIFOWorklist SequentialCmp)
             & runDebugIntraAnalysis ref
@@ -271,6 +329,6 @@ analyze labelCounts exp env ref = do
 
       MapM.put (ActorResOut ref) (extractVal res)
       MapM.put (CountMax ref) (maxCount res)
-  where extractVal (_ ::*:: res ::*:: _ ::*:: _) = ActorRes res
-        maxCount (_ ::*:: _ ::*:: _ ::*:: counter) =
+  where extractVal (_ ::*:: res ::*:: _ ::*:: _ ::*:: _ ::*:: _) = ActorRes res
+        maxCount (_ ::*:: _ ::*:: _ ::*:: counter ::*:: _ ::*:: _) =
             foldr (Map.unionWith Count.max . getCountingMap) Map.empty $ Map.elems counter

@@ -11,7 +11,11 @@ import Control.Monad.Trans.Maybe (MaybeT (runMaybeT, MaybeT))
 import Data.Functor.Identity
 import Control.Monad.Reader (asks)
 import Prelude hiding (lookup)
-import Data.Maybe (fromMaybe)
+import Lattice.ConstantPropagationLattice (CP)
+import Domain.Core.BoolDomain (boolTop)
+import Domain.Class (Domain(inject))
+import qualified Domain.Core.BoolDomain as Domain
+import Control.Monad ((<=<))
 
 type EvalM = MaybeT (ReaderT (Map String Int) Identity)
 
@@ -24,7 +28,7 @@ lookup :: String -> EvalM Constant
 lookup nam = MaybeT $ asks (fmap Num . Map.lookup nam)
 
 ensureNum :: Constant -> EvalM Int
-ensureNum = MaybeT . return . getNum 
+ensureNum = MaybeT . return . getNum
 
 -- | Evaluate a single predicate and its value as
 -- a constant, it fails when a variable is not
@@ -40,27 +44,27 @@ evalExpr expr = case expr of
    (Sub e1 e2) -> do
      v1 <- ensureNum =<< evalExpr e1
      v2 <- ensureNum =<< evalExpr e2
-     return (Num $ v1 - v2)        
+     return (Num $ v1 - v2)
 
    (Lte e1 e2) -> do
-     v1 <- ensureNum =<< evalExpr e1     
-     v2 <- ensureNum =<< evalExpr e2     
-     return (Bln $ v1 <= v2)        
+     v1 <- ensureNum =<< evalExpr e1
+     v2 <- ensureNum =<< evalExpr e2
+     return (Bln $ v1 <= v2)
 
    (Gte e1 e2) -> do
-     v1 <- ensureNum =<< evalExpr e1     
-     v2 <- ensureNum =<< evalExpr e2     
-     return (Bln $ v1 >= v2)
-    
-   (Lt e1 e2) -> do
-     v1 <- ensureNum =<< evalExpr e1     
-     v2 <- ensureNum =<< evalExpr e2     
-     return (Bln $ v1 < v2)
-    
-   (Gt e1 e2) -> do
-     v1 <- ensureNum =<< evalExpr e1     
+     v1 <- ensureNum =<< evalExpr e1
      v2 <- ensureNum =<< evalExpr e2
-     return (Bln $ v1 < v2)        
+     return (Bln $ v1 >= v2)
+
+   (Lt e1 e2) -> do
+     v1 <- ensureNum =<< evalExpr e1
+     v2 <- ensureNum =<< evalExpr e2
+     return (Bln $ v1 < v2)
+
+   (Gt e1 e2) -> do
+     v1 <- ensureNum =<< evalExpr e1
+     v2 <- ensureNum =<< evalExpr e2
+     return (Bln $ v1 > v2)
 
    (Const c) -> return c
    (Var ide) -> lookup ide
@@ -70,11 +74,11 @@ evalExpr expr = case expr of
 -- | Checks whether the given predicate holds.
 -- If the evaluation of a predicate fails then
 -- 'False' is returned.
-predicateHolds :: Map String Int -> Predicate -> Bool
-predicateHolds mapping = all check . conjunctions
-  where check = fromMaybe False . (getBln =<<) . runEval mapping . evalExpr
+predicateHolds :: Map String Int -> Predicate -> CP Bool
+predicateHolds mapping = foldr (Domain.and . check) (inject True) . conjunctions
+  where check = maybe boolTop inject . (getBln <=< (runEval mapping . evalExpr))
 
 
 -- | Check whether all predicates hold under the given mapping
-allPredicatesHold :: Map String Int -> [Predicate] -> Bool
-allPredicatesHold mapping = all (predicateHolds mapping) 
+allPredicatesHold :: Map String Int -> [Predicate] -> CP Bool
+allPredicatesHold mapping = foldr (Domain.and . predicateHolds mapping) (inject True)

@@ -46,7 +46,8 @@ import Lattice.Equal (EqualLattice(eql))
 import qualified Lattice.BottomLiftedLattice as BL
 import qualified Lattice.ConstantPropagationLattice as CP
 import Domain.Core.PairDomain (cons)
-import Analysis.Monad.AbstractCount (countIncrement)
+import Analysis.Monad.AbstractCount (countIncrement, MonadAbstractCount (currentCount))
+import Control.Monad.IO.Class (liftIO)
 
 ------------------------------------------------------------
 -- Monadic contexts
@@ -145,7 +146,11 @@ erlangPrimitives =
       ("monarch:label/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
       ("monarch:label_mail/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
       ("monarch:any_nat/0", prim $ const $ prim0 $ random @_ @v (inject (1000 :: Integer))),
-      
+
+      -- Debugging monarch
+      ("monarch:debug_label/2", prim $ const $ prim2 $ \v -> return . symbols >=> mapM_ (liftIO . putStrLn . ((("count>>" ++ " " ++ show v) ++) . show) <=< currentCount . MailboxLabel) >=> const (return nil)),
+      ("monarch:debug/1", prim $ const $ prim1 $ \v -> liftIO $ putStrLn ("debug>> " ++ show v) $> v),
+
       -- I/O primitives
       ("io:format/2", prim $ const $ const $ return nil),
       ("io:format/1", prim $ const $ const $ return nil)

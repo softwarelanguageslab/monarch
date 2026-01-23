@@ -16,7 +16,7 @@ import Data.Map
 
 -- | A monad for managing the abstract count of the specified
 --  address type @a@.
-class (Monad m, Count c) => MonadAbstractCount a c m | m -> a c where
+class (Monad m, Count c) => MonadAbstractCount a c m | m a -> c where
   -- | Increments the abstract count of the given address
   -- in the abstract count mapping
   countIncrement :: a -> m ()

@@ -4,7 +4,7 @@
 -uncoverable("customer_mail > 1").
 
 fact() ->
-    monarch:label_mail("factorial_mail"),
+    monarch:label_mail(factorial_mail),
     receive
         {compute, 0, Customer} ->
             Customer ! {result, 1};
@@ -15,9 +15,9 @@ fact() ->
     fact().
 
 customer(N, Customer) ->
-    monarch:label_mail("customer_mail"),
     receive
         {result, K} ->
+            monarch:label_mail(customer_mail),
             io:format("got result ~p on pid ~p ~n", [K, self()]),
             Customer ! {result, N*K},
             customer(N, Customer)

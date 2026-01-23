@@ -6,15 +6,16 @@ where
 
 import Analysis.CoreErlang.Soter qualified as Soter
 import Analysis.SimpleActor.Fixpoint.ModularModConc
+import Analysis.SimpleActor.Fixpoint.SequentialModConc as Sequential
 import Analysis.SimpleActor.Monad (MailboxLabel (..))
 import CommandLine.Options
 import CommandLine.Options qualified as Options
 import CommandLine.Output qualified as Output
 import Control.Exception
+import Control.Monad (join)
 import Control.Monad.Error.Class
 import Control.Monad.Except
 import Control.Monad.IO.Class
-import Control.Monad (join)
 import Data.Aeson (ToJSON)
 import Data.Bifunctor
 import Data.Map qualified as Map
@@ -24,6 +25,7 @@ import Options.Applicative
 import Syntax.CoreErlang qualified as CoreErlang
 import Syntax.CoreErlang.Soter qualified as Soter
 import Syntax.SimpleActor.CoreToSimpleActor qualified as CoreToSimpleActor
+import qualified Domain.Core.BoolDomain.Class as Domain
 
 ---------------------------------------------------------------------
 -- Command-line options
@@ -69,16 +71,21 @@ analyzeOptions CoreErlangOptions {..} = do
       let bounds = Map.fromList $ map (bimap MailboxLabel Count.zero) $ Map.toList $ Soter.extractBoundsPredicates predicates
 
       -- Run analysis
-      (AnalysisResult _ _ countMax) <- liftIO $ analyze' bounds Nothing expr
+      (AnalysisResult res _ countMax) <- liftIO $ analyze' bounds Nothing expr
 
       -- Compute soter results
       let countOutMapping =
             Map.mapKeys getMailboxLabel $ Map.mapMaybe (\case Count.Count v _ -> Just v; _ -> Nothing) countMax
-      let predicateHolds = map (Soter.predicateHolds countOutMapping) predicates
+      let predicateHolds = map (Domain.isTrue . Soter.predicateHolds countOutMapping) predicates
+
+      liftIO $ print countOutMapping
+      liftIO $ print predicateHolds
+      liftIO $ print (sum $ map (length . Map.toList . Sequential.cmpRes .  snd) $ Map.toList res)
 
       return $
         AnalysisOutput
-          { reachableCoverableConditions = sum (map fromEnum predicateHolds)
+          { reachableCoverableConditions = sum (map fromEnum predicateHolds),
+            totalPredicates = length predicates
           }
 
 entrypoint :: CoreErlangOptions -> IO ()
@@ -97,7 +104,8 @@ entrypoint opts@CoreErlangOptions {..} = do
 -- | Serializable analysis result that can be read using other tools
 data OutputAnalysisResult = AnalysisOutput
   { -- | The number of "uncoverable" annotations that are satisfied  (lower is better)
-    reachableCoverableConditions :: !Int
+    reachableCoverableConditions :: !Int,
+    totalPredicates :: !Int
   }
   deriving (Generic, Show)
 

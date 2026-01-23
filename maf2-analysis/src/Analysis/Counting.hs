@@ -25,7 +25,7 @@ import Data.Maybe (isNothing)
 -- | A mapping from elements to their count
 newtype CountMap' e c = CountingMap {
   getCountingMap :: Map e c
-  } deriving (Joinable, PartialOrder, BottomLattice, Eq, Ord)
+  } deriving (Joinable, PartialOrder, BottomLattice, Eq, Ord, Show)
 
 -- | Mark an entry in the counting map as "Infinte"
 markInfty :: (Ord e, Count c) => e -> CountMap' e c -> CountMap' e c
