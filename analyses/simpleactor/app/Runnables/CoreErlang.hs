@@ -9,10 +9,12 @@ import Analysis.SimpleActor.Fixpoint.ModularModConc
 import Analysis.SimpleActor.Monad (MailboxLabel (..))
 import CommandLine.Options
 import CommandLine.Options qualified as Options
-import qualified CommandLine.Output as Output
+import CommandLine.Output qualified as Output
+import Control.Exception
 import Control.Monad.Error.Class
 import Control.Monad.Except
 import Control.Monad.IO.Class
+import Control.Monad (join)
 import Data.Aeson (ToJSON)
 import Data.Bifunctor
 import Data.Map qualified as Map
@@ -74,16 +76,19 @@ analyzeOptions CoreErlangOptions {..} = do
             Map.mapKeys getMailboxLabel $ Map.mapMaybe (\case Count.Count v _ -> Just v; _ -> Nothing) countMax
       let predicateHolds = map (Soter.predicateHolds countOutMapping) predicates
 
-      return $ AnalysisOutput {
-        reachableCoverableConditions = sum (map fromEnum predicateHolds)
-      }
-
+      return $
+        AnalysisOutput
+          { reachableCoverableConditions = sum (map fromEnum predicateHolds)
+          }
 
 entrypoint :: CoreErlangOptions -> IO ()
 entrypoint opts@CoreErlangOptions {..} = do
-  result  <- Output.Output <$> (runExceptT $ analyzeOptions opts)
+  result <- Output.Output . join . handler <$> try (runExceptT $ analyzeOptions opts)
   Output.outputToJsonFile (Options.outputPath $ coreErlangOutputOptions) result
   Output.exit result
+  where
+    handler :: Either SomeException b -> Either OutputAnalysisError b
+    handler = first (UncaughtExceptionError . show)
 
 ---------------------------------------------------------------------
 -- Analysis Output
@@ -105,4 +110,5 @@ data OutputAnalysisError
   deriving (Generic, Show)
 
 instance ToJSON OutputAnalysisError
+
 instance ToJSON OutputAnalysisResult

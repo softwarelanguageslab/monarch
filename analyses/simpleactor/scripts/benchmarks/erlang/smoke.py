@@ -10,12 +10,15 @@ import pandas as pd
 from pathlib import Path
 import sys
 import subprocess
-from enum import Enum
+import tempfile
+from dataclasses import dataclass, asdict
+from abc import ABC, abstractmethod
+import json
 
 
 SCRIPT_PATH = Path(__file__)
 SIMPLEACTOR_CWD = SCRIPT_PATH.parent.parent.parent.parent
-GHC_DEBUG = True
+GHC_DEBUG = False
 TIMEOUT = 20 # IN SECONDS
 
 
@@ -26,23 +29,61 @@ else:
     GHC_OPTS = []
     RUN_OPTS = []
 
-class SmokeTestResult(Enum):
-    FAILURE = 0
-    SUCCESS = 1
-    TIMEOUT = 2 
+class SmokeTestStatus(ABC):
+    @abstractmethod
+    def print(self) -> str: pass
+    def is_success(self) -> bool:
+        return False
+        
+
+@dataclass
+class Success(SmokeTestStatus):
+    """
+    If the analysis has succeeded, it will have a result,
+    the result is communicated through its JSON output and
+    stored in a deserialized form here.    
+    """
+    result: object
 
     @staticmethod
-    def is_success(result) -> bool:
-        return result == SmokeTestResult.SUCCESS
+    def from_result(result):
+        # Invariant: if the analysis has a zero exit-code
+        # then the "ok" field must be "true"
+        assert(result["ok"])
 
+        return Success(result["value"])
+        
     def print(self):
-        match self:
-           case SmokeTestResult.FAILURE:
-               return "FAILURE"
-           case SmokeTestResult.SUCCESS:
-               return "SUCCESS"
-           case SmokeTestResult.TIMEOUT:
-               return "TIMEOUT"
+        return "SUCCESS"
+
+    def is_success(self):
+        return True
+
+@dataclass
+class Failure(SmokeTestStatus):
+    """
+    If exit code > 0 then the analysis has failed
+    for some reason, the "reason" field contains
+    the reason communicated by the analysis through
+    its JSON output.
+    """
+    result: object
+
+    @staticmethod
+    def from_result(result):
+        # Invariant: if the analysis has a non-zero exit-code
+        # then the "ok" field must be "false"
+        assert(not result["ok"])
+        return Failure(result["value"])
+        
+    def print(self):
+        return "FAIL"
+
+@dataclass
+class Timeout(SmokeTestStatus):
+     def print(self):
+        return "TIMEOUT"
+
     
 class SmokeTestRunner:
     __log_dir: Path | None
@@ -77,26 +118,32 @@ class SmokeTestRunner:
             write_to(stderr_log, stderr)
         
         
-    def smoke_test(self, main_module, main_function, output_path, **kwargs) -> SmokeTestResult:
+    def smoke_test(self, main_module, main_function, output_path, **_) -> SmokeTestStatus:
         """
         Returns SmokeTestResult.SUCCESS if the smoke test passed for the given benchmark file
         """
         print(f"[*] Testing {output_path} ... ", end = '', flush = True)
-        # TODO: add reason for failure to the output?
+
+        # Create a temporary file to which the JSON output will be written 
+
+        out_json = tempfile.NamedTemporaryFile(suffix=".json", delete_on_close=True)
+        
         try:
-            p = subprocess.run(["cabal" ,"run"] + GHC_OPTS + [".", "--"] + RUN_OPTS + ["core-erlang", "-f" , output_path, "--main-module", main_module, "--main-function", main_function, "-o" , "output"], cwd = SIMPLEACTOR_CWD, check = True, capture_output=True, text = True, timeout = TIMEOUT)
+            p = subprocess.run(["cabal" ,"run"] + GHC_OPTS + [".", "--"] + RUN_OPTS + ["core-erlang", "-f" , output_path, "--main-module", main_module, "--main-function", main_function, "-o" , out_json.name], cwd = SIMPLEACTOR_CWD, check = True, capture_output=True, text = True, timeout = TIMEOUT)
             stdout, stderr = p.stdout, p.stderr
-            success = SmokeTestResult.SUCCESS
+            success = Success.from_result(json.load(out_json))
         except (subprocess.CalledProcessError) as e:
             stdout, stderr = e.stdout, e.stderr
-            success = SmokeTestResult.FAILURE
+            success = Failure.from_result(json.load(out_json))
         except (subprocess.TimeoutExpired) as e:
             assert(e.stdout is not None and e.stderr is not None)
             stdout, stderr = e.stdout.decode(), e.stderr.decode()
-            success = SmokeTestResult.TIMEOUT
+            success = Timeout()
 
         self.output_captured_log(Path(output_path), stdout, stderr)
         print(success.print())
+
+        out_json.close()
         return success
         
 
@@ -118,13 +165,15 @@ def main():
 
     runner = SmokeTestRunner(Path(args.log) if args.log is not None else None)
     
-    smoke_successes = []
+    smoke_results = []
     for benchmark in success_benchmarks:
-        smoke_successes.append(runner.smoke_test(**benchmark).print())
+        smoke_results.append(runner.smoke_test(**benchmark))
+    smoke_successes = map(lambda r: r.print(), smoke_results)
+    smoke_results_expanded = pd.DataFrame(map(lambda p: pd.Series(p.result), smoke_results))
 
     df["smoke_success"] = pd.Series(smoke_successes)
-
-
+    df = pd.concat([df, smoke_results_expanded], axis=1)
+    
     if args.output is not None:
         df.to_csv(args.output, index = False)
     else: 
