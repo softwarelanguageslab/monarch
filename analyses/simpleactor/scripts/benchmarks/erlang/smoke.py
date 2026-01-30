@@ -14,6 +14,7 @@ import tempfile
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import json
+import resource
 
 
 SCRIPT_PATH = Path(__file__)
@@ -79,10 +80,26 @@ class Failure(SmokeTestStatus):
     def print(self):
         return "FAIL"
 
-@dataclass
 class Timeout(SmokeTestStatus):
-     def print(self):
+    def __init__(self):
+        self.result = {}
+    
+    def print(self):
         return "TIMEOUT"
+
+def set_limits():
+    # Limit virtual memory to 1GB (in bytes)
+    # resource.RLIMIT_AS is the equivalent of ulimit -v
+    limit_in_bytes = 8 * 1024 * 1024 * 1024 
+    # The actual hard limit it 25% more than the soft limit, this is chosen so that
+    # the subprocess can still handle the resource exhaustion gracefully before the
+    # process is killed by the OS so that we can signal the reason for the kill in the
+    # benchmark results.
+    resource.setrlimit(resource.RLIMIT_AS, (limit_in_bytes, int(limit_in_bytes*1.25)))
+    
+    # Limit CPU time to 10 seconds
+    # resource.RLIMIT_CPU is the equivalent of ulimit -t
+    resource.setrlimit(resource.RLIMIT_CPU, (TIMEOUT, TIMEOUT*2))
 
     
 class SmokeTestRunner:
@@ -129,15 +146,18 @@ class SmokeTestRunner:
         out_json = tempfile.NamedTemporaryFile(suffix=".json", delete_on_close=True)
         
         try:
-            p = subprocess.run(["cabal" ,"run"] + GHC_OPTS + [".", "--"] + RUN_OPTS + ["core-erlang", "-f" , output_path, "--main-module", main_module, "--main-function", main_function, "-o" , out_json.name], cwd = SIMPLEACTOR_CWD, check = True, capture_output=True, text = True, timeout = TIMEOUT)
+            p = subprocess.run(["cabal" ,"run"] + GHC_OPTS + [".", "--"] + RUN_OPTS + ["core-erlang", "-f" , output_path, "--main-module", main_module, "--main-function", main_function, "-o" , out_json.name], cwd = SIMPLEACTOR_CWD, check = True, capture_output=True, text = True, timeout = TIMEOUT, preexec_fn=set_limits)
             stdout, stderr = p.stdout, p.stderr
             success = Success.from_result(json.load(out_json))
         except (subprocess.CalledProcessError) as e:
+            print(e.returncode)
             stdout, stderr = e.stdout, e.stderr
             success = Failure.from_result(json.load(out_json))
         except (subprocess.TimeoutExpired) as e:
-            assert(e.stdout is not None and e.stderr is not None)
-            stdout, stderr = e.stdout.decode(), e.stderr.decode()
+            if e.stdout is None or e.stderr is None:
+                stdout,stderr = "", ""
+            else:
+                stdout, stderr = e.stdout.decode(), e.stderr.decode()
             success = Timeout()
 
         self.output_captured_log(Path(output_path), stdout, stderr)

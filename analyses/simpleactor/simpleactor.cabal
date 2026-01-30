@@ -98,6 +98,7 @@ library
     , rio <=1.22.0
     , singletons
     , transformers
+    , unix
     , unordered-containers
   default-language: GHC2021
 
@@ -147,6 +148,7 @@ executable simpleactor-exe
     , singletons
     , time
     , timeit
+    , unix
   default-language: GHC2021
 
 test-suite simpleactor-tests
@@ -184,4 +186,5 @@ test-suite simpleactor-tests
     , rio <=1.22.0
     , simpleactor
     , singletons
+    , unix
   default-language: GHC2021

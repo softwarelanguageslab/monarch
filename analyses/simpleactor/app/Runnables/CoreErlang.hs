@@ -12,7 +12,7 @@ import CommandLine.Options
 import CommandLine.Options qualified as Options
 import CommandLine.Output qualified as Output
 import Control.Exception
-import Control.Monad (join)
+import Control.Monad (join, void)
 import Control.Monad.Error.Class
 import Control.Monad.Except
 import Control.Monad.IO.Class
@@ -26,6 +26,8 @@ import Syntax.CoreErlang qualified as CoreErlang
 import Syntax.CoreErlang.Soter qualified as Soter
 import Syntax.SimpleActor.CoreToSimpleActor qualified as CoreToSimpleActor
 import qualified Domain.Core.BoolDomain.Class as Domain
+import System.Posix.Signals
+import Control.Concurrent
 
 ---------------------------------------------------------------------
 -- Command-line options
@@ -88,11 +90,37 @@ analyzeOptions CoreErlangOptions {..} = do
             totalPredicates = length predicates
           }
 
+-- | Set of signals we are interested in for recovering from particular set of resource limits.
+--
+-- This is currently set to only handle timeout signals so that we can exit before the actual hard timeout is reached and we are killed.
+resourceSignals :: [Signal]
+resourceSignals = [sigXCPU]
+
+-- | Installs a handler for a specific signal
+handleSignal :: IO () -> Signal -> IO ()
+handleSignal act sig =
+  void $ installHandler sig (Catch act) Nothing
+
+-- | Executes the given IO action but adds the ability to terminate the process before the IO action is completed resulting in an `OutputAnalysisError`.
+handleResourceLimits :: IO (Either OutputAnalysisError b) -> IO (Either OutputAnalysisError b)
+handleResourceLimits act = do
+  -- We run the given IO action in a seperate thread and synchronize on a shared MVar that will contain the result (i.e., the Either value).
+  result <- newEmptyMVar
+  lock <- newMVar ()
+  
+  tid <- forkIO (act >>= (\val-> takeMVar lock >> putMVar result val))
+
+  mapM_ (handleSignal (takeMVar lock >> killThread tid >> putMVar result (Left $ TimeoutError))) resourceSignals 
+  
+  takeMVar result
+
+
 entrypoint :: CoreErlangOptions -> IO ()
 entrypoint opts@CoreErlangOptions {..} = do
-  result <- Output.Output . join . handler <$> try (runExceptT $ analyzeOptions opts)
-  Output.outputToJsonFile (Options.outputPath $ coreErlangOutputOptions) result
-  Output.exit result
+  result <- handleResourceLimits (join . handler <$> try (runExceptT $ analyzeOptions opts))
+  let output = Output.Output result
+  Output.outputToJsonFile (Options.outputPath $ coreErlangOutputOptions) output
+  Output.exit output
   where
     handler :: Either SomeException b -> Either OutputAnalysisError b
     handler = first (UncaughtExceptionError . show)
@@ -113,8 +141,11 @@ data OutputAnalysisResult = AnalysisOutput
 data OutputAnalysisError
   = -- | error from the parsing step
     ParseError String
+  | -- | a timeout encountered due to resource limits in the OS
+    TimeoutError
   | -- | an uncaught (unexpected) exception
     UncaughtExceptionError String
+  
   deriving (Generic, Show)
 
 instance ToJSON OutputAnalysisError
