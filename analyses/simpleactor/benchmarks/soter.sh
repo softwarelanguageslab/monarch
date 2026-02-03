@@ -9,5 +9,5 @@ python3 scripts/preprocess/preprocess_erlang_benchmarks.py --prefix programs/ben
 
 # then, run the smoke test
 
-# python3 scripts/benchmarks/erlang/smoke.py output/soter.csv --log output/logs/smoke/ --output output/soter_smoke.csv
+python3 scripts/benchmarks/erlang/smoke.py output/soter.csv --log output/logs/smoke/ --output output/soter_smoke.csv
 

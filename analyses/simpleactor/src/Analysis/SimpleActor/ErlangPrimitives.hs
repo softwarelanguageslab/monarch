@@ -131,6 +131,7 @@ erlangPrimitives =
       ("math:floor/1", prim $ const $ prim1 (floor @_ @v @v)),
       ("math:ceil/1", prim $ const $ prim1 (ceiling @_ @v @v)),
       ("erlang:ceil/1", prim $ const $ prim1 (ceiling @_ @v @v)),
+      ("primop:match_fail", prim $ const $ const mbottom),
       ("primop:recv_peek_message", prim $ \ex -> prim0 $
          peekPartitioned (stoPai ex . cons (inject True))),
       -- TODO: This is correct but VERY imprecise as every message will be considered
