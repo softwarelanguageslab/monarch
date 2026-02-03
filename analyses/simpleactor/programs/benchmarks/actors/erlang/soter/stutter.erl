@@ -1,11 +1,13 @@
 -module(stutter).
 -export([main/0]).
 
+-uncoverable("abonormal_a > 0").
+
 main() ->
     P = spawn(fun()-> stutter(fun(Msg)-> dosmt(Msg) end) end),
     sendA(P).
 
-dosmt(a) -> monarch:error("We abhorr 'a's.");
+dosmt(a) -> monarch:label(abnormal_a);
 dosmt(b) -> 'we love b'.
 
 sendB(P) -> P!b, sendA(P).

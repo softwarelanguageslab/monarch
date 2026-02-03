@@ -1,5 +1,6 @@
 -module(parikh).
 -export([main/0]).
+-uncoverable("already_initialized_error > 0").
 
 main() ->
     S = spawn(fun()-> server() end),
@@ -18,7 +19,7 @@ server() ->
 do_serve(X) ->
     receive
         {init, _, _} ->
-            monarch:error("We should be already initialized!");
+            monarch:label(already_initialized_error);
         {set, Y} ->
             do_serve(Y);
         {get, P} ->

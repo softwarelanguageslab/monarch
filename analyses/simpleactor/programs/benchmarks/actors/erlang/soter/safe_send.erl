@@ -1,6 +1,8 @@
 -module(safe_send).
 -epxort([main/0]).
 
+-uncoverable("assert_actor_reference_failed > 0").
+
 main() ->
     ME = self(),
     S = spawn(fun()-> receive {_,X} -> ME ! ok, server(X) end end),
@@ -12,7 +14,8 @@ main() ->
 
 server(State) ->
     receive
-        {X, P} -> P ! State, % This call would throw an exception if matching P=zero.
+        {X, P} -> monarch:assert_actor_reference(P, assert_actor_reference_failed),
+                  P ! State, % This call would throw an exception if matching P=zero.
                   server(X);
         bye    -> monarch:label(stop_server), ok
     end.

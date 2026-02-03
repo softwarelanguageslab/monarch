@@ -1,6 +1,7 @@
 -module(stack).
 
 -export([main/0]).
+-uncoverable("empty_stack_label > 0").
 
 display_actor()->
     receive
@@ -15,7 +16,7 @@ stack_node(Content, Link)->
 
 stack_node_empty()->
     receive
-        {pop, _} -> error("popping an empty stack");
+        {pop, _} -> monarch:label("empty_stack_label");
         {push, Content} -> stack_node(Content, stack_node_empty)
     end.
 

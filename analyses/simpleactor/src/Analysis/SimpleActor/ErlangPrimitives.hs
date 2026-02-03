@@ -24,7 +24,7 @@ import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Domain.Actor (aref, ActorDomain (arefs))
+import Domain.Actor (aref, ActorDomain (arefs), isActorRef)
 import Domain.Class (Domain (inject))
 import Domain.Core.NumberDomain.Class
 import Domain.Scheme.Class hiding (Exp, prim)
@@ -48,6 +48,7 @@ import qualified Lattice.ConstantPropagationLattice as CP
 import Domain.Core.PairDomain (cons)
 import Analysis.Monad.AbstractCount (countIncrement, MonadAbstractCount (currentCount))
 import Control.Monad.IO.Class (liftIO)
+import Lattice.ConstantPropagationLattice (CP)
 
 ------------------------------------------------------------
 -- Monadic contexts
@@ -145,6 +146,11 @@ erlangPrimitives =
       ("monarch:error/1", prim $ const $ prim1 $ const mbottom), -- TODO: errors should be tracked so that we can check for them in the analysis result
       ("monarch:label/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
       ("monarch:label_mail/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
+      -- Asserts that the given value is an actor reference and triggers counting the given label otherwise.
+      ("monarch:assert_actor_reference/2", prim $ const $ prim2 $ \ref lab ->
+        condCP (fromBL @(CP Bool) $ isActorRef ref)
+               (return nil)
+               (mapM_ (countIncrement . MailboxLabel) (Set.toList $ symbols lab) >> return nil)),              
       ("monarch:any_nat/0", prim $ const $ prim0 $ random @_ @v (inject (1000 :: Integer))),
 
       -- Debugging monarch
