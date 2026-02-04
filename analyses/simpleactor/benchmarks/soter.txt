@@ -13,4 +13,10 @@ savina/count.erl;count;main/0
 savina/fjc-seq.erl;fjc_seq;main/0
 savina/fjt-seq.erl;fjt_seq;main/0
 savina/pp.erl;pp;main/0
-
+soter_sas/firewall.erl;firewall;main/0
+soter_sas/reslock.erl;reslock;main/0
+soter_sas/finite_leader.erl;finite_leader;main/0
+soter_sas/howait.erl;howait;main/0
+soter_sas/concdb.erl;concdb;main/0
+soter_sas/reslockbeh.erl;reslockbeh;main/0
+soter_sas/race.erl;race;main/0
