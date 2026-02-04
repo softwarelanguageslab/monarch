@@ -11,7 +11,7 @@ import Lattice.Class
 import Lattice.Trace
 
 -- | The maximum number of graphs in a `GraphAbstraction` until
--- it is turned into a set for performance reasons (they are probably equivalent in precision anyways past this limit)
+-- it is turned into a set for performance reasons
 maxUniqueGraphs :: Int
 maxUniqueGraphs = 100
 
@@ -42,6 +42,9 @@ instance (Ord msg) => Mailbox (GraphToSet msg) msg where
   enqueue msg =
 
                 \case SetAbstraction s -> SetAbstraction $ enqueue msg s
+                      -- Turn sets of graphs into sets of messages after a particular limit.
+                      -- The rationale is that sets of graphs are equivalent to sets of messages at some point in terms of precision. They are, however, not equivalent in terms of performance. This is because when a message is received, the analysis generates an execution path for every graph in the set of graphs, in that execution path it also considers all other graphs which again generate an execution pathn  and so on.
+                      -- This results in a combinatorial explosion of execution paths. The sets of messages are similar in that they also generate an execution path for every message in the set of messages, **but this is it**, subsequent receives on the same set of messages will yield the same execution paths that have already been explored, therefore reducing the combinatorial explosion.
                       self@(GraphAbstraction s) | numberOfUniqueGraphs s > maxUniqueGraphs -> graphToSet  self
                       GraphAbstraction s -> GraphAbstraction $ enqueue msg s
   dequeue = \case SetAbstraction s -> Set.map (fmap SetAbstraction) $ dequeue s
