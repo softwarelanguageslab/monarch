@@ -49,6 +49,7 @@ import Domain.Core.PairDomain (cons)
 import Analysis.Monad.AbstractCount (countIncrement, MonadAbstractCount (currentCount))
 import Control.Monad.IO.Class (liftIO)
 import Lattice.ConstantPropagationLattice (CP)
+import Data.List (intercalate)
 
 ------------------------------------------------------------
 -- Monadic contexts
@@ -157,7 +158,7 @@ erlangPrimitives =
       -- Debugging monarch
       ("monarch:debug_label/2", prim $ const $ prim2 $ \v -> return . symbols >=> mapM_ (liftIO . putStrLn . ((("count>>" ++ " " ++ show v) ++) . show) <=< currentCount . MailboxLabel) >=> const (return nil)),
       ("monarch:debug/1", prim $ const $ prim1 $ \v -> liftIO $ putStrLn ("debug>> " ++ show v) $> v),
-
+      ("monarch:fail_analysis_missing_export/1", prim $ const $ prim1 $ \v -> error $ "analysis failed: missing export, one of these: " ++ intercalate "," (map show $ Set.toList (symbols v))),
       -- I/O primitives
       ("io:format/2", prim $ const $ const $ return nil),
       ("io:format/1", prim $ const $ const $ return nil)

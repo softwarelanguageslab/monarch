@@ -13,6 +13,7 @@ import Syntax.Ide (Ide(..))
 import Syntax.Span (Span, pattern Span, SpanOf(..), Position(..))
 import Control.Monad.State
 import Data.Foldable
+import qualified Debug.Trace as Debug
 
 ------------------------------------------------------------
 -- Translation Monad
@@ -291,12 +292,13 @@ translate annMod =
 translateModule :: Ann Module -> Exp
 translateModule annMod =
   let bds  = translate annMod
-      exports = moduleExports annMod
+      exports = Debug.traceShowId $ moduleExports annMod
       exportPats = map (\(nam, arity) -> ValuePat (Symbol $ nam ++ "/" ++ show arity) dummySpan) exports
       exportNames = map (\(nam, arity) -> Var (Ide (nam ++ "/" ++ show arity) dummySpan)) exports
   in Letrec bds (Lam [Ide "$funname" (spanOf annMod)]
                      (Match (Var (Ide "$funname" dummySpan))
-                            (zip exportPats exportNames)
+                            (   zip exportPats exportNames
+                            ++  [(IdePat (Ide "x" dummySpan), App (Var (Ide "monarch:fail_analysis_missing_export/1" dummySpan)) [Var (Ide "x" dummySpan)] dummySpan)] )
                             dummySpan)
                      dummySpan)
                 dummySpan

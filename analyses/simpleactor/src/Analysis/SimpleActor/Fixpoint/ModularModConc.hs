@@ -59,8 +59,8 @@ spawnWL :: (Ord cmp, ComponentTrackingM m cmp, WorkListM m cmp) => cmp -> m ()
 spawnWL cmp = ifM (Set.member cmp <$> C.components) (return ()) (C.spawn cmp >> add cmp)
 
 instance (Monad m, ComponentTrackingM m ActorRef, WorkListM m ActorRef) => MonadSpawn ActorVlu K (StateT AnalysisState m) where
-  spawn expr env ctx = (modify (over pidToProcess (Map.insert pid (expr, env'))) $> pid) <* spawnWL pid
-    where pid  = Pid expr ctx
+  spawn expr env _ = (modify (over pidToProcess (Map.insert pid (expr, env'))) $> pid) <* spawnWL pid
+    where pid  = Pid expr InsensitiveCtx
           env' = env -- HashMap.restrictKeys env (fv expr)  
 
 
@@ -165,11 +165,11 @@ analyze' labelCounts maxSteps expr = fmap toAnalysisResult $ inter labelCounts m
              & runStoreT @ActorSto @ActorAdr @(StoreVal ActorVlu) initialGlobalStore
              & runWithMapping @ActorResOut @ActorRes
              & runWithMapping @Sequential.CountMax @LabelCounts
-             & runWithDependencyTracking @ActorRef @ActorVarAdr
-             & runWithDependencyTracking @ActorRef @ActorRef
-             & runWithDependencyTracking @ActorRef @ActorResOut
-             & runWithDependencyTracking @ActorRef @Sequential.CountMax
-             & runWithDependencyTracking @ActorRef @(MailboxDep ActorRef PMB)
+             & runWithDependencyTracingTracking @ActorRef @ActorVarAdr
+             & runWithDependencyTracingTracking @ActorRef @ActorRef
+             & runWithDependencyTracingTracking @ActorRef @ActorResOut
+             & runWithDependencyTracingTracking @ActorRef @Sequential.CountMax
+             & runWithDependencyTracingTracking @ActorRef @(MailboxDep ActorRef PMB)
              & runWithDependencyTriggerTrackingT @ActorRef @ActorRef
              & runWithDependencyTriggerTrackingT @ActorRef @Sequential.CountMax
              & runWithDependencyTriggerTrackingT @ActorRef @ActorVarAdr

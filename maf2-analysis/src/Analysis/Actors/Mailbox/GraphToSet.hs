@@ -10,6 +10,11 @@ import qualified Data.Set as Set
 import Lattice.Class
 import Lattice.Trace
 
+-- | The maximum number of graphs in a `GraphAbstraction` until
+-- it is turned into a set for performance reasons (they are probably equivalent in precision anyways past this limit)
+maxUniqueGraphs :: Int
+maxUniqueGraphs = 100
+
 data GraphToSet msg = SetAbstraction (Set msg)
                     | GraphAbstraction (GraphMailbox msg)
                     deriving (Ord, Eq, Show)
@@ -34,12 +39,15 @@ instance BottomLattice (GraphToSet msg) where
   bottom = GraphAbstraction bottom
 
 instance (Ord msg) => Mailbox (GraphToSet msg) msg where 
-  enqueue msg = \case SetAbstraction s -> SetAbstraction $ enqueue msg s
+  enqueue msg =
+
+                \case SetAbstraction s -> SetAbstraction $ enqueue msg s
+                      self@(GraphAbstraction s) | numberOfUniqueGraphs s > maxUniqueGraphs -> graphToSet  self
                       GraphAbstraction s -> GraphAbstraction $ enqueue msg s
   dequeue = \case SetAbstraction s -> Set.map (fmap SetAbstraction) $ dequeue s
                   GraphAbstraction s -> Set.map (fmap GraphAbstraction) $ dequeue s
   peek    = \case SetAbstraction s -> peek s
-                  GraphAbstraction s -> peek  s
+                  GraphAbstraction s -> peek s
   empty = GraphAbstraction empty
   hasMessage' msg = \case SetAbstraction s -> hasMessage' msg s
                           GraphAbstraction s -> hasMessage' msg s

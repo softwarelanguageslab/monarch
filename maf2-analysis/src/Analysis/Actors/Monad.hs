@@ -150,9 +150,14 @@ deriving instance (MonadCache m, Ord mb, Ord (ARef v)) => MonadCache (GlobalMail
 deriving instance (ref ~ ARef v, Ord ref, MonadJoinable m, Mailbox mb v, Joinable mb) => MonadJoinable (GlobalMailboxT v mb m)
 
 instance (Monad m, Mailbox mb v, ref ~ ARef v, Ord ref) => MonadSend v (GlobalMailboxT v mb m) where
-  send ref v = GlobalMailboxT $ ifM (liftA2 (==) mbs mbs') (return False) ((State.put =<< mbs') >> return True)
-    where mbs  =  State.get
-          mbs' =  gets (Map.insertWith (\_ old ->  enqueue v old) ref (enqueue v empty))
+  send ref v = GlobalMailboxT $ do
+      mbs <- State.get
+      let targetMailbox = fromMaybe empty $ Map.lookup ref mbs
+      let targetMailbox' = enqueue v targetMailbox
+      let mbs' = Map.insert ref targetMailbox' mbs
+      if mbs == mbs'
+      then return False
+      else State.put mbs' >> return True
 
 instance (Monad m, BottomLattice v, Joinable v, Mailbox mb v, Ord v, ref ~ ARef v, Ord ref) => MonadReceive v (GlobalMailboxT v mb m) where
   -- NOTE: we cannot use `MonadJoin` here since we have passed the `JoinT` layer in the monadic stack,
@@ -304,13 +309,25 @@ newtype GlobalPartitionedMailboxT e ref msg mb m a = GlobalPartitionedMailbox (S
 runGlobalPartitionedMailboxT :: GlobalPartitionedMailboxT e ref msg mb m a -> m (a, Map ref (PartitionedMailbox e msg mb))
 runGlobalPartitionedMailboxT (GlobalPartitionedMailbox m) = runStateT m Map.empty
 
-instance (Monad m, Ord ref, Ord e, Show ref, Eq (PartitionedMailbox e msg mb), Show e, Show mb) => MonadPartitionedMailboxSend e ref msg mb (GlobalPartitionedMailboxT e ref msg mb m) where
+instance (Monad m, Ord ref, Ord e, Ord mb, Joinable mb, Show ref, Eq (PartitionedMailbox e msg mb), Show e, Show mb) => MonadPartitionedMailboxSend e ref msg mb (GlobalPartitionedMailboxT e ref msg mb m) where
   modifyPartitionedMailbox f ref = GlobalPartitionedMailbox $ do
     state <- State.get
-    -- State.put (Map.insert (Debug.traceWith (("ref>>> " ++) . show) ref) (Debug.traceShowId $ f (Debug.traceWith (("state>> " ++) . show) $ fromMaybe Partitioned.empty $ Map.lookup ref state)) state)
-    State.put (Map.insert ref (f (fromMaybe Partitioned.empty $ Map.lookup ref state)) state)
+    -- This applies the transformation function "f" to the current mailbox
+    -- contents. Note that the resulting mailbox is **weakly** updated meaning
+    -- that the new contents of the mailbox will be joined by the old one.
+    --
+    -- This is the only sound way to modify the mailbox in a modular setting
+    -- unless abstract counting is used on the partitioning that is being updated.
+    --
+    -- TODO: since we do not have access to the partitioning here, we should perhaps
+    -- move this to a higher-level abstraction.
+    let mb  = fromMaybe Partitioned.empty $ Map.lookup ref state
+    let mb' = f mb
+    State.put (Map.insertWith L.join ref mb' state)
     state' <- State.get
+
     return (state /= state')
+
 
 --
 -- Other type class instances

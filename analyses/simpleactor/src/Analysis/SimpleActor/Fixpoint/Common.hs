@@ -77,23 +77,30 @@ newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
 ------------------------------------------------------------
 
 -- | Context for address allocations, function calls and actor references.
-data AdrCtx = AdrCtx [Span]   -- k-cfa call sites
-                     Int      -- ^ max number of elements in k-cfa
-                     ActorCtx -- ^ actor specific context sensitivity
-                    deriving (Ord, Eq, Show)
+data AdrCtx = AdrCtx [Span]    -- k-cfa call sites
+                     Int       -- ^ max number of elements in k-cfa
+                     ActorCtx  -- ^ actor specific context sensitivity
+            | InsensitiveCtx   -- context insensitive analysis
+            deriving (Ord, Eq, Show)
 
 -- | Context specific to the actor analysis
-data ActorCtx = ActorCtx ActorRef | Empty deriving (Ord, Eq, Show)
+data ActorCtx = ActorCtx ActorRef
+              | Empty
+              deriving (Ord, Eq, Show)
 
 -- | k-cfa instance for 'SimpleActorContext'
 instance SimpleActorContext AdrCtx where
   pushCallSite s (AdrCtx callsites maxCallsites actCtx) = AdrCtx callsites' maxCallsites actCtx
     where callsites' = take maxCallsites (s : callsites)
+  pushCallSite _ InsensitiveCtx = InsensitiveCtx
 
 -- | The initial context
 initialContext :: Int -> AdrCtx
 initialContext maxCallsites = AdrCtx [] maxCallsites Empty
 
+-- | An initial context for a context insensitive analysis
+insensitiveContext :: AdrCtx
+insensitiveContext = InsensitiveCtx
 
 ------------------------------------------------------------
 -- Initial dynamic environment

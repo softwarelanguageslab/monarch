@@ -98,7 +98,11 @@ instance {-# OVERLAPPING #-} (Monad m, Ord dep, Ord cmp) => DependencyTrackingM 
     dependent d = gets (fromMaybe Set.empty . Map.lookup d)
 
 instance {-# OVERLAPPING #-} (Ord dep, Ord cmp, Show dep, Monad m, WorkListM m cmp) => MonadDependencyTrigger cmp dep (DependencyTrackingTracingT cmp dep m) where
-    trigger dep = dependent (Debug.traceShowId dep) >>= adds
+    trigger dep = do
+        numberOfDependencies <- gets (Set.size . Map.keysSet)
+        numberOfComponents <- gets (Set.size . Set.unions . Set.fromList . Map.elems)
+        dependent (Debug.trace ("# deps " ++ show numberOfDependencies ++ "; # cmps " ++ show numberOfComponents ++ " dep " ++ show dep) dep) >>= adds
+
 
 
 -- | Run a dependency tracking monad transformer
