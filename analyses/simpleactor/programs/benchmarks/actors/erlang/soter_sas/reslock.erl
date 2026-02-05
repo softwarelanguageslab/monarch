@@ -81,7 +81,7 @@ res_do(Q, Cmd) ->
 
 %%% CELL Implementation
 
-cell_start() -> res_start(cell(zero)).
+cell_start() -> res_start(cell(0)).
 cell(X) ->
     fun(_P, Cmd)->
             case Cmd of
@@ -101,7 +101,7 @@ cell_unlock(C) -> res_unlock(C).
 inc(C) ->
     cell_lock(C),
     monarch:label(critical),
-    cell_write(C, {s, cell_read(C)}),
+    cell_write(C, cell_read(C)+1),
     cell_unlock(C).
 
 %%% Program Entry point
@@ -110,11 +110,8 @@ main() ->
     C = cell_start(),
     add_to_cell(C, monarch:any_nat()).
 
-% ?any_peano is defined in grammars.hrl (automatically included)
-% and generates all the terms of the form X ::= zero | {s, X}
-
-add_to_cell(_, zero) -> ok;
-add_to_cell(C, {s, N}) ->
+add_to_cell(_, 0) -> ok;
+add_to_cell(C, N) ->
     spawn(fun()->inc(C) end),
-    add_to_cell(C, N).
+    add_to_cell(C, N-1).
 

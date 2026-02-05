@@ -25,6 +25,7 @@
 -export([main/0]).
 -uncoverable("the_leader > 1").
 
+% NOTE(monarch): Turned into a function instead of a macro definition
 compare(A,B) ->
     case A of
         a -> case B of
@@ -42,7 +43,7 @@ compare(A,B) ->
                 b -> gt;
                 c -> eq
              end
-    end).
+    end.
 
 
 main() -> testtnode().

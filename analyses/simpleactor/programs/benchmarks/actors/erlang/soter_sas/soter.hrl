@@ -1,0 +1,2 @@
+-define(SoterOneOf(Xs), monarch:choice(Xs)).
+-define(any_peano(), monarch:any_nat()).

@@ -29,10 +29,9 @@
 
 
 -module(reslockbeh).
--compile(export_all).
-
+-export([main/0]).
 -uncoverable("critical >= 2").
-
+-include("soter.hrl").
 
 %%% LOCKED RESOURCE
 
@@ -130,11 +129,8 @@ main() ->
     C = inst_start(),
     many_clients(C, monarch:any_nat()).
 
-% ?any_peano is defined in grammars.hrl (automatically included)
-% and generates all the terms of the form X ::= zero | {s, X}
-
-many_clients(_, zero) -> ok;
-many_clients(C, {s, N}) ->
+many_clients(_, 0) -> ok;
+many_clients(C, N) ->
     spawn(fun()->any_client(C) end),
-    many_clients(C, N).
+    many_clients(C, N-1).
 
