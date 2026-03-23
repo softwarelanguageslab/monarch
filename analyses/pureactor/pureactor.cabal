@@ -13,9 +13,13 @@ library pureactor-lib
    , maf2-domains
   exposed-modules:
     Language.PureActor
+    Domain.PureActor
+    Analysis.PureActor
   other-modules:
     Language.PureActor.AST
     Language.PureActor.Compiler
+    Analysis.PureActor.Semantics
+    Analysis.Fixpoint
   hs-source-dirs: src
   default-language: GHC2021
   mixins:   base hiding (Prelude)
@@ -24,7 +28,9 @@ library pureactor-lib
   default-extensions:
       LambdaCase
     , PatternSynonyms
-  
+    , FunctionalDependencies
+    , TypeFamilies
+  ghc-options: -Wall -Werror
 
 executable pureactor-exe
   build-depends:
@@ -37,6 +43,7 @@ executable pureactor-exe
           , relude
   hs-source-dirs: app
   main-is: Main.hs
+  ghc-options: -Wall -Werror
 
 
 test-suite pureactor-tests
@@ -53,3 +60,4 @@ test-suite pureactor-tests
   other-modules:
     CompilerSpec
   main-is: TestSuite.hs
+  ghc-options: -Wall -Werror

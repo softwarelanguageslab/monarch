@@ -11,5 +11,6 @@ packages:
    maf2-analysis/
    maf2-scv/
    analyses/simpleactor/
+   analyses/pureactor/
    thirdparty/language-python/language-python/
 

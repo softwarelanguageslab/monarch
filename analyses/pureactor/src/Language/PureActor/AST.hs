@@ -17,7 +17,7 @@ data Expr
   = Spawn Handlers Span
   | Become Handlers Span
   | Send Expr Tag Expr Span
-  | Letrec Ide Expr Expr Span
+  | Letrec [(Ide, Expr)] Expr Span
   | Var Ide
   | Lit Literal Span
   | Begin [Expr] Span
@@ -26,6 +26,7 @@ data Expr
 
 -- | Literal expressions
 data Literal = IntLit Int
+             | BoolLit Bool
   deriving (Ord, Eq, Show)
 
 -- | Tags are simply wrapped strings, used in messages and message handlers
@@ -42,6 +43,7 @@ instance SpanOf Expr where
       Spawn _ s -> s
       Become _ s -> s
       Send _ _ _ s -> s
-      Letrec _ _ _ s -> s
+      Letrec _ _ s -> s
       Var ide -> spanOf ide
       Lit _ s -> s
+      Begin _ s -> s

@@ -1,19 +1,13 @@
 cradle:
   cabal:
-    - path: "analyses/ase/src"
-      component: "lib:ase"
+    - path: "analyses/pureactor/src"
+      component: "pureactor:lib:pureactor-lib"
 
-    - path: "analyses/ase/app/Main.hs"
-      component: "ase:exe:ase"
+    - path: "analyses/pureactor/app/Main.hs"
+      component: "pureactor:exe:pureactor-exe"
 
-    - path: "analyses/ase/app/Commands/Analyze.hs"
-      component: "ase:exe:ase"
-
-    - path: "analyses/ase/app/Options.hs"
-      component: "ase:exe:ase"
-
-    - path: "analyses/ase/app/Paths_ase.hs"
-      component: "ase:exe:ase"
+    - path: "analyses/pureactor/tests"
+      component: "pureactor:test:pureactor-tests"
 
     - path: "analyses/simpleactor/src"
       component: "lib:simpleactor"
@@ -21,7 +15,16 @@ cradle:
     - path: "analyses/simpleactor/app/Main.hs"
       component: "simpleactor:exe:simpleactor-exe"
 
-    - path: "analyses/simpleactor/app/ASE/Benchmark.hs"
+    - path: "analyses/simpleactor/app/CommandLine/Options.hs"
+      component: "simpleactor:exe:simpleactor-exe"
+
+    - path: "analyses/simpleactor/app/CommandLine/Output.hs"
+      component: "simpleactor:exe:simpleactor-exe"
+
+    - path: "analyses/simpleactor/app/Runnables/CoreErlang.hs"
+      component: "simpleactor:exe:simpleactor-exe"
+
+    - path: "analyses/simpleactor/app/TracePartitioning/Benchmark.hs"
       component: "simpleactor:exe:simpleactor-exe"
 
     - path: "analyses/simpleactor/test"
@@ -48,7 +51,13 @@ cradle:
     - path: "maf2-analysis/app/Run/Python.hs"
       component: "maf2-analysis:exe:maf-exe"
 
+    - path: "maf2-analysis/app/Run/PythonInterpreter.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
     - path: "maf2-analysis/app/Run/Scheme.hs"
+      component: "maf2-analysis:exe:maf-exe"
+
+    - path: "maf2-analysis/app/Run/SchemeCounting.hs"
       component: "maf2-analysis:exe:maf-exe"
 
     - path: "maf2-analysis/app/Paths_maf2_analysis.hs"
@@ -77,3 +86,6 @@ cradle:
 
     - path: "maf2-syntax/test"
       component: "maf2-syntax:test:maf2-syntax-test"
+
+    - path: "thirdparty/language-python/language-python/src"
+      component: "lib:language-python"

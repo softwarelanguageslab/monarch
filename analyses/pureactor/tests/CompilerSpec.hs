@@ -11,8 +11,8 @@ spec = do
       compileString "1"
         `shouldSatisfy` (\case Right (Lit (IntLit 1) _) -> True; _ -> False)
     it "can parse a letrec form" $ do
-      compileString "(letrec (x 1) x)"
-        `shouldSatisfy` (\case Right (Letrec _ _ _ _) -> True; _ -> False)
+      compileString "(letrec ((x 1)) x)"
+        `shouldSatisfy` (\case Right (Letrec _ _ _) -> True; _ -> False)
     it "can parse a send form" $ do
       compileString "(send x ping x)"
         `shouldSatisfy` (\case Right (Send _ _ _ _) -> True; _ -> False)
