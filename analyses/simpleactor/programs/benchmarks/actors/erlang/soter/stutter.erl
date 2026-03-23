@@ -1,7 +1,8 @@
 -module(stutter).
+
 -export([main/0]).
 
--uncoverable("abonormal_a > 0").
+-uncoverable("abnormal_a > 0").
 
 main() ->
     P = spawn(fun()-> stutter(fun(Msg)-> dosmt(Msg) end) end),

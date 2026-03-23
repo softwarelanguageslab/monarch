@@ -30,5 +30,4 @@ class (Ord m, Eq m) => Mailbox m msg | m -> msg where
   hasMessage msg  = isTrue @(BottomLifted (CP Bool)) . hasMessage' msg
 
   -- | Applies the given function over the mailbox contens
-  mapMessages :: (msg -> msg) -> m -> m 
-
+  mapMessages :: (msg -> msg) -> m -> m

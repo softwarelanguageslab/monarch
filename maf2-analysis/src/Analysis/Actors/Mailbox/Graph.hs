@@ -3,6 +3,8 @@ module Analysis.Actors.Mailbox.Graph(
   GraphMailbox(..),
   messages,
   toDot,
+  numberOfUniqueGraphs,
+  numberOfMessages
 ) where
 
 import Analysis.Actors.Mailbox hiding (hasMessage)
@@ -106,6 +108,17 @@ instance (Ord msg) => Mailbox (GraphMailbox msg) msg where
 -- | Return the powerset of messages represented by this graph
 messages :: Ord msg => GraphMailbox msg -> Set msg
 messages = foldMap graphMessages . getMessageGraphs
+
+-- | Returns the number of unique message graphs
+numberOfUniqueGraphs :: GraphMailbox msg -> Int
+numberOfUniqueGraphs = Set.size . getMessageGraphs
+
+-- | Returns the number of abstract messages in this graph.
+-- Note that the actual number of messages in the concrete mailbox might
+-- be different as a single message might correspond to multiple
+-- concrete messages if the mailbox has lost its multiplicity information.
+numberOfMessages :: Ord msg => GraphMailbox msg -> Int
+numberOfMessages = Set.size . messages
 
 -----------------------------------------------------------
 -- DOT graph visualization
