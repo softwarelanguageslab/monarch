@@ -14,15 +14,15 @@ import Syntax.Span (Span, SpanOf (..))
 -- We deviate slightly from this convention for the 'Letrec' form so that programs
 -- are not as tedious to write.
 data Expr
-  = Spawn Handlers Span
-  | Become Handlers Span
+  = Spawn Expr Span
   | Send Expr Tag Expr Span
   | Letrec [(Ide, Expr)] Expr Span
   | Var Ide
   | Lit Literal Span
+  | Behavior Ide Handlers Span
+  | Become Expr Span
   | Begin [Expr] Span
   deriving (Ord, Eq, Show)
-
 
 -- | Literal expressions
 data Literal = IntLit Int
@@ -47,3 +47,5 @@ instance SpanOf Expr where
       Var ide -> spanOf ide
       Lit _ s -> s
       Begin _ s -> s
+      Behavior _ _ s -> s
+
