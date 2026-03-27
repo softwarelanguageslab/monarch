@@ -57,14 +57,14 @@ compile expr =
         Send <$> compile ref <*> pure (Tag tag) <*> compile val <*> pure (spanOf expr)
       (SExp.Atom "send" _) ::: _ ->
         throwError $ "malformed 'send' expression at " ++ toString (S.show $ spanOf expr)
-      (SExp.Atom "spawn" _) ::: expr0 ::: SExp.SNil _ ->
-        Spawn <$> compile expr0 <*> pure (spanOf expr)
+      (SExp.Atom "spawn" _) ::: expr0 ::: exprValue ::: SExp.SNil _ ->
+        Spawn <$> compile expr0 <*> compile exprValue <*> pure (spanOf expr)
       (SExp.Atom "spawn" _) ::: _ ->
         throwError $ "malformed 'spawn' expression at " ++ toString (S.show $ spanOf expr)
       (SExp.Atom "behavior" _) ::: (SExp.Atom nam s ::: SExp.SNil _) ::: handlers ->
         Behavior (Ide nam s) <$> compileHandlers handlers <*> pure (spanOf expr)
-      (SExp.Atom "become" _) ::: expr0 ::: SExp.SNil _ ->
-        Become <$> compile expr0 <*> pure (spanOf expr)
+      (SExp.Atom "become" _) ::: expr0 ::: exprValue ::: SExp.SNil _ ->
+        Become <$> compile expr0 <*> compile exprValue <*> pure (spanOf expr)
       (SExp.Atom "become" _) ::: _ ->
         throwError $ "malformed 'become' expression at " ++ toString (S.show $ spanOf expr)
       (SExp.Atom "letrec" _) ::: bindings ::: body ::: SExp.SNil _ ->

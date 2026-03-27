@@ -14,13 +14,13 @@ import Syntax.Span (Span, SpanOf (..))
 -- We deviate slightly from this convention for the 'Letrec' form so that programs
 -- are not as tedious to write.
 data Expr
-  = Spawn Expr Span
+  = Spawn Expr Expr Span
   | Send Expr Tag Expr Span
   | Letrec [(Ide, Expr)] Expr Span
   | Var Ide
   | Lit Literal Span
   | Behavior Ide Handlers Span
-  | Become Expr Span
+  | Become Expr Expr Span
   | Begin [Expr] Span
   deriving (Ord, Eq, Show)
 
@@ -40,8 +40,8 @@ newtype Handlers = Handlers (Map Tag (Ide, Expr))
 instance SpanOf Expr where
   spanOf =
     \case
-      Spawn _ s -> s
-      Become _ s -> s
+      Spawn _  _ s -> s
+      Become _ _ s -> s
       Send _ _ _ s -> s
       Letrec _ _ s -> s
       Var ide -> spanOf ide

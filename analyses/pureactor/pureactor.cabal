@@ -8,6 +8,7 @@ library pureactor-lib
      base >= 4 && < 5
    , relude
    , mtl
+   , lens
    , maf2-syntax
    , maf2-analysis
    , maf2-domains
