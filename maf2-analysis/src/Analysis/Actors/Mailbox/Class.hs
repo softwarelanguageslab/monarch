@@ -1,8 +1,8 @@
 module Analysis.Actors.Mailbox.Class (Mailbox(..)) where
 
-import Data.Set
-import Lattice
-import Domain
+import Data.Set hiding (empty)
+import Lattice hiding (empty)
+import Domain hiding (empty)
 import Lattice.BottomLiftedLattice (BottomLifted)
 
 -- |  This typeclass specifies which operations the mailbox should understand
@@ -31,3 +31,8 @@ class (Ord m, Eq m) => Mailbox m msg | m -> msg where
 
   -- | Applies the given function over the mailbox contens
   mapMessages :: (msg -> msg) -> m -> m
+
+  -- | Creates a mailbox that contains only a single message
+  singleton :: msg -> m
+  singleton = flip enqueue empty
+
