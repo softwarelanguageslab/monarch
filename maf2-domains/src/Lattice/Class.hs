@@ -18,6 +18,7 @@ module Lattice.Class (
    joinMap,
    joinMapM,
    allOrderings,
+   allOrderingsMap,
    minimalElements
 ) where
 
@@ -25,6 +26,7 @@ import Data.Void
 import Data.Foldable (foldrM)
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Functor.Identity (Identity (Identity, runIdentity))
 
 ------------------------------------------------------------
 --- Joinable / JoinLattice
@@ -154,19 +156,29 @@ instance (Joinable a, BottomLattice a) => Monoid (LatticeMonoid a) where
 
 -- | Returns the set of minimal elements in the given set.
 -- This set contains all elements that have no smaller element in the given set.
-minimalElements :: (Ord a, PartialOrder a) => Set a -> Set a
-minimalElements elements = Set.filter isMinimal elements
-   where isMinimal el = Set.null $ Set.filter (\y -> y /= el && y `leq` el) elements
+minimalElements :: forall a . (Ord a, PartialOrder a) => Set a -> Set a
+minimalElements = Set.map runIdentity . minimalElementsMap runIdentity . Set.map Identity 
    
+-- | Same as 'f' but allows an arbirary functor over the elements of the
+-- set that is not counted towards the partialorder.
+minimalElementsMap :: forall a f . (Ord a, PartialOrder a) => (f a -> a) -> Set (f a) -> Set (f a)
+minimalElementsMap f elements = Set.filter (isMinimal  . f) elements
+   where isMinimal el = Set.null $ Set.filter (\y -> y /= el && y `leq` el) (Set.map f elements)
+
 -- | Given a list of unordered elemens, returns all possible partial orderings
 -- of that list.
 allOrderings  :: forall a . (Ord a, PartialOrder a) => [a] -> [[a]]
-allOrderings allElements = go (Set.fromList allElements) []
+allOrderings = map (map runIdentity) . allOrderingsF runIdentity . map Identity
+
+-- | Same as 'allOrderings' but operators on an arbitrary functor, preserving its structure.
+allOrderingsMap :: forall a f . (Ord a, Ord (f a), PartialOrder a) => (f a -> a) -> [f a] -> [[f a]]
+allOrderingsMap f = flip go [] . Set.fromList 
   where
-    go :: Set a -> [a] -> [[a]]
+    go :: Set (f a) -> [f a] -> [[f a]]
     go remaining builtPrefix
       | Set.null remaining = [reverse builtPrefix]
       | otherwise =
             Set.foldr (\m acc ->
                 go (Set.delete m remaining) (m : builtPrefix) ++ acc
-            ) [] (minimalElements remaining)
+            ) [] (minimalElementsMap f remaining)
+
