@@ -52,6 +52,8 @@ compileBindings = SExp.smapM compileBinding
 compile :: (MonadCompile m) => SExp.SExp -> m Expr
 compile expr =
     case expr of
+      SExp.Atom "nil" _ -> return $ Lit NilLit (spanOf expr)
+      SExp.Atom "self" _ -> return $ Self (spanOf expr)
       SExp.Atom nam s -> return $ Var (Ide nam s)
       (SExp.Atom "send" _) ::: ref ::: (SExp.Atom tag _) ::: val ::: SExp.SNil _ ->
         Send <$> compile ref <*> pure (Tag tag) <*> compile val <*> pure (spanOf expr)

@@ -1,0 +1,12 @@
+(letrec
+  ((ping (behavior (state)
+    (ping (val)
+      (become ping 0))
+    (pang (val)
+      (become ping 1)))))
+  (letrec
+    ((p (spawn ping 0)))
+    (begin
+      (send p ping nil)
+      (send p pang nil))))
+

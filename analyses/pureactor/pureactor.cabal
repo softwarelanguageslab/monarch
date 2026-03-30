@@ -37,13 +37,19 @@ executable pureactor-exe
   build-depends:
       base >= 4 && < 5
     , relude
+    , pretty-simple
     , pureactor-lib
+    , lucid
+    , containers
+    , lens
+    , maf2-domains
   default-language: GHC2021
   mixins:   base hiding (Prelude)
           , relude (Relude as Prelude)
           , relude
   hs-source-dirs: app
   main-is: Main.hs
+  other-modules: Visualizer
   ghc-options: -Wall -Werror
 
 

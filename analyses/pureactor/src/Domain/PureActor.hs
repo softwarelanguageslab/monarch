@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Domain.PureActor
   ( -- * State space
     Adr (..),
@@ -24,6 +25,8 @@ import Lattice.UnitLattice ()
 import Syntax.Ide (Ide)
 import Syntax.Span
 import qualified Data.Set as Set
+import qualified GHC.Show as GHC
+import qualified Data.Text as T
 
 -----------------------------------------
 -- State space
@@ -39,7 +42,7 @@ data Beh = Beh Ide Syntax.Handlers Env
   deriving (Ord, Eq, Show)
 
 -- | A finite representation of actor references
-newtype ActorRef = ActorRef Span
+data ActorRef = ActorRef Span | MainRef
   deriving (Ord, Eq, Show)
 
 -----------------------------------------
@@ -54,7 +57,7 @@ data Val = Val
     nil :: Maybe (),
     behs :: Set Beh
   }
-  deriving (Ord, Eq, Show)
+  deriving (Ord, Eq)
 
 instance PartialOrder Val where
   leq v1 v2 =
@@ -76,10 +79,15 @@ instance Joinable Val where
 instance BottomLattice Val where
   bottom = Val bottom bottom bottom bottom bottom
 
+-----------------------------------------
+-- Constructing values
+-----------------------------------------
+
 instance Domain Val Literal where
   inject = \case
     IntLit i -> bottom {ints = inject i}
     BoolLit b -> bottom {bools = inject b}
+    NilLit -> bottom { nil = Just () }
 
 instance Domain Val Beh where
   inject b = bottom { behs = Set.singleton b }
@@ -90,3 +98,28 @@ instance Domain Val ActorRef where
 nilValue :: Val
 nilValue =
   bottom {nil = Just ()}
+
+-----------------------------------------
+-- Showing
+-----------------------------------------
+
+instance GHC.Show Val where
+  show v = toString $ "[ " <> T.intercalate ", " (catMaybes 
+    [ showSet "refs" (refs v)
+    , showVal "ints" (ints v)
+    , showVal "bools" (bools v)
+    , showVal "nil" (nil v)
+    , showSet "behs" (behs v)
+    ]) <> " ]"
+    where
+      showVal :: (Eq a, BottomLattice a, Show a) => Text -> a -> Maybe Text
+      showVal label val = 
+        if val == bottom
+        then Nothing
+        else Just $ label <> " ↦ " <> show val
+
+      showSet :: (Eq (Set a), BottomLattice (Set a), Show a) => Text -> Set a -> Maybe Text
+      showSet label val = 
+        if val == bottom
+        then Nothing
+        else Just $ label <> " ↦ { " <> T.intercalate "," (map show (Set.toList val)) <> " }"
