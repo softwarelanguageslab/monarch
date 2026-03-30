@@ -168,7 +168,7 @@ minimalElementsMap f elements = Set.filter (isMinimal  . f) elements
 -- | Given a list of unordered elemens, returns all possible partial orderings
 -- of that list.
 allOrderings  :: forall a . (Ord a, PartialOrder a) => [a] -> [[a]]
-allOrderings = map (map runIdentity) . allOrderingsF runIdentity . map Identity
+allOrderings = map (map runIdentity) . allOrderingsMap runIdentity . map Identity
 
 -- | Same as 'allOrderings' but operators on an arbitrary functor, preserving its structure.
 allOrderingsMap :: forall a f . (Ord a, Ord (f a), PartialOrder a) => (f a -> a) -> [f a] -> [[f a]]
