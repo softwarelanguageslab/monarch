@@ -149,6 +149,7 @@ executable simpleactor-exe
     , time
     , timeit
     , unix
+    , Glob
   default-language: GHC2021
 
 test-suite simpleactor-tests
