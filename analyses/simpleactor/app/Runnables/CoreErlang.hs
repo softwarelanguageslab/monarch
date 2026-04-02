@@ -28,6 +28,8 @@ import Syntax.SimpleActor.CoreToSimpleActor qualified as CoreToSimpleActor
 import qualified Domain.Core.BoolDomain.Class as Domain
 import System.Posix.Signals
 import Control.Concurrent
+import qualified System.FilePath.Glob as Glob
+import System.Directory (doesDirectoryExists)
 
 ---------------------------------------------------------------------
 -- Command-line options
@@ -54,12 +56,27 @@ options =
 -- Entrypoint
 ---------------------------------------------------------------------
 
--- | Run the analyiss on a Core Erlang program described by the given options
+-- | Recursively enumerate the contents of the directory in order to
+-- find Erlang core files (*.core)
+directoryContents :: String -- ^ the path to the directory
+                  -> IO [String]
+directoryContents = Glob.globDir1 (Glob.compile "**/*.core")
+
+-- | Run the analyis on a Core Erlang program described by the given options
 analyzeOptions :: (MonadIO m, MonadError OutputAnalysisError m) => CoreErlangOptions -> m OutputAnalysisResult
-analyzeOptions CoreErlangOptions {..} = do
+analyzeOptions CoreErlangOptions {..} = either (throwError . show) return =<< runEither  (do
   -- TODO: support more than one module, perhaps based on a directory
   -- of modules.
   let inputName = filename coreErlangInputOptions
+  -- If the input is a directory then load all Core Erlang modules
+  -- from that directory.
+  files <- ifM (doesDirectoryExists inputName)
+               (directoryContents inputName)
+               (pure [inputName])
+  parsedFiles <- mapM (\filename ->  lift (readFile filename) >>= parseProgram filename)
+                                                       
+
+
   contents <- liftIO $ readFile inputName
   case CoreErlang.parseProgram inputName contents of
     Left err -> do
