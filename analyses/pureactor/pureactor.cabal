@@ -16,10 +16,11 @@ library pureactor-lib
     Language.PureActor
     Domain.PureActor
     Analysis.PureActor
+    Analysis.PureActor.Semantics
+    Analysis.PureActor.Mailbox.Graph
   other-modules:
     Language.PureActor.AST
     Language.PureActor.Compiler
-    Analysis.PureActor.Semantics
     Analysis.Fixpoint
   hs-source-dirs: src
   default-language: GHC2021

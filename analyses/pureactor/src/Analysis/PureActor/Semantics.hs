@@ -29,6 +29,7 @@ module Analysis.PureActor.Semantics(
     Env,
     -- * Entrypoints
     analyzeProgram,
+    analyzeProgram',
     -- Filtering operations
     filterSubsumed
   ) where
@@ -41,7 +42,7 @@ import qualified Data.Map.Lazy as Map
 import qualified Data.Set as Set
 import Lattice.ProductLattice ()
 import Lattice.MapLattice ()
-import Analysis.Fixpoint (lfp)
+import Analysis.Fixpoint (lfp, lfpTraced)
 import qualified Lattice.Class as L
 import qualified Analysis.Environment as Env
 import qualified Analysis.Store as Store
@@ -51,6 +52,8 @@ import Control.Monad
 import Control.Lens
 import qualified Analysis.Actors.Mailbox as MB
 import Relude.Extra (dup)
+import Analysis.PureActor.Mailbox.Graph (Graph)
+import Debug.Trace as Debug
 
 
 -----------------------------------------
@@ -87,7 +90,7 @@ stateOf = \case Turn _ _ s -> s
 type Sto = Map Adr Val
 
 -- | Mailbox type
-type MB = Set (Tag, Val)
+type MB = Graph (Tag, Val)
 
 -----------------------------------------
 -- Monad
@@ -114,8 +117,7 @@ $(makeLenses ''R)
 
 -- | Extracts the store component from the turn
 turnStore :: Turn -> Sto
-turnStore (Turn _ _ s) = s ^. sto
-turnStore (Terminated s) = s ^. sto
+turnStore t = stateOf t ^. sto
 
 -- | Create an empty state 'S'
 emptyState :: S
@@ -227,7 +229,7 @@ send ref t val = modify (over outbox insertIntoMailbox)
 rcv :: Fork ξ => EvalM ξ (Tag, Val)
 rcv = do
   currentInbox <- gets (view inbox)
-  forks $ map (\(msg, currentInbox') -> modify (set inbox currentInbox') $> msg) (Set.toList $ MB.dequeue currentInbox)
+  forks $ map (\(msg, currentInbox') -> modify (set inbox currentInbox') $> msg) (Debug.traceShowId $ Set.toList $ MB.dequeue currentInbox)
 
 -----------------------------------------
 -- Polymorphic configuration points for "EvalM" 
@@ -308,6 +310,7 @@ eval =
     Begin es _ ->
       mapM eval es >>= maybe mzero return . viaNonEmpty last
     Behavior nam hdls _ -> Domain.inject . Beh nam hdls <$> getEnv
+    Var (Ide "magic" _) -> error "magic triggered"
     Var (Ide nam _) -> lookup nam
     Become expr exprValue _ -> do
       -- (become expr exprValue)
@@ -405,8 +408,9 @@ analyzeSystem sys =
     analyzedActors :: Map ActorRef (Set Turn)
     analyzedActors = Map.mapWithKey (\ref seeds ->
         let mb = fromMaybe MB.empty (Map.lookup ref (sys ^. mailboxes))
+            outboxes = sys ^. mailboxes
             seedsWithCtx = Set.map (\case
-                Turn expr r st -> Turn expr r (set inbox mb (set sto (sys ^. storeSys) st))
+                Turn expr r st -> Turn expr r (set outbox outboxes(set inbox mb (set sto (sys ^. storeSys) st)))
                 t@(Terminated _) -> t) seeds
         in lfp (analyze @NonDet) seedsWithCtx
       ) (sys ^. actorSeeds)
@@ -459,6 +463,11 @@ injectSystem expr =
 -- if 'become' gets called from the main actor.
 analyzeProgram :: Expr -> System
 analyzeProgram = lfp analyzeSystem . injectSystem
+
+-- | Same as 'analyzeProgram' but returns the trace of systems
+-- in addition to the final system
+analyzeProgram' :: Expr -> (System, [System])
+analyzeProgram' = second reverse . lfpTraced analyzeSystem . injectSystem
 
 -----------------------------------------
 -- Filtering

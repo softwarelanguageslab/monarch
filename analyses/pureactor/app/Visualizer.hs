@@ -13,6 +13,7 @@ import qualified Data.Set as Set
 import qualified Data.Tree as Tree
 import qualified Data.Text as T
 import Lattice.Class (BottomLattice(..))
+import Analysis.PureActor.Mailbox.Graph (Graph(..))
 
 -- | A node in our visualization tree
 data SystemNode = ActorNode ActorRef (Set Turn)
@@ -38,17 +39,17 @@ actorToTree sys ref = Tree.Node (ActorNode ref turns) (map (actorToTree sys) (fi
   where
     turns = fromMaybe Set.empty $ Map.lookup ref (sys ^. actorTurns)
 
--- | Render the tree to HTML
-renderSystem :: System -> Html ()
-renderSystem sys = doctypehtml_ $ do
+-- | Render the systems trace to HTML
+renderSystem :: [System] -> Html ()
+renderSystem systems = doctypehtml_ $ do
     head_ $ do
-        title_ "PureActor System Visualization"
-        style_ $ "body { font-family: sans-serif; margin: 40px; line-height: 1.5; color: #333; background-color: #fdfdfd; } " <>
+        title_ "PureActor Trace Visualization"
+        style_ $ "body { font-family: sans-serif; margin: 40px 40px 100px 40px; line-height: 1.5; color: #333; background-color: #fdfdfd; } " <>
                  "h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #2c3e50; } " <>
                  "h2 { margin-top: 30px; border-bottom: 1px solid #eee; color: #34495e; } " <>
                  "ul { list-style-type: none; padding-left: 20px; } " <>
                  "li { margin-top: 10px; border-left: 2px solid #f0f0f0; padding-left: 15px; } " <>
-                 ".actor { font-weight: bold; font-family: monospace; color: #2980b9; font-size: 1.1em; } " <>
+                 ".actor { font-weight: bold; font-family: monospace; color: #2980b9; font-size: 1.1em; cursor: pointer; } " <>
                  ".turn { margin-top: 15px; background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05); } " <>
                  ".terminated { color: #c0392b; font-weight: bold; } " <>
                  ".details { margin-top: 5px; font-size: 0.9em; color: #666; } " <>
@@ -65,41 +66,128 @@ renderSystem sys = doctypehtml_ $ do
                  "a.adr-link { color: #3498db; text-decoration: none; border-bottom: 1px dotted #3498db; cursor: pointer; } " <>
                  "a.adr-link:hover { color: #2980b9; border-bottom: 1px solid #2980b9; } " <>
                  ".val-label { font-weight: bold; color: #555; } " <>
-                 ".val-container ul { margin: 0; padding-left: 15px; }"
-        script_ "function highlightAddr(id) { \
-                \  const el = document.getElementById(id); \
-                \  if (el) { \
-                \    const all = document.querySelectorAll('.highlight'); \
-                \    all.forEach(x => x.classList.remove('highlight')); \
-                \    el.classList.add('highlight'); \
-                \    el.scrollIntoView({ behavior: 'smooth', block: 'center' }); \
-                \  } \
-                \}"
+                 ".val-container ul { margin: 0; padding-left: 15px; } " <>
+                 ".mailbox-graph { border: 1px solid #ddd; padding: 10px; background: #fff; margin-top: 5px; border-radius: 4px; font-family: monospace; } " <>
+                 ".graph-node { display: inline-block; padding: 4px 8px; margin: 4px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9em; } " <>
+                 ".graph-edge { color: #999; font-size: 1.2em; margin: 0 8px; vertical-align: middle; } " <>
+                 ".graph-tag { color: #d35400; font-weight: bold; } " <>
+                 ".top-node { border: 2px solid #27ae60; background: #e8f5e9; } " <>
+                 ".bottom-node { border: 2px solid #e74c3c; background: #fdecea; } " <>
+                 ".top-bottom-node { border: 2px solid #8e44ad; background: #f3e5f5; } " <>
+                 ".controls { margin-bottom: 20px; position: sticky; top: 0; background: #fdfdfd; padding: 10px 0; border-bottom: 1px solid #eee; z-index: 100; display: flex; align-items: center; } " <>
+                 ".btn { background: #3498db; color: #fff; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px; font-size: 0.9em; } " <>
+                 ".btn:hover { background: #2980b9; } " <>
+                 "details summary { outline: none; list-style: none; } " <>
+                 "details summary::-webkit-details-marker { display: none; } " <>
+                 "details summary::before { content: '▶ '; display: inline-block; width: 1.5em; transition: transform 0.2s; } " <>
+                 "details[open] > summary::before { content: '▼ '; } " <>
+                 "details { margin-bottom: 10px; } " <>
+                 ".iteration-view { display: none; } " <>
+                 ".iteration-view.active { display: block; } " <>
+                 ".footer-controls { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 20px; border-top: 1px solid #ddd; display: flex; align-items: center; justify-content: center; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); } " <>
+                 ".iteration-slider { width: 400px; margin: 0 20px; } " <>
+                 ".iteration-label { font-weight: bold; width: 150px; text-align: center; }"
+        script_ $ T.unlines
+                [ "let currentIteration = 0;"
+                , "const totalIterations = " <> T.pack (show $ length systems) <> ";"
+                , "function highlightAddr(id) {"
+                , "  const el = document.getElementById(id);"
+                , "  if (el) {"
+                , "    const all = document.querySelectorAll('.highlight');"
+                , "    all.forEach(x => x.classList.remove('highlight'));"
+                , "    el.classList.add('highlight');"
+                , "    el.scrollIntoView({ behavior: 'smooth', block: 'center' });"
+                , "  }"
+                , "}"
+                , "function setAllDetails(open) {"
+                , "  const details = document.querySelectorAll('.iteration-view.active details');"
+                , "  details.forEach(d => d.open = open);"
+                , "}"
+                , "function showIteration(idx) {"
+                , "  const prevIter = document.querySelector('.iteration-view.active');"
+                , "  const openIds = [];"
+                , "  if (prevIter) {"
+                , "    prevIter.querySelectorAll('details[open]').forEach(d => openIds.push(d.dataset.id));"
+                , "    prevIter.classList.remove('active');"
+                , "  }"
+                , "  currentIteration = parseInt(idx);"
+                , "  const nextIter = document.getElementById('iteration-' + currentIteration);"
+                , "  nextIter.classList.add('active');"
+                , "  openIds.forEach(id => {"
+                , "    const d = nextIter.querySelector(`details[data-id=\"${id}\"]`);"
+                , "    if (d) d.open = true;"
+                , "  });"
+                , "  document.getElementById('slider').value = currentIteration;"
+                , "  document.getElementById('iter-label').innerText = 'Iteration: ' + currentIteration;"
+                , "}"
+                , "window.onload = () => { showIteration(0); };"
+                ]
     body_ $ do
-        h1_ "PureActor System Visualization"
+        h1_ "PureActor Trace Visualization"
         
-        h2_ "Global Shared Store"
-        div_ [class_ "store"] $ do
-            renderStore (sys ^. storeSys)
-        
-        h2_ "Current Mailboxes"
-        div_ [class_ "mailboxes"] $ do
-            renderMailboxes (sys ^. mailboxes)
-        
-        h2_ "Actor Hierarchy & Reachable Turns"
-        div_ [class_ "system-tree"] $ do
-            ul_ $ renderTreeNode (systemToTree sys)
+        div_ [class_ "controls"] $ do
+            button_ [class_ "btn", onclick_ "setAllDetails(true)"] "Expand All"
+            button_ [class_ "btn", onclick_ "setAllDetails(false)"] "Collapse All"
+
+        forM_ (zip [0 :: Int ..] systems) $ \(i, sys) -> 
+            div_ [id_ ("iteration-" <> T.pack (show i)), class_ "iteration-view"] $ do
+                h2_ $ "Iteration " <> toHtml (show i :: Text)
+                
+                h3_ "Global Shared Store"
+                div_ [class_ "store"] $ do
+                    renderStore (sys ^. storeSys)
+                
+                h3_ "Current Mailboxes"
+                div_ [class_ "mailboxes"] $ do
+                    renderMailboxes (sys ^. mailboxes)
+                
+                h3_ "Actor Hierarchy & Reachable Turns"
+                div_ [class_ "system-tree"] $ do
+                    ul_ $ renderTreeNode (systemToTree sys)
+
+        div_ [class_ "footer-controls"] $ do
+            button_ [class_ "btn", onclick_ "if(currentIteration > 0) showIteration(currentIteration - 1)"] "Previous"
+            input_ [type_ "range", id_ "slider", class_ "iteration-slider", min_ "0", max_ (T.pack $ show (length systems - 1)), step_ "1", oninput_ "showIteration(this.value)"]
+            button_ [class_ "btn", onclick_ "if(currentIteration < totalIterations - 1) showIteration(currentIteration + 1)"] "Next"
+            span_ [id_ "iter-label", class_ "iteration-label"] $ "Iteration: 0"
 
 renderMailboxes :: Map ActorRef MB -> Html ()
 renderMailboxes mbs = ul_ $ forM_ (Map.toList mbs) $ \(ref, mb) -> li_ $ do
     span_ [class_ "actor"] $ toHtml (show ref :: Text)
     div_ [class_ "details"] $ do
-        if Set.null mb 
-            then i_ "Empty"
-            else ul_ $ forM_ (Set.toList mb) $ \(Tag tag, val) -> li_ $ do
-                span_ [class_ "tag"] $ toHtml (fromString tag :: Text)
-                span_ " : "
-                span_ [class_ "val"] $ toHtml (show val :: Text)
+        renderMailboxGraph mb
+
+renderMailboxGraph :: MB -> Html ()
+renderMailboxGraph g = div_ [class_ "mailbox-graph"] $ do
+    if Set.null (vertices g)
+        then i_ "Empty Mailbox"
+        else do
+            div_ $ do
+                b_ "Nodes: "
+                div_ $ forM_ (Set.toList $ vertices g) $ \v -> 
+                    span_ [class_ $ "graph-node " <> nodeClass v] $ renderMsg v
+            unless (Map.null $ edges g) $ div_ [style_ "margin-top: 10px;"] $ do
+                b_ "Edges: "
+                ul_ $ forM_ (Map.toList $ edges g) $ \(src, tgts) -> 
+                    forM_ (Set.toList tgts) $ \tgt -> li_ $ do
+                        span_ [class_ "graph-node"] $ renderMsg src
+                        span_ [class_ "graph-edge"] "→"
+                        span_ [class_ "graph-node"] $ renderMsg tgt
+  where
+    nodeClass v = 
+        let isTop = Set.member v (tops g)
+            isBottom = Set.member v (bottoms g)
+        in case (isTop, isBottom) of
+            (True, True) -> "top-bottom-node"
+            (True, False) -> "top-node"
+            (False, True) -> "bottom-node"
+            (False, False) -> ""
+    
+    renderMsg :: (Tag, Val) -> Html ()
+    renderMsg (Tag t, val) = do
+        span_ [class_ "graph-tag"] $ toHtml (fromString t :: Text)
+        span_ " : "
+        span_ [class_ "val"] $ toHtml (show val :: Text)
 
 renderStore :: Sto -> Html ()
 renderStore stoMap = table_ [class_ "store-table"] $ do
@@ -135,11 +223,12 @@ renderVal v = div_ [class_ "val-container"] $ do
 
 renderTreeNode :: Tree.Tree SystemNode -> Html ()
 renderTreeNode (Tree.Node (ActorNode ref turns) children) = li_ $ do
-    span_ [class_ "actor"] $ toHtml (show ref :: Text)
-    div_ [class_ "details"] $ do
-        p_ $ "Total Reachable Turns: " <> toHtml (show (Set.size turns) :: Text)
-        ul_ $ forM_ (Set.toList turns) $ \t -> li_ [class_ "turn"] $ renderTurn t
-    unless (null children) $ ul_ $ mapM_ renderTreeNode children
+    details_ [data_ "id" (T.pack $ show ref)] $ do
+        summary_ $ span_ [class_ "actor"] $ toHtml (show ref :: Text)
+        div_ [class_ "details"] $ do
+            p_ $ "Total Reachable Turns: " <> toHtml (show (Set.size turns) :: Text)
+            ul_ $ forM_ (Set.toList turns) $ \t -> li_ [class_ "turn"] $ renderTurn t
+        unless (null children) $ ul_ $ mapM_ renderTreeNode children
 
 renderTurn :: Turn -> Html ()
 renderTurn (Turn expr r s) = do
@@ -149,19 +238,24 @@ renderTurn (Turn expr r s) = do
     div_ [class_ "details"] $ do
         p_ "Environment:"
         renderEnv (r ^. env)
-        p_ $ "Inbox: " <> toHtml (show (s ^. inbox) :: Text)
-        unless (Map.null (s ^. outbox)) $ do
-            p_ "Outbox:"
-            ul_ $ forM_ (Map.toList (s ^. outbox)) $ \(target, mb) -> li_ $ do
-                toHtml (show target :: Text) <> ": " <> toHtml (show mb :: Text)
-        unless (Map.null (s ^. spawned)) $ do
-            p_ "Spawned during turn:"
-            ul_ $ forM_ (Map.keys (s ^. spawned)) $ \targetRef -> li_ $ toHtml (show targetRef :: Text)
+        renderS "Inbox Graph" s
 
 renderTurn (Terminated s) = do
     div_ [class_ "terminated"] "Terminated"
-    div_ [class_ "details"] $ do
-        p_ $ "Final Inbox: " <> toHtml (show (s ^. inbox) :: Text)
+    div_ [class_ "details"] $ renderS "Final Inbox Graph" s
+
+renderS :: Text -> S -> Html ()
+renderS inboxLabel s = do
+    p_ $ toHtml inboxLabel <> ":"
+    renderMailboxGraph (s ^. inbox)
+    unless (Map.null (s ^. outbox)) $ do
+        p_ "Outbox Graphs:"
+        ul_ $ forM_ (Map.toList (s ^. outbox)) $ \(target, mb) -> li_ $ do
+            b_ $ toHtml (show target :: Text)
+            renderMailboxGraph mb
+    unless (Map.null (s ^. spawned)) $ do
+        p_ "Spawned during turn:"
+        ul_ $ forM_ (Map.keys (s ^. spawned)) $ \targetRef -> li_ $ toHtml (show targetRef :: Text)
 
 renderEnv :: Env -> Html ()
 renderEnv e = table_ [class_ "env-table"] $ do

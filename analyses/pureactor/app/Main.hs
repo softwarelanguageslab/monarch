@@ -12,7 +12,8 @@ main = do
   case compileString (decodeUtf8 @String contents) of
     Left err  -> print err
     Right expr -> do
-      let sys = analyzeProgram expr
-      pPrint sys
-      renderToFile "system_visualization.html" (renderSystem sys)
+      let (finalSys, sysTrace) = analyzeProgram' expr
+      let allSystems = sysTrace
+      pPrint finalSys
+      renderToFile "system_visualization.html" (renderSystem allSystems)
       putStrLn "Visualization saved to system_visualization.html"

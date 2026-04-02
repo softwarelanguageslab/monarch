@@ -1,12 +1,19 @@
 (letrec
   ((ping (behavior (state)
-    (ping (val)
-      (become ping 0))
-    (pang (val)
-      (become ping 1)))))
+    (ping (ref)
+      (begin 
+        (send ref pong self)
+        (become ping 0)))
+    (pang (ref)
+      (become ping 1))))
+   (pong (behavior (state)
+     (pong (ref)
+        (begin
+          (send ref ping self)
+          (become pong 0))))))
   (letrec
-    ((p (spawn ping 0)))
+    ((ping-actor (spawn ping 0))
+     (pong-actor (spawn pong 0)))
     (begin
-      (send p ping nil)
-      (send p pang nil))))
-
+      (send ping-actor ping pong-actor)
+      (send ping-actor pang nil))))
