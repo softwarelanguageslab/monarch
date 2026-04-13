@@ -13,7 +13,7 @@ import qualified Data.Set as Set
 import qualified Data.Tree as Tree
 import qualified Data.Text as T
 import Lattice.Class (BottomLattice(..))
-import Analysis.PureActor.Mailbox.Graph (Graph(..))
+import Analysis.PureActor.Mailbox.Graph (Graph(..), Node(..))
 
 -- | A node in our visualization tree
 data SystemNode = ActorNode ActorRef (Set Turn)
@@ -183,11 +183,13 @@ renderMailboxGraph g = div_ [class_ "mailbox-graph"] $ do
             (False, True) -> "bottom-node"
             (False, False) -> ""
 
-    renderMsg :: (Tag, Val) -> Html ()
-    renderMsg (Tag t, val) = do
+    renderMsg :: Node (Tag, Val) -> Html ()
+    renderMsg (Node (Tag t, val)) = do
         span_ [class_ "graph-tag"] $ toHtml (fromString t :: Text)
         span_ " : "
         span_ [class_ "val"] $ toHtml (show val :: Text)
+    -- Terminal messages are never rendered 
+    renderMsg Terminal = return ()
 
 renderStore :: Sto -> Html ()
 renderStore stoMap = table_ [class_ "store-table"] $ do
