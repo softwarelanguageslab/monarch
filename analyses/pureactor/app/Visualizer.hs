@@ -26,7 +26,7 @@ systemToTree sys = Tree.Node (ActorNode MainRef mainTurns) (map (actorToTree sys
     spawnedByMain = findSpawnedBy MainRef sys
 
 findSpawnedBy :: ActorRef -> System -> [ActorRef]
-findSpawnedBy parent sys = 
+findSpawnedBy parent sys =
     let allTurns = fromMaybe Set.empty $ Map.lookup parent (sys ^. actorTurns)
         spawnedRefs = Set.toList $ Set.unions $ map getSpawned (Set.toList allTurns)
     in spawnedRefs
@@ -124,23 +124,23 @@ renderSystem systems = doctypehtml_ $ do
                 ]
     body_ $ do
         h1_ "PureActor Trace Visualization"
-        
+
         div_ [class_ "controls"] $ do
             button_ [class_ "btn", onclick_ "setAllDetails(true)"] "Expand All"
             button_ [class_ "btn", onclick_ "setAllDetails(false)"] "Collapse All"
 
-        forM_ (zip [0 :: Int ..] systems) $ \(i, sys) -> 
+        forM_ (zip [0 :: Int ..] systems) $ \(i, sys) ->
             div_ [id_ ("iteration-" <> T.pack (show i)), class_ "iteration-view"] $ do
                 h2_ $ "Iteration " <> toHtml (show i :: Text)
-                
+
                 h3_ "Global Shared Store"
                 div_ [class_ "store"] $ do
                     renderStore (sys ^. storeSys)
-                
+
                 h3_ "Current Mailboxes"
                 div_ [class_ "mailboxes"] $ do
                     renderMailboxes (sys ^. mailboxes)
-                
+
                 h3_ "Actor Hierarchy & Reachable Turns"
                 div_ [class_ "system-tree"] $ do
                     ul_ $ renderTreeNode (systemToTree sys)
@@ -149,7 +149,7 @@ renderSystem systems = doctypehtml_ $ do
             button_ [class_ "btn", onclick_ "if(currentIteration > 0) showIteration(currentIteration - 1)"] "Previous"
             input_ [type_ "range", id_ "slider", class_ "iteration-slider", min_ "0", max_ (T.pack $ show (length systems - 1)), step_ "1", oninput_ "showIteration(this.value)"]
             button_ [class_ "btn", onclick_ "if(currentIteration < totalIterations - 1) showIteration(currentIteration + 1)"] "Next"
-            span_ [id_ "iter-label", class_ "iteration-label"] $ "Iteration: 0"
+            span_ [id_ "iter-label", class_ "iteration-label"] "Iteration: 0"
 
 renderMailboxes :: Map ActorRef MB -> Html ()
 renderMailboxes mbs = ul_ $ forM_ (Map.toList mbs) $ \(ref, mb) -> li_ $ do
@@ -164,17 +164,17 @@ renderMailboxGraph g = div_ [class_ "mailbox-graph"] $ do
         else do
             div_ $ do
                 b_ "Nodes: "
-                div_ $ forM_ (Set.toList $ vertices g) $ \v -> 
+                div_ $ forM_ (Set.toList $ vertices g) $ \v ->
                     span_ [class_ $ "graph-node " <> nodeClass v] $ renderMsg v
             unless (Map.null $ edges g) $ div_ [style_ "margin-top: 10px;"] $ do
                 b_ "Edges: "
-                ul_ $ forM_ (Map.toList $ edges g) $ \(src, tgts) -> 
+                ul_ $ forM_ (Map.toList $ edges g) $ \(src, tgts) ->
                     forM_ (Set.toList tgts) $ \tgt -> li_ $ do
                         span_ [class_ "graph-node"] $ renderMsg src
                         span_ [class_ "graph-edge"] "→"
                         span_ [class_ "graph-node"] $ renderMsg tgt
   where
-    nodeClass v = 
+    nodeClass v =
         let isTop = Set.member v (tops g)
             isBottom = Set.member v (bottoms g)
         in case (isTop, isBottom) of
@@ -182,7 +182,7 @@ renderMailboxGraph g = div_ [class_ "mailbox-graph"] $ do
             (True, False) -> "top-node"
             (False, True) -> "bottom-node"
             (False, False) -> ""
-    
+
     renderMsg :: (Tag, Val) -> Html ()
     renderMsg (Tag t, val) = do
         span_ [class_ "graph-tag"] $ toHtml (fromString t :: Text)
@@ -205,7 +205,7 @@ renderVal :: Val -> Html ()
 renderVal v = div_ [class_ "val-container"] $ do
     ul_ $ do
         unless (Set.null (refs v)) $ li_ $ do
-            span_ [class_ "val-label"] "Refs: " 
+            span_ [class_ "val-label"] "Refs: "
             toHtml (show (refs v) :: Text)
         unless (isBottom (ints v)) $ li_ $ do
             span_ [class_ "val-label"] "Ints: "

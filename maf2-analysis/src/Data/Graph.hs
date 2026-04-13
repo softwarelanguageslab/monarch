@@ -3,7 +3,7 @@
 
 module Data.Graph (Graph(..), SimpleGraph(..), topSort) where
 
-import Control.Lens
+import Control.Lens hiding (to, from)
 import Control.Monad.State
 import Control.Monad.Except
 import Data.Map (Map)

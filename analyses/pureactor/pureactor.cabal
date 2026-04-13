@@ -18,6 +18,7 @@ library pureactor-lib
     Analysis.PureActor
     Analysis.PureActor.Semantics
     Analysis.PureActor.Mailbox.Graph
+    Analysis.PureActor.Mailbox.Graph.Dot
   other-modules:
     Language.PureActor.AST
     Language.PureActor.Compiler
