@@ -186,6 +186,9 @@ getState = EvalM $ const $ \s -> pure (pure (s, s))
 halt :: EvalExpr -> Env -> EvalM ξ a
 halt expr environ = do
   r <- set env environ <$> ask
+  -- Set the outbox of 'self' to be equal to the current inbox 
+  currentInbox <- gets (view inbox) 
+  modify (over outbox (Map.insert (r ^. self) currentInbox))
   getState >>= \st -> EvalM $ const $ const $ pure $ K $ Left (Turn expr r st)
 
 
