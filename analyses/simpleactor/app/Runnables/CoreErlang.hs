@@ -1,4 +1,5 @@
 {-# LANGUAGE PackageImports #-}
+{-# OPTIONS_GHC -Wno-partial-fields #-}
 module Runnables.CoreErlang
   ( options,
     entrypoint,
@@ -40,7 +41,8 @@ data CoreErlangOptions = CoreErlangOptions
   { coreErlangMainMod :: String,
     coreErlangMainFun :: String,
     coreErlangInputOptions :: Options.InputOptions,
-    coreErlangOutputOptions :: Options.OutputOptions
+    coreErlangOutputOptions :: Options.OutputOptions,
+    coreErlangParseOnly     :: Bool
   }
 
 -- | Parses the command-line arguments into a "CoreErlangOptions"
@@ -52,6 +54,7 @@ options =
     <*> strOption (long "main-function")
     <*> Options.inputOptions
     <*> Options.outputOptions
+    <*> switch (short 'p' <> help "Disable the analysis, parse only.")
 
 ---------------------------------------------------------------------
 -- Entrypoint
@@ -62,7 +65,6 @@ options =
 directoryContents :: String -- ^ the path to the directory
                   -> IO [String]
 directoryContents = Glob.globDir1 (Glob.compile "**/*.core")
-
 -- | Run the analyis on a Core Erlang program described by the given options
 analyzeOptions :: (MonadIO m, MonadError OutputAnalysisError m) => CoreErlangOptions -> m OutputAnalysisResult
 analyzeOptions CoreErlangOptions {..} = do
@@ -84,23 +86,27 @@ analyzeOptions CoreErlangOptions {..} = do
         -- ... and find suitable bounds for each variable in the predicates:
         let bounds = Map.fromList $ map (bimap MailboxLabel Count.zero) $ Map.toList $ Soter.extractBoundsPredicates predicates
 
-        -- Run analysis
-        (AnalysisResult res _ countMax) <- liftIO $ analyze' bounds Nothing expr
 
-        -- Compute soter results
-        let countOutMapping =
-              Map.mapKeys getMailboxLabel $ Map.mapMaybe (\case Count.Count v _ -> Just v; _ -> Nothing) countMax
-        let predicateHolds = map (Domain.isTrue . Soter.predicateHolds countOutMapping) predicates
+        if coreErlangParseOnly
+        then return ParsingSucceeded
+        else do   
+          -- Run analysis
+          (AnalysisResult res _ countMax) <- liftIO $ analyze' bounds Nothing expr
 
-        liftIO $ print countOutMapping
-        liftIO $ print predicateHolds
-        liftIO $ print (sum $ map (length . Map.toList . Sequential.cmpRes .  snd) $ Map.toList res)
+          -- Compute soter results
+          let countOutMapping =
+                Map.mapKeys getMailboxLabel $ Map.mapMaybe (\case Count.Count v _ -> Just v; _ -> Nothing) countMax
+          let predicateHolds = map (Domain.isTrue . Soter.predicateHolds countOutMapping) predicates
 
-        return $
-          AnalysisOutput
-            { reachableCoverableConditions = sum (map fromEnum predicateHolds),
-              totalPredicates = length predicates
-            }
+          liftIO $ print countOutMapping
+          liftIO $ print predicateHolds
+          liftIO $ print (sum $ map (length . Map.toList . Sequential.cmpRes .  snd) $ Map.toList res)
+
+          return $
+            AnalysisOutput
+              { reachableCoverableConditions = sum (map fromEnum predicateHolds),
+                totalPredicates = length predicates
+              }
 
   where parseProgram filename =
            -- parse the contents and lift a potential error in a suitable error type
@@ -146,11 +152,14 @@ entrypoint opts@CoreErlangOptions {..} = do
 ---------------------------------------------------------------------
 
 -- | Serializable analysis result that can be read using other tools
-data OutputAnalysisResult = AnalysisOutput
-  { -- | The number of "uncoverable" annotations that are satisfied  (lower is better)
-    reachableCoverableConditions :: !Int,
-    totalPredicates :: !Int
-  }
+data OutputAnalysisResult =
+    AnalysisOutput {
+      -- | The number of "uncoverable" annotations that are satisfied  (lower is better)
+      reachableCoverableConditions :: !Int,
+      totalPredicates :: !Int
+    }
+  -- | Signals that parse has succeeded, if run in parse mode
+  | ParsingSucceeded 
   deriving (Generic, Show)
 
 -- | Possible errros encountered when running the analysis
