@@ -1,0 +1,1 @@
+-- | Testing and experimentation ground for partitions

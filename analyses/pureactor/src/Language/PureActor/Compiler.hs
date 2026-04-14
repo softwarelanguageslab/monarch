@@ -76,6 +76,8 @@ compile expr =
       (SExp.Atom "begin" _) ::: exs -> Begin <$> compileSequence exs <*> pure (spanOf expr)
       (SExp.Num n _) -> return $ Lit (IntLit (fromIntegral n)) (spanOf expr)
       (SExp.Bln b _) -> return $ Lit (BoolLit b) (spanOf expr)
+      (SExp.Atom "error" _ ::: SExp.Str msg _ ::: SExp.SNil _) -> 
+        return $ Error (toText msg) (spanOf expr)
       _ -> throwError $ "unrecognised expression type at " ++ toString (S.show $ spanOf expr)
 
 

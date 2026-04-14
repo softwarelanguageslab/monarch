@@ -19,6 +19,11 @@ library pureactor-lib
     Analysis.PureActor.Semantics
     Analysis.PureActor.Mailbox.Graph
     Analysis.PureActor.Mailbox.Graph.Dot
+    Analysis.PureActor.Mailbox.Partitioned.Graph
+    Analysis.PureActor.Mailbox.Partitioned
+    Analysis.PureActor.Mailbox.Partitioned.Partitions.UnitPartition
+    Analysis.PureActor.Mailbox.Partitioned.Partitions.SenderPartition
+    Analysis.PureActor.Mailbox.Partitioned.Partitions
   other-modules:
     Language.PureActor.AST
     Language.PureActor.Compiler
@@ -33,7 +38,7 @@ library pureactor-lib
     , PatternSynonyms
     , FunctionalDependencies
     , TypeFamilies
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall -Werror -O3
 
 executable pureactor-exe
   build-depends:
@@ -51,8 +56,8 @@ executable pureactor-exe
           , relude
   hs-source-dirs: app
   main-is: Main.hs
-  other-modules: Visualizer
-  ghc-options: -Wall -Werror
+  other-modules: 
+  ghc-options: -Wall -Werror -O3
 
 
 test-suite pureactor-tests

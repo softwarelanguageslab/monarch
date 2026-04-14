@@ -50,11 +50,13 @@ import Syntax.Span (spanOf, Span)
 import qualified Syntax.Ide as Ide
 import Control.Monad
 import Control.Lens
-import qualified Analysis.Actors.Mailbox as MB
+import qualified Analysis.PureActor.Mailbox.Partitioned as MB
 import Relude.Extra (dup)
-import Analysis.PureActor.Mailbox.Graph (Graph)
-import Debug.Trace as Debug
-
+import Analysis.PureActor.Mailbox.Partitioned.Graph (PartitionedGraph)
+import Analysis.PureActor.Mailbox.Partitioned.Partitions (SenderPartition, emptySenderPartition)
+import qualified Analysis.PureActor.Mailbox.Partitioned.Partitions as Partitions
+import Control.Monad.Writer (MonadWriter)
+import Control.Monad.RWS.Class (MonadWriter(..))
 
 -----------------------------------------
 -- State space 
@@ -90,7 +92,24 @@ stateOf = \case Turn _ _ s -> s
 type Sto = Map Adr Val
 
 -- | Mailbox type
-type MB = Graph (Tag, Val)
+type MB = PartitionedGraph P (Tag, Val)
+
+-- | The partition type
+type P = SenderPartition
+
+emptyPartition :: P
+emptyPartition = emptySenderPartition
+
+-- | The type of messages stored in a mailbox, here a message is a pair of a tag and a value. 
+type Msg = (Tag, Val)
+
+-- | Extract the tag from a message
+msgTag :: Msg -> Tag
+msgTag = fst
+
+-- | Extract the value from a message
+mssgVal :: Msg -> Val
+mssgVal = snd
 
 -----------------------------------------
 -- Monad
@@ -98,10 +117,11 @@ type MB = Graph (Tag, Val)
 
 -- State component
 data S = S {
-    _sto     :: Sto,
-    _spawned :: Map ActorRef (Set (EvalExpr, Env)),
-    _inbox   :: MB,
-    _outbox  :: Map ActorRef MB
+    _sto       :: Sto,
+    _spawned   :: Map ActorRef (Set (EvalExpr, Env)),
+    _inbox     :: MB,
+    _outbox    :: Map ActorRef MB,
+    _partition :: P
   } deriving (Ord, Show, Eq)
 
 
@@ -119,8 +139,8 @@ $(makeLenses ''R)
 turnStore :: Turn -> Sto
 turnStore t = stateOf t ^. sto
 
--- | Create an empty state 'S'
-emptyState :: S
+-- | Create an empty state 'S' with initial partition 'P'
+emptyState :: P -> S
 emptyState = S Map.empty Map.empty MB.empty Map.empty
 
 
@@ -132,8 +152,11 @@ emptyReader = R Map.empty
 -- Other effects (i.e., non-determinism and short-circuiting/failure)
 type F a = [K a]
 
+-- Global writer effects
+type G = [(Text, Span)]
+
 newtype EvalM ξ a =
-  EvalM { runEvalM :: R -> S -> F (a, S) }
+  EvalM { runEvalM :: R -> S -> (F (a, S), G) }
 
 -- | Continuation type, "Continue" if the evaluation can proceed, or "Stop" if
 -- the evaluation has to halt
@@ -141,36 +164,53 @@ newtype K a = K { unK :: Either Turn a }
          deriving (Applicative, Functor, Monad, Foldable, Traversable, Ord, Eq, Show)
 
 instance Functor (EvalM ξ) where
-  fmap f (EvalM s) = EvalM $ \r st -> fmap (fmap (first f)) (s r st)
+  fmap f (EvalM s) = EvalM $ \r st -> first (fmap (fmap (first f))) (s r st)
 
 instance Applicative (EvalM ξ) where
-  pure a = EvalM $ const $ pure . pure . (a,)
+  pure a = EvalM $ const $ (,mempty) . pure . pure . (a,)
   (<*>) (EvalM fs) (EvalM as)  =
     EvalM $ \r st ->
-      foldMap
-        (fmap join . traverse (\(f, st') -> fmap (first f) <$> as r st'))
-        (fs r st)
+      let (fks, g0) = fs r st
+          collect (K (Left t))          = ([K (Left t)], mempty)
+          collect (K (Right (f, st'))) = first (fmap (fmap (first f))) (as r st')
+      in second (g0 <>) $ foldMap collect fks
 
 instance Monad (EvalM ξ) where
   return = pure
   EvalM ma >>= f = EvalM $ \r st ->
-    foldMap
-      (fmap join . traverse (\(a, st') -> runEvalM (f a) r st'))
-      (ma r st)
+    let (ks, g0) = ma r st
+        collect (K (Left t))          = ([K (Left t)], mempty)
+        collect (K (Right (a, st'))) = runEvalM (f a) r st'
+    in second (g0 <>) $ foldMap collect ks
 
 
 instance MonadReader R (EvalM ξ) where
-  ask = EvalM $ \r -> List.singleton . pure . (r,)
+  ask = EvalM $ \r -> (,mempty) . List.singleton . pure . (r,)
   local f (EvalM m) = EvalM $ \r s -> m (f r) s
 
 instance MonadState S (EvalM ξ) where
-  state f = EvalM $ const $ pure . pure . f
+  state f = EvalM $ const $ (,mempty) . pure . pure . f
 
+instance MonadWriter G (EvalM ξ) where
+    tell w = EvalM $ \_ st -> ([K (Right ((), st))], w)
+    pass (EvalM m) = EvalM $ \r st ->
+        let (ks, g) = m r st
+            collect (K (Left t))              = ([K (Left t)], mempty)
+            collect (K (Right ((a, f), st'))) = ([K (Right (a, st'))], f g)
+        in foldMap collect ks
+    listen (EvalM m) = EvalM $ \r st ->
+        let (ks, g) = m r st
+            collect (K (Left t))          = K (Left t)
+            collect (K (Right (a, st')))  = K (Right ((a, g), st'))
+        in (map collect ks, g)
 
 instance Alternative (EvalM ξ) where
-  empty = EvalM $ const $ const []
+  empty = EvalM $ const $ const ([], mempty)
   (<|>) (EvalM as) (EvalM bs) =
-    EvalM $ \r st -> as r st ++ bs r st
+    EvalM $ \r st ->
+        let (asr, ag) = as r st
+            (asb, bg) = bs r st
+        in (asr ++ asb, ag <> bg)
 
 instance MonadPlus (EvalM ξ)
 
@@ -180,17 +220,20 @@ instance MonadPlus (EvalM ξ)
 
 -- | Capture the current state
 getState :: EvalM ξ S
-getState = EvalM $ const $ \s -> pure (pure (s, s))
+getState = get
 
 -- | End an actors turn and return the state for the next turn
 halt :: EvalExpr -> Env -> EvalM ξ a
 halt expr environ = do
   r <- set env environ <$> ask
   -- Set the outbox of 'self' to be equal to the current inbox 
-  currentInbox <- gets (view inbox) 
-  modify (over outbox (Map.insert (r ^. self) currentInbox))
-  getState >>= \st -> EvalM $ const $ const $ pure $ K $ Left (Turn expr r st)
+  -- currentInbox <- gets (view inbox)
+  -- modify (over outbox (Map.insert (r ^. self) currentInbox))
+  getState >>= \st -> EvalM $ const $ const (pure $ K $ Left (Turn expr r st), mempty)
 
+-- | Terminate the current actor and return the final state
+terminate :: EvalM ξ a
+terminate = getState >>= \st -> EvalM $ const $ const (pure $ K $ Left (Terminated st), mempty)
 
 -- | Return the current environment
 getEnv :: EvalM ξ Env
@@ -225,14 +268,25 @@ lookup nam =
 
 -- | Send a mailbox the given actor and record it in its outbox
 send :: ActorRef -> Tag -> Val -> EvalM ξ ()
-send ref t val = modify (over outbox insertIntoMailbox)
-  where insertIntoMailbox mb = Map.insert ref (MB.enqueue (t, val) (fromMaybe MB.empty $ Map.lookup ref mb)) mb
+send ref t val = do 
+    p <- getPartition 
+    p' <- partitionSend t
+    outbox %= insertIntoMailbox p p'
+  where insertIntoMailbox p p' mb =
+            -- NOTE: the L.join is important here so that every interleaving (including with itself) is considered in the outbox
+            Map.insertWith L.join ref (MB.enqueue p p' (t, val) (fromMaybe MB.empty $ Map.lookup ref mb)) mb
 
 -- | Receive a message from the inbox
 rcv :: Fork ξ => EvalM ξ (Tag, Val)
 rcv = do
-  currentInbox <- gets (view inbox)
-  forks $ map (\(msg, currentInbox') -> modify (set inbox currentInbox') $> msg) (Debug.traceShowId $ Set.toList $ MB.dequeue currentInbox)
+      currentInbox <- gets (view inbox)
+      partition' <- getPartition
+      forks $ map (uncurry receiveMessage) (Set.toList $ MB.dequeue partition' currentInbox)
+    where receiveMessage msg currentInbox' =
+            partitionReceive (msgTag msg) >> (inbox .= currentInbox') $> msg
+
+recordError :: Text -> Span -> EvalM ξ ()
+recordError text = tell . List.singleton . (text,)
 
 -----------------------------------------
 -- Polymorphic configuration points for "EvalM" 
@@ -264,7 +318,7 @@ instance Fork NonDet where
   -- type C NonDet a = Ord a
   fork ma mb =
     EvalM $
-      \r st -> Set.toList $ Set.fromList $ runEvalM (ma <|> mb) r st
+      \r st -> first (Set.toList . Set.fromList) $ runEvalM (ma <|> mb) r st
 
 
 -- | This configuration joins all of states resulting from both computations
@@ -280,6 +334,30 @@ instance Fork NonDet where
 --         -- i.e., type K a = Either (Set (Expr, Env), S) a
 --         let (continues, stops) = bimap (Left . L.joins) (Right . L.joins) $ partitionEithers (unK <$> runEvalM (ma <|> mb) r st)
 --         in filter (either (/= L.bottom) (/= L.bottom) . unK) [K continues, K stops]
+
+-----------------------------------------
+-- Partitions
+-----------------------------------------
+
+-- | Update the current partition and set it's self field to the first argument
+partitionWithSelf :: ActorRef -> EvalM ξ ()
+partitionWithSelf ref =
+    partition . Partitions.senderData . Partitions.self .= ref
+
+-- | Update the sent messages in the current partition with the given message
+partitionSend :: Tag -> EvalM ξ P
+partitionSend tag = do
+    partition . Partitions.senderData . Partitions.sent %= Set.insert tag
+    use partition
+
+-- | Update the received messages in the current partition with the given message
+partitionReceive :: Tag -> EvalM ξ ()
+partitionReceive tag =
+    partition . Partitions.senderData . Partitions.rcvd %= Set.insert tag
+
+-- | Returns the current partition
+getPartition :: EvalM ξ P
+getPartition = use partition
 
 -----------------------------------------
 -- Semantics
@@ -340,6 +418,8 @@ eval =
     Letrec bds bdy _ ->
       evalLetrec bds bdy
 
+    Error msg s -> recordError msg s >> terminate
+
     Self _ -> Domain.inject <$> getSelf
 
 -- | Select a handler by serving a message from the inbox
@@ -361,18 +441,17 @@ selectHandler (Handlers hdls) = do
 --
 -- Hence, the analysis of a single actor is defined as the least
 -- fixpoint over the set of possible reachable behaviors.
-analyze :: forall ξ . Fork ξ => Set Turn -> Set Turn
-analyze visited = visited `Set.union` foldMap (analyze' @ξ) visited
+analyze :: forall ξ . Fork ξ => Set Turn -> (G, Set Turn)
+analyze visited = Set.union visited <$> foldMapM (analyze' @ξ) visited
 
 -- unlifted version of 'analyze'
-analyze' :: forall ξ . Fork ξ => Turn -> Set Turn
+analyze' :: forall ξ . Fork ξ => Turn -> (G, Set Turn)
 analyze' (Turn expr r st) =
-  Set.fromList $ map (either id (Terminated . snd) . unK) $
-    runEvalM (case expr of
-       ProgramExpr programExpr -> eval @ξ programExpr
-       ReceiveExpr hdls -> withEnv (const $ r ^.  env) $ selectHandler @ξ hdls
-    ) r st
-analyze' (Terminated _) = Set.empty -- nothing to do for terminated actors
+    let (results, g) = runEvalM (case expr of
+           ProgramExpr programExpr -> eval @ξ programExpr
+           ReceiveExpr hdls -> withEnv (const $ r ^.  env) $ selectHandler @ξ hdls) r st
+    in (g, Set.fromList $ map (either id (Terminated . snd) . unK) results)
+analyze' (Terminated _) = (mempty, Set.empty) -- nothing to do for terminated actors
 
 -----------------------------------------
 -- Actor system analysis
@@ -403,24 +482,33 @@ $(makeLenses ''System)
 -- This function defines the transition from one system to another,
 -- and function 'analyzeProgram' computes the least fix point of the
 -- system to obtain an analysis result for the program.
-analyzeSystem :: System -> System
+analyzeSystem :: System -> (G, System)
 analyzeSystem sys =
   let
     -- For each actor, inject the system store and current mailbox into its seed
     -- turns, then run the full intra-actor fixpoint from those seeds.
-    analyzedActors :: Map ActorRef (Set Turn)
+    analyzedActors :: Map ActorRef (G, Set Turn)
     analyzedActors = Map.mapWithKey (\ref seeds ->
         let mb = fromMaybe MB.empty (Map.lookup ref (sys ^. mailboxes))
             outboxes = sys ^. mailboxes
             seedsWithCtx = Set.map (\case
-                Turn expr r st -> Turn expr r (set outbox outboxes(set inbox mb (set sto (sys ^. storeSys) st)))
+                Turn expr r st ->
+                    let state' = st
+                            & set inbox mb
+                            & set sto (sys ^. storeSys)
+                            & set outbox outboxes
+                            & set partition (Partitions.senderPartitionWithSelf ref)
+                    in Turn expr r state'
                 t@(Terminated _) -> t) seeds
         in lfp (analyze @NonDet) seedsWithCtx
       ) (sys ^. actorSeeds)
 
     -- All reachable turns across all actors
     allTurns :: [Turn]
-    allTurns = concatMap Set.toList (Map.elems analyzedActors)
+    allTurns = concatMap (Set.toList . snd) (Map.elems analyzedActors)
+
+    allErrors :: G 
+    allErrors = concatMap fst (Map.elems analyzedActors)
 
     allStates = map stateOf allTurns
 
@@ -431,7 +519,8 @@ analyzeSystem sys =
     -- Collect seed turns for newly spawned actors; they inherit the system store
     newlySpawnedSeeds :: Map ActorRef (Set Turn)
     newlySpawnedSeeds = L.joins $ map (\st ->
-        Map.mapWithKey (\ref -> Set.map (\(expr, envi) -> Turn expr (R envi ref) emptyState)) (st ^. spawned)
+        -- TODO: we probably shouldn't have an empty partition here
+        Map.mapWithKey (\ref -> Set.map (\(expr, envi) -> Turn expr (R envi ref) (emptyState (Partitions.senderPartitionWithSelf ref)))) (st ^. spawned)
       ) allStates
 
     -- Extract outbox messages sent during all reachable and terminated turns
@@ -442,18 +531,19 @@ analyzeSystem sys =
     newActorSeeds = L.join (sys ^. actorSeeds) newlySpawnedSeeds
 
     -- All reachable turns are updated from the intra-actor fixpoints
-    newActorTurns = L.join (sys ^. actorTurns) analyzedActors
+    newActorTurns = L.join (sys ^. actorTurns) (Map.map snd analyzedActors)
 
     -- Accumulate all ever-sent messages into the mailboxes
     newMailboxes = L.join (sys ^. mailboxes) newOutbox
 
-  in System newActorSeeds newActorTurns newMailboxes newStore
+  in (allErrors, System newActorSeeds newActorTurns newMailboxes newStore)
 
 
 -- | Returns an initial system (see 'System') for the given main actor expression
 injectSystem :: Expr -> System
 injectSystem expr =
-  emptySystem { _actorSeeds = Map.singleton MainRef (Set.singleton (Turn (ProgramExpr expr) (R Map.empty MainRef) emptyState)) }
+  -- TODO: should we use the empty partition here for the initial state?
+  emptySystem { _actorSeeds = Map.singleton MainRef (Set.singleton (Turn (ProgramExpr expr) (R Map.empty MainRef) (emptyState emptyPartition))) }
 
 -- | Analyze a program given by the first argument as an 'Expr'.
 --
@@ -464,13 +554,13 @@ injectSystem expr =
 -- In principle, the main actor should not call "become" but is not prohibited
 -- from doing so by the analysis. In fact, the analysis remains sound even
 -- if 'become' gets called from the main actor.
-analyzeProgram :: Expr -> System
+analyzeProgram :: Expr -> (G, System)
 analyzeProgram = lfp analyzeSystem . injectSystem
 
 -- | Same as 'analyzeProgram' but returns the trace of systems
 -- in addition to the final system
-analyzeProgram' :: Expr -> (System, [System])
-analyzeProgram' = second reverse . lfpTraced analyzeSystem . injectSystem
+analyzeProgram' :: Expr -> (G, (System, [System]))
+analyzeProgram' = fmap (second reverse) . lfpTraced analyzeSystem . injectSystem
 
 -----------------------------------------
 -- Filtering

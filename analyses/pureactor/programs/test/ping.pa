@@ -1,11 +1,34 @@
+;; this is a very straightforward example, 
+;; the idea is that only the main actor sends 
+;; a pang message to the "ping" actor, and 
+;; this happens after a "ping" message has been sent. 
+;;
+;; Thus, once a "pang" message was received, only "ping"
+;; messages will be received. A fully precise analysis
+;; would conclude that the error is unreachable,
+;; because the behavior "ping-no-pang" will never 
+;; receive a "pang" message as it is only activated
+;; after first and only "pang" message was received. 
+;;
+;; However, a mailbox that cannot track the order nor 
+;; multiplicity of its messages will fail to conclude 
+;; that the error is unreachable, and report it is a
+;; false alarm.
 (letrec
-  ((ping (behavior (state)
+  ((ping-no-pang (behavior (state)
+    (ping (ref) 
+        (send ref pong self)
+        (become ping-no-pang 0))
+    (pang (ref)
+        (error "no pang expected"))))
+   (ping (behavior (state)
     (ping (ref)
       (begin 
         (send ref pong self)
         (become ping 0)))
     (pang (ref)
-      (become ping 1))))
+      (begin 
+          (become ping-no-pang 1)))))
    (pong (behavior (state)
      (pong (ref)
         (begin

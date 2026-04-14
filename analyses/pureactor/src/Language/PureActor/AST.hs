@@ -28,6 +28,7 @@ data Expr
   | Become Expr Expr Span
   | Begin [Expr] Span
   | Self Span
+  | Error Text Span
   deriving (Ord, Eq)
 
 instance GHC.Show Expr where
@@ -44,6 +45,7 @@ showExpr = \case
     Become b v _ -> "(become " <> showExpr b <> " " <> showExpr v <> ")"
     Begin es _ -> "(begin " <> T.unwords (map showExpr es) <> ")"
     Self _ -> "self"
+    Error msg _ -> "(error " <> msg <> ")"
   where 
     showBinding (ide, expr) = "(" <> toText (name ide) <> " " <> showExpr expr <> ")"
   
@@ -96,3 +98,4 @@ instance SpanOf Expr where
       Begin _ s -> s
       Behavior _ _ s -> s
       Self s -> s
+      Error _ s -> s

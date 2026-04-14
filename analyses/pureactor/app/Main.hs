@@ -2,11 +2,10 @@ module Main(main) where
 
 import Language.PureActor
 import Analysis.PureActor
-import Text.Pretty.Simple
-import Lucid
-import Visualizer (renderSystem)
+-- import Visualizer (renderSystem)
 import Domain.PureActor (ActorRef)
 import qualified Analysis.PureActor.Mailbox.Graph.Dot as Dot
+import qualified Data.Set as Set
 import qualified Data.Map.Lazy as Map
 
 -- | Renders the mailbox abstraction of each actor in the system to a DOT file for visualization with Graphviz.
@@ -35,10 +34,9 @@ main = do
   case compileString (decodeUtf8 @String contents) of
     Left err  -> print err
     Right expr -> do
-      let (finalSys, sysTrace) = analyzeProgram' expr
-      let allSystems = sysTrace
-      pPrint finalSys
-      renderToFile "output/system_visualization.html" (renderSystem allSystems)
+      let (errors, (finalSys, sysTrace)) = analyzeProgram' expr
+      -- renderToFile "output/system_visualization.html" (renderSystem allSystems)
       renderMailboxesToDot "" (_mailboxes finalSys)
       renderTraceMailboxesToDot (map _mailboxes sysTrace)
-      putStrLn "Visualization saved to system_visualization.html"
+      unless (null errors) $ do
+        putStrLn $ "Found " <> show (Set.size $ Set.fromList errors) <> " errors"
