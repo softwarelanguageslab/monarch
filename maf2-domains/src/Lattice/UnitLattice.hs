@@ -35,3 +35,6 @@ instance Domain () () where
 
 instance BottomLattice () where
    bottom = ()
+
+instance TopLattice () where 
+    top = ()
