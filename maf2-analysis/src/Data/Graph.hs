@@ -1,7 +1,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Data.Graph (Graph(..), SimpleGraph(..), topSort) where
+module Data.Graph (
+    Graph(..), 
+    SimpleGraph(..), 
+    module Data.Graph.Class,
+    topSort) where
 
 import Control.Lens hiding (to, from)
 import Control.Monad.State
@@ -17,31 +21,7 @@ import Data.Sequence (Seq(..))
 import qualified Data.Sequence as Sequence
 import Control.Monad.Cond (ifM)
 import Data.Foldable (find)
-import Data.Bifunctor
-
---
--- Utilities
--- 
-
-dup :: a -> (a, a)
-dup a = (a, a)
---
--- Graph type class
---
-
-class Graph g v e | g -> v e where
-    empty     :: g
-    fromList  :: [(v,v,e)] -> g
-    fromList = foldr (\(from,to,label) -> addEdge from to label) empty
-    addVertex :: v -> g -> g
-    addEdge   :: v -> v -> e -> g -> g
-    edges     :: g -> [(v,v,e)]
-    edges g = foldMap (\v -> map (addFrom v) (outgoing v g)) (vertices g)
-        where addFrom from (to, e) = (from, to, e)
-    vertices  :: g -> [v]
-    outgoing  :: v -> g -> [(v,e)]
-    inDegrees :: Ord v => g -> Map v Int 
-    inDegrees g = Map.fromList $ map (second (length . flip outgoing g) . dup) $ vertices g
+import Data.Graph.Class
 
 --
 -- Simple graph instance

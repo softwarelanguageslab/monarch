@@ -104,6 +104,7 @@ library
       Control.Monad.Layer
       Control.Monad.State.IntPool
       Data.Graph
+      Data.Graph.Class
       Data.Print
       Debug.Trace.Extra
       Interpreter.Actors
