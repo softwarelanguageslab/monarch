@@ -92,6 +92,17 @@ instance (Joinable e, Joinable a) => Joinable (MayEscape e a) where
    join (MayBoth v1 e) (Value v2)         = MayBoth (v1 `join` v2) e
    join (MayBoth v1 e1) (MayBoth v2 e2)   = MayBoth (v1 `join` v2) (e1 `join` e2)
 
+instance (PartialOrder e, PartialOrder a) => PartialOrder (MayEscape e a) where 
+    leq (Escape e1) (Escape e2) = leq e1 e2 
+    leq (Escape _)  (Value _)   = False 
+    leq (Escape e1) (MayBoth _ e2) = leq e1 e2
+    leq (Value _)   (Escape _)   = False 
+    leq (Value v1)  (Value v2)  = leq v1 v2 
+    leq (Value v1)  (MayBoth v2 _) = leq v1 v2 
+    leq (MayBoth _ e1)  (Escape e2) = leq e1 e2 
+    leq (MayBoth v1 _)  (Value v2)  = leq v1 v2 
+    leq (MayBoth v1 e1) (MayBoth v2 e2) = leq v1 v2 && leq e1 e2
+
 ------------------------------------------------------------
 --- MayEscapeT
 ------------------------------------------------------------
