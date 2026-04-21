@@ -49,7 +49,7 @@ instance {-# OVERLAPPING #-} (Environment env adr, Monad m) => EnvM (EnvT env m)
    getEnv = ask
    withEnv = local
 
-instance forall env adr t m . (Environment env adr, Monad (t m), MonadLayer t, EnvM m adr env) => EnvM (t m) adr env where
+instance {-# OVERLAPPABLE #-} (Environment env adr, Monad (t m), MonadLayer t, EnvM m adr env) => EnvM (t m) adr env where
    lookupEnv = upperM . lookupEnv
    withExtendedEnv bds = lowerM (withExtendedEnv bds)
    getEnv = upperM getEnv
