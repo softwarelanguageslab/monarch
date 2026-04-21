@@ -27,17 +27,13 @@ import Lattice.MaybeLattice()
 import Lattice.ProductLattice()
 import Domain.Core.BoolDomain
 
-import Control.Monad (ap, mplus)
-import Control.Monad.Reader hiding (mzero, join)
-import Control.Monad.Writer hiding (mzero, join)
-import Control.Monad.State hiding (mzero, join)
+import Control.Monad.Reader 
+import Control.Monad.Writer 
+import Control.Monad.State 
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
-import Control.Applicative (liftA2)
 import Data.Functor.Identity
 import Lattice.BottomLiftedLattice (BottomLifted(..))
-import Debug.Trace (trace)
-import Unsafe.Coerce (unsafeCoerce)
 
 -- | Non-deterministic computations that can be joined together into a single computation
 class (Monad m) => MonadJoinable m where

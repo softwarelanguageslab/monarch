@@ -26,7 +26,6 @@ module Analysis.Monad.Store (
 )
 where
 
-import Lattice (Joinable(..))
 import qualified Analysis.Store as Store
 import Analysis.Monad.Allocation
 
@@ -49,7 +48,6 @@ import qualified Analysis.Monad.Cache as Cache
 import Analysis.Monad.Cache (MonadCache (..))
 import Analysis.Monad.Fix (AroundT(..))
 import Lattice.Class
-import Data.Functor ((<&>))
 
 ---
 --- StoreM typeclass
