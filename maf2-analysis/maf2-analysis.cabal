@@ -146,13 +146,11 @@ library
     , QuickCheck >=2.14.2
     , base >=4.17 && <5
     , containers
-    , criterion
     , data-default
     , deepseq
     , hashable
     , hashmap
     , hspec
-    , hspec-contrib
     , language-python
     , layers-mtl
     , lens
@@ -160,7 +158,6 @@ library
     , maf2-domains
     , maf2-syntax
     , mtl ==2.3.*
-    , optparse-applicative
     , process
     , singletons
     , singletons-th
@@ -213,8 +210,6 @@ executable maf-exe
     , deepseq
     , hashable
     , hashmap
-    , hspec
-    , hspec-contrib
     , language-python
     , layers-mtl
     , lens
@@ -269,7 +264,6 @@ test-suite maf2-analysis-test
     , QuickCheck >=2.14.2
     , base >=4.17 && <5
     , containers
-    , criterion
     , data-default
     , deepseq
     , hashable
@@ -284,7 +278,6 @@ test-suite maf2-analysis-test
     , maf2-domains
     , maf2-syntax
     , mtl ==2.3.*
-    , optparse-applicative
     , process
     , singletons
     , singletons-th

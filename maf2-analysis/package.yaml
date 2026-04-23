@@ -21,8 +21,6 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.17 && < 5
 - QuickCheck >= 2.14.2
-- hspec 
-- hspec-contrib
 - hashable
 - HUnit
 - containers
@@ -31,11 +29,9 @@ dependencies:
 - mtl >= 2.3 && <2.4
 - transformers
 - lens
-- criterion
 - language-python
 - deepseq
 - vector
-- optparse-applicative
 - maf2-domains
 - maf2-syntax
 - hashmap
@@ -85,6 +81,8 @@ ghc-options:
 
 library:
   source-dirs: src
+  dependencies:
+    - hspec
   other-modules:
     - Data.SetExtra
     - Data.ListExtra
@@ -101,6 +99,8 @@ executables:
     dependencies:
     - maf2-analysis
     - pretty-simple
+    - criterion
+    - optparse-applicative
 
 tests:
   maf2-analysis-test:
@@ -112,3 +112,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - maf2-analysis
+    - hspec 
+    - hspec-contrib
