@@ -87,8 +87,6 @@ type SchemeDomainM e v m = (
 
 type SchemeEM' e v m = (
    SchemeDomainM e v m,
-   -- Stores for variables
-   StoreM (Adr v)  (StoreVal v) m,
    -- Environment
    EnvM m (Adr v) (Env v))
 

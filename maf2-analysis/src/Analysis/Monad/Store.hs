@@ -33,7 +33,7 @@ import Analysis.Monad.Allocation
 import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Control.Monad.State hiding (mzero, join)
+import Control.Monad.State
 import Control.Monad.Lift
 
 import Control.Monad.Layer
@@ -46,7 +46,7 @@ import Domain.Core.AbstractCount (AbstractCount)
 import qualified Analysis.Monad.Map as Map
 import qualified Analysis.Monad.Cache as Cache
 import Analysis.Monad.Cache (MonadCache (..))
-import Analysis.Monad.Fix (AroundT(..))
+import Analysis.Monad.Fix (AroundT)
 import Lattice.Class
 
 ---

@@ -34,6 +34,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
 import Data.Functor.Identity
 import Lattice.BottomLiftedLattice (BottomLifted(..))
+import Control.Monad.Except (ExceptT(..))
 
 -- | Non-deterministic computations that can be joined together into a single computation
 class (Monad m) => MonadJoinable m where
@@ -122,6 +123,10 @@ instance (MonadBottom m) => MonadBottom (StateT r m) where
 instance (MonadJoinable m) => MonadJoinable (MaybeT m) where
    {-# INLINE mjoin #-}
    mjoin ma mb = MaybeT $ mjoin (runMaybeT ma) (runMaybeT mb)
+
+instance (MonadJoinable m, forall a . Joinable (Either e a)) => MonadJoinable (ExceptT e m) where   
+    {-# INLINE mjoin #-}
+    mjoin (ExceptT ma) (ExceptT mb) = ExceptT $ mjoin ma mb
 
 instance (MonadBottom m) => MonadBottom (MaybeT m) where 
    {-# INLINE mbottom #-}

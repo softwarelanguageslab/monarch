@@ -42,7 +42,7 @@ class Monad m => MapM k v m | m k -> v where
     joinWith  :: Joinable v => k -> v -> m ()
     getAll :: m (Map k v)
 
-instance (MapM k v m, Monad (t m), MonadLayer t) => MapM k v (t m) where
+instance {-# OVERLAPPABLE #-} (MapM k v m, Monad (t m), MonadLayer t) => MapM k v (t m) where
     get = upperM . get
     put k = upperM . put k
     joinWith k = upperM . joinWith k

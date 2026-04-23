@@ -21,12 +21,8 @@ import Control.Monad.Cond
 import Control.Monad.State
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
-import Data.Map (Map)
-import qualified Data.Map as Map
 import Control.Monad (when)
 import Data.Functor (($>))
-import Data.Bifunctor
-import Control.Lens
 
 -------------------------------------------------------------
 --- WorkListM typeclass

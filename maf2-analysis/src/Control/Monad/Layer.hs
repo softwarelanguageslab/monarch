@@ -13,6 +13,7 @@ import Lattice.Class
 import ListT
 import Control.Monad.Escape
 import Control.Monad.Join (MonadBottom(..))
+import Control.Monad.Except (ExceptT (..))
 
 class MonadLayer t where
    lowerM :: (forall b . m b -> m b) -> t m a -> t m a
@@ -23,12 +24,12 @@ instance {-# OVERLAPPABLE #-} (MonadIO m, Monad (t m), MonadLayer t) => MonadIO 
    liftIO = upperM . liftIO
 
 -- | Implements `MonadBottom` for convenience
-instance {-# OVERLAPPABLE #-} (Monad (t m), MonadBottom m, MonadLayer t) => MonadBottom (t m) where 
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadBottom m, MonadLayer t) => MonadBottom (t m) where
    mbottom = upperM mbottom
 
 -- | Implements a `MonadReader` for layered monads
-instance {-# OVERLAPPABLE #-} (Monad (t m), MonadReader r m, MonadLayer t) => MonadReader r (t m) where  
-   ask = upperM ask 
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadReader r m, MonadLayer t) => MonadReader r (t m) where
+   ask = upperM ask
    local f = lowerM (local f)
 
 -- A layered monad implements @MonadState@ type class
@@ -85,4 +86,9 @@ instance MonadLayer ListT where
    lowerM f m = ListT $ f (uncons m)
    {-# INLINE lowerM #-}
    {-# INLINE upperM #-}
+
+-- Instance for ExceptT
+instance MonadLayer (ExceptT e) where
+  upperM = lift
+  lowerM f (ExceptT m) = ExceptT $ f m
 
