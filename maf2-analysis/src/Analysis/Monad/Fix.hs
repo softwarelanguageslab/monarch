@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
+-- | Worklist based least-fixed point algorithms
 module Analysis.Monad.Fix (lfp, MonadFixpoint (..), FixT (..), Kleisli, runFixT, AroundT, runAroundT) where
 
 import Analysis.Monad.Cache

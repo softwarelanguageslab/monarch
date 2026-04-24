@@ -81,8 +81,6 @@ compile ex@(Atom "case" _ ::: on ::: pats) =
    Match <$> compile on <*> compileCaseClauses pats <*> pureSpan ex
 compile ex@(Atom "match" _ ::: _) =
    throwError $ "invalid syntax for 'match' " ++ show ex
-compile em@(Atom "meta" _ ::: e ::: SNil _) =
-   Meta <$> compile e <*> pure (spanOf em)
 compile (Atom "dyn" _ ::: Atom dyn s ::: SNil _) =
    return $ DynVar $ Ide dyn s
 compile e@(Atom "dyn" _ ::: _) =

@@ -40,8 +40,6 @@ data Exp = -- Program Semantics
          | Fresh Span                        -- ^ fresh (only for debugging, generates a "fresh" symbolic value)
          | Trace Exp Span                    -- ^ a trace expression, used for debugging
          | Loc String Span                   -- ^ a special-form that returns its span as a value when evaluated
-         -- Analysis-specific
-         | Meta Exp Span                     -- ^ meta e
          deriving (Eq, Ord, Generic)
 
 instance NFData Exp
@@ -121,7 +119,6 @@ instance SpanOf Exp where
                (Var (Ide _ s)) ->  s
                (DynVar (Ide _ s)) -> s
                (Begin _ s) -> s
-               (Meta _ s) -> s
                (Match _ _ s) -> s
                (Input s) -> s
                (Fresh s) -> s
@@ -151,7 +148,6 @@ instance Show Exp where
             (Var x)           -> name x
             (DynVar x)        -> "(dyn " ++ show x ++ ")"
             (Begin es _)      -> printf "(begin %s)" (unwords (map show es))
-            (Meta e _)        -> printf "(meta %s)" (show e)
             (Input _)         -> "(input)"
             (Fresh _)         -> printf "(fresh)"
             (Loc _ _)         -> printf "(loc)"
@@ -188,7 +184,6 @@ instance FreeVariables Exp where
    fv (Var x)           = Set.singleton (name x)
    fv (DynVar _)        = Set.empty
    fv (Begin es _)      = Set.unions (map fv es)
-   fv (Meta e _)        = fv e
    fv (Input _)         = Set.empty
    fv (Fresh _)         = Set.empty
    fv (Loc _ _)         = Set.empty

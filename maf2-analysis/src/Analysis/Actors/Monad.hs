@@ -94,8 +94,6 @@ class MonadMailbox' ref mb m | m -> ref mb where
 class MonadActorLocal v m | m -> v where
   withSelf :: ARef v -> m a -> m a
   getSelf :: m (ARef v)
-  terminate :: m ()
-  waitUntilAllFinished :: m ()
 
 ------------------------------------------------------------
 -- Layered instances
@@ -104,8 +102,6 @@ class MonadActorLocal v m | m -> v where
 instance {-# OVERLAPPABLE #-} (MonadActorLocal v m, Monad m, MonadLayer t) => MonadActorLocal v (t m) where
   withSelf c = lowerM (withSelf c)
   getSelf = upperM getSelf
-  terminate = upperM terminate
-  waitUntilAllFinished = upperM waitUntilAllFinished
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSend v m) => MonadSend v (t m) where
   send ref = upperM . send ref
@@ -182,8 +178,6 @@ newtype ActorLocalT v m a = ActorLocalT {runActorLocalT' :: ReaderT (ARef v) m a
 instance (MonadJoin m) => MonadActorLocal v (ActorLocalT v m) where
   getSelf = ActorLocalT ask
   withSelf r = ActorLocalT . local (const r) . runActorLocalT'
-  terminate = mbottom-- no particular behavior in the abstract
-  waitUntilAllFinished = return () -- no behavior in the abstract
 
 ------------------------------------------------------------
 -- Effect registration for global mailboxes

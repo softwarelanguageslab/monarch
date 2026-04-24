@@ -1,5 +1,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use newtype instead of data" #-}
 
 -- | Exposes Erlang BIFs inside the SimpleActor monadic context
 --
@@ -15,7 +17,7 @@ where
 
 
 import Control.Monad
-import Analysis.Actors.Monad (MonadActorLocal (..), peekPartitioned, receivePartitioned, sendPartitioned)
+import Analysis.Actors.Monad (MonadActorLocal (..))
 import Analysis.Erlang.BIF
 import Analysis.SimpleActor.Primitives
 import Control.Monad.Join
@@ -24,7 +26,7 @@ import qualified Data.Map as Map
 import Data.Maybe (fromJust)
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Domain.Actor (aref, ActorDomain (arefs), isActorRef)
+import Domain.Actor (aref)
 import Domain.Class (Domain (inject))
 import Domain.Core.NumberDomain.Class
 import Domain.Scheme.Class hiding (Exp, prim)
@@ -35,20 +37,14 @@ import Analysis.SimpleActor.Monad
     ( PrimM,
       Error(ArityMismatch),
       MonadApply(..),
-      MonadSpawn(spawn),
-      MailboxLabel(MailboxLabel) )
+      MonadSpawn(spawn) )
 import Control.Monad.Escape (escape)
 import Data.Functor
-import Analysis.Scheme.Monad (lookupVar, stoPai)
+import Analysis.Scheme.Monad (lookupVar)
 import Analysis.Monad.Environment (EnvM(..))
 import Analysis.Monad.Context (CtxM(..))
 import Lattice.Equal (EqualLattice(eql))
-import qualified Lattice.BottomLiftedLattice as BL
-import qualified Lattice.ConstantPropagationLattice as CP
-import Domain.Core.PairDomain (cons)
-import Analysis.Monad.AbstractCount (countIncrement, MonadAbstractCount (currentCount))
 import Control.Monad.IO.Class (liftIO)
-import Lattice.ConstantPropagationLattice (CP)
 import Data.List (intercalate)
 
 ------------------------------------------------------------
@@ -56,31 +52,31 @@ import Data.List (intercalate)
 ------------------------------------------------------------
 
 -- | A wrapper for functions representing Erlang primitives
-newtype ErlangPrim v = ErlangPrim { _getPrim :: forall e mb k m. (SchemeDomain v, PrimM e mb v k m) => Exp -> [v] -> m v}
+data ErlangPrim v = ErlangPrim { _getPrim :: forall e k m . (SchemeDomain v, PrimM e v k m) => Exp -> [v] -> m v}
 
 -- | Convience alias for 'ErlangPrimM'
-prim :: (forall e mb k m. (SchemeDomain v, PrimM e mb v k m) => Exp -> [v] -> m v) -> ErlangPrim v
+prim :: (forall e k m. (SchemeDomain v, PrimM e v k m) => Exp -> [v] -> m v) -> ErlangPrim v
 prim = ErlangPrim
 
 ------------------------------------------------------------
 -- Parameter list utilities
 ------------------------------------------------------------
 
-prim0 :: PrimM e mb v k m => m v -> [v] -> m v
+prim0 :: PrimM e v k m => m v -> [v] -> m v
 prim0 f [] = f
 prim0 _ vs = escape $ ArityMismatch 0 (length vs)
 
 
-prim1 :: PrimM e mb v k m => (v -> m v) -> [v] -> m v
+prim1 :: PrimM e v k m => (v -> m v) -> [v] -> m v
 prim1 f [v] = f v
 prim1 _ vs = escape $ ArityMismatch 1 (length vs)
 
 
-prim2 :: PrimM e mb v k m => (v -> v -> m v) -> [v] -> m v
+prim2 :: PrimM e v k m => (v -> v -> m v) -> [v] -> m v
 prim2 f [v1, v2] = f v1 v2
 prim2 _ vs = escape $ ArityMismatch 0 (length vs)
 
-prim3 :: PrimM e mb v k m => (v -> v -> v -> m v) -> [v] -> m v
+prim3 :: PrimM e v k m => (v -> v -> v -> m v) -> [v] -> m v
 prim3 f [v1, v2, v3] = f v1 v2 v3
 prim3 _ vs = escape $ ArityMismatch 0 (length vs)
 
@@ -114,7 +110,7 @@ erlangPrimitives =
       ),
       -- TODO: important: spawn and spawn_link, need call functionality in monad to do that
       -- TODO: send/2, send/3
-      ("erlang:!/2", prim $ const $ prim2 $ \rcv val -> (arefs (fmap (BL.Value . CP.Constant) . flip sendPartitioned val) rcv >>= fromBL) $> nil),
+      -- ("erlang:!/2", prim $ const $ prim2 $ \rcv val -> (arefs (fmap (BL.Value . CP.Constant) . flip sendPartitioned val) rcv >>= fromBL) $> nil),
       ("erlang:>/2", prim $ const $ prim2 gt),
       ("erlang:>=/2", prim $ const $ prim2 ge),
       ("erlang:</2", prim $ const $ prim2 lt),
@@ -133,11 +129,11 @@ erlangPrimitives =
       ("math:ceil/1", prim $ const $ prim1 (ceiling @_ @v @v)),
       ("erlang:ceil/1", prim $ const $ prim1 (ceiling @_ @v @v)),
       ("primop:match_fail", prim $ const $ const mbottom),
-      ("primop:recv_peek_message", prim $ \ex -> prim0 $
-         peekPartitioned (stoPai ex . cons (inject True))),
+      -- ("primop:recv_peek_message", prim $ \ex -> prim0 $
+      --    peekPartitioned (stoPai ex . cons (inject True))),
       -- TODO: This is correct but VERY imprecise as every message will be considered
       -- even though we might be in a program state that already includes a message
-      ("primop:remove_message", prim $ const $ prim0 $ receivePartitioned (const $ return nil)),
+      -- ("primop:remove_message", prim $ const $ prim0 $ receivePartitioned (const $ return nil)),
       -- NOTE: we do not consider any timeouts in this analysis
       ("primop:recv_wait_timeout", prim $ const $ prim1 $ const $ return nil),
       -- TODO: not sure what "recv_next" is supposed to mean, perhaps it is similar to "yield"?
@@ -146,17 +142,17 @@ erlangPrimitives =
       -- Monarch-specific primitives (for testing properties)
       -- TODO: move these primitives somewhere else
       ("monarch:error/1", prim $ const $ prim1 $ const mbottom), -- TODO: errors should be tracked so that we can check for them in the analysis result
-      ("monarch:label/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
-      ("monarch:label_mail/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
+      -- ("monarch:label/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
+      -- ("monarch:label_mail/1", prim $ const $ prim1 (return . symbols >=> mapM_ (countIncrement . MailboxLabel) . Set.toList >=> const (return nil))),
       -- Asserts that the given value is an actor reference and triggers counting the given label otherwise.
-      ("monarch:assert_actor_reference/2", prim $ const $ prim2 $ \ref lab ->
-        condCP (fromBL @(CP Bool) $ isActorRef ref)
-               (return nil)
-               (mapM_ (countIncrement . MailboxLabel) (Set.toList $ symbols lab) >> return nil)),              
+      -- ("monarch:assert_actor_reference/2", prim $ const $ prim2 $ \ref lab ->
+      --   condCP (fromBL @(CP Bool) $ isActorRef ref)
+      --          (return nil)
+      --          (mapM_ (countIncrement . MailboxLabel) (Set.toList $ symbols lab) >> return nil)),              
       ("monarch:any_nat/0", prim $ const $ prim0 $ random @_ @v (inject (1000 :: Integer))),
 
       -- Debugging monarch
-      ("monarch:debug_label/2", prim $ const $ prim2 $ \v -> return . symbols >=> mapM_ (liftIO . putStrLn . ((("count>>" ++ " " ++ show v) ++) . show) <=< currentCount . MailboxLabel) >=> const (return nil)),
+      -- ("monarch:debug_label/2", prim $ const $ prim2 $ \v -> return . symbols >=> mapM_ (liftIO . putStrLn . ((("count>>" ++ " " ++ show v) ++) . show) <=< currentCount . MailboxLabel) >=> const (return nil)),
       ("monarch:debug/1", prim $ const $ prim1 $ \v -> liftIO $ putStrLn ("debug>> " ++ show v) $> v),
       ("monarch:fail_analysis_missing_export/1", prim $ const $ prim1 $ \v -> error $ "analysis failed: missing export, one of these: " ++ intercalate "," (map show $ Set.toList (symbols v))),
       -- I/O primitives

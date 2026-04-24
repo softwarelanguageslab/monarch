@@ -2,6 +2,8 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 {- HLINT ignore "Use fewer imports" -}
 -- | Analysis to analyse the inner actor semantics
 module Analysis.SimpleActor.Fixpoint.SequentialModConc(
@@ -13,6 +15,9 @@ module Analysis.SimpleActor.Fixpoint.SequentialModConc(
       , MB
       , escapeRes
       , CountMax) where
+
+
+-- TODO: this module is obsolete: remove.
 
 ------------------------------------------------------------
 -- Imports
@@ -80,7 +85,6 @@ type SequentialT m = MonadStack '[
                        DynamicBindingT' (Adr ActorVlu),
                        AllocT Ide K (SchemeAdr Exp K),
                        AllocT Exp K (SchemeAdr Exp K),
-                       MetaT,
                        LocalPartitionedMailboxT Partition ActorVlu MB,
                        ActorLocalT ActorVlu,
                        CtxT K,
@@ -251,33 +255,33 @@ counting outerCmp inner cmp = do
 ------------------------------------------------------------
 
 spanOfCmp :: SequentialCmp -> Span
-spanOfCmp (exp ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
+spanOfCmp (exp ::*:: _  ::*:: _ ::*:: _ ::*:: _ ::*:: _ ::*:: _) = spanOf exp
 
 type IntraT m = SequentialT (UncachedSequentialT (IntraAnalysisT SequentialCmp m))
 
 -- | Intra-analysis
 intra :: forall m . InterAnalysisM m => ActorRef -> SequentialCmp -> m ()
-intra _ cmp = do
-      countIn <- fromJust <$> MapM.get (CountIn cmp)
-      -- cmpCountIn <- fromJust <$> MapM.get (CmpCountIn cmp)
-      -- MapM.put (CmpCountIn cmp) (CountMap.increment cmp cmpCountIn)
-      result <- runFixT @(IntraT m)
-                 (runAroundT
-                    (counting cmp)
-                    .
-                    (eval @_ @_ @_ @Partition @MB))
-                 cmp
-       & runAlloc (const . flip VarAdr InsensitiveCtx) -- TODO: use the actual context
-       & runAlloc (const . flip PtrAdr InsensitiveCtx) -- problem: current context is infinite
-       & runAbstractCountT @MailboxLabel countIn
-       -- & runAbstractCountT @SequentialCmp cmpCountIn
-       & runJoinT
-       & runIntraAnalysis cmp
-      case result of
-            BL.Bottom -> return ()
-            BL.Value ((), count') -> do
-                  MapM.put (CountOut cmp)  count'
-                  -- MapM.put (CmpCountOut cmp) cmpCount'
+intra _ _ = do return ()
+      -- countIn <- fromJust <$> MapM.get (CountIn cmp)
+      -- -- cmpCountIn <- fromJust <$> MapM.get (CmpCountIn cmp)
+      -- -- MapM.put (CmpCountIn cmp) (CountMap.increment cmp cmpCountIn)
+      -- result <- runFixT @(IntraT m)
+      --            (runAroundT
+      --               (counting cmp)
+      --               .
+      --               (eval @_ @_ @_ @Partition))
+      --            cmp
+      --  & runAlloc (const . flip VarAdr InsensitiveCtx) -- TODO: use the actual context
+      --  & runAlloc (const . flip PtrAdr InsensitiveCtx) -- problem: current context is infinite
+      --  & runAbstractCountT @MailboxLabel countIn
+      --  -- & runAbstractCountT @SequentialCmp cmpCountIn
+      --  & runJoinT
+      --  & runIntraAnalysis cmp
+      -- case result of
+      --       BL.Bottom -> return ()
+      --       BL.Value ((), count') -> do
+      --             MapM.put (CountOut cmp)  count'
+      --             -- MapM.put (CmpCountOut cmp) cmpCount'
 
 
 -- | Inter-analysis
@@ -295,7 +299,6 @@ inter labelCounts exp environment ref mb = do
   where initialCmp = ActorExp exp         -- component to analyze
                 <+> environment           -- initial lexical environment
                 <+> initialDynEnvironment -- initial dynamic environment 
-                <+> False                 -- whether the component is a meta-component and should be analyzed with higher precision
                 <+> mb                    -- initial mailbox
                 <+> ref                   -- current `self`
                 <+> initialContext 0      -- address context

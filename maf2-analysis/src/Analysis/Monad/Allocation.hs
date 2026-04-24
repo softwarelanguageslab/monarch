@@ -56,7 +56,7 @@ instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to
       f   <- ask
       return $ f loc ctx
 
-instance (AllocM m from to, Monad (l m), MonadLayer l) => AllocM (l m) from to where
+instance {-# OVERLAPPABLE #-} (AllocM m from to, Monad (l m), MonadLayer l) => AllocM (l m) from to where
    {-# INLINE alloc #-}
    alloc = upperM . alloc @m @from @to
 

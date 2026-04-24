@@ -7,9 +7,8 @@
 
 module Analysis.SimpleActor.Monad
   ( MonadActor,
-    MonadMeta(..),
+    MonadMailbox(..),
     MonadDynamic(..),
-    ifMetaSet,
     MonadSpawn,
     MonadApply(..),
     spawn,
@@ -17,15 +16,12 @@ module Analysis.SimpleActor.Monad
     PrimM,
     Error (..),
     ActorError(..),
-    MetaT,
     DynamicBindingT,
     DynamicBindingT',
     runWithDynamic,
     runDynamicT,
     isMatchError,
     Cmp(..),
-    MonadIndexedMailbox(..),
-    runWithMailboxContributorIndexedT,
     SimpleActorContext(..),
     MonadModules(..),
     runModuleCtxT,
@@ -57,21 +53,13 @@ import Lattice.Split (SplitLattice)
 import Syntax.Span (SpanOf(..))
 import Syntax.FV
 import Domain.Scheme hiding (Exp, Env)
-import Domain.Scheme.Store (StoreVal(..), ForAllStored)
+import Domain.Scheme.Store (ForAllStored)
 import Domain.Actor
-import Analysis.Actors.Monad
+import Analysis.Actors.Monad (MonadActorLocal)
 import Control.DeepSeq
 import GHC.Generics
 -- import Analysis.Monad.AbstractCount (MonadAbstractCount)
-import Control.Monad.State (StateT, MonadState, gets)
-import qualified Lattice.Class as L
-import Analysis.Actors.Mailbox (Mailbox)
-import qualified Analysis.Actors.Mailbox as MB
-import qualified Control.Monad.State as State
-import Control.Monad.Cond
-import Data.Functor
-import Domain.Core.Count.BoundedCount (BoundedCount)
-import Analysis.Monad.AbstractCount (MonadAbstractCount)
+import Data.Kind
 
 ------------------------------------------------------------
 -- 'Components'
@@ -115,7 +103,6 @@ newtype MailboxLabel = MailboxLabel { getMailboxLabel :: String }
 data Error = MatchError | InvalidArgument | BlameError String Span | ArityMismatch Int Int | NotAnActorReference | NotAFunction Span
   deriving (Eq, Ord, Show)
 
-
 instance NFData Error where
    rnf x = x `seq` ()
 
@@ -133,20 +120,16 @@ instance SimpleActorErrorDomain (Set ActorError) where
 ------------------------------------------------------------
 
 
--- | Reader-like monadic interface that carries 
--- meta-annotations.
-class Monad m => MonadMeta m where
-   isMeta :: m Bool
-   withMetaSet :: m a -> m a
-   withMetaUnset :: m a -> m a
-
 -- | Monad for scoped dynamic bindings
--- in the target language (à la Racket "parmetrize")
+-- in the target language (à la Racket "parameterize")
 class Monad m => MonadDynamic α m | m -> α where
    withExtendedDynamic :: [(String, α)] -> m a -> m a
+   withExtendedDynamic bds = withDynamic (Map.union (Map.fromList bds))
    lookupDynamic :: String -> m α
+   lookupDynamic nam = fromMaybe (error $ "dynamic environment, " ++ nam ++ " not found ") . Map.lookup nam <$> getDynamic
    withDynamic :: (Map String α -> Map String α) -> m a -> m a
    getDynamic :: m (Map String α)
+   {-# MINIMAL withDynamic, getDynamic #-}
 
 
 -- | Monad for spawning new processes. Each process is uniquely identified by their
@@ -158,39 +141,24 @@ class MonadSpawn v k m | m -> v k where
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v k m) => MonadSpawn v k (t m) where
   spawn e env = upperM . spawn e env
 
+-- | Monad for sending and receiving messages. 
+class MonadMailbox e ref v m | m -> e ref v where    
+    -- | Send a message (first argument) to the given actor 
+    -- identifier by the second argument.
+    send :: ref -> v -> m ()
+    -- | Suspends the actor and registers the given expression 
+    -- as the message handler that is invoked with the next message 
+    -- in the mailbox.
+    recv :: Exp -> Env v -> m a
+
 type MonadActor v k m =
   (MonadSpawn v k m,
    MonadActorLocal v m,
-   MonadMeta m,
    MonadDynamic (Adr v) m)
-
--- | Global mailbox indexed per contributor so that strong updates of the global mailbox are allowed whenever
--- there are no conflicting interleavings
-class MonadIndexedMailbox ref mb m | m -> ref mb  where
-  joinMailboxes :: ref -- ^ contributor
-                -> ref -- ^ receiver
-                -> mb  -- ^ the mailbox to join
-                -> m Bool
-
-  putMailboxes :: ref -- ^ contributor
-               -> ref -- ^ receiver
-               -> mb  -- ^ the mailbox to put
-               -> m Bool
 
 ------------------------------------------------------------
 -- Layered instances
 ------------------------------------------------------------
-
-instance
- {-# OVERLAPPABLE #-}
- (MonadLayer t ,
-   Monad (t m),
-  MonadMeta m) =>
- MonadMeta (t m) where
-
-  isMeta = upperM isMeta
-  withMetaSet = lowerM withMetaSet
-  withMetaUnset = lowerM withMetaUnset
 
 instance
  {-# OVERLAPPABLE #-}
@@ -204,34 +172,33 @@ instance
  withDynamic f = lowerM (withDynamic f)
  getDynamic = upperM getDynamic
 
-instance
-  {-# OVERLAPPABLE #-}
-  (Monad m, MonadLayer t, MonadIndexedMailbox ref mb m) =>
-  MonadIndexedMailbox ref mb (t m) where
 
-  joinMailboxes contributor recv = upperM . joinMailboxes contributor recv
-  putMailboxes contributor recv = upperM . putMailboxes contributor recv
-
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox e ref v m) => MonadMailbox e ref v (t m) where
+    send v = upperM . send v
+    recv expr = upperM . recv expr
 
 ------------------------------------------------------------
 -- Monad
 ------------------------------------------------------------
 
+-- | Errors in simple actor
+type ErrorDomain e = (
+        Domain e Error, 
+        Domain e DomainError, 
+        BottomLattice e, 
+        SimpleActorErrorDomain e
+    )
+
 -- | Minimal set of constraints needed to evaluate the primitives
-type PrimM' e mb v k m =
+type PrimM' e v k m =
   ( MonadJoinable m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
-    StoreM (Adr v) (StoreVal v) m,
-    MonadMailboxPartitioning e v mb m,
+    MonadMailbox e (ARef v) v m,
     MonadActor v k m,
-    MonadEscape m,
     CtxM m k,
     SimpleActorContext k,
-    Domain (Esc m) DomainError,
-    Domain (Esc m) Error,
-    BottomLattice (Esc m),
-    SimpleActorErrorDomain (Esc m),
+    ErrorDomain (Esc m),
     SchemeDomainM Exp v m,
     ActorDomain v,
     EqualLattice v,
@@ -242,20 +209,22 @@ type PrimM' e mb v k m =
     -- Domain constraints
     ForAllStored Show v,
     ForAllStored Eq v,
-    ForAllStored Ord v,
+    ForAllStored Ord v
     -- Other monadic constraints
-    MonadAbstractCount MailboxLabel BoundedCount m
+    -- MonadAbstractCount MailboxLabel BoundedCount m
   )
 
 -- | Same as PrimM' but with access to the "apply" function
-type PrimM e mb v k m = (
-    PrimM' e mb v k m,
+type PrimM :: Type -> Type -> Type -> (Type -> Type) -> Constraint
+type PrimM e v k m = (
+    PrimM' e v k m,
     MonadApply v m
   )
 
 -- | Evaluation monad
-type EvalM e mb v k m =
-  ( PrimM' e mb v k m,
+type EvalM :: Type -> Type -> Type -> (Type -> Type) -> Constraint
+type EvalM e v k m =
+  ( PrimM' e v k m,
     MonadFixpoint m Cmp v )
 
 ------------------------------------------------------------
@@ -270,19 +239,6 @@ class SimpleActorContext k where
 ------------------------------------------------------------
 -- Instances
 ------------------------------------------------------------
-
--- | Meta-flag monad
-newtype MetaT m a = MetaT (ReaderT Bool m a)
-                  deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadReader Bool, MonadCache)
-
-instance (Monad m) => MonadMeta (MetaT m) where
-   isMeta = ask
-   withMetaSet = local (const True)
-   withMetaUnset = local (const False)
-
-ifMetaSet :: MonadMeta m => (m a -> m a) -> m a -> m a
-ifMetaSet f ma = isMeta >>= (\b -> if b then f ma else ma)
-
 
 newtype DynamicBindingT' adr m a = DynamicBindingT (ReaderT (Map String adr) m a)
                               deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadCache)
@@ -302,31 +258,6 @@ runWithDynamic (DynamicBindingT m) = runReaderT m Map.empty
 runDynamicT:: Map String adr -> DynamicBindingT' adr m a -> m a
 runDynamicT env (DynamicBindingT m) = runReaderT m env
 
--- | Mailboxes indexed by contributors
-newtype MailboxContributorIndexedT ref v mb m a = MailboxContributorIndexedT (StateT (Map ref (Map ref mb)) m a)
-                                                deriving (MonadState (Map ref (Map ref mb)), Applicative, Functor, Monad, MonadLayer, MonadCache)
-
-runWithMailboxContributorIndexedT :: (Functor m, L.Joinable mb, L.BottomLattice mb) => MailboxContributorIndexedT ref v mb m a -> m (a, Map ref mb)
-runWithMailboxContributorIndexedT (MailboxContributorIndexedT m) = do
-  (fmap . fmap) (L.joinMap snd . Map.toList) <$> State.runStateT m Map.empty
-
-instance (Monad m, L.Joinable mb, Eq mb, Show ref, Show mb, Ord ref) => MonadIndexedMailbox ref mb (MailboxContributorIndexedT ref v mb m) where
-  joinMailboxes contributor recv mb = do
-    mbs <- State.get
-    let mbs' = Map.insertWith L.join recv (Map.singleton contributor mb) mbs
-    State.put mbs'
-    return (mbs /= mbs')
-  putMailboxes contributor recv mb = do
-    mbs <- State.get
-    let mbs' = Map.insert recv (Map.insert contributor mb $ fromMaybe Map.empty $ Map.lookup recv mbs) mbs
-    State.put mbs'
-    return (mbs /= mbs')
-
--- Indexed mailboxes behave like one global mailbox when looked up
-instance (Ord ref, Mailbox mb v, L.Joinable mb, L.BottomLattice mb, Monad m) => MonadMailbox' ref mb (MailboxContributorIndexedT ref v mb m) where
-  getMailbox ref = gets (maybe MB.empty (L.joinMap snd . Map.toList) . Map.lookup ref)
-  getMailboxes =  gets (fmap (L.joinMap snd . Map.toList))
-
 ------------------------------------------------------------
 -- Error abstractions
 ------------------------------------------------------------
@@ -341,31 +272,6 @@ instance Domain (Set ActorError) DomainError where
 
 instance Domain (Set ActorError) Error where
   inject = Set.singleton . ActorError
-
-------------------------------------------------------------
--- Intra-analysis hooks
-------------------------------------------------------------
-
-instance (MonadDependencyTracking cmp (MailboxDep ref mb) m, MonadIndexedMailbox ref mb m) =>  MonadIndexedMailbox ref mb (IntraAnalysisT cmp m) where
-  joinMailboxes contributor recv mb =
-    ifM (upperM (joinMailboxes contributor recv mb))
-        (trigger (MailboxDep @ref @mb recv) $> True)
-        (return False)
-  putMailboxes contributor recv mb =
-    ifM (upperM (putMailboxes contributor recv mb))
-        (trigger (MailboxDep @ref @mb recv) $> True)
-        (return False)
-
-
-instance (MonadDependencyTracking cmp (MailboxDep ref mb) m, MonadIndexedMailbox ref mb m) =>  MonadIndexedMailbox ref mb (DebugIntraAnalysisT cmp m) where
-  joinMailboxes contributor recv mb =
-    ifM (upperM (joinMailboxes contributor recv mb))
-        (trigger (MailboxDep @ref @mb recv) $> True)
-        (return False)
-  putMailboxes contributor recv mb =
-    ifM (upperM (putMailboxes contributor recv mb))
-        (trigger (MailboxDep @ref @mb recv) $> True)
-        (return False)
 
 -------------------------------------------------------------
 -- Function application semantics

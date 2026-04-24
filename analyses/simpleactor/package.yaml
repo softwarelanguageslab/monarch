@@ -92,6 +92,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - containers
+    - Glob
     - optparse-applicative
     - simpleactor
     - maf2-syntax

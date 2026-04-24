@@ -31,7 +31,9 @@ type K = AdrCtx
 type ActorExp = Exp
 type ActorRef = Pid Exp K
 type ActorVlu = ActorValue K (SchemeAdr Exp)
-type ActorEnv = HashMap String (SchemeAdr Exp K)
+type ActorEnv = HashMap String ActorAdr
+type ActorAdr = SchemeAdr Exp K
+type ActorVarAdr = SchemeAdr Exp K
 -- | Global mailboxes
 type ActorMai = Map ActorRef PMB
 type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
@@ -64,10 +66,6 @@ type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Const
 ------------------------------------------------------------
 -- Addresses
 ------------------------------------------------------------
-
-
-type ActorAdr = SchemeAdr Exp K
-type ActorVarAdr = SchemeAdr Exp K
 
 -- | Output address for writing individual actor results
 newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
