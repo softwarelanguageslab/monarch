@@ -2,7 +2,11 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-loopy-superclass-solve #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
-module Analysis.SimpleActor.Fixpoint(intraTurn) where
+module Analysis.SimpleActor.Fixpoint(
+    analyze,
+    AnalysisState (..),
+    System (..)
+) where
 
 import Control.Monad.Escape (MayEscapeT)
 import Data.Set (Set)

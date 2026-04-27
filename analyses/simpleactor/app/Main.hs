@@ -33,6 +33,7 @@ import Syntax.ErlangToSimpleActor
 import Text.Pretty.Simple (pPrint)
 import CommandLine.Options hiding (outputOptions, OutputOptions)
 import qualified Runnables.CoreErlang as CoreErlang
+import qualified Analysis.SimpleActor.Fixpoint as Fixpoint
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -71,7 +72,8 @@ commandParser =
     <> command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
     <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
     <> command "erlang"        (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
-    <> command "core-erlang"   (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor")))
+    <> command "core-erlang"   (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor"))
+    <> command "analyze2"      (info (analyze2Cmd <$> inputOptions) (progDesc "Analyze a program using the new fixpoint")))
 
 
 ------------------------------------------------------------
@@ -127,6 +129,21 @@ analyzeAst ast maxSteps =  do
    putStrLn $ printMap  show (const True) mbs
    putStrLn "====="
    return ()
+
+
+------------------------------------------------------------
+-- SimpleActor, fixpoint v2
+------------------------------------------------------------
+
+analyze2Cmd :: InputOptions -> IO () 
+analyze2Cmd InputOptions { .. } = do
+    ast <- loadFile' doTranslate filename 
+    analyze2Ast ast
+
+analyze2Ast :: Exp -> IO ()  
+analyze2Ast expr = do 
+    system <- Fixpoint._mbs . fst <$> Fixpoint.analyze expr
+    pPrint system
 
 
 ------------------------------------------------------------

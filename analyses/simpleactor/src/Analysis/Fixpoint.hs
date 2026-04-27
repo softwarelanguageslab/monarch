@@ -3,6 +3,7 @@ module Analysis.Fixpoint(lfp, lfpTraced, lift) where
 
 import Data.Set (Set)
 import RIO (foldMapM)
+import qualified Data.Set as Set
 
 -- | Naive equality based fixpoint computation
 lfp :: (Monad m, Eq a) => (a -> m a) -> a -> m a
@@ -22,5 +23,5 @@ lfpTraced f = flip go []
 
 -- | Lift a function 'a -> Set a' to 'Set a -> Set a'.
 lift :: (Monad m, Ord a) => (a -> m (Set a)) -> Set a -> m (Set a)
-lift = foldMapM
+lift f s = Set.union s <$> foldMapM f s
 
