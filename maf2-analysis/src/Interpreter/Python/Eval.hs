@@ -3,7 +3,6 @@ module Interpreter.Python.Eval (evalPythonFile, evalPythonExpression, evalPython
 import System.Process
 import System.IO
 import System.IO.Temp
-import Domain.Python.Syntax (PyPrg)
 
 -- Functions to evaluate Python expressions and files
 

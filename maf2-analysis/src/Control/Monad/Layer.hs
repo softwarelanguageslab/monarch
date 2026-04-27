@@ -3,9 +3,9 @@
 
 module Control.Monad.Layer(MonadLayer(..), module Control.Monad.Lift) where
 
-import Control.Monad.State  hiding (mzero)
-import Control.Monad.Reader hiding (mzero)
-import Control.Monad.Writer hiding (mzero)
+import Control.Monad.State  
+import Control.Monad.Reader
+import Control.Monad.Writer 
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Identity
 import Control.Monad.Lift
@@ -40,6 +40,8 @@ instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad (t m), MonadState s m) => Mon
 -- A layered monad implements @MonadWriter@ type class
 instance {-# OVERLAPPABLE #-} (MonadLayer t, Monad (t m), MonadWriter w m) => MonadWriter w (t m) where
     tell = upperM . tell
+    listen = error "NYI"
+    pass = error "NYI"
     -- TODO: implement listen and pass
 
 -- | StateT instance

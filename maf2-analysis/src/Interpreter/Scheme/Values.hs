@@ -45,8 +45,9 @@ instance Show SchemeValue where
    show SchemeNil = "'()"
    show (SchemePrim prim) = printf "<primitive: %s>" prim
    show (SchemePair car cdr) = printf "(%s . %s)" (show car) (show cdr)
-   show (SchemeVector vec) = "<vector>"
+   show (SchemeVector _) = "<vector>" -- TODO: print the elements of the vector
    show (SchemeString str) = show str
+   show (SchemeSym str) = "'" ++ str
    show SchemeUns = "unspecified"
 
 

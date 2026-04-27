@@ -78,6 +78,7 @@ ghc-options:
 - -fprint-potential-instances
 - -fprof-auto
 - -fprof-cafs
+- -Werror
 
 library:
   source-dirs: src

@@ -6,7 +6,6 @@ module Control.Monad.State.IntPool(MonadIntegerPool(..), IntegerPoolT, runIntege
 import Control.Monad.State (StateT, MonadState)
 import qualified Control.Monad.State as ST
 import Control.Monad.Layer
-import Control.Monad.Trans.Class
 
 ------------------------------------------------------------
 -- Fresh integer pool

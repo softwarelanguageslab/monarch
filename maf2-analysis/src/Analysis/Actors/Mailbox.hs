@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- | Mailbox abstractions for the analysis of actors programs
 -- See: Stiévenart, Quentin, et al. "Mailbox abstractions for static analysis of actor programs." 31st European Conference on Object-Oriented Programming (ECOOP 2017). 2017.
@@ -13,10 +14,7 @@ import Domain.Core.BoolDomain.ConstantPropagation ()
 import Domain.Core.BoolDomain.BottomLifted ()
 import Lattice.SetLattice ()
 import Lattice.MapLattice ()
-import Lattice.ConstantPropagationLattice (CP)
 import Domain.Class (inject)
-import Lattice.Class
-import Lattice.BottomLiftedLattice (BottomLifted)
 import Analysis.Actors.Mailbox.Class
 
 -- | A simple mailbox backed by a powerset.

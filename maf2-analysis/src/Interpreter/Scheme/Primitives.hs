@@ -1,6 +1,9 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant <&>" #-}
 module Interpreter.Scheme.Primitives where
 
 import qualified Data.Vector as Vector
@@ -18,24 +21,24 @@ import Data.ListExtra
 data Prim m = Prim { primName :: String, run :: Exp -> [SchemeValue] -> m SchemeValue }
 
 -- | Unary primitives 
-efix1 :: (InterpreterM m) => String -> (Exp -> SchemeValue -> m SchemeValue) -> Prim m
+efix1 :: String -> (Exp -> SchemeValue -> m SchemeValue) -> Prim m
 efix1 nam f = Prim nam (\ex [x1] -> f ex x1)
 -- | Binary primitives
-efix2 :: (InterpreterM m) => String -> (Exp -> SchemeValue -> SchemeValue -> m SchemeValue) -> Prim m
+efix2 :: String -> (Exp -> SchemeValue -> SchemeValue -> m SchemeValue) -> Prim m
 efix2 nam f = Prim nam (\ex [x1, x2] -> f ex x1 x2)
 -- | Ternary primitives
-efix3 :: (InterpreterM m) => String -> (Exp -> SchemeValue -> SchemeValue -> SchemeValue -> m SchemeValue) -> Prim m
+efix3 :: String -> (Exp -> SchemeValue -> SchemeValue -> SchemeValue -> m SchemeValue) -> Prim m
 efix3 nam f = Prim nam (\ex [x1, x2, x3] -> f ex x1 x2 x3)
 -- | Variable argument primitives
-evar :: (InterpreterM m) => String -> (Exp -> [SchemeValue] -> m SchemeValue) -> Prim m
+evar :: String -> (Exp -> [SchemeValue] -> m SchemeValue) -> Prim m
 evar = Prim
 
 -- | Heap unrelated operations 
-fix1 :: (InterpreterM m) => String -> (SchemeValue -> m SchemeValue) -> Prim m
+fix1 :: String -> (SchemeValue -> m SchemeValue) -> Prim m
 fix1 nam = efix1 nam . const
-fix2 :: (InterpreterM m) => String -> (SchemeValue -> SchemeValue -> m SchemeValue) -> Prim m
+fix2 :: String -> (SchemeValue -> SchemeValue -> m SchemeValue) -> Prim m
 fix2 nam = efix2 nam . const
-fix3 :: (InterpreterM m) => String -> (SchemeValue -> SchemeValue -> SchemeValue -> m SchemeValue) -> Prim m
+fix3 :: String -> (SchemeValue -> SchemeValue -> SchemeValue -> m SchemeValue) -> Prim m
 fix3 nam = efix3 nam . const
 
 derefPtr :: (InterpreterM m) => SchemeValue -> m SchemeValue
@@ -108,7 +111,7 @@ allPrimitives = [
    efix2 "string-append" (\ex v1 v2 -> do
       (SchemeString s1) <- derefPtr v1
       (SchemeString s2) <- derefPtr v2
-      (allocAdr ex >>= storeVal (SchemeString $ s1 ++ s2))),
+      allocAdr ex >>= storeVal (SchemeString $ s1 ++ s2)),
    fix1 "string-length" $ derefPtr >=> (\(SchemeString s) -> return $ SchemeInt $ fromIntegral $ length s),
    fix2 "string-ref" (\ptr (SchemeInt pos) -> derefPtr ptr <&> (\(SchemeString s) -> SchemeCha $ s !! fromIntegral pos)),
    fix3 "string-set!" (\(SchemePtr adr) (SchemeInt pos) (SchemeCha c) -> derefAdr adr >>= flip storeVal adr . (\(SchemeString s) ->  SchemeString $ replaceAt s pos c)),
