@@ -1,5 +1,6 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module MailboxSpec(spec) where
 
 import Test.Hspec
@@ -14,6 +15,19 @@ import Domain.Core.BoolDomain hiding (not)
 import Data.Function
 import Lattice.ConstantPropagationLattice (CP)
 import Lattice.BottomLiftedLattice (BottomLifted)
+
+-- | Newtype wrapper around 'Graph' so it can be used as a higher-kinded type argument
+-- in 'graphTests'. Type synonyms cannot be partially applied, so this wrapper is needed.
+newtype GraphMailbox a = GraphMailbox { unGraphMailbox :: Graph a }
+   deriving (Eq, Ord, Show)
+
+instance (Eq a, Ord a) => Mailbox (GraphMailbox a) a where
+  empty = GraphMailbox (MB.empty @(Graph a) @a)
+  enqueue msg (GraphMailbox g) = GraphMailbox (MB.enqueue msg g)
+  dequeue (GraphMailbox g) = Set.map (fmap GraphMailbox) (MB.dequeue g)
+  peek (GraphMailbox g) = MB.peek g
+  hasMessage' msg (GraphMailbox g) = MB.hasMessage' msg g
+  mapMessages f (GraphMailbox g) = GraphMailbox (MB.mapMessages f g)
 
 
 -- | Generic graph mailbox tests that should work regardless of

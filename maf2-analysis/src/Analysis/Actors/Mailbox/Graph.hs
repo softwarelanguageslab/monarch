@@ -17,7 +17,7 @@ import Analysis.Actors.Mailbox.Partitioned.Partitions.UnitPartition (UnitPartiti
 -- with the unit partition.
 type Graph a = PartitionedGraph UnitPartition a
 
--- As the partitioning scheme used is the unit partition, we can implement to the classic 
+-- As the partitioning scheme used is the unit partition, we can implement to the classic
 -- non-partitioning mailbox typeclass as well.
 instance (Eq a, Ord a) => Mailbox (Graph a) a where
   empty = Partitioned.empty @UnitPartition @a
@@ -26,5 +26,6 @@ instance (Eq a, Ord a) => Mailbox (Graph a) a where
   peek = Set.map fst . Mailbox.dequeue
   hasMessage' = error "NYI"
   mapMessages = error "NYI"
+
 
 
