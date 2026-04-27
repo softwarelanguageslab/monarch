@@ -287,14 +287,14 @@ instance Monad m => AllocM (ProcT m) Ide ActorAdr where
 -- Intra-actor monad instances.
 
 -- TODO: actually implement this instance for any type of partitioning scheme.
-instance Monad m => MonadPartition () (IntraT m) where
+instance Monad m => MonadPartition Partition (IntraT m) where
     integrate = const $ return ()
-    get = return ()
+    get = return Lattice.bottom
 
-instance Monad m => MonadMailbox () ActorRef ActorVlu (IntraT m) where
+instance Monad m => MonadMailbox Partition ActorRef ActorVlu (IntraT m) where
   send ref v = do
     oldOutbox <- use outbox
-    outbox . at ref . non MB.empty %= MB.enqueue () v
+    outbox . at ref . non MB.empty %= MB.enqueue Lattice.bottom Lattice.bottom v
     outbox %= Lattice.join oldOutbox
     return ()
   recv expr = throwError . (expr,)

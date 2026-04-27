@@ -21,7 +21,7 @@ import Domain.Actor
 import qualified Analysis.SimpleActor.ErlangPrimitives as Erl
 
 import Analysis.SimpleActor.Monad
-import Analysis.Actors.Monad hiding (send)
+import Analysis.Actors.Monad
 
 import Control.Monad ((>=>), foldM)
 import Control.Monad.Escape

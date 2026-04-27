@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Main (main) where
 
@@ -10,11 +11,9 @@ import Data.List (intercalate)
 import Text.Printf
 import qualified Data.Map as Map
 import Syntax.Simplifier
-import Analysis.SimpleActor.Fixpoint.ModularModConc
 import Options.Applicative
 import Syntax.AST
 import Control.Monad
-import Analysis.SimpleActor.Fixpoint.SequentialModConc (ActorRes(..), spanOfCmp)
 import qualified Analysis.SimpleActor.Infer as Infer
 import System.TimeIt
 import qualified RIO.Set as Set
@@ -68,8 +67,7 @@ outputOptions = OutputOptions <$> strOption (    long "outputFile"
 commandParser :: Parser Command
 commandParser =
    subparser
-    (  command "analyze"       (info (analyzeCmd <$> inputOptions) (progDesc "Analyze a program"))
-    <> command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
+    (  command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
     <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
     <> command "erlang"        (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
     <> command "core-erlang"   (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor"))
@@ -108,29 +106,6 @@ writeTempFileId contents =
 loadFile' :: Bool -> String -> IO Exp
 loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTempFileId else return) >=> return . either (error . ("error while parsing: " ++)) id . parseFromString
 
-------------------------------
--- SimpleActor SCV
-------------------------------
-
-analyzeCmd :: InputOptions -> IO ()
-analyzeCmd (InputOptions { filename, doTranslate, maxSteps  }) = do
-   ast <- loadFile' doTranslate filename
-   analyzeAst ast maxSteps
-
-analyzeAst :: Exp -> Maybe Int -> IO ()
-analyzeAst ast maxSteps =  do
-   (AnalysisResult sequentialResults mbs _) <- analyze' Map.empty maxSteps ast
-   let sequentialResMap = fmap cmpRes sequentialResults
-   putStrLn "====== Results per actor"
-   mapM_ (uncurry  (printCmpMap (show . spanOfCmp) (const True))) (Map.toList sequentialResMap)
-   -- putStrLn "====="
-   -- putStrLn $ printMap printLoc (const True) res
-   putStrLn "====="
-   putStrLn $ printMap  show (const True) mbs
-   putStrLn "====="
-   return ()
-
-
 ------------------------------------------------------------
 -- SimpleActor, fixpoint v2
 ------------------------------------------------------------
@@ -144,7 +119,6 @@ analyze2Ast :: Exp -> IO ()
 analyze2Ast expr = do 
     system <- Fixpoint._mbs . fst <$> Fixpoint.analyze expr
     pPrint system
-
 
 ------------------------------------------------------------
 -- SimpleActor Inference
@@ -196,7 +170,7 @@ erlang InputOptions { .. } = do
    -- pPrint modules'
    let expr = compileModules modules' deps "test" "main"
    print expr
-   analyzeAst expr Nothing
+   analyze2Ast expr
 
 ------------------------------------------------------------
 -- Main entrypoint

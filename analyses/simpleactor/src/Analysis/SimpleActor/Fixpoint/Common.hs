@@ -18,10 +18,10 @@ import RIO
 import qualified RIO.Map as Map
 import Analysis.Monad (MonadDependencyTrigger)
 import Domain.Core.AbstractCount (AbstractCount)
-import Analysis.Actors.Mailbox.GraphToSet (GraphToSet)
 import Analysis.SimpleActor.Monad (SimpleActorContext(..), MailboxLabel)
-import Analysis.Actors.Mailbox.Partitioned (PartitionedMailbox)
+import Analysis.Actors.Mailbox.Partitioned.Graph (PartitionedGraph)
 import Domain.Core.Count.BoundedCount (BoundedCount)
+import Analysis.Actors.Mailbox.Partitioned.Partitions.UnitPartition (UnitPartition)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -34,20 +34,13 @@ type ActorVlu = ActorValue K (SchemeAdr Exp)
 type ActorEnv = HashMap String ActorAdr
 type ActorAdr = SchemeAdr Exp K
 type ActorVarAdr = SchemeAdr Exp K
--- | Global mailboxes
 type ActorMai = Map ActorRef PMB
 type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
--- | Type of path constraints used in the "SimpleActor" analysis
 type ActorPC  = PC (SchemeAdr Exp K)
--- | A mapping for counting the number of concrete
--- actors associated with an abstract actor reference
 type ActorCou = Map ActorRef AbstractCount
 
--- | The type of mailbox abstraction
-type MB = GraphToSet ActorVlu
-
-type Partition = ()
-type PMB = PartitionedMailbox Partition ActorVlu MB
+type Partition = UnitPartition
+type PMB = PartitionedGraph Partition ActorVlu
 
 type LabelCounts = Map MailboxLabel BoundedCount
 
