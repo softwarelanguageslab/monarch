@@ -1,8 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Run.SchemeCounting where 
+module Run.SchemeCounting (printSto, values, analyzeFile, getCount, countFile, totalCount, countBenchmarks, benchmarks, main) where
 
-import Options.Applicative
 import Analysis.Scheme.Simple
 import Text.Printf
 import Data.List (intercalate)
@@ -11,7 +10,6 @@ import qualified Data.Set as Set
 import Analysis.Scheme.Store ()
 import qualified Data.Map as Map
 import Domain.Scheme.Store
-import Data.Print
 import Analysis.Scheme (AnlRes)
 import Data.TypeLevel.HMap as HMap (size)
 import Domain.Scheme.Modular (getSchemeVal)
@@ -39,8 +37,9 @@ analyzeFile filename = do
 getCount :: StoreVal V -> Int 
 getCount stoval = 
     let val = Set.toList $ varVals stoval 
-        count [] = 0 
+        count [] = 0
         count [v] = HMap.size $ getSchemeVal v
+        count _ = 0
     in count val
 
 countFile :: String -> IO [Int]
@@ -58,6 +57,7 @@ countBenchmarks = do
     counts <- sequence $ foldr (\benchmark prevCount -> prevCount ++ [countFile benchmark]) [] benchmarks 
     return $ totalCount (concat counts)
 
+benchmarks :: [String]
 benchmarks = allBenchmarks
 
 main ::  IO ()

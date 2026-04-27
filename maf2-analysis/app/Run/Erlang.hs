@@ -10,6 +10,7 @@ import Analysis.Erlang.BIF
 
 newtype Options = Options { directory :: String } deriving Show
 
+options :: Parser Options
 options = Options <$>
    strOption (long "directory" <> short 'd' <> help "Path to the 'ebin' directory")
 

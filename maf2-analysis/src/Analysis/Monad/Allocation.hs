@@ -11,7 +11,7 @@ module Analysis.Monad.Allocation (
 
 import Analysis.Monad.Context
 
-import Control.Monad.Reader hiding (mzero)
+import Control.Monad.Reader
 import Control.Monad.Join (MonadJoinable(..))
 import Control.Monad.Layer
 import Analysis.Monad.Cache
@@ -42,12 +42,12 @@ instance (MonadCache m) => MonadCache (AllocT from ctx to m) where
    type Base (AllocT from ctx to m) = AllocT from ctx to (Base m)
    key = lift . key
    val = lift . val 
-   run f k = AllocT $ ReaderT $ \alloc -> run (runAlloc alloc . f) k
+   run f k = AllocT $ ReaderT $ \allocFn -> run (runAlloc allocFn . f) k
 
 instance (Monad m, MonadEscape m) => MonadEscape (AllocT from ctx to m) where
    type Esc (AllocT from ctx to m) = Esc m
    throw = upperM . throw 
-   catch (AllocT m) f = AllocT $ ReaderT $ \alloc -> runReaderT m alloc `catch` (flip runReaderT alloc . runAllocT_ . f)
+   catch (AllocT m) f = AllocT $ ReaderT $ \allocFn -> runReaderT m allocFn `catch` (flip runReaderT allocFn . runAllocT_ . f)
 
 instance {-# OVERLAPPING #-} (Monad m, CtxM m ctx) => AllocM (AllocT from ctx to m) from to where
    {-# INLINE alloc #-}

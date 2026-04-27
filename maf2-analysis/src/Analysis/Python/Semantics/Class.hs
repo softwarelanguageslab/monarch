@@ -1,5 +1,8 @@
 {-# LANGUAGE LambdaCase #-}
-module Analysis.Python.Semantics.Class where 
+module Analysis.Python.Semantics.Class (
+  PySemantics(..),
+  globalFrame
+) where
 
 
 import Domain.Python.Objects
@@ -100,8 +103,8 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     assignTo (IdePat ide) vlu     = do (frm, nam) <- frame ide
                                        pyAssignAt nam vlu frm
     assignTo (Field e nam _) vlu  = eval e >>= pyAssign (ideName nam) vlu
-    assignTo (ListPat _ _) vlu    = todo "list assignment"
-    assignTo (TuplePat _ _) vlu   = todo "tuple assignment"
+    assignTo (ListPat _ _) _      = todo "list assignment"
+    assignTo (TuplePat _ _) _     = todo "tuple assignment"
     execIff :: PyLoc -> [(PyExp, PyStm)] -> PyStm -> m ()
     execIff _ [] els = exec els
     execIff loc ((prd, bdy):rst) els =
@@ -157,9 +160,9 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
                      getAttr nam frm
     evalLit :: PyLit -> m vlu
     evalLit (Syntax.None _)    = return $ constant None
-    evalLit (Bool bln loc)
-        | bln                   = return $ constant True 
-        | otherwise             = return $ constant False 
+    evalLit (Bool bln _)
+        | bln                   = return $ constant True
+        | otherwise             = return $ constant False
     evalLit (Integer int loc)  = pyStore loc (from' @IntPrm int)
     evalLit (Real rea loc)     = pyStore loc (from' @ReaPrm rea)
     evalLit (String str loc)   = pyStore loc (from' @StrPrm str)

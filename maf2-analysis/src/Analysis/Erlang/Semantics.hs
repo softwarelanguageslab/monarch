@@ -4,7 +4,7 @@ module Analysis.Erlang.Semantics where
 
 import Analysis.Monad.Allocation ( AllocM(alloc) )
 import Analysis.Monad.Environment
-    ( EnvM(withEnv, getEnv, lookupEnv, withExtendedEnv) )
+    ( EnvM(getEnv, lookupEnv, withExtendedEnv) )
 import Analysis.Monad.Store ( StoreM(lookupAdr, writeAdr) )
 import Analysis.Erlang.Monad
 import Syntax.Erlang
@@ -44,8 +44,8 @@ eval = fix eval'
 
 eval' :: ErlangM m v mb => (Cmp -> m v) -> Cmp -> m v
 eval' recur (ErlangModule mod') = evalModule recur mod'
-eval' recur (ErlangCall   bdy)  = undefined
-eval' recur (ErlangActor  bdy)  = undefined
+eval' _ (ErlangCall   _)  = undefined
+eval' _ (ErlangActor  _)  = undefined
 
 -- | Evaluate an Erlang module
 evalModule :: ErlangM m v mb => (Cmp -> m v) -> Module -> m v
@@ -61,7 +61,7 @@ evalClauses recur (c:cs) = evalClause c `catch` handle
    where handle e
           | isMatchError e = evalClauses recur cs
           | otherwise = escape e
-evalClauses recur [] = escape MatchError
+evalClauses _ [] = escape MatchError
 
 -- | (Try to) evaluate a single clause
 evalClause :: Clause -> m v

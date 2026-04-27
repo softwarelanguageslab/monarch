@@ -10,7 +10,6 @@ import qualified Data.Set as Set
 import Data.List (uncons)
 import Data.Sequence (Seq ((:<|)), (|>))
 import qualified Data.Sequence as Seq
-import Data.Kind
 
 -- | WorkList typeclass
 class WorkList wl e | wl -> e where

@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Analysis.Python.Semantics.Characteristics where
+module Analysis.Python.Semantics.Characteristics () where
 
 import Lattice (CP)
 import Control.Monad.Join (mjoinMap, cond)

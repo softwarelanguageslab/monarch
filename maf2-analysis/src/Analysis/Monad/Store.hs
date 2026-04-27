@@ -172,7 +172,7 @@ instance {-# OVERLAPPING #-} (Monad m, Store s a v) => StoreM' s a v (StoreT s a
 -- not found, instead it looks for the address in an underlying global store.
 -- The same goes for its writes which are passed to an underlying store
 -- layer in addition to being written in the current layer.
-newtype TransparentStoreT s adr vlu m a = TransparentStoreT { getTransparentStoreT :: StoreT s adr vlu m a }
+newtype TransparentStoreT s adr vlu m a = TransparentStoreT (StoreT s adr vlu m a)
                                         deriving (Functor, Applicative, Monad, MonadCache, MonadLayer, MonadBottom, MonadJoinable)
 
 evalWithTransparentStoreT :: (Store s adr vlu, Functor m) => TransparentStoreT s adr vlu m a -> m a                                       
@@ -219,7 +219,8 @@ instance (Monad (Base m), MonadCache m) => MonadCache (WidenedStoreT s adr v m) 
 
 
 instance {-# OVERLAPPING #-} (Store s adr v, Address adr, Monad m) => StoreM adr v (WidenedStoreT s adr v m) where
-  lookupAdr = WidenedStoreT . lookupAdr 
+  storeSize = WidenedStoreT $ StoreT $ gets Store.size
+  lookupAdr = WidenedStoreT . lookupAdr
   writeAdr adr  = WidenedStoreT . writeAdr adr
   updateWith fs fw = WidenedStoreT . updateWith fs fw
   hasAdr = WidenedStoreT . hasAdr @adr @v

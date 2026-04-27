@@ -1,7 +1,12 @@
--- | Scheme benchmark programs
-module Benchmark.Python.Programs where 
-import Benchmark.Scheme.Programs (soundnessBenchmarks)
-import Data.List
+-- | Python benchmark programs
+module Benchmark.Python.Programs (
+  quick,
+  mopsaBasic,
+  scoping,
+  soundnessBenchmarks,
+  allBenchmarks
+) where
+import Data.List ((\\))
 
 -- | Quick benchmarks to find issues with the analysis
 quick :: [String]

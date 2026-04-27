@@ -5,18 +5,6 @@
 -- It adds support for the analysis of programs contain actor-based concurrency. 
 module Analysis.Actors.Semantics() where
 
-import Domain.Scheme hiding (Exp)
-import Analysis.Monad hiding (spawn)
-import Data.Functor ((<&>), ($>))
-import Syntax.Scheme.AST
-import Syntax.Ide
-import qualified Analysis.Scheme.Semantics as Base
-import Analysis.Actors.Monad
-import qualified Analysis.Monad as Monad
-import Control.Monad.Join
-import Lattice.Class (Lattice, bottom)
-import Domain.Scheme.Actors.Message
-import Domain (BoolLattice(isTrue))
 
  -- eval :: ActorEvalM m v msg mb => Exp -> m v
  -- eval (Spw beh args _) = initBehavior beh args spawn

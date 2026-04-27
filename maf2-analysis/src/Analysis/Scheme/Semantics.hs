@@ -10,7 +10,6 @@ import Analysis.Scheme.Monad
 import Syntax.Scheme.AST
 import Syntax.Ide
 import Domain hiding (Exp)
-import Control.Applicative (Applicative(liftA2))
 import Analysis.Scheme.Primitives
 import Control.Monad.Join
 import Control.Monad (zipWithM_)

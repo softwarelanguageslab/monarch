@@ -38,4 +38,4 @@ type instance Apply Id (x :: k) = x
 --
 -- It is parametrized by the type of address used in the
 -- store to store its values at and the type of backing store.
-newtype SchemeStoreT s adr vlu m a = SchemeStoreT { getSchemeStoreT :: StoreT s adr vlu m a } deriving (Functor, Applicative, Monad, MonadJoinable, MonadBottom, MonadCache, MonadLayer)
+newtype SchemeStoreT s adr vlu m a = SchemeStoreT (StoreT s adr vlu m a) deriving (Functor, Applicative, Monad, MonadJoinable, MonadBottom, MonadCache, MonadLayer)

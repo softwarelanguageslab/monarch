@@ -8,12 +8,11 @@ module Analysis.Monad.Context (
    runCtx,
 ) where
 
-import Control.Monad.Reader hiding (mzero)
+import Control.Monad.Reader
 import Control.Monad.Layer
-import Control.Monad.Join 
+import Control.Monad.Join
 import Analysis.Monad.Cache (MonadCache)
-import Analysis.Context (MCFA (es), push, pushes)
-import Debug.Trace
+import Analysis.Context (MCFA (es), pushes)
 
 
 ---

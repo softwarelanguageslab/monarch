@@ -71,7 +71,7 @@ applyPrim FloatGe       = prim2'' $ floatBinop @BlnPrm Domain.ge
 applyPrim FloatBool     = prim1'' @ReaPrm @BlnPrm (\o -> Domain.ne o (Domain.inject (0::Double)))
 -- string primitives
 applyPrim StringAppend  = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc . from @StrPrm =<< Domain.append @_ @(Abs obj BlnPrm) @(Abs obj IntPrm) @(CP Char) s1 s2
-applyPrim StringEq      = prim2' @StrPrm @StrPrm $ \loc s1 s2 -> pyStore loc (from @BlnPrm boolTop) -- TODO: StringDomain does not support equality yet
+applyPrim StringEq      = prim2' @StrPrm @StrPrm $ \loc _ _ -> pyStore loc (from @BlnPrm boolTop) -- TODO: StringDomain does not support equality yet
 -- dictionary primitives
 applyPrim DictGetItem   = prim2' @DctPrm @StrPrm $ const $ flip Domain.lookup
 applyPrim DictSetItem   = prim3 $ \_ a1 a2 v -> pyDeref'' @StrPrm (\k -> none $ pyAssignInPrm SDctPrm (Domain.updateWeak k) v a1) a2

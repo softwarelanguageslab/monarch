@@ -14,7 +14,6 @@ module Analysis.Monad.Taint (
 
 import Control.Monad.Trans.Reader (ReaderT(..))
 import Control.Monad.Layer (MonadLayer (..))
-import Control.Monad.Trans (MonadTrans)
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.Join
 import Domain.Core.TaintDomain.Class (TaintDomain)
@@ -25,7 +24,6 @@ import Control.Monad (ap)
 import Data.Functor ((<&>))
 import Control.Monad.Escape
 import Control.Monad.Trans.Class
-import Debug.Trace (trace)
 
 ------------------------------------------------------------
 --- The TaintM typeclass

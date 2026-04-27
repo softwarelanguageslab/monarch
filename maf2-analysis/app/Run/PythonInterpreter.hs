@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Run.PythonInterpreter where
+module Run.PythonInterpreter (Options, options, runPyEval) where
 import Options.Applicative
 import Interpreter.Python.Eval
 
@@ -13,6 +13,5 @@ options = Options <$>
 
 runPyEval :: Options -> IO ()
 runPyEval (Options filename) = do
-    contents <- readFile filename
     result <- evalPythonFile filename
     putStrLn result

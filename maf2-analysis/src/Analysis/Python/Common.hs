@@ -45,10 +45,7 @@ import Data.Singletons (SingI, sing)
 import Domain.Class (Domain)
 import qualified Domain.Class as Domain
 import Domain (CPDictionary)
-import Lattice.BottomLiftedLattice (BottomLifted)
-import Lattice.TopLattice
-import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)), Assoc, get)
-import Data.TypeLevel.AssocList (LookupIn)
+import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)))
 import Data.Maybe (fromJust)
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)

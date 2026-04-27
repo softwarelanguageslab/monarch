@@ -1,7 +1,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Analysis.Python.Monad.Characteristics where 
+module Analysis.Python.Monad.Characteristics (
+  PythonCharacteristicsAnalysisT,
+  runPythonCharacteristicsAnalysisT,
+  kcfa,
+  PyRef,
+  PyRet
+) where
 
 import Lattice
 import Domain.Class
@@ -24,7 +30,6 @@ import Lattice.TopLattice()
 import Domain.Python.Objects.Class
 import Control.Monad.Identity
 import Analysis.Monad.FunctionCharacteristics
-import qualified Data.Map as Map
 
 newtype PythonCharacteristicsAnalysisT m a = PythonCharacteristicsAnalysisT (IdentityT m a)
   deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache)

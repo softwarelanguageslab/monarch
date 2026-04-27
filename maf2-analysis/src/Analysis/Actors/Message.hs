@@ -1,1 +1,1 @@
-module Analysis.Actors.Message where
+module Analysis.Actors.Message () where

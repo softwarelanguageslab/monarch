@@ -6,7 +6,6 @@ import Control.Lens
 import Control.Monad.Layer
 import Control.Monad.State
 import Control.Monad.Trans.Identity
-import Data.Bifunctor
 import Data.Map (Map)
 import qualified Data.Map as Map
 

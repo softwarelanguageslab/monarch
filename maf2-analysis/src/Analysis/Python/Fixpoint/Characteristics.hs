@@ -41,7 +41,6 @@ import Data.Foldable (traverse_)
 import Control.Monad.Escape (MayEscapeT)
 import Analysis.Python.Monad.Characteristics
 import Analysis.Monad.FunctionCharacteristics (runWithCharacteristics, CharacteristicsM, CharacteristicsMap)
-import Debug.Trace
 
 ---
 --- Python analysis fixpoint algorithm

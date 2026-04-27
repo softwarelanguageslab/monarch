@@ -31,7 +31,6 @@ import qualified Prelude
 import qualified Data.Map as Map
 import Control.Monad ((>=>), (<=<))
 import Data.Bifunctor
-import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad hiding (has)
 import Data.Map (Map)
 import Lattice ( join, eql )

@@ -3,7 +3,13 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Analysis.Python.Monad.Core where
+module Analysis.Python.Monad.Core (
+  PythonAnalysisT,
+  runPythonAnalysisT,
+  kcfa,
+  PyRef,
+  PyRet
+) where
 
 import Lattice
 import Domain.Class

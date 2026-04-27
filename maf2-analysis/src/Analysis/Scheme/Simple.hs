@@ -5,7 +5,6 @@ module Analysis.Scheme.Simple(VariableAdr, V, runAnalysis, cpAnalyze) where
 
 import Syntax.Scheme
 import Analysis.Scheme
-import Domain.Scheme.Store
 import Domain.Scheme hiding (Exp, Adr)
 import Data.Maybe
 import Prelude hiding (exp)

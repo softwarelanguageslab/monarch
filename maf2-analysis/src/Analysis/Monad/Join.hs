@@ -21,9 +21,8 @@ import Control.Monad.Layer
 import ListT
 
 import Control.Monad (ap, mplus)
-import Control.Monad.Identity hiding (mzero, join)
+import Control.Monad.Identity()
 import qualified Control.Monad as C
-import Control.Applicative
 import Analysis.Monad.Cache
 import Lattice.BottomLiftedLattice (BottomLifted(..))
 import Data.Set (Set)

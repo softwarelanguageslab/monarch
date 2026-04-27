@@ -1,7 +1,23 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Analysis.Python.Monad.TaintTracked where 
+module Analysis.Python.Monad.TaintTracked (
+  PythonTaintAnalysisT,
+  runPythonTaintAnalysisT,
+  kcfa,
+  Taint,
+  TaintTracking(..),
+  sourceSpan,
+  dependentsSpan,
+  trackingToTuple,
+  source,
+  withExecutionContext,
+  addExecutionContext,
+  extendTaint,
+  extendTainted,
+  PyRefTaint,
+  PyRetTaint
+) where
 
 import Lattice
 import Domain.Class
@@ -21,7 +37,6 @@ import Control.Monad ((>=>))
 import Analysis.Monad.Call (CallM(..))
 import Lattice.Tainted (Tainted(..))
 import Data.Set (Set)
-import qualified Lattice.TopLiftedLattice as TopLattice
 import Lattice.TopLattice()
 import Domain.Python.Objects.Class
 import Domain.Core.TaintDomain.Class
@@ -32,7 +47,6 @@ import Control.Monad.Reader
 import Syntax.Span
 import Control.Lens
 import qualified Lattice.TopLiftedLattice as TopLifted
-import qualified Data.List as List
 
 
 -- | This is the same as the 'Analysis.Python.Monad.Taint' monad, but also keeps track
@@ -60,7 +74,7 @@ data TaintTracking = TaintTracking { _sourceSpan :: Span, _dependentsSpan :: Set
 $(makeLenses ''TaintTracking)
 
 trackingToTuple :: TaintTracking -> (Span, Set Span)
-trackingToTuple (TaintTracking sourceSpan dependentSpan) = (sourceSpan, dependentSpan)
+trackingToTuple (TaintTracking ss ds) = (ss, ds)
 
 -- | Create a source
 source :: SpanOf a => a -> Taint

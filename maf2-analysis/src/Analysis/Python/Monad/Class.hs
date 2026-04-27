@@ -3,7 +3,19 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Analysis.Python.Monad.Class where 
+module Analysis.Python.Monad.Class (
+  PyBdy(..),
+  getPyBdyLoc,
+  PyM(..),
+  pyDeref',
+  pyDeref'',
+  pyDeref2',
+  pyDeref2'',
+  pyDeref3',
+  pyDerefN,
+  pyDerefN',
+  pyStore
+) where
 
 import Lattice
 import Analysis.Python.Common

@@ -6,10 +6,9 @@
 module Interpreter.Scheme.Semantics(eval) where
 
 import Analysis.Semantics
-import qualified Analysis.Monad as Monad hiding (EvalT)
+import qualified Analysis.Monad as Monad
 import Syntax.Scheme.AST
 import Syntax.Ide
-import Control.Applicative (Applicative(liftA2))
 import Analysis.Monad (EvalM, eval)
 import Control.Monad (zipWithM_)
 import Prelude hiding (exp, lex)

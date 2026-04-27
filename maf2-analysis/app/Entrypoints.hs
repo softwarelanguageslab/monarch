@@ -37,13 +37,14 @@ pythonBenchmarkCommand = pure PythonBenchmarks
 pythonInterpreterCommand :: Parser Command 
 pythonInterpreterCommand = PythonInterpreter <$> Run.PythonInterpreter.options
 
+analyzeCommand :: Parser Command
 analyzeCommand = Scheme <$> Run.Scheme.options
 
+countCommand :: Parser Command
 countCommand = pure SchemeCounting
 
+parseErlangCommand :: Parser Command
 parseErlangCommand = ParseErlang <$> Run.Erlang.options
-
-parseActorCommand = Actor <$> Run.Actor.options
 
 parseCommand :: Parser Command
 parseCommand = hsubparser $
@@ -61,8 +62,8 @@ opts = info (parseCommand <**> helper) (fullDesc <> progDesc "Monarch: A MONadic
 
 run :: IO ()
 run = do
-   command <- execParser opts
-   case command of
+   cmd <- execParser opts
+   case cmd of
       Interpreter    options -> Run.Interpreter.main options
       PythonInterpreter options -> Run.PythonInterpreter.runPyEval options
       Scheme         options -> Run.Scheme.main options
@@ -72,4 +73,3 @@ run = do
       ParseErlang    options -> Run.Erlang.main options
       Actor          options -> Run.Actor.main options
       SchemeCounting         -> Run.SchemeCounting.main
-      v                      -> error $ "cannot run command" ++ show v

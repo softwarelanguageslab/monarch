@@ -1,11 +1,26 @@
 -- {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE RecordWildCards #-}
-module Analysis.Monad.FunctionCharacteristics where
+module Analysis.Monad.FunctionCharacteristics (
+  CharacteristicsMap(..),
+  emptyCharacteristicsMap,
+  addCallSite,
+  addAllUse,
+  addReceiver,
+  addthisUse,
+  addParameterObject,
+  addParameterUse,
+  setParameters,
+  isParameter,
+  parameterOf,
+  CharacteristicsM(..),
+  CharacteristicsT,
+  runWithCharacteristics
+) where
 
 import qualified Data.Set as Set
 
-import Data.Maybe (fromJust, listToMaybe, fromMaybe)
+import Data.Maybe (listToMaybe)
 import Syntax.Python (PyLoc)
 import Control.Monad.State ( StateT, MonadState )
 import Analysis.Python.Common (ObjAddrSet, emptyObjAddrSet, insertObjAddr, ObjAdr)

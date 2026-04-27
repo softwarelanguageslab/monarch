@@ -1,7 +1,14 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Analysis.Python.Monad.Taint where 
+module Analysis.Python.Monad.Taint (
+  PythonTaintAnalysisT,
+  runPythonTaintAnalysisT,
+  kcfa,
+  Taint,
+  PyRefTaint,
+  PyRetTaint
+) where
 
 import Lattice
 import Domain.Class
@@ -27,8 +34,6 @@ import qualified Lattice.TopLiftedLattice as TopLattice
 import Lattice.TopLattice()
 import Domain.Python.Objects.Class
 import Control.Monad.Identity
-import Domain.Core.TaintDomain.Class
-import qualified Debug.Trace as Debug
 import Analysis.Python.Diagnostics
 
 newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (IdentityT m a)

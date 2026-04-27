@@ -18,8 +18,9 @@ instance {-# OVERLAPPING #-} (Monad m, Ord k, Joinable v) => MapM k [v] (JoinMap
    get = JoinToResultMap . fmap (fmap List.singleton) . get
    put k vs = if null vs then return ()
               else JoinToResultMap $ put k $ joins1 vs
-   joinWith k vs = if null vs then return () 
+   joinWith k vs = if null vs then return ()
                    else JoinToResultMap $ joinWith k $ joins1 vs
+   getAll = JoinToResultMap $ fmap (fmap List.singleton) getAll
 
 -- | Run the @JoinToResultMap@
 runWithJoinMap :: forall k v m a . JoinMapT k v m a -> m (a, Map k v)

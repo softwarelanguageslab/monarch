@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Analysis.Python.Semantics.Taint where 
+module Analysis.Python.Semantics.Taint () where
 
 import Analysis.Python.Semantics.Class 
 import Analysis.Python.Monad.Taint

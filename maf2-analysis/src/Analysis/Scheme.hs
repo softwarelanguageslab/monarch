@@ -10,7 +10,7 @@ import Analysis.Scheme.Primitives hiding (run)
 
 import Syntax.Scheme
 import Domain.Scheme hiding (Exp, Env, Adr)
-import Domain.Scheme.Store hiding (Env)
+import Domain.Scheme.Store
 import qualified Domain.Scheme as S
 
 import Data.Set (Set)
@@ -31,9 +31,7 @@ import Syntax (Ide)
 import Analysis.Monad.Fix (runFixT, lfp)
 import Analysis.Monad hiding (eval)
 import qualified  Analysis.Scheme.Primitives as P
-import Debug.Trace (traceShow)
 import Data.Typeable
-import Lattice.Class (BottomLattice)
 
 -----------------------------------------
 -- Shorthands

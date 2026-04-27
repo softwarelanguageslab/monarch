@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE GADTs #-}
@@ -16,28 +17,18 @@ import qualified Analysis.Python.Fixpoint.Characteristics as Characteristics
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Analysis.Python.Common
-import Data.List
+import Data.List (intercalate)
 import Text.Printf (printf)
-import Control.Monad.DomainError
-import Analysis.Python.Escape (PyEsc)
 import qualified Data.Set as Set
 import Analysis.Python.Monad.Class
-import Language.Python.Common (annot)
 import Domain.Python.Syntax
 import Data.IORef
 import System.IO
 import Data.Function ((&))
 import Control.Monad.Escape (MayEscape(..))
-import "maf2-analysis" Data.Graph (edges)
 import Lattice hiding (Value)
 import Analysis.Store (CountingMap, store)
-import qualified Lattice.BottomLiftedLattice as BL
-
 import Benchmark.Python.Programs
-import Analysis.Monad.Store (StoreM(lookupAdr))
-import Control.Monad
-import Lattice.Tainted
-import Data.Kind (Type)
 import Analysis.Monad.FunctionCharacteristics
 import "maf2-analysis" Data.Graph
 
@@ -94,12 +85,10 @@ analysisHelp =
 -- Characteristics analysis
 -----------------------------------------
 
-newtype CharacteristicsResult = CharacteristicsResult {
-      characteristicsResult ::
+newtype CharacteristicsResult = CharacteristicsResult
          (Map Characteristics.PyCmp Characteristics.PyRes,
           Characteristics.Store Characteristics.PyDomainCP,
           Map PyLoc CharacteristicsMap)
-   }
 
 instance PrintResult CharacteristicsResult where
    printResult (CharacteristicsResult (rsto, osto, characteristics)) = do
@@ -112,9 +101,8 @@ instance PrintResult CharacteristicsResult where
 -- Taint analysis
 -----------------------------------------
 
-newtype TaintResult = TaintResult {
-      taintResult :: (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
-   }
+newtype TaintResult = TaintResult
+      (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
 
 instance PrintResult TaintResult where
    printResult (TaintResult (rsto, osto, graph, _)) = do
@@ -131,12 +119,12 @@ instance PrintResult TaintResult where
 ------------------------------------------------------------
 
 printOSto :: Show obj => CountingMap ObjAdr obj -> String
-printOSto s = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) adrs
-   where adrs   = Map.toList (store s)
+printOSto s = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (show k) (show v)) stoAdrs
+   where stoAdrs = Map.toList (store s)
                     & filter (\case (PrmAdr _, _) -> False ; _ -> True)
-         indent = maximum (map (length . show . fst) adrs) + 5
+         indent = maximum (map (length . show . fst) stoAdrs) + 5
 
-printRSto :: (Show obj, PyVal v, Show v, Show e, Joinable obj) => Map PyCmp (MayEscape e v) -> Bool -> CountingMap ObjAdr obj -> String
+printRSto :: (Show obj, PyVal v, Show e, Joinable obj) => Map PyCmp (MayEscape e v) -> Bool -> CountingMap ObjAdr obj -> String
 printRSto m deref osto
  = intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (showCmp k) (showVal deref v)) cmps
    where cmps = Map.toList m
@@ -145,7 +133,6 @@ printRSto m deref osto
          showVal False (MayBoth v e) = "[!!: "++show e++"]" ++ show v
          showVal True (MayBoth v e) = "[!!: "++show e++"]" ++ showDereferencedVal v
          showVal True (Value v) = showDereferencedVal v
-         showVal a b = error $ "non-covered value " ++ show a ++ " and " ++ show b
          showDereferencedVal v =
             let as = Set.toList (adrs v)
                 rawsto = store osto
@@ -166,10 +153,10 @@ printRSto m deref osto
 
 runREPL :: IO ()
 runREPL = do count <- newIORef 0
-             analyzeREPL @PyDomainCP (read count) print
-      where read count = do cur <- readIORef count
-                            writeIORef count (cur + 1)
-                            prompt cur
+             analyzeREPL @PyDomainCP (readPrg count) print
+      where readPrg count = do cur <- readIORef count
+                               writeIORef count (cur + 1)
+                               prompt cur
             prompt cur = do putStr ">>> "
                             hFlush stdout
                             txt <- getLine
@@ -181,7 +168,7 @@ runREPL = do count <- newIORef 0
 runFile' :: String -> IO ()
 runFile' fileName =
    do program <- readFile fileName
-      let Just parsed = parse "testje" program
+      let parsed = fromMaybe (error "parse failed") (parse "testje" program)
       let (rsto, osto, graph, _) = analyzeCP parsed
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
@@ -196,7 +183,7 @@ runFile' fileName =
 runFile :: String -> IO ()
 runFile fileName =
    do program <- readFile fileName
-      let Just parsed = parse "testje" program
+      let parsed = fromMaybe (error "parse failed") (parse "testje" program)
       let (rsto, osto, characteristics) = Characteristics.analyzeCP parsed
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
@@ -205,6 +192,7 @@ runFile fileName =
       putStrLn "\nCHARACTERISTICS:\n"
       print characteristics
 
+benchmarks :: [String]
 benchmarks = allBenchmarks
 
 runBenchmarks :: IO ()
@@ -218,26 +206,17 @@ generateGraph files =
       mapM_ generateGraphForFile files
       putStrLn "}"
    where generateGraphForFile file = do program <- readFile file
-                                        let Just parsed = parse "testje" program
+                                        let parsed = fromMaybe (error "parse failed") (parse "testje" program)
                                         let (_, _, graph, _) = analyzeCP parsed
                                         printGraph file graph
          printGraph file graph = mapM_ (putStrLn . showEdge file) (edges graph)
-         showEdge file (from, to, dep) = "\t" ++ showNode from ++ " -> " ++ showNode to ++ " [label = " ++ show ("[" ++ toType dep ++ "] " ++ shortFileName file) ++ "];"
+         showEdge file (src, to, dep) = "\t" ++ showNode src ++ " -> " ++ showNode to ++ " [label = " ++ show ("[" ++ toType dep ++ "] " ++ shortFileName file) ++ "];"
          showNode (Constant name) = name
          showNode Top = "⊤"
-         showNode _ = "⊥"
          shortFileName = reverse . takeWhile (/='/') . reverse
          toType (Constant True) = "REACTOR"
          toType (Constant False) = "WINDOW"
          toType Top = "??WINDOW??"
-
-main :: Options -> IO ()
-main (Options { .. }) = do
-      parsed <- fromMaybe (error "could not parse file") . parse pythonFilename <$> readFile pythonFilename
-      putStrLn "\nPROGRAM:\n"
-      putStrLn (prettyString parsed)
-      printResult $ (fromMaybe (error $ "no such analysis" ++ pythonAnalysis) $ Map.lookup pythonAnalysis analysisTypes) parsed 
-
 
 ecopipe :: IO ()
 ecopipe = generateGraph [
@@ -254,6 +233,15 @@ ecopipe = generateGraph [
                               -- "programs/python/zensor/run_identifier.py",
                               "programs/python/zensor/sensor_status.py"
                         ]
+
+main :: Options -> IO ()
+main (Options { .. }) = do
+      parsed <- fromMaybe (error "could not parse file") . parse pythonFilename <$> readFile pythonFilename
+      putStrLn "\nPROGRAM:\n"
+      putStrLn (prettyString parsed)
+      printResult $ (fromMaybe (error $ "no such analysis" ++ pythonAnalysis) $ Map.lookup pythonAnalysis analysisTypes) parsed
+
+
 
 
 
