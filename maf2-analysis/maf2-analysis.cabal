@@ -29,6 +29,7 @@ library
       Analysis.Actors.Mailbox
       Analysis.Actors.Mailbox.Class
       Analysis.Actors.Mailbox.Graph
+      Analysis.Actors.Mailbox.Graph.Dot
       Analysis.Actors.Mailbox.Partitioned
       Analysis.Actors.Mailbox.Partitioned.Graph
       Analysis.Actors.Mailbox.Partitioned.Partitions.UnitPartition

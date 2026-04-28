@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# LANGUAGE LambdaCase #-}
 -- | Graphviz visualization of the graph mailbox abstraction
 --
 -- The visualization renders each messages in the mailbox as a node 
@@ -121,7 +122,7 @@ renderNodes =
     foldM (\acc node -> do
         identifier <- assignNodeFresh node
         color <- colorNode (node ^. nodeNode)
-        return $ acc <> "  " <> show identifier <> " [color = " <> color <> ", label=\"" <> show node <> "\"];\n"
+        return $ acc <> "  " <> show identifier <> " [color = " <> color <> ", label=\"" <> escape (show node) <> "\"];\n"
     ) ""
 
 -- | Render a list of edges into the DOT text format 
@@ -133,15 +134,21 @@ renderEdges =
         return $ acc <> "  " <> show fromId <> " -> " <> show toId <> ";\n"
     ) ""
 
+-- | Escape the given string so that it can be used in a label
+escape :: String -> String
+escape = concatMap escapeChr
+    where escapeChr = \case '"' -> "\\\""
+                            c -> [c]
+
 -- | Render the set of top or bottom pointers into the DOT text format as edges from an invisible source node
 renderPointer :: (Show node, MonadRender c p node m)
               => String       -- ^ Label for the pointer (e.g., "top" or "bottom")
               -> Set node   -- ^ Set of nodes that the pointer points to
               -> m String
-renderPointer node nodes = do 
+renderPointer node nodes = do
         source <- freshNode
         edges <- foldM (generateEdge source) "" (Set.toList nodes)
-        return $ "  " <> show source <> " [label = \"" <> node <> "\", width=0.1];\n" <> edges
+        return $ "  " <> show source <> " [label = \"" <> escape node <> "\", width=0.1];\n" <> edges
     where generateEdge source acc to' = do
                 toId <- lookupNode to'
                 return $ acc <> "  " <> show source <> " -> " <> show toId <> " [style=dashed];\n"
@@ -161,7 +168,7 @@ render graph =
         renderGraph = do
             nodeString <- renderNodes (Set.toList $ PartitionedGraph.vertices graph)
             edgeString <- renderEdges (foldMap (\(from', tos) -> map (from',) $ Set.toList tos) $ Map.toList $ PartitionedGraph.edges graph)
-            pointerString <- mconcat <$> sequence ( 
+            pointerString <- mconcat <$> sequence (
                                             map (\ptr -> renderPointer ("top " <> show (PartitionedGraph.pointerPartition ptr)) (Set.singleton $ PartitionedGraph.pointerNode ptr)) (Set.toList $ PartitionedGraph.tops graph) ++
                                             map (\ptr -> renderPointer ("bottom " <> show (PartitionedGraph.pointerPartition ptr)) (Set.singleton $ PartitionedGraph.pointerNode ptr)) (Set.toList $ PartitionedGraph.bottoms graph)
                                         )

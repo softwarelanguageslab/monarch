@@ -12,7 +12,7 @@ import Analysis.Store (CountingMap)
 import Data.Kind
 import Analysis.Monad.Stack (MonadStack)
 import Analysis.Monad.Store (StoreT, StoreM)
-import Analysis.Monad.DependencyTracking (DependencyTrackingM, MonadDependencyTracking, MonadDependencyTriggerTracking)
+import Analysis.Monad.DependencyTracking (DependencyTrackingM, MonadDependencyTriggerTracking)
 import Analysis.Monad.Map (MapM)
 import RIO
 import qualified RIO.Map as Map
@@ -43,25 +43,6 @@ type Partition = UnitPartition
 type PMB = PartitionedGraph Partition ActorVlu
 
 type LabelCounts = Map MailboxLabel BoundedCount
-
-------------------------------------------------------------
--- Utilities
-------------------------------------------------------------
-
-type family Unlist (as :: Type) :: Type where
-   Unlist [k] = k
-
-
-type family DependsOn (m :: Type -> Type) (cmp :: Type) (ads :: [Type]) :: Constraint where
-      DependsOn m cmp '[] = ()
-      DependsOn m cmp (adr : ads) = (MonadDependencyTracking cmp adr m, DependsOn m cmp ads)
-
-------------------------------------------------------------
--- Addresses
-------------------------------------------------------------
-
--- | Output address for writing individual actor results
-newtype ActorResOut = ActorResOut ActorRef deriving (Ord, Eq, Show)
 
 ------------------------------------------------------------
 -- Contexts

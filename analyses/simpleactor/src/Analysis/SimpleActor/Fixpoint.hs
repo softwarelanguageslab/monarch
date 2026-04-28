@@ -94,7 +94,7 @@ data Ctx = Ctx {
 $(makeLenses ''Ctx)
 
 emptyCtx :: ActorRef -> Ctx
-emptyCtx ref = Ctx HashMap.empty Map.empty ref (initialContext 1)
+emptyCtx ref = Ctx HashMap.empty initialDynEnvironment ref (initialContext 1)
 
 -- | Intra-actor analysis state
 data State = State {
