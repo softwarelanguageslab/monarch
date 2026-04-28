@@ -7,8 +7,10 @@
 module CommandLine.Options(
     InputOptions(..),
     OutputOptions(..),
+    OutputDirOptions(..),
     inputOptions,
-    outputOptions
+    outputOptions,
+    outputDirOptions
   ) where
 
 import Options.Applicative
@@ -48,3 +50,13 @@ data OutputOptions = OutputOptions {
 outputOptions :: Parser OutputOptions
 outputOptions =  OutputOptions
              <$> strOption ( long "outputFile" <> short 'o' <> help "Output JSON file")
+
+
+data OutputDirOptions = OutputDirOptions { outputDirPath :: String } 
+                      deriving (Show, Ord, Eq)
+    
+
+-- | Command-line options for specifying an output directory
+outputDirOptions :: Parser OutputDirOptions 
+outputDirOptions = OutputDirOptions
+                <$> strOption (long "outputDir" <> short 'o' <> help "Output directory")

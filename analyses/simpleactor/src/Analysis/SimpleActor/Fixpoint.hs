@@ -50,6 +50,8 @@ import Domain.Actor (Pid(EntryPid))
 import Analysis.Monad.WorkList (runWithWorkList)
 import Data.Tuple.Extra (dupe)
 import qualified Analysis.Actors.Mailbox.Partitioned as MB
+import Data.Functor
+import Control.Monad ((>=>))
 
 ------------------------------------------------------------
 -- Shorthands
@@ -224,7 +226,8 @@ type SystemT m = (
 data AnalysisState = AnalysisState {
         _cache :: Map ProcKey ProcVal,
         _store :: Map ActorAdr (StoreVal ActorVlu),
-        _deps  :: Map Dep (Set ProcKey)
+        _deps  :: Map Dep (Set ProcKey),
+        _trace :: [System]
     } deriving (Ord, Eq, Show, Generic)
 
 $(makeLenses ''AnalysisState)
@@ -339,6 +342,10 @@ instance (Monad m, k ~ ProcKey, DepL d) => DependencyTrackingM k d (StateT Analy
   register dep cmp = deps . at (review depL dep) %= Just . maybe (Set.singleton cmp) (Set.insert cmp)
   dependent dep = use (deps . at (review depL dep) . to (fromMaybe Set.empty))
 
+-- | Register a system after a inter-actor turn, and returns the registered system
+traceSystem :: Monad m => System -> AnalysisGlobalT m System
+traceSystem sys = (trace %= (sys:)) $> sys
+
 ------------------------------------------------------------
 -- Fixpoints
 ------------------------------------------------------------
@@ -373,7 +380,7 @@ fixTurn selfRef = Fix.lfp (Fix.lift $ transferTurn selfRef) . Set.singleton
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes. 
 transferSystem :: MonadIO m => System -> AnalysisGlobalT m System
 transferSystem s@System { .. } = analyze' & flip execStateT s
-        where turnState ref = State (Map.findWithDefault Lattice.bottom ref _mbs) Lattice.bottom
+        where turnState ref = State (Map.findWithDefault Lattice.bottom ref _mbs) _mbs
               initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref))) _initialBeh
               analyze' = do 
                 newTurns <- Map.traverseWithKey (Fix.lift . fixTurn) initialTurns
@@ -383,7 +390,7 @@ transferSystem s@System { .. } = analyze' & flip execStateT s
                 let newMbs = Lattice.joins $ foldMap (map (view (state . outbox)) . Set.toList . snd) $ Map.toList newTurns
                 mbs %= Lattice.join newMbs
 fixSystem :: MonadIO m => System -> AnalysisGlobalT m System
-fixSystem = Fix.lfp transferSystem
+fixSystem = Fix.lfp (transferSystem >=> traceSystem)
 
 ------------------------------------------------------------
 -- Running the analysis
@@ -412,7 +419,8 @@ emptyAnalysisState :: AnalysisState
 emptyAnalysisState = AnalysisState {
         _cache = Map.empty,
         _store = mainStore,
-        _deps = Map.empty
+        _deps = Map.empty,
+        _trace = []
     }
 
 -- | Top-level function to analyze an actor system.

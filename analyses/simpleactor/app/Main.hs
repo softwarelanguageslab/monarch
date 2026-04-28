@@ -33,6 +33,8 @@ import Text.Pretty.Simple (pPrint)
 import CommandLine.Options hiding (outputOptions, OutputOptions)
 import qualified Runnables.CoreErlang as CoreErlang
 import qualified Analysis.SimpleActor.Fixpoint as Fixpoint
+import qualified Analysis.SimpleActor.Fixpoint.Common as Common
+import qualified Analysis.Actors.Mailbox.Graph.Dot as Dot
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -71,7 +73,7 @@ commandParser =
     <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
     <> command "erlang"        (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
     <> command "core-erlang"   (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor"))
-    <> command "analyze2"      (info (analyze2Cmd <$> inputOptions) (progDesc "Analyze a program using the new fixpoint")))
+    <> command "analyze2"      (info (analyze2Cmd <$> inputOptions <*> outputDirOptions) (progDesc "Analyze a program using the new fixpoint")))
 
 
 ------------------------------------------------------------
@@ -110,15 +112,39 @@ loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTem
 -- SimpleActor, fixpoint v2
 ------------------------------------------------------------
 
-analyze2Cmd :: InputOptions -> IO () 
-analyze2Cmd InputOptions { .. } = do
-    ast <- loadFile' doTranslate filename 
-    analyze2Ast ast
+-- | Renders the mailbox abstraction of each actor in the system to a DOT file for visualization with Graphviz.
+renderMailboxesToDot :: String -- ^ the output directory
+                     -> String -- ^ string to prefix the output file with 
+                     -> Map Common.ActorRef Common.PMB
+                     -> IO ()
+renderMailboxesToDot outDir prefix = mapM_ (uncurry renderMailbox) . Map.toList
+    where
+        renderMailbox actorRef mb = do
+            let mailboxName = "mailbox_" <> show actorRef
+                dotContent = Dot.render mb
+             in writeFile (outDir ++ prefix ++ mailboxName ++ ".dot") dotContent
 
-analyze2Ast :: Exp -> IO ()  
-analyze2Ast expr = do 
-    system <- Fixpoint._mbs . fst <$> Fixpoint.analyze expr
-    pPrint system
+
+-- | Renders the mailbox abstraction for each step in the analysis trace to a DOT file for visualization with Graphviz.
+-- The files are numbered sequentially to reflect the order of the trace.
+renderTraceMailboxesToDot :: String -> [Map Common.ActorRef Common.PMB] -> IO ()
+renderTraceMailboxesToDot outDir mailboxTrace = mapM_ renderStep (zip [0..] mailboxTrace)
+    where
+        renderStep :: (Int, Map Common.ActorRef Common.PMB) -> IO ()
+        renderStep (stepNum, mbs) = do
+            renderMailboxesToDot outDir ("trace_step_" ++ show stepNum ++ "_") mbs
+
+analyze2Cmd :: InputOptions -> OutputDirOptions -> IO ()
+analyze2Cmd InputOptions { .. } OutputDirOptions { .. } = do
+    ast <- loadFile' doTranslate filename
+    analyze2Ast ast outputDirPath
+
+analyze2Ast :: Exp -> String -> IO ()
+analyze2Ast expr outDir = do
+    output <- Fixpoint.analyze expr
+    let trace = reverse $ map Fixpoint._mbs $ Fixpoint._trace $ snd output
+
+    renderTraceMailboxesToDot outDir trace
 
 ------------------------------------------------------------
 -- SimpleActor Inference
@@ -170,7 +196,7 @@ erlang InputOptions { .. } = do
    -- pPrint modules'
    let expr = compileModules modules' deps "test" "main"
    print expr
-   analyze2Ast expr
+   analyze2Ast expr "output/"
 
 ------------------------------------------------------------
 -- Main entrypoint
