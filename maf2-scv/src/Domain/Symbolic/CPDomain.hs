@@ -10,9 +10,7 @@ import Domain.Scheme
 import Domain.Scheme.Derived.Top
 import Domain
 import Lattice
-import qualified Lattice.TopLiftedLattice as TL
 import qualified Syntax.Scheme.AST as S
-import Control.Monad ((>=>))
 
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)

@@ -1,4 +1,4 @@
-module Data.Map.Extra where
+module Data.Map.Extra (lookupInsertDefaultF) where
 
 import Data.Map (Map)
 import qualified Data.Map as Map

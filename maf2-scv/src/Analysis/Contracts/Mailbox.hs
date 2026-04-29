@@ -1,8 +1,7 @@
+{-# OPTIONS_GHC -Wno-partial-fields #-}
 module Analysis.Contracts.Mailbox (ConstrainedMessage (..), AnnotateMessageT, runAnnotateMessageT) where
 
 import qualified Domain.Scheme.Actors.Message as ActorScheme
-import Analysis.Actors.Mailbox
-import Analysis.Symbolic.Monad (MonadPathCondition (..))
 import Control.Monad.Identity
 import Control.Monad.Layer (MonadLayer (..))
 import Control.Monad.Trans.Class

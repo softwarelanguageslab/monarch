@@ -7,7 +7,6 @@ module Domain.Symbolic.Paired where
 import Lattice (EqualLattice(..))
 import Domain
 import Control.Monad.Join
-import Data.Map (Map)
 import qualified Data.List as List
 import Symbolic.AST
 import Syntax.Span
@@ -127,6 +126,7 @@ instance (Eq i, Ord i, StrDom v ~ vs) => IntLattice (SymbolicVal exp k i v)
                                     {- bln -} (SymbolicVal exp k i v)
                                     {- str -} vs
                                     {- rea -} (SymbolicVal exp k i v) where
+   inc (SymbolicVal n1) = return $ SymbolicVal $ Predicate "inc/v" [n1]
    toReal (SymbolicVal n1) = return $ SymbolicVal $ Predicate "as-real/v" [n1]
    toString = undefined
    quotient (SymbolicVal n1) (SymbolicVal n2) =

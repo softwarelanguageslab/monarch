@@ -46,6 +46,9 @@ instance (SymbolicValue v i, Lattice (Symbolic v), Show (Symbolic v), StoreM adr
       -- should not have any symbolic representations.
       upperM $ writeAdr adr (unsymbolic v)
 
+  storeSize = upperM (storeSize @adr @v @m)
+  updateWith fs fw = upperM . updateWith fs fw
+  hasAdr = upperM . hasAdr
   updateAdr = writeAdr
 
 -- | The default strategy for `SymbolicStoreT` is to fetch the current global store, 

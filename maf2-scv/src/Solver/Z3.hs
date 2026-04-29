@@ -143,7 +143,7 @@ runZ3SolverBackground :: forall i . (Ord i, Show i) => String -> IO Z3SolverStat
 runZ3SolverBackground setupCode' = fromMaybe (error "failed to start the Z3 solver") <$> execStateT (getZ3Solver $ setup @i setupCode') Nothing
 
 -- | Execute the given Z3 computation in the given Z3 state
-execInZ3State :: forall i a . (Ord i, Show i) => Z3SolverState -> Z3Solver i a -> IO a
+execInZ3State :: forall i a . Z3SolverState -> Z3Solver i a -> IO a
 execInZ3State s = flip evalStateT (Just s) . getZ3Solver 
 
 -- TODO: ShowableVariable is no longer used remove

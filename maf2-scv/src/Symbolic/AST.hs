@@ -19,7 +19,6 @@ module Symbolic.AST
     emptyFormula,
     PC,
     Model(..),
-    mapVariables,
     Simplification(..),
     MapVariables(..)
   )
@@ -32,7 +31,6 @@ import qualified Data.Set as Set
 import GHC.Generics
 import Control.DeepSeq
 import Data.Map (Map)
-import Control.Lens (strict)
 import Lattice.Class (PartialOrder (leq))
 
 -- | A literal as they appear in a source program

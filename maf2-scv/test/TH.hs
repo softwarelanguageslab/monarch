@@ -1,11 +1,11 @@
-module TH where
+module TH (allTests) where
 
 import Language.Haskell.TH
 import Language.Haskell.Meta
 import Syntax.Scheme.Parser
-import Control.Monad ((<=<), join)
+import Control.Monad ((<=<))
 import System.Directory.Recursive
-import Language.Haskell.TH.Syntax (lift, addDependentFile)
+import Language.Haskell.TH.Syntax (addDependentFile)
 
 haskellTest :: SExp -> Either String String
 haskellTest (Atom "test-spec" _ ::: Str code _ ::: SNil _) =
@@ -37,4 +37,4 @@ testDecl = fromFile
 
 -- Make a test case for the given file
 mkTest :: String -> Q Exp
-mkTest name = [|describe $(stringE name) $ it "passes its tests" $ runAnalysisAndTest (\result store -> $(testDecl name)) $(stringE name) |]
+mkTest name = [|describe $(stringE name) $ it "passes its tests" $ runAnalysisAndTest (\_result _store -> $(testDecl name)) $(stringE name) |]
