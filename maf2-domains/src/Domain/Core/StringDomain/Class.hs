@@ -6,8 +6,6 @@ import Lattice
 import Domain.Class 
 import Control.Monad.AbstractM
 
-import Data.Kind 
-
 type StringDomain s bln int chr = (StringLattice s bln int chr, Domain s String)
 
 class (Joinable s) => StringLattice s bln int chr where

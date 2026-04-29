@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators, UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE StandaloneKindSignatures #-}
 -- | Symbolic domain combined with a constant
 -- propagation domain
 module Domain.Symbolic.CPDomain(CPSymbolicValue) where
@@ -10,23 +12,24 @@ import Domain.Scheme
 import Domain.Scheme.Derived.Top
 import Domain
 import Lattice
-import qualified Syntax.Scheme.AST as S
 
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
+import Data.Kind
 
 type Str = SchemeTopLifted (SchemeString (CP String))
 
-type CPSymbolicValue var k =
-   PairedSymbolic (SchemeTopLifted (CPActorValue Str var k S.Exp)) S.Exp k Int
+type CPSymbolicValue :: (Type -> Type) -> Type -> Type -> Type
+type CPSymbolicValue var k exp =
+   PairedSymbolic (SchemeTopLifted (CPActorValue Str var k exp)) exp k Int
 
-type instance VarDom (CPSymbolicValue var k) = CPSymbolicValue var k
-type instance PaiDom (CPSymbolicValue var k) = TopLifted (SimplePair (CPSymbolicValue var k))
-type instance VecDom (CPSymbolicValue var k) = PIVector (CPSymbolicValue var k) (CPSymbolicValue var k)
-                                                        {- bln -} (CPSymbolicValue var k)
+type instance VarDom (CPSymbolicValue var k exp) = CPSymbolicValue var k exp
+type instance PaiDom (CPSymbolicValue var k exp) = TopLifted (SimplePair (CPSymbolicValue var k exp))
+type instance VecDom (CPSymbolicValue var k exp) = PIVector (CPSymbolicValue var k exp) (CPSymbolicValue var k exp)
+                                                        {- bln -} (CPSymbolicValue var k exp)
                                                         {- str -} Str
-                                                        {- rea -} (CPSymbolicValue var k)
-                                                        
+                                                        {- rea -} (CPSymbolicValue var k exp)
+
 -- type instance StrDom (CPSymbolicValue var k) = SchemeString (CP String) (CPSymbolicValue var k)
 
 -- instance (Ord k, Address (var k)) => StringDomain (SchemeString (CP String) (CPSymbolicValue var k))

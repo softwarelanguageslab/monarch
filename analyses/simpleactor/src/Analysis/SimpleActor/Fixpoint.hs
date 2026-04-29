@@ -53,6 +53,10 @@ import qualified Analysis.Actors.Mailbox.Partitioned as MB
 import Data.Functor
 import Control.Monad ((>=>))
 
+-- These are here for the instances of each domain for the "TopLifted" value.
+import Domain.Core.PairDomain.TopLifted ()
+import Domain.Core.StringDomain.TopLifted ()
+
 ------------------------------------------------------------
 -- Shorthands
 ------------------------------------------------------------

@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Domain.Core.PairDomain.TopLifted() where
 
 import Domain.Core.PairDomain.Class 

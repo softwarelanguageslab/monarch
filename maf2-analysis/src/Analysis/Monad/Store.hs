@@ -143,8 +143,6 @@ class AbstractCountM adr m | m -> adr where
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, AbstractCountM adr m) => AbstractCountM adr (t m) where
    count = upperM count
 
-
-
 ---
 --- StoreT monad transformer 
 --- 

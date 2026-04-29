@@ -17,10 +17,14 @@ import qualified Symbolic.AST as Formula
 import Solver
 import Control.Monad (foldM)
 import Control.Monad.Extra (ifM)
-import Analysis.Monad.Store (AbstractCountM)
 import Control.Monad.RWS (MonadWriter (tell))
 import Control.Monad.Trans.Writer (WriterT(runWriterT))
 import Symbolic.AST (SelectVariable (variables), StrictSelectVariable (strictVariables))
+import Domain.Core.AbstractCount (AbstractCount)
+import Analysis.Monad.AbstractCount (MonadAbstractCount)
+import Data.Kind
+
+type AbstractCountM i m = MonadAbstractCount i AbstractCount m :: Constraint
 
 -- | Normal form used for representing path constraints,
 -- it is a more restricted form of CNF that disallows disjunctions

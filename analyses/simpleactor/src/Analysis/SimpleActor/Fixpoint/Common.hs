@@ -6,7 +6,6 @@ import Syntax.AST
 import Domain.Scheme.Actors (Pid(..))
 import Prelude hiding (exp)
 import Domain.Scheme.Store
-import Domain.SimpleActor
 import Symbolic.AST ( PC )
 import Analysis.Store (CountingMap)
 import Data.Kind
@@ -22,6 +21,7 @@ import Analysis.SimpleActor.Monad (SimpleActorContext(..), MailboxLabel)
 import Analysis.Actors.Mailbox.Partitioned.Graph (PartitionedGraph)
 import Domain.Core.Count.BoundedCount (BoundedCount)
 import Analysis.Actors.Mailbox.Partitioned.Partitions.UnitPartition (UnitPartition)
+import Domain.SimpleActor (SymActorValue)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -30,7 +30,7 @@ import Analysis.Actors.Mailbox.Partitioned.Partitions.UnitPartition (UnitPartiti
 type K = AdrCtx
 type ActorExp = Exp
 type ActorRef = Pid Exp K
-type ActorVlu = ActorValue K (SchemeAdr Exp)
+type ActorVlu = SymActorValue K (SchemeAdr Exp)
 type ActorEnv = HashMap String ActorAdr
 type ActorAdr = SchemeAdr Exp K
 type ActorVarAdr = SchemeAdr Exp K

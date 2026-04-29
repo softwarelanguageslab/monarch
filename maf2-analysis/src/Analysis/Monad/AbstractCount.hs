@@ -4,7 +4,8 @@ module Analysis.Monad.AbstractCount(
   AbstractCountT,
   evalWithAbstractCountT,
   runAbstractCountT,
-  runWithAbstractCountT)  where
+  runWithAbstractCountT,
+  count)  where
 
 import Analysis.Counting
 import Analysis.Monad.Cache
@@ -33,6 +34,10 @@ class (Monad m, Count c) => MonadAbstractCount a c m | m a -> c where
 
   -- | Mark the count of the given address as 'CountInf'
   infty :: a -> m ()
+
+-- | Same as 'getCounts'
+count :: MonadAbstractCount e c m => m (Map e c) 
+count = getCounts
 
 -- | Layered instance
 instance {-# OVERLAPPABLE #-} (Monad m, Monad (t m), MonadLayer t, MonadAbstractCount a c m) => MonadAbstractCount a c (t m) where
@@ -63,3 +68,4 @@ runAbstractCountT countMap (AbstractCountT ma) = runStateT ma countMap
 
 evalWithAbstractCountT :: Monad m => AbstractCountT e c m a -> m a
 evalWithAbstractCountT (AbstractCountT ma) = evalStateT ma emptyCountMap
+

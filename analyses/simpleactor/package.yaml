@@ -50,7 +50,7 @@ ghc-options:
 - -fexpose-all-unfoldings
 - -flate-dmd-anal
 - -Wredundant-constraints
-- -Werror
+#- -Werror
 
 default-extensions:
   - TypeFamilies

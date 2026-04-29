@@ -15,9 +15,6 @@ module Analysis.Symbolic.Monad(
    evalWithWidenedFormulaT,
    choice,
    choices,
-   -- Path condition widening
-   pathWideningPerComponent,
-   pathWideningPerComponentEval,
    -- Discarding formulas
    DiscardFormulaT,
    runDiscardFormulaT
@@ -36,12 +33,10 @@ import Domain.Symbolic
 import Lattice (Joinable(..))
 
 import qualified Data.Set as Set
-import Analysis.Monad (MonadCache(..), AbstractCountM)
-import qualified Analysis.Monad.Map as Map
-import qualified Analysis.Monad as Cache
-import Analysis.Monad.Fix
-import Data.Maybe
+import Analysis.Monad (MonadCache(..))
 import Control.Monad.Identity (IdentityT (runIdentityT))
+import Analysis.Monad.AbstractCount (MonadAbstractCount)
+import Domain.Core.AbstractCount (AbstractCount)
 
 -- | Monad that keeps track of a path condition
 class (Monad m) => MonadPathCondition i m v | m -> v i where
@@ -55,7 +50,7 @@ class (Monad m) => MonadPathCondition i m v | m -> v i where
    integrate :: PC i -> m ()
 
 -- | Choose between the two branches non-deterministically
-choice :: (AbstractCountM i m, MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b) => m v -> m b -> m b -> m b
+choice :: (SymbolicM i m v, MonadJoin m, BoolDomain v, Joinable b) => m v -> m b -> m b -> m b
 choice mv mcsq malt = mv >>= (\v -> mjoin (checkTrue v) (checkFalse v))
    where -- Below you find a way of checking whether the condition is true or false 
          -- depending on the abstract value and the current path condition.
@@ -85,14 +80,14 @@ choice mv mcsq malt = mv >>= (\v -> mjoin (checkTrue v) (checkFalse v))
             | otherwise = mbottom
 
 -- | Same as `conds` but keeps track of path conditions
-choices :: (AbstractCountM i m, MonadPathCondition i m v, MonadJoin m, SymbolicValue v i, BoolDomain v, FormulaSolver i m, Joinable b)
+choices :: (SymbolicM i m v, MonadJoin m, BoolDomain v, Joinable b)
         => [(m v, m b)] -> m b -> m b
 choices clauses els =
    foldr (uncurry choice) els clauses
 
 -- | Executes the given action when the path condition is feasible
 -- otherwise returns `mbottom`
-ifFeasible :: (MonadJoin m, FormulaSolver i m, AbstractCountM i m, MonadPathCondition i m v,  Joinable a) => m a -> m a
+ifFeasible :: (SymbolicM i m v, MonadJoin m,  Joinable a) => m a -> m a
 ifFeasible ma = do
    pcs <- fmap Set.toList getPc
    mjoins (map (isFeasible >=> (\b -> if b then ma else mbottom)) pcs)
@@ -105,7 +100,7 @@ type SymbolicM i m v = (-- Domain
                         -- Abstract counting, needed 
                         -- for correctly abstracting 
                         -- symbolic variables.
-                        AbstractCountM i m,
+                        MonadAbstractCount i AbstractCount m,
                         -- Solving
                         FormulaSolver i m)
 
@@ -120,7 +115,7 @@ type SymbolicM i m v = (-- Domain
 newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
                            deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable, MonadCache)
 
-instance {-# OVERLAPPING #-} (AbstractCountM i m, MonadJoin m, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
+instance {-# OVERLAPPING #-} (MonadAbstractCount i AbstractCount m, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
    extendPc pc'     = modify $ Set.map (conjunction (Atomic $ symbolic pc'))
    getPc = get
    integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList
@@ -195,43 +190,3 @@ instance (MonadCache m, Functor (Base m)) => MonadCache (WidenedFormulaT i v m) 
   run f k = WidenedFormulaT $ FormulaT $ StateT state
       where state pc = (,pc) <$> run (fmap fst . runWithFormulaT pc . runWidenedFormulaT' . f) k
 
-
--- | Keep the path condition in a map from components to 
--- path conditions which get widened when input paths 
--- from multiple locations get joined together.
-pathWideningPerComponent :: forall m e v i . (Ord i, AbstractCountM i m, FormulaSolver i m, MonadCache m, Map.Widened (Cache.Key m e) (PC i) m, MonadPathCondition' i m, MonadPathCondition i m v)
-                     => (e -> AroundT e v m v)
-                     -> e
-                     -> AroundT e v m v
-pathWideningPerComponent f e = do
-   cmp <- upperM $ Cache.key e
-   pc' <- upperM getPc
-   -- XXX: this is a 'hack', we join the path conditions
-   -- here since we need access to `AbstractCountM` and 
-   -- `FormulaSolver` here. Ideally we could integrate
-   --  this with the abstract domain type classes somehow
-   --  but it is unclear right now how to do that.
-   --
-   --  TODO: do not use @Map.get@ here as it introduces a read 
-   --  dependency in the current component that is not needed, therefore 
-   --  making the analysis slower.
-   oldPc <- upperM $ fromMaybe Set.empty <$> Map.get (Map.In @_ @(PC i) cmp)
-   upperM . Map.put (Map.In @_ @(PC i) cmp) =<< Path.joinPC oldPc pc'
-   v <- f e
-   pc'' <- maybe mbottom return =<< upperM (Map.get @_ @(PC i) (Map.Out @_ @(PC i) cmp))
-   putPC pc''
-   return v
-
--- | Widen path per component (evaluation function)
-pathWideningPerComponentEval :: forall m e i v . (Ord i, AbstractCountM i m, FormulaSolver i m, MonadCache m, Map.Widened (Cache.Key m e) (PC i) m, MonadPathCondition' i m, MonadPathCondition i m v)
-                         => (e -> AroundT e v m v)
-                         -> e
-                         -> AroundT e v m v
-pathWideningPerComponentEval eval e = do
-   cmp <- upperM $ Cache.key e
-   pc' <- maybe mbottom return =<< upperM (Map.get @_ @(PC i) (Map.In @_ @(PC i) cmp))
-   putPC pc'
-   v <- eval e
-   pc'' <- getPc
-   Map.put @_ @(PC i) (Map.Out @_ @(PC i) cmp) =<< Path.joinPC pc' pc''
-   return v

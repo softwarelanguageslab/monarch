@@ -8,9 +8,10 @@ import qualified Data.Map as Map
 import Control.Monad.State
 import Control.Monad.Layer
 import Domain.Core.AbstractCount (AbstractCount(..))
-import Analysis.Monad.Store (AbstractCountM(..))
 import Control.Lens (makeLenses, view, over)
+import Analysis.Monad.AbstractCount (MonadAbstractCount, count)
 
+type AbstractCountM i m = MonadAbstractCount i AbstractCount m 
 
 class (Monad m) => FormulaSolver i m | m -> i where
    -- | Initialize the solver and sets a checkpoint

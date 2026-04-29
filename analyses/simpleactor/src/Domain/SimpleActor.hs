@@ -1,13 +1,32 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- | An actor domain based on the Scheme domain with 
 -- symbolic values.
-module Domain.SimpleActor(ActorValue) where 
+module Domain.SimpleActor(ActorValue, SymActorValue) where 
 
 import Prelude hiding (length)
 import Lattice.ConstantPropagationLattice
 import Domain.Scheme hiding (Exp, Env)
 import Domain.Core.StringDomain.ConstantPropagation ()
 import Syntax.AST
+import Domain.Symbolic (PairedSymbolic)
+import Domain.Scheme.Derived.Top (SchemeTopLifted (..))
+import Data.Kind
+import Domain.Core.VectorDomain (PIVector)
+import qualified Lattice.TopLiftedLattice as TL
+import Domain.Core.PairDomain (SimplePair)
+import Domain.Core.StringDomain (StringLattice(..))
+import Lattice.Class (top)
+import Control.Monad
+import qualified Domain.Class as Domain
+
+-- | An address that is parameterized by the type of context 
+-- used for allocating that address.
+type AdrK = Type -> Type
+
+------------------------------------------------------------
+-- Regular domain (i.e., without symbolic values)
+------------------------------------------------------------
 
 
 -- | A SimpleActor abstract value
@@ -19,49 +38,50 @@ type ActorValue k adr = CPActorValue Str adr k Exp
 -- strings are not mutable.
 type Str = SchemeString (CP String)
 
--- type Str = SchemeTopLifted (SchemeString (CP String))
+------------------------------------------------------------
+-- Domain with symbolic information
+------------------------------------------------------------
+
+-- | Values paired with symbolic representations used in the SimpleActor language.
+-- It is parameterized by a context type "k" and an address type "adr".
+type SymActorValue :: Type -> AdrK -> Type
+type SymActorValue k (adr :: AdrK) = 
+    PairedSymbolic (SchemeTopLifted (CPActorValue SymStr adr k Exp)) Exp k () -- TODO: other type for sym than unitActor/Do
+
+-- | String representation used with abstract symbolic domains. 
+-- We do not provide a symbolic representation of a string, hence 
+-- the string domain is constructed from the constant propagation domain 
+-- that was extended with a top value.
+type SymStr = SchemeString (CP String)
 
 
+-- Rendering 'SymActorValue' a proper abstraction for the Scheme domain
 
--- type AdrK = Type -> Type
+type instance VarDom (SymActorValue k adr) = SymActorValue k adr
+type instance VecDom (SymActorValue k adr) =     PIVector (SymActorValue k adr)
+                                                          (SymActorValue k adr)
+                                                          (SymActorValue k adr)
+                                                          Str
+                                                          (SymActorValue k adr)
+type instance PaiDom (SymActorValue k adr) = TL.TopLifted (SimplePair (SymActorValue k adr))
 
--- type Str = SchemeTopLifted (SchemeString (CP String))
-
--- type ActorValue' k (adr :: AdrK) sym = PairedSymbolic 
---    (SchemeTopLifted (CPActorValue Str adr k Exp))  Exp k sym
-
--- -- | Actor value with standard Scheme addresses
--- type ActorValue k sym = ActorValue' k (SchemeAdr Exp) sym
-
--- -- | A variant of the actor value with the same address for every type of address
--- type ActorValueUnified k (adr :: Type -> Type) sym = PairedSymbolic 
---    (CPActorValue Str adr k Exp)  Exp k sym
-
--- type instance VarDom (ActorValue' k adr sym) = ActorValue' k adr sym
--- type instance VecDom (ActorValue' k adr sym) = PIVector (ActorValue' k adr sym)
---                                                         (ActorValue' k adr sym)
---                                                         (ActorValue' k adr sym)
---                                                         Str
---                                                         (ActorValue' k adr sym)
--- type instance PaiDom (ActorValue' k adr sym) = TL.TopLifted (SimplePair (ActorValue' k adr sym))
--- -- type instance StrDom (ActorValue' k adr sym) = SchemeString (CP String) 
-
--- type family ForAllAdr (c :: [Type -> Constraint]) v :: Constraint where   
---    ForAllAdr '[] v = () 
---    ForAllAdr (c ': cs) v = (c (Adr v), ForAllAdr cs v)
-
--- -- TODO: this is actually from `maf2-scv` in `Domain.Symbolic.CPDomain` which 
--- -- reflects `ActorValue` perhaps we should use that instead.
--- instance (Show k, Ord k, Eq sym, Ord sym, ForAllAdr '[Show, Eq, Ord] (ActorValue' k adr sym)) => StringDomain (SchemeString (CP String))
---                                                                                                               {- bln -} (ActorValue' k adr sym)
---                                                                                                               {- int -} (ActorValue' k adr sym)
---                                                                                                               {- chr -} (ActorValue' k adr sym)  where
---    length = (length @_ @(CP Bool) @(CP Integer) @(CP Char) . sconst) >=> (return . mkLeft . SchemeTopLifted . TL.Value . insertInt)
---    append s1 s2 = SchemeString <$> append @_ @(CP Bool) @(CP Integer) @(CP Char) (sconst s1) (sconst s2)
---    ref s i = case (getTopLifted $ leftValue i) of 
---                TL.Value v -> mkLeft . SchemeTopLifted . TL.Value . insertChar <$> (ref @_ @(CP Bool) @(CP Integer) @(CP Char) (sconst s) =<< integers v)
---                TL.Top     -> return $ mkLeft $ SchemeTopLifted  $ TL.Value $ insertChar $ top
---    stringLt s1 s2  = mkLeft . SchemeTopLifted . TL.Value . insertBool <$> stringLt @_ @_ @(CP Integer) @(CP Char) (sconst s1) (sconst s2)
---    toNumber = (toNumber @_ @(CP Bool) @_ @(CP Char) . sconst) >=> (return . mkLeft . SchemeTopLifted . TL.Value . insertInt)
---    set = undefined
---    makeString = undefined
+-- TODO: this is actually from `maf2-scv` in `Domain.Symbolic.CPDomain` which 
+-- reflects `ActorValue` perhaps we should use that instead.
+instance {-# OVERLAPPING #-} StringLattice (SchemeString (CP String)) (SymActorValue k adr) (SymActorValue k adr) (SymActorValue k adr) where
+  length = undefined
+  append = undefined
+  ref = undefined
+  set = undefined
+  stringLt = undefined
+  toNumber = undefined
+  makeString = undefined
+  topString = undefined
+   -- length = (length @_ @v @v @v . sconst) >=> (return . mkLeft . SchemeTopLifted . TL.Value . Domain.inject)
+   -- append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
+   -- ref s i = case (getTopLifted $ leftValue i) of 
+   --             TL.Value v -> mkLeft . SchemeTopLifted . TL.Value . insertChar <$> (ref (sconst s) =<< integers v)
+   --             TL.Top     -> return $ mkLeft $ SchemeTopLifted  $ TL.Value $ insertChar $ top
+   -- stringLt s1 s2  = mkLeft . SchemeTopLifted . TL.Value . insertBool <$> stringLt (sconst s1) (sconst s2)
+   -- toNumber = (toNumber . sconst) >=> (return . mkLeft . SchemeTopLifted . TL.Value . insertInt)
+   -- set = undefined
+   -- makeString = undefined
