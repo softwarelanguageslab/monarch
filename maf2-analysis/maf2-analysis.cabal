@@ -102,6 +102,7 @@ library
       Benchmark.Python.Programs
       Benchmark.Scheme.Programs
       Control.Fixpoint.WorkList
+      Control.Monad.Choice
       Control.Monad.Cond
       Control.Monad.Layer
       Control.Monad.State.IntPool

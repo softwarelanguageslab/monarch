@@ -71,7 +71,7 @@ import qualified Syntax.Ide as Ide
 ------------------------------------------------------------
 
 newtype ApplyT v m a = ApplyT {runApplyT' :: ReaderT (Cmp -> m v) m a}
-                     deriving (Applicative, Functor, Monad, MonadJoinable, MonadEscape)
+                     deriving (Applicative, Functor, Monad, MonadJoinable, MonadChoice v, MonadEscape)
 
 instance MonadLayer (ApplyT v) where
    lowerM f m = ApplyT $ ReaderT (f . (runReaderT . runApplyT') m)

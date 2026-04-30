@@ -7,7 +7,7 @@
 module Analysis.Monad.Join (
     JoinT(..),
     NonDetT,
-    SetNonDetT, 
+    SetNonDetT,
     runJoinT,
     runNonDetT,
     runSetNonDetT,
@@ -17,6 +17,7 @@ module Analysis.Monad.Join (
 import Lattice.Class
 
 import Control.Monad.Join
+import Control.Monad.Choice
 import Control.Monad.Layer
 import ListT
 
@@ -27,6 +28,7 @@ import Analysis.Monad.Cache
 import Lattice.BottomLiftedLattice (BottomLifted(..))
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Domain.Core.BoolDomain (BoolLattice)
 
 --
 -- JoinT
@@ -44,6 +46,8 @@ instance (Monad m) => MonadJoinable (JoinT m) where
    mjoin (JoinT ma) = JoinT . liftA2 join ma . runJoinT'
 instance (Monad m) => MonadBottom (JoinT m) where
    mbottom = JoinT $ return Bottom
+instance (BoolLattice b, Monad m) => MonadChoice b (JoinT m) where
+    choice b = cond (pure b)
 
 -- Standard monad implementations
 instance (Functor m) => Functor (JoinT m) where
@@ -93,6 +97,8 @@ instance (Monad m) => MonadJoinable (NonDetT m) where
    mjoin (NonDetT ma) (NonDetT mb) = NonDetT $ ma `mplus` mb
 instance (Monad m) => MonadBottom (NonDetT m) where
    mbottom = NonDetT C.mzero
+instance (BoolLattice b, Monad m) => MonadChoice b (NonDetT m) where
+    choice b = cond (pure b)
 
 runNonDetT :: Monad m => NonDetT m a -> m [a]
 runNonDetT (NonDetT ma) = uncons ma >>= fix'
@@ -112,7 +118,7 @@ newtype SetNonDetT m a = SetNonDetT  { getSetNonDetT :: (ListT m a) }
 instance (MonadCache m,  Monad m) => MonadCache (SetNonDetT m) where
    type Key (SetNonDetT m) k = Key (ListT m) k
    type Val (SetNonDetT m) v = Val m (Set v)
-   type Base (SetNonDetT m) = Base (ListT m) 
+   type Base (SetNonDetT m) = Base (ListT m)
    key = upperM . key
    val :: forall v . Val m (Set v) -> SetNonDetT m v
    val v = SetNonDetT (ListT $ val @m @(Set v) v >>= uncons . ListT.fromFoldable . Set.toList)

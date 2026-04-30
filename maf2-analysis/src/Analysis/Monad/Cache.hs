@@ -29,6 +29,7 @@ import Data.Kind (Type)
 import Analysis.Monad.Taint (MayEscapeTaintedT (..), TaintM)
 import Lattice.Tainted (Tainted)
 import Control.Monad.Join (MonadJoinable(..))
+import Control.Monad.Choice
 
 ---
 --- MonadCache typeclass
@@ -139,6 +140,9 @@ instance MonadCache m => MonadCache (ListT m) where
 instance (MonadJoinable m) => MonadJoinable (CacheT m) where
    {-# INLINE mjoin #-}
    mjoin (CacheT ma) (CacheT mb) = CacheT $ IdentityT $ mjoin (runIdentityT ma) (runIdentityT mb)
+
+instance (MonadChoice b m) => MonadChoice b (CacheT m) where 
+    choice b (CacheT ma) (CacheT mb) = CacheT $ IdentityT $ choice b (runIdentityT ma) (runIdentityT mb)
 
 
 deriving instance (Ord k, Ord v, MonadCache m) => MonadCache (MapT k v m)

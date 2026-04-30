@@ -25,7 +25,6 @@ import Control.Monad.Identity (IdentityT (..))
 import Lattice.Split (SplitLattice)
 import Lattice.ConstantPropagationLattice (CP)
 import Control.Monad.Reader (ReaderT (runReaderT, ReaderT))
-import Debug.Trace (traceShow)
 import GHC.Generics
 import Control.DeepSeq
  

@@ -25,7 +25,8 @@ module Analysis.SimpleActor.Monad
     SimpleActorContext(..),
     MonadModules(..),
     runModuleCtxT,
-    MailboxLabel(..)
+    MailboxLabel(..),
+    MonadChoice(..)
   )
 where
 
@@ -58,6 +59,7 @@ import Domain.Actor
 import Analysis.Actors.Monad (MonadActorLocal)
 import Control.DeepSeq
 import GHC.Generics
+import Control.Monad.Choice
 -- import Analysis.Monad.AbstractCount (MonadAbstractCount)
 import Data.Kind
 
@@ -151,6 +153,7 @@ class MonadMailbox e ref v m | m -> e ref v where
     -- in the mailbox.
     recv :: Exp -> Env v -> m a
 
+
 type MonadActor v k m =
   (MonadSpawn v k m,
    MonadActorLocal v m,
@@ -202,6 +205,7 @@ type PrimM' e v k m =
     SchemeDomainM Exp v m,
     ActorDomain v,
     EqualLattice v,
+    MonadChoice v m,
     Show v,
     -- SymbolicM (Adr v) m v,
     MonadIO m,

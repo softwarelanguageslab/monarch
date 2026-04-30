@@ -9,12 +9,13 @@ import Analysis.Monad.ComponentTracking (ComponentTrackingM)
 import qualified Analysis.Monad.ComponentTracking as CT
 import Analysis.Monad.Map (MapM (..))
 import Control.Monad.Escape (MonadEscape (..))
-import Control.Monad.Identity (IdentityT (IdentityT))
+import Control.Monad.Identity (IdentityT (..))
 import Control.Monad.Join (MonadJoinable, MonadJoin)
 import Control.Monad.Layer (MonadLayer(..))
 import Analysis.Monad.WorkList (WorkListM(..), iterateWL)
 import Control.Monad.Reader
 import Lattice.Class (Joinable)
+import Control.Monad.Choice (MonadChoice (..))
 
 -- | Type of Kleisli arrows, distinct from `Kleisli` newtype from
 -- the standard library.
@@ -31,6 +32,8 @@ class MonadFixpoint m b c | m -> b c where
 -- |  ModX fixpoint monad transformer
 newtype FixT b c m a = FixT {runFixT' :: IdentityT m a}
   deriving (MonadCache, MonadTrans, MonadLayer, Monad, Applicative, Functor, MonadJoinable, MonadEscape)
+instance (MonadChoice bool m) => MonadChoice bool (FixT b c m) where 
+    choice b ma mb = FixT $ IdentityT $ choice b (runIdentityT (runFixT' ma)) (runIdentityT (runFixT' mb))
 
 runFixT :: forall m b c. (Ord c, MonadCache m, Joinable (Val m c), MapM (Key m b) (Val m c) (Base m)) => (b -> FixT b c m c) -> Key m b -> Base m ()
 runFixT f kb = cache' @(FixT b c m) @b kb f
