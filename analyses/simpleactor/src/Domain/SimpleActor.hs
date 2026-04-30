@@ -16,9 +16,6 @@ import Domain.Core.VectorDomain (PIVector)
 import qualified Lattice.TopLiftedLattice as TL
 import Domain.Core.PairDomain (SimplePair)
 import Domain.Core.StringDomain (StringLattice(..))
-import Lattice.Class (top)
-import Control.Monad
-import qualified Domain.Class as Domain
 
 -- | An address that is parameterized by the type of context 
 -- used for allocating that address.
@@ -65,8 +62,7 @@ type instance VecDom (SymActorValue k adr) =     PIVector (SymActorValue k adr)
                                                           (SymActorValue k adr)
 type instance PaiDom (SymActorValue k adr) = TL.TopLifted (SimplePair (SymActorValue k adr))
 
--- TODO: this is actually from `maf2-scv` in `Domain.Symbolic.CPDomain` which 
--- reflects `ActorValue` perhaps we should use that instead.
+-- TODO: this should actually be implemented.
 instance {-# OVERLAPPING #-} StringLattice (SchemeString (CP String)) (SymActorValue k adr) (SymActorValue k adr) (SymActorValue k adr) where
   length = undefined
   append = undefined

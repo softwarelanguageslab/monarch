@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, TypeFamilies, AllowAmbiguousTypes, DeriveFunctor #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Control.Monad.Escape (
    MonadEscape(..), 
@@ -12,8 +13,9 @@ module Control.Monad.Escape (
    fromValue
 ) where
 
-import Lattice.Class
 import Domain.Class 
+import Lattice.Class (leq, join)
+import qualified Lattice.Class as Lattice
 
 import Control.Monad.Join
 import Data.Kind (Type)
@@ -25,26 +27,25 @@ import Control.Monad.Identity (IdentityT (..))
 import Lattice.Split (SplitLattice)
 import Lattice.ConstantPropagationLattice (CP)
 import Control.Monad.Reader (ReaderT (runReaderT, ReaderT))
-import Debug.Trace (traceShow)
 import GHC.Generics
 import Control.DeepSeq
  
 -- | Monad to handle errors in the abstract domain
-class MonadEscape m where
+class MonadJoinable m => MonadEscape m where
    type Esc m
    throw :: Esc m -> m a 
-   catch :: (Joinable a) => m a -> (Esc m -> m a) -> m a
+   catch :: (Joinable m a) => m a -> (Esc m -> m a) -> m a
 
-catchOn :: (MonadEscape m, MonadJoin m, SplitLattice (Esc m), Lattice (Esc m), Joinable a) => m a -> (Esc m -> m (CP Bool), Esc m -> m a) -> m a
+catchOn :: (MonadEscape m, MonadJoin m, Lattice.BottomLattice (Esc m), Eq (Esc m), SplitLattice (Esc m), Joinable m a) => m a -> (Esc m -> m (CP Bool), Esc m -> m a) -> m a
 catchOn bdy (prd, hdl) = bdy `catch` msplitOn prd hdl throw
 
 escape :: (MonadEscape m, Domain (Esc m) e) => e -> m a 
 escape = throw . inject 
 
-orElse :: (MonadEscape m, Joinable a) => m a -> m a -> m a
+orElse :: (MonadEscape m, Joinable m a) => m a -> m a -> m a
 orElse a = catch a . const  
 
-try :: (MonadEscape m, Joinable a) => [m a] -> m a -> m a
+try :: (MonadEscape m, Joinable m a) => [m a] -> m a -> m a
 try = flip $ foldr orElse 
 
 ------------------------------------------------------------
@@ -76,12 +77,12 @@ instance Traversable (MayEscape e) where
    traverse f (Value v)     = Value <$> f v
    traverse f (MayBoth v e) = flip MayBoth e <$> f v   
 
-addError :: Joinable e => e -> MayEscape e a -> MayEscape e a
+addError :: Lattice.Joinable e => e -> MayEscape e a -> MayEscape e a
 addError e1 (Escape e2)    = Escape (e1 `join` e2)
 addError e (Value v)       = MayBoth v e
 addError e1 (MayBoth v e2) = MayBoth v (e1 `join` e2) 
 
-instance (Joinable e, Joinable a) => Joinable (MayEscape e a) where
+instance (Lattice.Joinable e, Lattice.Joinable a) => Lattice.Joinable (MayEscape e a) where
    join (Escape e1) (Escape e2)           = Escape (e1 `join` e2)
    join (Escape e) (Value v)              = MayBoth v e
    join (Escape e1) (MayBoth v e2)        = MayBoth v (e1 `join` e2)
@@ -92,7 +93,7 @@ instance (Joinable e, Joinable a) => Joinable (MayEscape e a) where
    join (MayBoth v1 e) (Value v2)         = MayBoth (v1 `join` v2) e
    join (MayBoth v1 e1) (MayBoth v2 e2)   = MayBoth (v1 `join` v2) (e1 `join` e2)
 
-instance (PartialOrder e, PartialOrder a) => PartialOrder (MayEscape e a) where 
+instance (Lattice.PartialOrder e, Lattice.PartialOrder a) => Lattice.PartialOrder (MayEscape e a) where 
     leq (Escape e1) (Escape e2) = leq e1 e2 
     leq (Escape _)  (Value _)   = False 
     leq (Escape e1) (MayBoth _ e2) = leq e1 e2
@@ -112,18 +113,18 @@ newtype MayEscapeT e (m :: Type -> Type) a = MayEscapeT { runMayEscape :: m (May
 instance (Monad m) => Functor (MayEscapeT e m) where
    fmap f (MayEscapeT ma) = MayEscapeT $ fmap (fmap f) ma  
 
-instance (Monad m, Joinable e) => Applicative (MayEscapeT e m) where
+instance (Monad m, Lattice.Joinable e) => Applicative (MayEscapeT e m) where
    pure = MayEscapeT . return . Value
    (<*>) = ap
 
-instance (Monad m, Joinable e) => Monad (MayEscapeT e m) where
+instance (Monad m, Lattice.Joinable e) => Monad (MayEscapeT e m) where
    return = pure
    MayEscapeT m >>= f = MayEscapeT $ m >>= \case 
                                              Escape e    -> return $ Escape e
                                              Value v     -> runMayEscape (f v) 
                                              MayBoth v e -> runMayEscape (f v) <&> addError e
 
-instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT e m) where
+instance (MonadJoin m, Lattice.Joinable e, Eq e) => MonadEscape (MayEscapeT e m) where
    type Esc (MayEscapeT e m) = e 
    throw = MayEscapeT . return . Escape
    catch (MayEscapeT m) hdl = MayEscapeT $ m >>= handle
@@ -131,16 +132,17 @@ instance (MonadJoin m, Joinable e) => MonadEscape (MayEscapeT e m) where
             handle suc@(Value _) = return suc
             handle (MayBoth v e) = handle (Value v) `mjoin` handle (Escape e)
 
-instance (Eq e, Joinable e, MonadJoinable m) => MonadJoinable (MayEscapeT e m) where
+instance (Eq e, Lattice.Joinable e, MonadJoinable m) => MonadJoinable (MayEscapeT e m) where
+    type Joinable (MayEscapeT e m) v = (Joinable m (MayEscape e v))
     mjoin (MayEscapeT ma) (MayEscapeT mb) = MayEscapeT (mjoin ma mb)
 
-instance (Joinable e, MonadBottom m) => MonadBottom (MayEscapeT e m) where 
+instance (Lattice.Joinable e, MonadBottom m) => MonadBottom (MayEscapeT e m) where 
     mbottom = MayEscapeT mbottom
 
-instance (Joinable e) => MonadTrans (MayEscapeT e) where  
+instance Lattice.Joinable e => MonadTrans (MayEscapeT e) where  
    lift = MayEscapeT . fmap Value
 
-instance (Joinable e) => MonadTransControl (MayEscapeT e) where  
+instance Lattice.Joinable e => MonadTransControl (MayEscapeT e) where  
    type LayerState (MayEscapeT e)  = () 
    type LayerResult (MayEscapeT e) = MayEscape e
    
