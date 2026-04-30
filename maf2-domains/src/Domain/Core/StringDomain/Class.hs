@@ -5,14 +5,15 @@ module Domain.Core.StringDomain.Class where
 import Lattice 
 import Domain.Class 
 import Control.Monad.AbstractM
+import qualified Control.Monad.Join as MonadJoin
 
 type StringDomain s bln int chr = (StringLattice s bln int chr, Domain s String)
 
-class (Joinable s) => StringLattice s bln int chr where
+class (Lattice.Joinable s) => StringLattice s bln int chr where
    length :: AbstractM m => s -> m int 
-   append :: AbstractM m => s -> s -> m s
-   ref :: AbstractM m => s -> int -> m chr
-   set :: AbstractM m => s -> int -> chr -> m s
+   append :: (AbstractM m, MonadJoin.Joinable m s) => s -> s -> m s
+   ref :: (AbstractM m, MonadJoin.Joinable m chr) => s -> int -> m chr
+   set :: (AbstractM m, MonadJoin.Joinable m s) => s -> int -> chr -> m s
    stringLt :: AbstractM m => s -> s -> m bln
    toNumber :: AbstractM m => s -> m int
    makeString :: AbstractM m => int -> chr -> m s

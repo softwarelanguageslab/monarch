@@ -18,7 +18,7 @@ newtype SetDictionary k v = Dct (Map k v)
 
 type SetDict k v = (Ord k, Lattice v)
 
-instance SetDict k v => Joinable (SetDictionary k v) where
+instance SetDict k v => Lattice.Joinable (SetDictionary k v) where
    join (Dct d1) (Dct d2) = Dct $ Map.unionWith join d1 d2
 
 instance SetDict k v => DictionaryDomain (SetDictionary k v) where

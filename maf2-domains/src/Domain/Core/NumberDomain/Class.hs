@@ -17,14 +17,14 @@ import qualified Domain.Core.BoolDomain.Class as Bool
 
 import Data.Kind 
 import Lattice.BottomLiftedLattice
-import Control.Monad.Join (MonadBottom(..))
+import qualified Control.Monad.Join as MonadJoin
 
 -- X-domain = X-lattice + standard domain instance
 type NumberDomain n bln       = NumberLattice n bln
 type IntDomain i bln str rea  = (Domain i Integer, IntLattice i bln str rea)
 type RealDomain r bln int     = (Domain r Double, RealLattice r bln int)
 
-class (Joinable n, Bool.BoolLattice bln) => NumberLattice n bln where
+class (Lattice.Class.Joinable n, Bool.BoolLattice bln) => NumberLattice n bln where
    isZero :: AbstractM m => n -> m bln
    random :: AbstractM m => n -> m n
    plus :: AbstractM m => n -> n -> m n
@@ -56,19 +56,19 @@ class (NumberLattice r bln) => RealLattice r bln int where
    ceiling :: AbstractM m => r -> m r
    floor :: AbstractM m => r -> m r
    round :: AbstractM m => r -> m r
-   log :: AbstractM m => r -> m r
+   log :: (AbstractM m, MonadJoin.Joinable m r) => r -> m r
    sin :: AbstractM m => r -> m r
-   asin :: AbstractM m => r -> m r
+   asin :: (AbstractM m, MonadJoin.Joinable m r) => r -> m r
    cos :: AbstractM m => r -> m r
-   acos :: AbstractM m => r -> m r
+   acos :: (AbstractM m, MonadJoin.Joinable m r) => r -> m r
    tan :: AbstractM m => r -> m r
    atan :: AbstractM m => r -> m r
-   sqrt :: AbstractM m => r -> m r
+   sqrt :: (AbstractM m, MonadJoin.Joinable m r) => r -> m r
 
 instance (NumberLattice a bln) => NumberLattice (BottomLifted a) bln where 
-   isZero Bottom    = mbottom
+   isZero Bottom    = MonadJoin.mbottom
    isZero (Value a) = isZero a
-   random Bottom    = mbottom
+   random Bottom    = MonadJoin.mbottom
    random (Value a) = Value <$> random @_ @bln a
    plus = mapBL (plus @_ @bln) 
    minus = mapBL (minus @_ @bln) 
@@ -83,11 +83,11 @@ instance (NumberLattice a bln) => NumberLattice (BottomLifted a) bln where
    le = mapBLBool le
 
 mapBL :: AbstractM m => (t1 -> t2 -> m a) -> BottomLifted t1 -> BottomLifted t2 -> m (BottomLifted a)
-mapBL _ Bottom _ = mbottom
-mapBL _ _ Bottom = mbottom
+mapBL _ Bottom _ = MonadJoin.mbottom
+mapBL _ _ Bottom = MonadJoin.mbottom
 mapBL f (Value a) (Value b) = Value <$> f a b
 
 mapBLBool :: AbstractM m => (t1 -> t2 -> m a) -> BottomLifted t1 -> BottomLifted t2 -> m a
 mapBLBool f (Value a) (Value b) = f a b 
-mapBLBool _ Bottom _ = mbottom
-mapBLBool _ _ Bottom = mbottom
+mapBLBool _ Bottom _ = MonadJoin.mbottom
+mapBLBool _ _ Bottom = MonadJoin.mbottom

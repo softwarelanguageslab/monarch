@@ -23,6 +23,7 @@ import Lattice.BottomLiftedLattice (BottomLifted, joinWithBL, joinsBL)
 import qualified Lattice.BottomLiftedLattice as BL
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
+import qualified Control.Monad.Join as MonadJoin
 
 -- | A dictionary that only works for keys from a CP domain 
 data CPDictionary k v = CPDict (Set k) (Map k v) (BottomLifted v)   
@@ -77,7 +78,7 @@ instance CPDict k v => DictionaryDomain (CPDictionary k v) where
    empty :: CPDictionary k v
    empty = CPDict Set.empty Map.empty BL.Bottom 
 
-   lookup :: AbstractM m => CP k -> CPDictionary k v -> m v
+   lookup :: (AbstractM m, MonadJoin.Joinable m v) => CP k -> CPDictionary k v -> m v
    lookup _ (CPDict _ _ BL.Bottom) = escape KeyNotFound 
    lookup (Constant key) (CPDict kys dct _)
       | Set.member key kys = return (dct ! key)

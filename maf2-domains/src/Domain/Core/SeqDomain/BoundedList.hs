@@ -24,7 +24,7 @@ data BoundedList a = BoundedList {
    elements  :: [a]
 } deriving (Eq, Ord, Show)
 
-instance (BottomLattice a, Joinable a) => Joinable (BoundedList a) where
+instance (BottomLattice a, Lattice.Class.Joinable a) => Lattice.Class.Joinable (BoundedList a) where
    join l1 l2 = BoundedList {
       length    = join (length l1) (length l2),
       elements  = zipWithLongest (\a b -> join (maybeBot a) (maybeBot b)) (elements l1) (elements l2)
@@ -33,7 +33,7 @@ instance (BottomLattice a, Joinable a) => Joinable (BoundedList a) where
 instance BottomLattice (BoundedList a) where   
    bottom = BoundedList bottom []
 
-ref :: forall bln i a m . (NumberDomain i bln, BoolDomain bln, Domain i Int, Joinable a, BottomLattice a, AbstractM m) => BoundedList a -> i -> m a
+ref :: forall bln i a m . (NumberDomain i bln, BoolDomain bln, Domain i Int, Control.Monad.Join.Joinable m a, BottomLattice a, AbstractM m) => BoundedList a -> i -> m a
 ref (BoundedList length elements) i
       | length == bottom = mbottom
       | otherwise        = rangedRef length
