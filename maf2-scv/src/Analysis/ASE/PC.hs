@@ -13,7 +13,7 @@
 --  Moreover it keeps track of the counts of each
 --  symbolic variable so that widening can occur
 --  correctly.
-module ASE.PC
+module Analysis.ASE.PC
   ( PC(..),
     emptyPC,
     mapFormula,
@@ -29,7 +29,6 @@ import Domain.Core.AbstractCount (AbstractCount (..))
 import qualified Domain.Symbolic.Path as Path
 import GHC.IO (unsafePerformIO)
 import Lattice.Class
-import qualified Lattice.Class as Lat
 import Solver.Z3
 import Symbolic.AST hiding (PC, emptyPC)
 import qualified Symbolic.SMT as SMT
@@ -52,7 +51,7 @@ globalZ3Solver = unsafePerformIO (runZ3SolverBackground @() SMT.prelude)
 
 {-# NOINLINE runGlobalZ3 #-}
 -- | Execute the given Z3 solver action in the global solver context
-runGlobalZ3 :: (Ord i, Show i) => Z3Solver i a -> a
+runGlobalZ3 :: Z3Solver i a -> a
 runGlobalZ3 = unsafePerformIO . execInZ3State globalZ3Solver
 
 ------------------------------------------------------------
@@ -79,10 +78,6 @@ instance NFData i => NFData (PC i)
 -- | Add a proposition as a conjunct to the path condition
 addConstraint :: (Ord i) => Proposition i -> PC i -> PC i
 addConstraint prop pc = pc {formulaPC = conjunction (Atomic prop) (formulaPC pc)}
-
--- | Increment the count of a symbolic variable in the path condition
-incCount :: (Ord i) => i -> PC i -> PC i
-incCount i pc = pc {countPC = Map.insertWith Lat.join i CountOne (countPC pc)}
 
 -- | Update the count of a path condition
 updateCount :: (Map i AbstractCount -> Map i AbstractCount) -> PC i -> PC i
@@ -125,7 +120,7 @@ instance BottomLattice (PC i) where
   bottom = emptyPC
 
 -- | Run the monadic stack required for SMT solving.
-run :: (Ord i, Show i) => Map i AbstractCount -> AbstractCountT i AbstractCount (Z3Solver i) a -> a
+run :: Map i AbstractCount -> AbstractCountT i AbstractCount (Z3Solver i) a -> a
 run count =
   -- Note on the usage of @unsafePerformIO@: this is safe since the solver will
   -- return the same answer (sat or unsat) for a given formula given that the
@@ -150,7 +145,7 @@ instance (Eq i, Ord i, Show i) => PartialOrder (PC i) where
 
 -- | Faster implementation for @leq@ that looks at the syntactic similarities between
 -- the path constraints instead of computing the entailment using a SMT solver
-leqFast :: (Ord i, Eq i) => PC i -> PC i -> Bool
+leqFast :: (Ord i) => PC i -> PC i -> Bool
 leqFast pc1 pc2 = leq (formulaPC pc1) (formulaPC pc2)
               && leq (underconstrainedPC pc1) (underconstrainedPC pc2)
               && leq (countPC pc1) (countPC pc2)

@@ -29,6 +29,8 @@ source-repository head
 
 library
   exposed-modules:
+      Analysis.ASE.PC
+      Analysis.ASE.SymbolicVariable
       Analysis.Contracts.Mailbox
       Analysis.Contracts.Semantics
       Analysis.Symbolic.Monad

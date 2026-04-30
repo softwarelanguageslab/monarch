@@ -1,0 +1,51 @@
+{-# LANGUAGE DeriveGeneric #-}
+module Analysis.ASE.SymbolicVariable(SymbolicVariable(..), symbolicVariable, adaptModel, discardContext, removeContextPC, removeContextPC', PC, SymbolicCountMap) where
+
+import Syntax.Span
+import qualified Analysis.ASE.PC as ASE.PC
+import Domain.Core.AbstractCount (AbstractCount)
+import Symbolic.AST (MapVariables(..))
+import GHC.Generics
+import Control.DeepSeq (NFData)
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+-- | A symbolic variable is derived from the location of @input@ expressions
+-- and an optional context based on the model it has been sovled for.
+data SymbolicVariable = SymbolicVariable Span PC
+   deriving (Ord, Eq, Generic)
+instance NFData SymbolicVariable
+instance Show SymbolicVariable where
+   show (SymbolicVariable span' _) = "x@" ++ show span'
+   
+-- | Create a symbolic variable with the given context
+symbolicVariable :: Span -> PC -> SymbolicVariable 
+symbolicVariable x = SymbolicVariable x . removeContextPC
+
+-- | Remove the optional context from the symbolic variable
+discardContext :: SymbolicVariable -> SymbolicVariable
+discardContext (SymbolicVariable s _) = SymbolicVariable s ASE.PC.emptyPC
+
+-- | Add a context to an existing symbolic variable, but 
+-- discard the context from the symbolic variables in the path constraint
+addContext :: SymbolicVariable -> PC -> SymbolicVariable
+addContext (SymbolicVariable s _) = SymbolicVariable s . removeContextPC
+
+-- | Remove the context from symbolic variables in the path constraint
+removeContextPC :: PC -> PC 
+removeContextPC = ASE.PC.discardUnderconstrained . ASE.PC.discardCount . ASE.PC.mapFormula (Symbolic.AST.mapVariables discardContext)
+
+
+-- | Same as @removeContextPC@ but does not remove the underconstrained variables nor the count
+removeContextPC' :: PC -> PC
+removeContextPC' = mapVariables discardContext
+
+-- | Adapt a model so that the symbolic variables share the given context
+adaptModel :: PC -> Map SymbolicVariable v -> Map SymbolicVariable v
+adaptModel pc = Map.mapKeys (`addContext` pc)
+
+-- | Path contraints for formulas containing @SymbolicVariable@s
+type PC = ASE.PC.PC SymbolicVariable
+
+-- | Type of mapping of symbolic variables to their abstract counts
+type SymbolicCountMap = Map SymbolicVariable AbstractCount

@@ -16,9 +16,7 @@ import Domain.Core.VectorDomain (PIVector)
 import qualified Lattice.TopLiftedLattice as TL
 import Domain.Core.PairDomain (SimplePair)
 import Domain.Core.StringDomain (StringLattice(..))
-import Lattice.Class (top)
-import Control.Monad
-import qualified Domain.Class as Domain
+import qualified Analysis.ASE.SymbolicVariable as ASE
 
 -- | An address that is parameterized by the type of context 
 -- used for allocating that address.
@@ -46,7 +44,7 @@ type Str = SchemeString (CP String)
 -- It is parameterized by a context type "k" and an address type "adr".
 type SymActorValue :: Type -> AdrK -> Type
 type SymActorValue k (adr :: AdrK) = 
-    PairedSymbolic (SchemeTopLifted (CPActorValue SymStr adr k Exp)) Exp k () -- TODO: other type for sym than unitActor/Do
+    PairedSymbolic (SchemeTopLifted (CPActorValue SymStr adr k Exp)) Exp k ASE.SymbolicVariable
 
 -- | String representation used with abstract symbolic domains. 
 -- We do not provide a symbolic representation of a string, hence 
