@@ -150,7 +150,7 @@ $(makeLenses ''Turn)
 -- Monads
 ------------------------------------------------------------
 
--- The analysis basically consists of three fixpoints: 
+-- The analysis consists of three fixpoints: 
 --
 -- * A fixpoint over intra-actor procedural calls which is 
 -- necessary because internal calls can be recursive. 

@@ -26,7 +26,6 @@ module Analysis.SimpleActor.Monad
     MonadModules(..),
     runModuleCtxT,
     MailboxLabel(..),
-    MonadChoice(..)
   )
 where
 

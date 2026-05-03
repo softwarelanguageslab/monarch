@@ -13,8 +13,6 @@ module Analysis.Symbolic.Monad(
    runWithFormulaT,
    evalWithFormulaT,
    evalWithWidenedFormulaT,
-   choice,
-   choices,
    -- Discarding formulas
    DiscardFormulaT,
    runDiscardFormulaT
@@ -37,6 +35,7 @@ import Analysis.Monad (MonadCache(..))
 import Control.Monad.Identity (IdentityT (runIdentityT))
 import Analysis.Monad.AbstractCount (MonadAbstractCount)
 import Domain.Core.AbstractCount (AbstractCount)
+import Control.Monad.Choice
 
 -- | Monad that keeps track of a path condition
 class (Monad m) => MonadPathCondition i m v | m -> v i where
@@ -49,41 +48,6 @@ class (Monad m) => MonadPathCondition i m v | m -> v i where
    -- | Integrate the given path condition in the current one
    integrate :: PC i -> m ()
 
--- | Choose between the two branches non-deterministically
-choice :: (SymbolicM i m v, MonadJoin m, BoolDomain v, Joinable b) => m v -> m b -> m b -> m b
-choice mv mcsq malt = mv >>= (\v -> mjoin (checkTrue v) (checkFalse v))
-   where -- Below you find a way of checking whether the condition is true or false 
-         -- depending on the abstract value and the current path condition.
-         --
-         -- This might seem a bit convoluted at first but the distinction between the different
-         -- cases is rather important. We discuss the `checkTrue` case in detail, the `checkFalse`
-         -- case is symmetric.
-         -- 
-         -- (1) the first case checks whether the condition is true and whether it is possible
-         -- that (according to the abstract values) it is false too. If not, this case will 
-         -- only extend the path condition and execute the consequent. The path condition
-         -- **must** be extended with the condition (even though it might be trivial)
-         -- for checking path sensitive or relational constraints in the future. 
-         -- (2) the second check handles the case where the abstract domain provides
-         -- insufficient information about the truth value of the condition. Here,
-         -- a symbolic solver is invoked to check whether the path leading up to the 
-         -- current program state is feasible in combination with the current condition.
-         -- (3) otherwise the condition was not true and the consequent does not need to be
-         --  executed.
-         checkTrue v
-            | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
-            | isTrue  v = extendPc (assertTrue v) >> ifFeasible mcsq
-            | otherwise = mbottom
-         checkFalse v
-            | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
-            | isFalse v = extendPc (assertFalse v) >> ifFeasible malt
-            | otherwise = mbottom
-
--- | Same as `conds` but keeps track of path conditions
-choices :: (SymbolicM i m v, MonadJoin m, BoolDomain v, Joinable b)
-        => [(m v, m b)] -> m b -> m b
-choices clauses els =
-   foldr (uncurry choice) els clauses
 
 -- | Executes the given action when the path condition is feasible
 -- otherwise returns `mbottom`
@@ -140,6 +104,36 @@ evalWithFormulaT pc = fmap fst . runWithFormulaT pc
 
 runFormulaT :: FormulaT i v m a -> m (a, PC i)
 runFormulaT = flip runStateT (Set.singleton Empty) . runFormulaT'
+
+instance (MonadJoinable m, MonadBottom m, FormulaSolver i m, MonadAbstractCount i AbstractCount m, SymbolicValue v i, BoolLattice v, Ord i) => MonadChoice v (FormulaT i v m) where
+    -- | Choose between the two branches non-deterministically
+    choice cndv mcsq malt = mjoin (checkTrue cndv) (checkFalse cndv)
+       where -- Below you find a way of checking whether the condition is true or false 
+             -- depending on the abstract value and the current path condition.
+             --
+             -- This might seem a bit convoluted at first but the distinction between the different
+             -- cases is rather important. We discuss the `checkTrue` case in detail, the `checkFalse`
+             -- case is symmetric.
+             -- 
+             -- (1) the first case checks whether the condition is true and whether it is possible
+             -- that (according to the abstract values) it is false too. If not, this case will 
+             -- only extend the path condition and execute the consequent. The path condition
+             -- **must** be extended with the condition (even though it might be trivial)
+             -- for checking path sensitive or relational constraints in the future. 
+             -- (2) the second check handles the case where the abstract domain provides
+             -- insufficient information about the truth value of the condition. Here,
+             -- a symbolic solver is invoked to check whether the path leading up to the 
+             -- current program state is feasible in combination with the current condition.
+             -- (3) otherwise the condition was not true and the consequent does not need to be
+             --  executed.
+             checkTrue v
+                | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
+                | isTrue  v = extendPc (assertTrue v) >> ifFeasible mcsq
+                | otherwise = mbottom
+             checkFalse v
+                | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
+                | isFalse v = extendPc (assertFalse v) >> ifFeasible malt
+                | otherwise = mbottom
 
 ----------------------------------------------------------------------
 -- Discard path constraints

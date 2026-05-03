@@ -44,6 +44,7 @@ import Lattice.Class (bottom)
 import Analysis.Scheme.Monad
 import Control.Monad.Trans.Identity
 import Lattice.Equal
+import Control.Monad.Choice
 
 -- TODO: we are replacing the @cond@ operation 
 -- here in order to track conditions symbolically, 
@@ -55,7 +56,6 @@ import Lattice.Equal
 -- is required for its implementation.
 import Analysis.Store (Store)
 import qualified Analysis.Store as Store
-import Lattice.ConstantPropagationLattice (CP)
 import Syntax.FV
 import Analysis.SimpleActor.Primitives (SimpleActorPrim(Prm), SimpleActorPrimitive(..))
 import Lattice (Joinable)
@@ -91,7 +91,7 @@ runApplyT r = flip runReaderT r . runApplyT'
 -- Evaluation
 ------------------------------------------------------------
 
-terminate :: EvalM e v k m => m a 
+terminate :: EvalM e v k m => m a
 terminate = mbottom
 
 showIfBot :: EvalM e v k m => String -> v -> m v
@@ -115,8 +115,9 @@ eval'' rec e@(AppQual namespace funName es s) = do
    v1 <- eval' rec name
    vs <- mapM (eval' rec) es
    apply rec e v1 vs
-eval'' rec (Ite e1 e2 e3 _) =
-   cond (eval' rec e1) (eval' rec e2) (eval' rec e3)
+eval'' rec (Ite e1 e2 e3 _) = do
+   result <- eval' rec e1
+   choice result (eval' rec e2) (eval' rec e3)
 eval'' _rec (Spawn e _) =
    liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
 eval'' _ (Terminate _) = terminate $> nil
@@ -166,16 +167,17 @@ eval'' _ e = error $  "unsupported expression: " ++ show e
 eval' :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> Exp -> m v
 eval' = eval''
 
-trySend :: PrimM e v k m => v -> v -> m ()
-trySend ref msg =
-   cond   (fromBL @(CP Bool) (isActorRef ref))
-          (mjoinMap (flip send msg) (arefs' ref))
+trySend :: forall e v k m . PrimM e v k m => v -> v -> m ()
+trySend ref msg = do
+   result <- fromBL @v (isActorRef ref)
+   choice result
+          (mjoinMap (`send` msg) (arefs' ref))
           (escape NotAnActorReference)
 
 apply :: EvalM e v k m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
-apply rec e v vs = conds
-   [(pure (isClo v), mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
-    (pure (isPrim v), mjoinMap (\nam -> applyPrimitive rec nam e vs) (prims v))]
+apply rec e v vs = choices
+   [(isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
+    (isPrim v, mjoinMap (\nam -> applyPrimitive rec nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))
 applyClosure :: EvalM e v k m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e(lam@(Lam prs _ _), env) rec vs =
@@ -218,6 +220,7 @@ type MatchM v m = (
    Domain (Esc m) DomainError,
    Domain (Esc m) Error,
    StoreM (Adr v) (StoreVal v) m,
+   MonadChoice v m,
    AllocM m (DomainClass.Exp v) (Adr v),
    DomainClass.Exp v ~ Exp,
    -- Value domain constraints
@@ -232,14 +235,13 @@ type MatchM v m = (
 -- | Match a pattern against a value
 match :: forall v m . MatchM v m => Pat -> v -> m (Mapping v)
 match (IdePat nam) val = return $ Map.fromList [(nam, val)]
-match (ValuePat lit s) v =
-   -- TODO: replace @cond@ by @choice@ so that conditions are tracked symbolically
-   -- This is currently disabled because there is a bug causing some feasible paths to become infeasible.
-   cond (fromBL @(CP Bool) =<< (eql <$> injectLit lit (Literal lit s) <*> pure v))
-        (return Map.empty)
-        (escape MatchError)
-match (PairPat pat1 pat2) v =
-   cond (return $ isPaiPtr v) (pptrs v >>= derefPai (const matchPair)) (escape MatchError)
+match (ValuePat lit s) v = do
+   result <- fromBL @v =<< (eql <$> injectLit lit (Literal lit s) <*> pure v)
+   choice result
+          (return Map.empty)
+          (escape MatchError)
+match (PairPat pat1 pat2) v = do
+       choice (isPaiPtr v) (pptrs v >>= derefPai (const matchPair)) (escape MatchError)
    where matchPair vp =
             Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
                       <$> match pat1 (car vp)

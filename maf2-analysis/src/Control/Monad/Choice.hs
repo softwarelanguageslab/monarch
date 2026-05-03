@@ -1,5 +1,5 @@
 {-# LANGUAGE QuantifiedConstraints #-}
-module Control.Monad.Choice (MonadChoice(..)) where 
+module Control.Monad.Choice (MonadChoice(..), choices) where 
 import Control.Monad.Reader (ReaderT (..))
 import Control.Monad.Trans.Writer
 import Control.Monad.State
@@ -43,3 +43,7 @@ instance (MonadChoice b m) => MonadChoice b (IdentityT m) where
 
 instance (MonadChoice b m, Joinable e) => MonadChoice b (MayEscapeT e m) where
     choice b (MayEscapeT ma) (MayEscapeT mb) = MayEscapeT $ choice b ma mb
+
+choices :: (MonadChoice b m, Joinable a) => [(b, m a)] -> m a -> m a
+choices [] ma = ma 
+choices ((b, ma) : bmas) def = choice b ma (choices bmas def)
