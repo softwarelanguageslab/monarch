@@ -33,7 +33,7 @@ set -o pipefail
 set -o nounset
 
 TEST_DIR=\$(dirname "\$(realpath \$0)")
-cd $MONARCH_DIR/../
+cd $MONARCH_DIR/../../
 
 $PROPERTY_SCRIPT \$TEST_DIR/test.scm
 EOF
