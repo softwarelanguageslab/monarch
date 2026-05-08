@@ -172,6 +172,38 @@
 (define-for-syntax (syntax-loc-datum stx)
   `(loc ,(syntax-line stx) ,(syntax-column stx)))
 
+;; a `loc` value based on the line and column numbers
+(struct position-loc (line column) #:transparent)
+
+;; a `loc` value based on a label
+(struct label-loc (label) #:transparent)
+
+;; loc constructor
+(define (loc . args)
+  (cond ((null? (cdr args)) (label-loc (car args)))
+        (else (position-loc (car args) (cadr args)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Internal soft contract verification constructs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These constructs do not actually have a concrete counterpart in the semantics
+;; but are interpreted by the soft contract verifier to enhance precision or 
+;; performance.
+
+;; This constructs tells the analyzer that the expressions in the operands 
+;; are independent from another, and therefore can be analyzed in parallel
+;; with the same initial context and state.
+(define-syntax (parallel stx)
+  (syntax-parse stx
+    [(_ body ...) #'(begin body ...)])) 
+
+(define-syntax (@unchecked stx)
+  (syntax-parse stx
+    [(_ body ...) #'(body ...)]))
+
+(define (input) (random))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Actor language semantics
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -211,12 +243,10 @@
 (define-syntax (blame stx)
   (syntax-parse stx
      [(_ party extra)
-      #'(blame party)]
-     [(_ party)
         (let ((loc (syntax-loc-datum #'party)))
           #`(let ((prty party))
               (log-blame prty (quote #,loc))
-              (error (format "blame error occured, blaming party ~a" prty))))]))
+              (error (format "blame error occured, blaming party ~a at expression ~a" prty extra))))]))
 
 (define-match-expander pair
   (lambda (stx)

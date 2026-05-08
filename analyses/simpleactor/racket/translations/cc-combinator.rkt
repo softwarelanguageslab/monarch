@@ -292,7 +292,7 @@
        (instrument-meta
          `(lambda (,j ,k ,f)
             (lambda ,vs
-              ,(instrument-meta `(,(translate-aux ret) ,j ,k (,f ,@(map (lambda (arg v) (instrument-meta `(,(translate-aux arg) ,j ,k ,v))) ags vs))))))))]
+              ,(instrument-meta `(,(translate-aux ret) ,j ,k (,f ,@(map (lambda (arg v) (instrument-meta `(,(translate-aux arg) ,k ,j ,v))) ags vs))))))))]
     [(quasiquote (->d ,@κs))
      (let* ((ags (drop-right κs 1))
             (ret (last κs))
@@ -306,7 +306,7 @@
          `(lambda (,j ,k ,f)
             (lambda ,vs
               (letrec 
-                ,(map (lambda (arg v x) (list x (instrument-meta `(,(translate-aux arg) ,j ,k ,v)))) ags vs xs)
+                ,(map (lambda (arg v x) (list x (instrument-meta `(,(translate-aux arg) ,k ,j ,v)))) ags vs xs)
                ;; TODO: blame assignment is actually wrong here: a third party is needed now!
                ,(instrument-meta `((,(translate-aux ret) ,@xs) ,j ,k (,f ,@xs))))))))]
     [(quasiquote (-> ,κ1 ,κ2))

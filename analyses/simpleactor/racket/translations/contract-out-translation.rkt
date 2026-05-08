@@ -77,6 +77,8 @@
      exp]
     [(quasiquote (contract-out ,@contracts))
      (translate-contracts contracts)]
+    [(quasiquote (provide/contract ,@contracts))
+     (translate-contracts contracts)]
     [(quasiquote (provide ,@exports))
      `(parallel ,@(map translate exports))]
     [(quasiquote (,exp1 ,@exs))
