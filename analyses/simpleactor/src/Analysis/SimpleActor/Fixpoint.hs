@@ -5,12 +5,20 @@
 module Analysis.SimpleActor.Fixpoint(
     analyze,
     AnalysisState (..),
-    System (..)
+    System (..),
+    analyzeIO
 ) where
+
 
 import Control.Monad.Escape (MayEscapeT)
 import Data.Set (Set)
-import Analysis.SimpleActor.Monad (ActorError, Cmp (..), MonadMailbox (..), MonadSpawn (..), MonadDynamic (..))
+import Analysis.SimpleActor.Monad
+    ( ActorError,
+      Cmp(..),
+      MonadMailbox(..),
+      MonadSpawn(..),
+      MonadDynamic(..),
+      MonadFresh(..) )
 import Control.Monad.Reader (ReaderT, MonadReader (..))
 import Analysis.SimpleActor.Fixpoint.Common
 import Data.Map (Map)
@@ -23,17 +31,17 @@ import GHC.Generics (Generic)
 import Analysis.Monad.Environment (EnvM (..))
 import Analysis.Monad.Cache (CacheT, MonadCache (..))
 import Analysis.Monad.Map (MapM (..))
-import Analysis.Monad.Join (NonDetT, runNonDetT)
+import Analysis.Monad.Join (NonDetT)
 import Analysis.Monad.Store (StoreM)
-import Analysis.Monad (StoreM(..), WorkListT, CtxM (..), runWithComponentTracking)
+import Analysis.Monad (StoreM(..), WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis, MonadDependencyTrigger)
 import qualified Lattice.Class as Lattice
 import Data.Maybe (fromMaybe, isJust)
-import Analysis.Monad.DependencyTracking (DependencyTrackingM (..))
+import Analysis.Monad.DependencyTracking (DependencyTrackingM (..), MonadDependencyTrigger (trigger))
 import qualified Data.Set as Set
 import Analysis.Monad.Fix (lfp, runFixT)
 import qualified Data.HashMap.Lazy as HashMap
 import qualified Analysis.SimpleActor.Semantics as Semantics
-import Lattice.Class (Joinable, BottomLattice)
+import Lattice.Class (Joinable, BottomLattice, Meetable)
 import Control.Monad.Layer (MonadLayer(..))
 import Analysis.Monad.Partition (MonadPartition (..))
 import Analysis.Actors.Monad (MonadActorLocal (..))
@@ -43,12 +51,11 @@ import Syntax.Ide (Ide)
 import Analysis.Monad.Allocation (AllocM (..))
 import Control.Monad.IO.Class (MonadIO)
 import Analysis.Monad.ComponentTracking (ComponentTrackingT)
-import Control.Monad.Trans.Except (runExceptT)
 import Data.Bifunctor
 import qualified Analysis.Fixpoint as Fix
 import Domain.Actor (Pid(EntryPid))
-import Analysis.Monad.WorkList (runWithWorkList)
-import Data.Tuple.Extra (dupe)
+import Analysis.Monad.WorkList ( runWithWorkList, WorkListM )
+import Data.Tuple.Extra (dupe, (<+>))
 import qualified Analysis.Actors.Mailbox.Partitioned as MB
 import Data.Functor
 import Control.Monad ((>=>))
@@ -56,6 +63,17 @@ import Control.Monad ((>=>))
 -- These are here for the instances of each domain for the "TopLifted" value.
 import Domain.Core.PairDomain.TopLifted ()
 import Domain.Core.StringDomain.TopLifted ()
+
+import qualified Analysis.Symbolic.Monad as SCV
+import qualified Domain.SimpleActor as Domain
+import Symbolic.AST (emptyPC)
+import qualified Solver as SCV
+import Domain.Core.AbstractCount (AbstractCount)
+import Analysis.Monad.AbstractCount
+import Solver.Z3 (runZ3SolverWithPrelude)
+import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
+import qualified Analysis.Monad.WorkList as WL
+import qualified Analysis.Monad.Map as MapM
 
 ------------------------------------------------------------
 -- Shorthands
@@ -79,6 +97,12 @@ type Err = Set ActorError
 -- below unreachable.
 instance Joinable (Either e a) where
     join = error "Either is not joinable"
+
+instance BottomLattice (Either e a) where
+    bottom = error "Either does not have a bottom lattice"
+
+instance Meetable (Either e a) where
+    meet = error "Either is not meetable"
 
 ------------------------------------------------------------
 -- Monadic contexts
@@ -111,6 +135,10 @@ data State = State {
 instance Joinable State where
     join (State inbox1 outbox1) (State inbox2 outbox2) =
         State (Lattice.join inbox1 inbox2) (Lattice.join outbox1 outbox2)
+instance Meetable State where
+    meet (State _ _) (State _ _) =
+        error "NYI"
+        -- State (Lattice.meet inbox1 inbox2) (Lattice.meet outbox1 outbox2)
 instance BottomLattice State where
     bottom = State Lattice.bottom Lattice.bottom
 
@@ -140,7 +168,7 @@ data Turn = Turn {
 
 data Cnt = Become Beh | Terminated deriving (Ord, Eq, Show)
 
-cntEither :: Either Beh () -> Cnt
+cntEither :: Either Beh a -> Cnt
 cntEither = either Become (const Terminated)
 
 $(makeLenses ''System)
@@ -171,20 +199,21 @@ $(makeLenses ''Turn)
 type ProcT m = (
         -- escaping control flow, primarily used for handling errors
         MayEscapeT Err (
+        -- the path constraint is also part of the context and is cached
+        SCV.FormulaT Domain.SymVar ActorVlu (
+        -- TODO: use an actual abstract count 
+        InftyCountT Domain.SymVar AbstractCount (
         -- the evaluation context, includes a self-reference, lexical and dynamic environment.
-        ReaderT Ctx (
-        -- the context will be used as a key in the cache, and the 'MayEscape' value will be 
-        -- used as a value.
-        CacheT m
-     )))
+        ReaderT Ctx m
+     ))))
 
 -- | The key that is used for caching function call results
-type ProcKey = Key (ProcT Identity) Cmp
+type ProcKey = Key (ProcT (IntraT Identity)) Cmp
 -- | The result values of function call results in the cache
-type ProcVal = Val (ProcT Identity) ActorVlu
+type ProcVal = Val (ProcT (IntraT Identity)) ActorVlu
 
-initialProcKey :: Cmp -> Ctx -> ProcKey
-initialProcKey = (,)
+initialProcKey :: Cmp -> Ctx -> State -> ProcKey
+initialProcKey cmp ctx' st' = cmp <+> emptyPC <+> ctx' <+> st'
 
 ------------------------------------------------------------
 
@@ -198,8 +227,9 @@ type IntraT m = (
         StateT State (
         -- the intra-actor analysis is path-sensitive meaning that it tracks 
         -- inbox content independently for each path through the actor. 
-        NonDetT m
-    )))
+        NonDetT (
+        CacheT m
+    ))))
 
 ------------------------------------------------------------
 
@@ -213,7 +243,7 @@ class DepL dep where
     depL :: Prism' Dep dep
 instance DepL ActorAdr where
     depL = _StoreDep
-instance (k ~ ProcKey) => DepL k where
+instance {-# OVERLAPPABLE #-} (k ~ ProcKey) => DepL k where
     depL = _CallDep
 
 ------------------------------------------------------------
@@ -242,9 +272,8 @@ $(makeLenses ''AnalysisState)
 -- | Monad global to the analysis
 type GlobalT m = (
         StateT AnalysisState  (
-        WorkListT [ProcKey] (
-        ComponentTrackingT ProcKey m
-    )))
+        ComponentTrackingT ProcKey (
+        WorkListT [ProcKey] m)))
 
 ------------------------------------------------------------
 
@@ -254,7 +283,7 @@ type GlobalT m = (
 -- which leayer of fixpoint iteration we are working on.
 
 -- The monad for the entire analysis
-type AnalysisT m = (ProcT (IntraT (SystemT (GlobalT m))))
+type AnalysisT m = (ProcT (IntraT (IntraAnalysisT ProcKey (SystemT (GlobalT m)))))
 -- The monad stack for the intra-actor fixpoint.
 type AnalysisIntraT m = (IntraT (SystemT (GlobalT m)))
 -- The monad stack for the inter-actor fixpoint. 
@@ -265,6 +294,9 @@ type AnalysisGlobalT m = (GlobalT m)
 ------------------------------------------------------------
 -- Monad instances
 ------------------------------------------------------------
+
+instance MonadFresh ActorVlu (ProcT m) where
+    fresh _ = undefined -- TODO
 
 
 -- Intra-procedural monad instances.
@@ -342,9 +374,12 @@ instance (Monad m) => StoreM ActorAdr (StoreVal ActorVlu) (StateT AnalysisState 
     use (store . at adr . to isJust)
 
 -- Finally, we can track dependencies in the same 'AnalysisState'.
-instance (Monad m, k ~ ProcKey, DepL d) => DependencyTrackingM k d (StateT AnalysisState m) where
+instance {-# OVERLAPPING #-} (Monad m, k ~ ProcKey, DepL d) => DependencyTrackingM k d (StateT AnalysisState m) where
   register dep cmp = deps . at (review depL dep) %= Just . maybe (Set.singleton cmp) (Set.insert cmp)
   dependent dep = use (deps . at (review depL dep) . to (fromMaybe Set.empty))
+
+instance (DepL d, k ~ ProcKey, Monad m, WorkListM m k) => MonadDependencyTrigger k d (StateT AnalysisState m) where
+  trigger = dependent >=> WL.adds
 
 -- | Register a system after a inter-actor turn, and returns the registered system
 traceSystem :: Monad m => System -> AnalysisGlobalT m System
@@ -354,46 +389,52 @@ traceSystem sys = (trace %= (sys:)) $> sys
 -- Fixpoints
 ------------------------------------------------------------
 
--- | Intra-turn fixpoint: analyze a single turn of an actor.
+-- | Constraints that need to be satisfied when executing the analysis
+type AnalysisM m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m)
+
+-- | Intra-turn fixpoint: analyze a single turn of an actor, and returns a set of successor turns.
 --
 -- This is the only place where the semantics from 'Analysis.SimpleActor.Semantics' is actually called.
-intraTurn :: forall m . MonadIO m => Beh -> ActorRef -> AnalysisIntraT m ()
-intraTurn beh selfRef = lfp (runFixT @(AnalysisT m) Semantics.eval) key'
+intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> AnalysisSystemT m (Set Turn)
+intraTurn beh selfRef st = do
+        -- compute a fixpoint over the function calls within this turn
+        lfp intra key'
+        -- The set of successor turns will have been cached at the entry component
+        (Set.fromList . map (uncurry Turn . first cntEither)) . fromMaybe [] <$> MapM.get key'
     where ctx' = emptyCtx selfRef
                & env .~ (beh ^._2)
-          cmp' = ActorExp $ beh ^._1
-          key' = initialProcKey cmp' ctx'
+          cmp'  = ActorExp $ beh ^._1
+          key'  = initialProcKey cmp' ctx' st
+          intra :: ProcKey -> AnalysisSystemT m ()
+          intra k = runFixT @(AnalysisT m) Semantics.eval k
+                  & runIntraAnalysis k
 
 -- | Inter-turn fixpoint: analyze a sequence of turns of an actor 
 -- until its state (i.e., inbox and outbox) no longer changes.
-transferTurn :: MonadIO m
+transferTurn :: AnalysisM m
              => ActorRef
              -> Turn
              -> AnalysisSystemT m (Set Turn)
-transferTurn selfRef (Turn (Become beh) turnState) =  Set.fromList . map (uncurry Turn . first cntEither) <$> results
-    where results = intraTurn beh selfRef
-                  & runExceptT
-                  & flip runStateT turnState
-                  & runNonDetT
+transferTurn selfRef (Turn (Become beh) turnState) = intraTurn beh selfRef turnState
 -- Terminated actors do not generate successor turns, so we return the empty set.
 transferTurn _ (Turn Terminated _) = return Set.empty
 
-fixTurn :: MonadIO m => ActorRef -> Turn -> AnalysisSystemT m (Set Turn)
+fixTurn :: AnalysisM m => ActorRef -> Turn -> AnalysisSystemT m (Set Turn)
 fixTurn selfRef = Fix.lfp (Fix.lift $ transferTurn selfRef) . Set.singleton
 
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes. 
-transferSystem :: MonadIO m => System -> AnalysisGlobalT m System
+transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 transferSystem s@System { .. } = analyze' & flip execStateT s
         where turnState ref = State (Map.findWithDefault Lattice.bottom ref _mbs) _mbs
               initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref))) _initialBeh
-              analyze' = do 
+              analyze' = do
                 newTurns <- Map.traverseWithKey (Fix.lift . fixTurn) initialTurns
                 -- join the new turns with the old turns 
                 turns %= Lattice.join newTurns
                 -- join the outboxes of each turn with the old mailboxes
                 let newMbs = Lattice.joins $ foldMap (map (view (state . outbox)) . Set.toList . snd) $ Map.toList newTurns
                 mbs %= Lattice.join newMbs
-fixSystem :: MonadIO m => System -> AnalysisGlobalT m System
+fixSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 fixSystem = Fix.lfp (transferSystem >=> traceSystem)
 
 ------------------------------------------------------------
@@ -407,7 +448,7 @@ mainStore = Map.map VarVal $ Semantics.initialSto Semantics.allPrimitives PrrAdr
 
 -- | The environment is populated with the initial bindings for the primitive functions.
 mainEnv :: ActorEnv
-mainEnv = 
+mainEnv =
     HashMap.fromList $ map (second PrrAdr . dupe) Semantics.allPrimitives
 
 -- | Create an initial system from the expression of the main behavior. 
@@ -419,7 +460,7 @@ initialSystem mainExp = System {
     }
 
 -- | Create an empty analysis state
-emptyAnalysisState :: AnalysisState 
+emptyAnalysisState :: AnalysisState
 emptyAnalysisState = AnalysisState {
         _cache = Map.empty,
         _store = mainStore,
@@ -428,12 +469,16 @@ emptyAnalysisState = AnalysisState {
     }
 
 -- | Top-level function to analyze an actor system.
-analyze :: MonadIO m => Exp -> m (System, AnalysisState) 
-analyze mainExpr = 
-        fixSystem initSystem 
+analyze :: AnalysisM m => Exp -> m (System, AnalysisState)
+analyze mainExpr =
+        fixSystem initSystem
       & flip runStateT initState
-      & runWithWorkList 
       & runWithComponentTracking
+      & runWithWorkList
     where initSystem = initialSystem mainExpr
-          initState  = emptyAnalysisState  
+          initState  = emptyAnalysisState
 
+-- | Top-level function to analyze an actor system within the IO monad
+analyzeIO :: Exp -> IO (System, AnalysisState)
+analyzeIO mainExpr = analyze mainExpr
+                   & runZ3SolverWithPrelude

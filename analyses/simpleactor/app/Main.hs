@@ -137,11 +137,12 @@ renderTraceMailboxesToDot outDir mailboxTrace = mapM_ renderStep (zip [0..] mail
 analyze2Cmd :: InputOptions -> OutputDirOptions -> IO ()
 analyze2Cmd InputOptions { .. } OutputDirOptions { .. } = do
     ast <- loadFile' doTranslate filename
+    -- pPrint ast
     analyze2Ast ast outputDirPath
 
 analyze2Ast :: Exp -> String -> IO ()
 analyze2Ast expr outDir = do
-    output <- Fixpoint.analyze expr
+    output <- Fixpoint.analyzeIO expr
     let trace = reverse $ map Fixpoint._mbs $ Fixpoint._trace $ snd output
 
     renderTraceMailboxesToDot outDir trace

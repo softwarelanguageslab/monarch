@@ -2,7 +2,15 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 -- | The Z3 solver
-module Solver.Z3(Z3Solver, Z3SolverState, runZ3Solver, runZ3SolverWithSetup, runZ3SolverBackground, execInZ3State)  where
+module Solver.Z3(
+    Z3Solver, 
+    Z3SolverState, 
+    runZ3Solver, 
+    runZ3SolverWithSetup, 
+    runZ3SolverBackground, 
+    runZ3SolverWithPrelude,
+    execInZ3State
+    )  where
 
 import System.Process
 import System.IO
@@ -137,6 +145,10 @@ runZ3Solver m  = evalStateT (getZ3Solver $ m <* exit) Nothing
 
 runZ3SolverWithSetup :: Show i => Ord i => String -> Z3Solver i a -> IO a
 runZ3SolverWithSetup setupCode' m = evalStateT (getZ3Solver $ setup setupCode' >> m <* exit) Nothing
+
+-- | Run the Z3 solver with the default setup code from `Symbolic.SMT.prelude`.
+runZ3SolverWithPrelude :: (Show i, Ord i) => Z3Solver i a -> IO a 
+runZ3SolverWithPrelude = runZ3SolverWithSetup prelude
 
 -- | Same as @runZ3SolverWithSetup@ but the Z3 process is not terminated
 runZ3SolverBackground :: forall i . (Ord i, Show i) => String -> IO Z3SolverState

@@ -115,6 +115,8 @@ instance (Show i) => Show (Proposition i) where
 
 -- | Inductively defined formulae, these include
 -- conjunction, disjunction negation and atomic formulas.
+--
+-- 'i' is the representation of symbolic variables.
 data Formula i
   = Conjunction !(Set (Formula i))
   | Disjunction !(Set (Formula i))
@@ -145,7 +147,8 @@ disjunction f1 f2 = Disjunction $ Set.fromList [f1, f2]
 emptyFormula :: Formula i
 emptyFormula = Empty
 
--- | The path condition is an unordered disjunction of formulas
+-- | The path condition is an unordered disjunction of formulas,
+-- 'i' is the representation of symbolic variables.
 type PC i = Set (Formula i)
 
 emptyPC :: PC i

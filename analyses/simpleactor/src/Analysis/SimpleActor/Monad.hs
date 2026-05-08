@@ -26,6 +26,7 @@ module Analysis.SimpleActor.Monad
     MonadModules(..),
     runModuleCtxT,
     MailboxLabel(..),
+    MonadFresh(..)
   )
 where
 
@@ -132,6 +133,9 @@ class Monad m => MonadDynamic α m | m -> α where
    getDynamic :: m (Map String α)
    {-# MINIMAL withDynamic, getDynamic #-}
 
+-- | Generate a fresh (symbolic) value
+class MonadFresh v m | m -> v where 
+    fresh :: Span -> m v
 
 -- | Monad for spawning new processes. Each process is uniquely identified by their
 -- expression and environment.
@@ -179,6 +183,9 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox e ref v m) =>
     send v = upperM . send v
     recv expr = upperM . recv expr
 
+instance {-# OVERLAPPABLE #-} (Monad m, MonadFresh v m, MonadLayer t) => MonadFresh v (t m) where
+    fresh = upperM . fresh
+
 ------------------------------------------------------------
 -- Monad
 ------------------------------------------------------------
@@ -206,6 +213,7 @@ type PrimM' e v k m =
     EqualLattice v,
     MonadChoice v m,
     Show v,
+    MonadFresh v m,
     -- SymbolicM (Adr v) m v,
     MonadIO m,
     Show (Env v),

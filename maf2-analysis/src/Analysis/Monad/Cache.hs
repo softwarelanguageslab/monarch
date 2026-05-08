@@ -30,6 +30,7 @@ import Analysis.Monad.Taint (MayEscapeTaintedT (..), TaintM)
 import Lattice.Tainted (Tainted)
 import Control.Monad.Join (MonadJoinable(..))
 import Control.Monad.Choice
+import Control.Monad.Except (ExceptT (ExceptT), runExceptT)
 
 ---
 --- MonadCache typeclass
@@ -99,6 +100,15 @@ instance (Joinable e, Ord e, MonadCache m) => MonadCache (MayEscapeT e m) where
     val = MayEscapeT . val
     {-# INLINE run #-}
     run f = run (runMayEscape . f)
+
+instance (Ord e, MonadCache m) => MonadCache (ExceptT e m) where
+    type Key (ExceptT e m) k = Key m k
+    type Val (ExceptT e m) v = Val m (Either e v)
+    type Base (ExceptT e m) = Base m
+    key = upperM . key
+    val = ExceptT . val
+    {-# INLINE run #-}
+    run f = run (runExceptT . f)
 
 instance (TaintM t m, Ord e, Ord t, Joinable e, MonadCache m) => MonadCache (MayEscapeTaintedT t e m) where
     type Key (MayEscapeTaintedT t e m) k = Key m k

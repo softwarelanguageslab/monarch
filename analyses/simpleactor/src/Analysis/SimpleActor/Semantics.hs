@@ -155,13 +155,17 @@ eval'' _ (Var (Ide x _)) =
 eval'' _ (DynVar (Ide x _)) =
    lookupDynamic x >>= lookupVar >>= showIfBot (show x ++ " dyn not in store")
 eval'' _ (Self _) = aref <$> getSelf @v
-eval'' rec (Blame e loc) =
+eval'' rec (Blame e loc) = do
+   liftIO (putStrLn $ "blame error for " ++ show e)
    eval' rec e >>= escape . flip BlameError loc . show
 eval'' rec (Trace e _) = do
    v <- eval' rec e
    (liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) v  $> v
 eval'' rec (Error e loc) =
    eval' rec e >>= escape . flip BlameError loc . show
+eval'' rec (Parallel es _) = mjoins (map (eval' rec) es)
+eval'' _ (Loc _ _) = return nil
+eval'' _ (Input _) = undefined
 eval'' _ e = error $  "unsupported expression: " ++ show e
 
 eval' :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> Exp -> m v

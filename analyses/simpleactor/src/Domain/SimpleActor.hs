@@ -2,7 +2,10 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 -- | An actor domain based on the Scheme domain with 
 -- symbolic values.
-module Domain.SimpleActor(ActorValue, SymActorValue) where 
+module Domain.SimpleActor(
+    ActorValue,
+    SymActorValue,
+    SymVar) where 
 
 import Prelude hiding (length)
 import Lattice.ConstantPropagationLattice
@@ -39,6 +42,9 @@ type Str = SchemeString (CP String)
 ------------------------------------------------------------
 -- Domain with symbolic information
 ------------------------------------------------------------
+
+-- | The type of symbolic variables
+type SymVar = ASE.SymbolicVariable
 
 -- | Values paired with symbolic representations used in the SimpleActor language.
 -- It is parameterized by a context type "k" and an address type "adr".

@@ -45,6 +45,7 @@ library
       Benchmark.SimpleActor.Precision
       Control.Monad.Cond
       Control.Monad.Extra
+      Data.Tuple.Extra
       Data.Tuple.Syntax
       Domain.SimpleActor
       Domain.SimpleActor.Class
