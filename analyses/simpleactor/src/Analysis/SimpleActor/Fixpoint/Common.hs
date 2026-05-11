@@ -53,12 +53,16 @@ data AdrCtx = AdrCtx [Span]    -- k-cfa call sites
                      Int       -- ^ max number of elements in k-cfa
                      ActorCtx  -- ^ actor specific context sensitivity
             | InsensitiveCtx   -- context insensitive analysis
-            deriving (Ord, Eq, Show)
+            deriving (Ord, Eq, Show, Generic)
+
+instance NFData AdrCtx
 
 -- | Context specific to the actor analysis
 data ActorCtx = ActorCtx ActorRef
               | Empty
-              deriving (Ord, Eq, Show)
+              deriving (Ord, Eq, Show, Generic)
+
+instance NFData ActorCtx
 
 -- | k-cfa instance for 'SimpleActorContext'
 instance SimpleActorContext AdrCtx where

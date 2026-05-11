@@ -602,17 +602,154 @@
                   (assert (number? index))
                   (assert (< index (length l)))
                   (if (= index 0) (car l) (list-ref (cdr l) (- index 1)))))
-               (gcd (lambda (a b) (if (= b 0) a (gcd b (modulo a b)))))
-               (f (lambda (x) 5)))
-        (parallel
-         ((letrec ((xj2469 (loc 'module)) (xk2470 (loc 'importer)))
-            ((lambda (j2472 k2473 f2474)
-               (lambda (g2471)
-                 (string?/c
-                  j2472
-                  k2473
-                  (f2474 ((and/c number?/c string?/c) k2473 j2472 g2471)))))
-             xj2469
-             xk2470
-             f))
-          (input)))))))
+               (gcd (lambda (a b) (if (= b 0) a (gcd b (modulo a b))))))
+        (letrec ((ping-behavior
+                  (lambda ()
+                    (letrec ((real-self (self^)))
+                      (parametrize
+                       ((self (lambda (m) ((dyn send^) real-self m))))
+                       (receive
+                        (((cons 'ping sender)
+                          (begin
+                            (sender (cons 'pong (dyn self)))
+                            (ping-behavior)))
+                         ((cons
+                           'enhanced
+                           (cons k2469 (cons j2473 (cons 'ping sender))))
+                          (letrec ((kc2470 (k2469 j2473))
+                                   (old-send2474 (dyn send^)))
+                            (parametrize
+                             ((send^
+                               (lambda (rcv2471 msg2472)
+                                 (old-send2474
+                                  kc2470
+                                  (cons rcv2471 msg2472)))))
+                             (begin
+                               (sender (cons 'pong (dyn self)))
+                               (old-send2474 kc2470 'finish)))
+                            (ping-behavior)))))))))
+                 (pong-behavior
+                  (lambda ()
+                    (letrec ((real-self (self^)))
+                      (parametrize
+                       ((self (lambda (m) ((dyn send^) real-self m))))
+                       (receive
+                        (((cons 'pong sender)
+                          (begin
+                            (sender (cons 'ping (dyn self)))
+                            (pong-behavior)))
+                         ((cons
+                           'enhanced
+                           (cons k2476 (cons j2480 (cons 'pong sender))))
+                          (letrec ((kc2477 (k2476 j2480))
+                                   (old-send2481 (dyn send^)))
+                            (parametrize
+                             ((send^
+                               (lambda (rcv2478 msg2479)
+                                 (old-send2481
+                                  kc2477
+                                  (cons rcv2478 msg2479)))))
+                             (begin
+                               (sender (cons 'ping (dyn self)))
+                               (old-send2481 kc2477 'finish)))
+                            (pong-behavior)))))))))
+                 (ping/c
+                  (lambda (k2485 j2486 a2484)
+                    (lambda (v2487)
+                      (letrec ((result2493
+                                ((lambda (k2489 j2490 v2491)
+                                   (match
+                                    v2491
+                                    (((cons 'ping x2492)
+                                      (cons
+                                       'enhanced
+                                       (cons
+                                        (ping/cm)
+                                        (cons
+                                         j2490
+                                         (cons
+                                          'ping
+                                          ((actor? k2489 j2490) x2492)))))))))
+                                 k2485
+                                 j2486
+                                 v2487)))
+                        (if result2493 (a2484 result2493) (blame k2485))))))
+                 (ping/cm
+                  (lambda ()
+                    (lambda (j2496)
+                      (letrec ((r
+                                (lambda (trace2500)
+                                  (receive
+                                   (('finish
+                                     (begin
+                                       (if (member 'pong trace2500)
+                                         #t
+                                         (blame j2496))))
+                                    ((pair rcv2499 message2498)
+                                     (match
+                                      message2498
+                                      (((cons 'pong x2501)
+                                        (begin
+                                          ((dyn send^)
+                                           rcv2499
+                                           (cons
+                                            'enhanced
+                                            (cons
+                                             (lambda (j2503)
+                                               (letrec ((r
+                                                         (lambda (trace2507)
+                                                           (receive
+                                                            (('finish
+                                                              (begin
+                                                                (if (member
+                                                                     'ping
+                                                                     trace2507)
+                                                                  #t
+                                                                  (blame
+                                                                   j2503))))
+                                                             ((pair
+                                                               rcv2506
+                                                               message2505)
+                                                              (match
+                                                               message2505
+                                                               (((cons
+                                                                  'ping
+                                                                  x2508)
+                                                                 (begin
+                                                                   ((dyn send^)
+                                                                    rcv2506
+                                                                    (cons
+                                                                     'enhanced
+                                                                     (cons
+                                                                      (ping/cm)
+                                                                      (cons
+                                                                       j2503
+                                                                       (cons
+                                                                        'ping
+                                                                        ((actor?
+                                                                          j2503
+                                                                          j2503)
+                                                                         x2508))))))
+                                                                   (r
+                                                                    (cons
+                                                                     'ping
+                                                                     trace2507))))))))))))
+                                                 (spawn^ (r (list)))))
+                                             (cons
+                                              j2496
+                                              (cons
+                                               'pong
+                                               ((actor? j2496 j2496)
+                                                x2501))))))
+                                          (r (cons 'pong trace2500))))))))))))
+                        (spawn^ (r (list))))))))
+          (letrec ((ping
+                    (letrec ((act (spawn^ (ping-behavior))))
+                      (lambda (msg) ((dyn send^) act msg))))
+                   (pong
+                    (letrec ((act (spawn^ (pong-behavior))))
+                      (lambda (msg) ((dyn send^) act msg)))))
+            (begin
+              (ping (cons 'ping pong))
+              (sleep 2)
+              (wait-until-all-finished))))))))

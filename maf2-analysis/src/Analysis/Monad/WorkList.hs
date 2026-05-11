@@ -23,7 +23,6 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
 import Control.Monad (when)
 import Data.Functor (($>))
-import qualified Debug.Trace as Debug
 
 -------------------------------------------------------------
 --- WorkListM typeclass
@@ -58,7 +57,7 @@ runWithWorkList :: forall w cmp m a . (Monad m, WorkList w cmp) => WorkListT w m
 runWithWorkList (WorkListT m) = fst <$> runStateT m WL.empty
 
 iterateWL'' :: WorkListM m cmp => m Bool -> (cmp -> m a) -> m ()
-iterateWL'' stopEarly f = unlessM (liftA2 (||) stopEarly done) (pop >>= f >> Debug.traceShow "done" (iterateWL'' stopEarly f))
+iterateWL'' stopEarly f = unlessM (liftA2 (||) stopEarly done) (pop >>= f >> iterateWL'' stopEarly f)
 
 iterateWLInitial'' :: WorkListM m cmp => cmp -> m Bool -> (cmp -> m a) -> m ()
 iterateWLInitial'' initial stopEarly f = add initial >> iterateWL'' stopEarly f

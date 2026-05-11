@@ -43,28 +43,40 @@
   (close-output-port out))
 
 ;; Logging is handled through a singled thread so that bad interleavings
-;, between threads accessing the same file descriptor to not happen
+;, between threads accessing the same file descriptor do not happen
 (define logging-thread
-  (thread (lambda ()
-    (parameterize-break #t
-      (if *logging-output*
-        (let ((out (open-output-file *logging-output* #:exists 'truncate)))
-          ;; ensure that logging is shutdown whenever a break occurs
-          (with-handlers [(exn:break:terminate? (lambda (e) (shutdown-logging out)))]
-              (let loop ()
-                (let ((datum (thread-receive)))
-                  ;; ensure that the data are written without
-                  ;; getting interrupted by a break.
-                  (parameterize-break #f
-                      (write datum out)
-                      (newline out))
-                  ;; yield control of the thread to the scheduler
-                  ;; otherwise the new break-enabled value does not seem
-                  ;; propagate correctly and breaks remain suspended
-                  (sleep 0)
-                  (loop)))))
-          'done)))))
-          
+  (if *logging-output*
+    (thread (lambda ()
+      (parameterize-break #t
+        (if *logging-output*
+          (let ((out (open-output-file *logging-output* #:exists 'truncate)))
+            ;; ensure that logging is shutdown whenever a break occurs
+            (with-handlers [(exn:break:terminate? (lambda (e) (shutdown-logging out)))]
+                (let loop ()
+                  (let ((datum (thread-receive)))
+                    ;; ensure that the data are written without
+                    ;; getting interrupted by a break.
+                    (parameterize-break #f
+                        (write datum out)
+                        (newline out))
+                    ;; yield control of the thread to the scheduler
+                    ;; otherwise the new break-enabled value does not seem
+                    ;; propagate correctly and breaks remain suspended
+                    (sleep 0)
+                    (loop)))))
+            'done))))
+    ;; If logging was not enabled we simply return a thread that does nothing
+    ;; this does not impact performance as "thread-receive" marks the thread as 
+    ;; supended and execution will only resume whenever logging is requested.
+    ;;
+    ;; Thus, the impact of this loop is the same as if logging was enabled.
+    (thread (lambda () 
+        (call/ec (lambda (k)
+          (let loop () 
+            (with-handlers [(exn:break:terminate? (lambda (e) (k)))]
+              (thread-receive) 
+              (loop)))))))))
+            
 ;; Log the given datum to the logging output (if any is available)
 (define (log datum)
   (thread-send logging-thread datum))
@@ -242,6 +254,7 @@
 
 (define-syntax (blame stx)
   (syntax-parse stx
+     [(_ party) #'(blame party '())]
      [(_ party extra)
         (let ((loc (syntax-loc-datum #'party)))
           #`(let ((prty party))

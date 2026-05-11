@@ -23,11 +23,15 @@ import qualified Data.Set as Set
 import qualified Data.Map.Lazy as Map
 import Data.Set (Set)
 import Data.Map (Map)
+import Control.DeepSeq (NFData)
+import GHC.Generics
 
 -- | An element "a" that is partitioned by partition "p"
 -- i.e., p x a
 data Partitioned p a = Partitioned p a
-    deriving (Ord, Eq, Show)
+    deriving (Ord, Eq, Show, Generic)
+
+instance (NFData p, NFData a) => NFData (Partitioned p a)
 
 -- | Returns the value without the partition. 
 partitionedValue :: Partitioned p a -> a
@@ -46,7 +50,9 @@ partitionedPartition (Partitioned p _) = p
 -- but this is already encoded by moving the top element to the terminal element
 -- whenever 'dequeue' is called on a mailbox that has 'top' == 'bottom'.
 data Node a = Node a | Terminal
-    deriving (Ord, Eq, Show)
+    deriving (Ord, Eq, Show, Generic)
+
+instance NFData a => NFData (Node a)
 
 -- | A node with content "a" partitioned according to a partition "p", 
 -- alias for convenience.
@@ -76,7 +82,9 @@ data PartitionedGraph p a = Graph {
     -- element when serving/queuing according to a partition.
     tops     :: Set (Partitioned p (PartitionedNode p a)), -- invariant: tops ⊆ V
     bottoms  :: Set (Partitioned p (PartitionedNode p a))  -- invariant: bottoms ⊆ V
-  } deriving (Ord, Eq, Show)
+  } deriving (Ord, Eq, Show, Generic)
+
+instance (NFData p, NFData a) => NFData (PartitionedGraph p a)
 
 
 -- Point-wise join: identical to the non-partitioned mailbox as the sets of pointers, 

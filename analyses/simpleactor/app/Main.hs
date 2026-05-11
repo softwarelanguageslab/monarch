@@ -35,6 +35,9 @@ import qualified Runnables.CoreErlang as CoreErlang
 import qualified Analysis.SimpleActor.Fixpoint as Fixpoint
 import qualified Analysis.SimpleActor.Fixpoint.Common as Common
 import qualified Analysis.Actors.Mailbox.Graph.Dot as Dot
+import Criterion.Main
+import qualified Criterion.Main.Options as Criterion
+import Criterion.Types (Config(..))
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -73,7 +76,7 @@ commandParser =
     <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
     <> command "erlang"        (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
     <> command "core-erlang"   (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor"))
-    <> command "analyze2"      (info (analyze2Cmd <$> inputOptions <*> outputDirOptions) (progDesc "Analyze a program using the new fixpoint")))
+    <> command "analyze2"      (info (analyze2Cmd <$> inputOptions <*> outputDirOptions <*> switch (long "benchmark" <> help "run the analysis in benchmarking mode")) (progDesc "Analyze a program using the new fixpoint")))
 
 
 ------------------------------------------------------------
@@ -134,11 +137,14 @@ renderTraceMailboxesToDot outDir mailboxTrace = mapM_ renderStep (zip [0..] mail
         renderStep (stepNum, mbs) = do
             renderMailboxesToDot outDir ("trace_step_" ++ show stepNum ++ "_") mbs
 
-analyze2Cmd :: InputOptions -> OutputDirOptions -> IO ()
-analyze2Cmd InputOptions { .. } OutputDirOptions { .. } = do
+analyze2Cmd :: InputOptions -> OutputDirOptions -> Bool -> IO ()
+analyze2Cmd InputOptions { .. } OutputDirOptions { .. } doBenchmark = do
     ast <- loadFile' doTranslate filename
-    -- pPrint ast
-    analyze2Ast ast outputDirPath
+    if doBenchmark
+    then runMode (Criterion.Run (defaultConfig { reportFile = Just $ outputDirPath ++ "report.html", csvFile = Just $ outputDirPath ++ "report.csv" }) Criterion.Glob ["*"]) [ bench filename $ nfIO (Fixpoint.analyzeIO ast) ]
+    else do
+        pPrint ast
+        analyze2Ast ast outputDirPath
 
 analyze2Ast :: Exp -> String -> IO ()
 analyze2Ast expr outDir = do

@@ -131,6 +131,7 @@ executable simpleactor-exe
     , base >=4.7 && <5
     , concurrent-extra
     , containers
+    , criterion
     , deepseq
     , directory
     , extra

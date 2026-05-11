@@ -78,6 +78,7 @@ import qualified Analysis.ASE.SymbolicVariable as ASE
 import qualified Analysis.ASE.PC as ASE
 import Syntax.Span
 import qualified Domain.Symbolic.Class as Symbolic
+import Control.DeepSeq (NFData)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -105,9 +106,6 @@ instance Joinable (Either e a) where
 instance BottomLattice (Either e a) where
     bottom = error "Either does not have a bottom lattice"
 
-instance Meetable (Either e a) where
-    meet = error "Either is not meetable"
-
 ------------------------------------------------------------
 -- Monadic contexts
 ------------------------------------------------------------
@@ -123,6 +121,8 @@ data Ctx = Ctx {
         _ctx :: AdrCtx
     } deriving (Ord, Eq, Show, Generic)
 
+instance NFData Ctx
+
 $(makeLenses ''Ctx)
 
 emptyCtx :: ActorRef -> Ctx
@@ -135,6 +135,8 @@ data State = State {
         -- | Track the outgoing mail
         _outbox :: ActorMai
     } deriving (Ord, Eq, Show, Generic)
+
+instance NFData State
 
 instance Joinable State where
     join (State inbox1 outbox1) (State inbox2 outbox2) =
@@ -159,6 +161,8 @@ data System = System {
         _initialBeh :: Map ActorRef Beh
     } deriving (Ord, Eq, Show, Generic)
 
+instance NFData System
+
 ------------------------------------------------------------
 -- Turns and continuations
 ------------------------------------------------------------
@@ -168,9 +172,11 @@ data Turn = Turn {
     _behavior :: Cnt,
     -- | The state of the actor (its inboxes and outboxes)
     _state    :: State
-    } deriving (Ord, Eq, Show)
+    } deriving (Ord, Eq, Show, Generic)
+instance NFData Turn
 
-data Cnt = Become Beh | Terminated deriving (Ord, Eq, Show)
+data Cnt = Become Beh | Terminated deriving (Ord, Eq, Show, Generic)
+instance NFData Cnt
 
 cntEither :: Either Beh a -> Cnt
 cntEither = either Become (const Terminated)
@@ -239,7 +245,8 @@ type IntraT m = (
 
 -- | Components in the intra-actor fixpoint can depend on the results 
 -- of other components (i.e., calls) and address in the store.  
-data Dep = StoreDep ActorAdr | CallDep ProcKey deriving (Ord, Eq, Show)
+data Dep = StoreDep ActorAdr | CallDep ProcKey deriving (Ord, Eq, Show, Generic)
+instance NFData Dep
 $(makePrisms ''Dep)
 
 -- | Type class that holds whenever a type 'dep' can be projected into a 'Dep'.
@@ -267,6 +274,8 @@ data AnalysisState = AnalysisState {
         _deps  :: Map Dep (Set ProcKey),
         _trace :: [System]
     } deriving (Ord, Eq, Show, Generic)
+
+instance NFData AnalysisState
 
 $(makeLenses ''AnalysisState)
 
