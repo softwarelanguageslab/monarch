@@ -165,7 +165,7 @@ eval'' rec (Error e loc) =
    eval' rec e >>= escape . flip BlameError loc . show
 eval'' rec (Parallel es _) = mjoins (map (eval' rec) es)
 eval'' _ (Loc _ _) = return nil
-eval'' _ (Input _) = undefined
+eval'' _ e@(Input _) = fresh e
 eval'' _ e = error $  "unsupported expression: " ++ show e
 
 eval' :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> Exp -> m v

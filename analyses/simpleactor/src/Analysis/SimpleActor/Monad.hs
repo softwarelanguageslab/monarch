@@ -135,7 +135,7 @@ class Monad m => MonadDynamic α m | m -> α where
 
 -- | Generate a fresh (symbolic) value
 class MonadFresh v m | m -> v where 
-    fresh :: Span -> m v
+    fresh :: SpanOf e => e -> m v
 
 -- | Monad for spawning new processes. Each process is uniquely identified by their
 -- expression and environment.

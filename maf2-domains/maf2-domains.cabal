@@ -121,6 +121,7 @@ library
       Lattice.ListLattice
       Lattice.MapLattice
       Lattice.MaybeLattice
+      Lattice.NonOverlappingListLattice
       Lattice.PointerSetLattice
       Lattice.ProductLattice
       Lattice.ReversePowerSetLattice

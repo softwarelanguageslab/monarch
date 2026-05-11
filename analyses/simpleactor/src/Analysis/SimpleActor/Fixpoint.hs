@@ -31,7 +31,7 @@ import GHC.Generics (Generic)
 import Analysis.Monad.Environment (EnvM (..))
 import Analysis.Monad.Cache (CacheT, MonadCache (..))
 import Analysis.Monad.Map (MapM (..))
-import Analysis.Monad.Join (NonDetT)
+import Analysis.Monad.Join (SetNonDetT)
 import Analysis.Monad.Store (StoreM)
 import Analysis.Monad (StoreM(..), WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis, MonadDependencyTrigger)
 import qualified Lattice.Class as Lattice
@@ -74,6 +74,10 @@ import Solver.Z3 (runZ3SolverWithPrelude)
 import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
 import qualified Analysis.Monad.WorkList as WL
 import qualified Analysis.Monad.Map as MapM
+import qualified Analysis.ASE.SymbolicVariable as ASE
+import qualified Analysis.ASE.PC as ASE
+import Syntax.Span
+import qualified Domain.Symbolic.Class as Symbolic
 
 ------------------------------------------------------------
 -- Shorthands
@@ -227,7 +231,7 @@ type IntraT m = (
         StateT State (
         -- the intra-actor analysis is path-sensitive meaning that it tracks 
         -- inbox content independently for each path through the actor. 
-        NonDetT (
+        SetNonDetT (
         CacheT m
     ))))
 
@@ -295,8 +299,9 @@ type AnalysisGlobalT m = (GlobalT m)
 -- Monad instances
 ------------------------------------------------------------
 
-instance MonadFresh ActorVlu (ProcT m) where
-    fresh _ = undefined -- TODO
+instance Monad m => MonadFresh ActorVlu (ProcT m) where
+    -- TODO: let the semantics decide what value to annotate with the symbolic variable
+    fresh = return . flip Symbolic.var Lattice.top . flip ASE.SymbolicVariable ASE.emptyPC . spanOf
 
 
 -- Intra-procedural monad instances.
@@ -400,7 +405,7 @@ intraTurn beh selfRef st = do
         -- compute a fixpoint over the function calls within this turn
         lfp intra key'
         -- The set of successor turns will have been cached at the entry component
-        (Set.fromList . map (uncurry Turn . first cntEither)) . fromMaybe [] <$> MapM.get key'
+        (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
     where ctx' = emptyCtx selfRef
                & env .~ (beh ^._2)
           cmp'  = ActorExp $ beh ^._1
