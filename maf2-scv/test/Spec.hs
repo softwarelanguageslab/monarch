@@ -16,6 +16,7 @@ import Analysis.Monad.Store (AbstractCountM(..))
 import Domain.Core.AbstractCount (AbstractCount(CountOne))
 import Control.Monad.Trans.Writer (WriterT(..))
 import Data.Set (Set)
+import Analysis.Monad.AbstractCount (MonadAbstractCount (..))
 
 newtype EmptyCountT i m a = EmptyCountT (IdentityT m a)
                         deriving (Applicative, Monad, Functor, MonadTrans, MonadLayer)
@@ -27,6 +28,13 @@ instance (Monad m) => AbstractCountM String (EmptyCountT i m) where
    count = return $ Map.fromList (map (,CountOne) pool)
       -- A pool a variables allocated up to 100 variables
       where pool = map (("x" ++) . show) [(0 :: Integer) .. 100]
+
+instance (Monad m) => MonadAbstractCount String AbstractCount (EmptyCountT i m) where
+    countIncrement _ = return () 
+    currentCount  = const $ return $ Just CountOne
+    getCounts = count
+    putCounts = const $ return ()
+    infty = const $ return ()
 
 withSolver :: Ord i => WriterT (Set (P.Atom i)) (EmptyCountT i (Z3Solver String)) a -> IO a
 withSolver ma = runZ3Solver $ runEmptyCountT (fst <$> runWriterT (setup SMT.prelude >> ma))
