@@ -605,34 +605,29 @@
                (gcd (lambda (a b) (if (= b 0) a (gcd b (modulo a b))))))
         (letrec ((ping-behavior
                   (lambda ()
-                    (trace 'ping-behavior-created)
                     (letrec ((real-self (self^)))
                       (parametrize
                        ((self (lambda (m) ((dyn send^) real-self m))))
-                       (begin
-                         (trace 'just-before-receive)
-                         (receive
-                          (((cons 'ping sender)
-                            (begin
-                              (trace 'ping-received)
-                              (sender (cons 'pong (dyn self)))
-                              (ping-behavior)))
-                           ((cons
-                             'enhanced
-                             (cons k2469 (cons j2473 (cons 'ping sender))))
-                            (letrec ((kc2470 (k2469 j2473))
-                                     (old-send2474 (dyn send^)))
-                              (trace 'enhanced-ping-receive)
-                              (parametrize
-                               ((send^
-                                 (lambda (rcv2471 msg2472)
-                                   (old-send2474
-                                    kc2470
-                                    (cons rcv2471 msg2472)))))
-                               (begin
-                                 (sender (cons 'pong (dyn self)))
-                                 (old-send2474 kc2470 'finish)))
-                              (ping-behavior))))))))))
+                       (receive
+                        (((cons 'ping sender)
+                          (begin
+                            (sender (cons 'pong (dyn self)))
+                            (ping-behavior)))
+                         ((cons
+                           'enhanced
+                           (cons k2469 (cons j2473 (cons 'ping sender))))
+                          (letrec ((kc2470 (k2469 j2473))
+                                   (old-send2474 (dyn send^)))
+                            (parametrize
+                             ((send^
+                               (lambda (rcv2471 msg2472)
+                                 (old-send2474
+                                  kc2470
+                                  (cons rcv2471 msg2472)))))
+                             (begin
+                               (sender (cons 'pong (dyn self)))
+                               (old-send2474 kc2470 'finish)))
+                            (ping-behavior)))))))))
                  (pong-behavior
                   (lambda ()
                     (letrec ((real-self (self^)))
@@ -641,7 +636,6 @@
                        (receive
                         (((cons 'pong sender)
                           (begin
-                            (trace 'pong-receive)
                             (sender (cons 'ping (dyn self)))
                             (pong-behavior)))
                          ((cons
@@ -757,4 +751,5 @@
                       (lambda (msg) ((dyn send^) act msg)))))
             (begin
               (ping (cons 'ping pong))
+              (sleep 2)
               (wait-until-all-finished))))))))

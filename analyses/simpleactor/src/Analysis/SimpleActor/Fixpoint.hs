@@ -25,7 +25,6 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Lens
 import Control.Monad.State (StateT (runStateT), execStateT)
-import Syntax.AST (Exp)
 import Control.Monad.Except (ExceptT, throwError)
 import GHC.Generics (Generic)
 import Analysis.Monad.Environment (EnvM (..))
@@ -47,7 +46,6 @@ import Analysis.Monad.Partition (MonadPartition (..))
 import Analysis.Actors.Monad (MonadActorLocal (..))
 import qualified Domain.Actor
 import Domain.Scheme.Store (StoreVal (..), SchemeAdr (..))
-import Syntax.Ide (Ide)
 import Analysis.Monad.Allocation (AllocM (..))
 import Control.Monad.IO.Class (MonadIO)
 import Analysis.Monad.ComponentTracking (ComponentTrackingT)
@@ -79,6 +77,7 @@ import qualified Analysis.ASE.PC as ASE
 import Syntax.Span
 import qualified Domain.Symbolic.Class as Symbolic
 import Control.DeepSeq (NFData)
+import Syntax.AST
 
 ------------------------------------------------------------
 -- Shorthands
@@ -350,7 +349,10 @@ instance Monad m => MonadMailbox Partition ActorRef ActorVlu (IntraT m) where
     outbox . at ref . non MB.empty %= MB.enqueue Lattice.bottom Lattice.bottom v
     outbox %= Lattice.join oldOutbox
     return ()
-  recv expr = throwError . (expr,)
+  select expr = throwError . (expr,) -- throwError is only here for its escaping mechanism, not for actually reporting an error
+  recv =
+    uses inbox (MB.dequeue Lattice.bottom)
+  putMailbox = assign inbox
 
 ------------------------------------------------------------
 
@@ -417,7 +419,9 @@ intraTurn beh selfRef st = do
         (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
     where ctx' = emptyCtx selfRef
                & env .~ (beh ^._2)
-          cmp'  = ActorExp $ beh ^._1
+          cmp'  = case beh ^._1 of
+                    expr@Receive {} ->  ReceiveExp expr
+                    expr -> ActorExp expr
           key'  = initialProcKey cmp' ctx' st
           intra :: ProcKey -> AnalysisSystemT m ()
           intra k = runFixT @(AnalysisT m) Semantics.eval k

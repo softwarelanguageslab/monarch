@@ -26,7 +26,8 @@ module Analysis.SimpleActor.Monad
     MonadModules(..),
     runModuleCtxT,
     MailboxLabel(..),
-    MonadFresh(..)
+    MonadFresh(..),
+    recvMsg
   )
 where
 
@@ -43,7 +44,7 @@ import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain.Class
-import Lattice (BottomLattice (bottom))
+import Lattice (BottomLattice (bottom), Joinable)
 import Syntax.AST
 import qualified Syntax.Ide as Ide
 import Analysis.Monad.Fix (MonadFixpoint)
@@ -62,13 +63,15 @@ import GHC.Generics
 import Control.Monad.Choice
 -- import Analysis.Monad.AbstractCount (MonadAbstractCount)
 import Data.Kind
+import Analysis.Actors.Mailbox.Partitioned.Graph (PartitionedGraph)
 
 ------------------------------------------------------------
 -- 'Components'
 ------------------------------------------------------------
 
-data Cmp = FuncBdy  !Exp  -- ^ a function call component contains a lambda   
-         | ActorExp !Exp  -- ^ a newly spawned actor
+data Cmp = FuncBdy  !Exp   -- ^ a function call component contains a lambda   
+         | ActorExp !Exp   -- ^ a newly spawned actor
+         | ReceiveExp !Exp -- ^ a receive block awaiting a message
       deriving (Show, Eq, Ord)
 
 instance NFData Cmp where
@@ -77,11 +80,13 @@ instance NFData Cmp where
 instance SpanOf Cmp where
    spanOf (FuncBdy e) = spanOf e
    spanOf (ActorExp e) = spanOf e
+   spanOf (ReceiveExp e) = spanOf e
 
 instance FreeVariables Cmp where
    fv (FuncBdy (Lam xs e _)) = Set.union (Set.fromList (map Ide.name xs)) (fv e)
    fv (FuncBdy _) = error "imposible value"
    fv (ActorExp e) = fv e
+   fv (ReceiveExp e) = fv e
 
 
 ------------------------------------------------------------
@@ -96,6 +101,12 @@ instance FreeVariables Cmp where
 -- the comparison in the "uncoverable" attribute.
 newtype MailboxLabel = MailboxLabel { getMailboxLabel :: String }
                        deriving (Ord, Eq, Show)
+
+------------------------------------------------------------
+-- Shorthands
+------------------------------------------------------------
+
+type PMB e v = PartitionedGraph e v
 
 ------------------------------------------------------------
 -- Errors
@@ -147,6 +158,11 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v k m) => Monad
   spawn e env = upperM . spawn e env
 
 -- | Monad for sending and receiving messages. 
+--
+-- 'e' is the partition type used in the currently 
+-- active partitioning scheme. 
+-- 'ref' is the type of actor reference 
+-- 'v' is the type of messages (those usually overlap with values in SimpleActor, hence the abbreviation) 
 class MonadMailbox e ref v m | m -> e ref v where    
     -- | Send a message (first argument) to the given actor 
     -- identifier by the second argument.
@@ -154,8 +170,17 @@ class MonadMailbox e ref v m | m -> e ref v where
     -- | Suspends the actor and registers the given expression 
     -- as the message handler that is invoked with the next message 
     -- in the mailbox.
-    recv :: Exp -> Env v -> m a
+    select :: Exp -> Env v -> m a
+    -- | Return the first messages in the mailbox and their corresponding updated mailboxes 
+    recv :: m (Set (v, PMB e v))
+    -- | Set the current inbox to the given argument 
+    putMailbox :: PMB e v -> m ()
 
+
+-- | Invoke the function in the first argument with the first message in the mailbox
+recvMsg :: (MonadMailbox e ref v m, MonadJoin m, Joinable a) => (v -> m a) -> m a
+recvMsg f =
+    recv >>= (mjoins . map (\(msg, mb') -> putMailbox mb' >> f msg) . Set.toList)
 
 type MonadActor v k m =
   (MonadSpawn v k m,
@@ -181,7 +206,9 @@ instance
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox e ref v m) => MonadMailbox e ref v (t m) where
     send v = upperM . send v
-    recv expr = upperM . recv expr
+    select expr = upperM . select expr
+    recv = upperM recv
+    putMailbox = upperM . putMailbox
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadFresh v m, MonadLayer t) => MonadFresh v (t m) where
     fresh = upperM . fresh

@@ -101,6 +101,7 @@ eval :: forall v m k e  . EvalM e v k m => Cmp -> m v
 eval = fix evalCmp
    where evalCmp recur (FuncBdy (Lam _ bdy _)) = eval' recur bdy
          evalCmp recur (ActorExp e) = eval' recur e
+         evalCmp recur (ReceiveExp e) = evalReceive recur e
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
 eval'' :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> Exp -> m v
@@ -121,13 +122,7 @@ eval'' rec (Ite e1 e2 e3 _) = do
 eval'' _rec (Spawn e _) =
    liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
 eval'' _ (Terminate _) = terminate $> nil
-eval'' _ e@(Receive _ _) = getEnv >>= recv e
--- do
---    receivePartitioned $
---       matchList
---          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
---          pats
---    where withEnv' e = withEnv (const e)
+eval'' _ e@(Receive _ _) = getEnv >>= select e
 eval'' rec (Match e pats _) = do
    val <- eval' rec e
    matchList (\matchedExp -> allocMapping >=> (`withEnv'` eval' rec matchedExp))
@@ -170,6 +165,14 @@ eval'' _ e = error $  "unsupported expression: " ++ show e
 
 eval' :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> Exp -> m v
 eval' = eval''
+
+evalReceive :: EvalM e v k m => (Cmp -> m v) -> Exp -> m v 
+evalReceive rec (Receive pats _) = recvMsg $ matchList
+         (\e -> allocMapping >=> (`withEnv'` eval' rec e))
+         pats
+   where withEnv' e = withEnv (const e)
+
+evalReceive _ e = error $ "not a receive expression " ++ show e
 
 trySend :: forall e v k m . PrimM e v k m => v -> v -> m ()
 trySend ref msg = do

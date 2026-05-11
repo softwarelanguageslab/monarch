@@ -18,7 +18,6 @@
 
 (require (for-syntax syntax/parse))
 (require "./atomics.rkt")
-(require "./atomic-counter.rkt")
 (require racket/exn)
 
 
@@ -148,18 +147,58 @@
   (exit))
 
 
-(define *active-actor-count* (make-atomic-counter 0))
-(define *in-flight-message-count* (make-atomic-counter 0))
+;; Stall detection: the system is "stalled" when every live actor is parked
+;; in thread-receive and no messages are in flight. Either the program is
+;; deliberately idle or the actors are deadlocked waiting for messages that
+;; will never arrive; in both cases no progress is possible, so shutdown is
+;; safe.
+(define *stall-mutex* (make-semaphore 1))
+(define *stall-event* (make-semaphore 0))
+(define *live* 0)
+(define *waiting* 0)
+(define *in-flight* 0)
 
-;; Wait until all actors have finished and stop the logging thread
+(define-syntax-rule (with-stall body ...)
+  (begin
+    (semaphore-wait *stall-mutex*)
+    (begin0 (begin body ...)
+            (semaphore-post *stall-mutex*))))
+
+;; Must be called while holding *stall-mutex*.
+(define (maybe-signal-stalled)
+  (when (or (zero? *live*)
+            (and (= *waiting* *live*) (zero? *in-flight*)))
+    (semaphore-post *stall-event*)))
+
+;; State mutations are wrapped in module-local procedures so that the
+;; macros expanded at user sites do not have to (set!) module-required
+;; identifiers, which Racket forbids.
+(define (stall:spawned!)    (with-stall (set! *live* (add1 *live*))))
+(define (stall:terminated!) (with-stall (set! *live* (sub1 *live*))
+                                        (maybe-signal-stalled)))
+(define (stall:parking!)    (with-stall (set! *waiting* (add1 *waiting*))
+                                        (maybe-signal-stalled)))
+(define (stall:woke!)       (with-stall (set! *waiting* (sub1 *waiting*))
+                                        (set! *in-flight* (sub1 *in-flight*))))
+(define (stall:sending!)    (with-stall (set! *in-flight* (add1 *in-flight*))))
+
+;; Block until the system stalls. Re-checks under the lock because
+;; *stall-event* may have been posted for a transient stall that no longer
+;; holds by the time we wake up.
+(define (wait-for-stall)
+  (let loop ()
+    (define stalled?
+      (with-stall (or (zero? *live*)
+                      (and (= *waiting* *live*) (zero? *in-flight*)))))
+    (unless stalled?
+      (sync *stall-event*)
+      (loop))))
+
+;; Wait until the system stalls and stop the logging thread.
 (define (shutdown-system)
-  (displayln "Startup done ...")
-  (displayln "Waiting for system shutdown ..")
-  (send^ (spawn^ (receive ((x 'done)))) 'done)
-  (sync *active-actor-count*)
-  (sync *in-flight-message-count*)
-  (sleep 2)
-  (displayln "All actors have terminated")
+  (displayln "Waiting for system to stall ..")
+  (wait-for-stall)
+  (displayln "System stalled, shutting down")
   (break-thread logging-thread 'terminate)
   (thread-wait logging-thread)
   (exit))
@@ -171,7 +210,7 @@
   (displayln (format "error: ~a" (exn->string e)))
 
   (when (self)
-    (atomic-counter-decrement *active-actor-count*)
+    (stall:terminated!)
     (kill-thread (current-thread))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -236,17 +275,20 @@
      #`(letrec
           ((new-pid (pid (thread (lambda ()
                                      (atomic-modify *running-actors* (lambda (actors) (cons (current-thread) actors)))
-                                     (with-handlers ([exn:fail? handle-top-level-error]) 
-                                       (parameterize ([self (thread-receive)]) 
+                                     (with-handlers ([exn:fail? handle-top-level-error])
+                                       (parameterize ([self (thread-receive)])
                                          (begin
                                            (call-with-current-continuation (lambda (k)
                                              (parameterize ((*return-continuation* k))
                                                body)))
-                                           (atomic-counter-decrement *active-actor-count*)))))) (quote-syntax #,stx))))
+                                           (stall:terminated!)))))) (quote-syntax #,stx))))
 
-          ; (atomic-counter-increment *active-actor-count*)
+          ;; Parent records the new actor before returning so a quick stall
+          ;; check by the parent thread cannot see *live* before this actor
+          ;; is counted.
+          (stall:spawned!)
           (thread-send (pid-tid new-pid) new-pid)
-          new-pid)])) 
+          new-pid)]))
 
 ;; Terminates the current actor
 (define (terminate)
@@ -270,21 +312,26 @@
   (syntax-parse stx
     [(_ ((pat body ...) ...))
      #'(begin
-         (atomic-counter-decrement *active-actor-count*)
+         ;; About to park: bump waiting and check if we just stalled the
+         ;; system. The lock is released before thread-receive blocks.
+         (stall:parking!)
          (let
            ((msg (thread-receive)))
-             (atomic-counter-decrement *in-flight-message-count*)
-             ; (atomic-counter-increment *active-actor-count*)
+             (stall:woke!)
              (match msg
                [pat body ...] ...)))]))
 
 (define (send^ ref vlu)
   (log-send ref vlu)
-  ;; NOTE: this assumes that the receiving actor will always
-  ;; act on the message. If this is not the case (lack of receive block for example)
-  ;; the program might time out.
-  (atomic-counter-increment *active-actor-count*)
-  (atomic-counter-increment *in-flight-message-count*)
+  ;; NOTE: this assumes that the receiving actor will always act on the
+  ;; message via (receive). If the actor instead sleeps, busy-loops, or is
+  ;; otherwise suspended outside of (receive), it is not counted in
+  ;; *waiting*, so *waiting* < *live* and the stall condition can never be
+  ;; satisfied even though all messages have been delivered to mailboxes.
+  ;; This is a deliberate design choice — such an actor may eventually call
+  ;; (receive) and resume — but it means programs of that shape will hang
+  ;; in wait-for-stall instead of timing out cleanly.
+  (stall:sending!)
   (thread-send (pid-tid ref) vlu))
 
 (define (wait-until-terminated ref)
