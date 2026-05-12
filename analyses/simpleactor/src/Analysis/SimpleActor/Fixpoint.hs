@@ -32,6 +32,7 @@ import Analysis.Monad.Cache (CacheT, MonadCache (..))
 import Analysis.Monad.Map (MapM (..))
 import Analysis.Monad.Join (SetNonDetT)
 import Analysis.Monad.Store (StoreM)
+import qualified Analysis.Store as AStore
 import Analysis.Monad (StoreM(..), WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis, MonadDependencyTrigger)
 import qualified Lattice.Class as Lattice
 import Data.Maybe (fromMaybe, isJust)
@@ -78,7 +79,6 @@ import Syntax.Span
 import qualified Domain.Symbolic.Class as Symbolic
 import Control.DeepSeq (NFData)
 import Syntax.AST
-import qualified Debug.Trace as Debug
 
 ------------------------------------------------------------
 -- Shorthands
@@ -379,16 +379,17 @@ instance (Monad m, k ~ ProcKey, v ~ ProcVal) => MapM k v (StateT AnalysisState m
   getAll = use cache
 
 -- The 'AnalysisState' also contains a store, so we can use it for the 'StoreM' instance as well.
+-- The store operations are delegated to the canonical 'Store' instance in
+-- 'Analysis.Store' (for 'Map a v'), which uses weak (join) updates. This is
+-- important here: abstract allocation reuses addresses (e.g. all pairs share
+-- one 'PtrAdr'), so writes must join with any existing value rather than
+-- overwrite it, otherwise the system fixpoint cannot converge.
 instance (Monad m) => StoreM ActorAdr (StoreVal ActorVlu) (StateT AnalysisState m) where
-  storeSize = use (store . to Map.size)
-  lookupAdr adr =
-    use (store . at adr . to (fromMaybe (error $ "Address " ++ show adr ++ " not found in store")))
-  writeAdr adr v = store . at adr ?= v
-  updateWith _ fw adr =
-    -- no counts in this store, so we must always use the weak update function.
-    store . at adr %= maybe (error $ "address " ++ show adr ++ " could not be found in store") (Just . fw)
-  hasAdr adr =
-    use (store . at adr . to isJust)
+  storeSize            = use (store . to AStore.size)
+  lookupAdr adr        = use (store . to (fromMaybe (error $ "Address " ++ show adr ++ " not found in store") . AStore.lookupSto adr))
+  writeAdr adr v       = store %= AStore.extendSto adr v
+  updateWith fs fw adr = store %= AStore.updateStoWith fs fw adr
+  hasAdr adr           = use (store . to (isJust . AStore.lookupSto adr))
 
 -- Finally, we can track dependencies in the same 'AnalysisState'.
 instance {-# OVERLAPPING #-} (Monad m, k ~ ProcKey, DepL d) => DependencyTrackingM k d (StateT AnalysisState m) where
@@ -415,7 +416,7 @@ type AnalysisM m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m)
 intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> AnalysisSystemT m (Set Turn)
 intraTurn beh selfRef st = do
         -- compute a fixpoint over the function calls within this turn
-        lfp intra (Debug.trace "intraTurn" key')
+        lfp intra key'
         -- The set of successor turns will have been cached at the entry component
         (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
     where ctx' = emptyCtx selfRef
@@ -435,21 +436,21 @@ transferTurn :: AnalysisM m
              => ActorRef
              -> Turn
              -> AnalysisSystemT m (Set Turn)
-transferTurn selfRef (Turn (Become beh) turnState) = Debug.trace "turn" <$> intraTurn beh selfRef turnState
+transferTurn selfRef (Turn (Become beh) turnState) = intraTurn beh selfRef turnState
 -- Terminated actors do not generate successor turns, so we return the empty set.
 transferTurn _ (Turn Terminated _) = return Set.empty
 
 fixTurn :: AnalysisM m => ActorRef -> Turn -> AnalysisSystemT m (Set Turn)
 fixTurn selfRef = Fix.lfp (Fix.lift $ transferTurn selfRef) . Set.singleton
 
--- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes. 
+-- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
 transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 transferSystem s@System { .. } = analyze' & flip execStateT s
         where turnState ref = State (Map.findWithDefault Lattice.bottom ref _mbs) _mbs
               initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref))) _initialBeh
               analyze' = do
                 newTurns <- Map.traverseWithKey (Fix.lift . fixTurn) initialTurns
-                -- join the new turns with the old turns 
+                -- join the new turns with the old turns
                 turns %= Lattice.join newTurns
                 -- join the outboxes of each turn with the old mailboxes
                 let newMbs = Lattice.joins $ foldMap (map (view (state . outbox)) . Set.toList . snd) $ Map.toList newTurns
