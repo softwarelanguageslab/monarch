@@ -170,7 +170,7 @@ class MonadMailbox e ref v m | m -> e ref v where
     -- | Suspends the actor and registers the given expression 
     -- as the message handler that is invoked with the next message 
     -- in the mailbox.
-    select :: Exp -> Env v -> m a
+    select :: Exp -> Env v -> Map String (Adr v) -> m a
     -- | Return the first messages in the mailbox and their corresponding updated mailboxes 
     recv :: m (Set (v, PMB e v))
     -- | Set the current inbox to the given argument 
@@ -206,7 +206,7 @@ instance
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox e ref v m) => MonadMailbox e ref v (t m) where
     send v = upperM . send v
-    select expr = upperM . select expr
+    select expr env = upperM . select expr env
     recv = upperM recv
     putMailbox = upperM . putMailbox
 

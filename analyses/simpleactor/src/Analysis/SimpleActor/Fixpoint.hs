@@ -83,7 +83,7 @@ import Syntax.AST
 -- Shorthands
 ------------------------------------------------------------
 
-type Beh = (Exp, ActorEnv)
+type Beh = (Exp, ActorEnv, Map String ActorVarAdr)
 type Err = Set ActorError
 
 ------------------------------------------------------------
@@ -349,7 +349,7 @@ instance Monad m => MonadMailbox Partition ActorRef ActorVlu (IntraT m) where
     outbox . at ref . non MB.empty %= MB.enqueue Lattice.bottom Lattice.bottom v
     outbox %= Lattice.join oldOutbox
     return ()
-  select expr = throwError . (expr,) -- throwError is only here for its escaping mechanism, not for actually reporting an error
+  select expr env' dyn' = throwError (expr, env', dyn') -- throwError is only here for its escaping mechanism, not for actually reporting an error
   recv =
     uses inbox (MB.dequeue Lattice.bottom)
   putMailbox = assign inbox
@@ -361,7 +361,7 @@ instance Monad m => MonadMailbox Partition ActorRef ActorVlu (IntraT m) where
 instance Monad m => MonadSpawn ActorVlu AdrCtx (SystemT m) where
     spawn behExpr environ k = do
         let newRef = Domain.Actor.Pid behExpr k
-            beh = (behExpr, environ)
+            beh = (behExpr, environ, initialDynEnvironment)
         initialBeh . at newRef ?= beh
         return newRef
 
@@ -419,6 +419,7 @@ intraTurn beh selfRef st = do
         (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
     where ctx' = emptyCtx selfRef
                & env .~ (beh ^._2)
+               & dyn .~ (beh ^._3)
           cmp'  = case beh ^._1 of
                     expr@Receive {} ->  ReceiveExp expr
                     expr -> ActorExp expr
@@ -474,7 +475,7 @@ initialSystem :: Exp -> System
 initialSystem mainExp = System {
         _mbs = Map.empty,
         _turns = Map.empty,
-        _initialBeh = Map.singleton EntryPid (mainExp, mainEnv)
+        _initialBeh = Map.singleton EntryPid (mainExp, mainEnv, initialDynEnvironment)
     }
 
 -- | Create an empty analysis state

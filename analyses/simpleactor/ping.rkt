@@ -649,6 +649,7 @@
                            (cons k2476 (cons j2480 (cons 'pong sender))))
                           (letrec ((kc2477 (k2476 j2480))
                                    (old-send2481 (dyn send^)))
+                            (trace 'enhanced-pong-receive)
                             (parametrize
                              ((send^
                                (lambda (rcv2478 msg2479)

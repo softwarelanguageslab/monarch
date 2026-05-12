@@ -122,7 +122,10 @@ eval'' rec (Ite e1 e2 e3 _) = do
 eval'' _rec (Spawn e _) =
    liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
 eval'' _ (Terminate _) = terminate $> nil
-eval'' _ e@(Receive _ _) = getEnv >>= select e
+eval'' _ e@(Receive _ _) = do 
+    ρ' <- getEnv 
+    dyn' <- getDynamic
+    select e ρ' dyn'
 eval'' rec (Match e pats _) = do
    val <- eval' rec e
    matchList (\matchedExp -> allocMapping >=> (`withEnv'` eval' rec matchedExp))
