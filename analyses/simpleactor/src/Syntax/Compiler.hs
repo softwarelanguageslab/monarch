@@ -152,7 +152,7 @@ compilePats :: MonadError String m => SExp -> m [(Pat, Exp)]
 compilePats = smapM compileHandler
    where compileHandler :: MonadError String m => SExp -> m (Pat, Exp)
          compileHandler (pat ::: e ::: SNil _) = compilePat pat >>= (\p -> fmap (p,) (compile e))
-         compileHandler e = throwError $ "invalid handler " ++ show e
+         compileHandler e = throwError $ "invalid handler " ++ show e ++ " at " ++ (show $ spanOf e)
 
 compileCaseClauses :: MonadError String m => SExp -> m [(Pat, Exp)]
 compileCaseClauses = fmap fold . smapM compileClause

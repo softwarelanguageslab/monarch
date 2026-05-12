@@ -358,7 +358,7 @@
     [(_) #'(void)]
     [(_ ex ...) #'(begin ex ...)]))
 
-(define (trace v) v)
+(define (trace v) (print v) (newline)) 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Dynamic variables

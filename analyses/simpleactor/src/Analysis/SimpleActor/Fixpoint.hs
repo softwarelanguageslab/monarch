@@ -78,6 +78,7 @@ import Syntax.Span
 import qualified Domain.Symbolic.Class as Symbolic
 import Control.DeepSeq (NFData)
 import Syntax.AST
+import qualified Debug.Trace as Debug
 
 ------------------------------------------------------------
 -- Shorthands
@@ -414,7 +415,7 @@ type AnalysisM m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m)
 intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> AnalysisSystemT m (Set Turn)
 intraTurn beh selfRef st = do
         -- compute a fixpoint over the function calls within this turn
-        lfp intra key'
+        lfp intra (Debug.trace "intraTurn" key')
         -- The set of successor turns will have been cached at the entry component
         (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
     where ctx' = emptyCtx selfRef
@@ -434,7 +435,7 @@ transferTurn :: AnalysisM m
              => ActorRef
              -> Turn
              -> AnalysisSystemT m (Set Turn)
-transferTurn selfRef (Turn (Become beh) turnState) = intraTurn beh selfRef turnState
+transferTurn selfRef (Turn (Become beh) turnState) = Debug.trace "turn" <$> intraTurn beh selfRef turnState
 -- Terminated actors do not generate successor turns, so we return the empty set.
 transferTurn _ (Turn Terminated _) = return Set.empty
 
