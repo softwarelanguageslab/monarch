@@ -606,13 +606,11 @@
         (letrec ((ping-behavior
                   (lambda ()
                     (letrec ((real-self (self^)))
-                       (trace 'before-receive)
                       (parametrize
                        ((self (lambda (m) ((dyn send^) real-self m))))
                        (receive
                         (((cons 'ping sender)
                           (begin
-                            (trace 'ping-received)
                             (sender (cons 'pong (dyn self)))
                             (ping-behavior)))
                          ((cons
@@ -620,7 +618,6 @@
                            (cons k2469 (cons j2473 (cons 'ping sender))))
                           (letrec ((kc2470 (k2469 j2473))
                                    (old-send2474 (dyn send^)))
-                            (trace 'ping-enhanced-receive)
                             (parametrize
                              ((send^
                                (lambda (rcv2471 msg2472)
@@ -629,6 +626,7 @@
                                   (cons rcv2471 msg2472)))))
                              (begin
                                (sender (cons 'pong (dyn self)))
+                               (trace 'sending-finish)
                                (old-send2474 kc2470 'finish)))
                             (ping-behavior)))))))))
                  (pong-behavior
@@ -646,7 +644,6 @@
                            (cons k2476 (cons j2480 (cons 'pong sender))))
                           (letrec ((kc2477 (k2476 j2480))
                                    (old-send2481 (dyn send^)))
-                            (trace 'pong-enhanced-received)
                             (parametrize
                              ((send^
                                (lambda (rcv2478 msg2479)
@@ -662,7 +659,6 @@
                     (lambda (v2487)
                       (letrec ((result2493
                                 ((lambda (k2489 j2490 v2491)
-                                   (trace 'ping/c-contract)
                                    (match
                                     v2491
                                     (((cons 'ping x2492)
@@ -684,17 +680,20 @@
                     (lambda (j2496)
                       (letrec ((r
                                 (lambda (trace2500)
+                                  (trace trace2500)
                                   (receive
                                    (('finish
                                      (begin
+                                       (trace 'received-finish)
                                        (if (member 'pong trace2500)
                                          #t
                                          (blame j2496))))
                                     ((pair rcv2499 message2498)
                                      (match
-                                      message2498
+                                      (trace message2498)
                                       (((cons 'pong x2501)
                                         (begin
+                                          (trace 'after-match)
                                           ((dyn send^)
                                            rcv2499
                                            (cons
@@ -706,6 +705,7 @@
                                                            (receive
                                                             (('finish
                                                               (begin
+                                                                (trace 'received-finish)
                                                                 (if (member
                                                                      'ping
                                                                      trace2507)
@@ -715,30 +715,32 @@
                                                              ((pair
                                                                rcv2506
                                                                message2505)
-                                                              (match
-                                                               message2505
-                                                               (((cons
-                                                                  'ping
-                                                                  x2508)
-                                                                 (begin
-                                                                   ((dyn send^)
-                                                                    rcv2506
-                                                                    (cons
-                                                                     'enhanced
-                                                                     (cons
-                                                                      (ping/cm)
+                                                              (begin
+                                                                (trace 'received-message)
+                                                                (match
+                                                                 message2505
+                                                                 (((cons
+                                                                    'ping
+                                                                    x2508)
+                                                                   (begin
+                                                                     ((dyn send^)
+                                                                      rcv2506
                                                                       (cons
-                                                                       j2503
+                                                                       'enhanced
                                                                        (cons
-                                                                        'ping
-                                                                        ((actor?
-                                                                          j2503
-                                                                          j2503)
-                                                                         x2508))))))
-                                                                   (r
-                                                                    (cons
-                                                                     'ping
-                                                                     trace2507))))))))))))
+                                                                        (ping/cm)
+                                                                        (cons
+                                                                         j2503
+                                                                         (cons
+                                                                          'ping
+                                                                          ((actor?
+                                                                            j2503
+                                                                            j2503)
+                                                                           x2508))))))
+                                                                     (r
+                                                                      (cons
+                                                                       'ping
+                                                                       trace2507)))))))))))))
                                                  (spawn^ (r (list)))))
                                              (cons
                                               j2496
@@ -746,11 +748,11 @@
                                                'pong
                                                ((actor? j2496 j2496)
                                                 x2501))))))
+                                          (trace 'after-dyn-send)
                                           (r (cons 'pong trace2500))))))))))))
                         (spawn^ (r (list))))))))
           (letrec ((ping
                     (letrec ((xj2509 'client) (xk2510 'server))
-                      (trace 'first-send)
                       (ping/c
                        xj2509
                        xk2510
