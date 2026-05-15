@@ -34,6 +34,9 @@ instance Show i => Show (SymbolicVal exp k i v) where
 -- Lattice instances
 --------------------------------------------------
 
+emptyFresh :: SymbolicVal e k i v 
+emptyFresh = SymbolicVal $ Fresh Set.empty
+
 instance (Ord i, Eq i) => Joinable (SymbolicVal exp k i v) where
    join (SymbolicVal Bottom) (SymbolicVal p2) = SymbolicVal p2
    join (SymbolicVal p1) (SymbolicVal Bottom) = SymbolicVal p1
@@ -206,18 +209,18 @@ instance (Ord exp, Ord k, Show exp, ForAllAdress Show v, ForAllAdress Eq v, ForA
    type Exp (SymbolicVal exp k i v)  = exp
    type Env (SymbolicVal exp k i v)  = HashMap String (Adr v)
 
-   pptr      = const bottom
-   vptr      = const bottom
-   sptr      = const bottom
+   pptr      = const emptyFresh
+   vptr      = const emptyFresh
+   sptr      = const emptyFresh
    pptrs     = return . const bottom
    vptrs     = return . const bottom
    sptrs     = return . const bottom
-   injectClo = const bottom
+   injectClo = const emptyFresh
    clos      = const bottom
    nil       = SymbolicVal $ Literal Nil
    unsp      = SymbolicVal $ Literal Unsp
    prim      = SymbolicVal . Function . (++"/v")
-   prims     = const bottom
+   prims     = const emptyFresh
    withProc  = const . const mbottom
    isInteger = SymbolicVal . simplify . Predicate "integer?/v" . List.singleton . proposition 
    isReal    = SymbolicVal . simplify . Predicate "real?/v" . List.singleton . proposition 

@@ -372,7 +372,7 @@
                   (assert (number? x))
                   (if (< x 0) (ceiling x) (floor x))))
                ($cmp '())
-               (bool-top (lambda () (if (> (random) 0.5) #t #f)))
+               (bool-top (lambda () (if (> (random 1) 0.5) #t #f)))
                (equal?
                 (lambda (a b)
                   (letrec ((val2314 (eq? a b)))
@@ -723,6 +723,7 @@
                                                                     'ping
                                                                     x2508)
                                                                    (begin
+                                                                     (trace 'BEFORE-DYN-SEND)
                                                                      ((dyn send^)
                                                                       rcv2506
                                                                       (cons
@@ -737,6 +738,7 @@
                                                                             j2503
                                                                             j2503)
                                                                            x2508))))))
+                                                                     (trace 'RECURSING)
                                                                      (r
                                                                       (cons
                                                                        'ping
