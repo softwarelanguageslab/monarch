@@ -23,7 +23,8 @@ import qualified Analysis.SimpleActor.ErlangPrimitives as Erl
 import Analysis.SimpleActor.Monad
 import Analysis.Actors.Monad
 
-import Control.Monad ((>=>), foldM)
+import Control.Monad ((>=>), foldM, when)
+import System.IO (hPutStrLn, stderr)
 import Control.Monad.Escape
 import Control.Monad.Join
 import Control.Monad.Layer
@@ -133,11 +134,13 @@ eval'' rec (Match e pats _) = do
    where withEnv' ρ = withEnv (const ρ)
 eval'' rec (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
+   mapM_ (flip logCoverage (return ()) . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    mapM_ (\(ex, adr) -> writeVar adr =<< withExtendedEnv bds' (eval' rec ex)) (zip (map snd bds) ads)
    withExtendedEnv bds' (eval' rec e2)
 eval'' rec (Parametrize bds e2 _) = do
    ads <- mapM (alloc . fst) bds
+   mapM_ (flip logCoverage (return ()) . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (eval' rec . snd) bds
    mapM_ (uncurry writeVar) (zip ads vs)
@@ -166,11 +169,21 @@ eval'' _ (Loc _ _) = return nil
 eval'' _ e@(Input _) = fresh e
 eval'' _ e = error $  "unsupported expression: " ++ show e
 
+logCoverage :: (SpanOf e, MonadIO m) => e -> m a -> m a
+logCoverage e ma = do
+       when coverageEnabled $ do
+           let sp = spanOf e
+               fn = filename sp
+               ln = line (startPosition sp)
+           liftIO $ hPutStrLn stderr $ "[coverage] (" ++ show fn ++ " " ++ show ln ++ ")"
+       ma
+    where coverageEnabled = False
+
 eval' :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> Exp -> m v
-eval' = eval''
+eval' rec e = logCoverage e $ eval'' rec e
 
 evalReceive :: EvalM e v k m => (Cmp -> m v) -> Exp -> m v 
-evalReceive rec (Receive pats _) = recvMsg $ matchList
+evalReceive rec expr@(Receive pats _) = logCoverage expr $ recvMsg $ matchList
          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
          pats
    where withEnv' e = withEnv (const e)

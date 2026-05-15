@@ -5,7 +5,7 @@
 module Main (main) where
 
 import qualified Benchmark.SimpleActor.Precision as Benchmark.Precision
-import Syntax.Compiler
+import Syntax.Compiler (parseFromString')
 import Data.Map (Map)
 import Data.List (intercalate)
 import Text.Printf
@@ -32,6 +32,7 @@ import Syntax.ErlangToSimpleActor
 import Text.Pretty.Simple (pPrint)
 import CommandLine.Options hiding (outputOptions, OutputOptions)
 import qualified Runnables.CoreErlang as CoreErlang
+import Runnables.CompareCoverage (compareCoverageCmd, compareCoverageOptions)
 import qualified Analysis.SimpleActor.Fixpoint as Fixpoint
 import qualified Analysis.SimpleActor.Fixpoint.Common as Common
 import qualified Analysis.Actors.Mailbox.Graph.Dot as Dot
@@ -72,11 +73,12 @@ outputOptions = OutputOptions <$> strOption (    long "outputFile"
 commandParser :: Parser Command
 commandParser =
    subparser
-    (  command "pre"           (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
-    <> command "precision"     (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
-    <> command "erlang"        (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
-    <> command "core-erlang"   (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor"))
-    <> command "analyze2"      (info (analyze2Cmd <$> inputOptions <*> outputDirOptions <*> switch (long "benchmark" <> help "run the analysis in benchmarking mode")) (progDesc "Analyze a program using the new fixpoint")))
+    (  command "pre"              (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
+    <> command "precision"        (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
+    <> command "erlang"           (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
+    <> command "core-erlang"      (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor"))
+    <> command "analyze2"         (info (analyze2Cmd <$> inputOptions <*> outputDirOptions <*> switch (long "benchmark" <> help "run the analysis in benchmarking mode")) (progDesc "Analyze a program using the new fixpoint"))
+    <> command "compare-coverage" (info (compareCoverageCmd <$> compareCoverageOptions) (progDesc "Compare analysis coverage against Racket runtime coverage")))
 
 
 ------------------------------------------------------------
@@ -109,7 +111,11 @@ writeTempFileId contents =
 -- loadFile = loadFile' True
 
 loadFile' :: Bool -> String -> IO Exp
-loadFile' doTranslate = readFile >=> (if doTranslate then translate >=> writeTempFileId else return) >=> return . either (error . ("error while parsing: " ++)) id . parseFromString
+loadFile' doTranslate filename = do
+   contents <- readFile filename
+   translated <- if doTranslate then translate contents >>= writeTempFileId else return contents
+   let sourceFile = if doTranslate then Nothing else Just filename
+   return $ either (error . ("error while parsing: " ++)) id $ parseFromString' sourceFile translated
 
 ------------------------------------------------------------
 -- SimpleActor, fixpoint v2

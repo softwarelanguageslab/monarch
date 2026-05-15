@@ -108,6 +108,7 @@ executable simpleactor-exe
   other-modules:
       CommandLine.Options
       CommandLine.Output
+      Runnables.CompareCoverage
       Runnables.CoreErlang
       TracePartitioning.Benchmark
       Paths_simpleactor

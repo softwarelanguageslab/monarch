@@ -220,7 +220,7 @@ instance (Ord exp, Ord k, Show exp, ForAllAdress Show v, ForAllAdress Eq v, ForA
    nil       = SymbolicVal $ Literal Nil
    unsp      = SymbolicVal $ Literal Unsp
    prim      = SymbolicVal . Function . (++"/v")
-   prims     = const emptyFresh
+   prims     = const bottom
    withProc  = const . const mbottom
    isInteger = SymbolicVal . simplify . Predicate "integer?/v" . List.singleton . proposition 
    isReal    = SymbolicVal . simplify . Predicate "real?/v" . List.singleton . proposition 
