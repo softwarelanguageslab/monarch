@@ -504,12 +504,13 @@ fixTurn selfRef = Fix.lfp (Fix.lift $ transferTurn selfRef) . Set.singleton
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
 transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 transferSystem s = do
-    let changed = DeltaMap.changedKeysSet (s ^. mbs)
+    let _changed = DeltaMap.changedKeysSet (s ^. mbs)
     let sPersisted = s & mbs %~ DeltaMap.persistMap
     flip execStateT sPersisted $ do
         let turnState ref = State (fromMaybe Lattice.bottom (DeltaMap.lookup ref (s ^. mbs))) Lattice.bottom
         let initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref)))
-                                             (Map.restrictKeys (s ^. initialBeh) changed)
+                                             -- (Map.restrictKeys (s ^. initialBeh) changed)
+                                             (s ^. initialBeh)
         newTurns <- Map.traverseWithKey (Fix.lift . fixTurn) initialTurns
         -- join the new turns with the old turns
         turns %= Lattice.join newTurns
