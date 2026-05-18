@@ -28,7 +28,7 @@ import Analysis.SimpleActor.Fixpoint.Common
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Lens
-import Control.Monad.State (StateT, execStateT)
+import Control.Monad.State (StateT (runStateT))
 import Control.Monad.Except (ExceptT, throwError)
 import GHC.Generics (Generic)
 import Analysis.Monad.Environment (EnvM (..))
@@ -57,12 +57,18 @@ import Analysis.Monad.ComponentTracking (ComponentTrackingM (..))
 import Data.Bifunctor
 import qualified Analysis.Fixpoint as Fix
 import Domain.Actor (Pid(EntryPid))
-import Analysis.Monad.WorkList ( WorkListM )
+import Analysis.Monad.WorkList ( WorkListT, runWithWorkList )
 import Data.Tuple.Extra (dupe, (<+>))
 import qualified Analysis.Actors.Mailbox.Partitioned as MB
 import Control.Monad ((>=>))
 import qualified Data.DeltaMap as DeltaMap
 import Control.Concurrent.MVar
+import Control.Concurrent.ParallelIO.Global (parallelInterleaved)
+
+-- These are here for the instances of each domain for the "TopLifted" value.
+import Domain.Core.PairDomain.TopLifted ()
+import Domain.Core.StringDomain.TopLifted ()
+
 import qualified Analysis.Symbolic.Monad as SCV
 import qualified Domain.SimpleActor as Domain
 import Symbolic.AST (emptyPC)
@@ -79,13 +85,6 @@ import Syntax.Span
 import qualified Domain.Symbolic.Class as Symbolic
 import Control.DeepSeq (NFData)
 import Syntax.AST
-import qualified Control.Fixpoint.WorkList as WL
-
--- These are here for the instances of each domain for the "TopLifted" value.
-import Domain.Core.PairDomain.TopLifted ()
-import Domain.Core.StringDomain.TopLifted ()
-
-
 
 ------------------------------------------------------------
 -- Shorthands
@@ -165,8 +164,14 @@ data System = System {
         -- by each actor.
         _turns :: Map ActorRef (Set Turn),
         -- | The initial behaviors of an actor 
-        _initialBeh :: Map ActorRef Beh
+        _initialBeh :: Map ActorRef (Set Beh)
     } deriving (Ord, Eq, Show, Generic)
+
+instance Joinable System where
+    join (System mbs1 turns1 initialBeh1) (System mbs2 turns2 initialBeh2) =
+        System (Lattice.join mbs1 mbs2)
+               (Lattice.join turns1 turns2)
+               (Lattice.join initialBeh1 initialBeh2)
 
 instance NFData System
 
@@ -314,11 +319,11 @@ type GlobalT m = (ReaderT AnalysisState m)
 -- which leayer of fixpoint iteration we are working on.
 
 -- The monad for the entire analysis
-type AnalysisT m = (ProcT (IntraT (IntraAnalysisT ProcKey (SystemT (GlobalT m)))))
+type AnalysisT m = (ProcT (IntraT (IntraAnalysisT ProcKey (SystemT (WorkListT [ProcKey] (GlobalT m))))))
 -- The monad stack for the intra-actor fixpoint.
-type AnalysisIntraT m = (IntraT (SystemT (GlobalT m)))
+type AnalysisIntraT m = (IntraT (SystemT (WorkListT [ProcKey] (GlobalT m))))
 -- The monad stack for the inter-actor fixpoint. 
-type AnalysisSystemT m = (SystemT (GlobalT m))
+type AnalysisSystemT m = (SystemT (WorkListT [ProcKey] (GlobalT m)))
 -- The monad stack for the analysis-global fixpoint.
 type AnalysisGlobalT m = (GlobalT m)
 
@@ -381,7 +386,7 @@ instance Monad m => MonadSpawn ActorVlu AdrCtx (SystemT m) where
     spawn behExpr environ k = do
         let newRef = Domain.Actor.Pid behExpr k
             beh = (behExpr, environ, initialDynEnvironment)
-        initialBeh . at newRef ?= beh
+        initialBeh . at newRef ?= Set.singleton beh
         mbs . at newRef ?= Lattice.bottom
         return newRef
 
@@ -436,19 +441,19 @@ instance {-# OVERLAPPING #-} (MonadIO m, k ~ ProcKey, DepL d) => DependencyTrack
     vMVar <- asks _deps
     liftIO $ withMVar vMVar (return . fromMaybe Set.empty . view (at (review depL dep)))
 
-instance (DepL d, k ~ ProcKey, MonadIO m) => MonadDependencyTrigger k d (ReaderT AnalysisState m) where
-  trigger = dependent >=> AWL.adds
+instance (DepL d, k ~ ProcKey, MonadIO m) => MonadDependencyTrigger k d (WorkListT [k] (ReaderT AnalysisState m)) where
+  trigger = (upperM . dependent) >=> AWL.adds
 
-instance {-# OVERLAPPING #-} (MonadIO m, k ~ ProcKey) => WorkListM (ReaderT AnalysisState m) k where
-  done =
-    (asks _wl >>= liftIO . readMVar) <&> WL.isEmpty
-  pop = do
-    wlMVar <- asks _wl
-    liftIO $ modifyMVar wlMVar $ \wl -> case WL.pop wl of
-        Nothing -> error "worklist is empty, cannot pop"
-        Just (k, wl') -> return (wl', k)
-  add el =
-    asks _wl >>= liftIO . flip modifyMVar_ (return . WL.add el)
+-- instance {-# OVERLAPPING #-} (MonadIO m, k ~ ProcKey) => WorkListM (ReaderT AnalysisState m) k where
+--   done =
+--     (asks _wl >>= liftIO . readMVar) <&> WL.isEmpty
+--   pop = do
+--     wlMVar <- asks _wl
+--     liftIO $ modifyMVar wlMVar $ \wl -> case WL.pop wl of
+--         Nothing -> error "worklist is empty, cannot pop"
+--         Just (k, wl') -> return (wl', k)
+--   add el =
+--     asks _wl >>= liftIO . flip modifyMVar_ (return . WL.add el)
 
 instance {-# OVERLAPPING #-} (MonadIO m, k ~ ProcKey) => ComponentTrackingM (ReaderT AnalysisState m) k where
   spawn cmp = asks _cmps >>= liftIO . flip modifyMVar_ (return . Set.insert cmp)
@@ -502,22 +507,40 @@ fixTurn :: AnalysisM m => ActorRef -> Turn -> AnalysisSystemT m (Set Turn)
 fixTurn selfRef = Fix.lfp (Fix.lift $ transferTurn selfRef) . Set.singleton
 
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
-transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
+transferSystem :: (MonadIO m) => System -> AnalysisGlobalT m System
 transferSystem s = do
     let changed = DeltaMap.changedKeysSet (s ^. mbs)
     let sPersisted = s & mbs %~ DeltaMap.persistMap
-    flip execStateT sPersisted $ do
-        let turnState ref = State (fromMaybe Lattice.bottom (DeltaMap.lookup ref (s ^. mbs))) Lattice.bottom
-        let initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref)))
-                                             (Map.restrictKeys (s ^. initialBeh) changed)
-        newTurns <- Map.traverseWithKey (Fix.lift . fixTurn) initialTurns
-        -- join the new turns with the old turns
-        turns %= Lattice.join newTurns
-        -- join the outboxes of each turn with the old mailboxes
-        let newMbs = Lattice.joins $ foldMap (map (view (state . outbox)) . Set.toList . snd) $ Map.toList newTurns
-        mbs %= Lattice.join newMbs
 
-fixSystem :: AnalysisM m => System -> AnalysisGlobalT m System
+    -- Identify actors to analyze
+    let actorsToAnalyze = Map.toList $ Map.restrictKeys (s ^. initialBeh) changed
+
+    -- Function to analyze a single actor
+    let analyzeActor (ref, behs) = do
+            let turnState = State (fromMaybe Lattice.bottom (DeltaMap.lookup ref (s ^. mbs))) Lattice.bottom
+            mapM (\beh -> fixTurn ref (Turn (Become beh) turnState)) (Set.toList behs)
+
+    -- Run analyses in parallel by spawning a new solver instance for each thread.
+    -- Each actor analysis is independent except for the global store which is 
+    -- protected by MVars.
+    st <- ask
+    result <- liftIO $ parallelInterleaved $ map (\actor ->
+        analyzeActor actor
+          & flip runStateT sPersisted -- SystemT
+          & runWithWorkList
+          & flip runReaderT st        -- GlobalT Reader
+          & runZ3SolverWithPrelude    -- run a solver per-thread
+          <&> (fst actor,)
+        ) actorsToAnalyze
+
+    let st' = foldr (Lattice.join . snd . snd) sPersisted result
+    let newTurns = map (second (Lattice.joins . fst)) result
+    let newMbs   = Lattice.joins $ foldMap (map (view (state . outbox)) . Set.toList . snd) newTurns
+    return $ st'
+           & turns %~ Map.unionWith Set.union (Map.fromList newTurns)
+           & mbs   %~ Lattice.join newMbs
+
+fixSystem :: MonadIO m => System -> AnalysisGlobalT m System
 fixSystem = Fix.lfp (transferSystem >=> traceSystem)
 
 ------------------------------------------------------------
@@ -539,7 +562,7 @@ initialSystem :: Exp -> System
 initialSystem mainExp = System {
         _mbs = DeltaMap.fromList [(EntryPid, Lattice.bottom)],
         _turns = Map.empty,
-        _initialBeh = Map.singleton EntryPid (mainExp, mainEnv, initialDynEnvironment)
+        _initialBeh = Map.singleton EntryPid (Set.singleton (mainExp, mainEnv, initialDynEnvironment))
     }
 
 -- | Create an empty analysis state
@@ -553,7 +576,7 @@ emptyAnalysisState = AnalysisState
         <*> newMVar Set.empty
 
 -- | Top-level function to analyze an actor system.
-analyze :: (MonadIO m, SCV.FormulaSolver Domain.SymVar m) => Exp -> m (System, PureAnalysisState)
+analyze :: (MonadIO m) => Exp -> m (System, PureAnalysisState)
 analyze mainExpr = do
     initState <- liftIO emptyAnalysisState
     system <- fixSystem initSystem
@@ -563,5 +586,4 @@ analyze mainExpr = do
 
 -- | Top-level function to analyze an actor system within the IO monad
 analyzeIO :: Exp -> IO (System, PureAnalysisState)
-analyzeIO mainExpr = analyze mainExpr
-                   & runZ3SolverWithPrelude
+analyzeIO = analyze
