@@ -58,6 +58,7 @@ import Data.Tuple.Extra (dupe, (<+>))
 import qualified Analysis.Actors.Mailbox.Partitioned as MB
 import Data.Functor
 import Control.Monad ((>=>))
+import qualified Data.DeltaMap as DeltaMap
 
 -- These are here for the instances of each domain for the "TopLifted" value.
 import Domain.Core.PairDomain.TopLifted ()
@@ -357,18 +358,20 @@ instance Monad m => MonadMailbox Partition ActorRef ActorVlu (IntraT m) where
 
 ------------------------------------------------------------
 
--- Inter-actor monad instances
+-- | Inter-actor monad instances
 
 instance Monad m => MonadSpawn ActorVlu AdrCtx (SystemT m) where
     spawn behExpr environ k = do
         let newRef = Domain.Actor.Pid behExpr k
             beh = (behExpr, environ, initialDynEnvironment)
         initialBeh . at newRef ?= beh
+        mbs . at newRef ?= Lattice.bottom
         return newRef
 
 ------------------------------------------------------------
 
 -- Analysis-global instances.
+
 
 -- The 'AnalysisState' precisely captures the state needed for keeping 
 -- track of a 'MapM' cache.
@@ -445,16 +448,20 @@ fixTurn selfRef = Fix.lfp (Fix.lift $ transferTurn selfRef) . Set.singleton
 
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
 transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
-transferSystem s@System { .. } = analyze' & flip execStateT s
-        where turnState ref = State (Map.findWithDefault Lattice.bottom ref _mbs) _mbs
-              initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref))) _initialBeh
-              analyze' = do
-                newTurns <- Map.traverseWithKey (Fix.lift . fixTurn) initialTurns
-                -- join the new turns with the old turns
-                turns %= Lattice.join newTurns
-                -- join the outboxes of each turn with the old mailboxes
-                let newMbs = Lattice.joins $ foldMap (map (view (state . outbox)) . Set.toList . snd) $ Map.toList newTurns
-                mbs %= Lattice.join newMbs
+transferSystem s = do
+    let changed = DeltaMap.changedKeysSet (s ^. mbs)
+    let sPersisted = s & mbs %~ DeltaMap.persistMap
+    flip execStateT sPersisted $ do
+        let turnState ref = State (fromMaybe Lattice.bottom (DeltaMap.lookup ref (s ^. mbs))) Lattice.bottom
+        let initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref))) 
+                                             (Map.restrictKeys (s ^. initialBeh) changed)
+        newTurns <- Map.traverseWithKey (Fix.lift . fixTurn) initialTurns
+        -- join the new turns with the old turns
+        turns %= Lattice.join newTurns
+        -- join the outboxes of each turn with the old mailboxes
+        let newMbs = Lattice.joins $ foldMap (map (view (state . outbox)) . Set.toList . snd) $ Map.toList newTurns
+        mbs %= Lattice.join newMbs
+
 fixSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 fixSystem = Fix.lfp (transferSystem >=> traceSystem)
 
@@ -475,7 +482,7 @@ mainEnv =
 -- | Create an initial system from the expression of the main behavior. 
 initialSystem :: Exp -> System
 initialSystem mainExp = System {
-        _mbs = Map.empty,
+        _mbs = DeltaMap.fromList [(EntryPid, Lattice.bottom)],
         _turns = Map.empty,
         _initialBeh = Map.singleton EntryPid (mainExp, mainEnv, initialDynEnvironment)
     }

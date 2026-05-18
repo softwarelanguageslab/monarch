@@ -39,6 +39,7 @@ import qualified Analysis.Actors.Mailbox.Graph.Dot as Dot
 import Criterion.Main
 import qualified Criterion.Main.Options as Criterion
 import Criterion.Types (Config(..))
+import qualified Data.DeltaMap as DeltaMap
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -157,7 +158,7 @@ analyze2Ast expr outDir = do
     output <- Fixpoint.analyzeIO expr
     let trace = reverse $ map Fixpoint._mbs $ Fixpoint._trace $ snd output
 
-    renderTraceMailboxesToDot outDir trace
+    renderTraceMailboxesToDot outDir (map DeltaMap.toMap trace)
 
 ------------------------------------------------------------
 -- SimpleActor Inference
