@@ -45,7 +45,7 @@ ghc-options:
 - -Wno-missing-export-lists
 - -Wmissing-home-modules
 - -Wpartial-fields
-- -O0
+- -O3
 - -fspecialise
 - -fexpose-all-unfoldings
 - -flate-dmd-anal
@@ -89,6 +89,7 @@ executables:
     ghc-options:
     - -threaded
     - -rtsopts
+    - -O3
     - -with-rtsopts=-N
     dependencies:
     - containers

@@ -40,6 +40,7 @@ import Criterion.Main
 import qualified Criterion.Main.Options as Criterion
 import Criterion.Types (Config(..))
 import qualified Data.DeltaMap as DeltaMap
+import Data.Functor.Identity
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
 ifM cnd csq alt = cnd >>= (\vcnd -> if vcnd then csq else alt)
@@ -156,7 +157,7 @@ analyze2Cmd InputOptions { .. } OutputDirOptions { .. } doBenchmark = do
 analyze2Ast :: Exp -> String -> IO ()
 analyze2Ast expr outDir = do
     output <- Fixpoint.analyzeIO expr
-    let trace = reverse $ map Fixpoint._mbs $ Fixpoint._trace $ snd output
+    let trace = reverse $ map Fixpoint._mbs $ runIdentity $ Fixpoint._trace $ snd output
 
     renderTraceMailboxesToDot outDir (map DeltaMap.toMap trace)
 
