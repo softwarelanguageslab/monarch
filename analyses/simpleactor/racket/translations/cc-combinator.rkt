@@ -37,7 +37,7 @@
   (uncurry (list '(quote enhanced) κ j msg)))
 
 ;; Translate a meta level 
-;; message to base level assertions.
+;; message contract to base level assertions.
 ;;
 ;; This is similar to the translation
 ;; for higher order contracts in 
@@ -64,7 +64,46 @@
 
                `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) (translate-aux communication) j)))]))
               
-    
+ 
+;; The message/c* special form which enables expressing a nested chain of ensures/c - message/c 
+;; as a sequential list of message contracts.
+;;
+;; The syntax is as follows:
+;; (message/c* 
+;;   [tag (payload-contract ...) recipient-contract]
+;;   [ids tag (payload-contract ...) recipient-contract] ...
+;;   (and-then exp))
+;;   
+;; the `and-then` is optional
+;;
+;; where ids is a linked sequence of pairs that 
+;; - if ended with the empty list exactly correspond to the number of arguments in the payload
+;; - if ended with a symbol links that symbol to the remainder of the arguments in the payload
+(define (translate-message/c* exp)
+  (define (translate-handler handler rest)
+    (match handler 
+      [(quasiquote (,ids ,tag ,payload-contracts ,recipient-contract))
+       `(lambda ,ids 
+          (ensures/c 
+            (message/c ,tag (list ,@payload-contracts) ,recipient-contract 
+                            ,(translate-message/c*-aux rest))))]))
+
+  (define (translate-message/c*-aux handlers)
+    (if (null? handlers)
+        'unconstrained/c 
+        (let ((handler (car handlers)))
+          (if (eq? (car handler) 'and-then)
+              (cadr handler)
+              (translate-handler handler (cdr handlers))))))
+
+  (let ((messages (cdr exp)))
+    (if (null? messages)
+        (error "a message/c* contract requires at least one messages")
+        (match (car messages)
+          [(quasiquote (,tag ,payload-contracts ,recipient-contract))
+           `(message/c ,tag (list ,@payload-contracts) ,recipient-contract
+                       ,(translate-message/c*-aux (cdr messages)))]))))
+
 
 ;; Translate a communication contract to
 ;; a equivalent SimpleActor construct.
@@ -327,6 +366,8 @@
      (translate-communication/c e)]
     [(quasiquote (message/c ,@rest))
      (translate-message/c e)]
+    [(quasiquote (message/c* ,@rest))
+      (translate-aux (translate-message/c* e))]
     [(quasiquote (one-of/c ,@options))
      (let ((j (gensym "j")) (k (gensym "k")) (v (gensym "v")))
       (define (gen-oneof options v)
@@ -373,6 +414,11 @@
 (module+ main
   (require "../tests/prelude.rkt")
   (require racket/pretty)
+
+  (pretty-display (translate `(message/c*
+                                [ping (actor?) any-recipient]
+                                [(ref) pong (actor?) (specific-recipient ref)]
+                                [and-then ping/c])))
 
 
    ;(displayln (translate test-1))
