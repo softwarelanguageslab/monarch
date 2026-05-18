@@ -1,13 +1,41 @@
-#lang racket
+;; Forward-flow example adapted from "Blame-Correct Support for Receiver Properties in Recursively-Structured Actor Contracts"
+(define router/c 
+ (behavior/c 
+   (message/c*
+     ;; initial request
+     [request (actor?) any-recipient]
+     ;; the router should forward the request
+     [(client-ref) 'request (actor?) any-recipient]
+     ;; the server should reply directly back to the actor of the original payload
+     [_ 'reply (integer?) (specific-recipient client-ref)])))
 
-(define (forward-flow/c request-tag request-contracts reply-tag reply-contracts)
-  (message/c request-tag (cons actor? request-contracts)
-             any-recipient
-             (lambda (payload)
-               (ensures/c 
-                 (list (message/c request-tag (cons actor? request-contracts) 
-                                  any-recipient
-                                  (ensures/c 
-                                    (list (message/c reply-tag reply-contracts
-                                               (specific-recipient (car payload))
-                                               unconstrained/c)))))))))
+(define (pick-service services)
+  (list-ref services (random (length services))))
+
+(define client-behavior 
+  (behavior (router) 
+            ((main () 
+                   (send router request self) 
+                   (become client-behavior router))
+             (reply (answer) 
+                    (displayln answer)
+                    (terminate)))))
+
+(define router-behavior 
+  (behavior (services)
+      ((request (sender) 
+         (send (pick-service services) request sender)
+         (become router-behavior services)))))
+
+(define service-behavior 
+  (behavior ()
+      ((request (sender) 
+            'do-work
+            (send sender reply 42)
+            (become service-behavior)))))
+
+(define service (spawn service-behavior)) 
+(define router (spawn/c router/c router-behavior (list service)))
+(define client (spawn client-behavior router))
+(send client main)
+(wait-until-all-finished)

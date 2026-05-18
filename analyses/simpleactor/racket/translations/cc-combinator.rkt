@@ -368,6 +368,8 @@
      (translate-message/c e)]
     [(quasiquote (message/c* ,@rest))
       (translate-aux (translate-message/c* e))]
+    [(quasiquote (spawn/c ,contract ,beh ,args))
+      (translate-aux `(mon (loc 'client) (loc 'server) ,contract (spawn^ (,beh ,args))))]
     [(quasiquote (one-of/c ,@options))
      (let ((j (gensym "j")) (k (gensym "k")) (v (gensym "v")))
       (define (gen-oneof options v)
