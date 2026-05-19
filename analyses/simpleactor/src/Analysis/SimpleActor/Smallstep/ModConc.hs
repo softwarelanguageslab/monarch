@@ -207,7 +207,7 @@ apply operator operands sp state =
       primitiveApps = Set.fromList [ applyPrimitive state nam | nam <- Set.toList (prims operator) ]
   in closureApps `Set.union` primitiveApps
   where
-    applyClosure st (lam@(Lam pars bdy _), ρ) =
+    applyClosure st (lam@(Lam pars _ bdy _), ρ) =
       if length pars /= length operands
       then error $ "Arity mismatch at " ++ show sp
       else

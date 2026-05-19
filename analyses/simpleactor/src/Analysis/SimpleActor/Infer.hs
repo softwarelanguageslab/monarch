@@ -150,7 +150,7 @@ spawn act = spawnProcess act $> ConstantValue (injectActor act)
 
 -- | Apply a closure 
 applyClosure :: InferM m => Exp -> Clo -> [V] -> m V
-applyClosure _ (Lam xs bdy _, env) vs = do
+applyClosure _ (Lam xs _ bdy _, env) vs = do
    unless (length xs == length vs) $
       error "Invalid number of arguments"
    let adrs = map (`VarAdr` ()) xs
@@ -188,7 +188,7 @@ valueNodes = foldMap toNode . HMap.toList . getValue . values
           toNode (SCloTag :&: clos) = Set.map (FnCallNode . first lamBdy) clos
           toNode (SPrmTag :&: _)    = Set.empty
           toNode (SActTag :&: refs) = Set.map ActorNode refs
-          lamBdy (Lam _ e _) = e
+          lamBdy (Lam _ _ e _) = e
           lamBdy _ = error "not a lambda expression"
 
 -- | Register a write to the specified memory address and performs the actual write,

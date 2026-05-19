@@ -123,6 +123,11 @@ loadFile' doTranslate filename = do
 -- SimpleActor, fixpoint v2
 ------------------------------------------------------------
 
+escapePath :: String -> String
+escapePath ('/':cs) = '_' : escapePath cs 
+escapePath (c:cs) = c : escapePath cs 
+escapePath [] = []
+
 -- | Renders the mailbox abstraction of each actor in the system to a DOT file for visualization with Graphviz.
 renderMailboxesToDot :: String -- ^ the output directory
                      -> String -- ^ string to prefix the output file with 
@@ -133,7 +138,7 @@ renderMailboxesToDot outDir prefix = mapM_ (uncurry renderMailbox) . Map.toList
         renderMailbox actorRef mb = do
             let mailboxName = "mailbox_" <> show actorRef
                 dotContent = Dot.render mb
-             in writeFile (outDir ++ prefix ++ mailboxName ++ ".dot") dotContent
+             in writeFile (outDir ++ prefix ++ escapePath mailboxName ++ ".dot") dotContent
 
 
 -- | Renders the mailbox abstraction for each step in the analysis trace to a DOT file for visualization with Graphviz.
@@ -149,7 +154,7 @@ analyze2Cmd :: InputOptions -> OutputDirOptions -> Bool -> IO ()
 analyze2Cmd InputOptions { .. } OutputDirOptions { .. } doBenchmark = do
     ast <- loadFile' doTranslate filename
     if doBenchmark
-    then runMode (Criterion.Run (defaultConfig { reportFile = Just $ outputDirPath ++ "report.html", csvFile = Just $ outputDirPath ++ "report.csv" }) Criterion.Glob ["*"]) [ bench filename $ nfIO (Fixpoint.analyzeIO ast) ]
+    then runMode (Criterion.Run (defaultConfig { reportFile = Just $ outputDirPath ++ "report.html", csvFile = Just $ outputDirPath ++ "report.csv" }) Criterion.Glob ["*"]) [ bench (escapePath filename) $ nfIO (Fixpoint.analyzeIO ast) ]
     else do
         pPrint ast
         analyze2Ast ast outputDirPath

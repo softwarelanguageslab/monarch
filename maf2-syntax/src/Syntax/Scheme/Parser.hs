@@ -3,7 +3,18 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 -- | Parser to S-expressions
-module Syntax.Scheme.Parser(SExp(..), Span, ESpan(..), parseSexp', parseSexp, parseDatum, spanOf, pattern (:::), smap, smapM) where
+module Syntax.Scheme.Parser(
+      SExp(..)
+    , Span
+    , ESpan(..)
+    , parseSexp'
+    , parseSexp
+    , parseDatum
+    , spanOf
+    , pattern (:::)
+    , smap
+    , smapM
+    , smapM') where
 
 import Data.Functor
 import Text.ParserCombinators.Parsec
@@ -64,7 +75,17 @@ smapM f (a ::: as) = do
    v <- f a
    vs <- smapM f as
    return (v:vs)
-smapM _ e = throwError $ "malformed list " ++ show e
+smapM _ e = throwError $ "malformed list " ++ show e ++ " at " ++ show (spanOf e)
+
+-- Same as 'smapM' but works on incomplete lists (i.e., lists that end on an expression instead of the empty list)
+smapM' :: MonadError String m => (SExp -> m a) -> SExp -> m ([a], Maybe a)
+smapM' f (a ::: as) = do 
+    v <- f a 
+    (vs, vMaybe) <- smapM' f as
+    return (v:vs, vMaybe)
+smapM' _ (SNil _) = return ([], Nothing)
+smapM' f e = ([],) . Just <$> f e
+
 
 --
 -- Span computation

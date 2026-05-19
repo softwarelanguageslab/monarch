@@ -153,7 +153,7 @@ translateExpr annExpr =
       pure $ Var (unAnn ide)
 
     Core.FunExpr params body _ ->
-      Lam (map unAnn params) <$> translateExpr body <*> pure sp
+      Lam (map unAnn params) Nothing <$> translateExpr body <*> pure sp
 
     -- Tuple and list construction
     Core.TupleExpr exprs _ ->
@@ -295,7 +295,7 @@ translateModule annMod =
       exports = Debug.traceShowId $ moduleExports annMod
       exportPats = map (\(nam, arity) -> ValuePat (Symbol $ nam ++ "/" ++ show arity) dummySpan) exports
       exportNames = map (\(nam, arity) -> Var (Ide (nam ++ "/" ++ show arity) dummySpan)) exports
-  in Letrec bds (Lam [Ide "$funname" (spanOf annMod)]
+  in Letrec bds (Lam [Ide "$funname" (spanOf annMod)] Nothing
                      (Match (Var (Ide "$funname" dummySpan))
                             (   zip exportPats exportNames
                             ++  [(IdePat (Ide "x" dummySpan), App (Var (Ide "monarch:fail_analysis_missing_export/1" dummySpan)) [Var (Ide "x" dummySpan)] dummySpan)] )

@@ -112,7 +112,7 @@ compileDeclaration (Erl.Function (Erl.FunctionIdentifier nam arity s) clauses _)
     moduleName <- ask
     let ident' = moduleName ++ ":" ++ nam ++ "/" ++ show arity
     clauses' <- compileClauses clauses
-    return $ Just (Ide ident' s, Lam [Ide "args" s] (Match (Var (Ide "args" s)) clauses' s) s)
+    return $ Just (Ide ident' s, Lam [Ide "args" s] Nothing (Match (Var (Ide "args" s)) clauses' s) s)
 compileDeclaration _ = return Nothing
 
 ------------------------------------------------------------

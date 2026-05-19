@@ -35,10 +35,10 @@ checkDuplicates e = do
          name expr = throwError $ "Invalid binding at " ++ show (spanOf expr)
 
 compile :: MonadCompile m => SExp -> m Exp
-compile ex@(Atom "lambda" _ ::: args ::: es) =
-   Lam <$> smapM compileParam args
-       <*> (mkSeq <$> smapM compile es <*> pureSpan ex)
-       <*> pureSpan ex
+compile ex@(Atom "lambda" _ ::: args ::: es) = do 
+   uncurry Lam <$> smapM' compileParam args
+               <*> (mkSeq <$> smapM compile es <*> pureSpan ex)
+               <*> pureSpan ex
    where mkSeq [x] = const x
          mkSeq xs = Begin xs
 compile e@(Atom "lambda" _ ::: _) =

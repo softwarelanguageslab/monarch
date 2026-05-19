@@ -83,7 +83,7 @@ instance SpanOf Cmp where
    spanOf (ReceiveExp e) = spanOf e
 
 instance FreeVariables Cmp where
-   fv (FuncBdy (Lam xs e _)) = Set.union (Set.fromList (map Ide.name xs)) (fv e)
+   fv (FuncBdy (Lam xs _ e _)) = Set.union (Set.fromList (map Ide.name xs)) (fv e)
    fv (FuncBdy _) = error "imposible value"
    fv (ActorExp e) = fv e
    fv (ReceiveExp e) = fv e

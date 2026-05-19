@@ -66,6 +66,8 @@ import Analysis.Monad.Store (StoreM)
 import Domain.Scheme.Store (StoreVal)
 import Control.Monad.Reader
 import qualified Syntax.Ide as Ide
+import Data.Foldable (foldrM)
+import qualified Data.List as List
 
 ------------------------------------------------------------
 -- Implementation of polymorphic evaluation functions
@@ -82,7 +84,7 @@ instance MonadTrans (ApplyT v) where
    lift = upperM
 
 instance (EvalM e v k m) => MonadApply v (ApplyT v m) where
-   applyFun expr fun ops = ApplyT ask >>= (\cmp -> lift $ apply cmp expr fun ops)
+   applyFun expr fun ops = ApplyT ask >>= (\cmp -> lift $ apply cmp expr [] fun ops)
 
 
 runApplyT :: (Cmp -> m v) -> ApplyT v m a -> m a
@@ -100,7 +102,7 @@ showIfBot s v = (if v == bottom then trace s else id) (return v)
 
 eval :: forall v m k e  . EvalM e v k m => Cmp -> m v
 eval = fix evalCmp
-   where evalCmp recur (FuncBdy (Lam _ bdy _)) = eval' recur bdy
+   where evalCmp recur (FuncBdy (Lam _ _ bdy _)) = eval' recur bdy
          evalCmp recur (ActorExp e) = eval' recur e
          evalCmp recur (ReceiveExp e) = evalReceive recur e
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
@@ -111,20 +113,20 @@ eval'' _ ex@(Literal lit _) =  injectLit lit ex
 eval'' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
    v2 <- mapM (eval' rec) es
-   apply rec e v1 v2
+   apply rec e es v1 v2
 eval'' rec e@(AppQual namespace funName es s) = do
    let name = Var $ Ide (Ide.name namespace ++ ":" ++ Ide.name funName) s
    v1 <- eval' rec name
    vs <- mapM (eval' rec) es
-   apply rec e v1 vs
+   apply rec e es v1 vs
 eval'' rec (Ite e1 e2 e3 _) = do
    result <- eval' rec e1
    choice result (eval' rec e2) (eval' rec e3)
 eval'' _rec (Spawn e _) =
    liftA2 (,) getEnv getCtx >>= (fmap aref . uncurry (spawn @v e))
 eval'' _ (Terminate _) = terminate $> nil
-eval'' _ e@(Receive _ _) = do 
-    ρ' <- getEnv 
+eval'' _ e@(Receive _ _) = do
+    ρ' <- getEnv
     dyn' <- getDynamic
     select e ρ' dyn'
 eval'' rec (Match e pats _) = do
@@ -182,7 +184,7 @@ logCoverage e ma = do
 eval' :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> Exp -> m v
 eval' rec e = logCoverage e $ eval'' rec e
 
-evalReceive :: EvalM e v k m => (Cmp -> m v) -> Exp -> m v 
+evalReceive :: EvalM e v k m => (Cmp -> m v) -> Exp -> m v
 evalReceive rec expr@(Receive pats _) = logCoverage expr $ recvMsg $ matchList
          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
          pats
@@ -197,21 +199,30 @@ trySend ref msg = do
           (mjoinMap (`send` msg) (arefs' ref))
           (escape NotAnActorReference)
 
-apply :: EvalM e v k m => (Cmp -> m v) -> Exp -> v -> [v] -> m v
-apply rec e v vs = choices
-   [(isClo v, mjoinMap (\env -> applyClosure e env rec vs) (clos v)),
+-- TODO: variable number of arguments
+apply :: EvalM e v k m => (Cmp -> m v) -> Exp -> [Exp] -> v -> [v] -> m v
+apply rec e es v vs = choices
+   [(isClo v, mjoinMap (\env -> applyClosure e es env rec vs) (clos v)),
     (isPrim v, mjoinMap (\nam -> applyPrimitive rec nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))
-applyClosure :: EvalM e v k m => Exp -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
-applyClosure e(lam@(Lam prs _ _), env) rec vs =
-   if length prs /= length vs then
-      error "invalid number of arguments"
-   else withCtx (pushCallSite (spanOf e)) $ do
+applyClosure :: EvalM e v k m => Exp -> [Exp] -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
+applyClosure e es (lam@(Lam prs prz _ _), env) rec vs
+  | length es /= length vs = 
+        error "invariant violated: number of operands in the application must equal the number of evaluated operand values"
+  | length prs /= length vs && isNothing prz = error "invalid number of arguments"
+  | otherwise = withCtx (pushCallSite (spanOf e)) $ do
             ads <- mapM alloc prs
-            let bds = zip (map name prs) ads
+            -- in case the function supports a variable number of arguments
+            listArgv <- allocList (drop (length prs) es) (drop (length prs) vs)
+            przAdr <- maybe (return Nothing) (fmap Just . alloc) prz
+            when (isJust przAdr) (writeVar (fromJust przAdr) listArgv)
+            let varBdn = maybe [] List.singleton $ liftA2 (,) (fmap name prz) przAdr
+            -- regular arguments
+            let bds = zip (map name prs) ads ++ varBdn
             mapM_ (uncurry writeVar) (zip ads vs)
+            -- evaluate the body of the applied function
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
-applyClosure _ _ _ _ = error "invalid closure"
+applyClosure _ _ _  _ _ = error "invalid closure"
 
 applyPrimitive :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> String -> Exp -> [v] -> m v
 applyPrimitive rec prm expr ops =
@@ -221,9 +232,15 @@ type Mapping v = Map Ide v
 
 allocMapping :: EvalM e v k m => Map Ide v -> m (Env v)
 allocMapping bds = do
-   -- TODO: clean this up
    env <- getEnv
    foldM (\env' (ide@(Ide nam _), v) -> do { adr <- alloc ide ; writeVar adr v ; return (extend nam adr env') }) env (Map.toList bds)
+
+-- | Allocates the list of values in the second argument as a SimpleActor list 
+-- using the list in the first argument as allocation sites.
+allocList :: EvalM e v k m => [Exp] -> [v] -> m v
+allocList es vs =
+    foldrM (\(e, v) ptr -> stoPai e (cons v ptr)) nil (zip es vs)
+
 
 -- | Matches a list of patterns (from top to bottom) 
 -- against a value.

@@ -14,9 +14,9 @@ import Lattice.Trace (Trace(..))
 import Syntax.Scheme.Parser (SExp)
 import qualified Syntax.Scheme.Parser as SExp
 
--- | An expression
+
 data Exp = -- Program Semantics
-           Lam [Ide] Exp Span                -- ^ λ (x*) . e 
+           Lam [Ide] (Maybe Ide) Exp Span    -- ^ λ (x*) . e 
          | App Exp [Exp] Span                -- ^ e(e*)
          | AppQual Ide Ide [Exp] Span        -- ^ module:name(e*)
          | Spawn Exp Span                    -- ^ spawn e 
@@ -103,7 +103,7 @@ type Binding = (Ide, Exp)
 -- SpanOf instance
 instance SpanOf Exp where
    spanOf = \case
-               (Lam _ _ s) -> s
+               (Lam _ _ _ s) -> s
                (App _ _ s) -> s
                (AppQual _ _ _ s) -> s
                (Spawn _ s) -> s
@@ -130,7 +130,11 @@ instance SpanOf Exp where
 
 instance Show Exp where
    show = \case
-            (Lam x e _)       -> printf "(lam (%s) %s)" (unwords (map name x)) (show e)
+            (Lam x ids e  _)   -> case ids of 
+                                    Just ident -> if not (null x)
+                                                  then printf "(lam (%s . %s) %s)" (unwords (map name x)) (name ident) (show e) 
+                                                  else printf "(lam %s %s)" (name ident) (show e)
+                                    Nothing -> printf "(lam (%s) %s)" (unwords (map name x)) (show e) 
             (App e1 es _)     -> printf "(%s %s)" (show e1) (unwords (map show es))
             (AppQual modname nam es _) -> printf "(%s:%s %s)" (show modname) (show nam) (unwords (map show es))
             (Spawn e1 _)      -> printf "(spawn^ %s)" (show e1)
@@ -166,7 +170,7 @@ instance FreeVariables (Pat, Exp) where
    fv (pat, expr) = Set.difference (fv expr) (variables pat)
 
 instance FreeVariables Exp where
-   fv (Lam xs e _)  = Set.difference (fv e) (Set.fromList (map name xs))
+   fv (Lam xs ident e _)  = Set.difference (fv e) (Set.fromList (map name xs) `Set.union` maybe Set.empty (Set.singleton . name) ident)
    fv (App e1 es _) = Set.unions $ fv e1 : map fv es
    fv (AppQual modName funName es _) = Set.singleton (name modName ++ ":" ++ name funName) `Set.union` Set.unions (map fv es)
    fv (Spawn e1 _)  = fv e1

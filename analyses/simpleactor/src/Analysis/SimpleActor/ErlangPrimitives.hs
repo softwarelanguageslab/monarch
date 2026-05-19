@@ -98,14 +98,14 @@ erlangPrimitives =
       ("erlang:exit_signal/2", prim $ const $ const mbottom),
       ("erlang:self/0", prim $ const $ const $ fmap aref getSelf),
       ("erlang:spawn/1", prim $ const $ prim1 $ \fun -> do
-        let applyLam = \case (Lam [] ex _, env) -> aref <$> (getCtx >>= spawn ex env)
-                             (Lam prs _ _, _)   -> escape $ ArityMismatch 0 (length prs)
+        let applyLam = \case (Lam [] _ ex _, env) -> aref <$> (getCtx >>= spawn ex env)
+                             (Lam prs _ _ _, _)   -> escape $ ArityMismatch 0 (length prs)
                              _ -> error "unexpected case"
         mjoinMap applyLam (clos fun)
       ),
       ("erlang:spawn/3", prim $ \expr -> prim3 $ \modl funName ags -> do
         moduleSelector <-  mjoinMap (lookupVar <=< lookupEnv) $ symbols modl
-        mjoinMap (\(Lam prs ex _, env') -> (getCtx >>= spawn ex (bindPrs env' prs [ags])) $> nil  ) . clos =<< applyFun expr moduleSelector [funName]
+        mjoinMap (\(Lam prs _ ex _, env') -> (getCtx >>= spawn ex (bindPrs env' prs [ags])) $> nil  ) . clos =<< applyFun expr moduleSelector [funName]
 
       ),
       -- TODO: important: spawn and spawn_link, need call functionality in monad to do that
