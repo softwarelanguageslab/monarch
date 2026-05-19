@@ -18,3 +18,12 @@
  (if (null? lst)
      ''()
      `(cons ,(car lst) ,(consify (cdr lst)))))
+
+;; Bind the given list of value expressions to fresh variables and returns the list of fresh variables
+(define (letify values bdy-function)
+  (let* ((names (map (lambda _ (gensym 'x)) values))
+         (bds   (map (lambda (var exp) (list var exp)) names values)))
+
+    `(let ,bds 
+       ,(bdy-function names))))
+          

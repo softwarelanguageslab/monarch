@@ -13,10 +13,11 @@
    (ping/cm (lambda () 
               (ensures/c (message/c 'pong (actor?) 
                                     unspecified-recipient
-                                    (ensures/c (message/c 'ping
-                                                          (actor?)
-                                                          unspecified-recipient
-                                                          (ping/cm))))))))
+                                    (lambda (_)
+                                      (ensures/c (message/c 'ping
+                                                            (actor?)
+                                                            (lambda (_) unspecified-recipient)
+                                                            (ping/cm)))))))))
 
   (letrec ((ping (mon client server ping/c (spawn ping-behavior)))
            (pong (spawn pong-behavior)))

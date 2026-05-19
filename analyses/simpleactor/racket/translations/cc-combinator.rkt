@@ -59,10 +59,16 @@
 (define ((translate-message-handler k j) exp)
         (match exp
           [(quasiquote (message/c ,tag ,payload ,recipient ,communication))
-           (let* [(ps (map (lambda ags (gensym "x")) payload))
-                  (nmsg (map (lambda (contract arg) `((,contract ,k ,j) ,arg)) payload ps))]
+           (let* ;; bindings for the payload values
+                 [(ps (map (lambda ags (gensym "x")) payload))
+                  ;; contract monitoring expressions on the payload values
+                  (nmsg (map (lambda (contract arg) `(,contract ,k ,j ,arg)) payload ps))]
 
-               `(,(uncurry (cons tag ps)) ,(enhanced-message (uncurry (cons tag nmsg)) (translate-aux communication) j)))]))
+               `(,(uncurry (cons tag ps)) 
+                   ;; bind the monitoring expressions to fresh variables, and use those variables in the enhanced message
+                  ,(letify nmsg 
+                    (lambda (vars)
+                      (enhanced-message (uncurry (cons tag vars)) `(,(translate-aux communication) ,@vars) j)))))]))
               
  
 ;; The message/c* special form which enables expressing a nested chain of ensures/c - message/c 
@@ -83,9 +89,11 @@
   (define (translate-handler handler rest)
     (match handler 
       [(quasiquote (,ids ,tag ,payload-contracts ,recipient-contract))
+        (unless (list? payload-contracts)
+          (error (format "payload contracts should be a list, got ~a" payload-contracts)))
        `(lambda ,ids 
           (ensures/c 
-            (message/c ,tag (list ,@payload-contracts) ,recipient-contract 
+            (message/c ,tag ,payload-contracts ,recipient-contract 
                             ,(translate-message/c*-aux rest))))]))
 
   (define (translate-message/c*-aux handlers)
@@ -101,7 +109,7 @@
         (error "a message/c* contract requires at least one messages")
         (match (car messages)
           [(quasiquote (,tag ,payload-contracts ,recipient-contract))
-           `(message/c ,tag (list ,@payload-contracts) ,recipient-contract
+           `(message/c ,tag ,payload-contracts ,recipient-contract
                        ,(translate-message/c*-aux (cdr messages)))]))))
 
 
@@ -368,8 +376,11 @@
      (translate-message/c e)]
     [(quasiquote (message/c* ,@rest))
       (translate-aux (translate-message/c* e))]
-    [(quasiquote (spawn/c ,contract ,beh ,args))
-      (translate-aux `(mon (loc 'client) (loc 'server) ,contract (spawn^ (,beh ,args))))]
+    ;; [(quasiquote (spawn/c ,contract ,beh ,args))
+    ;;   (translate-aux `(mon (loc 'client) (loc 'server) ,contract 
+    ;;                   (lambda (msg)
+    ;;                     (let ((ref (spawn^ (,beh ,args))))
+    ;;                       ((dyn send^) ref msg)))))]
     [(quasiquote (one-of/c ,@options))
      (let ((j (gensym "j")) (k (gensym "k")) (v (gensym "v")))
       (define (gen-oneof options v)
@@ -404,8 +415,9 @@
                      (((list) #f)
                       ((pair v1 vs)
                         (if (eq? v v1) #t (member v vs))))))))
-      (unconstrained/c #f) ;; todo
-      (actor? (lambda (k j) (lambda (v) v)))
+      (loopy-actor (lambda () (receive ((_ (loopy-actor))))))
+      (unconstrained/c (lambda payload (lambda j (spawn^ loopy-actor)))) ;; todo
+      (actor? (lambda (k j v) v))
       (nonzero? (lambda (v) (not (= v 0)))))
      ,e))
 

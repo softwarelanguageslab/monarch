@@ -3,11 +3,11 @@
  (behavior/c 
    (message/c*
      ;; initial request
-     [request (actor?) any-recipient]
+     ['request (actor?) any-recipient]
      ;; the router should forward the request
      [(client-ref) 'request (actor?) any-recipient]
      ;; the server should reply directly back to the actor of the original payload
-     [_ 'reply (integer?) (specific-recipient client-ref)])))
+     [_ 'reply (integer?/c) (specific-recipient client-ref)])))
 
 (define (pick-service services)
   (list-ref services (random (length services))))
@@ -31,11 +31,11 @@
   (behavior ()
       ((request (sender) 
             'do-work
-            (send sender reply 42)
+            (send sender reply 'symbool)
             (become service-behavior)))))
 
 (define service (spawn service-behavior)) 
-(define router (spawn/c router/c router-behavior (list service)))
+(define router (mon (loc 'client) (loc 'server) router/c (spawn router-behavior (list service))))
 (define client (spawn client-behavior router))
 (send client main)
 (wait-until-all-finished)
