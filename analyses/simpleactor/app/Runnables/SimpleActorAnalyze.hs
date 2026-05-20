@@ -12,7 +12,6 @@ import Criterion.Main
 import qualified Criterion.Main.Options as Criterion
 import Criterion.Types (Config(..))
 import qualified Data.DeltaMap as DeltaMap
-import Data.Functor.Identity
 import CommandLine.Options
 import Text.Pretty.Simple
 import Syntax.AST
@@ -68,6 +67,6 @@ entrypoint InputOptions { .. } OutputDirOptions { .. } doBenchmark = do
 analyzeAst :: Exp -> String -> IO ()
 analyzeAst expr outDir = do
     output <- Fixpoint.analyzeIO expr
-    let trace = reverse $ map Fixpoint._mbs $ runIdentity $ Fixpoint._trace $ snd output
+    let trace = reverse $ map Fixpoint._mbs $ Fixpoint._trace $ snd output
 
     renderTraceMailboxesToDot outDir (map DeltaMap.toMap trace)

@@ -2,14 +2,12 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-loopy-superclass-solve #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
-{-# LANGUAGE QuantifiedConstraints #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
-{- HLINT ignore "Functor law" -}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use fewer imports" #-}
 module Analysis.SimpleActor.Fixpoint(
     analyze,
-    AnalysisState' (..),
-    AnalysisState,
-    PureAnalysisState,
+    AnalysisState (..),
     System (..),
     analyzeIO
 ) where
@@ -24,12 +22,12 @@ import Analysis.SimpleActor.Monad
       MonadSpawn(..),
       MonadDynamic(..),
       MonadFresh(..) )
-import Control.Monad.Reader (ReaderT (runReaderT), MonadReader (..), asks)
+import Control.Monad.Reader (ReaderT, MonadReader (..))
 import Analysis.SimpleActor.Fixpoint.Common
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Lens
-import Control.Monad.State (StateT, execStateT)
+import Control.Monad.State (StateT (runStateT), execStateT)
 import Control.Monad.Except (ExceptT, throwError)
 import GHC.Generics (Generic)
 import Analysis.Monad.Environment (EnvM (..))
@@ -38,7 +36,7 @@ import Analysis.Monad.Map (MapM (..))
 import Analysis.Monad.Join (SetNonDetT)
 import Analysis.Monad.Store (StoreM)
 import qualified Analysis.Store as AStore
-import Analysis.Monad (StoreM(..), CtxM (..), runIntraAnalysis, MonadDependencyTrigger, ComponentTrackingM)
+import Analysis.Monad (StoreM(..), WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis, MonadDependencyTrigger)
 import qualified Lattice.Class as Lattice
 import Data.Maybe (fromMaybe, isJust)
 import Analysis.Monad.DependencyTracking (DependencyTrackingM (..), MonadDependencyTrigger (trigger))
@@ -53,17 +51,22 @@ import Analysis.Actors.Monad (MonadActorLocal (..))
 import qualified Domain.Actor
 import Domain.Scheme.Store (StoreVal (..), SchemeAdr (..))
 import Analysis.Monad.Allocation (AllocM (..))
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Analysis.Monad.ComponentTracking (ComponentTrackingM (..))
+import Control.Monad.IO.Class (MonadIO)
+import Analysis.Monad.ComponentTracking (ComponentTrackingT)
 import Data.Bifunctor
 import qualified Analysis.Fixpoint as Fix
 import Domain.Actor (Pid(EntryPid))
-import Analysis.Monad.WorkList ( WorkListM )
+import Analysis.Monad.WorkList ( runWithWorkList, WorkListM )
 import Data.Tuple.Extra (dupe, (<+>))
 import qualified Analysis.Actors.Mailbox.Partitioned as MB
+import Data.Functor
 import Control.Monad ((>=>))
 import qualified Data.DeltaMap as DeltaMap
-import Control.Concurrent.MVar
+
+-- These are here for the instances of each domain for the "TopLifted" value.
+import Domain.Core.PairDomain.TopLifted ()
+import Domain.Core.StringDomain.TopLifted ()
+
 import qualified Analysis.Symbolic.Monad as SCV
 import qualified Domain.SimpleActor as Domain
 import Symbolic.AST (emptyPC)
@@ -72,7 +75,7 @@ import Domain.Core.AbstractCount (AbstractCount)
 import Analysis.Monad.AbstractCount
 import Solver.Z3 (runZ3SolverWithPrelude)
 import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
-import qualified Analysis.Monad.WorkList as AWL
+import qualified Analysis.Monad.WorkList as WL
 import qualified Analysis.Monad.Map as MapM
 import qualified Analysis.ASE.SymbolicVariable as ASE
 import qualified Analysis.ASE.PC as ASE
@@ -80,14 +83,11 @@ import Syntax.Span
 import qualified Domain.Symbolic.Class as Symbolic
 import Control.DeepSeq (NFData)
 import Syntax.AST
-import qualified Control.Fixpoint.WorkList as WL
 
 -- These are here for the instances of each domain for the "TopLifted" value.
 import Domain.Core.PairDomain.TopLifted ()
 import Domain.Core.StringDomain.TopLifted ()
 import qualified RIO as Debug
-
-
 
 ------------------------------------------------------------
 -- Shorthands
@@ -277,36 +277,25 @@ type SystemT m = (
 ------------------------------------------------------------
 
 -- | Global analysis state (store + bookkeeping for fixpoints)
-data AnalysisState' f = AnalysisState {
-        _cache :: f (Map ProcKey ProcVal),
-        _store :: f (Map ActorAdr (StoreVal ActorVlu)),
-        _deps  :: f (Map Dep (Set ProcKey)),
-        _trace :: f [System],
-        _wl    :: f [ProcKey],
-        _cmps  :: f (Set ProcKey)
-    } deriving (Generic)
+data AnalysisState = AnalysisState {
+        _cache :: Map ProcKey ProcVal,
+        _store :: Map ActorAdr (StoreVal ActorVlu),
+        _deps  :: Map Dep (Set ProcKey),
+        _trace :: [System]
+    } deriving (Ord, Eq, Show, Generic)
 
--- Thread-safe analysis state as used throughout the analysis
-type AnalysisState = AnalysisState' MVar
--- Pure analysis state
-type PureAnalysisState = AnalysisState' Identity
+instance NFData AnalysisState
 
--- | Read the current contents of the AnalysisState's protected 
--- variables and copy them into a pure analysis state version.
-toPureAnalysisState :: (MonadIO m) => AnalysisState -> m PureAnalysisState
-toPureAnalysisState st = AnalysisState
-        <$> (Identity <$> liftIO (readMVar (_cache st)))
-        <*> (Identity <$> liftIO (readMVar (_store st)))
-        <*> (Identity <$> liftIO (readMVar (_deps st)))
-        <*> (Identity <$> liftIO (readMVar (_trace st)))
-        <*> (Identity <$> liftIO (readMVar (_wl st)))
-        <*> (Identity <$> liftIO (readMVar (_cmps st)))
+$(makeLenses ''AnalysisState)
 
-instance (forall a . NFData a => NFData (f a)) => NFData (AnalysisState' f)
 
 ------------------------------------------------------------
--- | Global analysis monad: restricted to IO since we use MVars
-type GlobalT m = (ReaderT AnalysisState m)
+
+-- | Monad global to the analysis
+type GlobalT m = (
+        StateT AnalysisState  (
+        ComponentTrackingT ProcKey (
+        WorkListT [ProcKey] m)))
 
 ------------------------------------------------------------
 
@@ -391,21 +380,14 @@ instance Monad m => MonadSpawn ActorVlu AdrCtx (SystemT m) where
 
 -- Analysis-global instances.
 
+
 -- The 'AnalysisState' precisely captures the state needed for keeping 
 -- track of a 'MapM' cache.
-instance (MonadIO m, k ~ ProcKey, v ~ ProcVal) => MapM k v (ReaderT AnalysisState m) where
-  get k = do
-    vMVar <- asks _cache
-    liftIO $ withMVar vMVar (return . view (at k))
-  put k v = do
-    vMVar <- asks _cache
-    liftIO $ modifyMVar_ vMVar (return . set (at k) (Just v))
-  joinWith k v = do
-    vMVar <- asks _cache
-    liftIO $ modifyMVar_ vMVar (return . over (at k) (Just . maybe v (Lattice.join v)))
-  getAll = do
-    vMVar <- asks _cache
-    liftIO $ readMVar vMVar
+instance (Monad m, k ~ ProcKey, v ~ ProcVal) => MapM k v (StateT AnalysisState m) where
+  get k = use (cache . at k)
+  put k v = cache . at k ?= v
+  joinWith k v = cache . at k %= Just . maybe v (Lattice.join v)
+  getAll = use cache
 
 -- The 'AnalysisState' also contains a store, so we can use it for the 'StoreM' instance as well.
 -- The store operations are delegated to the canonical 'Store' instance in
@@ -413,55 +395,24 @@ instance (MonadIO m, k ~ ProcKey, v ~ ProcVal) => MapM k v (ReaderT AnalysisStat
 -- important here: abstract allocation reuses addresses (e.g. all pairs share
 -- one 'PtrAdr'), so writes must join with any existing value rather than
 -- overwrite it, otherwise the system fixpoint cannot converge.
-instance (MonadIO m) => StoreM ActorAdr (StoreVal ActorVlu) (ReaderT AnalysisState m) where
-  storeSize            = do
-    vMVar <- asks _store
-    liftIO $ withMVar vMVar (return . AStore.size)
-  lookupAdr adr        = do
-    vMVar <- asks _store
-    liftIO $ withMVar vMVar (return . fromMaybe (error $ "Address " ++ show adr ++ " not found in store") . AStore.lookupSto adr)
-  writeAdr adr v       = do
-    vMVar <- asks _store
-    liftIO $ modifyMVar_ vMVar (return . AStore.extendSto adr v)
-  updateWith fs fw adr = do
-    vMVar <- asks _store
-    liftIO $ modifyMVar_ vMVar (return . AStore.updateStoWith fs fw adr)
-  hasAdr adr           = do
-    vMVar <- asks _store
-    liftIO $ withMVar vMVar (return . isJust . AStore.lookupSto adr)
+instance (Monad m) => StoreM ActorAdr (StoreVal ActorVlu) (StateT AnalysisState m) where
+  storeSize            = use (store . to AStore.size)
+  lookupAdr adr        = use (store . to (fromMaybe (error $ "Address " ++ show adr ++ " not found in store") . AStore.lookupSto adr))
+  writeAdr adr v       = store %= AStore.extendSto adr v
+  updateWith fs fw adr = store %= AStore.updateStoWith fs fw adr
+  hasAdr adr           = use (store . to (isJust . AStore.lookupSto adr))
 
-instance {-# OVERLAPPING #-} (MonadIO m, k ~ ProcKey, DepL d) => DependencyTrackingM k d (ReaderT AnalysisState m) where
-  register dep cmp = do
-    vMVar <- asks _deps
-    liftIO $ modifyMVar_ vMVar (return . over (at (review depL dep)) (Just . maybe (Set.singleton cmp) (Set.insert cmp)))
-  dependent dep = do
-    vMVar <- asks _deps
-    liftIO $ withMVar vMVar (return . fromMaybe Set.empty . view (at (review depL dep)))
+-- Finally, we can track dependencies in the same 'AnalysisState'.
+instance {-# OVERLAPPING #-} (Monad m, k ~ ProcKey, DepL d) => DependencyTrackingM k d (StateT AnalysisState m) where
+  register dep cmp = deps . at (review depL dep) %= Just . maybe (Set.singleton cmp) (Set.insert cmp)
+  dependent dep = use (deps . at (review depL dep) . to (fromMaybe Set.empty))
 
-instance (DepL d, k ~ ProcKey, MonadIO m) => MonadDependencyTrigger k d (ReaderT AnalysisState m) where
-  trigger = dependent >=> AWL.adds
-
-instance {-# OVERLAPPING #-} (MonadIO m, k ~ ProcKey) => WorkListM (ReaderT AnalysisState m) k where
-  done =
-    (asks _wl >>= liftIO . readMVar) <&> WL.isEmpty
-  pop = do
-    wlMVar <- asks _wl
-    liftIO $ modifyMVar wlMVar $ \wl -> case WL.pop wl of
-        Nothing -> error "worklist is empty, cannot pop"
-        Just (k, wl') -> return (wl', k)
-  add el =
-    asks _wl >>= liftIO . flip modifyMVar_ (return . WL.add el)
-
-instance {-# OVERLAPPING #-} (MonadIO m, k ~ ProcKey) => ComponentTrackingM (ReaderT AnalysisState m) k where
-  spawn cmp = asks _cmps >>= liftIO . flip modifyMVar_ (return . Set.insert cmp)
-  components = asks _cmps >>= liftIO . readMVar
+instance (DepL d, k ~ ProcKey, Monad m, WorkListM m k) => MonadDependencyTrigger k d (StateT AnalysisState m) where
+  trigger = dependent >=> WL.adds
 
 -- | Register a system after a inter-actor turn, and returns the registered system
-traceSystem :: MonadIO m => System -> AnalysisGlobalT m System
-traceSystem sys = do
-    ref <- asks _trace
-    liftIO $ modifyMVar_ ref (return . (sys:))
-    return sys
+traceSystem :: Monad m => System -> AnalysisGlobalT m System
+traceSystem sys = (trace %= (sys:)) $> sys
 
 ------------------------------------------------------------
 -- Fixpoints
@@ -548,25 +499,25 @@ initialSystem mainExp = System {
     }
 
 -- | Create an empty analysis state
-emptyAnalysisState :: IO AnalysisState
-emptyAnalysisState = AnalysisState
-        <$> newMVar Map.empty
-        <*> newMVar mainStore
-        <*> newMVar Map.empty
-        <*> newMVar []
-        <*> newMVar []
-        <*> newMVar Set.empty
+emptyAnalysisState :: AnalysisState
+emptyAnalysisState = AnalysisState {
+        _cache = Map.empty,
+        _store = mainStore,
+        _deps = Map.empty,
+        _trace = []
+    }
 
 -- | Top-level function to analyze an actor system.
-analyze :: (MonadIO m, SCV.FormulaSolver Domain.SymVar m) => Exp -> m (System, PureAnalysisState)
-analyze mainExpr = do
-    initState <- liftIO emptyAnalysisState
-    system <- fixSystem initSystem
-            & flip runReaderT initState
-    (system,) <$> toPureAnalysisState initState
+analyze :: AnalysisM m => Exp -> m (System, AnalysisState)
+analyze mainExpr =
+        fixSystem initSystem
+      & flip runStateT initState
+      & runWithComponentTracking
+      & runWithWorkList
     where initSystem = initialSystem mainExpr
+          initState  = emptyAnalysisState
 
 -- | Top-level function to analyze an actor system within the IO monad
-analyzeIO :: Exp -> IO (System, PureAnalysisState)
+analyzeIO :: Exp -> IO (System, AnalysisState)
 analyzeIO mainExpr = analyze mainExpr
                    & runZ3SolverWithPrelude
