@@ -269,48 +269,35 @@
                    xj2622
                    xk2623
                    (lambda (p) (orig-cdr p)))))
-               (cons
-                (letrec ((xj2628 'server) (xk2629 'client))
-                  ((lambda (j2632 k2633 f2634)
-                     (lambda (g2630 g2631)
-                       (pair?/c
-                        j2632
-                        k2633
-                        (f2634
-                         (any/c k2633 j2632 g2630)
-                         (any/c k2633 j2632 g2631)))))
-                   xj2628
-                   xk2629
-                   (lambda (a b) (orig-cons a b)))))
                (vector?/c
-                (lambda (g2635 g2636 g2637)
-                  (if (vector? g2637) g2637 (blame g2635 'vector?))))
+                (lambda (g2628 g2629 g2630)
+                  (if (vector? g2630) g2630 (blame g2628 'vector?))))
                (vector-ref
-                (letrec ((xj2638 'server) (xk2639 'client))
-                  ((lambda (j2642 k2643 f2644)
-                     (lambda (g2640 g2641)
+                (letrec ((xj2631 'server) (xk2632 'client))
+                  ((lambda (j2635 k2636 f2637)
+                     (lambda (g2633 g2634)
                        (any/c
-                        j2642
-                        k2643
-                        (f2644
-                         (vector?/c k2643 j2642 g2640)
-                         (integer?/c k2643 j2642 g2641)))))
-                   xj2638
-                   xk2639
+                        j2635
+                        k2636
+                        (f2637
+                         (vector?/c k2636 j2635 g2633)
+                         (integer?/c k2636 j2635 g2634)))))
+                   xj2631
+                   xk2632
                    (lambda (v i) (orig-vector-ref v i)))))
                (vector-set!
-                (letrec ((xj2645 'server) (xk2646 'client))
-                  ((lambda (j2650 k2651 f2652)
-                     (lambda (g2647 g2648 g2649)
+                (letrec ((xj2638 'server) (xk2639 'client))
+                  ((lambda (j2643 k2644 f2645)
+                     (lambda (g2640 g2641 g2642)
                        (any/c
-                        j2650
-                        k2651
-                        (f2652
-                         (vector?/c k2651 j2650 g2647)
-                         (integer?/c k2651 j2650 g2648)
-                         (any/c k2651 j2650 g2649)))))
-                   xj2645
-                   xk2646
+                        j2643
+                        k2644
+                        (f2645
+                         (vector?/c k2644 j2643 g2640)
+                         (integer?/c k2644 j2643 g2641)
+                         (any/c k2644 j2643 g2642)))))
+                   xj2638
+                   xk2639
                    (lambda (vec i v) (orig-vector-set! vec i v)))))
                (cdddr (lambda (x) (cdr (cdr (cdr x)))))
                (__toplevel_set-car! set-car!)
@@ -605,116 +592,120 @@
                   (if (= index 0) (car l) (list-ref (cdr l) (- index 1)))))
                (gcd (lambda (a b) (if (= b 0) a (gcd b (modulo a b)))))
                (router/c
-                (lambda (k2655 j2656 a2654)
-                  (lambda (v2657)
-                    (letrec ((result2680
-                              ((lambda (k2659 j2660 v2661)
+                (lambda (k2648 j2649 a2647)
+                  (lambda (v2650)
+                    (letrec ((result2673
+                              ((lambda (k2652 j2653 v2654)
                                  (match
-                                  v2661
-                                  (((cons 'request x2662)
-                                    (letrec ((x2663
-                                              (actor? k2659 j2660 x2662)))
+                                  v2654
+                                  (((cons 'request x2655)
+                                    (letrec ((x2656
+                                              (actor? k2652 j2653 x2655)))
                                       (cons
                                        'enhanced
                                        (cons
                                         ((lambda (client-ref)
-                                           (lambda (j2665)
+                                           (lambda (j2658)
                                              (letrec ((r
-                                                       (lambda (trace2669)
+                                                       (lambda (trace2662)
+                                                         ;; (trace trace2662)
                                                          (receive
                                                           (('finish
                                                             (begin
+                                                              (trace 'finish)
                                                               (if (member
                                                                    'request
-                                                                   trace2669)
+                                                                   trace2662)
                                                                 #t
                                                                 (blame
-                                                                 j2665))))
+                                                                 j2658))))
                                                            ((pair
-                                                             rcv2668
-                                                             message2667)
+                                                             rcv2661
+                                                             message2660)
+                                                            (trace message2660)
                                                             (match
-                                                             message2667
+                                                             message2660
                                                              (((cons
                                                                 'request
-                                                                x2670)
+                                                                x2663)
                                                                (begin
+                                                                 (trace 'request)
                                                                  ((dyn send^)
-                                                                  rcv2668
-                                                                  (letrec ((x2671
+                                                                  rcv2661
+                                                                  (letrec ((x2664
                                                                             (actor?
-                                                                             j2665
-                                                                             j2665
-                                                                             x2670)))
+                                                                             j2658
+                                                                             j2658
+                                                                             x2663)))
                                                                     (cons
                                                                      'enhanced
                                                                      (cons
                                                                       ((lambda _
-                                                                         (lambda (j2673)
+                                                                         (lambda (j2666)
                                                                            (letrec ((r
-                                                                                     (lambda (trace2677)
+                                                                                     (lambda (trace2670)
                                                                                        (receive
                                                                                         (('finish
                                                                                           (begin
                                                                                             (if (member
                                                                                                  'reply
-                                                                                                 trace2677)
+                                                                                                 trace2670)
                                                                                               #t
                                                                                               (blame
-                                                                                               j2673))))
+                                                                                               j2666))))
                                                                                          ((pair
-                                                                                           rcv2676
-                                                                                           message2675)
+                                                                                           rcv2669
+                                                                                           message2668)
                                                                                           (match
-                                                                                           message2675
+                                                                                           message2668
                                                                                            (((cons
                                                                                               'reply
-                                                                                              x2678)
+                                                                                              x2671)
                                                                                              (begin
                                                                                                ((dyn
                                                                                                  send^)
-                                                                                                rcv2676
-                                                                                                (letrec ((x2679
+                                                                                                rcv2669
+                                                                                                (letrec ((x2672
                                                                                                           (integer?/c
-                                                                                                           j2673
-                                                                                                           j2673
-                                                                                                           x2678)))
+                                                                                                           j2666
+                                                                                                           j2666
+                                                                                                           x2671)))
                                                                                                   (cons
                                                                                                    'enhanced
                                                                                                    (cons
                                                                                                     (unconstrained/c
-                                                                                                     x2679)
+                                                                                                     x2672)
                                                                                                     (cons
-                                                                                                     j2673
+                                                                                                     j2666
                                                                                                      (cons
                                                                                                       'reply
-                                                                                                      x2679))))))
+                                                                                                      x2672))))))
                                                                                                (r
                                                                                                 (cons
                                                                                                  'reply
-                                                                                                 trace2677))))))))))))
+                                                                                                 trace2670))))))))))))
                                                                              (spawn^
                                                                               (r
                                                                                (list))))))
-                                                                       x2671)
+                                                                       x2664)
                                                                       (cons
-                                                                       j2665
+                                                                       j2658
                                                                        (cons
                                                                         'request
-                                                                        x2671))))))
+                                                                        x2664))))))
                                                                  (r
                                                                   (cons
                                                                    'request
-                                                                   trace2669))))))))))))
+                                                                   trace2662))))))))))))
                                                (spawn^ (r (list))))))
-                                         x2663)
+                                         x2656)
                                         (cons
-                                         j2660
-                                         (cons 'request x2663)))))))))
-                               k2655
-                               j2656
-                               v2657)))
-                      (if result2680 (a2654 result2680) (blame k2655))))))
+                                         j2653
+                                         (cons 'request x2656)))))))))
+                               k2648
+                               j2649
+                               v2650)))
+                      (if result2673 (a2647 result2673) (blame k2648))))))
                (pick-service
                 (lambda (services)
                   (list-ref services (random (length services)))))
@@ -730,7 +721,20 @@
                           (client-behavior router)))
                        ((cons 'reply answer)
                         (begin (displayln answer) (terminate)))
-                       ((cons 'enhanced (cons k2682 (cons j2686 'main)))
+                       ((cons 'enhanced (cons k2675 (cons j2679 'main)))
+                        (letrec ((kc2676 (k2675 j2679))
+                                 (old-send2680 (dyn send^)))
+                          (parametrize
+                           ((send^
+                             (lambda (rcv2677 msg2678)
+                               (old-send2680 kc2676 (cons rcv2677 msg2678)))))
+                           (begin
+                             (router (cons 'request (dyn self)))
+                             (old-send2680 kc2676 'finish)))
+                          (client-behavior router)))
+                       ((cons
+                         'enhanced
+                         (cons k2682 (cons j2686 (cons 'reply answer))))
                         (letrec ((kc2683 (k2682 j2686))
                                  (old-send2687 (dyn send^)))
                           (parametrize
@@ -738,44 +742,34 @@
                              (lambda (rcv2684 msg2685)
                                (old-send2687 kc2683 (cons rcv2684 msg2685)))))
                            (begin
-                             (router (cons 'request (dyn self)))
-                             (old-send2687 kc2683 'finish)))
-                          (client-behavior router)))
-                       ((cons
-                         'enhanced
-                         (cons k2689 (cons j2693 (cons 'reply answer))))
-                        (letrec ((kc2690 (k2689 j2693))
-                                 (old-send2694 (dyn send^)))
-                          (parametrize
-                           ((send^
-                             (lambda (rcv2691 msg2692)
-                               (old-send2694 kc2690 (cons rcv2691 msg2692)))))
-                           (begin
                              (displayln answer)
-                             (old-send2694 kc2690 'finish)))
+                             (old-send2687 kc2683 'finish)))
                           (terminate)))))))))
                (router-behavior
                 (lambda (services)
                   (letrec ((real-self (self^)))
+                    ;; (trace services)
                     (parametrize
                      ((self (lambda (m) ((dyn send^) real-self m))))
                      (receive
                       (((cons 'request sender)
                         (begin
+                          ;; (trace 'request-received)
                           ((pick-service services) (cons 'request sender))
                           (router-behavior services)))
                        ((cons
                          'enhanced
-                         (cons k2696 (cons j2700 (cons 'request sender))))
-                        (letrec ((kc2697 (k2696 j2700))
-                                 (old-send2701 (dyn send^)))
+                         (cons k2689 (cons j2693 (cons 'request sender))))
+                        (letrec ((kc2690 (k2689 j2693))
+                                 (old-send2694 (dyn send^)))
+                          ;; (trace 'enhanced-receive)
                           (parametrize
                            ((send^
-                             (lambda (rcv2698 msg2699)
-                               (old-send2701 kc2697 (cons rcv2698 msg2699)))))
+                             (lambda (rcv2691 msg2692)
+                               (old-send2694 kc2690 (cons rcv2691 msg2692)))))
                            (begin
                              ((pick-service services) (cons 'request sender))
-                             (old-send2701 kc2697 'finish)))
+                             (old-send2694 kc2690 'finish)))
                           (router-behavior services)))))))))
                (service-behavior
                 (lambda ()
@@ -790,27 +784,27 @@
                           (service-behavior)))
                        ((cons
                          'enhanced
-                         (cons k2703 (cons j2707 (cons 'request sender))))
-                        (letrec ((kc2704 (k2703 j2707))
-                                 (old-send2708 (dyn send^)))
+                         (cons k2696 (cons j2700 (cons 'request sender))))
+                        (letrec ((kc2697 (k2696 j2700))
+                                 (old-send2701 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv2705 msg2706)
-                               (old-send2708 kc2704 (cons rcv2705 msg2706)))))
+                             (lambda (rcv2698 msg2699)
+                               (old-send2701 kc2697 (cons rcv2698 msg2699)))))
                            (begin
                              'do-work
                              (sender (cons 'reply 'symbool))
-                             (old-send2708 kc2704 'finish)))
+                             (old-send2701 kc2697 'finish)))
                           (service-behavior)))))))))
                (service
                 (letrec ((act (spawn^ (service-behavior))))
                   (lambda (msg) ((dyn send^) act msg))))
                (router
-                (letrec ((xj2710 (loc 'client)) (xk2711 (loc 'server)))
+                (letrec ((xj2703 (loc 'client)) (xk2704 (loc 'server)))
                   (router/c
-                   xj2710
-                   xk2711
-                   (letrec ((act (spawn^ (router-behavior (list service)))))
+                   xj2703
+                   xk2704
+                   (letrec ((act (spawn^ (router-behavior (cons service '())))))
                      (lambda (msg) ((dyn send^) act msg))))))
                (client
                 (letrec ((act (spawn^ (client-behavior router))))

@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -Wno-loopy-superclass-solve #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 {- HLINT ignore "Functor law" -}
 module Analysis.SimpleActor.Fixpoint(
     analyze,
@@ -84,6 +85,7 @@ import qualified Control.Fixpoint.WorkList as WL
 -- These are here for the instances of each domain for the "TopLifted" value.
 import Domain.Core.PairDomain.TopLifted ()
 import Domain.Core.StringDomain.TopLifted ()
+import qualified RIO as Debug
 
 
 
@@ -473,6 +475,7 @@ type AnalysisM m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m)
 -- This is the only place where the semantics from 'Analysis.SimpleActor.Semantics' is actually called.
 intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> AnalysisSystemT m (Set Turn)
 intraTurn beh selfRef st = do
+        Debug.traceShowIO "intraTurn"
         -- compute a fixpoint over the function calls within this turn
         lfp intra key'
         -- The set of successor turns will have been cached at the entry component
@@ -504,6 +507,7 @@ fixTurn selfRef = Fix.lfp (Fix.lift $ transferTurn selfRef) . Set.singleton
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
 transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 transferSystem s = do
+    Debug.traceShowIO "transferSystem"
     let _changed = DeltaMap.changedKeysSet (s ^. mbs)
     let sPersisted = s & mbs %~ DeltaMap.persistMap
     flip execStateT sPersisted $ do

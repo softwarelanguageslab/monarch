@@ -111,6 +111,7 @@ executable simpleactor-exe
       CommandLine.Output
       Runnables.CompareCoverage
       Runnables.CoreErlang
+      Runnables.SimpleActorAnalyze
       TracePartitioning.Benchmark
       Paths_simpleactor
   autogen-modules:

@@ -24,6 +24,13 @@ parseFromString' filename = fmap head . parseSexp' filename >=> compile
 parseFromString :: String -> Either String Exp
 parseFromString = parseFromString' Nothing
 
+mkSeq :: [Exp] -> Span -> Exp
+mkSeq [x] = const x
+mkSeq xs = Begin xs
+
+compileSequence :: MonadCompile m => SExp -> m Exp
+compileSequence e = mkSeq <$> smapM compile e <*> pure (spanOf e)
+
 -- | Checks whether there are any duplicates in the 
 -- given list of bindings.  If so, an error is raised.
 checkDuplicates :: MonadCompile m => SExp -> m ()
@@ -35,12 +42,10 @@ checkDuplicates e = do
          name expr = throwError $ "Invalid binding at " ++ show (spanOf expr)
 
 compile :: MonadCompile m => SExp -> m Exp
-compile ex@(Atom "lambda" _ ::: args ::: es) = do 
+compile ex@(Atom "lambda" _ ::: args ::: es) = do
    uncurry Lam <$> smapM' compileParam args
-               <*> (mkSeq <$> smapM compile es <*> pureSpan ex)
+               <*> compileSequence es
                <*> pureSpan ex
-   where mkSeq [x] = const x
-         mkSeq xs = Begin xs
 compile e@(Atom "lambda" _ ::: _) =
    throwError $ "invalid syntax for lambda " ++ show e
 compile ex@(Atom "spawn^" _ ::: e ::: SNil _) = Spawn <$> compile e <*> pureSpan ex
@@ -151,13 +156,13 @@ compileParam e = throwError $ "invalid parameter " ++ show e
 compilePats :: MonadError String m => SExp -> m [(Pat, Exp)]
 compilePats = smapM compileHandler
    where compileHandler :: MonadError String m => SExp -> m (Pat, Exp)
-         compileHandler (pat ::: e ::: SNil _) = compilePat pat >>= (\p -> fmap (p,) (compile e))
-         compileHandler e = throwError $ "invalid handler " ++ show e ++ " at " ++ (show $ spanOf e)
+         compileHandler (pat ::: e) = compilePat pat >>= (\p -> fmap (p,) (compileSequence e))
+         compileHandler e = throwError $ "invalid handler " ++ show e ++ " at " ++ show (spanOf e)
 
 compileCaseClauses :: MonadError String m => SExp -> m [(Pat, Exp)]
 compileCaseClauses = fmap fold . smapM compileClause
    where compileClause :: MonadError String m => SExp -> m [(Pat, Exp)]
-         compileClause (atoms ::: e ::: SNil _) = smapM (\lit -> (flip ValuePat (spanOf e) $ sexpToLit lit,) <$> compile e)  atoms
+         compileClause (atoms ::: e) = smapM (\lit -> (flip ValuePat (spanOf e) $ sexpToLit lit,) <$> compileSequence e)  atoms
          compileClause e = throwError $ "invalid clause for case expression at " ++ show (spanOf e) ++ " in " ++ filename (spanOf e)
 
 compilePat :: MonadError String m => SExp -> m Pat
@@ -166,7 +171,7 @@ compilePat (Atom "pair" _ ::: pat1 ::: pat2 ::: SNil _) =
 compilePat (Atom "cons" _ ::: pat1 ::: pat2 ::: SNil _) =
    PairPat <$> compilePat pat1 <*> compilePat pat2
 compilePat ex@(Atom x _) = return (IdePat (Ide x (spanOf ex)))
-compilePat ex@(SExp.Num n _) = return (ValuePat (Syntax.AST.Num n) $ spanOf ex) 
+compilePat ex@(SExp.Num n _) = return (ValuePat (Syntax.AST.Num n) $ spanOf ex)
 compilePat ex@(SExp.Bln b _) = return (ValuePat (Syntax.AST.Boolean b) $ spanOf ex)
 compilePat ex@(SExp.SNil _) = return (ValuePat Syntax.AST.Nil $ spanOf ex)
 compilePat ex@(SExp.Atom "list" _ ::: SNil _) = return (ValuePat Syntax.AST.Nil $ spanOf ex)

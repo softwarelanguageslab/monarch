@@ -10,9 +10,13 @@ module CommandLine.Options(
     OutputDirOptions(..),
     inputOptions,
     outputOptions,
-    outputDirOptions
+    outputDirOptions,
+    loadFile',
   ) where
 
+import Syntax.AST
+import Syntax.Compiler (parseFromString')
+import Syntax.Simplifier
 import Options.Applicative
 
 -- | Command-line options for a single file
@@ -60,3 +64,15 @@ data OutputDirOptions = OutputDirOptions { outputDirPath :: String }
 outputDirOptions :: Parser OutputDirOptions 
 outputDirOptions = OutputDirOptions
                 <$> strOption (long "outputDir" <> short 'o' <> help "Output directory")
+
+
+writeTempFileId :: String -> IO String
+writeTempFileId contents =
+   writeFile "/tmp/in.scm" contents >> return contents
+
+loadFile' :: Bool -> String -> IO Exp
+loadFile' doTranslate filename = do
+   contents <- readFile filename
+   translated <- if doTranslate then translate contents >>= writeTempFileId else return contents
+   let sourceFile = if doTranslate then Nothing else Just filename
+   return $ either (error . ("error while parsing: " ++)) id $ parseFromString' sourceFile translated

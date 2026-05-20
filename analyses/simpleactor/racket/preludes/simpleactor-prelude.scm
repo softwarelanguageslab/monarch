@@ -99,7 +99,7 @@
 
    (define cdr (mon server client (-> pair?/c any/c) (lambda (p) (orig-cdr p))))
 
-   (define cons (mon server client (-> any/c any/c pair?/c) (lambda (a b) (orig-cons a b))))
+   ; (define cons (mon server client (-> any/c any/c pair?/c) (lambda (a b) (orig-cons a b))))
 
    ;; Vectors
 
