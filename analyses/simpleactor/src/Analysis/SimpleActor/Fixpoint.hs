@@ -426,11 +426,13 @@ type AnalysisM m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m)
 -- This is the only place where the semantics from 'Analysis.SimpleActor.Semantics' is actually called.
 intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> AnalysisSystemT m (Set Turn)
 intraTurn beh selfRef st = do
-        Debug.traceShowIO "intraTurn"
+        Debug.traceShowIO $ "intraTurn actor=" ++ show selfRef ++ " beh-expr=" ++ show (spanOf (beh ^._1))
         -- compute a fixpoint over the function calls within this turn
         lfp intra key'
         -- The set of successor turns will have been cached at the entry component
-        (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
+        result <- (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
+        Debug.traceShowIO $ "intraTurn result size=" ++ show (Set.size result)
+        return result
     where ctx' = emptyCtx selfRef
                & env .~ (beh ^._2)
                & dyn .~ (beh ^._3)
@@ -453,12 +455,15 @@ transferTurn selfRef (Turn (Become beh) turnState) = intraTurn beh selfRef turnS
 transferTurn _ (Turn Terminated _) = return Set.empty
 
 fixTurn :: AnalysisM m => ActorRef -> Turn -> AnalysisSystemT m (Set Turn)
-fixTurn selfRef = Fix.lfp (Fix.lift $ transferTurn selfRef) . Set.singleton
+fixTurn selfRef turn0 = do
+    result <- Fix.lfp (Fix.lift $ transferTurn selfRef) (Set.singleton turn0)
+    Debug.traceShowIO $ "fixTurn actor=" ++ show selfRef ++ " result-turns=" ++ show (Set.size result)
+    return result
 
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
 transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 transferSystem s = do
-    Debug.traceShowIO "transferSystem"
+    Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
     let _changed = DeltaMap.changedKeysSet (s ^. mbs)
     let sPersisted = s & mbs %~ DeltaMap.persistMap
     flip execStateT sPersisted $ do

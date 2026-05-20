@@ -18,6 +18,8 @@ import Analysis.Monad.Store
 import Control.Monad.Cond
 import Analysis.Monad.Map
 import Data.Typeable
+import qualified Debug.Trace as Debug
+import qualified Data.Set as Set
 
 ------------------------------------------------------------
 -- MonadIntraAnalysis
@@ -39,17 +41,19 @@ newtype IntraAnalysisT cmp m a = IntraAnalysisT (ReaderT cmp m a)
 instance {-# OVERLAPPING #-} (Monad m) => MonadIntraAnalysis cmp (IntraAnalysisT cmp m) where 
     currentCmp = ask
 
-instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, WorkListM m cmp, Ord cmp) => ComponentTrackingM (IntraAnalysisT cmp m) cmp where
-    spawn cmp = unlessM (upperM $ has cmp)
-                        (upperM $ spawn cmp >> add cmp)
+instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, Show cmp, WorkListM m cmp, Ord cmp) => ComponentTrackingM (IntraAnalysisT cmp m) cmp where
+    spawn cmp = do 
+                cmps <- components
+                unlessM (upperM $ has cmp)
+                        (upperM $ spawn (Debug.trace ("spawning new component — old size = " ++ show (Set.size cmps) ++ " cmp " ++ show cmp) cmp) >> add cmp)
     components = upperM components
 
 instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM cmp a m, MonadDependencyTrigger cmp a m, WorkListM m cmp)
         => StoreM a v (IntraAnalysisT cmp m) where
     storeSize = upperM (storeSize @a @v)
     lookupAdr a = currentCmp >>= upperM . register a >> upperM (lookupAdr a)
-    writeAdr a v = whenM (upperM $ writeAdr' a v) (notrace ("updated " ++ show a) (upperM $ trigger a))
-    updateAdr a v = whenM (upperM $ updateAdr' a v) (notrace ("updated " ++ show a) (upperM $ trigger a))
+    writeAdr a v = whenM (upperM $ writeAdr' a v) (Debug.trace ("writeAdr trigger " ++ show a) (upperM $ trigger a))
+    updateAdr a v = whenM (upperM $ updateAdr' a v) (Debug.trace ("updateAdr trigger " ++ show a) (upperM $ trigger a))
     updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger a)
     hasAdr = upperM . hasAdr @a @v
 

@@ -38,7 +38,14 @@ data SchemeAdr e ctx = VarAdr !Ide !ctx   --  ^ variables
                      | PtrAdr !e   !ctx   --  heap allocated values
                      | PrrAdr !String     -- ^ primiitives
                      | TopAdr
-                    deriving (Eq, Ord, Show, Generic, NFData)
+                    deriving (Eq, Ord, Generic, NFData)
+
+
+instance (SpanOf e, Show ctx) => Show (SchemeAdr e ctx) where
+    show (VarAdr ide ctx) = "VarAdr " ++ show ide ++ " " ++ show ctx
+    show (PtrAdr e ctx)   = "PtrAdr " ++ show (spanOf e) ++ " " ++ show ctx
+    show (PrrAdr nam) = "Prrshow " ++ show nam 
+    show TopAdr = "Top"
 
 
 instance AddressWithCtx ctx (SchemeAdr e ctx) where

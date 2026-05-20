@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
 {-# LANGUAGE TupleSections #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 module Analysis.Symbolic.Monad(
    -- Type classes
    SymbolicM,
@@ -51,10 +52,10 @@ class (Monad m) => MonadPathCondition i m v | m -> v i where
 
 -- | Executes the given action when the path condition is feasible
 -- otherwise returns `mbottom`
-ifFeasible :: (SymbolicM i m v, MonadJoin m,  Joinable a) => m a -> m a
-ifFeasible ma = do
-   pcs <- fmap Set.toList getPc
-   mjoins (map (isFeasible >=> (\b -> if b then ma else mbottom)) pcs)
+-- ifFeasible :: (SymbolicM i m v, MonadJoin m,  Joinable a) => m a -> m a
+-- ifFeasible ma = do
+   -- pcs <- fmap Set.toList getPc
+   -- mjoins (map (isFeasible >=> (\b -> if b then ma else mbottom)) pcs)
 
 
 type SymbolicM i m v = (-- Domain
@@ -127,12 +128,14 @@ instance (MonadJoinable m, MonadBottom m, FormulaSolver i m, MonadAbstractCount 
              -- (3) otherwise the condition was not true and the consequent does not need to be
              --  executed.
              checkTrue v
-                | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
-                | isTrue  v = extendPc (assertTrue v) >> ifFeasible mcsq
+                -- | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
+                | isTrue  v = mcsq
+                -- | isTrue  v = extendPc (assertTrue v) >> ifFeasible mcsq
                 | otherwise = mbottom
              checkFalse v
-                | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
-                | isFalse v = extendPc (assertFalse v) >> ifFeasible malt
+                -- | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
+                | isFalse v = malt
+                -- | isFalse v = extendPc (assertFalse v) >> ifFeasible malt
                 | otherwise = mbottom
 
 ----------------------------------------------------------------------
