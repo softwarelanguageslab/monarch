@@ -11,7 +11,6 @@ import qualified Analysis.Actors.Mailbox.Graph.Dot as Dot
 import Criterion.Main
 import qualified Criterion.Main.Options as Criterion
 import Criterion.Types (Config(..))
-import qualified Data.DeltaMap as DeltaMap
 import CommandLine.Options
 import Text.Pretty.Simple
 import Syntax.AST
@@ -69,4 +68,4 @@ analyzeAst expr outDir = do
     output <- Fixpoint.analyzeIO expr
     let trace = reverse $ map Fixpoint._mbs $ Fixpoint._trace $ snd output
 
-    renderTraceMailboxesToDot outDir (map DeltaMap.toMap trace)
+    renderTraceMailboxesToDot outDir trace

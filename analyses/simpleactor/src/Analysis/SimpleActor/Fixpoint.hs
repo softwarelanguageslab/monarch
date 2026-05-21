@@ -61,7 +61,6 @@ import Data.Tuple.Extra (dupe, (<+>))
 import qualified Analysis.Actors.Mailbox.Partitioned as MB
 import Data.Functor
 import Control.Monad ((>=>))
-import qualified Data.DeltaMap as DeltaMap
 
 -- These are here for the instances of each domain for the "TopLifted" value.
 import Domain.Core.PairDomain.TopLifted ()
@@ -88,6 +87,7 @@ import Syntax.AST
 import Domain.Core.PairDomain.TopLifted ()
 import Domain.Core.StringDomain.TopLifted ()
 import qualified RIO as Debug
+import qualified Control.Monad.State as State
 
 ------------------------------------------------------------
 -- Shorthands
@@ -373,7 +373,7 @@ instance Monad m => MonadSpawn ActorVlu AdrCtx (SystemT m) where
         let newRef = Domain.Actor.Pid behExpr k
             beh = (behExpr, environ, initialDynEnvironment)
         initialBeh . at newRef ?= beh
-        mbs . at newRef ?= Lattice.bottom
+        mbs . at newRef %= Just . fromMaybe Lattice.bottom
         return newRef
 
 ------------------------------------------------------------
@@ -409,6 +409,24 @@ instance {-# OVERLAPPING #-} (Monad m, k ~ ProcKey, DepL d) => DependencyTrackin
 
 instance (DepL d, k ~ ProcKey, Monad m, WorkListM m k) => MonadDependencyTrigger k d (StateT AnalysisState m) where
   trigger = dependent >=> WL.adds
+
+
+-- Access to the global analysis state
+
+class Monad m => MonadAnalysisState m where
+    getAnalysisState :: m AnalysisState
+    putAnalysisState :: AnalysisState -> m ()
+    modifyAnalysisState :: (AnalysisState -> AnalysisState) -> m ()
+    modifyAnalysisState f = getAnalysisState >>= putAnalysisState . f
+    {-# MINIMAL getAnalysisState, putAnalysisState #-}
+
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, MonadAnalysisState m) => MonadAnalysisState (t m) where
+    getAnalysisState = upperM getAnalysisState
+    putAnalysisState = upperM . putAnalysisState
+
+instance Monad m => MonadAnalysisState (StateT AnalysisState m) where
+  getAnalysisState = State.get
+  putAnalysisState = State.put
 
 -- | Register a system after a inter-actor turn, and returns the registered system
 traceSystem :: Monad m => System -> AnalysisGlobalT m System
@@ -464,10 +482,8 @@ fixTurn selfRef turn0 = do
 transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 transferSystem s = do
     Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
-    let _changed = DeltaMap.changedKeysSet (s ^. mbs)
-    let sPersisted = s & mbs %~ DeltaMap.persistMap
-    flip execStateT sPersisted $ do
-        let turnState ref = State (fromMaybe Lattice.bottom (DeltaMap.lookup ref (s ^. mbs))) Lattice.bottom
+    flip execStateT s $ do
+        let turnState ref = State (fromMaybe Lattice.bottom (Map.lookup ref (s ^. mbs))) Lattice.bottom
         let initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref)))
                                              -- (Map.restrictKeys (s ^. initialBeh) changed)
                                              (s ^. initialBeh)
@@ -498,7 +514,7 @@ mainEnv =
 -- | Create an initial system from the expression of the main behavior. 
 initialSystem :: Exp -> System
 initialSystem mainExp = System {
-        _mbs = DeltaMap.fromList [(EntryPid, Lattice.bottom)],
+        _mbs = Map.fromList [(EntryPid, Lattice.bottom)],
         _turns = Map.empty,
         _initialBeh = Map.singleton EntryPid (mainExp, mainEnv, initialDynEnvironment)
     }

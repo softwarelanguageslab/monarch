@@ -52,10 +52,10 @@ class (Monad m) => MonadPathCondition i m v | m -> v i where
 
 -- | Executes the given action when the path condition is feasible
 -- otherwise returns `mbottom`
--- ifFeasible :: (SymbolicM i m v, MonadJoin m,  Joinable a) => m a -> m a
--- ifFeasible ma = do
-   -- pcs <- fmap Set.toList getPc
-   -- mjoins (map (isFeasible >=> (\b -> if b then ma else mbottom)) pcs)
+ifFeasible :: (SymbolicM i m v, MonadJoin m,  Joinable a) => m a -> m a
+ifFeasible ma = do
+   pcs <- fmap Set.toList getPc
+   mjoins (map (isFeasible >=> (\b -> if b then ma else mbottom)) pcs)
 
 
 type SymbolicM i m v = (-- Domain
@@ -81,7 +81,10 @@ newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
                            deriving (Monad, Applicative, Functor, MonadState (PC i), MonadLayer, MonadTrans, MonadJoinable, MonadCache)
 
 instance {-# OVERLAPPING #-} (MonadAbstractCount i AbstractCount m, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
-   extendPc pc'     = modify $ Set.map (conjunction (Atomic $ symbolic pc'))
+   extendPc pc'     = modify $ Set.map (normalizeFormula' . conjunction (Atomic $ symbolic pc'))
+    where normalizeFormula' formula =
+            let formula' = normalizeFormula formula
+            in if Set.null formula' then Empty else head (Set.toList formula')
    getPc = get
    integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList
    putPc = put
@@ -128,14 +131,14 @@ instance (MonadJoinable m, MonadBottom m, FormulaSolver i m, MonadAbstractCount 
              -- (3) otherwise the condition was not true and the consequent does not need to be
              --  executed.
              checkTrue v
-                -- | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
-                | isTrue  v = mcsq
-                -- | isTrue  v = extendPc (assertTrue v) >> ifFeasible mcsq
+                | isTrue  v && Prelude.not (isFalse v) = extendPc (assertTrue v) >> mcsq
+                -- | isTrue  v = extendPc (assertTrue v) >> mcsq
+                | isTrue  v = extendPc (assertTrue v) >> ifFeasible mcsq
                 | otherwise = mbottom
              checkFalse v
-                -- | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
-                | isFalse v = malt
-                -- | isFalse v = extendPc (assertFalse v) >> ifFeasible malt
+                | isFalse v && Prelude.not (isTrue v) = extendPc (assertFalse v) >> malt
+                -- | isFalse v = extendPc (assertFalse v) >> malt
+                | isFalse v = extendPc (assertFalse v) >> ifFeasible malt
                 | otherwise = mbottom
 
 ----------------------------------------------------------------------

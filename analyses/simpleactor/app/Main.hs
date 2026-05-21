@@ -30,6 +30,7 @@ import Text.Pretty.Simple (pPrint)
 import qualified Runnables.CoreErlang as CoreErlang
 import Runnables.CompareCoverage (compareCoverageCmd, compareCoverageOptions)
 import qualified Runnables.SimpleActorAnalyze as SimpleActorAnalyze
+import qualified Runnables.SoundnessTesting as SoundnessTesting
 import CommandLine.Options
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a
@@ -62,7 +63,8 @@ commandParser =
     <> command "erlang"           (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
     <> command "core-erlang"      (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor"))
     <> command "analyze2"         (info (SimpleActorAnalyze.entrypoint <$> inputOptions <*> outputDirOptions <*> switch (long "benchmark" <> help "run the analysis in benchmarking mode")) (progDesc "Analyze a program using the new fixpoint"))
-    <> command "compare-coverage" (info (compareCoverageCmd <$> compareCoverageOptions) (progDesc "Compare analysis coverage against Racket runtime coverage")))
+    <> command "compare-coverage" (info (compareCoverageCmd <$> compareCoverageOptions) (progDesc "Compare analysis coverage against Racket runtime coverage"))
+    <> command "soundness"        (info (SoundnessTesting.entrypoint <$> SoundnessTesting.options) (progDesc "Run the concrete interpreter and print its trace")))
 
 
 ------------------------------------------------------------

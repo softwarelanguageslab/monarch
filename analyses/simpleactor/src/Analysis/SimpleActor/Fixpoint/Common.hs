@@ -22,7 +22,6 @@ import Analysis.Actors.Mailbox.Partitioned.Graph (PartitionedGraph)
 import Domain.Core.Count.BoundedCount (BoundedCount)
 import Analysis.Actors.Mailbox.Partitioned.Partitions.UnitPartition (UnitPartition)
 import Domain.SimpleActor (SymActorValue)
-import Data.DeltaMap (DeltaMap)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -35,7 +34,7 @@ type ActorVlu = SymActorValue K (SchemeAdr Exp)
 type ActorEnv = HashMap String ActorAdr
 type ActorAdr = SchemeAdr Exp K
 type ActorVarAdr = SchemeAdr Exp K
-type ActorMai = DeltaMap ActorRef PMB
+type ActorMai = Map ActorRef PMB
 type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
 type ActorPC  = PC (SchemeAdr Exp K)
 type ActorCou = Map ActorRef AbstractCount
