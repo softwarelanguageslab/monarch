@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 module Analysis.Monad.IntraAnalysis (
     IntraAnalysisT,
     DebugIntraAnalysisT,
@@ -19,7 +20,7 @@ import Control.Monad.Cond
 import Analysis.Monad.Map
 import Data.Typeable
 import qualified Debug.Trace as Debug
-import qualified Data.Set as Set
+-- import qualified Data.Set as Set
 
 ------------------------------------------------------------
 -- MonadIntraAnalysis
@@ -43,9 +44,9 @@ instance {-# OVERLAPPING #-} (Monad m) => MonadIntraAnalysis cmp (IntraAnalysisT
 
 instance {-# OVERLAPPING #-} (ComponentTrackingM m cmp, Show cmp, WorkListM m cmp, Ord cmp) => ComponentTrackingM (IntraAnalysisT cmp m) cmp where
     spawn cmp = do 
-                cmps <- components
+                -- cmps <- components
                 unlessM (upperM $ has cmp)
-                        (upperM $ spawn (Debug.trace ("spawning new component — old size = " ++ show (Set.size cmps) ++ " cmp " ++ show cmp) cmp) >> add cmp)
+                        (upperM $ spawn cmp >> add cmp)
     components = upperM components
 
 instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM cmp a m, MonadDependencyTrigger cmp a m, WorkListM m cmp)

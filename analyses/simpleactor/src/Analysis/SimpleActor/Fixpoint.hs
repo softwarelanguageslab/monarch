@@ -86,7 +86,7 @@ import Syntax.AST
 -- These are here for the instances of each domain for the "TopLifted" value.
 import Domain.Core.PairDomain.TopLifted ()
 import Domain.Core.StringDomain.TopLifted ()
-import qualified RIO as Debug
+-- import qualified RIO as Debug
 import qualified Control.Monad.State as State
 
 ------------------------------------------------------------
@@ -444,12 +444,12 @@ type AnalysisM m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m)
 -- This is the only place where the semantics from 'Analysis.SimpleActor.Semantics' is actually called.
 intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> AnalysisSystemT m (Set Turn)
 intraTurn beh selfRef st = do
-        Debug.traceShowIO $ "intraTurn actor=" ++ show selfRef ++ " beh-expr=" ++ show (spanOf (beh ^._1))
+        -- Debug.traceShowIO $ "intraTurn actor=" ++ show selfRef ++ " beh-expr=" ++ show (spanOf (beh ^._1))
         -- compute a fixpoint over the function calls within this turn
         lfp intra key'
         -- The set of successor turns will have been cached at the entry component
         result <- (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
-        Debug.traceShowIO $ "intraTurn result size=" ++ show (Set.size result)
+        -- Debug.traceShowIO $ "intraTurn result size=" ++ show (Set.size result)
         return result
     where ctx' = emptyCtx selfRef
                & env .~ (beh ^._2)
@@ -475,13 +475,13 @@ transferTurn _ (Turn Terminated _) = return Set.empty
 fixTurn :: AnalysisM m => ActorRef -> Turn -> AnalysisSystemT m (Set Turn)
 fixTurn selfRef turn0 = do
     result <- Fix.lfp (Fix.lift $ transferTurn selfRef) (Set.singleton turn0)
-    Debug.traceShowIO $ "fixTurn actor=" ++ show selfRef ++ " result-turns=" ++ show (Set.size result)
+    -- Debug.traceShowIO $ "fixTurn actor=" ++ show selfRef ++ " result-turns=" ++ show (Set.size result)
     return result
 
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
 transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 transferSystem s = do
-    Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
+    -- Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
     flip execStateT s $ do
         let turnState ref = State (fromMaybe Lattice.bottom (Map.lookup ref (s ^. mbs))) Lattice.bottom
         let initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref)))
