@@ -17,7 +17,7 @@ import RIO
 import qualified RIO.Map as Map
 import Analysis.Monad (MonadDependencyTrigger)
 import Domain.Core.AbstractCount (AbstractCount)
-import Analysis.SimpleActor.Monad (SimpleActorContext(..), MailboxLabel)
+import Analysis.SimpleActor.Monad (SimpleActorContext(..), MailboxLabel, Message)
 import Analysis.Actors.Mailbox.Partitioned.Graph (PartitionedGraph)
 import Domain.Core.Count.BoundedCount (BoundedCount)
 import Analysis.Actors.Mailbox.Partitioned.Partitions.UnitPartition (UnitPartition)
@@ -39,8 +39,20 @@ type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
 type ActorPC  = PC (SchemeAdr Exp K)
 type ActorCou = Map ActorRef AbstractCount
 
+
+------------------------------------------------------------
+-- Messages and mailboxes
+------------------------------------------------------------
+
+-- The instantiated message type
+type MsgPayload = ActorVlu
+type MsgContext = ()
+type Msg = Message MsgPayload MsgContext
+
+
+-- The mailbox abstraction itself
 type Partition = UnitPartition
-type PMB = PartitionedGraph Partition ActorVlu
+type PMB = PartitionedGraph Partition Msg
 
 type LabelCounts = Map MailboxLabel BoundedCount
 

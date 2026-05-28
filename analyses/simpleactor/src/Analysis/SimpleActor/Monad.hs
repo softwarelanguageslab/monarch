@@ -6,28 +6,37 @@
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
 module Analysis.SimpleActor.Monad
-  ( MonadActor,
+  ( -- * Typeclasses
+    MonadActor,
     MonadMailbox(..),
+    recvMsg,
     MonadDynamic(..),
     MonadSpawn,
     MonadApply(..),
     spawn,
+    MonadModules(..),
+    MonadFresh(..),
     EvalM,
     PrimM,
-    Error (..),
-    ActorError(..),
+    -- * Transformers
     DynamicBindingT,
     DynamicBindingT',
     runWithDynamic,
     runDynamicT,
+    -- * Messages
+    Message,
+    message,
+    messageCtx, 
+    messagePayload,
+    -- * Errors
+    Error (..),
+    ActorError(..),
     isMatchError,
+    -- * Misc
     Cmp(..),
     SimpleActorContext(..),
-    MonadModules(..),
     runModuleCtxT,
     MailboxLabel(..),
-    MonadFresh(..),
-    recvMsg
   )
 where
 
@@ -103,6 +112,25 @@ newtype MailboxLabel = MailboxLabel { getMailboxLabel :: String }
                        deriving (Ord, Eq, Show)
 
 ------------------------------------------------------------
+-- Messages
+------------------------------------------------------------
+
+-- A message is a message payload + context
+type Message v ctx = (v, ctx)
+
+-- | Extract the message payload from the message
+messagePayload :: Message v ctx -> v 
+messagePayload = fst
+
+-- | Extract the message context from the message
+messageCtx :: Message v ctx -> ctx
+messageCtx = snd
+
+-- | Primary constructor for "Message"
+message :: v -> ctx -> Message v ctx
+message = (,)
+
+------------------------------------------------------------
 -- Shorthands
 ------------------------------------------------------------
 
@@ -163,22 +191,26 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v k m) => Monad
 -- active partitioning scheme. 
 -- 'ref' is the type of actor reference 
 -- 'v' is the type of messages (those usually overlap with values in SimpleActor, hence the abbreviation) 
-class MonadMailbox e ref v m | m -> e ref v where    
+-- 'ctx' is an additional context added to the message alongside its payload
+class MonadMailbox e ref v ctx m | m -> e ref v ctx where    
     -- | Send a message (first argument) to the given actor 
     -- identifier by the second argument.
     send :: ref -> v -> m ()
     -- | Suspends the actor and registers the given expression 
     -- as the message handler that is invoked with the next message 
     -- in the mailbox.
-    select :: Exp -> Env v -> Map String (Adr v) -> m a
+    select :: Exp
+            -> Env v  -- ^ lexical environment 
+            -> Map String (Adr v) -- ^ dynamic environment
+            -> m a
     -- | Return the first messages in the mailbox and their corresponding updated mailboxes 
-    recv :: m (Set (v, PMB e v))
+    recv :: m (Set (v, PMB e (Message v ctx)))
     -- | Set the current inbox to the given argument 
-    putMailbox :: PMB e v -> m ()
+    putMailbox :: PMB e (Message v ctx) -> m ()
 
 
 -- | Invoke the function in the first argument with the first message in the mailbox
-recvMsg :: (MonadMailbox e ref v m, MonadJoin m, Joinable a) => (v -> m a) -> m a
+recvMsg :: (MonadMailbox e ref v ctx m, MonadJoin m, Joinable a) => (v -> m a) -> m a
 recvMsg f =
     recv >>= (mjoins . map (\(msg, mb') -> putMailbox mb' >> f msg) . Set.toList)
 
@@ -204,7 +236,7 @@ instance
  getDynamic = upperM getDynamic
 
 
-instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox e ref v m) => MonadMailbox e ref v (t m) where
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox e ref v ctx m) => MonadMailbox e ref v ctx (t m) where
     send v = upperM . send v
     select expr env = upperM . select expr env
     recv = upperM recv
@@ -212,6 +244,18 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox e ref v m) =>
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadFresh v m, MonadLayer t) => MonadFresh v (t m) where
     fresh = upperM . fresh
+
+------------------------------------------------------------
+-- Configuration
+------------------------------------------------------------
+
+-- type family Partition ξ :: Type
+-- type family AbstractDomain ξ :: Type
+-- type family Ctx ξ :: Type 
+-- type family MessageCtx ξ :: Type
+--
+
+
 
 ------------------------------------------------------------
 -- Monad
@@ -230,7 +274,7 @@ type PrimM' e v k m =
   ( MonadJoinable m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
-    MonadMailbox e (ARef v) v m,
+    MonadMailbox e (ARef v) v () m,
     MonadActor v k m,
     CtxM m k,
     SimpleActorContext k,
