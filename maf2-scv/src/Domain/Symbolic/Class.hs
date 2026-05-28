@@ -3,6 +3,7 @@ module Domain.Symbolic.Class(SymbolicValue(..)) where
 import Symbolic.AST
 import Data.Kind
 import Lattice (Joinable)
+import Data.Set (Set)
 
 
 -- | SymbolicValue to capture
@@ -43,3 +44,5 @@ class (Joinable (Symbolic v), Ord i) => SymbolicValue v i | v -> i where
    -- | Equality between two symbolic values
    -- resulting in another symbolic value
    equal :: v -> v -> v
+   -- | Returns all symbolic variables that occur in the symbolic value
+   variables :: v -> Set i

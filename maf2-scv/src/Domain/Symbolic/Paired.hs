@@ -8,11 +8,13 @@ import Lattice (EqualLattice(..))
 import Domain
 import Control.Monad.Join
 import qualified Data.List as List
-import Symbolic.AST
+import Symbolic.AST hiding (variables)
+import qualified Symbolic.AST as Formula
 import Syntax.Span
 import Domain.Symbolic.Class
 import Lattice.Class
 import Data.Kind
+import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain.Actor
 import Control.DeepSeq
@@ -42,7 +44,7 @@ instance (Ord i, Eq i) => Joinable (SymbolicVal exp k i v) where
    join (SymbolicVal p1) (SymbolicVal Bottom) = SymbolicVal p1
    join (SymbolicVal p1) (SymbolicVal p2) 
       | p1 == p2 = SymbolicVal p1 
-      | otherwise = SymbolicVal (Fresh (Set.union (variables p1) (variables p2)))
+      | otherwise = SymbolicVal (Fresh (Set.union (Formula.variables p1) (Formula.variables p2)))
 
 instance BottomLattice (SymbolicVal exp k n v) where
    bottom = SymbolicVal Bottom
@@ -293,6 +295,9 @@ instance (EqualLattice v, BottomLattice v, BoolDomain v, SchemeValue (PairedSymb
    unsymbolic (SchemePairedValue (v, _)) = 
       SchemePairedValue (v, SymbolicVal (Fresh Set.empty)) 
 
+   variables :: PairedSymbolic v expr k i -> Set i
+   variables = Formula.variables . proposition . rightValue
+
 ------------------------------------------------------------
 -- Equality
 ------------------------------------------------------------
@@ -308,8 +313,18 @@ instance (EqualLattice v) => EqualLattice (PairedSymbolic v exp k i) where
 -- Tracing
 ------------------------------------------------------------
 
+-- Symbolic representation do not directly contain references to addresses in the store, 
+-- hence, the only requirement for implementing the "Trace" type class is that the left 
+-- value in the pair is traceable.
+
+instance (Trace adr v) => Trace adr (PairedSymbolic v expr k i) where
+    trace = trace . leftValue
+
+
 ------------------------------------------------------------
--- Pairing with other Scheme value
+-- Pairing with the actual Scheme value
 ------------------------------------------------------------
+
+
 
 type PairedSymbolic v expr k i = SchemePairedValue v (SymbolicVal expr k i v)

@@ -16,7 +16,9 @@ module Analysis.Symbolic.Monad(
    evalWithWidenedFormulaT,
    -- Discarding formulas
    DiscardFormulaT,
-   runDiscardFormulaT
+   runDiscardFormulaT,
+   -- Manipulations on values
+   traceSymbolicVariables
 ) where
 
 import Solver (FormulaSolver, isFeasible)
@@ -31,12 +33,16 @@ import Domain
 import Domain.Symbolic
 import Lattice (Joinable(..))
 
+import Data.Set (Set)
 import qualified Data.Set as Set
-import Analysis.Monad (MonadCache(..))
+import Analysis.Monad (MonadCache(..), lookupAdr)
 import Control.Monad.Identity (IdentityT (runIdentityT))
 import Analysis.Monad.AbstractCount (MonadAbstractCount)
 import Domain.Core.AbstractCount (AbstractCount)
 import Control.Monad.Choice
+import Analysis.Monad.Store (StoreM)
+import Lattice.Trace (Trace, trace)
+import qualified Domain.Symbolic.Class as Symbolic
 
 -- | Monad that keeps track of a path condition
 class (Monad m) => MonadPathCondition i m v | m -> v i where
@@ -189,4 +195,14 @@ instance (MonadCache m, Functor (Base m)) => MonadCache (WidenedFormulaT i v m) 
   val = upperM . val
   run f k = WidenedFormulaT $ FormulaT $ StateT state
       where state pc = (,pc) <$> run (fmap fst . runWithFormulaT pc . runWidenedFormulaT' . f) k
+
+----------------------------------------------------------------------
+-- Tracing 
+----------------------------------------------------------------------
+
+-- | Retrieve all involved symbolic variables by tracing through the store, extracts all 
+-- symbolic variables that transitively occur in the paired symbolic variable.
+traceSymbolicVariables :: forall adr v m i . (StoreM adr v m, Trace adr v, SymbolicValue v i) => v -> m (Set i)
+traceSymbolicVariables v = 
+    Set.union (Symbolic.variables v) . Set.unions <$> mapM (fmap Symbolic.variables . lookupAdr @adr) (Set.toList $ trace v)
 
