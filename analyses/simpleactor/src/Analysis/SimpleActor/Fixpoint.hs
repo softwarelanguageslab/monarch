@@ -461,6 +461,7 @@ intraTurn beh selfRef st = do
           intra :: ProcKey -> AnalysisSystemT m ()
           intra k = runFixT @(AnalysisT m) Semantics.eval k
                   & runIntraAnalysis k
+          {-# SCC intra #-}
 
 -- | Inter-turn fixpoint: analyze a sequence of turns of an actor 
 -- until its state (i.e., inbox and outbox) no longer changes.
