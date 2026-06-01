@@ -83,7 +83,7 @@ instance MonadLayer (ApplyT v) where
 instance MonadTrans (ApplyT v) where
    lift = upperM
 
-instance (EvalM e v k m) => MonadApply v (ApplyT v m) where
+instance (EvalM e v k km m) => MonadApply v (ApplyT v m) where
    applyFun expr fun ops = ApplyT ask >>= (\cmp -> lift $ apply cmp expr [] fun ops)
 
 
@@ -94,20 +94,20 @@ runApplyT r = flip runReaderT r . runApplyT'
 -- Evaluation
 ------------------------------------------------------------
 
-terminate :: EvalM e v k m => m a
+terminate :: EvalM e v k km m => m a
 terminate = mbottom
 
-showIfBot :: EvalM e v k m => String -> v -> m v
+showIfBot :: EvalM e v k km m => String -> v -> m v
 showIfBot s v = (if v == bottom then trace s else id) (return v)
 
-eval :: forall v m k e  . EvalM e v k m => Cmp -> m v
+eval :: forall v m k km e  . EvalM e v k km m => Cmp -> m v
 eval = fix evalCmp
    where evalCmp recur (FuncBdy (Lam _ _ bdy _)) = eval' recur bdy
          evalCmp recur (ActorExp e) = eval' recur e
          evalCmp recur (ReceiveExp e) = evalReceive recur e
          evalCmp _ (FuncBdy e) = error $ "not a function" ++ show e
 
-eval'' :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> Exp -> m v
+eval'' :: forall v m k km e . EvalM e v k km m => (Cmp -> m v) -> Exp -> m v
 eval'' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
 eval'' _ ex@(Literal lit _) =  injectLit lit ex
 eval'' rec e@(App e1 es _) = do
@@ -181,10 +181,10 @@ logCoverage e ma = do
        ma
     where coverageEnabled = False
 
-eval' :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> Exp -> m v
+eval' :: forall v m k km e . EvalM e v k km m => (Cmp -> m v) -> Exp -> m v
 eval' rec e = logCoverage e $ eval'' rec e
 
-evalReceive :: EvalM e v k m => (Cmp -> m v) -> Exp -> m v
+evalReceive :: EvalM e v k km m => (Cmp -> m v) -> Exp -> m v
 evalReceive rec expr@(Receive pats _) = logCoverage expr $ recvMsg $ matchList
          (\e -> allocMapping >=> (`withEnv'` eval' rec e))
          pats
@@ -192,7 +192,7 @@ evalReceive rec expr@(Receive pats _) = logCoverage expr $ recvMsg $ matchList
 
 evalReceive _ e = error $ "not a receive expression " ++ show e
 
-trySend :: forall e v k m . PrimM e v k m => v -> v -> m ()
+trySend :: forall e v k km m . PrimM e v k km m => v -> v -> m ()
 trySend ref msg = do
    result <- fromBL @v (isActorRef ref)
    choice result
@@ -200,12 +200,12 @@ trySend ref msg = do
           (escape NotAnActorReference)
 
 -- TODO: variable number of arguments
-apply :: EvalM e v k m => (Cmp -> m v) -> Exp -> [Exp] -> v -> [v] -> m v
+apply :: EvalM e v k km m => (Cmp -> m v) -> Exp -> [Exp] -> v -> [v] -> m v
 apply rec e es v vs = choices
    [(isClo v, mjoinMap (\env -> applyClosure e es env rec vs) (clos v)),
     (isPrim v, mjoinMap (\nam -> applyPrimitive rec nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))
-applyClosure :: EvalM e v k m => Exp -> [Exp] -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
+applyClosure :: EvalM e v k km m => Exp -> [Exp] -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e es (lam@(Lam prs prz _ _), env) rec vs
   | length es /= length vs = 
         error "invariant violated: number of operands in the application must equal the number of evaluated operand values"
@@ -224,20 +224,20 @@ applyClosure e es (lam@(Lam prs prz _ _), env) rec vs
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _  _ _ = error "invalid closure"
 
-applyPrimitive :: forall v m k e . EvalM e v k m => (Cmp -> m v) -> String -> Exp -> [v] -> m v
+applyPrimitive :: forall v m k km e . EvalM e v k km m => (Cmp -> m v) -> String -> Exp -> [v] -> m v
 applyPrimitive rec prm expr ops =
    runApplyT rec $ (runPrimitive @_ @_ @e $ fromMaybe (error $ "could not find " ++ prm) $ lookupPrimitive prm) expr ops
 
 type Mapping v = Map Ide v
 
-allocMapping :: EvalM e v k m => Map Ide v -> m (Env v)
+allocMapping :: EvalM e v k km m => Map Ide v -> m (Env v)
 allocMapping bds = do
    env <- getEnv
    foldM (\env' (ide@(Ide nam _), v) -> do { adr <- alloc ide ; writeVar adr v ; return (extend nam adr env') }) env (Map.toList bds)
 
 -- | Allocates the list of values in the second argument as a SimpleActor list 
 -- using the list in the first argument as allocation sites.
-allocList :: EvalM e v k m => [Exp] -> [v] -> m v
+allocList :: EvalM e v k km m => [Exp] -> [v] -> m v
 allocList es vs =
     foldrM (\(e, v) ptr -> stoPai e (cons v ptr)) nil (zip es vs)
 
@@ -246,7 +246,7 @@ allocList es vs =
 -- against a value.
 --
 -- NOTE: written in CPS because @Exp@ is not @Joinable@
-matchList :: EvalM e v k m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
+matchList :: EvalM e v k km m => (Exp -> Mapping v -> m v) -> [(Pat, Exp)] -> v -> m v
 matchList _ [] _ = escape MatchError
 matchList f ((pat, e):pats) value =
    -- TODO: don't rethrow the error, use `catchOn` for this
@@ -306,22 +306,22 @@ injectLit (String s)     = flip stoStr (inject s)
 -- Primitives
 ------------------------------------------------------------
 
-newtype SAPrim v = SAPrim (forall e k m . (PrimM e v k m) => [v] -> Exp -> m v)
+newtype SAPrim v = SAPrim (forall e k km m . (PrimM e v k km m) => [v] -> Exp -> m v)
 
 instance SimpleActorPrimitive v (SAPrim v) where
    runPrimitive (SAPrim p) = flip p
 
 -- | A nullary primitive
-aprim0 :: (forall e k m . (PrimM e v k m) => Exp -> m v) -> SAPrim v
+aprim0 :: (forall e k km m . (PrimM e v k km m) => Exp -> m v) -> SAPrim v
 aprim0 f = SAPrim $ const f
 
 -- | A primitive on one argument
-aprim1 :: (forall e k m . PrimM e v k m => v -> Exp -> m v) -> SAPrim v
+aprim1 :: (forall e k km m . PrimM e v k km m => v -> Exp -> m v) -> SAPrim v
 aprim1 f = SAPrim $  \case [v] -> f v
                            vs -> const $ escape $ ArityMismatch 1 (length vs)
 
 -- | A primitive on two arguments
-aprim2 :: (forall e k m . PrimM e v k m => v -> v -> Exp -> m v) -> SAPrim v
+aprim2 :: (forall e k km m . PrimM e v k km m => v -> v -> Exp -> m v) -> SAPrim v
 aprim2 f = SAPrim $ \case [v1, v2] -> f v1 v2
                           vs -> const $ escape $ ArityMismatch 2 (length vs)
 

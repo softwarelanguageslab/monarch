@@ -52,31 +52,31 @@ import Data.List (intercalate)
 ------------------------------------------------------------
 
 -- | A wrapper for functions representing Erlang primitives
-data ErlangPrim v = ErlangPrim { _getPrim :: forall e k m . (SchemeDomain v, PrimM e v k m) => Exp -> [v] -> m v}
+data ErlangPrim v = ErlangPrim { _getPrim :: forall e k mk m . (SchemeDomain v, PrimM e v k mk m) => Exp -> [v] -> m v}
 
 -- | Convience alias for 'ErlangPrimM'
-prim :: (forall e k m. (SchemeDomain v, PrimM e v k m) => Exp -> [v] -> m v) -> ErlangPrim v
+prim :: (forall e k mk m. (SchemeDomain v, PrimM e v k mk m) => Exp -> [v] -> m v) -> ErlangPrim v
 prim = ErlangPrim
 
 ------------------------------------------------------------
 -- Parameter list utilities
 ------------------------------------------------------------
 
-prim0 :: PrimM e v k m => m v -> [v] -> m v
+prim0 :: PrimM e v k mk m => m v -> [v] -> m v
 prim0 f [] = f
 prim0 _ vs = escape $ ArityMismatch 0 (length vs)
 
 
-prim1 :: PrimM e v k m => (v -> m v) -> [v] -> m v
+prim1 :: PrimM e v k mk m => (v -> m v) -> [v] -> m v
 prim1 f [v] = f v
 prim1 _ vs = escape $ ArityMismatch 1 (length vs)
 
 
-prim2 :: PrimM e v k m => (v -> v -> m v) -> [v] -> m v
+prim2 :: PrimM e v k mk m => (v -> v -> m v) -> [v] -> m v
 prim2 f [v1, v2] = f v1 v2
 prim2 _ vs = escape $ ArityMismatch 0 (length vs)
 
-prim3 :: PrimM e v k m => (v -> v -> v -> m v) -> [v] -> m v
+prim3 :: PrimM e v k mk m => (v -> v -> v -> m v) -> [v] -> m v
 prim3 f [v1, v2, v3] = f v1 v2 v3
 prim3 _ vs = escape $ ArityMismatch 0 (length vs)
 

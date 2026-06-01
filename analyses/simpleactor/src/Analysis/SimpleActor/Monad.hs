@@ -71,7 +71,6 @@ import Control.DeepSeq
 import GHC.Generics
 import Control.Monad.Choice
 -- import Analysis.Monad.AbstractCount (MonadAbstractCount)
-import Data.Kind
 import Analysis.Actors.Mailbox.Partitioned.Graph (PartitionedGraph)
 
 ------------------------------------------------------------
@@ -270,11 +269,11 @@ type ErrorDomain e = (
     )
 
 -- | Minimal set of constraints needed to evaluate the primitives
-type PrimM' e v k m =
+type PrimM' e v k mk m =
   ( MonadJoinable m,
     EnvM m (Adr v) (Env v),
     AllocM m Ide (Adr v),
-    MonadMailbox e (ARef v) v () m,
+    MonadMailbox e (ARef v) v mk m,
     MonadActor v k m,
     CtxM m k,
     SimpleActorContext k,
@@ -297,16 +296,14 @@ type PrimM' e v k m =
   )
 
 -- | Same as PrimM' but with access to the "apply" function
-type PrimM :: Type -> Type -> Type -> (Type -> Type) -> Constraint
-type PrimM e v k m = (
-    PrimM' e v k m,
+type PrimM e v k mk m = (
+    PrimM' e v k mk m,
     MonadApply v m
   )
 
 -- | Evaluation monad
-type EvalM :: Type -> Type -> Type -> (Type -> Type) -> Constraint
-type EvalM e v k m =
-  ( PrimM' e v k m,
+type EvalM e v k mk m =
+  ( PrimM' e v k mk m,
     MonadFixpoint m Cmp v )
 
 ------------------------------------------------------------
