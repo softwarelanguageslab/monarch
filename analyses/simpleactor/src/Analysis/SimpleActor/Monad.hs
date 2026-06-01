@@ -191,7 +191,7 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadSpawn v k m) => Monad
 -- 'ref' is the type of actor reference 
 -- 'v' is the type of messages (those usually overlap with values in SimpleActor, hence the abbreviation) 
 -- 'ctx' is an additional context added to the message alongside its payload
-class MonadMailbox e ref v ctx m | m -> e ref v ctx where    
+class Monad m => MonadMailbox e ref v ctx m | m -> e ref v ctx where    
     -- | Send a message (first argument) to the given actor 
     -- identifier by the second argument.
     send :: ref -> v -> m ()
@@ -203,15 +203,23 @@ class MonadMailbox e ref v ctx m | m -> e ref v ctx where
             -> Map String (Adr v) -- ^ dynamic environment
             -> m a
     -- | Return the first messages in the mailbox and their corresponding updated mailboxes 
-    recv :: m (Set (v, PMB e (Message v ctx)))
+    recv :: m (Set (Message v ctx, PMB e (Message v ctx)))
     -- | Set the current inbox to the given argument 
     putMailbox :: PMB e (Message v ctx) -> m ()
+    -- | Integrate the context within the current mailbox.
+    -- Uses the empty implementation by default.
+    integrateCtx :: ctx -> m ()
+    integrateCtx = const $ return ()
 
 
 -- | Invoke the function in the first argument with the first message in the mailbox
 recvMsg :: (MonadMailbox e ref v ctx m, MonadJoin m, Joinable a) => (v -> m a) -> m a
 recvMsg f =
-    recv >>= (mjoins . map (\(msg, mb') -> putMailbox mb' >> f msg) . Set.toList)
+        recv >>= (mjoins . map (uncurry doRcv) . Set.toList)
+    where doRcv msg mb' = do 
+                putMailbox mb'
+                integrateCtx (messageCtx msg)
+                f (messagePayload msg)
 
 type MonadActor v k m =
   (MonadSpawn v k m,
@@ -235,7 +243,7 @@ instance
  getDynamic = upperM getDynamic
 
 
-instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadMailbox e ref v ctx m) => MonadMailbox e ref v ctx (t m) where
+instance {-# OVERLAPPABLE #-} (Monad m, Monad (t m),MonadLayer t, MonadMailbox e ref v ctx m) => MonadMailbox e ref v ctx (t m) where
     send v = upperM . send v
     select expr env = upperM . select expr env
     recv = upperM recv

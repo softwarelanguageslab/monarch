@@ -47,14 +47,6 @@ import Control.Monad.Trans.Identity
 import Lattice.Equal
 import Control.Monad.Choice
 
--- TODO: we are replacing the @cond@ operation 
--- here in order to track conditions symbolically, 
--- this limits the applicability of the semantics 
--- to one with symbolic constraints. We should 
--- remove this and make the @cond@ more general.
--- | Same problem here, we really want to use @eql@
--- but we cannot do that since a generic boolean 
--- is required for its implementation.
 import Analysis.Store (Store)
 import qualified Analysis.Store as Store
 import Syntax.FV

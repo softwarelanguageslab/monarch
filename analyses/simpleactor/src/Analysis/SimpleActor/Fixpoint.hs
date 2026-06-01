@@ -23,8 +23,8 @@ import Analysis.SimpleActor.Monad
       MonadDynamic(..),
       MonadFresh(..),
       message, 
-      -- messageCtx,
-      messagePayload)
+      -- messageCtx
+      )
 import Control.Monad.Reader (ReaderT, MonadReader (..))
 import Analysis.SimpleActor.Fixpoint.Common
 import Data.Map (Map)
@@ -253,6 +253,11 @@ type IntraT m = (
         CacheT m
     ))))
 
+
+-- | Lift an IntraT computation to a ProcT computation
+liftIntraT :: Monad m => IntraT m a -> ProcT (IntraT m) a 
+liftIntraT = upperM . upperM . upperM . upperM
+
 ------------------------------------------------------------
 
 -- | Components in the intra-actor fixpoint can depend on the results 
@@ -357,20 +362,22 @@ instance Monad m => MonadPartition Partition (IntraT m) where
     get = return Lattice.bottom
 
 -- | Adds the message context based on information in the monad
-addMessageCtx :: Monad m => MsgPayload ->  m Msg
-addMessageCtx = return . flip message ()
+addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m) => MsgPayload ->  (ProcT (IntraT m) Msg)
+addMessageCtx payload = message payload <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
 
-instance Monad m => MonadMailbox Partition ActorRef ActorVlu () (IntraT m) where
-  send ref v = do
-    oldOutbox <- use outbox
-    v' <- addMessageCtx v
-    outbox . at ref . non MB.empty %= MB.enqueue Lattice.bottom Lattice.bottom v'
-    outbox %= Lattice.join oldOutbox
-    return ()
-  select expr env' dyn' = throwError (expr, env', dyn') -- throwError is only here for its escaping mechanism, not for actually reporting an error
-  recv =
-    uses inbox (Set.map (first messagePayload) . MB.dequeue Lattice.bottom)
-  putMailbox = assign inbox
+instance (SCV.FormulaSolver Domain.SymVar m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
+  send ref v = do 
+      v' <- addMessageCtx v
+      liftIntraT $ do
+        oldOutbox <- use outbox
+        outbox . at ref . non MB.empty %= MB.enqueue Lattice.bottom Lattice.bottom v'
+        outbox %= Lattice.join oldOutbox
+        return ()
+  select expr env' dyn' = liftIntraT $ throwError (expr, env', dyn') -- throwError is only here for its escaping mechanism, not for actually reporting an error
+  recv = 
+    liftIntraT $ uses inbox (MB.dequeue Lattice.bottom)
+  putMailbox = liftIntraT . assign inbox
+  integrateCtx = SCV.putPc
 
 ------------------------------------------------------------
 

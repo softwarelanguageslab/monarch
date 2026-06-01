@@ -21,7 +21,7 @@ import Analysis.SimpleActor.Monad (SimpleActorContext(..), MailboxLabel, Message
 import Analysis.Actors.Mailbox.Partitioned.Graph (PartitionedGraph)
 import Domain.Core.Count.BoundedCount (BoundedCount)
 import Analysis.Actors.Mailbox.Partitioned.Partitions.UnitPartition (UnitPartition)
-import Domain.SimpleActor (SymActorValue)
+import Domain.SimpleActor (SymActorValue, SymVar)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -36,7 +36,7 @@ type ActorAdr = SchemeAdr Exp K
 type ActorVarAdr = SchemeAdr Exp K
 type ActorMai = Map ActorRef PMB
 type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
-type ActorPC  = PC (SchemeAdr Exp K)
+type ActorPC  = PC SymVar
 type ActorCou = Map ActorRef AbstractCount
 
 
@@ -46,7 +46,7 @@ type ActorCou = Map ActorRef AbstractCount
 
 -- The instantiated message type
 type MsgPayload = ActorVlu
-type MsgContext = ()
+type MsgContext = ActorPC 
 type Msg = Message MsgPayload MsgContext
 
 
