@@ -4,13 +4,13 @@
 (module reader syntax/module-reader simpleactor)
 
 ;; With instrumentation
-(require "./shadow.rkt")
-(provide (all-from-out "./shadow.rkt"))
-
+;; (require "./shadow.rkt")
+;; (provide (all-from-out "./shadow.rkt"))
+;;
 
 ;; Without instrumentation
 
-;; (require "./base.rkt")
-;; (provide (all-from-out "./base.rkt"))
+(require "./base.rkt")
+(provide (all-from-out "./base.rkt"))
 
 
