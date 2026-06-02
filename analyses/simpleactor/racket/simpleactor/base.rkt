@@ -290,6 +290,11 @@
 (define (terminate)
   ((*return-continuation*) #f))
 
+;; In general, 'fresh' supports any value, 
+;; but only supports integers for now.
+(define (fresh) 
+  (inexact->exact (round (* (random) 1000))))
+
 (define-syntax (blame stx)
   (syntax-parse stx
      [(_ party) #'(blame party '())]
