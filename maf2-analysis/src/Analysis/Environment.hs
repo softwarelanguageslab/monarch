@@ -20,6 +20,7 @@ class Environment env a | env -> a where
    restrictEnv :: Set String -> env -> env
    extends :: [(String, a)] -> env -> env
    extends = flip (foldr (uncurry extend))
+   contains :: String -> env -> Bool
 
 
 -- A basic representation of an environment using a `Map`
@@ -28,6 +29,7 @@ instance Environment (Map String a) a where
    extend      = Map.insert
    empty       = Map.empty
    restrictEnv = flip Map.restrictKeys
+   contains    = Map.member
 
 -- Hashmap based representation of the environment gives a supposedly
 -- faster lookup speed since its keys are strings.
@@ -36,6 +38,7 @@ instance Environment (HashMap String a) a where
     lookup k = HashMap.findWithDefault (error $ "no such variable " ++ show k) k
     extend = HashMap.insert
     restrictEnv nams = HashMap.filterWithKey (\k -> const $ Set.member k nams)
+    contains         = HashMap.member
 
 instance (Ord a) => Trace a (Map String a) where
    trace = Set.fromList . map snd . Map.toList

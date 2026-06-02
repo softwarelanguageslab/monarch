@@ -179,7 +179,8 @@ instance FreeVariables Exp where
    fv Terminate {}      = Set.empty
    fv Self {}           = Set.empty
    fv (Pair e1 e2 _)    = Set.unions [fv e1, fv e2]
-   fv (Parametrize _ bdy _) = fv bdy
+   fv (Parametrize bds bdy _) = 
+        (Set.unions (map (fv . snd) bds) `Set.union` fv bdy) `Set.difference` (Set.fromList $ map (name . fst) bds)
    fv Blame {}          = Set.empty
    fv (Receive pats _)  = Set.unions (map fv pats)
    fv (Match v pats _)  = Set.unions $ fv v : map fv pats

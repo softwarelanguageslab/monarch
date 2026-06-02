@@ -12,6 +12,8 @@ SCRIPTDIR=$(dirname -- "${BASH_SOURCE[0]}")
 CURRENTDIR=$(pwd)
 cd $SCRIPTDIR/..
 
+set -e 
+
 cabal build -j$(nproc)
 
 EXECUTABLE_PATH=$(cabal list-bin simpleactor-exe)

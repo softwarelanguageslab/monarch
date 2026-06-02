@@ -663,6 +663,7 @@
                           (parametrize
                            ((send^
                              (lambda (rcv2667 msg2668)
+                               (print-env)
                                (old-send2670 kc2666 (cons rcv2667 msg2668)))))
                            (begin
                              (sender 'reply)

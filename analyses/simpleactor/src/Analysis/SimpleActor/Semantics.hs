@@ -23,7 +23,7 @@ import qualified Analysis.SimpleActor.ErlangPrimitives as Erl
 import Analysis.SimpleActor.Monad
 import Analysis.Actors.Monad
 
-import Control.Monad ((>=>), foldM, when)
+import Control.Monad ((>=>), foldM, when, unless)
 import System.IO (hPutStrLn, stderr)
 import Control.Monad.Escape
 import Control.Monad.Join
@@ -38,6 +38,7 @@ import Domain.Core.PairDomain (cons, car ,cdr)
 import Analysis.Scheme.Primitives (primitivesByName)
 import Domain (Domain(inject))
 import Analysis.Environment ( Environment(..) )
+import qualified Analysis.Environment as Environment
 import Analysis.Monad.Context (CtxM(..))
 import Data.Maybe
 import Debug.Trace
@@ -102,6 +103,8 @@ eval = fix evalCmp
 eval'' :: forall v m k km e . EvalM e v k km m => (Cmp -> m v) -> Exp -> m v
 eval'' _ lam@(Lam {}) = injectClo . (lam,) . restrictEnv (fv lam) <$> getEnv
 eval'' _ ex@(Literal lit _) =  injectLit lit ex
+eval'' _ (App (Var (Ide "print-env" _)) [] _) = 
+    (liftIO . print =<< getEnv) $> nil
 eval'' rec e@(App e1 es _) = do
    v1 <- eval' rec e1
    v2 <- mapM (eval' rec) es
@@ -145,8 +148,10 @@ eval'' rec (Begin exs _) =
    else last <$> mapM (eval' rec) exs
 eval'' rec e@(Pair e1 e2 _) =
    stoPai e =<< liftA2 cons (eval' rec e1) (eval' rec e2)
-eval'' _ (Var (Ide x _)) =
-   lookupEnv x >>= lookupVar >>= showIfBot (show x ++ " not in store")
+eval'' _ e@(Var (Ide x _)) = do 
+    env' <- getEnv 
+    unless (Environment.contains x env') (error $ "Variable " ++ x ++ " not found at " ++ show (spanOf e))
+    lookupEnv x >>= lookupVar >>= showIfBot (show x ++ " not in store")
 eval'' _ (DynVar (Ide x _)) =
    lookupDynamic x >>= lookupVar >>= showIfBot (show x ++ " dyn not in store")
 eval'' _ (Self _) = aref <$> getSelf @v
