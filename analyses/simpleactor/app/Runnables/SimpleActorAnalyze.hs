@@ -38,7 +38,7 @@ renderMailboxesToDot outDir prefix = mapM_ (uncurry renderMailbox) . Map.toList
         renderMailbox actorRef mb = do
             let mailboxName = "mailbox_" <> show actorRef
                 dotContent = Dot.render mb
-             in writeFile (outDir ++ prefix ++ escapePath mailboxName ++ ".dot") dotContent
+             in writeFile (outDir ++ "/" ++ prefix ++ escapePath mailboxName ++ ".dot") dotContent
 
 
 -- | Renders the mailbox abstraction for each step in the analysis trace to a DOT file for visualization with Graphviz.

@@ -19,7 +19,7 @@ import Analysis.Monad.Store
 import Control.Monad.Cond
 import Analysis.Monad.Map
 import Data.Typeable
-import qualified Debug.Trace as Debug
+-- import qualified Debug.Trace as Debug
 -- import qualified Data.Set as Set
 
 ------------------------------------------------------------
@@ -53,8 +53,8 @@ instance {-# OVERLAPPING #-} (StoreM a v m, Eq v, DependencyTrackingM cmp a m, M
         => StoreM a v (IntraAnalysisT cmp m) where
     storeSize = upperM (storeSize @a @v)
     lookupAdr a = currentCmp >>= upperM . register a >> upperM (lookupAdr a)
-    writeAdr a v = whenM (upperM $ writeAdr' a v) (Debug.trace ("writeAdr trigger " ++ show a) (upperM $ trigger a))
-    updateAdr a v = whenM (upperM $ updateAdr' a v) (Debug.trace ("updateAdr trigger " ++ show a) (upperM $ trigger a))
+    writeAdr a v = whenM (upperM $ writeAdr' a v) (notrace ("writeAdr trigger " ++ show a) (upperM $ trigger a))
+    updateAdr a v = whenM (upperM $ updateAdr' a v) (notrace ("updateAdr trigger " ++ show a) (upperM $ trigger a))
     updateWith fs fw a = whenM (upperM $ updateWith' fs fw a) (upperM $ trigger a)
     hasAdr = upperM . hasAdr @a @v
 

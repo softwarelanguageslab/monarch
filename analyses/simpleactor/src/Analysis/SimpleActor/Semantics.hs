@@ -166,7 +166,8 @@ eval'' rec (Error e loc) =
 eval'' rec (Parallel es _) = mjoins (map (eval' rec) es)
 eval'' _ (Loc _ _) = return nil
 eval'' _ e@(Input _) = fresh e
-eval'' _ e = error $  "unsupported expression: " ++ show e
+eval'' _ e@(Fresh _) = fresh e
+-- eval'' _ e = error $  "unsupported expression: " ++ show e
 
 logCoverage :: (SpanOf e, MonadIO m) => e -> m a -> m a
 logCoverage e ma = do
