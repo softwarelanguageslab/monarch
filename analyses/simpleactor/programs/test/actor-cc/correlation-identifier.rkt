@@ -32,7 +32,8 @@
   (behavior ()
       ((reply (identifier)
               (displayln 'reply)
-              (displayln identifier)))))
+              (displayln identifier)
+              (become client-behavior)))))
 
 ;; Actor instances of the behaviors
 

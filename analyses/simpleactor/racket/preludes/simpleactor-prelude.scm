@@ -283,7 +283,7 @@
      (if (null? l)
        #f
        (if (equal? (car l) e)
-         l
+         #t
          (member e (cdr l)))))
    ;(define call-with-current-continuation call/cc)
    (define (cddddr x)  (cdr (cdr (cdr (cdr x)))))

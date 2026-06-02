@@ -502,7 +502,7 @@
                   (assert (list? l))
                   (if (null? l)
                     #f
-                    (if (equal? (car l) e) l (member e (cdr l))))))
+                    (if (equal? (car l) e) #t (member e (cdr l))))))
                (cddddr (lambda (x) (cdr (cdr (cdr (cdr x))))))
                (cadddr (lambda (x) (car (cdr (cdr (cdr x))))))
                (int-top (lambda () (random 42)))
@@ -611,10 +611,11 @@
                                                        (lambda (trace2664)
                                                          (receive
                                                           (('finish
+                                                            (trace trace2664)
                                                             (begin
-                                                              (if (member
+                                                              (if (trace (member
                                                                    'reply
-                                                                   trace2664)
+                                                                   trace2664))
                                                                 #t
                                                                 (blame
                                                                  j2660))))
@@ -693,7 +694,10 @@
                      ((self (lambda (m) ((dyn send^) real-self m))))
                      (receive
                       (((cons 'reply identifier)
-                        (begin (displayln 'reply) (displayln identifier)))
+                        (begin
+                          (displayln 'reply)
+                          (displayln identifier)
+                          (client-behavior)))
                        ((cons
                          'enhanced
                          (cons k2676 (cons j2680 (cons 'reply identifier))))
@@ -705,8 +709,9 @@
                                (old-send2681 kc2677 (cons rcv2678 msg2679)))))
                            (begin
                              (displayln 'reply)
+                             (displayln identifier)
                              (old-send2681 kc2677 'finish)))
-                          (displayln identifier)))))))))
+                          (client-behavior)))))))))
                (unmonitored-server
                 (letrec ((act (spawn^ (server-behavior))))
                   (lambda (msg) ((dyn send^) act msg))))
