@@ -34,7 +34,7 @@ generatePointWiseLatticeFor =
 -- data constructor and conjoining the result.
 -- Only supports data constructors (or newtypes) that have a single constructor
 -- (i.e., are record types).
-generatePartialOrder :: Name -> [TyVarBndr ()] -> Con -> Q Dec
+generatePartialOrder :: Name -> [TyVarBndr BndrVis] -> Con -> Q Dec
 generatePartialOrder dataName tvars constr = do
   let fields = extractFields constr
       constrName = extractConstrName constr
@@ -65,11 +65,11 @@ generatePartialOrder dataName tvars constr = do
 
 -- | Generic function to generate instances that apply a binary operation pointwise
 -- on each field of a data constructor.
-generatePointwiseBinary :: Name           -- ^ Class name (e.g., ''Joinable)
-                        -> Name           -- ^ Method name (e.g., 'join)
-                        -> Name           -- ^ Data type name
-                        -> [TyVarBndr ()] -- ^ Type variables
-                        -> Con            -- ^ Constructor
+generatePointwiseBinary :: Name                -- ^ Class name (e.g., ''Joinable)
+                        -> Name                -- ^ Method name (e.g., 'join)
+                        -> Name                -- ^ Data type name
+                        -> [TyVarBndr BndrVis] -- ^ Type variables
+                        -> Con                 -- ^ Constructor
                         -> Q Dec
 generatePointwiseBinary className methodName dataName tvars constr = do
   let fields = extractFields constr
@@ -101,11 +101,11 @@ generatePointwiseBinary className methodName dataName tvars constr = do
 
 -- | Generic function to generate instances that apply a nullary operation pointwise
 -- on each field of a data constructor (for top/bottom).
-generatePointwiseNullary :: Name        -- ^ Class name (e.g., ''TopLattice)
-                         -> Name        -- ^ Method name (e.g., 'top)
-                         -> Name        -- ^ Data type name
-                         -> [TyVarBndr ()] -- ^ Type variables
-                         -> Con         -- ^ Constructor
+generatePointwiseNullary :: Name                -- ^ Class name (e.g., ''TopLattice)
+                         -> Name                -- ^ Method name (e.g., 'top)
+                         -> Name                -- ^ Data type name
+                         -> [TyVarBndr BndrVis] -- ^ Type variables
+                         -> Con                 -- ^ Constructor
                          -> Q Dec
 generatePointwiseNullary className methodName dataName tvars constr = do
   let fields = extractFields constr
@@ -127,7 +127,7 @@ generatePointwiseNullary className methodName dataName tvars constr = do
 -- | Generates an "instance Joinable (Name tvars ...) where" by
 -- applying the join operation pointwise on each field of the
 -- data constructor and returning a new instance of the data type.
-generateJoinable :: Name -> [TyVarBndr ()] -> Con -> Q Dec
+generateJoinable :: Name -> [TyVarBndr BndrVis] -> Con -> Q Dec
 generateJoinable = generatePointwiseBinary ''Joinable 'join
 
 -- Helper function to extract fields from a constructor
@@ -147,7 +147,7 @@ extractConstrName (ForallC _ _ con) = extractConstrName con
 extractConstrName _ = error "Unsupported constructor type"
 
 -- Helper function to apply type variables to a type name
-applyType :: Name -> [TyVarBndr ()] -> Type
+applyType :: Name -> [TyVarBndr BndrVis] -> Type
 applyType name tvars = foldl AppT (ConT name) (map tyVarToType tvars)
   where
     tyVarToType (PlainTV n _) = VarT n
@@ -156,18 +156,18 @@ applyType name tvars = foldl AppT (ConT name) (map tyVarToType tvars)
 -- | Generates an "instance Meetable (Name tvars ...) where" by
 -- applying the meet operation pointwise on each field of the
 -- data constructor and returning a new instance of the data type.
-generateMeetable :: Name -> [TyVarBndr ()] -> Con -> Q Dec
+generateMeetable :: Name -> [TyVarBndr BndrVis] -> Con -> Q Dec
 generateMeetable = generatePointwiseBinary ''Meetable 'meet
 
 -- | Generates an "instance BottomLattice (Name tvars ...) where" by
 -- applying the bottom operation pointwise on each field of the
 -- data constructor.
-generateBottomLattice :: Name -> [TyVarBndr ()] -> Con -> Q Dec
+generateBottomLattice :: Name -> [TyVarBndr BndrVis] -> Con -> Q Dec
 generateBottomLattice = generatePointwiseNullary ''BottomLattice 'bottom
 
 -- | Generates an "instance TopLattice (Name tvars ...) where" by
 -- applying the top operation pointwise on each field of the
 -- data constructor.
-generateTopLattice :: Name -> [TyVarBndr ()] -> Con -> Q Dec
+generateTopLattice :: Name -> [TyVarBndr BndrVis] -> Con -> Q Dec
 generateTopLattice = generatePointwiseNullary ''TopLattice 'top
 

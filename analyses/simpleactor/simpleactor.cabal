@@ -75,7 +75,7 @@ library
       FunctionalDependencies
       RecordWildCards
       LambdaCase
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wno-x-partial -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded
   build-depends:
       base >=4.7 && <5
     , concurrency
@@ -85,6 +85,7 @@ library
     , directory
     , exceptions
     , extra
+    , ghc-experimental
     , hspec
     , hspec-contrib
     , layers-mtl
@@ -130,7 +131,7 @@ executable simpleactor-exe
       FunctionalDependencies
       RecordWildCards
       LambdaCase
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wno-x-partial -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       Glob
     , aeson
@@ -142,6 +143,7 @@ executable simpleactor-exe
     , directory
     , extra
     , filepath
+    , ghc-experimental
     , hspec
     , hspec-contrib
     , maf2-analysis
@@ -179,13 +181,14 @@ test-suite simpleactor-tests
       FunctionalDependencies
       RecordWildCards
       LambdaCase
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wno-x-partial -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , concurrent-extra
     , deepseq
     , directory
     , extra
+    , ghc-experimental
     , hspec
     , hspec-contrib
     , maf2-analysis
