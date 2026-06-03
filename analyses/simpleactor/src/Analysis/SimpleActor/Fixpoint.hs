@@ -90,6 +90,7 @@ import Domain.Core.PairDomain.TopLifted ()
 import Domain.Core.StringDomain.TopLifted ()
 -- import qualified RIO as Debug
 import qualified Control.Monad.State as State
+import qualified RIO as Debug
 
 ------------------------------------------------------------
 -- Shorthands
@@ -376,7 +377,7 @@ instance (SCV.FormulaSolver Domain.SymVar m) => MonadMailbox Partition ActorRef 
   recv = 
     liftIntraT $ uses inbox (MB.dequeue Lattice.bottom)
   putMailbox = liftIntraT . assign inbox
-  integrateCtx = SCV.putPc
+  integrateCtx = const $ return () -- SCV.putPc
 
 ------------------------------------------------------------
 
@@ -490,15 +491,17 @@ transferTurn _ (Turn Terminated _) = return Set.empty
 fixTurn :: AnalysisM m => ActorRef -> Turn -> AnalysisSystemT m (Set Turn)
 fixTurn selfRef turn0 = do
     result <- Fix.lfp (Fix.lift $ transferTurn selfRef) (Set.singleton turn0)
-    -- Debug.traceShowIO $ "fixTurn actor=" ++ show selfRef ++ " result-turns=" ++ show (Set.size result)
+    Debug.traceShowIO $ "fixTurn actor=" ++ show selfRef ++ " result-turns=" ++ show (Set.size result)
     return result
 
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
 transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 transferSystem s = do
-    -- Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
+    Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
+    Debug.traceShowIO $ "transferSystem mailboxes= " ++ show (s ^. mbs)
     flip execStateT s $ do
-        let turnState ref = State (fromMaybe Lattice.bottom (Map.lookup ref (s ^. mbs))) Lattice.bottom
+        outboxes <- State.gets (_mbs)
+        let turnState ref = State (fromMaybe Lattice.bottom (Map.lookup ref (s ^. mbs))) outboxes
         let initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref)))
                                              -- (Map.restrictKeys (s ^. initialBeh) changed)
                                              (s ^. initialBeh)

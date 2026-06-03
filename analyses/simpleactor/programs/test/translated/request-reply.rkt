@@ -638,7 +638,7 @@
                                                                   (cons
                                                                    'reply
                                                                    trace2662))))))))))))
-                                               (spawn^ (r (list))))))
+                                               (spawn^ (r '())))))
                                          x2656)
                                         (cons
                                          j2653

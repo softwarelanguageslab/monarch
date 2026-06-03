@@ -611,6 +611,7 @@
                                                        (lambda (trace2664)
                                                          (receive
                                                           (('finish
+                                                            (print-env)
                                                             (trace trace2664)
                                                             (begin
                                                               (if (trace (member
@@ -650,7 +651,7 @@
                                                                   (cons
                                                                    'reply
                                                                    trace2664))))))))))))
-                                               (spawn^ (r (list))))))
+                                               (spawn^ (r '())))))
                                          x2657
                                          x2658)
                                         (cons
