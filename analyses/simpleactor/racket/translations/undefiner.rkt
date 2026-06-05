@@ -41,7 +41,7 @@
                    (let ((result (undefine current #f)))
                      (if (null? result)
                          (undefine-sequence rest allowed)
-                         (cons (undefine current #f)
+                         (cons result
                                (undefine-sequence* rest allowed))))))
             (begin (undefine current #t) (undefine-sequence* rest allowed))))))
 
