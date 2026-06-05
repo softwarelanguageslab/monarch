@@ -71,6 +71,8 @@
    (define (</c n) (flat (lambda (v) (orig-< v n))))
    (define (<=/c n) (flat (lambda (v) (orig-<= v n))))
    (define (=/c n) (flat (lambda (v) (orig-= v n))))
+   (define (string=?/c s) (flat (lambda (v)
+                                  (string=? s v))))
 
    ;; Other utility functionsa
 
@@ -168,7 +170,6 @@
    (define (char-whitespace? c)  (or (= (char->integer c) 9) (= (char->integer c) 10) (= (char->integer c) 32)))
    (define (cddar x)  (cdr (cdr (car x))))
    (define (positive? x)  (assert (number? x)) (> x 0))
-   (define (string=? s1 s2) (bool-top))
    ;(define (string=? s1 s2)
    ;  
    ;  (assert (string? s1))
