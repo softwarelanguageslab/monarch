@@ -5,6 +5,7 @@ module Analysis.Store(
    Store(..),
    CountingMap(..),
    printSto,
+   printMap,
    emptyCountingMap,
    traceStore,
    traceStore',
@@ -74,6 +75,13 @@ printSto printKey keepKey m  =
    where adrs   = Map.toList $ Map.filterWithKey (flip (const keepKey)) (store m)
          indent = Data.List.maximum (map (Data.List.length . printKey . fst) adrs) + 5
 
+
+printMap :: (Show v) => (k -> String) -> (k -> Bool) -> Map k v -> String
+printMap printKey keepKey m  =
+       Data.List.intercalate "\n" $ map (\(k,v) -> printf "%*s | %s" indent (printKey k) (show v)) adrs
+   where adrs   = Map.toList $ Map.filterWithKey (flip (const keepKey)) m
+         indent = Data.List.maximum (map (Data.List.length . printKey . fst) adrs) + 5
+
 ---
 --- Abstract counting
 ---
@@ -103,6 +111,3 @@ instance (Joinable v, Show a, Ord a) => Store (CountingMap a v) a v where
 
    restrictSto ks = CountingMap . flip Map.restrictKeys ks . store
    union (CountingMap m1) (CountingMap m2) = CountingMap $ Map.union m1 m2
-
-
-
