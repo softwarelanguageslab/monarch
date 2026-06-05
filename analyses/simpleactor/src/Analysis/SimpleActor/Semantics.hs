@@ -207,7 +207,7 @@ applyClosure :: EvalM e v k km m => Exp -> [Exp] -> (Exp, Env v) -> (Cmp -> m v)
 applyClosure e es (lam@(Lam prs prz _ _), env) rec vs
   | length es /= length vs = 
         error "invariant violated: number of operands in the application must equal the number of evaluated operand values"
-  | length prs /= length vs && isNothing prz = error "invalid number of arguments"
+  | length prs /= length vs && isNothing prz = error $ "invalid number of arguments at " ++ show (spanOf e) 
   | otherwise = withCtx (pushCallSite (spanOf e)) $ do
             ads <- mapM alloc prs
             -- in case the function supports a variable number of arguments

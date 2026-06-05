@@ -497,8 +497,8 @@ fixTurn selfRef turn0 = do
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
 transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 transferSystem s = do
-    Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
-    Debug.traceShowIO $ "transferSystem mailboxes= " ++ show (s ^. mbs)
+    -- Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
+    -- Debug.traceShowIO $ "transferSystem mailboxes= " ++ show (s ^. mbs)
     flip execStateT s $ do
         outboxes <- State.gets (_mbs)
         let turnState ref = State (fromMaybe Lattice.bottom (Map.lookup ref (s ^. mbs))) outboxes
