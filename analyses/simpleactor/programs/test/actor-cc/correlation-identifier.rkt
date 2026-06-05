@@ -24,8 +24,10 @@
 (define server-behavior 
   (behavior ()
       ((request (ref identifier) 
-                #;mutation
-                (send ref reply #;mutation identifier)
+                (if #t
+                    #;mutation
+                    (send ref reply #;mutation identifier)
+                    '())
                 (become server-behavior)))))
 
 (define client-behavior

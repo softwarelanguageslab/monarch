@@ -611,12 +611,10 @@
                                                        (lambda (trace2664)
                                                          (receive
                                                           (('finish
-                                                            (print-env)
-                                                            (trace trace2664)
                                                             (begin
-                                                              (if (trace (member
+                                                              (if (member
                                                                    'reply
-                                                                   trace2664))
+                                                                   trace2664)
                                                                 #t
                                                                 (blame
                                                                  j2660))))
@@ -651,7 +649,7 @@
                                                                   (cons
                                                                    'reply
                                                                    trace2664))))))))))))
-                                               (spawn^ (r '())))))
+                                               (spawn^ (r (list))))))
                                          x2657
                                          x2658)
                                         (cons
@@ -671,7 +669,7 @@
                      (receive
                       (((cons 'request (cons ref identifier))
                         (begin
-                          (ref (cons 'reply identifier))
+                          (if #t (ref (cons 'reply identifier)) '())
                           (server-behavior)))
                        ((cons
                          'enhanced
@@ -685,7 +683,7 @@
                              (lambda (rcv2671 msg2672)
                                (old-send2674 kc2670 (cons rcv2671 msg2672)))))
                            (begin
-                             (ref (cons 'reply identifier))
+                             (if #t (ref (cons 'reply identifier)) '())
                              (old-send2674 kc2670 'finish)))
                           (server-behavior)))))))))
                (client-behavior
