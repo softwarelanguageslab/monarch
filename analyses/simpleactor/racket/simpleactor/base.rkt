@@ -295,6 +295,10 @@
 (define (fresh) 
   (inexact->exact (round (* (random) 1000))))
 
+(define (fresh-string) 
+  (build-string 100 (lambda (position) 
+                      (integer->char (inexact->exact (round (+ (* (random) (- 122 97)) 97)))))))
+
 (define-syntax (blame stx)
   (syntax-parse stx
      [(_ party) #'(blame party '())]
