@@ -231,6 +231,9 @@
 ;; a `loc` value based on the line and column numbers
 (struct position-loc (line column) #:transparent)
 
+;; a 'lo' value based on the line, column and filename
+(struct position-in-file-loc (file line column) #:transparent)
+
 ;; a `loc` value based on a label
 (struct label-loc (label) #:transparent)
 

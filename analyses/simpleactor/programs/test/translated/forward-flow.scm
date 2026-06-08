@@ -715,158 +715,249 @@
                   (assert (< index (length l)))
                   (if (= index 0) (car l) (list-ref (cdr l) (- index 1)))))
                (gcd (lambda (a b) (if (= b 0) a (gcd b (modulo a b)))))
-               (server/c
+               (router/c
                 (lambda (k10186 j10187 a10185)
                   (lambda (v10188)
-                    (letrec ((result10203
+                    (letrec ((result10208
                               ((lambda (k10189 j10190 v10191)
                                  (match
                                   v10191
-                                  (((cons 'request (cons x10192 x10193))
-                                    (letrec ((x10194
-                                              (actor? k10189 j10190 x10192))
-                                             (x10195
-                                              (number?/c
-                                               k10189
-                                               j10190
-                                               x10193)))
+                                  (((cons 'request x10192)
+                                    (letrec ((x10193
+                                              (actor? k10189 j10190 x10192)))
                                       (cons
                                        'enhanced
                                        (cons
-                                        ((lambda (client-ref corr-id)
-                                           (lambda (j10196)
-                                             (letrec ((r10200
-                                                       (lambda (trace10199)
+                                        ((lambda (client-ref)
+                                           (lambda (j10194)
+                                             (letrec ((r10198
+                                                       (lambda (trace10197)
                                                          (receive
                                                           (('finish
                                                             (begin
                                                               (if (member
-                                                                   'reply
-                                                                   trace10199)
+                                                                   'request
+                                                                   trace10197)
                                                                 #t
                                                                 (blame
-                                                                 j10196
+                                                                 j10194
                                                                  '(position-in-file-loc
                                                                    "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/cc-combinator.rkt"
                                                                    106
                                                                    11)))))
                                                            ((pair
-                                                             rcv10198
-                                                             message10197)
+                                                             rcv10196
+                                                             message10195)
                                                             (match
-                                                             message10197
+                                                             message10195
                                                              (((cons
-                                                                'reply
-                                                                x10201)
+                                                                'request
+                                                                x10199)
                                                                (begin
                                                                  ((dyn send^)
-                                                                  rcv10198
-                                                                  (letrec ((x10202
-                                                                            ((=/c
-                                                                              corr-id)
-                                                                             j10196
-                                                                             j10196
-                                                                             x10201)))
+                                                                  rcv10196
+                                                                  (letrec ((x10200
+                                                                            (actor?
+                                                                             j10194
+                                                                             j10194
+                                                                             x10199)))
                                                                     (cons
                                                                      'enhanced
                                                                      (cons
-                                                                      (unconstrained/c
-                                                                       x10202)
+                                                                      ((lambda _
+                                                                         (lambda (j10201)
+                                                                           (letrec ((r10205
+                                                                                     (lambda (trace10204)
+                                                                                       (receive
+                                                                                        (('finish
+                                                                                          (begin
+                                                                                            (if (member
+                                                                                                 'reply
+                                                                                                 trace10204)
+                                                                                              #t
+                                                                                              (blame
+                                                                                               j10201
+                                                                                               '(position-in-file-loc
+                                                                                                 "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/cc-combinator.rkt"
+                                                                                                 106
+                                                                                                 11)))))
+                                                                                         ((pair
+                                                                                           rcv10203
+                                                                                           message10202)
+                                                                                          (match
+                                                                                           message10202
+                                                                                           (((cons
+                                                                                              'reply
+                                                                                              x10206)
+                                                                                             (begin
+                                                                                               ((dyn
+                                                                                                 send^)
+                                                                                                rcv10203
+                                                                                                (letrec ((x10207
+                                                                                                          (integer?/c
+                                                                                                           j10201
+                                                                                                           j10201
+                                                                                                           x10206)))
+                                                                                                  (cons
+                                                                                                   'enhanced
+                                                                                                   (cons
+                                                                                                    (unconstrained/c
+                                                                                                     x10207)
+                                                                                                    (cons
+                                                                                                     j10201
+                                                                                                     (cons
+                                                                                                      'reply
+                                                                                                      x10207))))))
+                                                                                               (r10205
+                                                                                                (cons
+                                                                                                 'reply
+                                                                                                 trace10204))))
+                                                                                            (_
+                                                                                             (begin
+                                                                                               ((dyn
+                                                                                                 send^)
+                                                                                                rcv10203
+                                                                                                message10202)
+                                                                                               (r10205
+                                                                                                trace10204)))))))))))
+                                                                             (spawn^
+                                                                              (r10205
+                                                                               (list))))))
+                                                                       x10200)
                                                                       (cons
-                                                                       j10196
+                                                                       j10194
                                                                        (cons
-                                                                        'reply
-                                                                        x10202))))))
-                                                                 (r10200
+                                                                        'request
+                                                                        x10200))))))
+                                                                 (r10198
                                                                   (cons
-                                                                   'reply
-                                                                   trace10199))))
+                                                                   'request
+                                                                   trace10197))))
                                                               (_
                                                                (begin
                                                                  ((dyn send^)
-                                                                  rcv10198
-                                                                  message10197)
-                                                                 (r10200
-                                                                  trace10199)))))))))))
-                                               (spawn^ (r10200 (list))))))
-                                         x10194
-                                         x10195)
+                                                                  rcv10196
+                                                                  message10195)
+                                                                 (r10198
+                                                                  trace10197)))))))))))
+                                               (spawn^ (r10198 (list))))))
+                                         x10193)
                                         (cons
                                          j10190
-                                         (cons
-                                          'request
-                                          (cons x10194 x10195)))))))
+                                         (cons 'request x10193))))))
                                    (_ #f))))
                                k10186
                                j10187
                                v10188)))
-                      (if result10203
-                        (a10185 result10203)
+                      (if result10208
+                        (a10185 result10208)
                         (blame
                          k10186
                          '(position-in-file-loc
-                           "programs/test/actor-cc/correlation-identifier.rkt"
-                           18
-                           2)))))))
-               (server-behavior
-                (lambda ()
-                  (letrec ((real-self (self^)))
-                    (parametrize
-                     ((self (lambda (m) ((dyn send^) real-self m))))
-                     (receive
-                      (((cons 'request (cons ref identifier))
-                        (begin
-                          (if #t (ref (cons 'reply identifier)) '())
-                          (server-behavior)))
-                       ((cons
-                         'enhanced
-                         (cons
-                          k10204
-                          (cons j10208 (cons 'request (cons ref identifier)))))
-                        (letrec ((kc10205 (k10204 j10208))
-                                 (old-send10209 (dyn send^)))
-                          (parametrize
-                           ((send^
-                             (lambda (rcv10206 msg10207)
-                               (old-send10209
-                                kc10205
-                                (cons rcv10206 msg10207)))))
-                           (begin
-                             (if #t (ref (cons 'reply identifier)) '())
-                             (server-behavior)))))))))))
+                           "programs/test/actor-cc/forward-flow.rkt"
+                           3
+                           1)))))))
+               (pick-service
+                (lambda (services)
+                  (list-ref services (random (length services)))))
                (client-behavior
+                (lambda (router)
+                  (letrec ((real-self (self^)))
+                    (parametrize
+                     ((self (lambda (m) ((dyn send^) real-self m))))
+                     (receive
+                      (('main
+                        (begin
+                          (router (cons 'request (dyn self)))
+                          (client-behavior router)))
+                       ((cons 'reply answer)
+                        (begin (displayln answer) (terminate)))
+                       ((cons 'enhanced (cons k10209 (cons j10213 'main)))
+                        (letrec ((kc10210 (k10209 j10213))
+                                 (old-send10214 (dyn send^)))
+                          (parametrize
+                           ((send^
+                             (lambda (rcv10211 msg10212)
+                               (old-send10214
+                                kc10210
+                                (cons rcv10211 msg10212)))))
+                           (begin
+                             (router (cons 'request (dyn self)))
+                             (client-behavior router)))))
+                       ((cons
+                         'enhanced
+                         (cons k10215 (cons j10219 (cons 'reply answer))))
+                        (letrec ((kc10216 (k10215 j10219))
+                                 (old-send10220 (dyn send^)))
+                          (parametrize
+                           ((send^
+                             (lambda (rcv10217 msg10218)
+                               (old-send10220
+                                kc10216
+                                (cons rcv10217 msg10218)))))
+                           (begin (displayln answer) (terminate)))))))))))
+               (router-behavior
+                (lambda (services)
+                  (letrec ((real-self (self^)))
+                    (parametrize
+                     ((self (lambda (m) ((dyn send^) real-self m))))
+                     (receive
+                      (((cons 'request sender)
+                        (begin
+                          ((pick-service services) (cons 'request sender))
+                          (router-behavior services)))
+                       ((cons
+                         'enhanced
+                         (cons k10221 (cons j10225 (cons 'request sender))))
+                        (letrec ((kc10222 (k10221 j10225))
+                                 (old-send10226 (dyn send^)))
+                          (parametrize
+                           ((send^
+                             (lambda (rcv10223 msg10224)
+                               (old-send10226
+                                kc10222
+                                (cons rcv10223 msg10224)))))
+                           (begin
+                             ((pick-service services) (cons 'request sender))
+                             (router-behavior services)))))))))))
+               (service-behavior
                 (lambda ()
                   (letrec ((real-self (self^)))
                     (parametrize
                      ((self (lambda (m) ((dyn send^) real-self m))))
                      (receive
-                      (((cons 'reply identifier)
+                      (((cons 'request sender)
                         (begin
-                          (displayln 'reply)
-                          (displayln identifier)
-                          (client-behavior)))
+                          'do-work
+                          (sender (cons 'reply 42))
+                          (service-behavior)))
                        ((cons
                          'enhanced
-                         (cons k10210 (cons j10214 (cons 'reply identifier))))
-                        (letrec ((kc10211 (k10210 j10214))
-                                 (old-send10215 (dyn send^)))
+                         (cons k10227 (cons j10231 (cons 'request sender))))
+                        (letrec ((kc10228 (k10227 j10231))
+                                 (old-send10232 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv10212 msg10213)
-                               (old-send10215
-                                kc10211
-                                (cons rcv10212 msg10213)))))
+                             (lambda (rcv10229 msg10230)
+                               (old-send10232
+                                kc10228
+                                (cons rcv10229 msg10230)))))
                            (begin
-                             (displayln 'reply)
-                             (displayln identifier)
-                             (client-behavior)))))))))))
-               (unmonitored-server
-                (letrec ((act (spawn^ (server-behavior))))
+                             'do-work
+                             (sender (cons 'reply 42))
+                             (service-behavior)))))))))))
+               (service
+                (letrec ((act (spawn^ (service-behavior))))
                   (lambda (msg) ((dyn send^) act msg))))
+               (router
+                (letrec ((xj10233 (loc 'client)) (xk10234 (loc 'server)))
+                  (router/c
+                   xj10233
+                   xk10234
+                   (letrec ((act (spawn^ (router-behavior (list service)))))
+                     (lambda (msg) ((dyn send^) act msg))))))
                (client
-                (letrec ((act (spawn^ (client-behavior))))
-                  (lambda (msg) ((dyn send^) act msg))))
-               (server
-                (letrec ((xj10216 (loc 'client)) (xk10217 (loc 'server)))
-                  (server/c xj10216 xk10217 unmonitored-server))))
-        (server (cons 'request (cons client (fresh))))))))
+                (letrec ((act (spawn^ (client-behavior router))))
+                  (lambda (msg) ((dyn send^) act msg)))))
+        (client 'main)
+        (wait-until-all-finished)))))

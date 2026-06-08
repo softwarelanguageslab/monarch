@@ -19,6 +19,21 @@
 ;; Indicates whether to compile meta annotations in the output
 (define *is-meta* (make-parameter #f))
 
+;; Emit a CSV row to stderr: type,source,line,column[,extra...]
+(define (emit-contract-csv type stx . extras)
+  (let* ((src (let ((s (syntax-source stx)))
+                (cond ((path? s)   (path->string s))
+                      ((symbol? s) (symbol->string s))
+                      ((string? s) s)
+                      (else        "unknown"))))
+         (quoted-src (string-append "\"" (string-replace src "\"" "\"\"") "\""))
+         (line (or (syntax-line stx) ""))
+         (col  (or (syntax-column stx) "")))
+    (fprintf (current-error-port) "~a,~a,~a,~a~a\n"
+             type quoted-src line col
+             (if (null? extras) ""
+                 (apply string-append (map (lambda (e) (format ",~a" e)) extras))))))
+
 ;; Generate a meta instruction if `*is-meta*` is #t
 (define (instrument-meta loc-stx e-stx)
   (if (*is-meta*)
@@ -38,9 +53,9 @@
                      (else        "unknown")))))
     (quasisyntax/loc loc-stx
       (blame #,j-stx
-             (quote (loc #,src
-                         #,(syntax-line loc-stx)
-                         #,(syntax-column loc-stx)))))))
+             (quote (position-in-file-loc #,src
+                              #,(syntax-line loc-stx)
+                              #,(syntax-column loc-stx)))))))
 
 ;; Parse a message/c form and return (values pattern-stx enhanced-body-stx vars)
 ;; where:
@@ -48,12 +63,14 @@
 ;;   enhanced-msg-fn  — a function (vars -> stx) producing the enhanced message
 ;;   ps               — the fresh payload variable syntax identifiers
 (define (message/c-parts exp-stx k j)
+  (emit-contract-csv "message/c" exp-stx)
   (syntax-parse exp-stx
     #:datum-literals (message/c)
     [(message/c tag (payload-contract ...) recipient communication)
      (let* ((ps   (map (lambda _ (datum->syntax exp-stx (gensym "x")))
                        (syntax->list #'(payload-contract ...))))
             (nmsg (map (lambda (contract arg)
+                         (emit-contract-csv "contract-check" contract)
                          (quasisyntax/loc exp-stx (#,contract #,k #,j #,arg)))
                        (syntax->list #'(payload-contract ...))
                        ps))
@@ -116,6 +133,10 @@
       (translate-communication/c-aux κ-stx)))
 
 (define (translate-communication/c-aux κ-stx)
+  (syntax-parse κ-stx
+    #:datum-literals (ensures/c)
+    ((ensures/c msg-contract ...)
+     (emit-contract-csv "ensures/c" κ-stx (length (syntax->list #'(msg-contract ...))))))
   ;; Builds a match clause: (pattern (begin (send^ rcv enhanced) (r (cons tag trace))))
   (define (make-ensures-clause message-stx r-stx rcv-stx trace-stx j-stx msg-contract-stx)
     (define-values (pat enhanced-body)
@@ -172,6 +193,10 @@
 
 ;; Translate a behavior contract to a base-level construct.
 (define (translate-behavior/c contract-stx)
+  (syntax-parse contract-stx
+    #:datum-literals (behavior/c)
+    [(behavior/c msg ...)
+     (emit-contract-csv "behavior/c" contract-stx (length (syntax->list #'(msg ...))))])
   (define (clauses->if k j a v message-contract-stxs otherwise)
     (if (null? message-contract-stxs)
         otherwise
@@ -231,6 +256,7 @@
   (if (null? (cdr stxs)) (car stxs) (last (cdr stxs))))
 
 (define (translate-aux-arrowd stx)
+  (emit-contract-csv "->d" stx)
   (let* ((κ-list     (cdr (syntax->list stx)))
          (ags        (drop-right κ-list 1))
          (ret        (last κ-list))
@@ -267,6 +293,7 @@
         #:datum-literals (flat -> mon behavior/c ensures/c message/c message/c*
                           one-of/c struct/c receive)
         ((flat e)
+     (emit-contract-csv "flat" stx)
      (let ((j (datum->syntax stx (gensym)))
            (k (datum->syntax stx (gensym)))
            (v (datum->syntax stx (gensym))))
@@ -277,6 +304,7 @@
                  #,v
                  #,(make-blame stx j)))))))
     ((-> κs ...)
+     (emit-contract-csv "->" stx)
      (let* ((κ-list (syntax->list #'(κs ...)))
             (len    (length κ-list)))
        (if (= len 2)
@@ -315,6 +343,7 @@
                                            ags vs)))))))))))))
 )
     ((mon j k κ v)
+     (emit-contract-csv "mon" stx)
      (let ((xj (datum->syntax stx (gensym "xj")))
            (xk (datum->syntax stx (gensym "xk"))))
        (quasisyntax/loc stx

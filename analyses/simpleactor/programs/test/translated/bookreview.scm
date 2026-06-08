@@ -8,8 +8,12 @@
                lst
                (((list) #f)
                 ((pair v1 vs) (if (eq? v v1) #t (member v vs))))))))
-         (loopy-actor (lambda () (receive ((_ (loopy-actor))))))
-         (unconstrained/c (lambda payload (lambda j (spawn^ loopy-actor))))
+         (loopy-actor
+          (lambda ()
+            (receive
+             (((cons rcv msg) (send^ rcv msg) (loopy-actor))
+              ('finish (terminate))))))
+         (unconstrained/c (lambda payload (lambda j (spawn^ (loopy-actor)))))
          (actor? (lambda (k j v) v))
          (nonzero? (lambda (v) (not (= v 0)))))
   (begin
@@ -17,17 +21,17 @@
              (>=
               (lambda (x y)
                 (assert (number? x))
-                (letrec ((val7719 (> x y)))
-                  (if val7719
-                    val7719
-                    (letrec ((val7720 (= x y))) (if val7720 val7720 #f))))))
+                (letrec ((val10026 (> x y)))
+                  (if val10026
+                    val10026
+                    (letrec ((val10027 (= x y))) (if val10027 val10027 #f))))))
              (<=
               (lambda (x y)
                 (assert (number? x))
-                (letrec ((val7721 (< x y)))
-                  (if val7721
-                    val7721
-                    (letrec ((val7722 (= x y))) (if val7722 val7722 #f))))))
+                (letrec ((val10028 (< x y)))
+                  (if val10028
+                    val10028
+                    (letrec ((val10029 (= x y))) (if val10029 val10029 #f))))))
              (> (lambda (x y) (assert (number? x)) (not (<= x y))))
              (orig-+ +)
              (orig-- -)
@@ -49,53 +53,126 @@
                 (lambda (contract)
                   (lambda (k j lst) (map (lambda (v) (contract k j v)) lst))))
                (real?/c
-                (lambda (g7738 g7739 g7740)
-                  (if (real? g7740) g7740 (blame g7738 'real?))))
+                (lambda (g10045 g10046 g10047)
+                  (if (real? g10047)
+                    g10047
+                    (blame
+                     g10045
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       40
+                       19)))))
                (boolean?/c
-                (lambda (g7741 g7742 g7743)
-                  (if (boolean? g7743) g7743 (blame g7741 'boolean?))))
+                (lambda (g10048 g10049 g10050)
+                  (if (boolean? g10050)
+                    g10050
+                    (blame
+                     g10048
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       41
+                       22)))))
                (number?/c
-                (lambda (g7744 g7745 g7746)
-                  (if (number? g7746) g7746 (blame g7744 'number?))))
+                (lambda (g10051 g10052 g10053)
+                  (if (number? g10053)
+                    g10053
+                    (blame
+                     g10051
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       42
+                       21)))))
                (any/c
-                (lambda (g7747 g7748 g7749)
-                  (if ((lambda (v) #t) g7749)
-                    g7749
-                    (blame g7747 '(lambda (v) #t)))))
+                (lambda (g10054 g10055 g10056)
+                  (if ((lambda (v) #t) g10056)
+                    g10056
+                    (blame
+                     g10054
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       43
+                       17)))))
                (any?/c
-                (lambda (g7750 g7751 g7752)
-                  (if ((lambda (v) #t) g7752)
-                    g7752
-                    (blame g7750 '(lambda (v) #t)))))
+                (lambda (g10057 g10058 g10059)
+                  (if ((lambda (v) #t) g10059)
+                    g10059
+                    (blame
+                     g10057
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       44
+                       18)))))
                (cons?/c
-                (lambda (g7753 g7754 g7755)
-                  (if (pair? g7755) g7755 (blame g7753 'pair?))))
+                (lambda (g10060 g10061 g10062)
+                  (if (pair? g10062)
+                    g10062
+                    (blame
+                     g10060
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       45
+                       19)))))
                (cons/c
                 (lambda (k1 k2)
                   (lambda (k j v) (cons (k1 k j (car v)) (k2 k j (cdr v))))))
                (pair?/c
-                (lambda (g7756 g7757 g7758)
-                  (if (pair? g7758) g7758 (blame g7756 'pair?))))
+                (lambda (g10063 g10064 g10065)
+                  (if (pair? g10065)
+                    g10065
+                    (blame
+                     g10063
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       50
+                       19)))))
                (integer?/c
-                (lambda (g7759 g7760 g7761)
-                  (if (integer? g7761) g7761 (blame g7759 'integer?))))
+                (lambda (g10066 g10067 g10068)
+                  (if (integer? g10068)
+                    g10068
+                    (blame
+                     g10066
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       51
+                       22)))))
                (symbol?/c
-                (lambda (g7762 g7763 g7764)
-                  (if (symbol? g7764) g7764 (blame g7762 'symbol?))))
+                (lambda (g10069 g10070 g10071)
+                  (if (symbol? g10071)
+                    g10071
+                    (blame
+                     g10069
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       52
+                       21)))))
                (string?/c
-                (lambda (g7765 g7766 g7767)
-                  (if (string? g7767) g7767 (blame g7765 'string?))))
+                (lambda (g10072 g10073 g10074)
+                  (if (string? g10074)
+                    g10074
+                    (blame
+                     g10072
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       53
+                       21)))))
                (and/c
                 (lambda (c1 c2)
                   (lambda (k j v) (if (c1 k j v) (c2 k j v) #f))))
                (or/c
                 (lambda (c1 c2)
                   (lambda (k j v)
-                    (letrec ((val7723 (c1 k j v)))
-                      (if val7723 val7723 (c2 k j v))))))
+                    (letrec ((val10030 (c1 k j v)))
+                      (if val10030 val10030 (c2 k j v))))))
                (null?/c
-                (lambda (g7768 g7769 g7770)
-                  (if (null? g7770) g7770 (blame g7768 'null?))))
+                (lambda (g10075 g10076 g10077)
+                  (if (null? g10077)
+                    g10077
+                    (blame
+                     g10075
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       60
+                       19)))))
                (list-of
                 (lambda (contract)
                   (lambda (k j v)
@@ -107,197 +184,245 @@
                (any? (lambda (v) #t))
                (nonzero? (lambda (v) (not (= v 0))))
                (nonzero?/c
-                (lambda (g7771 g7772 g7773)
-                  (if ((lambda (v) (not (= v 0))) g7773)
-                    g7773
-                    (blame g7771 '(lambda (v) (not (= v 0)))))))
+                (lambda (g10078 g10079 g10080)
+                  (if ((lambda (v) (not (= v 0))) g10080)
+                    g10080
+                    (blame
+                     g10078
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       68
+                       22)))))
                (>=/c
                 (lambda (n)
-                  (lambda (g7774 g7775 g7776)
-                    (if ((lambda (v) (orig->= v n)) g7776)
-                      g7776
-                      (blame g7774 '(lambda (v) (orig->= v n)))))))
+                  (lambda (g10081 g10082 g10083)
+                    (if ((lambda (v) (orig->= v n)) g10083)
+                      g10083
+                      (blame
+                       g10081
+                       '(position-in-file-loc
+                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                         69
+                         20))))))
                (>/c
                 (lambda (n)
-                  (lambda (g7777 g7778 g7779)
-                    (if ((lambda (v) (orig-> v n)) g7779)
-                      g7779
-                      (blame g7777 '(lambda (v) (orig-> v n)))))))
+                  (lambda (g10084 g10085 g10086)
+                    (if ((lambda (v) (orig-> v n)) g10086)
+                      g10086
+                      (blame
+                       g10084
+                       '(position-in-file-loc
+                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                         70
+                         19))))))
                (</c
                 (lambda (n)
-                  (lambda (g7780 g7781 g7782)
-                    (if ((lambda (v) (orig-< v n)) g7782)
-                      g7782
-                      (blame g7780 '(lambda (v) (orig-< v n)))))))
+                  (lambda (g10087 g10088 g10089)
+                    (if ((lambda (v) (orig-< v n)) g10089)
+                      g10089
+                      (blame
+                       g10087
+                       '(position-in-file-loc
+                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                         71
+                         19))))))
                (<=/c
                 (lambda (n)
-                  (lambda (g7783 g7784 g7785)
-                    (if ((lambda (v) (orig-<= v n)) g7785)
-                      g7785
-                      (blame g7783 '(lambda (v) (orig-<= v n)))))))
+                  (lambda (g10090 g10091 g10092)
+                    (if ((lambda (v) (orig-<= v n)) g10092)
+                      g10092
+                      (blame
+                       g10090
+                       '(position-in-file-loc
+                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                         72
+                         20))))))
                (=/c
                 (lambda (n)
-                  (lambda (g7786 g7787 g7788)
-                    (if ((lambda (v) (orig-= v n)) g7788)
-                      g7788
-                      (blame g7786 '(lambda (v) (orig-= v n)))))))
+                  (lambda (g10093 g10094 g10095)
+                    (if ((lambda (v) (orig-= v n)) g10095)
+                      g10095
+                      (blame
+                       g10093
+                       '(position-in-file-loc
+                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                         73
+                         19))))))
+               (string=?/c
+                (lambda (s)
+                  (lambda (g10096 g10097 g10098)
+                    (if ((lambda (v) (string=? s v)) g10098)
+                      g10098
+                      (blame
+                       g10096
+                       '(position-in-file-loc
+                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                         74
+                         26))))))
                (meta (lambda (v) v))
                (+
-                (letrec ((xj7789 'server) (xk7790 'client))
-                  ((lambda (j7793 k7794 f7795)
-                     (lambda (g7791 g7792)
+                (letrec ((xj10099 'server) (xk10100 'client))
+                  ((lambda (j10103 k10104 f10105)
+                     (lambda (g10101 g10102)
                        (number?/c
-                        j7793
-                        k7794
-                        (f7795
-                         (number?/c k7794 j7793 g7791)
-                         (number?/c k7794 j7793 g7792)))))
-                   xj7789
-                   xk7790
+                        j10103
+                        k10104
+                        (f10105
+                         (number?/c k10104 j10103 g10101)
+                         (number?/c k10104 j10103 g10102)))))
+                   xj10099
+                   xk10100
                    (lambda (a b) (orig-+ a b)))))
                (-
-                (letrec ((xj7796 'server) (xk7797 'client))
-                  ((lambda (j7800 k7801 f7802)
-                     (lambda (g7798 g7799)
+                (letrec ((xj10106 'server) (xk10107 'client))
+                  ((lambda (j10110 k10111 f10112)
+                     (lambda (g10108 g10109)
                        (number?/c
-                        j7800
-                        k7801
-                        (f7802
-                         (number?/c k7801 j7800 g7798)
-                         (number?/c k7801 j7800 g7799)))))
-                   xj7796
-                   xk7797
+                        j10110
+                        k10111
+                        (f10112
+                         (number?/c k10111 j10110 g10108)
+                         (number?/c k10111 j10110 g10109)))))
+                   xj10106
+                   xk10107
                    (lambda (a b) (orig-- a b)))))
                (*
-                (letrec ((xj7803 'server) (xk7804 'client))
-                  ((lambda (j7807 k7808 f7809)
-                     (lambda (g7805 g7806)
+                (letrec ((xj10113 'server) (xk10114 'client))
+                  ((lambda (j10117 k10118 f10119)
+                     (lambda (g10115 g10116)
                        (number?/c
-                        j7807
-                        k7808
-                        (f7809
-                         (number?/c k7808 j7807 g7805)
-                         (number?/c k7808 j7807 g7806)))))
-                   xj7803
-                   xk7804
+                        j10117
+                        k10118
+                        (f10119
+                         (number?/c k10118 j10117 g10115)
+                         (number?/c k10118 j10117 g10116)))))
+                   xj10113
+                   xk10114
                    (lambda (a b) (orig-* a b)))))
                (<
-                (letrec ((xj7810 'server) (xk7811 'client))
-                  ((lambda (j7814 k7815 f7816)
-                     (lambda (g7812 g7813)
+                (letrec ((xj10120 'server) (xk10121 'client))
+                  ((lambda (j10124 k10125 f10126)
+                     (lambda (g10122 g10123)
                        (boolean?/c
-                        j7814
-                        k7815
-                        (f7816
-                         (number?/c k7815 j7814 g7812)
-                         (number?/c k7815 j7814 g7813)))))
-                   xj7810
-                   xk7811
+                        j10124
+                        k10125
+                        (f10126
+                         (number?/c k10125 j10124 g10122)
+                         (number?/c k10125 j10124 g10123)))))
+                   xj10120
+                   xk10121
                    (lambda (a b) (orig-< a b)))))
                (>
-                (letrec ((xj7817 'server) (xk7818 'client))
-                  ((lambda (j7821 k7822 f7823)
-                     (lambda (g7819 g7820)
+                (letrec ((xj10127 'server) (xk10128 'client))
+                  ((lambda (j10131 k10132 f10133)
+                     (lambda (g10129 g10130)
                        (boolean?/c
-                        j7821
-                        k7822
-                        (f7823
-                         (number?/c k7822 j7821 g7819)
-                         (number?/c k7822 j7821 g7820)))))
-                   xj7817
-                   xk7818
+                        j10131
+                        k10132
+                        (f10133
+                         (number?/c k10132 j10131 g10129)
+                         (number?/c k10132 j10131 g10130)))))
+                   xj10127
+                   xk10128
                    (lambda (a b) (orig-> a b)))))
                (<=
-                (letrec ((xj7824 'server) (xk7825 'client))
-                  ((lambda (j7828 k7829 f7830)
-                     (lambda (g7826 g7827)
+                (letrec ((xj10134 'server) (xk10135 'client))
+                  ((lambda (j10138 k10139 f10140)
+                     (lambda (g10136 g10137)
                        (boolean?/c
-                        j7828
-                        k7829
-                        (f7830
-                         (number?/c k7829 j7828 g7826)
-                         (number?/c k7829 j7828 g7827)))))
-                   xj7824
-                   xk7825
+                        j10138
+                        k10139
+                        (f10140
+                         (number?/c k10139 j10138 g10136)
+                         (number?/c k10139 j10138 g10137)))))
+                   xj10134
+                   xk10135
                    (lambda (a b) (orig-<= a b)))))
                (>=
-                (letrec ((xj7831 'server) (xk7832 'client))
-                  ((lambda (j7835 k7836 f7837)
-                     (lambda (g7833 g7834)
+                (letrec ((xj10141 'server) (xk10142 'client))
+                  ((lambda (j10145 k10146 f10147)
+                     (lambda (g10143 g10144)
                        (boolean?/c
-                        j7835
-                        k7836
-                        (f7837
-                         (number?/c k7836 j7835 g7833)
-                         (number?/c k7836 j7835 g7834)))))
-                   xj7831
-                   xk7832
+                        j10145
+                        k10146
+                        (f10147
+                         (number?/c k10146 j10145 g10143)
+                         (number?/c k10146 j10145 g10144)))))
+                   xj10141
+                   xk10142
                    (lambda (a b) (orig->= a b)))))
                (add1 (lambda (x) (+ x 1)))
                (/
-                (letrec ((xj7838 'server) (xk7839 'client))
-                  ((lambda (j7842 k7843 f7844)
-                     (lambda (g7840 g7841)
+                (letrec ((xj10148 'server) (xk10149 'client))
+                  ((lambda (j10152 k10153 f10154)
+                     (lambda (g10150 g10151)
                        (number?/c
-                        j7842
-                        k7843
-                        (f7844
-                         (number?/c k7843 j7842 g7840)
-                         (number?/c k7843 j7842 g7841)))))
-                   xj7838
-                   xk7839
+                        j10152
+                        k10153
+                        (f10154
+                         (number?/c k10153 j10152 g10150)
+                         (number?/c k10153 j10152 g10151)))))
+                   xj10148
+                   xk10149
                    (lambda (a b) (orig-/ a b)))))
                (car
-                (letrec ((xj7845 'server) (xk7846 'client))
-                  ((lambda (j7848 k7849 f7850)
-                     (lambda (g7847)
+                (letrec ((xj10155 'server) (xk10156 'client))
+                  ((lambda (g10157 g10158 g10159)
+                     (lambda (g10160)
                        (any/c
-                        j7848
-                        k7849
-                        (f7850 (pair?/c k7849 j7848 g7847)))))
-                   xj7845
-                   xk7846
+                        g10157
+                        g10158
+                        (g10159 (pair?/c g10158 g10157 g10160)))))
+                   xj10155
+                   xk10156
                    (lambda (p) (orig-car p)))))
                (cdr
-                (letrec ((xj7851 'server) (xk7852 'client))
-                  ((lambda (j7854 k7855 f7856)
-                     (lambda (g7853)
+                (letrec ((xj10161 'server) (xk10162 'client))
+                  ((lambda (g10163 g10164 g10165)
+                     (lambda (g10166)
                        (any/c
-                        j7854
-                        k7855
-                        (f7856 (pair?/c k7855 j7854 g7853)))))
-                   xj7851
-                   xk7852
+                        g10163
+                        g10164
+                        (g10165 (pair?/c g10164 g10163 g10166)))))
+                   xj10161
+                   xk10162
                    (lambda (p) (orig-cdr p)))))
                (vector?/c
-                (lambda (g7857 g7858 g7859)
-                  (if (vector? g7859) g7859 (blame g7857 'vector?))))
+                (lambda (g10167 g10168 g10169)
+                  (if (vector? g10169)
+                    g10169
+                    (blame
+                     g10167
+                     '(position-in-file-loc
+                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                       108
+                       21)))))
                (vector-ref
-                (letrec ((xj7860 'server) (xk7861 'client))
-                  ((lambda (j7864 k7865 f7866)
-                     (lambda (g7862 g7863)
+                (letrec ((xj10170 'server) (xk10171 'client))
+                  ((lambda (j10174 k10175 f10176)
+                     (lambda (g10172 g10173)
                        (any/c
-                        j7864
-                        k7865
-                        (f7866
-                         (vector?/c k7865 j7864 g7862)
-                         (integer?/c k7865 j7864 g7863)))))
-                   xj7860
-                   xk7861
+                        j10174
+                        k10175
+                        (f10176
+                         (vector?/c k10175 j10174 g10172)
+                         (integer?/c k10175 j10174 g10173)))))
+                   xj10170
+                   xk10171
                    (lambda (v i) (orig-vector-ref v i)))))
                (vector-set!
-                (letrec ((xj7867 'server) (xk7868 'client))
-                  ((lambda (j7872 k7873 f7874)
-                     (lambda (g7869 g7870 g7871)
+                (letrec ((xj10177 'server) (xk10178 'client))
+                  ((lambda (j10182 k10183 f10184)
+                     (lambda (g10179 g10180 g10181)
                        (any/c
-                        j7872
-                        k7873
-                        (f7874
-                         (vector?/c k7873 j7872 g7869)
-                         (integer?/c k7873 j7872 g7870)
-                         (any/c k7873 j7872 g7871)))))
-                   xj7867
-                   xk7868
+                        j10182
+                        k10183
+                        (f10184
+                         (vector?/c k10183 j10182 g10179)
+                         (integer?/c k10183 j10182 g10180)
+                         (any/c k10183 j10182 g10181)))))
+                   xj10177
+                   xk10178
                    (lambda (vec i v) (orig-vector-set! vec i v)))))
                (cdddr (lambda (x) (cdr (cdr (cdr x)))))
                (__toplevel_set-car! set-car!)
@@ -330,8 +455,8 @@
                 (lambda (c1 c2)
                   (assert (char? c1))
                   (assert (char? c2))
-                  (letrec ((val7724 (char<? c1 c2)))
-                    (if val7724 val7724 (char=? c1 c2)))))
+                  (letrec ((val10031 (char<? c1 c2)))
+                    (if val10031 val10031 (char=? c1 c2)))))
                (cdddar (lambda (x) (cdr (cdr (cdr (car x))))))
                (list-tail
                 (lambda (x k)
@@ -343,14 +468,13 @@
                 (lambda (c) (if (char-ci>=? c #\a) (char-ci<=? c #\z) #f)))
                (char-whitespace?
                 (lambda (c)
-                  (letrec ((val7725 (= (char->integer c) 9)))
-                    (if val7725
-                      val7725
-                      (letrec ((val7726 (= (char->integer c) 10)))
-                        (if val7726 val7726 (= (char->integer c) 32)))))))
+                  (letrec ((val10032 (= (char->integer c) 9)))
+                    (if val10032
+                      val10032
+                      (letrec ((val10033 (= (char->integer c) 10)))
+                        (if val10033 val10033 (= (char->integer c) 32)))))))
                (cddar (lambda (x) (cdr (cdr (car x)))))
                (positive? (lambda (x) (assert (number? x)) (> x 0)))
-               (string=? (lambda (s1 s2) (bool-top)))
                ($pc '())
                (ref-set set-car!)
                (void (lambda () #f))
@@ -363,19 +487,19 @@
                (bool-top (lambda () (if (> (random) 0.5) #t #f)))
                (equal?
                 (lambda (a b)
-                  (letrec ((val7727 (eq? a b)))
-                    (if val7727
-                      val7727
-                      (letrec ((val7728 (if (null? a) (null? b) #f)))
-                        (if val7728
-                          val7728
-                          (letrec ((val7729
+                  (letrec ((val10034 (eq? a b)))
+                    (if val10034
+                      val10034
+                      (letrec ((val10035 (if (null? a) (null? b) #f)))
+                        (if val10035
+                          val10035
+                          (letrec ((val10036
                                     (if (string? a)
                                       (if (string? b) (string=? a b) #f)
                                       #f)))
-                            (if val7729
-                              val7729
-                              (letrec ((val7730
+                            (if val10036
+                              val10036
+                              (letrec ((val10037
                                         (if (pair? a)
                                           (if (pair? b)
                                             (if (equal? (car a) (car b))
@@ -383,18 +507,18 @@
                                               #f)
                                             #f)
                                           #f)))
-                                (if val7730
-                                  val7730
+                                (if val10037
+                                  val10037
                                   (if (vector? a)
                                     (if (vector? b)
                                       (letrec ((n (vector-length a)))
                                         (if (= (vector-length b) n)
                                           (letrec ((loop
                                                     (lambda (i)
-                                                      (letrec ((val7731
+                                                      (letrec ((val10038
                                                                 (= i n)))
-                                                        (if val7731
-                                                          val7731
+                                                        (if val10038
+                                                          val10038
                                                           (if (equal?
                                                                (vector-ref a i)
                                                                (vector-ref
@@ -422,8 +546,8 @@
                 (lambda (c1 c2)
                   (assert (char? c1))
                   (assert (char? c2))
-                  (letrec ((val7732 (char>? c1 c2)))
-                    (if val7732 val7732 (char=? c1 c2)))))
+                  (letrec ((val10039 (char>? c1 c2)))
+                    (if val10039 val10039 (char=? c1 c2)))))
                (cdaar (lambda (x) (cdr (car (car x)))))
                (cdaddr (lambda (x) (cdr (car (cdr (cdr x))))))
                (__toplevel_cdr cdr)
@@ -509,14 +633,14 @@
                (zero? (lambda (x) (assert (number? x)) (= x 0)))
                (string>=?
                 (lambda (s1 s2)
-                  (letrec ((val7733 (string>? s1 s2)))
-                    (if val7733 val7733 (string=? s1 s2)))))
+                  (letrec ((val10040 (string>? s1 s2)))
+                    (if val10040 val10040 (string=? s1 s2)))))
                (cadr (lambda (x) (car (cdr x))))
                (__toplevel_car car)
                (list?
                 (lambda (l)
-                  (letrec ((val7734 (if (pair? l) (list? (cdr l)) #f)))
-                    (if val7734 val7734 (null? l)))))
+                  (letrec ((val10041 (if (pair? l) (list? (cdr l)) #f)))
+                    (if val10041 val10041 (null? l)))))
                (cddaar (lambda (x) (cdr (cdr (car (car x))))))
                (char-numeric?
                 (lambda (c) (if (char<=? #\0 c) (char<=? c #\9) #f)))
@@ -544,8 +668,8 @@
                 (lambda (c1 c2)
                   (assert (char? c1))
                   (assert (char? c2))
-                  (letrec ((val7735 (char-ci<? c1 c2)))
-                    (if val7735 val7735 (char-ci=? c1 c2)))))
+                  (letrec ((val10042 (char-ci<? c1 c2)))
+                    (if val10042 val10042 (char-ci=? c1 c2)))))
                (string>? (lambda (s1 s2) (not (string<=? s1 s2))))
                (cdadr (lambda (x) (cdr (car (cdr x)))))
                (assoc
@@ -562,8 +686,8 @@
                   (not (char<=? c1 c2))))
                (string<=?
                 (lambda (s1 s2)
-                  (letrec ((val7736 (string<? s1 s2)))
-                    (if val7736 val7736 (string=? s1 s2)))))
+                  (letrec ((val10043 (string<? s1 s2)))
+                    (if val10043 val10043 (string=? s1 s2)))))
                (for-each
                 (lambda (f l)
                   (assert (procedure? f))
@@ -578,8 +702,8 @@
                 (lambda (c1 c2)
                   (assert (char? c1))
                   (assert (char? c2))
-                  (letrec ((val7737 (char-ci>? c1 c2)))
-                    (if val7737 val7737 (char-ci=? c1 c2)))))
+                  (letrec ((val10044 (char-ci>? c1 c2)))
+                    (if val10044 val10044 (char-ci=? c1 c2)))))
                (caddar (lambda (x) (car (cdr (cdr (car x))))))
                (newline (lambda () #f))
                (lcm (lambda (m n) (/ (abs (* m n)) (gcd m n))))
@@ -612,306 +736,380 @@
                         correlation-identifier))))))
                (bookreview/c
                 (lambda (corr-id k)
-                  (lambda (j7876)
-                    (letrec ((r
-                              (lambda (trace7880)
+                  (lambda (j10185)
+                    (letrec ((r10189
+                              (lambda (trace10188)
                                 (receive
                                  (('finish
                                    (begin
-                                     (if (member 'get-book-review trace7880)
+                                     (if (member 'get-book-review trace10188)
                                        #t
-                                       (blame j7876))))
-                                  ((pair rcv7879 message7878)
+                                       (blame
+                                        j10185
+                                        '(position-in-file-loc
+                                          "programs/test/actor-cc/bookreview.scm"
+                                          47
+                                          2)))))
+                                  ((pair rcv10187 message10186)
                                    (match
-                                    message7878
+                                    message10186
                                     (((cons
                                        'get-book-review
-                                       (cons x7881 x7882))
+                                       (cons x10190 x10191))
                                       (begin
                                         ((dyn send^)
-                                         rcv7879
-                                         (letrec ((x7883
-                                                   (actor? j7876 j7876 x7881))
-                                                  (x7884
+                                         rcv10187
+                                         (letrec ((x10192
+                                                   (actor?
+                                                    j10185
+                                                    j10185
+                                                    x10190))
+                                                  (x10193
                                                    ((and/c
                                                      number?/c
                                                      (=/c corr-id))
-                                                    j7876
-                                                    j7876
-                                                    x7882)))
+                                                    j10185
+                                                    j10185
+                                                    x10191)))
                                            (cons
                                             'enhanced
                                             (cons
                                              ((lambda (actor-ref corr-id)
-                                                (lambda (j7886)
-                                                  (letrec ((r
-                                                            (lambda (trace7890)
+                                                (lambda (j10194)
+                                                  (letrec ((r10198
+                                                            (lambda (trace10197)
                                                               (receive
                                                                (('finish
                                                                  (begin
                                                                    (if (member
                                                                         'get-ratings
-                                                                        trace7890)
+                                                                        trace10197)
                                                                      #t
                                                                      (blame
-                                                                      j7886))))
+                                                                      j10194
+                                                                      '(position-in-file-loc
+                                                                        "programs/test/actor-cc/bookreview.scm"
+                                                                        51
+                                                                        19)))))
                                                                 ((pair
-                                                                  rcv7889
-                                                                  message7888)
+                                                                  rcv10196
+                                                                  message10195)
                                                                  (match
-                                                                  message7888
+                                                                  message10195
                                                                   (((cons
                                                                      'get-ratings
                                                                      (cons
-                                                                      x7891
-                                                                      x7892))
+                                                                      x10199
+                                                                      x10200))
                                                                     (begin
                                                                       ((dyn
                                                                         send^)
-                                                                       rcv7889
-                                                                       (letrec ((x7893
+                                                                       rcv10196
+                                                                       (letrec ((x10201
                                                                                  (actor?
-                                                                                  j7886
-                                                                                  j7886
-                                                                                  x7891))
-                                                                                (x7894
+                                                                                  j10194
+                                                                                  j10194
+                                                                                  x10199))
+                                                                                (x10202
                                                                                  ((and/c
                                                                                    number?/c
                                                                                    (=/c
                                                                                     corr-id))
-                                                                                  j7886
-                                                                                  j7886
-                                                                                  x7892)))
+                                                                                  j10194
+                                                                                  j10194
+                                                                                  x10200)))
                                                                          (cons
                                                                           'enhanced
                                                                           (cons
                                                                            ((lambda (actor-ref
                                                                                      corr-id)
-                                                                              (lambda (j7896)
-                                                                                (letrec ((r
-                                                                                          (lambda (trace7900)
+                                                                              (lambda (j10203)
+                                                                                (letrec ((r10207
+                                                                                          (lambda (trace10206)
                                                                                             (receive
                                                                                              (('finish
                                                                                                (begin
                                                                                                  (if (member
                                                                                                       'reply-book-ratings
-                                                                                                      trace7900)
+                                                                                                      trace10206)
                                                                                                    #t
                                                                                                    (blame
-                                                                                                    j7896))))
+                                                                                                    j10203
+                                                                                                    '(position-in-file-loc
+                                                                                                      "programs/test/actor-cc/bookreview.scm"
+                                                                                                      55
+                                                                                                      32)))))
                                                                                               ((pair
-                                                                                                rcv7899
-                                                                                                message7898)
+                                                                                                rcv10205
+                                                                                                message10204)
                                                                                                (match
-                                                                                                message7898
+                                                                                                message10204
                                                                                                 (((cons
                                                                                                    'reply-book-ratings
-                                                                                                   x7901)
+                                                                                                   x10208)
                                                                                                   (begin
                                                                                                     ((dyn
                                                                                                       send^)
-                                                                                                     rcv7899
-                                                                                                     (letrec ((x7902
+                                                                                                     rcv10205
+                                                                                                     (letrec ((x10209
                                                                                                                ((and/c
                                                                                                                  number?/c
                                                                                                                  (=/c
                                                                                                                   corr-id))
-                                                                                                                j7896
-                                                                                                                j7896
-                                                                                                                x7901)))
+                                                                                                                j10203
+                                                                                                                j10203
+                                                                                                                x10208)))
                                                                                                        (cons
                                                                                                         'enhanced
                                                                                                         (cons
                                                                                                          ((lambda (corr-id)
-                                                                                                            (lambda (j7904)
-                                                                                                              (letrec ((r
-                                                                                                                        (lambda (trace7908)
+                                                                                                            (lambda (j10210)
+                                                                                                              (letrec ((r10214
+                                                                                                                        (lambda (trace10213)
                                                                                                                           (receive
                                                                                                                            (('finish
                                                                                                                              (begin
                                                                                                                                (if (member
                                                                                                                                     'reply-book-reviews
-                                                                                                                                    trace7908)
+                                                                                                                                    trace10213)
                                                                                                                                  #t
                                                                                                                                  (blame
-                                                                                                                                  j7904))))
+                                                                                                                                  j10210
+                                                                                                                                  '(position-in-file-loc
+                                                                                                                                    "programs/test/actor-cc/bookreview.scm"
+                                                                                                                                    58
+                                                                                                                                    57)))))
                                                                                                                             ((pair
-                                                                                                                              rcv7907
-                                                                                                                              message7906)
+                                                                                                                              rcv10212
+                                                                                                                              message10211)
                                                                                                                              (match
-                                                                                                                              message7906
+                                                                                                                              message10211
                                                                                                                               (((cons
                                                                                                                                  'reply-book-reviews
-                                                                                                                                 x7909)
+                                                                                                                                 x10215)
                                                                                                                                 (begin
                                                                                                                                   ((dyn
                                                                                                                                     send^)
-                                                                                                                                   rcv7907
-                                                                                                                                   (letrec ((x7910
+                                                                                                                                   rcv10212
+                                                                                                                                   (letrec ((x10216
                                                                                                                                              ((and/c
                                                                                                                                                number?/c
                                                                                                                                                (=/c
                                                                                                                                                 corr-id))
-                                                                                                                                              j7904
-                                                                                                                                              j7904
-                                                                                                                                              x7909)))
+                                                                                                                                              j10210
+                                                                                                                                              j10210
+                                                                                                                                              x10215)))
                                                                                                                                      (cons
                                                                                                                                       'enhanced
                                                                                                                                       (cons
                                                                                                                                        (k
-                                                                                                                                        x7910)
+                                                                                                                                        x10216)
                                                                                                                                        (cons
-                                                                                                                                        j7904
+                                                                                                                                        j10210
                                                                                                                                         (cons
                                                                                                                                          'reply-book-reviews
-                                                                                                                                         x7910))))))
-                                                                                                                                  (r
+                                                                                                                                         x10216))))))
+                                                                                                                                  (r10214
                                                                                                                                    (cons
                                                                                                                                     'reply-book-reviews
-                                                                                                                                    trace7908))))))))))))
+                                                                                                                                    trace10213))))
+                                                                                                                               (_
+                                                                                                                                (begin
+                                                                                                                                  ((dyn
+                                                                                                                                    send^)
+                                                                                                                                   rcv10212
+                                                                                                                                   message10211)
+                                                                                                                                  (r10214
+                                                                                                                                   trace10213)))))))))))
                                                                                                                 (spawn^
-                                                                                                                 (r
+                                                                                                                 (r10214
                                                                                                                   (list))))))
-                                                                                                          x7902)
+                                                                                                          x10209)
                                                                                                          (cons
-                                                                                                          j7896
+                                                                                                          j10203
                                                                                                           (cons
                                                                                                            'reply-book-ratings
-                                                                                                           x7902))))))
-                                                                                                    (r
+                                                                                                           x10209))))))
+                                                                                                    (r10207
                                                                                                      (cons
                                                                                                       'reply-book-ratings
-                                                                                                      trace7900))))))))))))
+                                                                                                      trace10206))))
+                                                                                                 (_
+                                                                                                  (begin
+                                                                                                    ((dyn
+                                                                                                      send^)
+                                                                                                     rcv10205
+                                                                                                     message10204)
+                                                                                                    (r10207
+                                                                                                     trace10206)))))))))))
                                                                                   (spawn^
-                                                                                   (r
+                                                                                   (r10207
                                                                                     (list))))))
-                                                                            x7893
-                                                                            x7894)
+                                                                            x10201
+                                                                            x10202)
                                                                            (cons
-                                                                            j7886
+                                                                            j10194
                                                                             (cons
                                                                              'get-ratings
                                                                              (cons
-                                                                              x7893
-                                                                              x7894)))))))
-                                                                      (r
+                                                                              x10201
+                                                                              x10202)))))))
+                                                                      (r10198
                                                                        (cons
                                                                         'get-ratings
-                                                                        trace7890))))))))))))
-                                                    (spawn^ (r (list))))))
-                                              x7883
-                                              x7884)
+                                                                        trace10197))))
+                                                                   (_
+                                                                    (begin
+                                                                      ((dyn
+                                                                        send^)
+                                                                       rcv10196
+                                                                       message10195)
+                                                                      (r10198
+                                                                       trace10197)))))))))))
+                                                    (spawn^ (r10198 (list))))))
+                                              x10192
+                                              x10193)
                                              (cons
-                                              j7876
+                                              j10185
                                               (cons
                                                'get-book-review
-                                               (cons x7883 x7884)))))))
-                                        (r
-                                         (cons
-                                          'get-book-review
-                                          trace7880))))))))))))
-                      (spawn^ (r (list)))))))
+                                               (cons x10192 x10193)))))))
+                                        (r10189
+                                         (cons 'get-book-review trace10188))))
+                                     (_
+                                      (begin
+                                        ((dyn send^) rcv10187 message10186)
+                                        (r10189 trace10188)))))))))))
+                      (spawn^ (r10189 (list)))))))
                (bookdetails/c
                 (lambda (corr-id k)
-                  (lambda (j7912)
-                    (letrec ((r
-                              (lambda (trace7916)
+                  (lambda (j10217)
+                    (letrec ((r10221
+                              (lambda (trace10220)
                                 (receive
                                  (('finish
                                    (begin
-                                     (if (member 'get-details trace7916)
+                                     (if (member 'get-details trace10220)
                                        #t
-                                       (blame j7912))))
-                                  ((pair rcv7915 message7914)
+                                       (blame
+                                        j10217
+                                        '(position-in-file-loc
+                                          "programs/test/actor-cc/bookreview.scm"
+                                          64
+                                          2)))))
+                                  ((pair rcv10219 message10218)
                                    (match
-                                    message7914
-                                    (((cons 'get-details (cons x7917 x7918))
+                                    message10218
+                                    (((cons 'get-details (cons x10222 x10223))
                                       (begin
                                         ((dyn send^)
-                                         rcv7915
-                                         (letrec ((x7919
-                                                   (actor? j7912 j7912 x7917))
-                                                  (x7920
+                                         rcv10219
+                                         (letrec ((x10224
+                                                   (actor?
+                                                    j10217
+                                                    j10217
+                                                    x10222))
+                                                  (x10225
                                                    ((and/c
                                                      number?/c
                                                      (=/c corr-id))
-                                                    j7912
-                                                    j7912
-                                                    x7918)))
+                                                    j10217
+                                                    j10217
+                                                    x10223)))
                                            (cons
                                             'enhanced
                                             (cons
                                              ((lambda (actor-ref corr-id)
-                                                (lambda (j7922)
-                                                  (letrec ((r
-                                                            (lambda (trace7926)
+                                                (lambda (j10226)
+                                                  (letrec ((r10230
+                                                            (lambda (trace10229)
                                                               (receive
                                                                (('finish
                                                                  (begin
                                                                    (if (member
                                                                         'reply-book-details
-                                                                        trace7926)
+                                                                        trace10229)
                                                                      #t
                                                                      (blame
-                                                                      j7922))))
+                                                                      j10226
+                                                                      '(position-in-file-loc
+                                                                        "programs/test/actor-cc/bookreview.scm"
+                                                                        68
+                                                                        19)))))
                                                                 ((pair
-                                                                  rcv7925
-                                                                  message7924)
+                                                                  rcv10228
+                                                                  message10227)
                                                                  (match
-                                                                  message7924
+                                                                  message10227
                                                                   (((cons
                                                                      'reply-book-details
-                                                                     x7927)
+                                                                     x10231)
                                                                     (begin
                                                                       ((dyn
                                                                         send^)
-                                                                       rcv7925
-                                                                       (letrec ((x7928
+                                                                       rcv10228
+                                                                       (letrec ((x10232
                                                                                  ((and/c
                                                                                    number?/c
                                                                                    (=/c
                                                                                     corr-id))
-                                                                                  j7922
-                                                                                  j7922
-                                                                                  x7927)))
+                                                                                  j10226
+                                                                                  j10226
+                                                                                  x10231)))
                                                                          (cons
                                                                           'enhanced
                                                                           (cons
                                                                            (k
-                                                                            x7928)
+                                                                            x10232)
                                                                            (cons
-                                                                            j7922
+                                                                            j10226
                                                                             (cons
                                                                              'reply-book-details
-                                                                             x7928))))))
-                                                                      (r
+                                                                             x10232))))))
+                                                                      (r10230
                                                                        (cons
                                                                         'reply-book-details
-                                                                        trace7926))))))))))))
-                                                    (spawn^ (r (list))))))
-                                              x7919
-                                              x7920)
+                                                                        trace10229))))
+                                                                   (_
+                                                                    (begin
+                                                                      ((dyn
+                                                                        send^)
+                                                                       rcv10228
+                                                                       message10227)
+                                                                      (r10230
+                                                                       trace10229)))))))))))
+                                                    (spawn^ (r10230 (list))))))
+                                              x10224
+                                              x10225)
                                              (cons
-                                              j7912
+                                              j10217
                                               (cons
                                                'get-details
-                                               (cons x7919 x7920)))))))
-                                        (r
-                                         (cons
-                                          'get-details
-                                          trace7916))))))))))))
-                      (spawn^ (r (list)))))))
+                                               (cons x10224 x10225)))))))
+                                        (r10221
+                                         (cons 'get-details trace10220))))
+                                     (_
+                                      (begin
+                                        ((dyn send^) rcv10219 message10218)
+                                        (r10221 trace10220)))))))))))
+                      (spawn^ (r10221 (list)))))))
                (bookinfo/c
-                (lambda (k7931 j7932 a7930)
-                  (lambda (v7933)
-                    (letrec ((result7950
-                              ((lambda (k7935 j7936 v7937)
+                (lambda (k10234 j10235 a10233)
+                  (lambda (v10236)
+                    (letrec ((result10251
+                              ((lambda (k10237 j10238 v10239)
                                  (match
-                                  v7937
-                                  (((cons 'get-book-details (cons x7938 x7939))
-                                    (letrec ((x7940 (actor? k7935 j7936 x7938))
-                                             (x7941
-                                              (number?/c k7935 j7936 x7939)))
+                                  v10239
+                                  (((cons
+                                     'get-book-details
+                                     (cons x10240 x10241))
+                                    (letrec ((x10242
+                                              (actor? k10237 j10238 x10240))
+                                             (x10243
+                                              (number?/c
+                                               k10237
+                                               j10238
+                                               x10241)))
                                       (cons
                                        'enhanced
                                        (cons
@@ -922,64 +1120,85 @@
                                               (bookdetails/c
                                                corr-id
                                                (lambda ags
-                                                 (lambda (j7943)
-                                                   (letrec ((r
-                                                             (lambda (trace7947)
+                                                 (lambda (j10244)
+                                                   (letrec ((r10248
+                                                             (lambda (trace10247)
                                                                (receive
                                                                 (('finish
                                                                   (begin
                                                                     (if (member
                                                                          'reply-bookinfo
-                                                                         trace7947)
+                                                                         trace10247)
                                                                       #t
                                                                       (blame
-                                                                       j7943))))
+                                                                       j10244
+                                                                       '(position-in-file-loc
+                                                                         "programs/test/actor-cc/bookreview.scm"
+                                                                         83
+                                                                         50)))))
                                                                  ((pair
-                                                                   rcv7946
-                                                                   message7945)
+                                                                   rcv10246
+                                                                   message10245)
                                                                   (match
-                                                                   message7945
+                                                                   message10245
                                                                    (((cons
                                                                       'reply-bookinfo
-                                                                      x7948)
+                                                                      x10249)
                                                                      (begin
                                                                        ((dyn
                                                                          send^)
-                                                                        rcv7946
-                                                                        (letrec ((x7949
+                                                                        rcv10246
+                                                                        (letrec ((x10250
                                                                                   ((and/c
                                                                                     number?/c
                                                                                     (=/c
                                                                                      corr-id))
-                                                                                   j7943
-                                                                                   j7943
-                                                                                   x7948)))
+                                                                                   j10244
+                                                                                   j10244
+                                                                                   x10249)))
                                                                           (cons
                                                                            'enhanced
                                                                            (cons
                                                                             (unconstrained/c
-                                                                             x7949)
+                                                                             x10250)
                                                                             (cons
-                                                                             j7943
+                                                                             j10244
                                                                              (cons
                                                                               'reply-bookinfo
-                                                                              x7949))))))
-                                                                       (r
+                                                                              x10250))))))
+                                                                       (r10248
                                                                         (cons
                                                                          'reply-bookinfo
-                                                                         trace7947))))))))))))
-                                                     (spawn^ (r (list))))))))))
-                                         x7940
-                                         x7941)
+                                                                         trace10247))))
+                                                                    (_
+                                                                     (begin
+                                                                       ((dyn
+                                                                         send^)
+                                                                        rcv10246
+                                                                        message10245)
+                                                                       (r10248
+                                                                        trace10247)))))))))))
+                                                     (spawn^
+                                                      (r10248 (list))))))))))
+                                         x10242
+                                         x10243)
                                         (cons
-                                         j7936
+                                         j10238
                                          (cons
                                           'get-book-details
-                                          (cons x7940 x7941))))))))))
-                               k7931
-                               j7932
-                               v7933)))
-                      (if result7950 (a7930 result7950) (blame k7931))))))
+                                          (cons x10242 x10243)))))))
+                                   (_ #f))))
+                               k10234
+                               j10235
+                               v10236)))
+                      (if result10251
+                        (a10233 result10251)
+                        (blame
+                         k10234
+                         '(position-in-file-loc
+                           "programs/test/actor-cc/bookreview.scm"
+                           75
+                           2)))))))
                (client
                 (lambda (bookinfo)
                   (letrec ((real-self (self^)))
@@ -993,35 +1212,35 @@
                           (client bookinfo)))
                        ((cons 'reply-bookinfo corr-id)
                         (begin (displayln 'done) (client bookinfo)))
-                       ((cons 'enhanced (cons k7952 (cons j7956 'start)))
-                        (letrec ((kc7953 (k7952 j7956))
-                                 (old-send7957 (dyn send^)))
+                       ((cons 'enhanced (cons k10252 (cons j10256 'start)))
+                        (letrec ((kc10253 (k10252 j10256))
+                                 (old-send10257 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv7954 msg7955)
-                               (old-send7957 kc7953 (cons rcv7954 msg7955)))))
+                             (lambda (rcv10254 msg10255)
+                               (old-send10257
+                                kc10253
+                                (cons rcv10254 msg10255)))))
                            (begin
                              (bookinfo
                               (cons
                                'get-book-details
                                (cons (dyn self) (fresh))))
-                             (old-send7957 kc7953 'finish)))
-                          (client bookinfo)))
+                             (client bookinfo)))))
                        ((cons
                          'enhanced
                          (cons
-                          k7959
-                          (cons j7963 (cons 'reply-bookinfo corr-id))))
-                        (letrec ((kc7960 (k7959 j7963))
-                                 (old-send7964 (dyn send^)))
+                          k10258
+                          (cons j10262 (cons 'reply-bookinfo corr-id))))
+                        (letrec ((kc10259 (k10258 j10262))
+                                 (old-send10263 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv7961 msg7962)
-                               (old-send7964 kc7960 (cons rcv7961 msg7962)))))
-                           (begin
-                             (displayln 'done)
-                             (old-send7964 kc7960 'finish)))
-                          (client bookinfo)))))))))
+                             (lambda (rcv10260 msg10261)
+                               (old-send10263
+                                kc10259
+                                (cons rcv10260 msg10261)))))
+                           (begin (displayln 'done) (client bookinfo)))))))))))
                (bookinfo
                 (lambda (book-review book-details clients)
                   (letrec ((real-self (self^)))
@@ -1060,41 +1279,44 @@
                        ((cons
                          'enhanced
                          (cons
-                          k7966
+                          k10264
                           (cons
-                           j7970
+                           j10268
                            (cons
                             'get-book-details
                             (cons client correlation-id)))))
-                        (letrec ((kc7967 (k7966 j7970))
-                                 (old-send7971 (dyn send^)))
+                        (letrec ((kc10265 (k10264 j10268))
+                                 (old-send10269 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv7968 msg7969)
-                               (old-send7971 kc7967 (cons rcv7968 msg7969)))))
+                             (lambda (rcv10266 msg10267)
+                               (old-send10269
+                                kc10265
+                                (cons rcv10266 msg10267)))))
                            (begin
                              (book-review
                               (cons
                                'get-book-review
                                (cons (dyn self) correlation-id)))
-                             (old-send7971 kc7967 'finish)))
-                          (bookinfo
-                           book-review
-                           book-details
-                           (add-client client correlation-id clients))))
+                             (bookinfo
+                              book-review
+                              book-details
+                              (add-client client correlation-id clients))))))
                        ((cons
                          'enhanced
                          (cons
-                          k7973
+                          k10270
                           (cons
-                           j7977
+                           j10274
                            (cons 'reply-book-reviews correlation-id))))
-                        (letrec ((kc7974 (k7973 j7977))
-                                 (old-send7978 (dyn send^)))
+                        (letrec ((kc10271 (k10270 j10274))
+                                 (old-send10275 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv7975 msg7976)
-                               (old-send7978 kc7974 (cons rcv7975 msg7976)))))
+                             (lambda (rcv10272 msg10273)
+                               (old-send10275
+                                kc10271
+                                (cons rcv10272 msg10273)))))
                            (begin
                              (letrec ((client
                                        (find-client correlation-id clients)))
@@ -1103,30 +1325,30 @@
                                 (cons
                                  'get-details
                                  (cons (dyn self) correlation-id))))
-                             (old-send7978 kc7974 'finish)))
-                          (bookinfo book-review book-details clients)))
+                             (bookinfo book-review book-details clients)))))
                        ((cons
                          'enhanced
                          (cons
-                          k7980
+                          k10276
                           (cons
-                           j7984
+                           j10280
                            (cons 'reply-book-details correlation-id))))
-                        (letrec ((kc7981 (k7980 j7984))
-                                 (old-send7985 (dyn send^)))
+                        (letrec ((kc10277 (k10276 j10280))
+                                 (old-send10281 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv7982 msg7983)
-                               (old-send7985 kc7981 (cons rcv7982 msg7983)))))
+                             (lambda (rcv10278 msg10279)
+                               (old-send10281
+                                kc10277
+                                (cons rcv10278 msg10279)))))
                            (begin
                              (letrec ((client
                                        (find-client correlation-id clients)))
                                (client (cons 'reply-bookinfo correlation-id)))
-                             (old-send7985 kc7981 'finish)))
-                          (bookinfo
-                           book-review
-                           book-details
-                           (remassoc correlation-id clients))))))))))
+                             (bookinfo
+                              book-review
+                              book-details
+                              (remassoc correlation-id clients))))))))))))
                (bookreview
                 (lambda (book-ratings clients)
                   (letrec ((real-self (self^)))
@@ -1154,50 +1376,52 @@
                        ((cons
                          'enhanced
                          (cons
-                          k7987
+                          k10282
                           (cons
-                           j7991
+                           j10286
                            (cons
                             'get-book-review
                             (cons sender correlation-id)))))
-                        (letrec ((kc7988 (k7987 j7991))
-                                 (old-send7992 (dyn send^)))
+                        (letrec ((kc10283 (k10282 j10286))
+                                 (old-send10287 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv7989 msg7990)
-                               (old-send7992 kc7988 (cons rcv7989 msg7990)))))
+                             (lambda (rcv10284 msg10285)
+                               (old-send10287
+                                kc10283
+                                (cons rcv10284 msg10285)))))
                            (begin
                              (book-ratings
                               (cons
                                'get-ratings
                                (cons (dyn self) correlation-id)))
-                             (old-send7992 kc7988 'finish)))
-                          (bookreview
-                           book-ratings
-                           (add-client sender correlation-id clients))))
+                             (bookreview
+                              book-ratings
+                              (add-client sender correlation-id clients))))))
                        ((cons
                          'enhanced
                          (cons
-                          k7994
+                          k10288
                           (cons
-                           j7998
+                           j10292
                            (cons 'reply-book-ratings correlation-id))))
-                        (letrec ((kc7995 (k7994 j7998))
-                                 (old-send7999 (dyn send^)))
+                        (letrec ((kc10289 (k10288 j10292))
+                                 (old-send10293 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv7996 msg7997)
-                               (old-send7999 kc7995 (cons rcv7996 msg7997)))))
+                             (lambda (rcv10290 msg10291)
+                               (old-send10293
+                                kc10289
+                                (cons rcv10290 msg10291)))))
                            (begin
                              (letrec ((client
                                        (find-client correlation-id clients)))
                                (displayln "got the ratings")
                                (client
                                 (cons 'reply-book-reviews correlation-id)))
-                             (old-send7999 kc7995 'finish)))
-                          (bookreview
-                           book-ratings
-                           (remassoc correlation-id clients))))))))))
+                             (bookreview
+                              book-ratings
+                              (remassoc correlation-id clients))))))))))))
                (bookratings
                 (lambda ()
                   (letrec ((real-self (self^)))
@@ -1211,20 +1435,21 @@
                        ((cons
                          'enhanced
                          (cons
-                          k8001
+                          k10294
                           (cons
-                           j8005
+                           j10298
                            (cons 'get-ratings (cons sender correlation-id)))))
-                        (letrec ((kc8002 (k8001 j8005))
-                                 (old-send8006 (dyn send^)))
+                        (letrec ((kc10295 (k10294 j10298))
+                                 (old-send10299 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv8003 msg8004)
-                               (old-send8006 kc8002 (cons rcv8003 msg8004)))))
+                             (lambda (rcv10296 msg10297)
+                               (old-send10299
+                                kc10295
+                                (cons rcv10296 msg10297)))))
                            (begin
                              (sender (cons 'reply-book-ratings correlation-id))
-                             (old-send8006 kc8002 'finish)))
-                          (bookratings)))))))))
+                             (bookratings)))))))))))
                (bookdetails
                 (lambda ()
                   (letrec ((real-self (self^)))
@@ -1238,20 +1463,21 @@
                        ((cons
                          'enhanced
                          (cons
-                          k8008
+                          k10300
                           (cons
-                           j8012
+                           j10304
                            (cons 'get-details (cons sender correlation-id)))))
-                        (letrec ((kc8009 (k8008 j8012))
-                                 (old-send8013 (dyn send^)))
+                        (letrec ((kc10301 (k10300 j10304))
+                                 (old-send10305 (dyn send^)))
                           (parametrize
                            ((send^
-                             (lambda (rcv8010 msg8011)
-                               (old-send8013 kc8009 (cons rcv8010 msg8011)))))
+                             (lambda (rcv10302 msg10303)
+                               (old-send10305
+                                kc10301
+                                (cons rcv10302 msg10303)))))
                            (begin
                              (sender (cons 'reply-book-details correlation-id))
-                             (old-send8013 kc8009 'finish)))
-                          (bookdetails)))))))))
+                             (bookdetails)))))))))))
                (bookratings-actor
                 (letrec ((act (spawn^ (bookratings))))
                   (lambda (msg) ((dyn send^) act msg))))
@@ -1267,8 +1493,8 @@
                            (bookinfo bookreview-actor bookdetails-actor '()))))
                   (lambda (msg) ((dyn send^) act msg))))
                (bookinfo-actor
-                (letrec ((xj8015 (loc 'client)) (xk8016 (loc 'server)))
-                  (bookinfo/c xj8015 xk8016 bookinfo-actor-unmonitored)))
+                (letrec ((xj10306 (loc 'client)) (xk10307 (loc 'server)))
+                  (bookinfo/c xj10306 xk10307 bookinfo-actor-unmonitored)))
                (client-actor
                 (letrec ((act (spawn^ (client bookinfo-actor))))
                   (lambda (msg) ((dyn send^) act msg)))))
