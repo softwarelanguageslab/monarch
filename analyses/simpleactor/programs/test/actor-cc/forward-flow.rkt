@@ -31,7 +31,7 @@
   (behavior ()
       ((request (sender) 
             'do-work
-            (send sender reply 'symbool)
+            (send sender reply 42)
             (become service-behavior)))))
 
 (define service (spawn service-behavior)) 
