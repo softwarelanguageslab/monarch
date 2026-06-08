@@ -25,7 +25,7 @@ data Exp = -- Program Semantics
          | Self Span                         -- ^ self
          | Pair Exp Exp Span                 -- ^ (e, e)
          | Parametrize [Binding] Exp Span    -- ^ parametrize { (x := e)* } in e
-         | Blame Exp Span                    -- ^ blame e 
+         | Blame Exp Exp Span                -- ^ blame e 
          | Receive [(Pat, Exp)] Span         -- ^ receive { (p => e)* } 
          | Match Exp [(Pat, Exp)] Span       -- ^ match { (p => e)* }
          | Literal Lit Span                  -- ^ l 
@@ -112,7 +112,7 @@ instance SpanOf Exp where
                (Self s) -> s
                (Pair _ _ s) -> s
                (Parametrize _ _ s) -> s
-               (Blame _ s) -> s
+               (Blame _ _ s) -> s
                (Receive _ s) -> s
                (Literal _ s) -> s
                (Ite _ _ _ s) -> s
@@ -144,7 +144,7 @@ instance Show Exp where
             (Pair e1 e2 _)    -> printf "(cons %s %s)" (show e1) (show e2)
             (Parametrize bds bdy _) ->
                printf "(parametrize (%s) %s)" (show bds) (show bdy)
-            (Blame lbl _)     -> printf "(blame %s)" (show lbl)
+            (Blame lbl ctr _)   -> printf "(blame %s %s)" (show lbl) (show ctr)
             (Receive pats _)  -> printf "(receive %s)" (show pats)
             (Match v pats _)  -> printf "(match %s %s)" (show v) (show pats)
             (Literal l _)     -> show l

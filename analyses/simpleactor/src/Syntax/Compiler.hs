@@ -107,7 +107,7 @@ compile ex@(Atom "begin" _ ::: exs) =
 compile ex@(Atom "self^" _) = pure $ Self (spanOf ex)
 compile ex@(Atom "self^" _ ::: SNil _) = pure $ Self (spanOf ex)
 compile (Atom "quote" span' ::: s ::: SNil _) = compile (Quo s span')
-compile ex@(Atom "blame" _ ::: party ::: _) = Blame <$> compile party <*> pureSpan ex
+compile ex@(Atom "blame" _ ::: party ::: contract ::: _) = Blame <$> compile party <*> compile contract <*> pureSpan ex
 compile ex@(Atom "parametrize" _ ::: bds ::: bdy ::: SNil _) =
    Parametrize <$> smapM compileBdn bds <*> compile bdy <*> pureSpan ex
 compile ex@(Atom "parametrize" _ ::: _) =

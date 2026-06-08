@@ -21,8 +21,8 @@ import Analysis.SimpleActor.Monad
       MonadSpawn(..),
       MonadDynamic(..),
       MonadFresh(..),
-      message, 
-      -- messageCtx
+      message, MonadBlame(..),
+
       )
 import Control.Monad.Reader (ReaderT, MonadReader (..))
 import Analysis.SimpleActor.Fixpoint.Common
@@ -284,12 +284,23 @@ type SystemT m = (
 
 ------------------------------------------------------------
 
+-- | Datatype for recording a blame error
+data BlameRecord = BlameRecord {
+        partyExpr    :: Exp, 
+        partyValue   :: ActorVlu,
+        contractEpxr :: Exp,
+        blameLoc     :: Span
+    } deriving (Ord, Eq, Show, Generic)
+
+instance NFData BlameRecord
+
 -- | Global analysis state (store + bookkeeping for fixpoints)
 data AnalysisState = AnalysisState {
-        _cache :: Map ProcKey ProcVal,
-        _store :: Map ActorAdr (StoreVal ActorVlu),
-        _deps  :: Map Dep (Set ProcKey),
-        _trace :: [System]
+        _cache  :: Map ProcKey ProcVal,
+        _store  :: Map ActorAdr (StoreVal ActorVlu),
+        _deps   :: Map Dep (Set ProcKey),
+        _trace  :: [System],
+        _blames :: Set BlameRecord
     } deriving (Ord, Eq, Show, Generic)
 
 instance NFData AnalysisState
@@ -425,6 +436,10 @@ instance {-# OVERLAPPING #-} (Monad m, k ~ ProcKey, DepL d) => DependencyTrackin
 instance (DepL d, k ~ ProcKey, Monad m, WorkListM m k) => MonadDependencyTrigger k d (StateT AnalysisState m) where
   trigger = dependent >=> WL.adds
 
+-- Tracking blame errors
+instance Monad m => MonadBlame ActorVlu (StateT AnalysisState m) where
+    recordBlame loc partyExpr partyValue contract = 
+        blames %= Set.insert (BlameRecord partyExpr partyValue contract loc)
 
 -- Access to the global analysis state
 
@@ -543,7 +558,8 @@ emptyAnalysisState = AnalysisState {
         _cache = Map.empty,
         _store = mainStore,
         _deps = Map.empty,
-        _trace = []
+        _trace = [],
+        _blames = Set.empty
     }
 
 -- | Top-level function to analyze an actor system.

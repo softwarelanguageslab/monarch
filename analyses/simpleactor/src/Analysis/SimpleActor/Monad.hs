@@ -16,6 +16,7 @@ module Analysis.SimpleActor.Monad
     spawn,
     MonadModules(..),
     MonadFresh(..),
+    MonadBlame(..),
     EvalM,
     PrimM,
     -- * Transformers
@@ -298,8 +299,9 @@ type PrimM' e v k mk m =
     -- Domain constraints
     ForAllStored Show v,
     ForAllStored Eq v,
-    ForAllStored Ord v
+    ForAllStored Ord v,
     -- Other monadic constraints
+    MonadBlame v m
     -- MonadAbstractCount MailboxLabel BoundedCount m
   )
 
@@ -359,6 +361,22 @@ instance Domain (Set ActorError) DomainError where
 
 instance Domain (Set ActorError) Error where
   inject = Set.singleton . ActorError
+
+-------------------------------------------------------------
+-- Error tracking
+-------------------------------------------------------------
+
+class MonadBlame v m where 
+    recordBlame :: Span   -- ^ the source location of the blame expression
+                -> Exp    -- ^ the blamed party expression 
+                -> v      -- ^ the blamed party value 
+                -> Exp    -- ^ an expression denoting the original location of the contract being violated
+                -> m ()
+
+-- Layered instance
+instance {-# OVERLAPPABLE #-} (Monad (t m), Monad m, MonadLayer t, MonadBlame v m) => MonadBlame v (t m) where
+    recordBlame source partyExpr partyValue contractExpr = 
+        upperM $ recordBlame source partyExpr partyValue contractExpr
 
 -------------------------------------------------------------
 -- Function application semantics

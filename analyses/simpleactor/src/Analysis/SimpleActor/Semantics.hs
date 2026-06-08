@@ -155,9 +155,11 @@ eval'' _ e@(Var (Ide x _)) = do
 eval'' _ (DynVar (Ide x _)) =
    lookupDynamic x >>= lookupVar >>= showIfBot (show x ++ " dyn not in store")
 eval'' _ (Self _) = aref <$> getSelf @v
-eval'' rec (Blame e loc) = do
+eval'' rec (Blame e contract loc) = do
    liftIO (putStrLn $ "blame error for " ++ show e)
-   eval' rec e >>= escape . flip BlameError loc . show
+   party <- eval' rec e 
+   recordBlame loc e party contract
+   escape $ BlameError (show party) loc
 eval'' rec (Trace e _) = do
    v <- eval' rec e
    (liftIO . putStrLn . ((("TRACE@" ++ show (spanOf e) ++ ": ")  ++) . show)) v  $> v
