@@ -33,6 +33,7 @@ dependencies:
 - parallel-io
 - pretty-simple
 - unix
+- aeson
 - regex-compat
 - ghc-experimental
 
@@ -105,8 +106,8 @@ executables:
     - timeit
     - pretty-simple
     - mtl
-    - aeson
     - criterion
+    - clock
     
 tests:
   simpleactor-tests:

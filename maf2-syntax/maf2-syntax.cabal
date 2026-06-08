@@ -70,7 +70,8 @@ library
       RankNTypes
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      array ==0.5.*
+      aeson
+    , array ==0.5.*
     , base >=4.17 && <5
     , containers
     , data-default
@@ -110,7 +111,8 @@ test-suite maf2-syntax-test
       RankNTypes
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      array ==0.5.*
+      aeson
+    , array ==0.5.*
     , base >=4.17 && <5
     , containers
     , data-default

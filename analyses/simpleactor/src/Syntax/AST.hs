@@ -13,6 +13,7 @@ import GHC.Generics
 import Lattice.Trace (Trace(..))
 import Syntax.Scheme.Parser (SExp)
 import qualified Syntax.Scheme.Parser as SExp
+import Data.Aeson (ToJSON)
 
 
 data Exp = -- Program Semantics
@@ -43,6 +44,7 @@ data Exp = -- Program Semantics
          deriving (Eq, Ord, Generic)
 
 instance NFData Exp
+instance ToJSON Exp
 
 -- | Literals are expressions that evaluate to themselves
 data Lit = Num Integer
@@ -53,6 +55,7 @@ data Lit = Num Integer
          | String String
          | Nil
           deriving (Eq, Ord, Generic)
+instance ToJSON Lit
 
 sexpToLit :: SExp -> Lit
 sexpToLit = \case (SExp.Num i _) -> Num i
@@ -90,6 +93,7 @@ patternVariables (AliasPat ide pat) = Set.insert ide (patternVariables pat)
 patternVariables _ = Set.empty
 
 instance NFData Pat
+instance ToJSON Pat
 
 -- | Labels for blame assignment
 newtype Label = Label { getLabelName :: String }

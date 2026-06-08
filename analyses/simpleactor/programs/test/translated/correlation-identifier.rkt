@@ -58,60 +58,60 @@
                     g10047
                     (blame
                      g10045
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       40
-                       19)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      40
+                      19)))))
                (boolean?/c
                 (lambda (g10048 g10049 g10050)
                   (if (boolean? g10050)
                     g10050
                     (blame
                      g10048
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       41
-                       22)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      41
+                      22)))))
                (number?/c
                 (lambda (g10051 g10052 g10053)
                   (if (number? g10053)
                     g10053
                     (blame
                      g10051
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       42
-                       21)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      42
+                      21)))))
                (any/c
                 (lambda (g10054 g10055 g10056)
                   (if ((lambda (v) #t) g10056)
                     g10056
                     (blame
                      g10054
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       43
-                       17)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      43
+                      17)))))
                (any?/c
                 (lambda (g10057 g10058 g10059)
                   (if ((lambda (v) #t) g10059)
                     g10059
                     (blame
                      g10057
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       44
-                       18)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      44
+                      18)))))
                (cons?/c
                 (lambda (g10060 g10061 g10062)
                   (if (pair? g10062)
                     g10062
                     (blame
                      g10060
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       45
-                       19)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      45
+                      19)))))
                (cons/c
                 (lambda (k1 k2)
                   (lambda (k j v) (cons (k1 k j (car v)) (k2 k j (cdr v))))))
@@ -121,40 +121,40 @@
                     g10065
                     (blame
                      g10063
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       50
-                       19)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      50
+                      19)))))
                (integer?/c
                 (lambda (g10066 g10067 g10068)
                   (if (integer? g10068)
                     g10068
                     (blame
                      g10066
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       51
-                       22)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      51
+                      22)))))
                (symbol?/c
                 (lambda (g10069 g10070 g10071)
                   (if (symbol? g10071)
                     g10071
                     (blame
                      g10069
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       52
-                       21)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      52
+                      21)))))
                (string?/c
                 (lambda (g10072 g10073 g10074)
                   (if (string? g10074)
                     g10074
                     (blame
                      g10072
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       53
-                       21)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      53
+                      21)))))
                (and/c
                 (lambda (c1 c2)
                   (lambda (k j v) (if (c1 k j v) (c2 k j v) #f))))
@@ -169,10 +169,10 @@
                     g10077
                     (blame
                      g10075
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       60
-                       19)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      60
+                      19)))))
                (list-of
                 (lambda (contract)
                   (lambda (k j v)
@@ -189,10 +189,10 @@
                     g10080
                     (blame
                      g10078
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       68
-                       22)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      68
+                      22)))))
                (>=/c
                 (lambda (n)
                   (lambda (g10081 g10082 g10083)
@@ -200,10 +200,10 @@
                       g10083
                       (blame
                        g10081
-                       '(position-in-file-loc
-                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                         69
-                         20))))))
+                       (position-in-file-loc
+                        "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                        69
+                        20))))))
                (>/c
                 (lambda (n)
                   (lambda (g10084 g10085 g10086)
@@ -211,10 +211,10 @@
                       g10086
                       (blame
                        g10084
-                       '(position-in-file-loc
-                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                         70
-                         19))))))
+                       (position-in-file-loc
+                        "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                        70
+                        19))))))
                (</c
                 (lambda (n)
                   (lambda (g10087 g10088 g10089)
@@ -222,10 +222,10 @@
                       g10089
                       (blame
                        g10087
-                       '(position-in-file-loc
-                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                         71
-                         19))))))
+                       (position-in-file-loc
+                        "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                        71
+                        19))))))
                (<=/c
                 (lambda (n)
                   (lambda (g10090 g10091 g10092)
@@ -233,10 +233,10 @@
                       g10092
                       (blame
                        g10090
-                       '(position-in-file-loc
-                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                         72
-                         20))))))
+                       (position-in-file-loc
+                        "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                        72
+                        20))))))
                (=/c
                 (lambda (n)
                   (lambda (g10093 g10094 g10095)
@@ -244,10 +244,10 @@
                       g10095
                       (blame
                        g10093
-                       '(position-in-file-loc
-                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                         73
-                         19))))))
+                       (position-in-file-loc
+                        "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                        73
+                        19))))))
                (string=?/c
                 (lambda (s)
                   (lambda (g10096 g10097 g10098)
@@ -255,10 +255,10 @@
                       g10098
                       (blame
                        g10096
-                       '(position-in-file-loc
-                         "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                         74
-                         26))))))
+                       (position-in-file-loc
+                        "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                        74
+                        26))))))
                (meta (lambda (v) v))
                (+
                 (letrec ((xj10099 'server) (xk10100 'client))
@@ -393,10 +393,10 @@
                     g10169
                     (blame
                      g10167
-                     '(position-in-file-loc
-                       "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
-                       108
-                       21)))))
+                     (position-in-file-loc
+                      "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/../preludes/simpleactor-prelude.scm"
+                      108
+                      21)))))
                (vector-ref
                 (letrec ((xj10170 'server) (xk10171 'client))
                   ((lambda (j10174 k10175 f10176)
@@ -746,10 +746,10 @@
                                                                 #t
                                                                 (blame
                                                                  j10196
-                                                                 '(position-in-file-loc
-                                                                   "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/cc-combinator.rkt"
-                                                                   106
-                                                                   11)))))
+                                                                 (position-in-file-loc
+                                                                  "/home/bram/phd/code/monarch/analyses/simpleactor/racket/translations/cc-combinator.rkt"
+                                                                  106
+                                                                  11)))))
                                                            ((pair
                                                              rcv10198
                                                              message10197)
@@ -804,10 +804,10 @@
                         (a10185 result10203)
                         (blame
                          k10186
-                         '(position-in-file-loc
-                           "programs/test/actor-cc/correlation-identifier.rkt"
-                           18
-                           2)))))))
+                         (position-in-file-loc
+                          "programs/test/actor-cc/correlation-identifier.rkt"
+                          18
+                          2)))))))
                (server-behavior
                 (lambda ()
                   (letrec ((real-self (self^)))

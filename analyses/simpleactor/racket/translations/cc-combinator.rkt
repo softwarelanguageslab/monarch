@@ -53,9 +53,9 @@
                      (else        "unknown")))))
     (quasisyntax/loc loc-stx
       (blame #,j-stx
-             (quote (position-in-file-loc #,src
+             (position-in-file-loc #,src
                               #,(syntax-line loc-stx)
-                              #,(syntax-column loc-stx)))))))
+                              #,(syntax-column loc-stx))))))
 
 ;; Parse a message/c form and return (values pattern-stx enhanced-body-stx vars)
 ;; where:
