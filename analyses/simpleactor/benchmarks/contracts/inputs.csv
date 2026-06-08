@@ -1,0 +1,9 @@
+original;translated
+programs/test/actor-cc/dns.scm;programs/test/translated/dns.scm
+programs/test/actor-cc/request-reply.rkt;programs/test/translated/request-reply.scm
+programs/test/actor-cc/bookreview.scm;programs/test/translated/bookreview.scm
+programs/test/actor-cc/savina-phil.scm;programs/test/translated/savina-phil.scm
+programs/test/actor-cc/correlation-identifier.rkt;programs/test/translated/correlation-identifier.rkt
+programs/test/actor-cc/ping.rkt;programs/test/translated/ping.rkt
+programs/test/actor-cc/cdn.scm;programs/test/translated/cdn.scm
+programs/test/actor-cc/forward-flow.rkt;programs/test/translated/forward-flow.scm
