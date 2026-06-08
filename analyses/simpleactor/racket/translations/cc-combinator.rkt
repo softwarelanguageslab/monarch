@@ -52,7 +52,8 @@
 
            `(lambda (,k ,j ,v)
              (match ,v
-               (,((translate-message-handler k j) exp))))))               
+               (,((translate-message-handler k j) exp)
+                 (_ #f))))))
 
 ;; Translates a message contract to a single
 ;; message handler.
@@ -415,8 +416,12 @@
                      (((list) #f)
                       ((pair v1 vs)
                         (if (eq? v v1) #t (member v vs))))))))
-      (loopy-actor (lambda () (receive ((_ (loopy-actor))))))
-      (unconstrained/c (lambda payload (lambda j (spawn^ loopy-actor)))) ;; todo
+      (loopy-actor (lambda () 
+                      (receive 
+                        (((cons rcv msg) (send^ rcv msg)
+                                         (loopy-actor))
+                         ('finish (terminate))))))
+      (unconstrained/c (lambda payload (lambda j (spawn^ (loopy-actor)))))
       (actor? (lambda (k j v) v))
       (nonzero? (lambda (v) (not (= v 0)))))
      ,e))
