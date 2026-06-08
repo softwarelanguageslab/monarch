@@ -8,6 +8,7 @@ module Analysis.SimpleActor.Fixpoint(
     analyze,
     AnalysisState (..),
     System (..),
+    BlameRecord(..),
     analyzeIO
 ) where
 
@@ -288,7 +289,7 @@ type SystemT m = (
 data BlameRecord = BlameRecord {
         partyExpr    :: Exp, 
         partyValue   :: ActorVlu,
-        contractEpxr :: Exp,
+        contractExpr :: Exp,
         blameLoc     :: Span
     } deriving (Ord, Eq, Show, Generic)
 

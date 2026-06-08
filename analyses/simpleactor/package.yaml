@@ -107,6 +107,7 @@ executables:
     - mtl
     - aeson
     - criterion
+    - clock
     
 tests:
   simpleactor-tests:

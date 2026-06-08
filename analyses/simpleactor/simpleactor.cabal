@@ -113,6 +113,7 @@ executable simpleactor-exe
       CommandLine.Options
       CommandLine.Output
       Runnables.CompareCoverage
+      Runnables.ContractBenchmarks
       Runnables.CoreErlang
       Runnables.SimpleActorAnalyze
       Runnables.SoundnessTesting
@@ -136,6 +137,7 @@ executable simpleactor-exe
       Glob
     , aeson
     , base >=4.7 && <5
+    , clock
     , concurrent-extra
     , containers
     , criterion
