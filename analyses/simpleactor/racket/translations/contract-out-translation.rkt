@@ -1,89 +1,85 @@
 #lang racket
 
+(require syntax/parse)
 (require "../utils.rkt")
 
 ;; This module translates files containing `contract-out`
-;; definitions to equivalent files ready for verification. 
+;; definitions to equivalent files ready for verification.
 ;;
-;; To this end, contract-out definitions are compiled 
-;; to function definitions that are then applied with symbolic 
+;; To this end, contract-out definitions are compiled
+;; to function definitions that are then applied with symbolic
 ;; inputs.
 
-
-;; Attempt to derive the arity of the function
-;; monitored by the contract, returns an arity of 
-;; zero if the contract does not depict a function 
-;; but is a constant, in that case a function 
-;; call is not generated
-(define (contract-arity contract)
-  (match contract
-    [(quasiquote (-> ,@contracts))
-     (- (length contracts) 1)]
+(define (contract-arity contract-stx)
+  (syntax-parse contract-stx
+    #:datum-literals (->)
+    [(-> contracts ...) (- (length (syntax->list #'(contracts ...))) 1)]
     [_ 0]))
 
-(define (initial xs)
-  (if (null? (cdr xs))
-    '()
-    (cons (car xs) (initial (cdr xs)))))
-      
+(define (initial stxs)
+  (if (null? (cdr stxs))
+      '()
+      (cons (car stxs) (initial (cdr stxs)))))
 
-;; Get the contracts on the arguments
-(define (argument-contracts contract)
-  (match contract
-    [(quasiquote (-> ,@contract))
-     (initial contract)]
+(define (argument-contracts contract-stx)
+  (syntax-parse contract-stx
+    #:datum-literals (->)
+    [(-> contract ...) (initial (syntax->list #'(contract ...)))]
     [_ '()]))
 
-;; Derive the shape of the input
-(define (derive-input-shape contract)
-  (match contract 
-    [(quasiquote (listof ,contract)) '(input)] ; TODO: provide a better representation here
-    [(quasiquote ,contract-name)
-      (let ((contract (assoc contract-name *struct-contracts*)))
-         (if contract
-             (let ((name (caadr contract))
-                   (fields (cdadr contract)))
-               (consify (cons `(quote ,name) (map derive-input-shape fields))))
-             '(input)))]))
-        
-;; Translate a single contract
-(define (translate-contract contract)
-  (match contract
-    [(quasiquote (,identifier ,contract))
-     (let ((monitor `(mon (loc (quote module)) (loc (quote importer)) ,contract ,identifier))
-           (arity (contract-arity contract)))
+(define (derive-input-shape contract-stx)
+  (syntax-parse contract-stx
+    #:datum-literals (listof)
+    [(listof _) (quasisyntax/loc contract-stx (input))]
+    [name:id
+     (let ((contract (assoc (syntax-e #'name) *struct-contracts*)))
+       (if contract
+           (let ((struct-name (caadr contract))
+                 (fields      (cdadr contract)))
+             (consify contract-stx
+               (cons (quasisyntax/loc contract-stx '#,(datum->syntax contract-stx struct-name))
+                     (map derive-input-shape fields))))
+           (quasisyntax/loc contract-stx (input))))]
+    [_ (quasisyntax/loc contract-stx (input))]))
+
+(define (translate-contract stx)
+  (syntax-parse stx
+    [(identifier contract)
+     (let* ((monitor (quasisyntax/loc stx
+                       (mon (loc 'module) (loc 'importer) #,#'contract #,#'identifier)))
+            (arity   (contract-arity #'contract)))
        (if (= arity 0)
            monitor
-           `(,monitor ,@(map derive-input-shape (argument-contracts contract)))))]
+           (let ((arg-shapes (map derive-input-shape (argument-contracts #'contract))))
+             (quasisyntax/loc stx (#,monitor #,@arg-shapes)))))]
     [_ (error "invalid contract-out specification")]))
 
-;; Translate a list of contracts
-(define (translate-contracts contracts)
-  `(parallel ,@(map translate-contract contracts)))
+(define (translate-contracts stx contract-stxs)
+  (with-syntax ([(translated ...) (map translate-contract contract-stxs)])
+    (quasisyntax/loc stx (parallel translated ...))))
 
-;; Contract definitions for structs represented as an association 
-;; list mapping the names of the contract to the fields of the contract
+;; Association list mapping struct contract names (symbols) to their fields.
 (define *struct-contracts* '())
 
-;; Translate a program that could contain a contract-out statement
-(define (translate exp) 
-  (match exp 
-    ;; this is a little "hack" to know whether there are contracts 
-    ;; for structs in scope, normally we should do proper modelling of 
-    ;; the environment but this should be sufficient to detect top-level
-    ;; contracts on structs.
-    [(quasiquote (define ,contractname (struct/c ,name ,@fields)))
-     (set! *struct-contracts* (cons (list contractname (cons name fields)) *struct-contracts*))
-     exp]
-    [(quasiquote (contract-out ,@contracts))
-     (translate-contracts contracts)]
-    [(quasiquote (provide/contract ,@contracts))
-     (translate-contracts contracts)]
-    [(quasiquote (provide ,@exports))
-     `(parallel ,@(map translate exports))]
-    [(quasiquote (,exp1 ,@exs))
-     `(,(translate exp1) ,@(map translate exs))]
-    [literal literal]))
+(define (translate stx)
+  (syntax-parse stx
+    #:datum-literals (define contract-out provide/contract provide)
+    [(define contractname (struct/c name field ...))
+     (set! *struct-contracts*
+           (cons (list (syntax-e #'contractname)
+                       (cons (syntax-e #'name) (syntax->list #'(field ...))))
+                 *struct-contracts*))
+     stx]
+    [(contract-out contract ...)
+     (translate-contracts stx (syntax->list #'(contract ...)))]
+    [(provide/contract contract ...)
+     (translate-contracts stx (syntax->list #'(contract ...)))]
+    [(provide export ...)
+     (with-syntax ([(translated ...) (map translate (syntax->list #'(export ...)))])
+       (quasisyntax/loc stx (parallel translated ...)))]
+    [(e es ...)
+     (quasisyntax/loc stx
+       (#,(translate #'e) #,@(map translate (syntax->list #'(es ...)))))]
+    [other #'other]))
 
-(provide 
-  translate)
+(provide translate)

@@ -1,62 +1,71 @@
 #lang racket
 
-;; This module compiles structs to tagged nested pairs, 
-;; it generates `define` expressions so it should be 
+(require syntax/parse)
+(require "../utils.rkt")
+
+;; This module compiles structs to tagged nested pairs,
+;; it generates `define` expressions so it should be
 ;; executed before the undefiner.
 
-
-;; Translate a single field, this means that a accessors fopr that 
-;; field and setters are generator
-(define ((translate-field structname) fieldname i) 
-  (define (gen-car i of)
+(define ((translate-field structname) fieldname-stx i)
+  (define (gen-car i of-stx loc)
     (if (= i -1)
-        of 
-        `(orig-cdr ,(gen-car (- i 1) of))))
+        of-stx
+        (quasisyntax/loc loc (orig-cdr #,(gen-car (- i 1) of-stx loc)))))
 
-  (let
-    ((getter (string->symbol (string-append (symbol->string structname) "-" (symbol->string fieldname))))
-     (structVar (gensym structname)))
+  (let* ((fieldname (syntax-e fieldname-stx))
+         (getter    (string->symbol
+                      (string-append (symbol->string structname)
+                                     "-"
+                                     (symbol->string fieldname))))
+         (struct-var (datum->syntax fieldname-stx (gensym structname))))
+    (quasisyntax/loc fieldname-stx
+      (define (#,(datum->syntax fieldname-stx getter) #,struct-var)
+        (orig-car #,(gen-car i struct-var fieldname-stx))))))
 
-  `(define (,getter ,structname)
-      (orig-car ,(gen-car i structname)))))
-
-;; Generate a constructor for the given struct name with the given number of fields
-(define (translate-constructor structname fields)
-  (define (generate-parameters fields)
+(define (translate-constructor loc-stx structname fields)
+  (define (gen-params fields)
     (if (null? fields)
-      '()
-      (cons (gensym (car fields)) (generate-parameters (cdr fields)))))
+        '()
+        (cons (datum->syntax (car fields) (gensym (syntax-e (car fields))))
+              (gen-params (cdr fields)))))
+  (define (gen-conses params loc)
+    (if (null? params)
+        (quasisyntax/loc loc '())
+        (quasisyntax/loc loc
+          (orig-cons #,(car params) #,(gen-conses (cdr params) loc)))))
+  (let ((params (gen-params fields)))
+    (with-syntax ([(param ...) params])
+      (quasisyntax/loc loc-stx
+        (define (#,(datum->syntax loc-stx structname) param ...)
+          (orig-cons '#,(datum->syntax loc-stx structname)
+                     #,(gen-conses params loc-stx)))))))
 
-  (define (generate-conses parameters)
-    (if (null? parameters)
-        ''()
-        `(orig-cons ,(car parameters) ,(generate-conses (cdr parameters)))))
-
-  (define parameters (generate-parameters fields))
-  `(define (,structname ,@parameters)
-     ,`(orig-cons (quote ,structname) ,(generate-conses parameters))))
-   
-
-(define (field-name field)
-  (if (symbol? field)
-      field 
-      (error (string-append "field format not supported" field))))
-
-(define (translate exp)
-  (match exp
-    [(quasiquote (struct ,name ,fields ,@annotations)) 
-     (define nam (gensym name))
-     `(begin ,(translate-constructor name (map field-name fields))
-       (define (,(string->symbol (string-append (symbol->string name) "?")) ,nam)
-         (eq? (car ,nam) (quote ,name)))
-       ,@(map (translate-field name) (map field-name fields) (build-list (length fields) values)))]
-    ;; other special forms
-    [(quasiquote (,operator ,@operands)) 
-     `(,(translate operator) ,@(map translate operands))]
-    ;; literals or symbols
-    [l l]))
+(define (translate stx)
+  (syntax-parse stx
+    #:datum-literals (struct)
+    [(struct name (field ...) annotation ...)
+     (let* ((structname  (syntax-e #'name))
+            (field-stxs  (syntax->list #'(field ...)))
+            (nam         (datum->syntax stx (gensym structname)))
+            (pred-name   (datum->syntax stx
+                           (string->symbol
+                             (string-append (symbol->string structname) "?"))))
+            (constructor (translate-constructor stx structname field-stxs))
+            (predicate   (quasisyntax/loc stx
+                           (define (#,pred-name #,nam)
+                             (eq? (car #,nam) '#,(datum->syntax stx structname)))))
+            (getters     (map (translate-field structname)
+                              field-stxs
+                              (build-list (length field-stxs) values))))
+       (quasisyntax/loc stx
+         (begin #,constructor #,predicate #,@getters)))]
+    [(e es ...)
+     (quasisyntax/loc stx
+       (#,(translate #'e) #,@(map translate (syntax->list #'(es ...)))))]
+    [other #'other]))
 
 (module+ main
-  (translate `(struct person (name surname))))
+  (displayln (syntax->datum (translate (datum->syntax #f '(struct person (name surname)))))))
 
 (provide translate)

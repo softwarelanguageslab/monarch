@@ -125,12 +125,19 @@
 
 ;; Install an exception handler so that logging can still happen before
 ;; the program is terminated.
+(define (shutdown-system-error e)
+  (for-each (lambda (thread) (kill-thread thread)) (atomic-gets *running-actors* (lambda (v) v)))
+  (displayln (exn-message e))
+  (break-thread logging-thread 'terminate)
+  (thread-wait logging-thread)
+  (exit 1))
+
 (define-syntax (module-begin-instrumented stx)
   (syntax-parse stx
     [(_ body ...)
      #'(#%plain-module-begin
          (with-handlers [(exn:break? (lambda (e) (shutdown-system-break "break")))]
-           (with-handlers [(exn:fail? (lambda (e) (handle-top-level-error e)))] 
+           (with-handlers [(exn:fail? (lambda (e) (shutdown-system-error e)))]
               body ...)
            (shutdown-system)))]))
 
@@ -143,6 +150,7 @@
   (exit))
 
 
+
 ;; Stall detection: the system is "stalled" when every live actor is parked
 ;; in thread-receive and no messages are in flight. Either the program is
 ;; deliberately idle or the actors are deadlocked waiting for messages that
@@ -150,6 +158,7 @@
 ;; safe.
 (define *stall-mutex* (make-semaphore 1))
 (define *stall-event* (make-semaphore 0))
+(define *error-channel* (make-channel))
 (define *live* 0)
 (define *waiting* 0)
 (define *in-flight* 0)
@@ -180,14 +189,16 @@
 
 ;; Block until the system stalls. Re-checks under the lock because
 ;; *stall-event* may have been posted for a transient stall that no longer
-;; holds by the time we wake up.
+;; holds by the time we wake up. If an actor posts an error to *error-channel*
+;; we re-raise it on the main thread so it propagates with a non-zero exit.
 (define (wait-for-stall)
   (let loop ()
     (define stalled?
       (with-stall (or (zero? *live*)
                       (and (= *waiting* *live*) (zero? *in-flight*)))))
     (unless stalled?
-      (sync *stall-event*)
+      (define result (sync *stall-event* *error-channel*))
+      (when (exn? result) (raise result))
       (loop))))
 
 ;; Wait until the system stalls and stop the logging thread.
@@ -202,9 +213,7 @@
 ;; Handler for top-level errors that ensures that the logging actor has been terminated correctly
 ;; and all its output has been written.
 (define (handle-top-level-error e)
-  (raise e)
-  (displayln (format "error: ~a" (exn->string e)))
-
+  (channel-put *error-channel* e)
   (when (self)
     (stall:terminated!)
     (kill-thread (current-thread))))

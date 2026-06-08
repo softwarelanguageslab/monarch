@@ -3,111 +3,136 @@
 (provide translate)
 
 (require "../utils.rkt")
+(require syntax/parse)
 
-(define (invalid-syntax for e)
-  (error (format "invalid syntax for ~a at ~a" for e)))
+(define (invalid-syntax for stx)
+  (error (format "invalid syntax for ~a at ~a" for (syntax->datum stx))))
 
-(define (translate-cond clauses)
+(define (translate-cond stx clauses)
   (if (null? clauses)
-      '()
-      (let* ((clause (car clauses))
-             (cnd (car clause))
-             (bdy (cdr clause)))
-        (if (eq? cnd 'else)
-          `(begin ,@bdy)
-          `(if ,(translate cnd) 
-               (begin ,@(map translate bdy))
-               ,(translate-cond (cdr clauses)))))))
+      (quasisyntax/loc stx '())
+      (syntax-parse (car clauses)
+        #:datum-literals (else)
+        [(else bdy ...)
+         (quasisyntax/loc (car clauses)
+           (begin #,@(map translate (syntax->list #'(bdy ...)))))]
+        [(cnd bdy ...)
+         (quasisyntax/loc (car clauses)
+           (if #,(translate #'cnd)
+               (begin #,@(map translate (syntax->list #'(bdy ...))))
+               #,(translate-cond stx (cdr clauses))))])))
 
-(define (translate-and conditions)
-  (cond 
-    ((null? conditions) #f)
+(define (translate-and stx conditions)
+  (cond
+    ((null? conditions) (quasisyntax/loc stx #f))
     ((null? (cdr conditions)) (translate (car conditions)))
-    (else `(if ,(translate (car conditions)) ,(translate-and (cdr conditions)) #f))))
+    (else (quasisyntax/loc stx
+            (if #,(translate (car conditions))
+                #,(translate-and stx (cdr conditions))
+                #f)))))
 
-(define (translate-or conditions)
-  (cond 
-    ((null? conditions) #t)
+(define (translate-or stx conditions)
+  (cond
+    ((null? conditions) (quasisyntax/loc stx #t))
     ((null? (cdr conditions)) (translate (car conditions)))
-    (else 
-      (let ((val (gensym "val")))
-      `(letrec ((,val ,(translate (car conditions))))
-         (if ,val
-             ,val
-             ,(translate-or (cdr conditions))))))))
+    (else
+     (let ((val (datum->syntax stx (gensym "val"))))
+       (quasisyntax/loc stx
+         (letrec ((#,val #,(translate (car conditions))))
+           (if #,val
+               #,val
+               #,(translate-or stx (cdr conditions)))))))))
 
-(define (translate e)
-  (match e
-   [(quasiquote (behavior ,ags ,handlers))
-    `(lambda ,ags 
-       (letrec
-         ((real-self (self^)))
-         (parametrize 
-            ((self (lambda (m) ((dyn send^) real-self m))))
-             (receive 
-               ,(map translate-handler handlers)))))]
-   [(quasiquote (behavior ,@es))
-    (invalid-syntax "behavior" e)]
-   [(quasiquote (become ,b ,@ags))
-    `(,b ,@ags)]
-   [(quasiquote (become ,@es))
-    (invalid-syntax "become" e)]
-   [(quasiquote (send ,rcv  ,tag ,@payload))
-    `(,(translate rcv) ,(uncurry (cons `(quote ,tag) (translate payload))))]
-   [(quasiquote (send ,@es))
-    (invalid-syntax "send" e)]
-   [(quasiquote (λ ,xs ,@bdy))
-    `(lambda ,xs ,@(map translate bdy))]
-   [(quasiquote (spawn ,beh ,@ags))
-    `(letrec ((act (spawn^ (,beh ,@ags))))
-      (lambda (msg) 
-          ((dyn send^) act msg)))]
-   [(quasiquote (spawn ,@es))
-    (invalid-syntax "spawn" e)]
-   [(quasiquote (let ,bds ,@bdy))
-    `(letrec ,(map (lambda (bdn) (list (car bdn) (translate (cadr bdn)))) bds) ,@(map translate bdy))]
-   [(quasiquote (let* ,bds ,@bdy))
-    `(letrec ,(map (lambda (bdn) (list (car bdn) (translate (cadr bdn)))) bds) ,@(map translate bdy))]
-   [(quasiquote (letrec ,bds ,@bdy))
-    `(letrec ,(map (lambda (bdn) (list (car bdn) (translate (cadr bdn)))) bds) ,@(map translate bdy))]
-   [(quasiquote (cond ,@clauses))
-    (translate-cond clauses)]
-   [(quasiquote (and ,@conditions))
-    (translate-and conditions)]
-   [(quasiquote (or ,@conditions))
-    (translate-or conditions)]
-   [(quasiquote self)
-    '(dyn self)]
-   [(quasiquote (,e ,@es))
-     `(,(translate e) ,@(map translate es))]
-   [x x]))
+(define (translate stx)
+  (syntax-parse stx
+    #:datum-literals (behavior become send λ spawn let let* letrec cond and or self)
+    [(behavior ags (handler ...))
+     (quasisyntax/loc stx
+       (lambda ags
+         (letrec
+           ((real-self (self^)))
+           (parametrize
+             ((self (lambda (m) ((dyn send^) real-self m))))
+             (receive
+               #,(map translate-handler (syntax->list #'(handler ...))))))))
+     ]
+    [(behavior . _)
+     (invalid-syntax "behavior" stx)]
+    [(become b ag ...)
+     (quasisyntax/loc stx (#,#'b #,@(map translate (syntax->list #'(ag ...)))))]
+    [(become . _)
+     (invalid-syntax "become" stx)]
+    [(send rcv tag payload ...)
+     (let ((payload-stxs (map translate (syntax->list #'(payload ...)))))
+       (quasisyntax/loc stx
+         (#,(translate #'rcv)
+          #,(uncurry (cons (quasisyntax/loc stx 'tag) payload-stxs)))))]
+    [(send . _)
+     (invalid-syntax "send" stx)]
+    [(λ xs bdy ...)
+     (quasisyntax/loc stx
+       (lambda xs #,@(map translate (syntax->list #'(bdy ...)))))]
+    [(spawn beh ag ...)
+     (quasisyntax/loc stx
+       (letrec ((act (spawn^ (#,#'beh #,@(map translate (syntax->list #'(ag ...)))))))
+         (lambda (msg)
+           ((dyn send^) act msg))))]
+    [(spawn . _)
+     (invalid-syntax "spawn" stx)]
+    [(let bds bdy ...)
+     (let* ((bd-list (syntax->list #'bds))
+            (names   (map (lambda (bd) (syntax-parse bd [(n _) #'n])) bd-list))
+            (vals    (map (lambda (bd) (syntax-parse bd [(_ v) (translate #'v)])) bd-list)))
+       (with-syntax ([(name ...) names]
+                     [(val  ...) vals])
+         (quasisyntax/loc stx
+           (letrec ((name val) ...)
+             #,@(map translate (syntax->list #'(bdy ...)))))))]
+    [(let* bds bdy ...)
+     (let* ((bd-list (syntax->list #'bds))
+            (names   (map (lambda (bd) (syntax-parse bd [(n _) #'n])) bd-list))
+            (vals    (map (lambda (bd) (syntax-parse bd [(_ v) (translate #'v)])) bd-list)))
+       (with-syntax ([(name ...) names]
+                     [(val  ...) vals])
+         (quasisyntax/loc stx
+           (letrec ((name val) ...)
+             #,@(map translate (syntax->list #'(bdy ...)))))))]
+    [(letrec bds bdy ...)
+     (let* ((bd-list (syntax->list #'bds))
+            (names   (map (lambda (bd) (syntax-parse bd [(n _) #'n])) bd-list))
+            (vals    (map (lambda (bd) (syntax-parse bd [(_ v) (translate #'v)])) bd-list)))
+       (with-syntax ([(name ...) names]
+                     [(val  ...) vals])
+         (quasisyntax/loc stx
+           (letrec ((name val) ...)
+             #,@(map translate (syntax->list #'(bdy ...)))))))]
+    [(cond clause ...)
+     (translate-cond stx (syntax->list #'(clause ...)))]
+    [(and condition ...)
+     (translate-and stx (syntax->list #'(condition ...)))]
+    [(or condition ...)
+     (translate-or stx (syntax->list #'(condition ...)))]
+    [self
+     (quasisyntax/loc stx (dyn self))]
+    [(e es ...)
+     (quasisyntax/loc stx
+       (#,(translate #'e) #,@(map translate (syntax->list #'(es ...)))))]
+    [other #'other]))
 
-
-(define (translate-handler e)
-  (match e 
-    [(quasiquote (,tag ,ags ,@bdy))
-     `(,(uncurry (cons `(quote ,tag) ags)) (begin ,@(translate bdy)))]
+(define (translate-handler stx)
+  (syntax-parse stx
+    [(tag ags bdy ...)
+     (quasisyntax/loc stx
+       (#,(uncurry (cons (quasisyntax/loc stx 'tag) (syntax->list #'ags)))
+        (begin #,@(map translate (syntax->list #'(bdy ...))))))]
     [_ (error "invalid handler syntax")]))
 
 (module+ main
-   (displayln (translate '(behavior (x) ((ping () (print "ok"))))))
-   (displayln (translate 
-                '(letrec
-                   ((counter (behavior (x) ((inc (n) (print x) (become counter (+ x n))))))
-                    (actor (spawn counter)))
+   (displayln (syntax->datum (translate (datum->syntax #f '(behavior (x) ((ping () (print "ok"))))))))
+   (displayln (syntax->datum (translate
+                (datum->syntax #f
+                  '(letrec
+                     ((counter (behavior (x) ((inc (n) (print x) (become counter (+ x n))))))
+                      (actor (spawn counter)))
 
-                   (send actor inc 1)))))
-
-
-#|
-(define inc/c (behavior/c 
-                (message/c 'inc
-                           (list)
-                           any-recipient
-                           unconstrained/c)))
-
-(define inc/c (lambda (k j) 
-                (lambda (m)
-                  (match m 
-                    (pair 'inc v)  
-|#
+                     (send actor inc 1)))))))
