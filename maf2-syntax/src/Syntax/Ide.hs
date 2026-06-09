@@ -5,10 +5,12 @@ import GHC.Generics
 import Control.DeepSeq
 import Syntax.Span
 import Prelude hiding (span)
+import Data.Aeson
 
 data Ide = Ide { name :: String, span :: Span } deriving (Ord, Eq, Generic)
 
 instance NFData Ide
+instance ToJSON Ide
 
 instance Show Ide where
    show (Ide { name, span }) = name++":"++show (line (startPosition span))++":"++show (column (startPosition span))

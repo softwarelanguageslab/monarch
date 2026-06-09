@@ -13,14 +13,16 @@ module Syntax.Span(
       dummySpan
    ) where
 
-import GHC.Generics
 import Control.DeepSeq
+import Data.Aeson
+import GHC.Generics
 
 -- | Location in the source code
 data Position = Position { line :: Int, column :: Int }
               deriving (Eq, Ord, Generic)
 
 instance NFData Position
+instance ToJSON Position
 
 instance Show Position where
    show Position { .. } = show line ++ ":" ++ show column
@@ -39,6 +41,7 @@ type Span = ESpan ()
 instance (NFData ξ) => NFData (ESpan ξ)
 instance (Show ξ) => Show (ESpan ξ) where
    show ESpan { .. } = show startPosition ++ "-" ++ show endPosition ++ "@" ++ filename
+instance (ToJSON ξ) => ToJSON (ESpan ξ)
 
 class ESpanOf ξ s | s -> ξ where
    espanOf :: s -> ESpan ξ

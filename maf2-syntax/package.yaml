@@ -37,6 +37,7 @@ dependencies:
 - filepath
 - extra
 - parser-combinators
+- aeson
 
 ghc-options:
 - -Wall
