@@ -7,3 +7,4 @@ programs/test/actor-cc/correlation-identifier.rkt;programs/test/translated/corre
 programs/test/actor-cc/ping.rkt;programs/test/translated/ping.rkt
 programs/test/actor-cc/cdn.scm;programs/test/translated/cdn.scm
 programs/test/actor-cc/forward-flow.rkt;programs/test/translated/forward-flow.scm
+programs/test/actor-cc/forward-flow.fail.rkt;programs/test/translated/forward-flow.fail.rkt

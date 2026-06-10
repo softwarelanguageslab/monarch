@@ -124,7 +124,7 @@
     [(tag ags bdy ...)
      (quasisyntax/loc stx
        (#,(uncurry (cons (quasisyntax/loc stx 'tag) (syntax->list #'ags)))
-        (begin #,@(map translate (syntax->list #'(bdy ...))))))]
+          #,@(map translate (syntax->list #'(bdy ...)))))]
     [_ (error "invalid handler syntax")]))
 
 (module+ main

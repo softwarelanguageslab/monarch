@@ -244,11 +244,12 @@
                (#,old-send (dyn send^)))
               (parametrize
                 ((send^ (lambda (#,rcv #,msg) (#,old-send #,κc (cons #,rcv #,msg)))))
-                #,@(if (null? bdy-init)
-                       '()
-                       (list (quasisyntax/loc pat-stx
-                               (begin #,@bdy-init (#,old-send #,κc 'finish)))))
-                #,bdy-last))]))]))
+                (begin
+                  #,@(if (null? bdy-init)
+                         '()
+                         (list (quasisyntax/loc pat-stx
+                                 (begin #,@bdy-init (#,old-send #,κc 'finish)))))
+                  #,bdy-last)))]))]))
 
   (map enhance-pattern (syntax->list pats-stx)))
 
