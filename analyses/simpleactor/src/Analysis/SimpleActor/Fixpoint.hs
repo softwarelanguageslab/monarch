@@ -30,7 +30,7 @@ import Analysis.SimpleActor.Fixpoint.Common
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Lens
-import Control.Monad.State (StateT (runStateT), execStateT)
+import Control.Monad.State (StateT (runStateT), execStateT, mapStateT)
 import Control.Monad.Except (ExceptT, throwError)
 import GHC.Generics (Generic)
 import Analysis.Monad.Environment (EnvM (..))
@@ -141,27 +141,35 @@ $(makeLenses ''Ctx)
 emptyCtx :: ActorRef -> Ctx
 emptyCtx ref = Ctx HashMap.empty initialDynEnvironment ref (initialContext 1)
 
--- | Intra-actor analysis state
+-- | Intra-turn analysis state
 data State = State {
         -- | The inbox of the actor that is being analyzed.
-        _inbox :: PMB,
-        -- | Track the outgoing mail
-        _outbox :: ActorMai
+        _inbox :: PMB
     } deriving (Ord, Eq, Show, Generic)
+
 
 instance NFData State
 
 instance Joinable State where
-    join (State inbox1 outbox1) (State inbox2 outbox2) =
-        State (Lattice.join inbox1 inbox2) (Lattice.join outbox1 outbox2)
+    join (State inbox1) (State inbox2) =
+        State (Lattice.join inbox1 inbox2)
 instance Meetable State where
-    meet (State _ _) (State _ _) =
+    meet (State _) (State _) =
         error "NYI"
         -- State (Lattice.meet inbox1 inbox2) (Lattice.meet outbox1 outbox2)
 instance BottomLattice State where
-    bottom = State Lattice.bottom Lattice.bottom
+    bottom = State Lattice.bottom
 
 $(makeLenses ''State)
+
+-- | Inter-turn analysis state
+data InterTurnState = InterTurnState {
+        -- | Track the outgoing mail
+        _outbox :: ActorMai
+    } deriving (Ord, Eq, Show, Generic)
+
+instance NFData InterTurnState
+$(makeLenses ''InterTurnState)
 
 -- | Inter-actor actor system state
 data System = System {
@@ -251,13 +259,18 @@ type IntraT m = (
         -- the intra-actor analysis is path-sensitive meaning that it tracks 
         -- inbox content independently for each path through the actor. 
         SetNonDetT (
-        CacheT m
-    ))))
+        CacheT (
+        StateT InterTurnState m
+    )))))
 
 
 -- | Lift an IntraT computation to a ProcT computation
 liftIntraT :: Monad m => IntraT m a -> ProcT (IntraT m) a 
 liftIntraT = upperM . upperM . upperM . upperM
+
+-- | Lift a InterTurnState computation to an IntraT computation
+liftInterTurnT :: Monad m => StateT InterTurnState m a -> IntraT m a
+liftInterTurnT = upperM . upperM . upperM. upperM
 
 ------------------------------------------------------------
 
@@ -377,10 +390,10 @@ instance Monad m => MonadPartition Partition (IntraT m) where
 addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m) => MsgPayload ->  (ProcT (IntraT m) Msg)
 addMessageCtx payload = message payload <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
 
-instance (SCV.FormulaSolver Domain.SymVar m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
-  send ref v = do 
+instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
+  send ref v = do
       v' <- addMessageCtx v
-      liftIntraT $ do
+      liftIntraT $ liftInterTurnT $ do
         oldOutbox <- use outbox
         outbox . at ref . non MB.empty %= MB.enqueue Lattice.bottom Lattice.bottom v'
         outbox %= Lattice.join oldOutbox
@@ -473,7 +486,7 @@ type AnalysisM m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m)
 -- | Intra-turn fixpoint: analyze a single turn of an actor, and returns a set of successor turns.
 --
 -- This is the only place where the semantics from 'Analysis.SimpleActor.Semantics' is actually called.
-intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> AnalysisSystemT m (Set Turn)
+intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> StateT InterTurnState (AnalysisSystemT m) (Set Turn)
 intraTurn beh selfRef st = do
         -- Debug.traceShowIO $ "intraTurn actor=" ++ show selfRef ++ " beh-expr=" ++ show (spanOf (beh ^._1))
         -- compute a fixpoint over the function calls within this turn
@@ -489,9 +502,9 @@ intraTurn beh selfRef st = do
                     expr@Receive {} ->  ReceiveExp expr
                     expr -> ActorExp expr
           key'  = initialProcKey cmp' ctx' st
-          intra :: ProcKey -> AnalysisSystemT m ()
+          intra :: ProcKey -> StateT InterTurnState (AnalysisSystemT m) ()
           intra k = runFixT @(AnalysisT m) Semantics.eval k
-                  & runIntraAnalysis k
+                  & mapStateT (runIntraAnalysis k)
           {-# SCC intra #-}
 
 -- | Inter-turn fixpoint: analyze a sequence of turns of an actor 
@@ -499,14 +512,20 @@ intraTurn beh selfRef st = do
 transferTurn :: AnalysisM m
              => ActorRef
              -> Turn
-             -> AnalysisSystemT m (Set Turn)
+             -> StateT InterTurnState (AnalysisSystemT m) (Set Turn)
 transferTurn selfRef (Turn (Become beh) turnState) = intraTurn beh selfRef turnState
 -- Terminated actors do not generate successor turns, so we return the empty set.
 transferTurn _ (Turn Terminated _) = return Set.empty
 
 fixTurn :: AnalysisM m => ActorRef -> Turn -> AnalysisSystemT m (Set Turn)
 fixTurn selfRef turn0 = do
-    result <- Fix.lfp (Fix.lift $ transferTurn selfRef) (Set.singleton turn0)
+    Debug.traceShowIO $ "fixTurn actor=" ++ show selfRef ++ " inbox=" ++ show (turn0 ^. state . inbox)
+    -- Run the inter-turn fixpoint, accumulating the actor's outgoing mail in the
+    -- 'InterTurnState' as turns are analyzed.
+    (result, interTurn) <- runStateT (Fix.lfp (Fix.lift $ transferTurn selfRef) (Set.singleton turn0))
+                                      (InterTurnState Lattice.bottom)
+    -- Fold the accumulated outbox into the global mailboxes.
+    mbs %= Lattice.join (interTurn ^. outbox)
     Debug.traceShowIO $ "fixTurn actor=" ++ show selfRef ++ " result-turns=" ++ show (Set.size result)
     return result
 
@@ -516,17 +535,13 @@ transferSystem s = do
     -- Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
     -- Debug.traceShowIO $ "transferSystem mailboxes= " ++ show (s ^. mbs)
     flip execStateT s $ do
-        outboxes <- State.gets (_mbs)
-        let turnState ref = State (fromMaybe Lattice.bottom (Map.lookup ref (s ^. mbs))) outboxes
+        let turnState ref = State (fromMaybe Lattice.bottom (Map.lookup ref (s ^. mbs)))
         let initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref)))
                                              -- (Map.restrictKeys (s ^. initialBeh) changed)
                                              (s ^. initialBeh)
         newTurns <- Map.traverseWithKey (Fix.lift . fixTurn) initialTurns
         -- join the new turns with the old turns
         turns %= Lattice.join newTurns
-        -- join the outboxes of each turn with the old mailboxes
-        let newMbs = Lattice.joins $ foldMap (map (view (state . outbox)) . Set.toList . snd) $ Map.toList newTurns
-        mbs %= Lattice.join newMbs
 
 fixSystem :: AnalysisM m => System -> AnalysisGlobalT m System
 fixSystem = Fix.lfp (transferSystem >=> traceSystem)

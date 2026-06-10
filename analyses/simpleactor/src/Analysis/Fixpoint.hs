@@ -1,4 +1,5 @@
 -- Naive fixpoint algorithms
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 module Analysis.Fixpoint(lfp, lfpTraced, lift) where
 
 import Data.Set (Set)
@@ -26,8 +27,9 @@ lfpTraced f = flip go []
 -- | Lift a function 'a -> Set a' to 'Set a -> Set a'.
 lift :: (MonadIO m, Ord a) => (a -> m (Set a)) -> Set a -> m (Set a)
 lift f s = do 
-    liftIO (Debug.traceIO $ "LIFT-PRE: set size in " ++  show (Set.size s))
-    result <- Set.union s <$> foldMapM (\(v, i) -> liftIO (putStr (show i ++ " ") >> hFlush stdout) >> f v) (Set.fromList $ zip (Set.toList s) [(0 :: Int)..])
-    liftIO (Debug.traceIO $ "LIFT: set size in " ++  show (Set.size s) ++ " set size out " ++ show (Set.size result))
-    return result
+    -- liftIO (Debug.traceIO $ "LIFT-PRE: set size in " ++  show (Set.size s))
+    -- result <- Set.union s <$> foldMapM (\(v, i) -> liftIO (putStr (show i ++ " ") >> hFlush stdout) >> f v) (Set.fromList $ zip (Set.toList s) [(0 :: Int)..])
+    -- liftIO (Debug.traceIO $ "LIFT: set size in " ++  show (Set.size s) ++ " set size out " ++ show (Set.size result))
+    -- return result
+    Set.union s <$> foldMapM f s
 

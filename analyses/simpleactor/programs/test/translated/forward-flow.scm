@@ -946,7 +946,8 @@
                   (router/c
                    xj9009
                    xk9010
-                   (letrec ((act (spawn^ (router-behavior (list service)))))
+                   (letrec ((act
+                             (spawn^ (router-behavior (cons service '())))))
                      (lambda (msg) ((dyn send^) act msg))))))
                (client
                 (letrec ((act (spawn^ (client-behavior router))))

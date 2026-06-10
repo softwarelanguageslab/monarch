@@ -35,7 +35,7 @@
             (become service-behavior)))))
 
 (define service (spawn service-behavior)) 
-(define router (mon (loc 'client) (loc 'server) router/c (spawn router-behavior (list service))))
+(define router (mon (loc 'client) (loc 'server) router/c (spawn router-behavior (cons service '()))))
 (define client (spawn client-behavior router))
 (send client main)
 (wait-until-all-finished)
