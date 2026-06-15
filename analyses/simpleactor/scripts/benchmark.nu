@@ -55,14 +55,17 @@ export def benchmark [ output_dir : path ] : table -> table {
   let programs = $in
   mut output = []
   for program in $programs {
-    let output_file_name = $program.original | path split | str join '_'
-    let output_path = $output_dir | path join $output_file_name
+    let output_file_name = $program.original | path split | str join '_' | path parse | update extension "json"
+    let output_path = $output_dir | path join ($output_file_name | path join)
     $program | format pattern "Analyzing {original} using {translated}" | print --stderr
     let result = (timeout $max_time $simpleactor_exe benchmark -f $program.translated -o $output_path --no-translate | tee --stderr { print --stderr } | complete)
     let status = match $result.exit_code {
-      127 => "TIMEOUT"
+      124 => "TIMEOUT"
       0   => $output_path
-      _   => "FAIL"
+      _   => {
+        $result.stderr | save ($output_path | path parse | update extension "err" | path join)
+        "FAIL"
+      }
     }
 
     $output = $output | append [ $status ]
@@ -100,7 +103,7 @@ def "main benchmark" [
     let timestamped_output = $output_dir | path join (date now | format date "%+")
     mkdir $timestamped_output
     let result = cat $input_csv | from csv --separator ";" | benchmark $timestamped_output 
-    result | to csv --separator ";" | save ($timestamped_output | path join "summary.csv")
+    $result | to csv --separator ";" | save ($timestamped_output | path join "summary.csv")
     return result
 }
 
