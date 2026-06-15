@@ -555,7 +555,7 @@ fixSystem = Fix.lfp (transferSystem >=> traceSystem)
 -- | The initial store contains all the primitive functions whhich are stored 
 -- at a fixed address.
 mainStore :: Map ActorAdr (StoreVal ActorVlu)
-mainStore = Map.map VarVal $ Semantics.initialSto Semantics.allPrimitives PrrAdr
+mainStore = Map.map VarVal $ Map.insert TopAdr Lattice.top $ Semantics.initialSto Semantics.allPrimitives PrrAdr
 
 -- | The environment is populated with the initial bindings for the primitive functions.
 mainEnv :: ActorEnv
