@@ -69,6 +69,7 @@ library:
   source-dirs: src
   ghc-options:
     - -threaded
+    - -fprint-potential-instances
   dependencies:
     - containers 
     - unordered-containers 

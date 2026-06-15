@@ -353,12 +353,9 @@ instance (Eq i, Ord i) => Simplification (Formula i) where
 
 -- | Normalize the path constraint to elliminate constraints that could not influence 
 -- the final result. This function is primarily focussed on elliminating expressions 
--- on "fresh" variables. For expressions including those terms isSat always evaluates 
--- to true, and it cannot constrain other variables, and can therefore be safely elliminated.
+-- on "fresh" variables. Expressions including these terms are always satisfiable, and 
+-- unrelated to other constraints in the formula, hence they can be safely elliminated.
 --
--- Note that this is only sound whenever the fresh identifier does not carry symbolic variables. 
--- This is the case whenever the "fresh" value originated from joining two symbolic variables 
--- together. 
 normalizeFormula :: Ord i => Formula i -> Set (Formula i)
 normalizeFormula =
     \case

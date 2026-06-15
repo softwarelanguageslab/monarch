@@ -1,24 +1,27 @@
-{-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies #-}
+{-# LANGUAGE AllowAmbiguousTypes, UndecidableInstances, FunctionalDependencies, LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module Analysis.Symbolic.Monad(
-   -- Type classes
+   -- * Type classes
    SymbolicM,
    MonadPathCondition(..),
    MonadIntegerPool(..),
    SymbolicValue,
-   -- Tracking path condition
+   -- * Tracking path condition
    FormulaT,
    WidenedFormulaT(..),
    runFormulaT,
    runWithFormulaT,
    evalWithFormulaT,
    evalWithWidenedFormulaT,
-   -- Discarding formulas
+   -- * Discarding formulas
    DiscardFormulaT,
    runDiscardFormulaT,
-   -- Manipulations on values
-   traceSymbolicVariables
+   -- * Manipulations on values
+   traceSymbolicVariables,
+   -- * Garbage collection of formulas and path constraints
+   restrictFormula,
+   restrictPC
 ) where
 
 import Solver (FormulaSolver, isFeasible)
@@ -40,6 +43,7 @@ import Control.Monad.Identity (IdentityT (runIdentityT))
 import Analysis.Monad.AbstractCount (MonadAbstractCount)
 import Domain.Core.AbstractCount (AbstractCount)
 import Control.Monad.Choice
+import Control.Monad.Writer
 import Analysis.Monad.Store (StoreM)
 import Lattice.Trace (Trace, trace)
 import qualified Domain.Symbolic.Class as Symbolic
@@ -202,7 +206,49 @@ instance (MonadCache m, Functor (Base m)) => MonadCache (WidenedFormulaT i v m) 
 
 -- | Retrieve all involved symbolic variables by tracing through the store, extracts all 
 -- symbolic variables that transitively occur in the paired symbolic variable.
-traceSymbolicVariables :: forall adr v m i . (StoreM adr v m, Trace adr v, SymbolicValue v i) => v -> m (Set i)
-traceSymbolicVariables v = 
-    Set.union (Symbolic.variables v) . Set.unions <$> mapM (fmap Symbolic.variables . lookupAdr @adr) (Set.toList $ trace v)
+traceSymbolicVariables :: forall adr v m i w . (StoreM adr w m, Trace adr v, SymbolicValue v i) => (w -> Set v) -> v -> m (Set i)
+traceSymbolicVariables f v = 
+    Set.union (Symbolic.variables v) . Set.unions <$> mapM (fmap (foldMap Symbolic.variables . f) . lookupAdr @adr) (Set.toList $ trace v)
 
+----------------------------------------------------------------------
+-- Restricting formulas
+----------------------------------------------------------------------
+
+restrictProposition :: Ord i => Set i -> Proposition i -> Maybe (Proposition i)
+restrictProposition vars prop = 
+        let result = Set.fromList (execWriter $ go prop)
+        in if Set.null (result `Set.intersection` vars) 
+           then Nothing
+           else Just prop
+    -- traverse the proposition tree and write all encountered variables
+    -- to a writer monad.
+    where go = \case 
+            Variable i -> tell [i] 
+            Function _ -> return ()
+            Literal _  -> return ()
+            IsTrue prop' -> go prop'
+            IsFalse prop' -> go prop'
+            Predicate _ props -> mapM_ go props
+            Application prop1 prop2 -> go prop1 >> mapM_ go prop2
+            Tautology -> return () 
+            Fail -> return () 
+            Fresh _ -> return ()
+            Bottom -> return ()
+
+
+-- | Restrict the given formula to given set of variables so that only proposition
+-- that include those variables remain in the formula.
+restrictFormula :: Ord i => Set i -> Formula i -> Formula i
+restrictFormula vars = \case 
+        Conjunction fs -> Conjunction $ Set.filter isEmptyFormula (Set.map (restrictFormula vars) fs)
+        Disjunction fs -> Disjunction $ Set.filter isEmptyFormula (Set.map (restrictFormula vars) fs)
+        Implies fs1 fs2 -> Implies (restrictFormula vars fs1) (restrictFormula vars fs2)
+        Negation fs -> Negation (restrictFormula vars fs)
+        Atomic prop -> maybe Empty Atomic (restrictProposition vars prop)
+        Empty -> Empty
+    where isEmptyFormula Empty = True 
+          isEmptyFormula _     = False
+
+
+restrictPC :: Ord i => Set i -> PC i -> PC i
+restrictPC vars pc = Set.map (restrictFormula vars) pc

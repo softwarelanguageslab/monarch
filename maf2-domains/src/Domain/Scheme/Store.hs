@@ -11,7 +11,7 @@
 -- * A region to store vectors (VAdr)
 -- * A region to store pairs (PAdr)
 --
--- All other values are entirely immutable and therefore do not have to be allocated in a store.
+-- All other values are immutable and therefore do not have to be allocated in a store.
 --
 -- The Domain.Scheme.Class defines the type for each of these addresses. This module provides a sensible concrete type for these addresses.
 module Domain.Scheme.Store(

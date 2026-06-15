@@ -73,7 +73,7 @@ instance AddressWithCtx ctx (SymbolicVal exp k i v) where
 -- Traceability
 ------------------------------------------------------------
 
-instance (Ord adr) => Trace adr (SymbolicVal exp k i v) where
+instance {-# OVERLAPPING #-} (Ord adr) => Trace adr (SymbolicVal exp k i v) where
    trace = const Set.empty
 
 
@@ -317,7 +317,7 @@ instance (EqualLattice v) => EqualLattice (PairedSymbolic v exp k i) where
 -- hence, the only requirement for implementing the "Trace" type class is that the left 
 -- value in the pair is traceable.
 
-instance (Trace adr v) => Trace adr (PairedSymbolic v expr k i) where
+instance {-# OVERLAPPING #-} (Trace adr v) => Trace adr (PairedSymbolic v expr k i) where
     trace = trace . leftValue
 
 

@@ -75,7 +75,7 @@ library
       FunctionalDependencies
       RecordWildCards
       LambdaCase
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wno-x-partial -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-missing-export-lists -Wno-x-partial -Wmissing-home-modules -Wpartial-fields -O0 -fspecialise -fexpose-all-unfoldings -flate-dmd-anal -Wredundant-constraints -Werror -threaded -fprint-potential-instances
   build-depends:
       aeson
     , base >=4.7 && <5

@@ -52,7 +52,7 @@ import Control.Monad.Layer (MonadLayer(..))
 import Analysis.Monad.Partition (MonadPartition (..))
 import Analysis.Actors.Monad (MonadActorLocal (..))
 import qualified Domain.Actor
-import Domain.Scheme.Store (StoreVal (..), SchemeAdr (..))
+import Domain.Scheme.Store (StoreVal (..), SchemeAdr (..), varVals)
 import Analysis.Monad.Allocation (AllocM (..))
 import Control.Monad.IO.Class (MonadIO)
 import Analysis.Monad.ComponentTracking (ComponentTrackingT)
@@ -387,10 +387,12 @@ instance Monad m => MonadPartition Partition (IntraT m) where
     get = return Lattice.bottom
 
 -- | Adds the message context based on information in the monad
-addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m) => MsgPayload ->  (ProcT (IntraT m) Msg)
-addMessageCtx payload = message payload <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
+addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, StoreM ActorAdr (StoreVal ActorVlu) m) => MsgPayload ->  (ProcT (IntraT m) Msg)
+addMessageCtx payload = do 
+    vars <- SCV.traceSymbolicVariables @ActorAdr varVals payload
+    message payload . SCV.restrictPC vars <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
 
-instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
+instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, StoreM ActorAdr (StoreVal ActorVlu) m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
   send ref v = do
       v' <- addMessageCtx v
       liftIntraT $ liftInterTurnT $ do
