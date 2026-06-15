@@ -1,0 +1,10 @@
+original;translated;analysisResult
+programs/test/actor-cc/dns.scm;programs/test/translated/dns.scm;FAIL
+programs/test/actor-cc/request-reply.rkt;programs/test/translated/request-reply.scm;output-benchmarks/2026-06-15T12:30:24.525734763+02:00/programs_test_actor-cc_request-reply.rkt
+programs/test/actor-cc/bookreview.scm;programs/test/translated/bookreview.scm;FAIL
+programs/test/actor-cc/savina-phil.scm;programs/test/translated/savina-phil.scm;output-benchmarks/2026-06-15T12:30:24.525734763+02:00/programs_test_actor-cc_savina-phil.scm
+programs/test/actor-cc/correlation-identifier.rkt;programs/test/translated/correlation-identifier.rkt;output-benchmarks/2026-06-15T12:30:24.525734763+02:00/programs_test_actor-cc_correlation-identifier.rkt
+programs/test/actor-cc/ping.rkt;programs/test/translated/ping.rkt;FAIL
+programs/test/actor-cc/cdn.scm;programs/test/translated/cdn.scm;FAIL
+programs/test/actor-cc/forward-flow.rkt;programs/test/translated/forward-flow.scm;output-benchmarks/2026-06-15T12:30:24.525734763+02:00/programs_test_actor-cc_forward-flow.rkt
+programs/test/actor-cc/forward-flow.fail.rkt;programs/test/translated/forward-flow.fail.rkt;output-benchmarks/2026-06-15T12:30:24.525734763+02:00/programs_test_actor-cc_forward-flow.fail.rkt

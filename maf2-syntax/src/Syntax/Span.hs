@@ -52,6 +52,7 @@ class SpanOf s where
    spanOf :: s -> Span
 
 
+pattern Span :: String -> Position -> Position -> ESpan ()
 pattern Span f s e <- ESpan f s e ()
    where Span f s e = ESpan f s e ()
 

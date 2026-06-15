@@ -79,7 +79,7 @@ instance {-# OVERLAPPING #-} StringLattice (SchemeString (CP String)) (SymActorV
   stringLt = undefined
   toNumber = undefined
   makeString = undefined
-  topString = undefined
+  topString = SchemeString Top
    -- length = (length @_ @v @v @v . sconst) >=> (return . mkLeft . SchemeTopLifted . TL.Value . Domain.inject)
    -- append s1 s2 = SchemeString <$> append (sconst s1) (sconst s2)
    -- ref s i = case (getTopLifted $ leftValue i) of 

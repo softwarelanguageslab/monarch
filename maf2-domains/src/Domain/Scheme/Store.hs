@@ -33,6 +33,7 @@ import Syntax.Span
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Domain.Address (AddressWithCtx (..))
+import qualified Syntax.Span as Span
 
 data SchemeAdr e ctx = VarAdr !Ide !ctx   --  ^ variables
                      | PtrAdr !e   !ctx   --  heap allocated values
@@ -57,8 +58,8 @@ instance (SpanOf e) => SpanOf (SchemeAdr e ctx) where
   spanOf (VarAdr i _) = spanOf i
   spanOf (PtrAdr e _) = spanOf e
   -- TODO: proper implementation of spanOf for these addresses
-  spanOf (PrrAdr s) = undefined
-  spanOf TopAdr = undefined
+  spanOf (PrrAdr _)  = Span.dummySpan
+  spanOf TopAdr      = Span.dummySpan
 
 
 instance TopLattice (SchemeAdr e ctx) where
