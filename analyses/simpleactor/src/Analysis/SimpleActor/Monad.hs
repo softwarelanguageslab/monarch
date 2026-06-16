@@ -201,7 +201,7 @@ class Monad m => MonadMailbox e ref v ctx m | m -> e ref v ctx where
     -- in the mailbox.
     select :: Exp
             -> Env v  -- ^ lexical environment 
-            -> Map String (Adr v) -- ^ dynamic environment
+            -> Map String (VaAdr v) -- ^ dynamic environment
             -> m a
     -- | Return the first messages in the mailbox and their corresponding updated mailboxes 
     recv :: m (Set (Message v ctx, PMB e (Message v ctx)))
@@ -225,7 +225,7 @@ recvMsg f =
 type MonadActor v k m =
   (MonadSpawn v k m,
    MonadActorLocal v m,
-   MonadDynamic (Adr v) m)
+   MonadDynamic (VaAdr v) m)
 
 ------------------------------------------------------------
 -- Layered instances
@@ -280,8 +280,7 @@ type ErrorDomain e = (
 -- | Minimal set of constraints needed to evaluate the primitives
 type PrimM' e v k mk m =
   ( MonadJoinable m,
-    EnvM m (Adr v) (Env v),
-    AllocM m Ide (Adr v),
+    EnvM m (VaAdr v) (Env v),
     MonadMailbox e (ARef v) v mk m,
     MonadActor v k m,
     CtxM m k,
@@ -333,7 +332,7 @@ newtype DynamicBindingT' adr m a = DynamicBindingT (ReaderT (Map String adr) m a
                               deriving (Applicative, Monad, Functor, MonadTrans, MonadTransControl, MonadLayer, MonadJoinable, MonadCache)
 
 -- | Dynamic binding monad
-type DynamicBindingT v m a = DynamicBindingT' (Adr v) m a
+type DynamicBindingT v m a = DynamicBindingT' (VaAdr v) m a
 
 instance (Monad m) => MonadDynamic adr (DynamicBindingT' adr m) where
    lookupDynamic vr = DynamicBindingT $ asks (fromMaybe (error $ "dynamic binding " ++ show vr ++ " not found") . Map.lookup vr)

@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, PatternSynonyms, FlexibleInstances, ConstraintKinds, PolyKinds, StandaloneKindSignatures, DataKinds, ScopedTypeVariables #-}
 {-# LANGUAGE AllowAmbiguousTypes, DeriveGeneric #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Domain.Scheme.Modular(
    -- * Constraints
@@ -41,7 +42,6 @@ import GHC.Generics
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
 import Data.Maybe (fromMaybe)
-import Control.Applicative (Applicative(liftA2))
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Control.Monad ((>=>))
@@ -50,25 +50,16 @@ import Data.Kind
 import Data.Singletons
 import Data.Singletons.Sigma
 
-import Data.TypeLevel.HMap ((::->), HMap, withC_, KeyIs1, ForAll, AtKey1, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, MapWithAt, BindingFrom)
+import Data.TypeLevel.HMap ((::->), HMap, withC_, ForAll, AtKey1, Assoc, genHKeys, All, ForAllOf, Dict(..), HMapKey, (:->), Const, MapWithAt, BindingFrom)
 import qualified Data.TypeLevel.HMap as HMap
 import Data.List (intercalate)
 import Text.Printf (printf)
 import Lattice.CSetLattice (CSet (CSet))
 import qualified Lattice.CSetLattice as CSet
-import Debug.Trace
 import Syntax.Span (spanOf, SpanOf)
 import qualified Data.List as List
 import Data.Bifunctor
 import Data.TypeLevel.AssocList (KeyIs)
-
-maybeSingle :: Maybe a -> Set a
-maybeSingle Nothing = Set.empty
-maybeSingle (Just v) = Set.singleton v
-
-(∪) :: Ord a => Set a -> Set a -> Set a
-a ∪ b = Set.union a b
-infixl 0 ∪
 
 ----------------------------------------------
 -- Lattice configuration
@@ -83,7 +74,6 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | BoolConf   -- ^ abstraction for booleans
                    | EnvConf    -- ^ abstraction for environments
                    | ExpConf    -- ^ concrete type of expressions
-                   | AdrConf    -- ^ type of pointers
                    | StrConf    -- ^ abstraction for strings
                    -- λα
                    | PidConf    -- ^ type of actor references
@@ -93,6 +83,11 @@ data SchemeConfKey = RealConf   -- ^ abstraction for real numbers
                    | ComConf    -- ^ abstraction for communication contracts
                    | PMeConf    -- ^ pointer to message contracts
                    | FlaConf    -- ^ pointer to flat contracts
+                   -- Addresses
+                   | VaAdrConf    -- ^ type of addresses to variables
+                   | VeAdrConf    -- ^ type of addresses to vectors
+                   | PaAdrConf    -- ^ type of addresses to pairs 
+                   | StAdrConf    -- ^ type of addresses to strings
 
 ----------------------------------------------
 -- Modular Scheme lattice
@@ -134,9 +129,9 @@ type Values m = '[
    IntKey  ::-> Assoc IntConf m,
    CharKey ::-> Assoc CharConf m,
    BoolKey ::-> Assoc BoolConf m,
-   PaiKey  ::-> PointerSet (Assoc AdrConf m),
-   VecKey  ::-> PointerSet (Assoc AdrConf m),
-   StrKey  ::-> PointerSet (Assoc AdrConf m),
+   PaiKey  ::-> CastedPointerSet (Assoc PaAdrConf m),
+   VecKey  ::-> CastedPointerSet (Assoc VeAdrConf m),
+   StrKey  ::-> CastedPointerSet (Assoc StAdrConf m),
    UnspKey ::-> (),
    NilKey  ::-> (),
    CloKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
@@ -188,7 +183,10 @@ type IsSchemeValue m =
     KeyIs (IntDomainWith (Assoc BoolKey (Values m)) (StrDom (SchemeVal m)) (Assoc RealKey (Values m))) (Values m) IntKey,
     KeyIs (CharDomainWith (Assoc IntKey (Values m))) (Values m) CharKey,
     -- addresses
-    Address (Assoc AdrConf m))
+    Address (Assoc VaAdrConf m),
+    Address (Assoc PaAdrConf m), 
+    Address (Assoc VeAdrConf m), 
+    Address (Assoc StAdrConf m))
 
 -- Eq instance
 deriving instance (HMapKey (Values m), ForAll SchemeKey (AtKey1 Eq (Values m))) => Eq (SchemeVal m)
@@ -290,7 +288,7 @@ instance (IsSchemeValue m) => BoolLattice (SchemeVal m) where
 
 -- | An instance for the character domain assuming that our underlying representation
 -- for integers is shared with the underlying character domain that we are using.
-instance (IsSchemeValue m, CharLattice (Assoc CharKey (Values m)) (Assoc IntKey (Values m))) => CharLattice (SchemeVal m) (SchemeVal m) where
+instance (IsSchemeValue m) => CharLattice (SchemeVal m) (SchemeVal m) where
    downcase  = chars' (downcase @_ @(Assoc IntKey (Values m)) >=> (return . injectChar))
    upcase    = chars' ( upcase @_ @(Assoc IntKey (Values m))  >=> (return . injectChar))
    charToInt = chars' (charToInt >=> (return . injectInt))
@@ -380,6 +378,8 @@ instance (IsSchemeValue m, s ~ StrDom (SchemeVal m)) => IntLattice (SchemeVal m)
    quotient  = coerceNum (quotient @_ @(BooOf m) @(StrOf m) @(ReaOf m))  typeErrorOp
    modulo    = coerceNum (modulo @_ @(BooOf m) @(StrOf m) @(ReaOf m))    typeErrorOp
    remainder = coerceNum (remainder @_ @(BooOf m) @(StrOf m) @(ReaOf m)) typeErrorOp
+   inc = undefined
+   toString = undefined
 
 ------------------------------------------------------------
 -- Real domain
@@ -393,6 +393,7 @@ coerce1R' f = mjoins . HMap.mapList select . getSchemeVal
    where select :: forall (kt :: SchemeKey) . Sing kt -> Assoc kt (Values m) -> schemeM (SchemeVal m)
          select SIntKey v = SchemeVal . HMap.singleton @RealKey <$> (toReal @_ @(BooOf m) @(StrOf m) v >>= f)
          select SRealKey v = SchemeVal . HMap.singleton @RealKey <$> f v
+         select _ _ = error $ "unspected type"
 
 instance (IsSchemeValue m) => RealLattice (SchemeVal m) (SchemeVal m) (SchemeVal m) where
    toInt = mjoins . HMap.mapList select . getSchemeVal
@@ -418,27 +419,30 @@ instance (IsSchemeValue m) => RealLattice (SchemeVal m) (SchemeVal m) (SchemeVal
 ------------------------------------------------------------
 
 instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
-   type Adr  (SchemeVal m) = Assoc AdrConf m
+   type VaAdr  (SchemeVal m) = Assoc VaAdrConf m
+   type PaAdr  (SchemeVal m) = Assoc PaAdrConf m
+   type VeAdr  (SchemeVal m) = Assoc VeAdrConf m 
+   type StAdr  (SchemeVal m) = Assoc StAdrConf m
    type Env  (SchemeVal m) = Assoc EnvConf m
    type Exp  (SchemeVal m) = Assoc ExpConf m
 
    -- Pointer injection
-   pptr = SchemeVal . HMap.singleton @PaiKey . PointerSet . Set.singleton
-   vptr = SchemeVal . HMap.singleton @VecKey . PointerSet . Set.singleton
-   sptr = SchemeVal . HMap.singleton @StrKey . PointerSet . Set.singleton
+   pptr = SchemeVal . HMap.singleton @PaiKey . CastedPointerSet . Set.singleton
+   vptr = SchemeVal . HMap.singleton @VecKey . CastedPointerSet . Set.singleton
+   sptr = SchemeVal . HMap.singleton @StrKey . CastedPointerSet . Set.singleton
 
    -- Pointer extraction
    pptrs = mjoins . HMap.mapList select . getSchemeVal
-      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc AdrConf m))
-            select SPaiKey p = return (getPointerSet p)
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc PaAdrConf m))
+            select SPaiKey p = return (getCastedPointerSet p)
             select _ _ = escape WrongType
    vptrs = mjoins . HMap.mapList select . getSchemeVal
-      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc AdrConf m))
-            select SVecKey p = return (getPointerSet p)
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc VeAdrConf m))
+            select SVecKey p = return (getCastedPointerSet p)
             select _ _ = escape WrongType
    sptrs = mjoins . HMap.mapList select . getSchemeVal
-      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc AdrConf m))
-            select SStrKey p = return (getPointerSet p)
+      where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc StAdrConf m))
+            select SStrKey p = return (getCastedPointerSet p)
             select _ _ = escape WrongType
 
 
@@ -488,14 +492,17 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
 
 
 -- A generic instance for the Scheme domain, parametrized by their sublattices
-type ModularSchemeValue r i c b adr exp env = SchemeVal '[
+type ModularSchemeValue r i c b varadr paiadr vecadr stradr exp env = SchemeVal '[
       RealConf ::-> r,
       IntConf  ::-> i,
       CharConf ::-> c,
       BoolConf ::-> b,
       EnvConf  ::-> env,
       ExpConf  ::-> exp,
-      AdrConf  ::-> adr
+      VaAdrConf  ::-> varadr,
+      PaAdrConf  ::-> paiadr, 
+      VeAdrConf  ::-> vecadr,
+      StAdrConf  ::-> stradr
    ]
 
 ------------------------------------------------------------
@@ -525,6 +532,10 @@ instance (IsSchemeValue m, IsSchemeString s m) => StringLattice (SchemeString s)
    toNumber  = (toNumber @_ @(Assoc BoolKey (Values m)) @_ @(Assoc CharKey (Values m)) . sconst) >=> (return . SchemeVal . HMap.singleton @IntKey)
    topString = SchemeString (topString @_ @(Assoc BoolKey (Values m)) @(Assoc IntKey (Values m)) @(Assoc CharKey (Values m)))
    -- TODO
+   set = undefined
+   makeString = undefined
+
+   -- TODO
    -- set s i c = SchemeString <$> set @_ @(Assoc BoolKey (Values m)) @_ @(Assoc CharKey (Values m)) (sconst s) i c
    -- makeString i c = SchemeString <$> makeString @_ @(Assoc BoolKey (Values m)) @_ @(Assoc CharKey (Values m)) i c
 instance (StringDomain s (CP Bool) (CP Integer) (CP Char)) => StringLattice (SchemeString s) (CP Bool) (CP Integer) (CP Char) where
@@ -548,8 +559,8 @@ instance (IsSchemeValue m,
           Ord (Assoc ExpConf m),
           Ord (Assoc EnvConf m),
           Ord (Assoc PidConf m),
+          ForAllAddresses (AddressWithCtx ctx) (SchemeVal m),
           AddressWithCtx ctx (Assoc PidConf m),
-          AddressWithCtx ctx (Assoc AdrConf m),
           AddressWithCtx ctx (Assoc EnvConf m)) => AddressWithCtx ctx (SchemeVal m) where
 
    replaceCtx ctx' = joins . HMap.mapList select . getSchemeVal
@@ -560,8 +571,8 @@ instance (IsSchemeValue m,
              select SCloKey clss = SchemeVal $ HMap.singleton @CloKey $ Set.map (second (replaceCtx ctx')) clss
              select SPidKey pids = SchemeVal $ HMap.singleton @PidKey $ Set.map (replaceCtx ctx') pids
              select k v = SchemeVal $ HMap.singletonWithSing k v
-             removePtrsCtx :: PointerSet (Assoc AdrConf m) -> PointerSet (Assoc AdrConf m)
-             removePtrsCtx = PointerSet . Set.map (replaceCtx ctx') . getPointerSet
+             removePtrsCtx :: (Ord adr, AddressWithCtx ctx adr) => CastedPointerSet adr -> CastedPointerSet adr
+             removePtrsCtx = CastedPointerSet . Set.map (replaceCtx ctx') . getCastedPointerSet
 
 ------------------------------------------------------------
 -- Subdomain extraction

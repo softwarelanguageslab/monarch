@@ -56,7 +56,6 @@ import Lattice (Joinable)
 import Control.Monad.DomainError (DomainError)
 import qualified Domain.Core.PairDomain.Class as Pair
 import Analysis.Monad.Store (StoreM)
-import Domain.Scheme.Store (StoreVal)
 import Control.Monad.Reader
 import qualified Syntax.Ide as Ide
 import Data.Foldable (foldrM)
@@ -133,14 +132,14 @@ eval'' rec (Letrec bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    mapM_ (flip logCoverage (return ()) . fst) bds
    let bds' = zip (map (name . fst) bds) ads
-   mapM_ (\(ex, adr) -> writeVar adr =<< withExtendedEnv bds' (eval' rec ex)) (zip (map snd bds) ads)
+   mapM_ (\(ex, adr) -> writeVar @v adr =<< withExtendedEnv bds' (eval' rec ex)) (zip (map snd bds) ads)
    withExtendedEnv bds' (eval' rec e2)
 eval'' rec (Parametrize bds e2 _) = do
    ads <- mapM (alloc . fst) bds
    mapM_ (flip logCoverage (return ()) . fst) bds
    let bds' = zip (map (name . fst) bds) ads
    vs <- mapM (eval' rec . snd) bds
-   mapM_ (uncurry writeVar) (zip ads vs)
+   mapM_ (uncurry (writeVar @v)) (zip ads vs)
    withExtendedDynamic bds' (eval' rec e2)
 eval'' rec (Begin exs _) =
    if null exs
@@ -156,7 +155,7 @@ eval'' _ (DynVar (Ide x _)) =
    lookupDynamic x >>= lookupVar >>= showIfBot (show x ++ " dyn not in store")
 eval'' _ (Self _) = aref <$> getSelf @v
 eval'' rec (Blame e contract loc) = do
-   -- liftIO (putStrLn $ "blame error for " ++ show e)
+   liftIO (putStrLn $ "blame error for " ++ show e)
    party <- eval' rec e 
    recordBlame loc e party contract
    escape $ BlameError (show party) loc
@@ -200,12 +199,12 @@ trySend ref msg = do
           (escape NotAnActorReference)
 
 -- TODO: variable number of arguments
-apply :: EvalM e v k km m => (Cmp -> m v) -> Exp -> [Exp] -> v -> [v] -> m v
+apply :: forall e v k km m . EvalM e v k km m => (Cmp -> m v) -> Exp -> [Exp] -> v -> [v] -> m v
 apply rec e es v vs = choices
    [(isClo v, mjoinMap (\env -> applyClosure e es env rec vs) (clos v)),
     (isPrim v, mjoinMap (\nam -> applyPrimitive rec nam e vs) (prims v))]
    (escape (NotAFunction (spanOf e)))
-applyClosure :: EvalM e v k km m => Exp -> [Exp] -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
+applyClosure ::forall e v k km m . EvalM e v k km m => Exp -> [Exp] -> (Exp, Env v) -> (Cmp -> m v) -> [v] -> m v
 applyClosure e es (lam@(Lam prs prz _ _), env) rec vs
   | length es /= length vs = 
         error "invariant violated: number of operands in the application must equal the number of evaluated operand values"
@@ -215,11 +214,11 @@ applyClosure e es (lam@(Lam prs prz _ _), env) rec vs
             -- in case the function supports a variable number of arguments
             listArgv <- allocList (drop (length prs) es) (drop (length prs) vs)
             przAdr <- maybe (return Nothing) (fmap Just . alloc) prz
-            when (isJust przAdr) (writeVar (fromJust przAdr) listArgv)
+            when (isJust przAdr) (writeVar @v (fromJust przAdr) listArgv)
             let varBdn = maybe [] List.singleton $ liftA2 (,) (fmap name prz) przAdr
             -- regular arguments
             let bds = zip (map name prs) ads ++ varBdn
-            mapM_ (uncurry writeVar) (zip ads vs)
+            mapM_ (uncurry (writeVar @v)) (zip ads vs)
             -- evaluate the body of the applied function
             withEnv (const env) (withExtendedEnv bds (rec $ FuncBdy lam))
 applyClosure _ _ _  _ _ = error "invalid closure"
@@ -230,10 +229,10 @@ applyPrimitive rec prm expr ops =
 
 type Mapping v = Map Ide v
 
-allocMapping :: EvalM e v k km m => Map Ide v -> m (Env v)
+allocMapping :: forall e v k km m . EvalM e v k km m => Map Ide v -> m (Env v)
 allocMapping bds = do
    env <- getEnv
-   foldM (\env' (ide@(Ide nam _), v) -> do { adr <- alloc ide ; writeVar adr v ; return (extend nam adr env') }) env (Map.toList bds)
+   foldM (\env' (ide@(Ide nam _), v) -> do { adr <- alloc ide ; writeVar @v adr v ; return (extend nam adr env') }) env (Map.toList bds)
 
 -- | Allocates the list of values in the second argument as a SimpleActor list 
 -- using the list in the first argument as allocation sites.
@@ -259,9 +258,13 @@ type MatchM v m = (
    MonadBottom m,
    Domain (Esc m) DomainError,
    Domain (Esc m) Error,
-   StoreM (Adr v) (StoreVal v) m,
+   StoreM (VaAdr v) v m,
+   StoreM (PaAdr v) (PaiDom v) m,
+   StoreM (StAdr v) (StrDom v) m,
    MonadChoice v m,
-   AllocM m (DomainClass.Exp v) (Adr v),
+   AllocM m Ide (VaAdr v),
+   AllocM m Exp (PaAdr v),
+   AllocM m Exp (StAdr v),
    DomainClass.Exp v ~ Exp,
    -- Value domain constraints
    Joinable v,
@@ -281,7 +284,7 @@ match (ValuePat lit s) v = do
           (return Map.empty)
           (escape MatchError)
 match (PairPat pat1 pat2) v = do
-       choice (isPaiPtr v) (pptrs v >>= derefPai (const matchPair)) (escape MatchError)
+       choice (isPaiPtr v) (pptrs v >>= derefPai @v (const matchPair)) (escape MatchError)
    where matchPair vp =
             Map.unionWith (\v1' v2' -> if v1' == v2' then v1' else error "cannot map same variable to different values")
                       <$> match pat1 (car vp)
@@ -292,14 +295,14 @@ match (AliasPat ide pat) v =
              <$> match (IdePat ide) v
              <*> match pat v
 
-injectLit :: MatchM v m => Lit -> DomainClass.Exp v -> m v
+injectLit :: forall v m . MatchM v m => Lit -> DomainClass.Exp v -> m v
 injectLit (Boolean b)    = const $ return $ inject b
 injectLit (Symbol s)     = const $ return $ symbol s
 injectLit (Num n)        = const $ return $ inject n
 injectLit (Character c)  = const $ return $ inject c
 injectLit (Real r)       = const $ return $ inject r
 injectLit Nil            = const $ return nil
-injectLit (String s)     = flip stoStr (inject s)
+injectLit (String s)     = flip (stoStr @v) (inject s)
 
 
 ------------------------------------------------------------
@@ -360,7 +363,7 @@ untilJust :: [a -> Maybe b] -> a -> Maybe b
 untilJust fs a = foldl (`maybe` Just) Nothing (fmap ($ a) fs)
 
 -- | Compute a store containing the set of primitives
-initialSto :: (Store s (Adr v) v, SchemeDomain v) => [String] -> (String -> Adr v) ->  s
+initialSto :: (Store s (VaAdr v) v, SchemeDomain v) => [String] -> (String -> VaAdr v) ->  s
 initialSto prms allocPrm = Store.from $ fmap (\nam -> (allocPrm nam, prim nam)) prms
 
 ------------------------------------------------------------

@@ -66,11 +66,11 @@ entrypoint InputOptions { .. } OutputDirOptions { .. } doBenchmark = do
 
 analyzeAst :: Exp -> String -> IO ()
 analyzeAst expr outDir = do
-    output <- Fixpoint.analyzeIO expr
+    (_, state, _) <- Fixpoint.analyzeIO expr
     -- let sto    = Fixpoint._store $ snd output
-    let blames = Fixpoint._blames $ snd output
+    let blames = Fixpoint._blames $ state
 
-    let trace = reverse $ map Fixpoint._mbs $ Fixpoint._trace $ snd output
+    let trace = reverse $ map Fixpoint._mbs $ Fixpoint._trace $ state
     -- putStrLn $ Store.printMap show (const True) sto
     putStrLn $ show blames
     renderTraceMailboxesToDot outDir trace

@@ -29,7 +29,6 @@ library
       Analysis.SimpleActor.ErlangPrimitives
       Analysis.SimpleActor.Fixpoint
       Analysis.SimpleActor.Fixpoint.Common
-      Analysis.SimpleActor.Infer
       Analysis.SimpleActor.Infer.Common
       Analysis.SimpleActor.Infer.Domain
       Analysis.SimpleActor.Infer.Graph

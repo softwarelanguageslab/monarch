@@ -37,7 +37,6 @@ import Control.DeepSeq
 import Lattice.Trace (Trace (..))
 import Domain.Address (AddressWithCtx (..))
 import Domain.Scheme.Modular (SchemeString (..))
-import Domain.Scheme.Derived.Top (SchemeTopLifted)
 
 ------------------------------------------------------------
 -- Declaration
@@ -232,7 +231,10 @@ instance (-- both subdomains should talk about the same environment
           -- they will both point to the combined
           -- value and not their seperate values,
           -- making integration easier.
-          Adr l  ~ Adr r,
+          VaAdr l  ~ VaAdr r,
+          PaAdr l  ~ PaAdr r,
+          VeAdr l  ~ VeAdr r,
+          StAdr l  ~ StAdr r,
           StrDom l ~ StrDom r,
           StrDom l ~ StrDom (SchemePairedValue l r),
           -- set-specific constraints
@@ -240,7 +242,10 @@ instance (-- both subdomains should talk about the same environment
           Ord (Env l)
    ) => SchemeDomain (SchemePairedValue l r) where
 
-   type Adr (SchemePairedValue l r)  = Adr l
+   type VaAdr (SchemePairedValue l r)  = VaAdr l
+   type PaAdr (SchemePairedValue l r)  = PaAdr l
+   type StAdr (SchemePairedValue l r)  = StAdr l
+   type VeAdr (SchemePairedValue l r)  = VeAdr l
 
    type Env (SchemePairedValue l r) = Env l
    type Exp (SchemePairedValue l r) = Exp l

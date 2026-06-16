@@ -170,6 +170,7 @@ library
     , extra
     , language-python
     , layers-mtl
+    , lens
     , maf2-syntax
     , mtl
     , singletons
@@ -228,6 +229,7 @@ test-suite maf2-domains-test
     , hspec-core
     , language-python
     , layers-mtl
+    , lens
     , maf2-domains
     , maf2-syntax
     , mtl

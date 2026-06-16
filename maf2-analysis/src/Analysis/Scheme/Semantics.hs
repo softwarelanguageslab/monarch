@@ -41,27 +41,27 @@ eval' recur e@(App op opr  _)    = evalApp recur e op opr
 eval' _ (Debug msg)          = trace msg $ return nil
 eval' _ e                    = error $ "Unrecognized expression" ++ show e
 
-evalSet :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> Ide -> Exp -> m v 
+evalSet :: forall v m . (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> Ide -> Exp -> m v 
 evalSet recur x e = do 
    value <- eval' recur e 
    adr <- lookupEnv (name x)
-   updateVar adr value
+   updateVar @v adr value
    return value -- TODO: return "void"?
 
-evalLet :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> Exp -> m v
+evalLet :: forall v m . (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> Exp -> m v
 evalLet recur bds bdy = do
    vlus <- mapM (eval' recur) eps
    adrs <- mapM alloc vrs
-   mapM_ (uncurry writeVar) (zip adrs vlus)
+   mapM_ (uncurry (writeVar @v)) (zip adrs vlus)
    withExtendedEnv (zip (map name vrs) adrs) (eval' recur bdy)
    where (vrs, eps) = unzip bds
 
-evalLetStar :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> Exp -> m v
+evalLetStar :: forall v m . (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> Exp -> m v
 evalLetStar recur [] bdy = eval' recur bdy
 evalLetStar recur ((nam, ex) : rst) bdy = do
    vlu <- eval' recur ex
    adr <- alloc nam
-   _   <- writeVar adr vlu
+   _   <- writeVar @v adr vlu
    withExtendedEnv [(name nam, adr)] (evalLetStar recur rst bdy)
 
 evalLetRec :: forall v m . (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> [(Ide, Exp)] -> Exp -> m v
@@ -70,7 +70,7 @@ evalLetRec recur bds bdy = do
    -- mapM_ (uncurry writeVar . (, unsp)) adrs
    withExtendedEnv (zip (map name vrs) adrs) $ do
       vlus <- mapM (eval' recur) eps
-      mapM_ (uncurry writeVar) (zip adrs vlus)
+      mapM_ (uncurry (writeVar @v)) (zip adrs vlus)
       eval' recur bdy
    where (vrs, eps) = unzip bds
 
@@ -84,7 +84,7 @@ evalLetrecStar recur bds bdy = do
       eval' recur bdy
    where evalBinding adr (_, exp) = do
             vlu <- eval' recur exp
-            writeVar adr vlu
+            writeVar @v adr vlu
             return vlu
 
 evalApp :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> Exp -> Exp -> [Exp] -> m v
@@ -94,11 +94,11 @@ evalApp recur app op opr =
 applyFun :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> Exp -> v -> [v] -> m v
 applyFun recur app op ags = withProc (either (applyPrim app ags) (\clo -> applyClo recur clo ags)) op
 
-applyClo :: (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> (Exp, Env v) -> [v] -> m v
+applyClo :: forall v m . (SchemeDomain v, SchemeM m v) => (Exp -> m v) -> (Exp, Env v) -> [v] -> m v
 applyClo recur (Lam prs bdy _, lex) ags = do
    withEnv (const lex) $ do
       adrs <- mapM alloc prs
-      zipWithM_ writeVar adrs ags
+      zipWithM_ (writeVar @v) adrs ags
       withExtendedEnv (zip (map name prs) adrs) $ recur bdy
 applyClo _ _ _ = error "invalid closure"
 

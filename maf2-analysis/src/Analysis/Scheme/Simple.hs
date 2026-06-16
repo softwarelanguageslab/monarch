@@ -5,15 +5,15 @@ module Analysis.Scheme.Simple(VariableAdr, V, runAnalysis, cpAnalyze) where
 
 import Syntax.Scheme
 import Analysis.Scheme
-import Domain.Scheme hiding (Exp, Adr)
+import Domain.Scheme hiding (Exp)
 import Data.Maybe
 import Prelude hiding (exp)
 
 -- | Alias for values
-type V = CPValue Adr Exp
+type V = CPValue Exp [Exp]
 
 -- | Alias for address to variables
-type VariableAdr = Adr
+type VariableAdr = VarAdr
 
 cpAnalyze :: Exp -> AnlRes V 
 cpAnalyze = analyze

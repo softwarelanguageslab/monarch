@@ -22,7 +22,7 @@ import Analysis.SimpleActor.Monad
       MonadSpawn(..),
       MonadDynamic(..),
       MonadFresh(..),
-      message, MonadBlame(..),
+      MonadBlame(..),
 
       )
 import Control.Monad.Reader (ReaderT, MonadReader (..))
@@ -37,12 +37,10 @@ import Analysis.Monad.Environment (EnvM (..))
 import Analysis.Monad.Cache (CacheT, MonadCache (..))
 import Analysis.Monad.Map (MapM (..))
 import Analysis.Monad.Join (SetNonDetT)
-import Analysis.Monad.Store (StoreM)
-import qualified Analysis.Store as AStore
-import Analysis.Monad (StoreM(..), WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis, MonadDependencyTrigger)
+import Analysis.Monad (WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis)
 import qualified Lattice.Class as Lattice
-import Data.Maybe (fromMaybe, isJust)
-import Analysis.Monad.DependencyTracking (DependencyTrackingM (..), MonadDependencyTrigger (trigger))
+import Data.Maybe (fromMaybe)
+import Analysis.Monad.DependencyTracking (DependencyTrackingT, runWithDependencyTracking)
 import qualified Data.Set as Set
 import Analysis.Monad.Fix (lfp, runFixT)
 import qualified Data.HashMap.Lazy as HashMap
@@ -52,15 +50,14 @@ import Control.Monad.Layer (MonadLayer(..))
 import Analysis.Monad.Partition (MonadPartition (..))
 import Analysis.Actors.Monad (MonadActorLocal (..))
 import qualified Domain.Actor
-import Domain.Scheme.Store (StoreVal (..), SchemeAdr (..), varVals)
 import Analysis.Monad.Allocation (AllocM (..))
 import Control.Monad.IO.Class (MonadIO)
 import Analysis.Monad.ComponentTracking (ComponentTrackingT)
 import Data.Bifunctor
 import qualified Analysis.Fixpoint as Fix
 import Domain.Actor (Pid(EntryPid))
-import Analysis.Monad.WorkList ( runWithWorkList, WorkListM )
-import Data.Tuple.Extra (dupe, (<+>))
+import Analysis.Monad.WorkList ( runWithWorkList )
+import Data.Tuple.Extra
 import qualified Analysis.Actors.Mailbox.Partitioned as MB
 import Data.Functor
 import Control.Monad ((>=>))
@@ -77,7 +74,6 @@ import Domain.Core.AbstractCount (AbstractCount)
 import Analysis.Monad.AbstractCount
 import Solver.Z3 (runZ3SolverWithPrelude)
 import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
-import qualified Analysis.Monad.WorkList as WL
 import qualified Analysis.Monad.Map as MapM
 import qualified Analysis.ASE.SymbolicVariable as ASE
 import qualified Analysis.ASE.PC as ASE
@@ -92,12 +88,15 @@ import Domain.Core.StringDomain.TopLifted ()
 -- import qualified RIO as Debug
 import qualified Control.Monad.State as State
 import qualified RIO as Debug
+import qualified Domain.Scheme.Class as Scheme
+import Analysis.Scheme.Monad (SchemeStoreT, runSchemeStoreT)
+import qualified Domain.Scheme.Store as Store
 
 ------------------------------------------------------------
 -- Shorthands
 ------------------------------------------------------------
 
-type Beh = (Exp, ActorEnv, Map String ActorVarAdr)
+type Beh = (Exp, ActorEnv, Map String (Store.VarAdr K))
 type Err = Set ActorError
 
 ------------------------------------------------------------
@@ -127,7 +126,7 @@ data Ctx = Ctx {
         -- | Lexical environment
         _env :: ActorEnv,
         -- | Dynamic bindings 
-        _dyn :: Map String ActorVarAdr,
+        _dyn :: Map String (Scheme.VaAdr ActorVlu),
         -- | Self
         _self :: ActorRef,
         -- | Additional context, for instance for k-cfa
@@ -274,22 +273,6 @@ liftInterTurnT = upperM . upperM . upperM. upperM
 
 ------------------------------------------------------------
 
--- | Components in the intra-actor fixpoint can depend on the results 
--- of other components (i.e., calls) and address in the store.  
-data Dep = StoreDep ActorAdr | CallDep ProcKey deriving (Ord, Eq, Show, Generic)
-instance NFData Dep
-$(makePrisms ''Dep)
-
--- | Type class that holds whenever a type 'dep' can be projected into a 'Dep'.
-class DepL dep where
-    depL :: Prism' Dep dep
-instance DepL ActorAdr where
-    depL = _StoreDep
-instance {-# OVERLAPPABLE #-} (k ~ ProcKey) => DepL k where
-    depL = _CallDep
-
-------------------------------------------------------------
-
 -- | Inter-actor fixpoint: monadic context used for analyzing a single 
 -- actor system. 
 type SystemT m = (
@@ -308,11 +291,11 @@ data BlameRecord = BlameRecord {
 
 instance NFData BlameRecord
 
--- | Global analysis state (store + bookkeeping for fixpoints)
+-- | Global analysis state: the call-result cache plus bookkeeping (trace and
+-- recorded blames). Dependency tracking lives in dedicated
+-- 'DependencyTrackingT' layers, see 'GlobalT'.
 data AnalysisState = AnalysisState {
         _cache  :: Map ProcKey ProcVal,
-        _store  :: Map ActorAdr (StoreVal ActorVlu),
-        _deps   :: Map Dep (Set ProcKey),
         _trace  :: [System],
         _blames :: Set BlameRecord
     } deriving (Ord, Eq, Show, Generic)
@@ -325,10 +308,23 @@ $(makeLenses ''AnalysisState)
 ------------------------------------------------------------
 
 -- | Monad global to the analysis
+--
+-- Dependency tracking is delegated to dedicated 'DependencyTrackingT' layers,
+-- one per kind of dependency: call dependencies (keyed by 'ProcKey') and one
+-- per store-address type (the multi-store keeps variables, pairs, vectors and
+-- strings in separate maps). This mirrors the layering used in
+-- 'Analysis.Scheme' and keeps the 'StateT AnalysisState' layer responsible
+-- only for the call cache, the trace, and recorded blames.
 type GlobalT m = (
         StateT AnalysisState  (
+        SchemeStoreT Exp K ActorVlu (
         ComponentTrackingT ProcKey (
-        WorkListT [ProcKey] m)))
+        DependencyTrackingT ProcKey ProcKey (
+        DependencyTrackingT ProcKey (Store.VarAdr K) (
+        DependencyTrackingT ProcKey (Store.PaiAdr Exp K) (
+        DependencyTrackingT ProcKey (Store.VecAdr Exp K) (
+        DependencyTrackingT ProcKey (Store.StrAdr Exp K) (
+        WorkListT [ProcKey] m)))))))))
 
 ------------------------------------------------------------
 
@@ -372,10 +368,14 @@ instance Monad m => MonadActorLocal ActorVlu (ProcT m) where
 instance Monad m => CtxM (ProcT m) AdrCtx where
     withCtx f = lowerM (local (over ctx f))
     getCtx = view ctx
-instance Monad m => AllocM (ProcT m) Exp ActorAdr where
-    alloc expr = PtrAdr expr <$> getCtx
-instance Monad m => AllocM (ProcT m) Ide ActorAdr where
-    alloc expr = VarAdr expr <$> getCtx
+instance Monad m => AllocM (ProcT m) Exp (Store.PaiAdr Exp AdrCtx) where
+    alloc expr = Store.PaiAdr expr <$> getCtx
+instance Monad m => AllocM (ProcT m) Exp (Store.VecAdr Exp AdrCtx) where
+    alloc expr = Store.VecAdr expr <$> getCtx
+instance Monad m => AllocM (ProcT m) Exp (Store.StrAdr Exp AdrCtx) where
+    alloc expr = Store.StrAdr expr <$> getCtx
+instance Monad m => AllocM (ProcT m) Ide (Store.VarAdr AdrCtx) where
+    alloc expr = Store.VrrAdr expr <$> getCtx
 
 ------------------------------------------------------------
 
@@ -387,12 +387,14 @@ instance Monad m => MonadPartition Partition (IntraT m) where
     get = return Lattice.bottom
 
 -- | Adds the message context based on information in the monad
-addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, StoreM ActorAdr (StoreVal ActorVlu) m) => MsgPayload ->  (ProcT (IntraT m) Msg)
-addMessageCtx payload = do 
-    vars <- SCV.traceSymbolicVariables @ActorAdr varVals payload
-    message payload . SCV.restrictPC vars <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
+-- addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, StoreM ActorAdr (StoreVal ActorVlu) m) => MsgPayload ->  (ProcT (IntraT m) Msg)
+-- addMessageCtx payload = do 
+--     vars <- SCV.traceSymbolicVariables @ActorAdr varVals payload
+--     message payload . SCV.restrictPC vars <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
+addMessageCtx :: a -> b
+addMessageCtx _ = undefined
 
-instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, StoreM ActorAdr (StoreVal ActorVlu) m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
+instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
   send ref v = do
       v' <- addMessageCtx v
       liftIntraT $ liftInterTurnT $ do
@@ -430,27 +432,6 @@ instance (Monad m, k ~ ProcKey, v ~ ProcVal) => MapM k v (StateT AnalysisState m
   put k v = cache . at k ?= v
   joinWith k v = cache . at k %= Just . maybe v (Lattice.join v)
   getAll = use cache
-
--- The 'AnalysisState' also contains a store, so we can use it for the 'StoreM' instance as well.
--- The store operations are delegated to the canonical 'Store' instance in
--- 'Analysis.Store' (for 'Map a v'), which uses weak (join) updates. This is
--- important here: abstract allocation reuses addresses (e.g. all pairs share
--- one 'PtrAdr'), so writes must join with any existing value rather than
--- overwrite it, otherwise the system fixpoint cannot converge.
-instance (Monad m) => StoreM ActorAdr (StoreVal ActorVlu) (StateT AnalysisState m) where
-  storeSize            = use (store . to AStore.size)
-  lookupAdr adr        = use (store . to (fromMaybe (error $ "Address " ++ show adr ++ " not found in store") . AStore.lookupSto adr))
-  writeAdr adr v       = store %= AStore.extendSto adr v
-  updateWith fs fw adr = store %= AStore.updateStoWith fs fw adr
-  hasAdr adr           = use (store . to (isJust . AStore.lookupSto adr))
-
--- Finally, we can track dependencies in the same 'AnalysisState'.
-instance {-# OVERLAPPING #-} (Monad m, k ~ ProcKey, DepL d) => DependencyTrackingM k d (StateT AnalysisState m) where
-  register dep cmp = deps . at (review depL dep) %= Just . maybe (Set.singleton cmp) (Set.insert cmp)
-  dependent dep = use (deps . at (review depL dep) . to (fromMaybe Set.empty))
-
-instance (DepL d, k ~ ProcKey, Monad m, WorkListM m k) => MonadDependencyTrigger k d (StateT AnalysisState m) where
-  trigger = dependent >=> WL.adds
 
 -- Tracking blame errors
 instance Monad m => MonadBlame ActorVlu (StateT AnalysisState m) where
@@ -554,13 +535,19 @@ fixSystem = Fix.lfp (transferSystem >=> traceSystem)
 
 -- | The initial store contains all the primitive functions whhich are stored 
 -- at a fixed address.
-mainStore :: Map ActorAdr (StoreVal ActorVlu)
-mainStore = Map.map VarVal $ Map.insert TopAdr Lattice.top $ Semantics.initialSto Semantics.allPrimitives PrrAdr
+mainStore :: ActorSto
+mainStore = Store.emptySchemeStore 
+          & Store.varStore .~ withTop (Semantics.initialSto Semantics.allPrimitives Store.PrrAdr)
+          & Store.paiStore .~ withTop Map.empty
+          & Store.vecStore .~ Map.empty
+          & Store.strStore .~ withTop Map.empty
+    where  withTop :: (Ord adr, Lattice.TopLattice adr, Lattice.TopLattice vlu) => Map adr vlu -> Map adr vlu
+           withTop = Map.insert Lattice.top Lattice.top
 
 -- | The environment is populated with the initial bindings for the primitive functions.
 mainEnv :: ActorEnv
 mainEnv =
-    HashMap.fromList $ map (second PrrAdr . dupe) Semantics.allPrimitives
+    HashMap.fromList $ map (second Store.PrrAdr . dupe) Semantics.allPrimitives
 
 -- | Create an initial system from the expression of the main behavior. 
 initialSystem :: Exp -> System
@@ -574,23 +561,29 @@ initialSystem mainExp = System {
 emptyAnalysisState :: AnalysisState
 emptyAnalysisState = AnalysisState {
         _cache = Map.empty,
-        _store = mainStore,
-        _deps = Map.empty,
         _trace = [],
         _blames = Set.empty
     }
 
 -- | Top-level function to analyze an actor system.
-analyze :: AnalysisM m => Exp -> m (System, AnalysisState)
-analyze mainExpr =
-        fixSystem initSystem
-      & flip runStateT initState
-      & runWithComponentTracking
-      & runWithWorkList
+analyze :: AnalysisM m => Exp -> m (System, AnalysisState, ActorSto)
+analyze mainExpr = do
+    ((system, analysisState), stores :: ActorSto) <-
+            fixSystem initSystem
+          & flip runStateT initState
+          & runSchemeStoreT mainStore
+          & runWithComponentTracking
+          & runWithDependencyTracking @ProcKey @ProcKey
+          & runWithDependencyTracking @ProcKey @(Store.VarAdr K)
+          & runWithDependencyTracking @ProcKey @(Store.PaiAdr Exp K)
+          & runWithDependencyTracking @ProcKey @(Store.VecAdr Exp K)
+          & runWithDependencyTracking @ProcKey @(Store.StrAdr Exp K)
+          & runWithWorkList
+    return (system, analysisState, stores)
     where initSystem = initialSystem mainExpr
           initState  = emptyAnalysisState
 
 -- | Top-level function to analyze an actor system within the IO monad
-analyzeIO :: Exp -> IO (System, AnalysisState)
+analyzeIO :: Exp -> IO (System, AnalysisState, ActorSto)
 analyzeIO mainExpr = analyze mainExpr
                    & runZ3SolverWithPrelude

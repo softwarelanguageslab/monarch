@@ -11,7 +11,7 @@ import Analysis.SimpleActor.Smallstep.StateSpace.Class (HasMicroState, HasMacroS
 import Analysis.SimpleActor.Smallstep.StateSpace.Effect
 import Syntax.AST
 import Domain.Actor (ActorDomain(..))
-import Domain.Scheme.Class hiding (Env, Adr, Exp)
+import Domain.Scheme.Class hiding (Env, Exp)
 import qualified Domain.Scheme.Class as Scheme
 import Domain.Class (Domain(inject))
 import Domain.Core.BoolDomain.Class (isTrue, isFalse)
@@ -48,7 +48,7 @@ type IsConfiguration cfg =
    ActorDomain (Val cfg),
    SchemeDomain (Val cfg),
    Scheme.Env (Val cfg) ~ Env (Adr cfg),
-   Scheme.Adr (Val cfg) ~ Adr cfg,
+   Scheme.VaAdr (Val cfg) ~ Adr cfg,
    Scheme.Exp (Val cfg) ~ Exp)
 
 -- | State constraints on using the analysis configuration for the

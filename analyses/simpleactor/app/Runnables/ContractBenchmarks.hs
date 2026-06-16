@@ -67,8 +67,8 @@ entrypoint InputOptions { .. } OutputOptions { .. } = do
 analyze :: Exp -> FilePath -> IO ()
 analyze expr outputPath = do
     -- Run once for precision benchmarks
-    precisionOutput <- Fixpoint.analyzeIO expr
-    let blames = Fixpoint._blames $ snd precisionOutput
+    (_, state, _) <- Fixpoint.analyzeIO expr
+    let blames = Fixpoint._blames state
     hPutStrLn stderr ("Finished initial run for precision got "  ++ show (Set.size blames))
     -- Run multiples times (3à) to measure performance
     times <- for [0..maxRuns] $ \i -> do 

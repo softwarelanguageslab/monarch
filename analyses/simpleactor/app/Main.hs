@@ -11,10 +11,6 @@ import Text.Printf
 import qualified Data.Map as Map
 import Options.Applicative
 import Control.Monad
-import qualified Analysis.SimpleActor.Infer as Infer
-import System.TimeIt
-import qualified RIO.Set as Set
-import System.Exit
 import RIO (IOMode(..))
 import RIO.Directory
 import System.ConcurrentHandle
@@ -59,8 +55,7 @@ multipleInputOptions = MultipleInputOptions <$> strOption (   long "inputDir"
 commandParser :: Parser Command
 commandParser =
    subparser
-    (  command "pre"              (info (inferCmd   <$> inputOptions) (progDesc "Pre-analysis"))
-    <> command "precision"        (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
+    (  command "precision"        (info (precision  <$> multipleInputOptions <*> outputOptions) (progDesc "Run the precision benchmarks"))
     <> command "erlang"           (info (erlang <$> inputOptions) (progDesc "Erlang analysis by translation to SimpleActor"))
     <> command "core-erlang"      (info (CoreErlang.entrypoint <$> CoreErlang.options) (progDesc "Translate Core Erlang to SimpleActor"))
     <> command "analyze2"         (info (SimpleActorAnalyze.entrypoint <$> inputOptions <*> outputDirOptions <*> switch (long "benchmark" <> help "run the analysis in benchmarking mode")) (progDesc "Analyze a program using the new fixpoint"))
@@ -86,29 +81,6 @@ printCmpMap printKey keepKey cmp m = do
    putStrLn "============================================================"
    print cmp
    putStrLn (printMap printKey keepKey m)
-
-------------------------------------------------------------
--- SimpleActor Inference
-------------------------------------------------------------
-
-inferCmd :: InputOptions -> IO ()
-inferCmd (InputOptions { filename, doTranslate }) = do
-   putStrLn $ "analyzing " ++ filename
-   ast <- loadFile' doTranslate filename
-   (ellapsed, inferred) <- timeItT $ Infer.infer ast
-   putStrLn ("Ellapsed time (in seconds): " ++ show ellapsed)
-   let localActorRes = uncurry Infer.localActors inferred
-   let localActorResWithoutMain = Map.filterWithKey (\k -> const $ Infer.injectInitialActor ast /= k) localActorRes
-   let spawnsWithoutMain = Map.filterWithKey (\k -> const $ Infer.injectInitialActor ast /= k) (Infer._spawns (fst inferred))
-   let actorsSpawnedByOthers = sum $ map (Set.size . snd) $ Map.toList spawnsWithoutMain
-   putStrLn $ "Inferred local actor instances " ++ show localActorResWithoutMain
-   if sum (map (Set.size . snd) $ Map.toList localActorResWithoutMain) == 0 && actorsSpawnedByOthers > 2 then
-      exitSuccess
-   else
-      exitFailure
-   -- dotOut <- openFile "out.dot" WriteMode
-   -- hPutStrLn dotOut (Infer.toDot $ Infer._graph inferred)
-   -- hClose dotOut
 
 ------------------------------------------------------------
 -- Precision benchmarks
