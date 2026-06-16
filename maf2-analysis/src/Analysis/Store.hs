@@ -57,14 +57,15 @@ instance (Joinable v, Ord a) => Store (Map a v) a v where
    union = Map.union
 
 -- | Trace the addresses reachable in a single step from the given set of addresses according to the given store
-traceStore' :: (Trace adr v) => Set adr -> Map adr v  -> Set adr
-traceStore' adrs m = Set.unions (Set.map (maybe Set.empty trace . (`Map.lookup` m)) adrs)
+traceStore' :: (Monad m, Trace adr v) => Set adr -> (adr -> m (Maybe v))  -> m (Set adr)
+traceStore' adrs m = do 
+    Set.unions <$> mapM (fmap (maybe Set.empty trace) . m) (Set.toList adrs)
 
 -- | Trace the addresses reachable from the given set of addresses in any number of steps
-traceStore :: (Trace adr v) => Set adr -> Map adr v -> Set adr 
-traceStore adrs m = if adrs /= adrs' then traceStore adrs' m else adrs
-   where adrs' = adrs `Set.union` traceStore' adrs m
-
+traceStore :: (Monad m, Trace adr v) => Set adr -> (adr -> m (Maybe v)) -> m (Set adr)
+traceStore adrs m = do 
+        adrs' <- fmap (Set.union adrs) $ traceStore' adrs m
+        if adrs /= adrs' then traceStore adrs' m else return adrs
 --
 -- Store printing 
 --
