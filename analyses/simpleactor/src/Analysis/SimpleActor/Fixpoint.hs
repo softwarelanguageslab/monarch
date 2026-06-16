@@ -4,6 +4,7 @@
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use fewer imports" #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 module Analysis.SimpleActor.Fixpoint(
     analyze,
     AnalysisState (..),
@@ -89,8 +90,9 @@ import Domain.Core.StringDomain.TopLifted ()
 import qualified Control.Monad.State as State
 import qualified RIO as Debug
 import qualified Domain.Scheme.Class as Scheme
-import Analysis.Scheme.Monad (SchemeStoreT, runSchemeStoreT)
+import Analysis.Scheme.Monad (SchemeStoreT, runSchemeStoreT, SchemeStoreM)
 import qualified Domain.Scheme.Store as Store
+import Analysis.Store (traceStore)
 
 ------------------------------------------------------------
 -- Shorthands
@@ -387,14 +389,21 @@ instance Monad m => MonadPartition Partition (IntraT m) where
     get = return Lattice.bottom
 
 -- | Adds the message context based on information in the monad
--- addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, StoreM ActorAdr (StoreVal ActorVlu) m) => MsgPayload ->  (ProcT (IntraT m) Msg)
--- addMessageCtx payload = do 
---     vars <- SCV.traceSymbolicVariables @ActorAdr varVals payload
---     message payload . SCV.restrictPC vars <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
-addMessageCtx :: a -> b
-addMessageCtx _ = undefined
+addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVlu m) => MsgPayload ->  (ProcT (IntraT m) Msg)
+addMessageCtx payload = do 
+    -- TODO: 
+    -- * trace all addresses from the given payload using "Analysis.Store.traceStore"
+    -- * implement a lookup function that works on the combined SchemeAddress by dispatching 
+    -- to the correct store based on the type of address discovered. 
+    -- * Filter the addresses to VarAdr, those are the only ones that contain symbolic representations
+    -- and hence, also symbolic variables
+    -- * Call an SCV.traceVariables function on the values behind a VarAdr (as before)
+    -- * Finally, restrict the path constraint using the set of discovered variables
+    undefined
+    -- vars <- SCV.traceSymbolicVariables @ActorAdr varVals payload
+    -- message payload . SCV.restrictPC vars <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
 
-instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
+instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVlu m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
   send ref v = do
       v' <- addMessageCtx v
       liftIntraT $ liftInterTurnT $ do

@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts, UndecidableInstances, FlexibleInstances, ConstraintKinds, AllowAmbiguousTypes #-}
-module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM, SchemeDomainStoreM, stoPai, stoStr, stoVec, derefPai, derefVec, derefStr, writeVar, updateVar, lookupVar, SchemeStoreT, runSchemeStoreT) where
+module Analysis.Scheme.Monad(SchemeM, SchemeM',SchemeDomainM, SchemeStoreM, SchemeDomainStoreM, stoPai, stoStr, stoVec, derefPai, derefVec, derefStr, writeVar, updateVar, lookupVar, SchemeStoreT, runSchemeStoreT) where
 
 import Data.Functor
 import Syntax.Scheme.AST
