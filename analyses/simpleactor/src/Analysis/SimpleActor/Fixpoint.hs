@@ -52,7 +52,7 @@ import Control.Monad.Layer (MonadLayer(..))
 import Analysis.Monad.Partition (MonadPartition (..))
 import Analysis.Actors.Monad (MonadActorLocal (..))
 import qualified Domain.Actor
-import Domain.Scheme.Store (StoreVal (..), SchemeAdr (..), varVals)
+import Domain.Scheme.Store (SchemeAdr (..))
 import Analysis.Monad.Allocation (AllocM (..))
 import Control.Monad.IO.Class (MonadIO)
 import Analysis.Monad.ComponentTracking (ComponentTrackingT)
@@ -92,12 +92,13 @@ import Domain.Core.StringDomain.TopLifted ()
 -- import qualified RIO as Debug
 import qualified Control.Monad.State as State
 import qualified RIO as Debug
+import qualified Domain.Scheme.Class as Scheme
 
 ------------------------------------------------------------
 -- Shorthands
 ------------------------------------------------------------
 
-type Beh = (Exp, ActorEnv, Map String ActorVarAdr)
+type Beh = (Exp, ActorEnv, Map String (Scheme.VaAdr ActorVlu))
 type Err = Set ActorError
 
 ------------------------------------------------------------
@@ -127,7 +128,7 @@ data Ctx = Ctx {
         -- | Lexical environment
         _env :: ActorEnv,
         -- | Dynamic bindings 
-        _dyn :: Map String ActorVarAdr,
+        _dyn :: Map String (Scheme.VaAdr ActorVlu),
         -- | Self
         _self :: ActorRef,
         -- | Additional context, for instance for k-cfa
@@ -311,7 +312,6 @@ instance NFData BlameRecord
 -- | Global analysis state (store + bookkeeping for fixpoints)
 data AnalysisState = AnalysisState {
         _cache  :: Map ProcKey ProcVal,
-        _store  :: Map ActorAdr (StoreVal ActorVlu),
         _deps   :: Map Dep (Set ProcKey),
         _trace  :: [System],
         _blames :: Set BlameRecord
@@ -327,6 +327,7 @@ $(makeLenses ''AnalysisState)
 -- | Monad global to the analysis
 type GlobalT m = (
         StateT AnalysisState  (
+        SchemeStoreT 
         ComponentTrackingT ProcKey (
         WorkListT [ProcKey] m)))
 

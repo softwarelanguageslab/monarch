@@ -34,6 +34,7 @@ dependencies:
 - singletons-th
 - template-haskell
 - language-python
+- lens
 
 ghc-options:
 - -Wall

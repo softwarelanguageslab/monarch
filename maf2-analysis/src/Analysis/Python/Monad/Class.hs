@@ -64,7 +64,7 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   pyDeref_     :: (ObjAdr -> obj -> m ()) -> vlu -> m ()
   pyAssignAt   :: String -> vlu -> ObjAdr -> m ()
   pyAssign     :: String -> vlu -> vlu -> m ()
-  pyAssign k v = pyDeref_ $ \a _ -> pyAssignAt k v a
+  pyAssign k v = pyDeref_ @_ @obj @vlu $ \a _ -> pyAssignAt @_ @obj @vlu k v a
   pyAssignInPrm :: Sing k -> (vlu -> Abs obj k -> m (Abs obj k)) -> vlu -> vlu -> m ()
   -- control flow -- 
   pyBreak      :: m ()
@@ -90,13 +90,14 @@ pyDeref' :: forall m obj vlu . PyM m obj vlu => (obj -> m vlu) -> vlu -> m vlu
 pyDeref' = pyDeref . const
 
 pyDeref'' :: forall k m obj vlu . (PyM m obj vlu, SingI k) => (Abs obj k -> m vlu) -> vlu -> m vlu
-pyDeref'' f = pyDeref' (f <=< get @k)
+pyDeref'' f = pyDeref' @_ @obj @vlu (f <=< get @k)
 
 pyDeref2' :: forall m obj vlu . PyM m obj vlu => (obj -> obj -> m vlu) -> vlu -> vlu -> m vlu
 pyDeref2' f a1 a2 = pyDeref' (\o1 -> pyDeref' (f o1) a2) a1
 
 pyDeref2'' :: forall k1 k2 m obj vlu . (PyM m obj vlu, SingI k1, SingI k2) => (Abs obj k1 -> Abs obj k2 -> m vlu) -> vlu -> vlu -> m vlu
-pyDeref2'' f = pyDeref2' $ \o1 o2 -> do v1 <- get @k1 o1
+pyDeref2'' f = pyDeref2' @_ @obj @vlu $ \o1 o2 -> do 
+                                        v1 <- get @k1 o1
                                         v2 <- get @k2 o2
                                         f v1 v2
 
@@ -109,7 +110,7 @@ pyDerefN f (ref:refs) = pyDeref (\adr obj -> pyDerefN (f . ((adr,obj):)) refs) r
 
 pyDerefN' :: forall k m obj vlu . (SingI k, PyM m obj vlu) => ([Abs obj k] -> m vlu) -> [vlu] -> m vlu
 pyDerefN' f []          = f []
-pyDerefN' f (ref:refs)  = pyDeref'' @k (\obj -> pyDerefN' @k (f . (obj:)) refs) ref
+pyDerefN' f (ref:refs)  = pyDeref'' @k @_ @obj @vlu (\obj -> pyDerefN' @k @_ @obj @vlu  (f . (obj:)) refs) ref
 
 pyStore :: PyM m obj vlu => PyLoc -> obj -> m vlu
 pyStore loc = fmap injectAdr . pyAlloc loc

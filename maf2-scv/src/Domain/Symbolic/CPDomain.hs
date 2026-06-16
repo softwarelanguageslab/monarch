@@ -15,20 +15,18 @@ import Lattice
 
 
 import Prelude hiding (null, div, ceiling, round, floor, asin, sin, acos, cos, atan, tan, log, sqrt, length)
-import Data.Kind
 
 type Str = SchemeTopLifted (SchemeString (CP String))
 
-type CPSymbolicValue :: (Type -> Type) -> Type -> Type -> Type
-type CPSymbolicValue var k exp =
-   PairedSymbolic (SchemeTopLifted (CPActorValue Str var k exp)) exp k Int
+type CPSymbolicValue k exp =
+   PairedSymbolic (SchemeTopLifted (CPActorValue Str k exp)) exp k Int
 
-type instance VarDom (CPSymbolicValue var k exp) = CPSymbolicValue var k exp
-type instance PaiDom (CPSymbolicValue var k exp) = TopLifted (SimplePair (CPSymbolicValue var k exp))
-type instance VecDom (CPSymbolicValue var k exp) = PIVector (CPSymbolicValue var k exp) (CPSymbolicValue var k exp)
-                                                        {- bln -} (CPSymbolicValue var k exp)
+type instance VarDom (CPSymbolicValue k exp) = CPSymbolicValue k exp
+type instance PaiDom (CPSymbolicValue k exp) = TopLifted (SimplePair (CPSymbolicValue k exp))
+type instance VecDom (CPSymbolicValue k exp) = PIVector (CPSymbolicValue k exp) (CPSymbolicValue k exp)
+                                                        {- bln -} (CPSymbolicValue k exp)
                                                         {- str -} Str
-                                                        {- rea -} (CPSymbolicValue var k exp)
+                                                        {- rea -} (CPSymbolicValue k exp)
 
 -- type instance StrDom (CPSymbolicValue var k) = SchemeString (CP String) (CPSymbolicValue var k)
 

@@ -22,12 +22,21 @@ module Domain.Scheme.Store(
     StrAdr(..),
     VecAdr(..),
     VarAdr(..),
-    PrrAdr(..),
     SchemeAdr(..),
+    -- * Combined store
+    SchemeStore(..),
+    -- * Lenses for store fields
+    paiStore,
+    strStore,
+    vecStore,
+    varStore,
+    -- * StoreL class
+    StoreL(..)
 ) where
 
 
 import Lattice.Trace
+import Lattice.Class (Joinable(join), BottomLattice(bottom))
 import Syntax.Ide
 import Control.DeepSeq
 import GHC.Generics (Generic)
@@ -38,6 +47,8 @@ import qualified Data.Set as Set
 import Domain.Address (AddressWithCtx (..))
 import qualified Syntax.Span as Span
 import Lattice.Class (TopLattice (top))
+import Data.Map (Map)
+import Control.Lens
 
 ------------------------------------------------------------
 -- Concrete address types
@@ -59,6 +70,7 @@ data StrAdr e ctx = StrAdr !e !ctx   -- ^ strings, allocation-site based
                   | StrTop
                   deriving (Eq, Ord, Generic, Show, NFData)
 data VarAdr ctx   = VrrAdr !Ide !ctx -- ^ variables
+                  | PrrAdr String    -- ^ primitives
                   | VrrTop
                   deriving (Eq, Ord, Generic, Show, NFData)
 --
@@ -108,26 +120,6 @@ instance AddressWithCtx ctx (StrAdr e ctx) where
 instance TopLattice (StrAdr e ctx) where
     top = StrTop
 
---
--- PrrAdr
---
-
-data PrrAdr       = PrrAdr !String   -- ^ primitives
-                  | PrrTop
-                  deriving (Eq, Ord, Generic, Show, NFData)
-
-instance SpanOf PrrAdr where
-    spanOf (PrrAdr _) = Span.dummySpan -- primitives don't have a source location, so we return a dummy span
-    spanOf PrrTop     = Span.dummySpan
-
-
-instance AddressWithCtx ctx (PrrAdr) where
-  replaceCtx _ adr = adr -- PrrAdr does not contain a context, so we return it unchanged
-
-instance TopLattice PrrAdr where
-    top = PrrTop
-
-
 
 --
 -- VarAdr
@@ -135,10 +127,12 @@ instance TopLattice PrrAdr where
 
 instance SpanOf (VarAdr ctx) where
     spanOf (VrrAdr ide _) = spanOf ide
+    spanOf (PrrAdr _) = Span.dummySpan
     spanOf VrrTop = Span.dummySpan
 
 instance AddressWithCtx ctx (VarAdr ctx) where
   replaceCtx ctx' (VrrAdr ide _) = VrrAdr ide ctx'
+  replaceCtx _ (PrrAdr str) = PrrAdr str
   replaceCtx _ VrrTop = VrrTop
 
 -- Tracing through the store requires a combined address that can be
@@ -148,7 +142,6 @@ data SchemeAdr e ctx = SVarAdr (VarAdr ctx)
                      | SPaiAdr (PaiAdr e ctx)
                      | SStrAdr (StrAdr e ctx) 
                      | SVecAdr (VecAdr e ctx) 
-                     | SPrrAdr PrrAdr
                     deriving (Eq, Ord, Generic, Show, NFData)
 
 
@@ -157,14 +150,12 @@ instance AddressWithCtx ctx (SchemeAdr e ctx) where
                           SPaiAdr adr -> SPaiAdr (replaceCtx ctx' adr)
                           SStrAdr adr -> SStrAdr (replaceCtx ctx' adr)
                           SVecAdr adr -> SVecAdr (replaceCtx ctx' adr)
-                          SPrrAdr adr -> SPrrAdr (replaceCtx ctx' adr)
 
 instance (SpanOf e) => SpanOf (SchemeAdr e ctx) where
     spanOf (SVarAdr adr) = spanOf adr
     spanOf (SPaiAdr adr) = spanOf adr
     spanOf (SStrAdr adr) = spanOf adr
     spanOf (SVecAdr adr) = spanOf adr
-    spanOf (SPrrAdr adr) = spanOf adr
 
 
 -- Tracing disjoint pointers into the pointer union
@@ -186,3 +177,43 @@ instance (Ord e, Ord ctx) => Trace (SchemeAdr e ctx) (VecAdr e ctx) where
 type ForAllStored :: (Type -> Constraint) -> Type -> Constraint
 type ForAllStored c v = (c (PaiDom v), c (StrDom v), c (VecDom v), c (VarDom v))
 
+------------------------------------------------------------
+-- Store
+------------------------------------------------------------
+
+data SchemeStore exp ctx v = SchemeStore {
+    _paiStore :: Map (PaiAdr exp ctx) (PaiDom v),
+    _strStore :: Map (StrAdr exp ctx) (StrDom v),
+    _vecStore :: Map (VecAdr exp ctx) (VecDom v),
+    _varStore :: Map (VarAdr ctx) (VarDom v)
+} deriving (Generic)
+
+instance (ForAllStored Joinable v, Ord exp, Ord ctx) => Joinable (SchemeStore exp ctx v) where
+    join (SchemeStore pai1 str1 vec1 var1) (SchemeStore pai2 str2 vec2 var2) =
+        SchemeStore (join pai1 pai2)
+                    (join str1 str2)
+                    (join vec1 vec2)
+                    (join var1 var2)
+
+instance BottomLattice (SchemeStore exp ctx v) where
+    bottom = SchemeStore bottom bottom bottom bottom
+
+deriving instance (ForAllStored Show v, Show exp, Show ctx) => Show (SchemeStore exp ctx v)
+deriving instance (ForAllStored Eq v, Eq exp, Eq ctx) => Eq (SchemeStore exp ctx v)
+deriving instance (ForAllStored Ord v, Ord exp, Ord ctx) => Ord (SchemeStore exp ctx v)
+
+instance (ForAllStored NFData v, ForAllAddresses NFData v, NFData exp, NFData ctx) => NFData (SchemeStore exp ctx v)
+
+$(makeLenses ''SchemeStore)
+
+class StoreL adr vlu store | store adr -> vlu where 
+    storeLens :: Lens' store (Map adr vlu)
+
+instance (pai ~ (PaiDom v)) => StoreL (PaiAdr exp ctx) pai (SchemeStore exp ctx v) where
+    storeLens = paiStore
+instance (str ~ (StrDom v)) => StoreL (StrAdr exp ctx) str (SchemeStore exp ctx v) where
+    storeLens = strStore
+instance (vec ~ (VecDom v)) => StoreL (VecAdr exp ctx) vec (SchemeStore exp ctx v) where
+    storeLens = vecStore
+instance (var ~ (VarDom v)) => StoreL (VarAdr ctx) var (SchemeStore exp ctx v) where
+    storeLens = varStore

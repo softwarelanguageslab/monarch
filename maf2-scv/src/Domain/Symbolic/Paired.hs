@@ -203,13 +203,14 @@ instance (Eq i, Ord i) => CharLattice (SymbolicVal exp k i v)
 -- SchemeDomain instance
 ------------------------------------------------------------
 
-type ForAllAdress (c :: Type -> Constraint) v = (c (Adr v))
-
-instance (Ord exp, Ord k, Show exp, ForAllAdress Show v, ForAllAdress Eq v, ForAllAdress Ord v, Show k, Eq i, Ord i) => SchemeDomain (SymbolicVal exp k i v) where
-   type Adr  (SymbolicVal exp k i v) = Adr v
+instance (Ord exp, Ord k, Show exp, ForAllAddresses Show v, ForAllAddresses Eq v, ForAllAddresses Ord v, Show k, Eq i, Ord i) => SchemeDomain (SymbolicVal exp k i v) where
+   type VaAdr (SymbolicVal exp k i v) = VaAdr v
+   type PaAdr (SymbolicVal exp k i v) = PaAdr v
+   type StAdr (SymbolicVal exp k i v) = StAdr v
+   type VeAdr (SymbolicVal exp k i v) = VeAdr v
 
    type Exp (SymbolicVal exp k i v)  = exp
-   type Env (SymbolicVal exp k i v)  = HashMap String (Adr v)
+   type Env (SymbolicVal exp k i v)  = HashMap String (VaAdr v)
 
    pptr      = const emptyFresh
    vptr      = const emptyFresh

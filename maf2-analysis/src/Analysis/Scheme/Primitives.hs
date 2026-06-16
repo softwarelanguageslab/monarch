@@ -22,7 +22,6 @@ import Control.Monad ((>=>), foldM)
 import Control.Monad.DomainError
 import Control.Monad.Escape
 import Prelude hiding (or)
-import Domain.Scheme.Store (StoreVal(..))
 import GHC.Num.Integer
 
 data Prim v = Prim { primName :: String, run :: forall m e . PrimM e m v => e -> [v] -> m v }
@@ -71,8 +70,8 @@ allPrimitives = [
    fix1 "boolean?" (return . isBool),
    fix1 "true?" return,
    fix1 "false?" (return . Domain.not),
-   fix1 "car" (pptrs >=> derefPai (const (return . car))),
-   fix1 "cdr" (pptrs >=> derefPai (const (return . cdr))),
+   fix1 "car" (pptrs >=> derefPai @v (const (return . car))),
+   fix1 "cdr" (pptrs >=> derefPai @v (const (return . cdr))),
    fix1 "ceiling" (Domain.ceiling @_ @v @v),
    -- fix1 "char->integer" todo,
    fix2 "char-ci<?" (charLtCI @_ @v),
@@ -101,10 +100,10 @@ allPrimitives = [
    fix1 "real?" (return . isReal),
    fix2 "remainder" (remainder @_ @v @(StrDom v) @v),
    fix1 "round" (Domain.round @_ @v @v),
-   fix2 "set-car!" (\adr v -> pptrs adr >>= derefPai (\adr pai ->
-      updateAdr adr (PaiVal $ cons v (cdr pai)) $> unsp)),
-   fix2 "set-cdr!" (\adr v -> pptrs adr >>= derefPai (\adr pai ->
-      updateAdr adr (PaiVal $ cons (car pai) v) $> unsp)),
+   fix2 "set-car!" (\adr v -> pptrs adr >>= derefPai @v (\adr pai ->
+      updateAdr adr (cons v (cdr pai)) $> unsp)),
+   fix2 "set-cdr!" (\adr v -> pptrs adr >>= derefPai @v (\adr pai ->
+      updateAdr adr (cons (car pai) v) $> unsp)),
    fix1 "sin" (Domain.sin @_ @v @v),
    fix1 "sqrt" (Domain.sqrt @_ @v @v),
    -- fix1 "string->number" todo, 
@@ -113,14 +112,14 @@ allPrimitives = [
       (\ex s1 s2 -> do
          adrs1 <- sptrs s1
          adrs2 <- sptrs s2
-         result <- derefStr (\_ str1 -> derefStr (const (append @_ @v @v @v str1)) adrs2) adrs1
+         result <- derefStr @v (\_ str1 -> derefStr @v (const (append @_ @v @v @v str1)) adrs2) adrs1
          stoStr ex result),
    fix1 "string-length"
-      (sptrs >=> derefStr (const (Domain.length @_ @v @v @v))),
+      (sptrs >=> derefStr @v (const (Domain.length @_ @v @v @v))),
    fix2 "string-ref"
-      (\s i -> sptrs s >>= derefStr (const (flip (ref @_ @v) i))),
+      (\s i -> sptrs s >>= derefStr @v (const (flip (ref @_ @v) i))),
    fix3 "string-set!"
-      (\s i c -> sptrs s >>= derefStr (\adr str -> updateAdr adr . StrVal =<< set @_ @v str i c) >> return unsp),
+      (\s i c -> sptrs s >>= derefStr @v (\adr str -> updateAdr adr =<< set @_ @v str i c) >> return unsp),
    -- fix2 "string<?" todo,
    fix1 "string?" (return .  isStrPtr),
    -- fix2 "substring" todo, 
@@ -129,9 +128,9 @@ allPrimitives = [
    fix1 "tan" (Domain.tan @_ @v @v),
    efix2 "make-vector" (\e siz -> stoVec e . makeVector siz) ,
    varg "vector" (\e vs -> foldM (\vec (i, v)-> vectorSet vec v (inject $ integerFromInt i)) (makeVector (inject (integerFromInt $ Prelude.length vs)) nil) (zip [0..Prelude.length vs] vs) >>= stoVec e), 
-   fix1 "vector-length" (vptrs >=> derefVec (const (return . vectorLength))),
-   fix2 "vector-ref" (\adr i -> vptrs adr >>= derefVec (const (`vectorRef` i))),
-   fix3 "vector-set!" (\adr i v -> vptrs adr >>= derefVec (\adr vec -> updateAdr adr . VecVal =<< vectorSet vec i v) >> return unsp),
+   fix1 "vector-length" (vptrs >=> derefVec @v (const (return . vectorLength))),
+   fix2 "vector-ref" (\adr i -> vptrs adr >>= derefVec @v (const (`vectorRef` i))),
+   fix3 "vector-set!" (\adr i v -> vptrs adr >>= derefVec @v (\adr vec -> updateAdr adr =<< vectorSet vec i v) >> return unsp),
    fix1 "vector?" $ return . isVecPtr,
    fix2 "<" lt,
    fix2 "=" eq,

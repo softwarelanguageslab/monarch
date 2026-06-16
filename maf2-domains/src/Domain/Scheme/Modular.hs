@@ -129,9 +129,9 @@ type Values m = '[
    IntKey  ::-> Assoc IntConf m,
    CharKey ::-> Assoc CharConf m,
    BoolKey ::-> Assoc BoolConf m,
-   PaiKey  ::-> PointerSet (Assoc PaAdrConf m),
-   VecKey  ::-> PointerSet (Assoc VeAdrConf m),
-   StrKey  ::-> PointerSet (Assoc StAdrConf m),
+   PaiKey  ::-> CastedPointerSet (Assoc PaAdrConf m),
+   VecKey  ::-> CastedPointerSet (Assoc VeAdrConf m),
+   StrKey  ::-> CastedPointerSet (Assoc StAdrConf m),
    UnspKey ::-> (),
    NilKey  ::-> (),
    CloKey  ::-> Set (Assoc ExpConf m, Assoc EnvConf m),
@@ -427,22 +427,22 @@ instance (IsSchemeValue m) => SchemeDomain (SchemeVal m) where
    type Exp  (SchemeVal m) = Assoc ExpConf m
 
    -- Pointer injection
-   pptr = SchemeVal . HMap.singleton @PaiKey . PointerSet . Set.singleton
-   vptr = SchemeVal . HMap.singleton @VecKey . PointerSet . Set.singleton
-   sptr = SchemeVal . HMap.singleton @StrKey . PointerSet . Set.singleton
+   pptr = SchemeVal . HMap.singleton @PaiKey . CastedPointerSet . Set.singleton
+   vptr = SchemeVal . HMap.singleton @VecKey . CastedPointerSet . Set.singleton
+   sptr = SchemeVal . HMap.singleton @StrKey . CastedPointerSet . Set.singleton
 
    -- Pointer extraction
    pptrs = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc PaAdrConf m))
-            select SPaiKey p = return (getPointerSet p)
+            select SPaiKey p = return (getCastedPointerSet p)
             select _ _ = escape WrongType
    vptrs = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc VeAdrConf m))
-            select SVecKey p = return (getPointerSet p)
+            select SVecKey p = return (getCastedPointerSet p)
             select _ _ = escape WrongType
    sptrs = mjoins . HMap.mapList select . getSchemeVal
       where select :: forall (kt :: SchemeKey) schemeM . AbstractM schemeM => Sing kt -> Assoc kt (Values m) -> schemeM (Set (Assoc StAdrConf m))
-            select SStrKey p = return (getPointerSet p)
+            select SStrKey p = return (getCastedPointerSet p)
             select _ _ = escape WrongType
 
 
@@ -501,7 +501,8 @@ type ModularSchemeValue r i c b varadr paiadr vecadr stradr exp env = SchemeVal 
       ExpConf  ::-> exp,
       VaAdrConf  ::-> varadr,
       PaAdrConf  ::-> paiadr, 
-      VeAdrConf  ::-> vecadr
+      VeAdrConf  ::-> vecadr,
+      StAdrConf  ::-> stradr
    ]
 
 ------------------------------------------------------------
@@ -570,8 +571,8 @@ instance (IsSchemeValue m,
              select SCloKey clss = SchemeVal $ HMap.singleton @CloKey $ Set.map (second (replaceCtx ctx')) clss
              select SPidKey pids = SchemeVal $ HMap.singleton @PidKey $ Set.map (replaceCtx ctx') pids
              select k v = SchemeVal $ HMap.singletonWithSing k v
-             removePtrsCtx :: (Ord adr, AddressWithCtx ctx adr) => PointerSet adr -> PointerSet adr
-             removePtrsCtx = PointerSet . Set.map (replaceCtx ctx') . getPointerSet
+             removePtrsCtx :: (Ord adr, AddressWithCtx ctx adr) => CastedPointerSet adr -> CastedPointerSet adr
+             removePtrsCtx = CastedPointerSet . Set.map (replaceCtx ctx') . getCastedPointerSet
 
 ------------------------------------------------------------
 -- Subdomain extraction

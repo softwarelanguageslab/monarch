@@ -8,14 +8,9 @@ import Prelude hiding (exp)
 import Domain.Scheme.Store
 import Symbolic.AST ( PC )
 import Analysis.Store (CountingMap)
-import Data.Kind
-import Analysis.Monad.Stack (MonadStack)
-import Analysis.Monad.Store (StoreT, StoreM)
-import Analysis.Monad.DependencyTracking (DependencyTrackingM, MonadDependencyTriggerTracking)
-import Analysis.Monad.Map (MapM)
+import Analysis.Monad.Store (StoreT)
 import RIO
 import qualified RIO.Map as Map
-import Analysis.Monad (MonadDependencyTrigger)
 import Domain.Core.AbstractCount (AbstractCount)
 import Analysis.SimpleActor.Monad (SimpleActorContext(..), MailboxLabel, Message)
 import Analysis.Actors.Mailbox.Partitioned.Graph (PartitionedGraph)
@@ -30,12 +25,11 @@ import Domain.SimpleActor (SymActorValue, SymVar)
 type K = AdrCtx
 type ActorExp = Exp
 type ActorRef = Pid Exp K
-type ActorVlu = SymActorValue K (SchemeAdr Exp)
+type ActorVlu = SymActorValue K 
 type ActorEnv = HashMap String ActorAdr
 type ActorAdr = SchemeAdr Exp K
-type ActorVarAdr = SchemeAdr Exp K
 type ActorMai = Map ActorRef PMB
-type ActorSto = CountingMap (SchemeAdr Exp K) (StoreVal ActorVlu)
+type ActorSto = SchemeStore Exp K ActorVlu
 type ActorPC  = PC SymVar
 type ActorCou = Map ActorRef AbstractCount
 
@@ -96,41 +90,14 @@ insensitiveContext = InsensitiveCtx
 
 -- | The initial dynamic environment for an actor, only includes
 -- the default sending behavior.
-initialDynEnvironment :: Map String (SchemeAdr Exp K)
+initialDynEnvironment :: Map String (VarAdr K)
 initialDynEnvironment = Map.singleton "send^" (PrrAdr "send^")
 
 ------------------------------------------------------------
 -- Stores
 ------------------------------------------------------------
 
--- | Store only storing environment based values
-type VarSto = CountingMap ActorVarAdr ActorVlu
-
-
 -- | Shorthand for @StoreT@ by instantiating the backing storage
 -- of the store.
 type StoreT' k v = StoreT (CountingMap k v) k v
 
--- | Partial monad transformer stack representing for handling the different Scheme stores.
-type ActorStoreT m = MonadStack '[
-                      StoreT' (SchemeAdr Exp K) (StoreVal ActorVlu)
-                   ] m
-
--- | Add constraints for Scheme stores
-type MonadSchemeStore m = (StoreM ActorVarAdr (StoreVal ActorVlu) m)
-
-
--- | Parametrized constraint on actor references and addresses
--- they depend on
-type DependOn :: (Type -> Type -> (Type -> Type) -> Constraint) -> (Type -> Type) -> Constraint
-type DependOn c m = (c ActorRef ActorVarAdr m)
-
--- | Constraints for dependency tracking on each type of address
-type MonadActorStoreDependencyTracking m =
-  (DependOn DependencyTrackingM m,
-   DependOn MonadDependencyTriggerTracking m,
-   DependOn MonadDependencyTrigger m)
-
-
--- | A store for each actor
-type MonadActorStore m = (MapM ActorRef ActorSto m)

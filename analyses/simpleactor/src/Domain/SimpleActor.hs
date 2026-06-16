@@ -14,16 +14,11 @@ import Domain.Core.StringDomain.ConstantPropagation ()
 import Syntax.AST
 import Domain.Symbolic (PairedSymbolic)
 import Domain.Scheme.Derived.Top (SchemeTopLifted (..))
-import Data.Kind
 import Domain.Core.VectorDomain (PIVector)
 import qualified Lattice.TopLiftedLattice as TL
 import Domain.Core.PairDomain (SimplePair)
 import Domain.Core.StringDomain (StringLattice(..))
 import qualified Analysis.ASE.SymbolicVariable as ASE
-
--- | An address that is parameterized by the type of context 
--- used for allocating that address.
-type AdrK = Type -> Type
 
 ------------------------------------------------------------
 -- Regular domain (i.e., without symbolic values)
@@ -31,7 +26,7 @@ type AdrK = Type -> Type
 
 
 -- | A SimpleActor abstract value
-type ActorValue k adr = CPActorValue Str adr k Exp
+type ActorValue k adr = CPActorValue Str k Exp
 
 -- | Type of strings in the abstract domain,
 -- strings are represented as pointers in the Scheme
@@ -48,9 +43,8 @@ type SymVar = ASE.SymbolicVariable
 
 -- | Values paired with symbolic representations used in the SimpleActor language.
 -- It is parameterized by a context type "k" and an address type "adr".
-type SymActorValue :: Type -> AdrK -> Type
-type SymActorValue k (adr :: AdrK) = 
-    PairedSymbolic (SchemeTopLifted (CPActorValue SymStr adr k Exp)) Exp k ASE.SymbolicVariable
+type SymActorValue k = 
+    PairedSymbolic (SchemeTopLifted (CPActorValue SymStr k Exp)) Exp k ASE.SymbolicVariable
 
 -- | String representation used with abstract symbolic domains. 
 -- We do not provide a symbolic representation of a string, hence 
@@ -61,17 +55,17 @@ type SymStr = SchemeString (CP String)
 
 -- Rendering 'SymActorValue' a proper abstraction for the Scheme domain
 
-type instance VarDom (SymActorValue k adr) = SymActorValue k adr
-type instance VecDom (SymActorValue k adr) =     PIVector (SymActorValue k adr)
-                                                          (SymActorValue k adr)
-                                                          (SymActorValue k adr)
+type instance VarDom (SymActorValue k) = SymActorValue k
+type instance VecDom (SymActorValue k) =     PIVector (SymActorValue k)
+                                                          (SymActorValue k)
+                                                          (SymActorValue k)
                                                           Str
-                                                          (SymActorValue k adr)
-type instance PaiDom (SymActorValue k adr) = TL.TopLifted (SimplePair (SymActorValue k adr))
+                                                          (SymActorValue k)
+type instance PaiDom (SymActorValue k) = TL.TopLifted (SimplePair (SymActorValue k))
 
 -- TODO: this is actually from `maf2-scv` in `Domain.Symbolic.CPDomain` which 
 -- reflects `ActorValue` perhaps we should use that instead.
-instance {-# OVERLAPPING #-} StringLattice (SchemeString (CP String)) (SymActorValue k adr) (SymActorValue k adr) (SymActorValue k adr) where
+instance {-# OVERLAPPING #-} StringLattice (SchemeString (CP String)) (SymActorValue k) (SymActorValue k) (SymActorValue k) where
   length = undefined
   append = undefined
   ref = undefined

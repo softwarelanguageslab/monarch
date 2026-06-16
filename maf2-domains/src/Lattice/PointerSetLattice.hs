@@ -1,4 +1,4 @@
-module Lattice.PointerSetLattice(PointerSet(..)) where
+module Lattice.PointerSetLattice(PointerSet(..), CastedPointerSet(..)) where
 
 import Lattice.SetLattice ()
 import Lattice.Class
@@ -17,7 +17,7 @@ instance (Ord a) => Trace a (PointerSet a) where
 
 -- A casted pointer-set is equivalent to a pointer-set except that the elements of the set are also expected to implement "trace" with the expected address type.
 
-newtype CastedPointerSet a = CastedPointerSet { getCastedPointerSet :: Set a } deriving (Meetable, PartialOrder, EqualLattice, Show, Eq, Ord)
+newtype CastedPointerSet a = CastedPointerSet { getCastedPointerSet :: Set a } deriving (Meetable, Joinable, PartialOrder, EqualLattice, Show, Eq, Ord)
 
 instance (Trace adr a) => Trace adr (CastedPointerSet a) where 
     trace = foldMap trace . getCastedPointerSet
