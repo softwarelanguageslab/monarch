@@ -7,12 +7,12 @@ module Domain.Scheme.Class (
   VarDom, 
   VecDom, 
   PaiDom, 
-  StrDom
+  StrDom,
+  ForAllAddresses
 ) where
 
 import Lattice 
 import Domain.Core 
-import Domain.Address
 import Control.Monad.AbstractM
 
 import Data.Set (Set)
@@ -27,16 +27,32 @@ type SchemeDomainPre v =
     BoolDomain v)
 
 
+-- | A constraint on all address types
+type ForAllAddresses :: (Type -> Constraint) -> Type -> Constraint
+type ForAllAddresses c v = 
+    (  c (VaAdr v)
+     , c (PaAdr v) 
+     , c (VeAdr v) 
+     , c (StAdr v) )
+
 -- | A value `v` in the Scheme domain satisfies all operations specified in its subdomains as wel as some operations to manipulate pointers
 class (RealDomain v v v,
        IntDomain v v (StrDom v) v,
        CharDomain v v,
        BoolDomain v,
        -- all address type families should satisfy the address typeclass
-       Address (Adr v)) => SchemeDomain v
+       ForAllAddresses Show v,
+       ForAllAddresses Eq v, 
+       ForAllAddresses Ord v) => SchemeDomain v
   where
-  -- types of addresses 
-  type Adr v :: Type
+  -- | type of addresses to variables
+  type VaAdr v :: Type
+  -- | type of addresses to pairs
+  type PaAdr v :: Type
+  -- | type of addresses to vectors
+  type VeAdr v :: Type 
+  -- | type of addresses to strings
+  type StAdr v :: Type
 
   -- Type of environment stored in closures
   type Env v :: Type
@@ -45,14 +61,14 @@ class (RealDomain v v v,
   type Exp v :: Type
 
   -- Pointer injection
-  pptr :: Adr v -> v -- ^ a pointer to pairs
-  vptr :: Adr v -> v -- ^ a pointer to vectors 
-  sptr :: Adr v -> v -- ^ a pointer to strings
+  pptr :: PaAdr v -> v -- ^ a pointer to pairs
+  vptr :: VeAdr v -> v -- ^ a pointer to vectors 
+  sptr :: StAdr v -> v -- ^ a pointer to strings
 
   -- Pointer extraction 
-  pptrs :: AbstractM m => v -> m (Set (Adr v))
-  vptrs :: AbstractM m => v -> m (Set (Adr v))
-  sptrs :: AbstractM m => v -> m (Set (Adr v))
+  pptrs :: AbstractM m => v -> m (Set (PaAdr v))
+  vptrs :: AbstractM m => v -> m (Set (VeAdr v))
+  sptrs :: AbstractM m => v -> m (Set (StAdr v))
 
   -- | Inject a symbol in the abstract domain
   symbol :: String -> v
@@ -139,9 +155,8 @@ type SchemeValue v  = (
 -- Constraints for when the type of variables and environments is known 
 -----------------------------------------------------------------------------
 
-type SchemeConstraints v exp var env =
-   (Adr v ~ var,
-    Env v ~ env,
+type SchemeConstraints v exp env =
+   (Env v ~ env,
     Exp v ~ exp) :: Constraint
 
 

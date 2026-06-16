@@ -12,13 +12,16 @@ import Control.Monad.Escape
 import Syntax.Ide
 import Lattice.Equal
 import Analysis.Monad.Fix (MonadFixpoint)
-import Domain.Scheme.Store (StoreVal(..))
+import Domain.Scheme.Store
 import Data.Set (Set)
 import Lattice.Class
 
 -- | Monadic constraints needed for storing values (strings, pairs and vectors)
 -- into the Scheme store 
-type SchemeStoreM e v m = (AllocM m e (Adr v), StoreM (Adr v) (StoreVal v) m, SchemeDomain v)
+type SchemeStoreM e v m = 
+    (  AllocM m e (Adr v)
+     , StoreM (Adr v) (VarDom v) m
+     , SchemeDomain v )
 
 -- | Store a pair in the store by allocating a suiteable address
 --  storing the value on that address and returning a pointer to

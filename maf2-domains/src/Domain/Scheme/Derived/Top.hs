@@ -26,6 +26,7 @@ import Control.Monad.Join (MonadBottom(..))
 import Lattice.Trace (Trace (trace))
 import Domain.Address (AddressWithCtx (replaceCtx))
 import Domain.Core.StringDomain.Class
+import Domain.Scheme.Class (ForAllAddresses)
 
 -- | Lifts a value @a@ from the Scheme domain into a @TopLifted@ value so that all Scheme values have a synthetic top element
 newtype SchemeTopLifted a = SchemeTopLifted {getTopLifted :: TopLifted a}
@@ -117,12 +118,15 @@ instance (RealLattice a bln int) => RealLattice (SchemeTopLifted a) (SchemeTopLi
 
 instance
   ( SchemeDomain a,
-    TopLattice (Adr a),
+    ForAllAddresses TopLattice (SchemeTopLifted a),
     TopLattice (StrDom a)
   ) =>
   SchemeDomain (SchemeTopLifted a)
   where
-  type Adr (SchemeTopLifted a) = Adr a
+  type VaAdr (SchemeTopLifted a) = VaAdr a
+  type PaAdr (SchemeTopLifted a) = PaAdr a
+  type VeAdr (SchemeTopLifted a) = VeAdr a
+  type StAdr (SchemeTopLifted a) = StAdr a
   type Env (SchemeTopLifted a) = Env a
   type Exp (SchemeTopLifted a) = Exp a
 

@@ -156,7 +156,7 @@ eval'' _ (DynVar (Ide x _)) =
    lookupDynamic x >>= lookupVar >>= showIfBot (show x ++ " dyn not in store")
 eval'' _ (Self _) = aref <$> getSelf @v
 eval'' rec (Blame e contract loc) = do
-   -- liftIO (putStrLn $ "blame error for " ++ show e)
+   liftIO (putStrLn $ "blame error for " ++ show e)
    party <- eval' rec e 
    recordBlame loc e party contract
    escape $ BlameError (show party) loc
