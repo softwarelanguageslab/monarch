@@ -4,6 +4,10 @@ import Data.Set
 import qualified Data.Set as Set
 import Data.Void (Void)
 import GHC.Base (absurd)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import qualified Data.HashMap.Lazy as HashMap
+import Data.HashMap.Lazy (HashMap)
 
 ------------------------------------------------------------
 -- Type class
@@ -32,3 +36,10 @@ instance (Trace adr a) => Trace adr (Maybe a) where
 
 instance Ord adr => Trace adr Void where
   trace = absurd
+
+instance (Ord adr, Trace adr v) => Trace adr (Map k v) where 
+  trace = Map.foldr (Set.union . trace) Set.empty 
+
+instance (Ord adr, Trace adr v) => Trace adr (HashMap k v) where 
+  trace = HashMap.foldr (Set.union . trace) Set.empty
+

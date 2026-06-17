@@ -23,7 +23,7 @@ import Analysis.SimpleActor.Monad
       MonadSpawn(..),
       MonadDynamic(..),
       MonadFresh(..),
-      MonadBlame(..),
+      MonadBlame(..), message,
 
       )
 import Control.Monad.Reader (ReaderT, MonadReader (..))
@@ -38,7 +38,7 @@ import Analysis.Monad.Environment (EnvM (..))
 import Analysis.Monad.Cache (CacheT, MonadCache (..))
 import Analysis.Monad.Map (MapM (..))
 import Analysis.Monad.Join (SetNonDetT)
-import Analysis.Monad (WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis)
+import Analysis.Monad (WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis, StoreM (lookupAdr, hasAdr))
 import qualified Lattice.Class as Lattice
 import Data.Maybe (fromMaybe)
 import Analysis.Monad.DependencyTracking (DependencyTrackingT, runWithDependencyTracking)
@@ -93,6 +93,10 @@ import qualified Domain.Scheme.Class as Scheme
 import Analysis.Scheme.Monad (SchemeStoreT, runSchemeStoreT, SchemeStoreM)
 import qualified Domain.Scheme.Store as Store
 import Analysis.Store (traceStore)
+import Domain.Core.VectorDomain.PIVector
+import Domain.Core.PairDomain.Class
+import Control.Monad.Cond (ifM)
+import qualified Lattice.Trace as Lattice
 
 ------------------------------------------------------------
 -- Shorthands
@@ -391,17 +395,30 @@ instance Monad m => MonadPartition Partition (IntraT m) where
 -- | Adds the message context based on information in the monad
 addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVlu m) => MsgPayload ->  (ProcT (IntraT m) Msg)
 addMessageCtx payload = do 
-    -- TODO: 
-    -- * trace all addresses from the given payload using "Analysis.Store.traceStore"
-    -- * implement a lookup function that works on the combined SchemeAddress by dispatching 
-    -- to the correct store based on the type of address discovered. 
-    -- * Filter the addresses to VarAdr, those are the only ones that contain symbolic representations
-    -- and hence, also symbolic variables
-    -- * Call an SCV.traceVariables function on the values behind a VarAdr (as before)
-    -- * Finally, restrict the path constraint using the set of discovered variables
-    undefined
-    -- vars <- SCV.traceSymbolicVariables @ActorAdr varVals payload
-    -- message payload . SCV.restrictPC vars <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
+        reachableAdrs <- traceStore (Lattice.trace payload) lookupSchemeAdr
+        reachableValues <- mapM lookupAdr $ foldMap (\case Store.SVarAdr adr -> [adr] ; _ -> []) (Set.toList reachableAdrs)
+        let reachableVariables = foldMap Symbolic.variables reachableValues
+        message payload . SCV.restrictPC reachableVariables <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
+    where lookupSchemeAdr :: forall m . (SchemeStoreM Exp ActorVlu m) => Store.SchemeAdr Exp K -> m (Maybe ActorVlu)
+          lookupSchemeAdr = \case 
+            Store.SStrAdr _ -> 
+                -- strings do not contain values from the variable domain
+                return Nothing
+            Store.SPaiAdr adr -> 
+                 ifM (hasAdr adr) (do
+                    pairValue <- lookupAdr @_ @(Scheme.PaiDom ActorVlu) adr 
+                    return (Just $ Lattice.join (car pairValue) (cdr pairValue)))
+                 (return Nothing)
+            Store.SVecAdr adr -> 
+                ifM (hasAdr adr) 
+                    (do 
+                        (PIVector _ c) <- lookupAdr @_ @(Scheme.VecDom ActorVlu) adr 
+                        return (Just c))
+                    (return Nothing)
+            Store.SVarAdr adr -> 
+                ifM (hasAdr adr)
+                    (Just <$> lookupAdr @_ @ActorVlu adr)
+                    (return Nothing)
 
 instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVlu m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
   send ref v = do
