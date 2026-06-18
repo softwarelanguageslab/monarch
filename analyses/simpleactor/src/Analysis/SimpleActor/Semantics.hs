@@ -36,7 +36,7 @@ import Analysis.Monad.Environment
 import Analysis.Monad.Fix
 import Domain.Core.PairDomain (cons, car ,cdr)
 import Analysis.Scheme.Primitives (primitivesByName)
-import Domain (Domain(inject))
+import Domain (Domain(inject), boolTop)
 import Analysis.Environment ( Environment(..) )
 import qualified Analysis.Environment as Environment
 import Analysis.Monad.Context (CtxM(..))
@@ -335,6 +335,8 @@ actorPrimitives =  Prm @v <$> Map.fromList [
    ("send^" , aprim2 $ \rcv msg _ -> trySend rcv msg >> return nil),
    ("list", aprim0 $ const $ return nil),
    ("print-env", aprim0 $ const $ (liftIO . print =<< getEnv) $> nil),
+   ("string=?", aprim2 $ const $ (\_ _ -> return boolTop)),
+   ("fresh-string", aprim0 $ (\e -> fresh e)),
    -- TODO: move this primitive to somewhere else, since it belongs to the symbolic domain
    -- ("fresh", aprim1 $ \v e -> do { adr <- alloc (Ide "fresh" (spanOf e)) ;  writeVar adr (var adr v) ; return $ var adr v }),
    ("print", aprim1 $ const $ const $ return nil) ]

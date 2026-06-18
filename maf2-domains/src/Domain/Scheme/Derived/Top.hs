@@ -15,7 +15,7 @@ import Domain.Core.CharDomain.Class
 import Domain.Core.CharDomain.TopLifted ()
 import Domain.Core.NumberDomain.Class
 import Domain.Core.NumberDomain.TopLifted ()
-import Domain.Core.StringDomain.TopLifted
+import Domain.Core.StringDomain.TopLifted ()
 import Domain.Scheme.Class
 import GHC.Generics
 import Lattice.Class
@@ -26,7 +26,6 @@ import Control.Monad.Join (MonadBottom(..))
 import Lattice.Trace (Trace (trace))
 import Domain.Address (AddressWithCtx (replaceCtx))
 import Domain.Core.StringDomain.Class
-import Domain.Scheme.Class (ForAllAddresses)
 
 -- | Lifts a value @a@ from the Scheme domain into a @TopLifted@ value so that all Scheme values have a synthetic top element
 newtype SchemeTopLifted a = SchemeTopLifted {getTopLifted :: TopLifted a}
@@ -148,12 +147,12 @@ instance
   symbols (SchemeTopLifted (Value v)) = symbols v
   -- XXX: is the definition of `symbols` actually possible
   -- here? This set is actually infinite.
-  symbols (SchemeTopLifted Top) = undefined -- TODO
+  symbols (SchemeTopLifted Top) = Set.empty -- TODO
 
   -- Closures
   injectClo = SchemeTopLifted . Value . injectClo
   clos (SchemeTopLifted (Value v)) = clos v
-  clos (SchemeTopLifted Top) = undefined -- TODO
+  clos (SchemeTopLifted Top) = Set.empty -- TODO
 
   -- Nil
   nil = SchemeTopLifted $ Value $ nil
@@ -169,11 +168,11 @@ instance
   -- nature of Haskell does not allow us to
   -- populate this set effectively...
   prims (SchemeTopLifted (Value v)) = prims v
-  prims (SchemeTopLifted Top) = undefined
+  prims (SchemeTopLifted Top) = Set.empty
 
   -- Procedures
   withProc f (SchemeTopLifted (Value v)) = withProc f v
-  withProc _ (SchemeTopLifted Top) = undefined
+  withProc _ (SchemeTopLifted Top) = mbottom -- TODO
 
   isInteger = fmap isInteger
   isReal = fmap isReal

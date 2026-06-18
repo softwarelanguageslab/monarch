@@ -751,5 +751,4 @@
                       (lambda (msg) ((dyn send^) act msg)))))
             (begin
               (ping (cons 'ping pong))
-              (sleep 2)
               (wait-until-all-finished))))))))
