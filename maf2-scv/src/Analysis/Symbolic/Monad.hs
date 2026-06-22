@@ -21,7 +21,8 @@ module Analysis.Symbolic.Monad(
    traceSymbolicVariables,
    -- * Garbage collection of formulas and path constraints
    restrictFormula,
-   restrictPC
+   restrictPC,
+   simplifyPC
 ) where
 
 import Solver (FormulaSolver, isFeasible)
@@ -38,6 +39,7 @@ import Lattice (Joinable(..))
 
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Maybe (fromMaybe)
 import Analysis.Monad (MonadCache(..), lookupAdr)
 import Control.Monad.Identity (IdentityT (runIdentityT))
 import Analysis.Monad.AbstractCount (MonadAbstractCount)
@@ -92,9 +94,6 @@ newtype FormulaT i v m a = FormulaT { runFormulaT' :: StateT (PC i) m a }
 
 instance {-# OVERLAPPING #-} (MonadAbstractCount i AbstractCount m, FormulaSolver i m, SymbolicValue v i) => MonadPathCondition i (FormulaT i v m) v where
    extendPc pc'     = modify $ Set.map (normalizeFormula' . conjunction (Atomic $ symbolic pc'))
-    where normalizeFormula' formula =
-            let formula' = normalizeFormula formula
-            in if Set.null formula' then Empty else head (Set.toList formula')
    getPc = get
    integrate p1 = (get >>= zipWithM Path.join (Set.toList p1) . Set.toList) >>= put . Set.fromList
    putPc = put
@@ -252,3 +251,15 @@ restrictFormula vars = \case
 
 restrictPC :: Ord i => Set i -> PC i -> PC i
 restrictPC vars pc = Set.map (restrictFormula vars) pc
+
+-- | Normalize a single formula, collapsing a fully-redundant result to 'Empty'.
+-- Removes redundant terms (e.g. constraints on fresh/bottom values). Does NOT
+-- run 'simplify' — use it where the formula is already simplified (e.g. after
+-- 'conjunction', which simplifies).
+normalizeFormula' :: Ord i => Formula i -> Formula i
+normalizeFormula' = fromMaybe Empty . normalizeFormula
+
+-- | Simplify and normalize every formula in a path constraint. Use where the PC
+-- has not already been simplified (e.g. a PC read back via 'getPc').
+simplifyPC :: Ord i => PC i -> PC i
+simplifyPC = Set.map (normalizeFormula' . simplify)

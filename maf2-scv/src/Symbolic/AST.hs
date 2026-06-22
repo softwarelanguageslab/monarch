@@ -28,6 +28,7 @@ where
 import Syntax.Scheme (Span)
 import Data.Set (Set)
 import Data.List (intercalate)
+import Data.Maybe (mapMaybe)
 import qualified Data.Set as Set
 import GHC.Generics
 import Control.DeepSeq
@@ -326,6 +327,11 @@ instance (Eq i) => Simplification (Proposition i) where
    simplify (Predicate "real?/v" [Literal (Num _)]) = Literal $ Boo True
    simplify (Predicate "integer?/v" [Literal (Num _)]) = Literal $ Boo True
    simplify (Predicate "integer?/v" [Literal _]) = Literal $ Boo False
+   -- list-shape guards on concrete constants are trivially decidable
+   simplify (Predicate "null?/v" [Literal Nil])  = Literal $ Boo True
+   simplify (Predicate "null?/v" [Literal Pair]) = Literal $ Boo False
+   simplify (Predicate "pair?/v" [Literal Pair]) = Literal $ Boo True
+   simplify (Predicate "pair?/v" [Literal Nil])  = Literal $ Boo False
    simplify (Predicate "or?/v" [Literal (Boo a), Literal (Boo b)]) = Literal $ Boo (a || b)
    simplify (Predicate "and?/v" [Literal (Boo a), Literal (Boo b)]) = Literal $ Boo (a && b)
    simplify (IsTrue prop) = case simplify prop of
@@ -340,10 +346,14 @@ instance (Eq i) => Simplification (Proposition i) where
 
 instance (Eq i, Ord i) => Simplification (Formula i) where
    simplify (Conjunction cs)
+      -- first simplify every conjunct (so trivially-true atoms become Tautology)
       -- sat(False /\ _) = False
-      | Set.member (Atomic Fail) cs = Atomic Fail
-      -- sat(True /\ x) = sat(x)
-      | otherwise = Conjunction $ Set.filter (/= Atomic Tautology) cs
+      | Set.member (Atomic Fail) cs' = Atomic Fail
+      -- sat(True /\ x) = sat(x); drop the tautologies that carry no information
+      | otherwise = Conjunction $ Set.filter (/= Atomic Tautology) cs'
+      where cs' = Set.map simplify cs
+   -- simplify the proposition held by an atomic formula
+   simplify (Atomic p) = Atomic (simplify p)
    simplify f = f
 
 
@@ -356,22 +366,36 @@ instance (Eq i, Ord i) => Simplification (Formula i) where
 -- on "fresh" variables. Expressions including these terms are always satisfiable, and 
 -- unrelated to other constraints in the formula, hence they can be safely elliminated.
 --
-normalizeFormula :: Ord i => Formula i -> Set (Formula i)
+-- | Normalize a formula, returning 'Nothing' when the whole formula was
+-- redundant (and can be dropped from the path constraint) or @Just@ the
+-- normalized formula otherwise. The "zero or one" outcome is encoded faithfully
+-- with 'Maybe'.
+normalizeFormula :: Ord i => Formula i -> Maybe (Formula i)
 normalizeFormula =
     \case
-        -- fresh /\ x /\ y <=> x /\ y
-        Conjunction propositions -> Set.singleton $
-         Conjunction $ foldMap normalizeFormula propositions
-        -- fresh \/ x \/ y <=> x \/ y
-        Disjunction propositions -> Set.singleton $ Disjunction $ foldMap normalizeFormula propositions
+        -- fresh /\ x /\ y <=> x /\ y  (drop the redundant conjuncts)
+        Conjunction propositions -> Just $
+         Conjunction $ normalizeMembers propositions
+        -- fresh \/ x \/ y <=> x \/ y  (drop the redundant disjuncts)
+        Disjunction propositions -> Just $ Disjunction $ normalizeMembers propositions
         -- ~ fresh <=> fresh
-        Negation a ->
-            let a' = normalizeFormula a
-            in if Set.null a' then Set.empty else Set.singleton (Negation $ head $ Set.toList a')
-        Atomic a -> if isRedundant a then Set.empty else Set.singleton (Atomic a)
-        f -> Set.singleton f
+        Negation a -> Negation <$> normalizeFormula a
+        Atomic a -> if isRedundant a then Nothing else Just (Atomic a)
+        f -> Just f
+  where normalizeMembers = Set.fromList . mapMaybe normalizeFormula . Set.toList
 
--- | Checks whether an expression contains a "fresh" symbolic expression, if so it can be replaced with a fresh symbolic variable entirely, meaning that it is redundant in the path constraint.
+-- | Checks whether an expression is redundant in the path constraint and can be
+-- safely elliminated. This holds for two kinds of expressions:
+--
+--   * "fresh" symbolic expressions: a 'Fresh' term is a widened symbolic
+--     representation, so a constraint involving one is always satisfiable and
+--     unrelated to the rest of the formula. This holds regardless of the set of
+--     variables the term is recorded as possibly containing — two widened terms
+--     carrying the same variables are treated as identical and thus redundant,
+--     which avoids spurious path forks on those terms.
+--   * constraints on bottom (⊥) values: a bottom value carries no symbolic
+--     information, so a constraint over it (e.g. @true?/v(⊥)@, @false?/v(⊥)@)
+--     cannot influence satisfiability and is redundant.
 isRedundant :: Proposition i -> Bool
 isRedundant =
     \case
@@ -384,7 +408,7 @@ isRedundant =
         Application prop props -> isRedundant prop || any isRedundant props
         Tautology -> False
         Fail -> False
-        Fresh i -> Set.null i
-        Bottom -> False
+        Fresh _ -> True
+        Bottom -> True
 
 

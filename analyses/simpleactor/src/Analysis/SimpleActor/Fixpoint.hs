@@ -74,6 +74,7 @@ import qualified Solver as SCV
 import Domain.Core.AbstractCount (AbstractCount)
 import Analysis.Monad.AbstractCount
 import Solver.Z3 (runZ3SolverWithPrelude)
+import Solver (runCachedSolver)
 import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
 import qualified Analysis.Monad.Map as MapM
 import qualified Analysis.ASE.SymbolicVariable as ASE
@@ -398,7 +399,7 @@ addMessageCtx payload = do
         reachableAdrs <- traceStore (Lattice.trace payload) lookupSchemeAdr
         reachableValues <- mapM lookupAdr $ foldMap (\case Store.SVarAdr adr -> [adr] ; _ -> []) (Set.toList reachableAdrs)
         let reachableVariables = foldMap Symbolic.variables reachableValues
-        message payload . SCV.restrictPC reachableVariables <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
+        message payload . SCV.simplifyPC . SCV.restrictPC reachableVariables <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
     where lookupSchemeAdr :: forall m . (SchemeStoreM Exp ActorVlu m) => Store.SchemeAdr Exp K -> m (Maybe ActorVlu)
           lookupSchemeAdr = \case 
             Store.SStrAdr _ -> 
@@ -451,7 +452,7 @@ instance Monad m => MonadSpawn ActorVlu AdrCtx (SystemT m) where
 -- Analysis-global instances.
 
 
--- The 'AnalysisState' precisely captures the state needed for keeping 
+-- The 'AnalysisState' precisely captures the state needed for keeping
 -- track of a 'MapM' cache.
 instance (Monad m, k ~ ProcKey, v ~ ProcVal) => MapM k v (StateT AnalysisState m) where
   get k = use (cache . at k)
@@ -497,12 +498,10 @@ type AnalysisM m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m)
 -- This is the only place where the semantics from 'Analysis.SimpleActor.Semantics' is actually called.
 intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> StateT InterTurnState (AnalysisSystemT m) (Set Turn)
 intraTurn beh selfRef st = do
-        -- Debug.traceShowIO $ "intraTurn actor=" ++ show selfRef ++ " beh-expr=" ++ show (spanOf (beh ^._1))
         -- compute a fixpoint over the function calls within this turn
         lfp intra key'
         -- The set of successor turns will have been cached at the entry component
         result <- (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
-        -- Debug.traceShowIO $ "intraTurn result size=" ++ show (Set.size result)
         return result
     where ctx' = emptyCtx selfRef
                & env .~ (beh ^._2)
@@ -612,4 +611,5 @@ analyze mainExpr = do
 -- | Top-level function to analyze an actor system within the IO monad
 analyzeIO :: Exp -> IO (System, AnalysisState, ActorSto)
 analyzeIO mainExpr = analyze mainExpr
+                   & runCachedSolver
                    & runZ3SolverWithPrelude

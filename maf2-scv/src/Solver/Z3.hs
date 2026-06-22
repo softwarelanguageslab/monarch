@@ -15,7 +15,7 @@ module Solver.Z3(
 import System.Process
 import System.IO
 import Text.Printf
-import Control.Monad.State 
+import Control.Monad.State
 import Control.Monad ((>=>), when)
 import Data.Maybe
 
@@ -190,5 +190,4 @@ instance {-# OVERLAPPING #-} (Show i, Ord i) => FormulaSolver i (Z3Solver i) whe
       _ <- command (printf "(assert %s)" translatedScript)
       -- Check whether the model is satisfiable
       result <- parseResult <$> (fromAtom =<< eval "(check-sat)")
-      -- Z3Solver $ liftIO (putStrLn $ "solved script " ++ translatedScript ++ " with result " ++ show result)
       return result

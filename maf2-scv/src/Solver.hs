@@ -109,7 +109,7 @@ instance {-# OVERLAPPING #-} (Ord i, FormulaSolver i m) => FormulaSolver i (Cach
 -- Layering
 ------------------------------------------------------------
 
-instance (Monad (t m), MonadLayer t, FormulaSolver i m) => FormulaSolver i (t m) where
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, FormulaSolver i m) => FormulaSolver i (t m) where
    setup = upperM . setup
    solve count' = upperM . solve count'
    getModel count' = upperM  . getModel count'
