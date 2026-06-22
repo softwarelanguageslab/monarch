@@ -299,6 +299,10 @@ instance (EqualLattice v, BottomLattice v, BoolDomain v, SchemeValue (PairedSymb
    variables :: PairedSymbolic v expr k i -> Set i
    variables = Formula.variables . proposition . rightValue
 
+   -- | Same as 'variables' but selects based on 'SelectStrictVariables' instead
+   -- of 'SelectVariables'
+   strictVariables = Formula.strictVariables . proposition . rightValue
+
 ------------------------------------------------------------
 -- Equality
 ------------------------------------------------------------

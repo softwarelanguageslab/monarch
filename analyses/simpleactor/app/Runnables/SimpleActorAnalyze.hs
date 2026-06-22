@@ -5,7 +5,7 @@ module Runnables.SimpleActorAnalyze(
 
 import Data.Map (Map)
 import qualified Data.Map as Map
--- import qualified Analysis.Store as Store
+import qualified Analysis.Store as Store
 import qualified Analysis.SimpleActor.Fixpoint as Fixpoint
 import qualified Analysis.SimpleActor.Fixpoint.Common as Common
 import qualified Analysis.Actors.Mailbox.Graph.Dot as Dot
@@ -15,6 +15,8 @@ import Criterion.Types (Config(..))
 import CommandLine.Options
 import Text.Pretty.Simple
 import Syntax.AST
+import qualified Domain.Scheme.Store as Store
+import Data.Maybe (fromJust)
 
 ------------------------------------------------------------
 -- Utilities
@@ -66,11 +68,13 @@ entrypoint InputOptions { .. } OutputDirOptions { .. } doBenchmark = do
 
 analyzeAst :: Exp -> String -> IO ()
 analyzeAst expr outDir = do
-    (_, state, _) <- Fixpoint.analyzeIO expr
+    (_, state, sto) <- Fixpoint.analyzeIO expr
     -- let sto    = Fixpoint._store $ snd output
     let blames = Fixpoint._blames $ state
 
     let trace = reverse $ map Fixpoint._mbs $ Fixpoint._trace $ state
-    -- putStrLn $ Store.printMap show (const True) sto
     putStrLn $ show blames
     renderTraceMailboxesToDot outDir trace
+    putStrLn $ Store.printMap show (const True) (Store._paiStore $ fromJust $ Map.lookup () sto)
+    putStrLn $ Store.printMap show (const True) (Store._varStore $ fromJust $ Map.lookup () sto)
+

@@ -92,6 +92,7 @@ instance TopLattice (PaiAdr e ctx) where
 
 instance (SpanOf e, Show ctx) => Show (PaiAdr e ctx) where 
     show (PaiAdr e ctx) = "pairadr@" ++ show (spanOf e) ++ "#" ++ show ctx
+    show PaiTop = "⊤"
 
 -- 
 -- VecAdr 
@@ -111,6 +112,7 @@ instance TopLattice (VecAdr e ctx) where
 
 instance (SpanOf e, Show ctx) => Show (VecAdr e ctx) where 
     show (VecAdr e ctx) = "vecadr@" ++ show (spanOf e) ++ "#" ++ show ctx
+    show VecTop = "⊤"
 --
 -- StrAdr
 --
@@ -129,6 +131,7 @@ instance TopLattice (StrAdr e ctx) where
 
 instance (SpanOf e, Show ctx) => Show (StrAdr e ctx) where 
     show (StrAdr e ctx) = "stradr@" ++ show (spanOf e) ++ "#" ++ show ctx
+    show StrTop = "⊤"
 
 
 --

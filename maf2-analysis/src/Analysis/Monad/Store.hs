@@ -5,6 +5,7 @@
 module Analysis.Monad.Store (
     StoreM(..),
     StoreM'(..),
+    MonadMultiStore(..),
     StoreT(..),
     AbstractCountM(..),
     WidenedStoreT,
@@ -130,6 +131,21 @@ class Monad m => StoreM' s a v m | m s -> a v where
 instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, StoreM' s adr v m) => StoreM' s adr v (t m) where
    currentStore = upperM currentStore
    putStore = upperM . putStore
+
+---
+--- MonadMultiStore typeclass
+---
+
+-- | Read and replace an entire store consisting of multiple address types (a
+-- "multi-store") as a single value. Unlike 'StoreM''/'StoreM', which operate on
+-- one address type at a time, this exposes the whole store.
+class Monad m => MonadMultiStore s m | m -> s where
+   getMultiStore :: m s
+   putMultiStore :: s -> m ()
+
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, MonadMultiStore s m) => MonadMultiStore s (t m) where
+   getMultiStore = upperM getMultiStore
+   putMultiStore = upperM . putMultiStore
 
 --
 -- AbstractCountM typeclass 
