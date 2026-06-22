@@ -16,12 +16,14 @@ import Data.Set (Set)
 import Lattice.Class
 import Control.Monad.Layer (MonadLayer)
 import Control.Monad.State
+import qualified Control.Monad.State as State
 import Domain.Scheme.Store (SchemeStore, ForAllStored, StoreL)
 import Domain.Scheme.Store (StoreL(..))
 import Control.Lens
 import qualified Data.Map as Map
 import qualified Analysis.Store as Store
 import Data.Maybe (fromMaybe, isJust)
+import Data.Map (Map)
 
 
 ----------------------------------------
@@ -101,6 +103,14 @@ instance (StoreL adr vlu (SchemeStore exp ctx v), Joinable vlu, Monad m, Show ad
         uses (storeLens @adr @vlu) (fromMaybe (error $ "Address " ++ show adr ++ " not found") . Store.lookupSto adr)
     hasAdr adr = 
         uses (storeLens @adr @vlu) (isJust . Store.lookupSto adr)
+
+instance (StoreL adr vlu (SchemeStore exp ctx v), Monad m) => StoreM' (Map adr vlu) adr vlu (SchemeStoreT exp ctx v m) where
+  currentStore = use (storeLens @adr @vlu)
+  putStore s = modify (over (storeLens @adr @vlu) (const s))
+
+instance (Monad m) => MonadMultiStore (SchemeStore exp ctx v) (SchemeStoreT exp ctx v m) where
+  getMultiStore = SchemeStoreT State.get
+  putMultiStore = SchemeStoreT . State.put
 
 runSchemeStoreT :: SchemeStore exp ctx v -> SchemeStoreT exp ctx v m a -> m (a, SchemeStore exp ctx v)
 runSchemeStoreT initialStore = flip runStateT initialStore . runSchemeStoreT'

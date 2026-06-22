@@ -32,14 +32,14 @@ done
 
 set -e 
 
-cabal build -j$(nproc) --enable-profiling --ghc-options="-fprof-late -O0" -j$(nproc)
+cabal build -j$(nproc) -j$(nproc)
 
 EXECUTABLE_PATH=$(cabal list-bin simpleactor-exe)
 TEMP_DIR=$(mktemp -d)
 
 cd $CURRENTDIR
 
-$EXECUTABLE_PATH +RTS -xc -RTS analyze2 -f $SOURCE_FILE -o $TEMP_DIR --no-translate
+$EXECUTABLE_PATH analyze2 -f $SOURCE_FILE -o $TEMP_DIR --no-translate
 
 if [ $SHOW_GRAPH -eq 1 ] ; then
     $PUREACTOR/scripts/python.sh $PUREACTOR/scripts/dotviewer.py "trace_step_(\d+)_(.+).dot" $TEMP_DIR

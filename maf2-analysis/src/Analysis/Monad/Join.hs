@@ -11,7 +11,10 @@ module Analysis.Monad.Join (
     runJoinT,
     runNonDetT,
     runSetNonDetT,
-    runSetNonDetTIntercept
+    runSetNonDetTIntercept,
+    -- * NonDetT with hooks
+    MonadNonDetHook(..),
+    SetHookNonDetT(..)
 ) where
 
 import Lattice.Class
@@ -141,3 +144,45 @@ runSetNonDetTIntercept pre post (SetNonDetT ma) = Set.fromList <$> (pre >> uncon
    where fix' Nothing = post >> return []
          fix' (Just (x, mxs)) = post >> pre >> fmap (x:) (uncons mxs >>= fix')
 
+
+--
+-- SetHookNonDetT
+--
+
+-- Same as SetNonDetT put admits hooks to be executed in the beginning of each branch as well as the end of each branch.
+
+-- Hooks are to be provided by the underlying monadic layers, hence only actions from monadic layers below the non-deterministic layer is available.
+
+-- | A type class that provides hooks to the non-deterministic execution of the computation
+class MonadNonDetHook m where 
+    -- | Hook that gets executed before each branch
+    preBranch :: m ()
+    -- | Hook that gets executed after each branch
+    postBranch :: m ()
+
+instance {-# OVERLAPPABLE #-} (Monad m, MonadLayer t, MonadNonDetHook m) => MonadNonDetHook (t m) where 
+    preBranch = upperM preBranch
+    postBranch = upperM postBranch
+
+-- | Same as the 'SetNonDetT' transformer, except that 
+-- it calls the "NonDetHook" hooks when executed using the 
+-- 'MonadCache.run' function.
+newtype SetHookNonDetT m a = SetHookNonDetT { getHookNonDetT :: ListT m a } 
+    deriving (Functor, Applicative, Monad, MonadLayer)
+
+instance (MonadCache m,  MonadNonDetHook m, Monad m) => MonadCache (SetHookNonDetT m) where
+   type Key (SetHookNonDetT m) k = Key (ListT m) k
+   type Val (SetHookNonDetT m) v = Val m (Set v)
+   type Base (SetHookNonDetT m) = Base (ListT m)
+   key = upperM . key
+   val :: forall v . Val m (Set v) -> SetHookNonDetT m v
+   val v = SetHookNonDetT (ListT $ val @m @(Set v) v >>= uncons . ListT.fromFoldable . Set.toList)
+   run f = run (fmap Set.fromList . runHooks . getHookNonDetT . f)
+    where runHooks ma = preBranch >> uncons ma >>= fix' 
+          fix' Nothing = postBranch >> return [] 
+          fix' (Just (a, mas)) = postBranch >> preBranch >> fmap(a:) (uncons mas >>= fix')
+
+instance (Monad m) => MonadJoinable (SetHookNonDetT m) where
+   mjoin (SetHookNonDetT ma) (SetHookNonDetT mb) = SetHookNonDetT $ ma `mplus` mb
+instance (Monad m) => MonadBottom (SetHookNonDetT m) where
+   mbottom = SetHookNonDetT C.mzero

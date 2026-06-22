@@ -46,3 +46,6 @@ class (Joinable (Symbolic v), Ord i) => SymbolicValue v i | v -> i where
    equal :: v -> v -> v
    -- | Returns all symbolic variables that occur in the symbolic value
    variables :: v -> Set i
+   -- | Same as 'variables' but only returns the variables that are certainly 
+   -- in the formula.
+   strictVariables :: v -> Set i

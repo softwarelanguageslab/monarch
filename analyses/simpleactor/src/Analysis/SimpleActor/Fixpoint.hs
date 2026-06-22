@@ -37,13 +37,13 @@ import GHC.Generics (Generic)
 import Analysis.Monad.Environment (EnvM (..))
 import Analysis.Monad.Cache (CacheT, MonadCache (..))
 import Analysis.Monad.Map (MapM (..))
-import Analysis.Monad.Join (SetNonDetT)
+import Analysis.Monad.Join (SetHookNonDetT, MonadNonDetHook (..))
 import Analysis.Monad (WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis, StoreM (lookupAdr, hasAdr))
 import qualified Lattice.Class as Lattice
 import Data.Maybe (fromMaybe)
 import Analysis.Monad.DependencyTracking (DependencyTrackingT, runWithDependencyTracking)
 import qualified Data.Set as Set
-import Analysis.Monad.Fix (lfp, runFixT)
+import Analysis.Monad.Fix (lfp, runAroundFixT)
 import qualified Data.HashMap.Lazy as HashMap
 import qualified Analysis.SimpleActor.Semantics as Semantics
 import Lattice.Class (Joinable, BottomLattice, Meetable)
@@ -75,7 +75,8 @@ import Domain.Core.AbstractCount (AbstractCount)
 import Analysis.Monad.AbstractCount
 import Solver.Z3 (runZ3SolverWithPrelude)
 import Solver (runCachedSolver)
-import Analysis.Monad.IntraAnalysis (IntraAnalysisT)
+import Analysis.Monad.IntraAnalysis (IntraAnalysisT, MonadIntraAnalysis (..))
+import Analysis.Monad.Store (MonadMultiStore (..))
 import qualified Analysis.Monad.Map as MapM
 import qualified Analysis.ASE.SymbolicVariable as ASE
 import qualified Analysis.ASE.PC as ASE
@@ -98,6 +99,9 @@ import Domain.Core.VectorDomain.PIVector
 import Domain.Core.PairDomain.Class
 import Control.Monad.Cond (ifM)
 import qualified Lattice.Trace as Lattice
+import qualified RIO.Text as T
+import Domain.Scheme.Store (SchemeStore)
+import Control.Monad.Identity
 
 ------------------------------------------------------------
 -- Shorthands
@@ -179,12 +183,12 @@ $(makeLenses ''InterTurnState)
 
 -- | Inter-actor actor system state
 data System = System {
-        -- | All the mailboxes in the system 
+        -- | All the mailboxes in the system
         _mbs   :: ActorMai,
         -- | All of the reachable behaviors/turns indexed
         -- by each actor.
         _turns :: Map ActorRef (Set Turn),
-        -- | The initial behaviors of an actor 
+        -- | The initial behaviors of an actor
         _initialBeh :: Map ActorRef Beh
     } deriving (Ord, Eq, Show, Generic)
 
@@ -252,6 +256,32 @@ type ProcVal = Val (ProcT (IntraT Identity)) ActorVlu
 initialProcKey :: Cmp -> Ctx -> State -> ProcKey
 initialProcKey cmp ctx' st' = cmp <+> emptyPC <+> ctx' <+> st'
 
+-- | Debug helper: the number of entries in each component map of a store.
+storeSizes :: ActorSto -> (Int, Int, Int, Int)
+storeSizes s = ( Map.size (s ^. Store.paiStore)
+               , Map.size (s ^. Store.strStore)
+               , Map.size (s ^. Store.vecStore)
+               , Map.size (s ^. Store.varStore) )
+
+-- | The key corresponding to the initial component of the intra-turn analysis.
+entryKey :: ActorRef -> Beh -> State -> ProcKey
+entryKey selfRef beh st = initialProcKey cmp' ctx' st
+    where ctx' = emptyCtx selfRef
+               & env .~ (beh ^._2)
+               & dyn .~ (beh ^._3)
+          cmp' = case beh ^._1 of
+                   expr@Receive {} -> ReceiveExp expr
+                   expr            -> ActorExp expr
+
+-- | Maps a component's cache key to a flow-sensitivity index. The choice of
+-- @ix@ selects which parts of the key participate in flow sensitivity; @ix ~ ()@
+-- collapses every component onto a single shared store.
+class Ord ix => ToIndex ix where
+    toIndex :: ProcKey -> ix
+
+instance ToIndex () where
+    toIndex _ = ()
+
 ------------------------------------------------------------
 
 -- | Intra-actor fixpoint: monadic context used for analyzing a single 
@@ -264,7 +294,7 @@ type IntraT m = (
         StateT State (
         -- the intra-actor analysis is path-sensitive meaning that it tracks 
         -- inbox content independently for each path through the actor. 
-        SetNonDetT (
+        SetHookNonDetT (
         CacheT (
         StateT InterTurnState m
     )))))
@@ -301,13 +331,16 @@ instance NFData BlameRecord
 -- | Global analysis state: the call-result cache plus bookkeeping (trace and
 -- recorded blames). Dependency tracking lives in dedicated
 -- 'DependencyTrackingT' layers, see 'GlobalT'.
-data AnalysisState = AnalysisState {
-        _cache  :: Map ProcKey ProcVal,
-        _trace  :: [System],
-        _blames :: Set BlameRecord
+data AnalysisState ix = AnalysisState {
+        _cache    :: Map ProcKey ProcVal,
+        _storeIn  :: Map ix (SchemeStore Exp K ActorVlu),
+        _storeOut :: Map ix (SchemeStore Exp K ActorVlu),
+        _spawnStore :: Map ActorRef ActorSto,
+        _trace    :: [System],
+        _blames   :: Set BlameRecord
     } deriving (Ord, Eq, Show, Generic)
 
-instance NFData AnalysisState
+instance NFData ix => NFData (AnalysisState ix)
 
 $(makeLenses ''AnalysisState)
 
@@ -322,8 +355,8 @@ $(makeLenses ''AnalysisState)
 -- strings in separate maps). This mirrors the layering used in
 -- 'Analysis.Scheme' and keeps the 'StateT AnalysisState' layer responsible
 -- only for the call cache, the trace, and recorded blames.
-type GlobalT m = (
-        StateT AnalysisState  (
+type GlobalT ix m = (
+        StateT (AnalysisState ix) (
         SchemeStoreT Exp K ActorVlu (
         ComponentTrackingT ProcKey (
         DependencyTrackingT ProcKey ProcKey (
@@ -335,19 +368,47 @@ type GlobalT m = (
 
 ------------------------------------------------------------
 
+-- Hooks executed at each branching point
+
+newtype StoreHookT m a = StoreHookT { getStoreHookT :: IdentityT m a } 
+    deriving (Functor, Applicative, Monad, MonadLayer)
+
+runStoreHookT :: StoreHookT m a -> m a
+runStoreHookT = runIdentityT . getStoreHookT
+
+instance ( Monad m
+         , MonadIO m
+         , MonadIntraAnalysis ProcKey m
+         , MonadAnalysisState ix m
+         , MonadMultiStore ActorSto m
+         , ToIndex ix
+         ) => MonadNonDetHook (StoreHookT m) where
+    -- Reset the working store to the input store recorded for this index.
+    preBranch = StoreHookT $ upperM $ do
+        Debug.traceIO (T.pack "preBranch")
+        idx <- toIndex <$> currentCmp
+        putMultiStore =<< getStoreIn idx
+    -- Fold the resulting working store into the output store for this index.
+    postBranch = StoreHookT $ upperM $ do
+        Debug.traceIO (T.pack "postBranch")
+        idx <- toIndex <$> currentCmp
+        getMultiStore >>= joinStoreOut idx
+
+------------------------------------------------------------
+
 -- The type aliases defined below are for convenience and readibility. 
 -- The idea is that when defining each layer of fixpoint iterations, we peel off one 
 -- of the monads in the stack and use the corresponding type alias to make it clear 
 -- which leayer of fixpoint iteration we are working on.
 
 -- The monad for the entire analysis
-type AnalysisT m = (ProcT (IntraT (IntraAnalysisT ProcKey (SystemT (GlobalT m)))))
+type AnalysisT ix m = (ProcT (IntraT (StoreHookT (IntraAnalysisT ProcKey (SystemT (GlobalT ix m))))))
 -- The monad stack for the intra-actor fixpoint.
-type AnalysisIntraT m = (IntraT (SystemT (GlobalT m)))
+type AnalysisIntraT ix m = (IntraT (SystemT (GlobalT ix m)))
 -- The monad stack for the inter-actor fixpoint. 
-type AnalysisSystemT m = (SystemT (GlobalT m))
+type AnalysisSystemT ix m = (SystemT (GlobalT ix m))
 -- The monad stack for the analysis-global fixpoint.
-type AnalysisGlobalT m = (GlobalT m)
+type AnalysisGlobalT ix m = (GlobalT ix m)
 
 ------------------------------------------------------------
 -- Monad instances
@@ -394,12 +455,17 @@ instance Monad m => MonadPartition Partition (IntraT m) where
     get = return Lattice.bottom
 
 -- | Adds the message context based on information in the monad
-addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVlu m) => MsgPayload ->  (ProcT (IntraT m) Msg)
+addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, MonadIO m, SchemeStoreM Exp ActorVlu m) => MsgPayload ->  (ProcT (IntraT m) Msg)
 addMessageCtx payload = do 
         reachableAdrs <- traceStore (Lattice.trace payload) lookupSchemeAdr
-        reachableValues <- mapM lookupAdr $ foldMap (\case Store.SVarAdr adr -> [adr] ; _ -> []) (Set.toList reachableAdrs)
-        let reachableVariables = foldMap Symbolic.variables reachableValues
-        message payload . SCV.simplifyPC . SCV.restrictPC reachableVariables <$> SCV.getPc @Domain.SymVar @_ @ActorVlu
+        reachableValues <- foldMap (\case Just v -> [v] ; Nothing -> []) <$> mapM lookupSchemeAdr (Set.toList reachableAdrs)
+        let reachableVariables = foldMap Symbolic.strictVariables reachableValues
+        pc <- SCV.getPc
+        Debug.traceIO (T.pack $ "PC>>>" ++ show pc) 
+        Debug.traceIO (T.pack $ "Payload>>>" ++ show payload)
+        Debug.traceIO (T.pack $ "ReachableValues>>>" ++ show reachableValues)
+        Debug.traceIO (T.pack $ "Reachable>>>" ++ show reachableVariables)
+        return $ message payload $ SCV.simplifyPC $ SCV.restrictPC reachableVariables pc
     where lookupSchemeAdr :: forall m . (SchemeStoreM Exp ActorVlu m) => Store.SchemeAdr Exp K -> m (Maybe ActorVlu)
           lookupSchemeAdr = \case 
             Store.SStrAdr _ -> 
@@ -439,12 +505,19 @@ instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVl
 
 -- | Inter-actor monad instances
 
-instance Monad m => MonadSpawn ActorVlu AdrCtx (SystemT m) where
+instance ( Monad m
+         , MonadMultiStore ActorSto m
+         , MonadAnalysisState ix m
+         ) => MonadSpawn ActorVlu AdrCtx (SystemT m) where
     spawn behExpr environ k = do
         let newRef = Domain.Actor.Pid behExpr k
             beh = (behExpr, environ, initialDynEnvironment)
         initialBeh . at newRef ?= beh
         mbs . at newRef %= Just . fromMaybe Lattice.bottom
+        -- Record the store at the spawn point; 'transferSystem' uses it to seed
+        -- the new actor's input store once its entry index is known.
+        sto <- getMultiStore
+        modifyAnalysisState (over spawnStore (Map.insert newRef sto))
         return newRef
 
 ------------------------------------------------------------
@@ -454,36 +527,52 @@ instance Monad m => MonadSpawn ActorVlu AdrCtx (SystemT m) where
 
 -- The 'AnalysisState' precisely captures the state needed for keeping
 -- track of a 'MapM' cache.
-instance (Monad m, k ~ ProcKey, v ~ ProcVal) => MapM k v (StateT AnalysisState m) where
+instance (Monad m, k ~ ProcKey, v ~ ProcVal) => MapM k v (StateT (AnalysisState ix) m) where
   get k = use (cache . at k)
   put k v = cache . at k ?= v
   joinWith k v = cache . at k %= Just . maybe v (Lattice.join v)
   getAll = use cache
 
 -- Tracking blame errors
-instance Monad m => MonadBlame ActorVlu (StateT AnalysisState m) where
+instance Monad m => MonadBlame ActorVlu (StateT (AnalysisState ix) m) where
     recordBlame loc partyExpr partyValue contract = 
         blames %= Set.insert (BlameRecord partyExpr partyValue contract loc)
 
 -- Access to the global analysis state
 
-class Monad m => MonadAnalysisState m where
-    getAnalysisState :: m AnalysisState
-    putAnalysisState :: AnalysisState -> m ()
-    modifyAnalysisState :: (AnalysisState -> AnalysisState) -> m ()
+class Monad m => MonadAnalysisState ix m | m -> ix where
+    getAnalysisState :: m (AnalysisState ix)
+    putAnalysisState :: AnalysisState ix -> m ()
+    modifyAnalysisState :: (AnalysisState ix -> AnalysisState ix) -> m ()
     modifyAnalysisState f = getAnalysisState >>= putAnalysisState . f
     {-# MINIMAL getAnalysisState, putAnalysisState #-}
 
-instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, MonadAnalysisState m) => MonadAnalysisState (t m) where
+instance {-# OVERLAPPABLE #-} (Monad (t m), MonadLayer t, MonadAnalysisState ix m) => MonadAnalysisState ix (t m) where
     getAnalysisState = upperM getAnalysisState
     putAnalysisState = upperM . putAnalysisState
 
-instance Monad m => MonadAnalysisState (StateT AnalysisState m) where
+instance Monad m => MonadAnalysisState ix (StateT (AnalysisState ix) m) where
   getAnalysisState = State.get
   putAnalysisState = State.put
 
+-- | Read the input store recorded for an index, defaulting to bottom.
+getStoreIn :: (Ord ix, MonadAnalysisState ix m) => ix -> m ActorSto
+getStoreIn idx = (fromMaybe Lattice.bottom . Map.lookup idx . _storeIn) <$> getAnalysisState
+
+-- | Join a store into the input store recorded for an index.
+joinStoreIn :: (Ord ix, MonadAnalysisState ix m) => ix -> ActorSto -> m ()
+joinStoreIn idx s = modifyAnalysisState (over storeIn (Map.insertWith Lattice.join idx s))
+
+-- | Read the output store recorded for an index, defaulting to bottom.
+getStoreOut :: (Ord ix, MonadAnalysisState ix m) => ix -> m ActorSto
+getStoreOut idx = (fromMaybe Lattice.bottom . Map.lookup idx . _storeOut) <$> getAnalysisState
+
+-- | Join a store into the output store recorded for an index.
+joinStoreOut :: (Ord ix, MonadAnalysisState ix m) => ix -> ActorSto -> m ()
+joinStoreOut idx s = modifyAnalysisState (over storeOut (Map.insertWith Lattice.join idx s))
+
 -- | Register a system after a inter-actor turn, and returns the registered system
-traceSystem :: Monad m => System -> AnalysisGlobalT m System
+traceSystem :: Monad m => System -> AnalysisGlobalT ix m System
 traceSystem sys = (trace %= (sys:)) $> sys
 
 ------------------------------------------------------------
@@ -491,43 +580,47 @@ traceSystem sys = (trace %= (sys:)) $> sys
 ------------------------------------------------------------
 
 -- | Constraints that need to be satisfied when executing the analysis
-type AnalysisM m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m)
+type AnalysisM ix m = (MonadIO m, SCV.FormulaSolver Domain.SymVar m, ToIndex ix)
 
 -- | Intra-turn fixpoint: analyze a single turn of an actor, and returns a set of successor turns.
 --
 -- This is the only place where the semantics from 'Analysis.SimpleActor.Semantics' is actually called.
-intraTurn :: forall m . AnalysisM m => Beh -> ActorRef -> State -> StateT InterTurnState (AnalysisSystemT m) (Set Turn)
+intraTurn :: forall m ix . AnalysisM ix m => Beh -> ActorRef -> State -> StateT InterTurnState (AnalysisSystemT ix m) (Set Turn)
 intraTurn beh selfRef st = do
         -- compute a fixpoint over the function calls within this turn
         lfp intra key'
         -- The set of successor turns will have been cached at the entry component
         result <- (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
         return result
-    where ctx' = emptyCtx selfRef
-               & env .~ (beh ^._2)
-               & dyn .~ (beh ^._3)
-          cmp'  = case beh ^._1 of
-                    expr@Receive {} ->  ReceiveExp expr
-                    expr -> ActorExp expr
-          key'  = initialProcKey cmp' ctx' st
-          intra :: ProcKey -> StateT InterTurnState (AnalysisSystemT m) ()
-          intra k = runFixT @(AnalysisT m) Semantics.eval k
-                  & mapStateT (runIntraAnalysis k)
+    where key'  = entryKey selfRef beh st
+          intra :: ProcKey -> StateT InterTurnState (AnalysisSystemT ix m) ()
+          intra k = runAroundFixT @(AnalysisT ix m) around Semantics.eval k
+                  & mapStateT (runIntraAnalysis k . runStoreHookT)
           {-# SCC intra #-}
+          -- Instrumentation around every recursive component call: snapshot the
+          -- caller's store into the callee's input store, analyze, then adopt the
+          -- callee's output store. Overwriting on the way out is sound because
+          -- the analysis is monotonically increasing.
+          around recur cmp = do
+              idx <- toIndex <$> upperM (key cmp)
+              upperM . joinStoreIn idx =<< upperM getMultiStore
+              v <- recur cmp
+              upperM (putMultiStore =<< getStoreOut idx)
+              return v
 
 -- | Inter-turn fixpoint: analyze a sequence of turns of an actor 
 -- until its state (i.e., inbox and outbox) no longer changes.
-transferTurn :: AnalysisM m
+transferTurn :: AnalysisM ix m
              => ActorRef
              -> Turn
-             -> StateT InterTurnState (AnalysisSystemT m) (Set Turn)
+             -> StateT InterTurnState (AnalysisSystemT ix m) (Set Turn)
 transferTurn selfRef (Turn (Become beh) turnState) = intraTurn beh selfRef turnState
 -- Terminated actors do not generate successor turns, so we return the empty set.
 transferTurn _ (Turn Terminated _) = return Set.empty
 
-fixTurn :: AnalysisM m => ActorRef -> Turn -> AnalysisSystemT m (Set Turn)
+fixTurn :: AnalysisM ix m => ActorRef -> Turn -> AnalysisSystemT ix m (Set Turn)
 fixTurn selfRef turn0 = do
-    Debug.traceShowIO $ "fixTurn actor=" ++ show selfRef ++ " inbox=" ++ show (turn0 ^. state . inbox)
+    Debug.traceIO $ T.pack $ "fixTurn actor=" ++ show selfRef ++ " inbox=" ++ show (turn0 ^. state . inbox)
     -- Run the inter-turn fixpoint, accumulating the actor's outgoing mail in the
     -- 'InterTurnState' as turns are analyzed.
     (result, interTurn) <- runStateT (Fix.lfp (Fix.lift $ transferTurn selfRef) (Set.singleton turn0))
@@ -538,12 +631,19 @@ fixTurn selfRef turn0 = do
     return result
 
 -- | Inter-system fixpoint, analyze a system of actors until the global state (i.e., the mailboxes) no longer changes.
-transferSystem :: AnalysisM m => System -> AnalysisGlobalT m System
+transferSystem :: AnalysisM ix m => System -> AnalysisGlobalT ix m System
 transferSystem s = do
     -- Debug.traceShowIO $ "transferSystem actors=" ++ show (Map.size (s ^. initialBeh)) ++ " total-turns=" ++ show (sum (map Set.size (Map.elems (s ^. turns))))
     -- Debug.traceShowIO $ "transferSystem mailboxes= " ++ show (s ^. mbs)
     flip execStateT s $ do
         let turnState ref = State (fromMaybe Lattice.bottom (Map.lookup ref (s ^. mbs)))
+        -- Seed each actor's input store, at its entry index, with the store
+        -- recorded at its spawn point. The entry index is only known here because
+        -- it depends on the actor's mailbox state for this iteration.
+        spawned <- _spawnStore <$> getAnalysisState
+        void $ flip Map.traverseWithKey (s ^. initialBeh) $ \ref beh ->
+            joinStoreIn (toIndex (entryKey ref beh (turnState ref)))
+                        (fromMaybe Lattice.bottom (Map.lookup ref spawned))
         let initialTurns  = Map.mapWithKey (\ref beh -> Set.singleton (Turn (Become beh) (turnState ref)))
                                              -- (Map.restrictKeys (s ^. initialBeh) changed)
                                              (s ^. initialBeh)
@@ -551,7 +651,7 @@ transferSystem s = do
         -- join the new turns with the old turns
         turns %= Lattice.join newTurns
 
-fixSystem :: AnalysisM m => System -> AnalysisGlobalT m System
+fixSystem :: AnalysisM ix m => System -> AnalysisGlobalT ix m System
 fixSystem = Fix.lfp (transferSystem >=> traceSystem)
 
 ------------------------------------------------------------
@@ -583,15 +683,19 @@ initialSystem mainExp = System {
     }
 
 -- | Create an empty analysis state
-emptyAnalysisState :: AnalysisState
+emptyAnalysisState :: AnalysisState ix
 emptyAnalysisState = AnalysisState {
         _cache = Map.empty,
         _trace = [],
-        _blames = Set.empty
+        _blames = Set.empty,
+        _storeIn = Map.empty,
+        _storeOut = Map.empty,
+        -- The initial actor's spawn-point store is the primitive-seeded store.
+        _spawnStore = Map.singleton EntryPid mainStore
     }
 
 -- | Top-level function to analyze an actor system.
-analyze :: AnalysisM m => Exp -> m (System, AnalysisState, ActorSto)
+analyze :: AnalysisM ix m => Exp -> m (System, AnalysisState ix, ActorSto)
 analyze mainExpr = do
     ((system, analysisState), stores :: ActorSto) <-
             fixSystem initSystem
@@ -609,7 +713,7 @@ analyze mainExpr = do
           initState  = emptyAnalysisState
 
 -- | Top-level function to analyze an actor system within the IO monad
-analyzeIO :: Exp -> IO (System, AnalysisState, ActorSto)
+analyzeIO :: Exp -> IO (System, AnalysisState (), ActorSto)
 analyzeIO mainExpr = analyze mainExpr
                    & runCachedSolver
                    & runZ3SolverWithPrelude

@@ -2,7 +2,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- | Worklist based least-fixed point algorithms
-module Analysis.Monad.Fix (lfp, MonadFixpoint (..), FixT (..), Kleisli, runFixT, AroundT, runAroundT) where
+module Analysis.Monad.Fix (lfp, MonadFixpoint (..), FixT (..), Kleisli, runFixT, AroundT, runAroundT, runAroundFixT) where
 
 import Analysis.Monad.Cache
 import Analysis.Monad.ComponentTracking (ComponentTrackingM)
@@ -69,6 +69,9 @@ instance
 
 -- Required monad instances
 
+instance (MonadChoice bool m) => MonadChoice bool (AroundT b c m) where
+   choice b ma mb = AroundT $ ReaderT $ \r ->
+      choice b (runReaderT (runAroundT' ma) r) (runReaderT (runAroundT' mb) r)
 instance MonadTrans (AroundT b c) where
    lift = AroundT . ReaderT . const
 instance MonadLayer (AroundT b c) where
@@ -82,6 +85,36 @@ instance (MonadEscape m, Monad m) => MonadEscape (AroundT b c m) where
 -- | Run the analysis with the given instrumented evaluation function
 runAroundT :: Around m b c -> AroundT b c m a -> m a
 runAroundT f (AroundT m) = runReaderT m f
+
+-- | 'MonadCache' instance for 'AroundT'.
+--
+-- The instance is transparent: the 'Around' reader environment is /not/ part of
+-- the cache key (unlike the generic 'ReaderT' instance), so caching behaves
+-- exactly like 'FixT'. The reader is discharged inside 'run' using the env that
+-- 'runAroundFixT' threads in. Only 'MonadFixpoint.fix' differs from 'FixT': it
+-- wraps every recursive call with the 'Around' function (see the instance
+-- above), which is what makes the instrumentation apply to all component calls,
+-- not just the entry component.
+instance MonadCache m => MonadCache (AroundT b c m) where
+  type Key (AroundT b c m) k = Key m k
+  type Val (AroundT b c m) v = Val m v
+  type Base (AroundT b c m) = ReaderT (Around m b c) (Base m)
+  key = upperM . key
+  val = upperM . val
+  {-# INLINE run #-}
+  run f kb = ReaderT $ \around ->
+    run (\k -> runReaderT (runAroundT' (f k)) around) kb
+
+-- | 'runFixT' analogue for 'AroundT': run the cache-driven fixpoint with the
+-- recursive calls instrumented by the given 'Around' function.
+runAroundFixT :: forall m b c.
+                 (Ord c, MonadCache m, Joinable (Val m c), MapM (Key m b) (Val m c) (Base m))
+              => Around m b c
+              -> (b -> AroundT b c m c)
+              -> Key m b
+              -> Base m ()
+runAroundFixT around f kb =
+  runReaderT (cache' @(AroundT b c m) @b kb f) around
 
 -- | Compute the least fixed point for the given (initial) component
 lfp :: (WorkListM m a) => (a -> m b) -> a ->  m ()
