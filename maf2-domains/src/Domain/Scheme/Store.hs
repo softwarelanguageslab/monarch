@@ -64,13 +64,13 @@ import qualified Data.Map as Map
 
 data PaiAdr e ctx = PaiAdr !e !ctx   -- ^ pairs, allocation-site based
                   | PaiTop 
-                  deriving (Eq, Ord, Generic, Show, NFData)
+                  deriving (Eq, Ord, Generic, NFData)
 data VecAdr e ctx = VecAdr !e !ctx   -- ^ vectors, allocation-site based
                   | VecTop
-                  deriving (Eq, Ord, Generic, Show, NFData)
+                  deriving (Eq, Ord, Generic, NFData)
 data StrAdr e ctx = StrAdr !e !ctx   -- ^ strings, allocation-site based
                   | StrTop
-                  deriving (Eq, Ord, Generic, Show, NFData)
+                  deriving (Eq, Ord, Generic, NFData)
 data VarAdr ctx   = VrrAdr !Ide !ctx -- ^ variables
                   | PrrAdr String    -- ^ primitives
                   | VrrTop
@@ -90,6 +90,9 @@ instance AddressWithCtx ctx (PaiAdr e ctx) where
 instance TopLattice (PaiAdr e ctx) where 
     top = PaiTop
 
+instance (SpanOf e, Show ctx) => Show (PaiAdr e ctx) where 
+    show (PaiAdr e ctx) = "pairadr@" ++ show (spanOf e) ++ "#" ++ show ctx
+
 -- 
 -- VecAdr 
 --
@@ -106,6 +109,8 @@ instance AddressWithCtx ctx (VecAdr e ctx) where
 instance TopLattice (VecAdr e ctx) where
     top = VecTop
 
+instance (SpanOf e, Show ctx) => Show (VecAdr e ctx) where 
+    show (VecAdr e ctx) = "vecadr@" ++ show (spanOf e) ++ "#" ++ show ctx
 --
 -- StrAdr
 --
@@ -121,6 +126,9 @@ instance AddressWithCtx ctx (StrAdr e ctx) where
 
 instance TopLattice (StrAdr e ctx) where
     top = StrTop
+
+instance (SpanOf e, Show ctx) => Show (StrAdr e ctx) where 
+    show (StrAdr e ctx) = "stradr@" ++ show (spanOf e) ++ "#" ++ show ctx
 
 
 --
@@ -207,7 +215,7 @@ instance (ForAllStored Joinable v, Ord exp, Ord ctx) => Joinable (SchemeStore ex
 instance BottomLattice (SchemeStore exp ctx v) where
     bottom = SchemeStore bottom bottom bottom bottom
 
-deriving instance (ForAllStored Show v, Show exp, Show ctx) => Show (SchemeStore exp ctx v)
+deriving instance (SpanOf exp, ForAllStored Show v, Show exp, Show ctx) => Show (SchemeStore exp ctx v)
 deriving instance (ForAllStored Eq v, Eq exp, Eq ctx) => Eq (SchemeStore exp ctx v)
 deriving instance (ForAllStored Ord v, Ord exp, Ord ctx) => Ord (SchemeStore exp ctx v)
 
