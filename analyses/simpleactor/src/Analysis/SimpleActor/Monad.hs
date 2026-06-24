@@ -210,7 +210,7 @@ class Monad m => MonadMailbox e ref v ctx m | m -> e ref v ctx where
     -- | Integrate the context within the current mailbox.
     -- Uses the empty implementation by default.
     integrateCtx :: ctx -> m ()
-    integrateCtx = const $ return ()
+    -- integrateCtx = const $ return ()
 
 
 -- | Invoke the function in the first argument with the first message in the mailbox
@@ -249,6 +249,7 @@ instance {-# OVERLAPPABLE #-} (Monad m, Monad (t m),MonadLayer t, MonadMailbox e
     select expr env = upperM . select expr env
     recv = upperM recv
     putMailbox = upperM . putMailbox
+    integrateCtx = upperM . integrateCtx
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadFresh v m, MonadLayer t) => MonadFresh v (t m) where
     fresh = upperM . fresh

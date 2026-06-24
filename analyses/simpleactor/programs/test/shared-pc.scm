@@ -12,14 +12,14 @@
 
   (letrec
     ((x (trace (fresh)))
-     (+ (lambda (a b) (if (if (integer? a)
-                              (integer? b)
+     (+ (lambda (a b) (if (if (integer? (trace a))
+                              (integer? (trace b))
                               #f)
                         (original-+ a b)
                         (blame (loc 'cilent) '()))))
      (behavior (lambda () 
                  (receive
-                   (((cons 'test payload) (+ x 1)
+                   (((cons 'test payload) (trace (+ x 1))
                                           (behavior))))))
      (act (spawn^ (behavior))))
 

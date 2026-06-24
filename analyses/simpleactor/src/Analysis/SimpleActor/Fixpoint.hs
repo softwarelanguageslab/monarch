@@ -99,10 +99,10 @@ import Domain.Core.VectorDomain.PIVector
 import Domain.Core.PairDomain.Class
 import Control.Monad.Cond (ifM)
 import qualified Lattice.Trace as Lattice
-import qualified RIO.Text as T
 import Domain.Scheme.Store (SchemeStore)
 import Control.Monad.Identity
 import Control.Monad.Join (MonadJoinable(..))
+import qualified RIO.Text as T
 
 ------------------------------------------------------------
 -- Shorthands
@@ -464,7 +464,11 @@ addMessageCtx payload = do
         reachableAdrs <- Set.unions <$> (runSetNonDetT $ traceStore (Lattice.trace payload) lookupSchemeAdr)
         reachableValues <- Set.unions <$> runSetNonDetT (foldMap (\case Just v -> Set.singleton v ; Nothing -> Set.empty) <$> mapM lookupSchemeAdr (Set.toList reachableAdrs))
         let reachableVariables = foldMap Symbolic.strictVariables reachableValues
+        -- liftIO (Debug.traceIO $ T.pack $ "reachable variables " ++ show reachableVariables)
         pc <- SCV.getPc
+        -- liftIO (Debug.traceIO $ T.pack $ "original pc " ++ show pc)
+        -- liftIO (Debug.traceIO $ T.pack $ "restrict pc (no simplification) " ++ show (SCV.restrictPC reachableVariables pc))
+        -- liftIO (Debug.traceIO $ T.pack $ "retained path constraints " ++ show (SCV.simplifyPC $ SCV.restrictPC reachableVariables pc))
         return $ message payload $ SCV.simplifyPC $ SCV.restrictPC reachableVariables pc
     where lookupSchemeAdr :: forall m . (SchemeStoreM Exp ActorVlu m, MonadJoinable m) => Store.SchemeAdr Exp K -> m (Maybe ActorVlu)
           lookupSchemeAdr = \case 
@@ -507,7 +511,9 @@ instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVl
   recv = 
     liftIntraT $ uses inbox (MB.dequeue Lattice.bottom)
   putMailbox = liftIntraT . assign inbox
-  integrateCtx = const $ return () -- SCV.putPc
+  integrateCtx pc =  do
+    Debug.traceIO (T.pack $ "integrating context " ++ show pc)
+    SCV.putPc pc
 
 ------------------------------------------------------------
 
@@ -628,7 +634,8 @@ transferTurn _ (Turn Terminated _) = return Set.empty
 
 fixTurn :: AnalysisM ix m => ActorRef -> Turn -> AnalysisSystemT ix m (Set Turn)
 fixTurn selfRef turn0 = do
-    Debug.traceIO $ T.pack $ "fixTurn actor=" ++ show selfRef ++ " inbox=" ++ show (turn0 ^. state . inbox)
+    Debug.traceIO $ T.pack $ "========== " ++ show selfRef
+    -- Debug.traceIO $ T.pack $ "fixTurn actor=" ++ show selfRef ++ " inbox=" ++ show (turn0 ^. state . inbox)
     -- Run the inter-turn fixpoint, accumulating the actor's outgoing mail in the
     -- 'InterTurnState' as turns are analyzed.
     (result, interTurn) <- runStateT (Fix.lfp (Fix.lift $ transferTurn selfRef) (Set.singleton turn0))

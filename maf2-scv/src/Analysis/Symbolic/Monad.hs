@@ -20,6 +20,7 @@ module Analysis.Symbolic.Monad(
    -- * Manipulations on values
    traceSymbolicVariables,
    -- * Garbage collection of formulas and path constraints
+   restrictProposition,
    restrictFormula,
    restrictPC,
    simplifyPC
@@ -49,6 +50,7 @@ import Control.Monad.Writer
 import Analysis.Monad.Store (StoreM)
 import Lattice.Trace (Trace, trace)
 import qualified Domain.Symbolic.Class as Symbolic
+import qualified Symbolic.AST as AST
 
 -- | Monad that keeps track of a path condition
 class (Monad m) => MonadPathCondition i m v | m -> v i where
@@ -215,25 +217,9 @@ traceSymbolicVariables f v =
 
 restrictProposition :: Ord i => Set i -> Proposition i -> Maybe (Proposition i)
 restrictProposition vars prop = 
-        let result = Set.fromList (execWriter $ go prop)
-        in if Set.null (result `Set.intersection` vars) 
+           if Set.null (AST.strictVariables prop `Set.intersection` vars) 
            then Nothing
            else Just prop
-    -- traverse the proposition tree and write all encountered variables
-    -- to a writer monad.
-    where go = \case 
-            Variable i -> tell [i] 
-            Function _ -> return ()
-            Literal _  -> return ()
-            IsTrue prop' -> go prop'
-            IsFalse prop' -> go prop'
-            Predicate _ props -> mapM_ go props
-            Application prop1 prop2 -> go prop1 >> mapM_ go prop2
-            Tautology -> return () 
-            Fail -> return () 
-            Fresh _ -> return ()
-            Bottom -> return ()
-
 
 -- | Restrict the given formula to given set of variables so that only proposition
 -- that include those variables remain in the formula.
@@ -245,8 +231,8 @@ restrictFormula vars = \case
         Negation fs -> Negation (restrictFormula vars fs)
         Atomic prop -> maybe Empty Atomic (restrictProposition vars prop)
         Empty -> Empty
-    where isEmptyFormula Empty = True 
-          isEmptyFormula _     = False
+    where isEmptyFormula Empty = False 
+          isEmptyFormula _     = True
 
 
 restrictPC :: Ord i => Set i -> PC i -> PC i
