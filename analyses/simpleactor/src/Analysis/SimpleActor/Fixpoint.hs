@@ -40,7 +40,7 @@ import Analysis.Monad.Map (MapM (..), MapT, runMapT, In, Out)
 import Analysis.Monad.Join (SetHookNonDetT, MonadNonDetHook (..), runSetNonDetT)
 import Analysis.Monad (WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis, StoreM (lookupAdr, hasAdr))
 import qualified Lattice.Class as Lattice
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybeToList)
 import Analysis.Monad.DependencyTracking (DependencyTrackingT, runWithDependencyTracking)
 import qualified Data.Set as Set
 import Analysis.Monad.Fix (lfp, runAroundFixT)
@@ -216,6 +216,15 @@ cntEither = either Become (const Terminated)
 $(makeLenses ''System)
 $(makeLenses ''Turn)
 
+-- | Compute the cache key corresponding to the given turn
+-- returns 'Nothing' if the turn's continuation does not 
+-- have a valid cache key (i.e., when it is terminated), 
+-- or 'Just ProcKey' when a ProcKey could be computed.
+turnKey :: ActorRef -> Turn -> Maybe ProcKey 
+turnKey selfRef (Turn (Become beh) st) = pure $ entryKey selfRef beh st
+-- Turn has terminated, ignore.
+turnKey _ _ = Nothing
+
 ------------------------------------------------------------
 -- Monads
 ------------------------------------------------------------
@@ -387,10 +396,12 @@ instance ( Monad m
          , MonadMultiStore ActorSto m
          , MapM (In ix ActorSto) ActorSto m
          , MapM (Out ix ActorSto) ActorSto m
+         , MonadIO m
          , ToIndex ix
          ) => MonadNonDetHook (StoreHookT m) where
     -- Reset the working store to the input store recorded for this index.
     preBranch = StoreHookT $ upperM $ do
+        Debug.traceIO $ T.pack "** preBranch **"
         idx <- toIndex @ix <$> currentCmp
         putMultiStore =<< getStoreIn idx
     -- Fold the resulting working store into the output store for this index.
@@ -605,10 +616,15 @@ intraTurn beh selfRef st = do
         lfp intra key'
         -- The set of successor turns will have been cached at the entry component
         result <- (Set.fromList . map (uncurry Turn . first cntEither)) . maybe [] Set.toList <$> MapM.get key'
+        -- We must setup the store for the next turn based on the output store of the current one.
+        outputSto <- getStoreOut (toIndex @ix key')
+        mapM_ (flip joinStoreIn outputSto . toIndex @ix) (foldMap (maybeToList . turnKey selfRef) (Set.toList result))
         return result
     where key'  = entryKey selfRef beh st
           intra :: ProcKey -> StateT InterTurnState (AnalysisSystemT ix m) ()
-          intra k = runAroundFixT @(AnalysisT ix m) around Semantics.eval k
+          intra k = do 
+                  Debug.traceIO $ T.pack "***intra***"
+                  runAroundFixT @(AnalysisT ix m) around Semantics.eval k
                   & mapStateT (runIntraAnalysis k . fmap fst . runSchemeStoreT @Exp @K @ActorVlu Store.emptySchemeStore . runStoreHookT)
           {-# SCC intra #-}
           -- Instrumentation around every recursive component call: snapshot the
