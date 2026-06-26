@@ -158,7 +158,7 @@ emptyPC = Set.singleton Empty
 
 -- | Make formulas showable
 instance (Show i) => Show (Formula i) where
-   show (Conjunction fs) = intercalate " /\\ " (map show (Set.toList fs))
+   show (Conjunction fs) = if Set.null fs then "ε" else intercalate " /\\ " (map show (Set.toList fs))
    show (Disjunction fs) = intercalate " \\/" (map show (Set.toList fs))
    show (Implies f1 f2) = show f1 ++ "=>" ++ show f2
    show (Negation f1) = "¬" ++ show f1

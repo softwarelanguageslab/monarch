@@ -23,6 +23,7 @@ import Control.DeepSeq
 import Data.Set (Set)
 import Lattice.Trace (Trace(..))
 import qualified Data.Set as Set
+import Control.Monad.IO.Class
 
 -- | A generic store typeclass
 class Joinable v => Store s a v | s -> a v where
@@ -57,14 +58,15 @@ instance (Joinable v, Ord a) => Store (Map a v) a v where
    union = Map.union
 
 -- | Trace the addresses reachable in a single step from the given set of addresses according to the given store
-traceStore' :: (Monad m, Trace adr v) => Set adr -> (adr -> m (Maybe v))  -> m (Set adr)
-traceStore' adrs m = do 
-    Set.unions <$> mapM (fmap (maybe Set.empty trace) . m) (Set.toList adrs)
+traceStore' :: (Monad m, Trace adr v) => Set adr -> (adr -> m (Set v))  -> m (Set adr)
+traceStore' adrs lookupM = do 
+    Set.unions <$> mapM (fmap (foldMap trace) . lookupM) (Set.toList adrs)
 
 -- | Trace the addresses reachable from the given set of addresses in any number of steps
-traceStore :: (Monad m, Trace adr v) => Set adr -> (adr -> m (Maybe v)) -> m (Set adr)
+traceStore :: ( MonadIO m, Trace adr v) =>Set adr -> (adr -> m (Set v)) -> m (Set adr)
 traceStore adrs m = do 
         adrs' <- fmap (Set.union adrs) $ traceStore' adrs m
+        liftIO (putStrLn $ "iter traceStore" ++ show (Set.size adrs'))
         if adrs /= adrs' then traceStore adrs' m else return adrs
 --
 -- Store printing 

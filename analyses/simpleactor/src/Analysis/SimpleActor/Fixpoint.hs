@@ -37,7 +37,7 @@ import GHC.Generics (Generic)
 import Analysis.Monad.Environment (EnvM (..))
 import Analysis.Monad.Cache (CacheT, MonadCache (..))
 import Analysis.Monad.Map (MapM (..), MapT, runMapT, In, Out)
-import Analysis.Monad.Join (SetHookNonDetT, MonadNonDetHook (..), runSetNonDetT)
+import Analysis.Monad.Join (SetHookNonDetT, MonadNonDetHook (..))
 import Analysis.Monad (WorkListT, CtxM (..), runWithComponentTracking, runIntraAnalysis, StoreM (lookupAdr, hasAdr))
 import qualified Lattice.Class as Lattice
 import Data.Maybe (fromMaybe, maybeToList)
@@ -472,41 +472,45 @@ instance Monad m => MonadPartition Partition (IntraT m) where
 -- | Adds the message context based on information in the monad
 addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, MonadIO m, SchemeStoreM Exp ActorVlu m) => MsgPayload ->  (ProcT (IntraT m) Msg)
 addMessageCtx payload = do 
-        reachableAdrs <- Set.unions <$> (runSetNonDetT $ traceStore (Lattice.trace payload) lookupSchemeAdr)
-        reachableValues <- Set.unions <$> runSetNonDetT (foldMap (\case Just v -> Set.singleton v ; Nothing -> Set.empty) <$> mapM lookupSchemeAdr (Set.toList reachableAdrs))
+        reachableAdrs <- traceStore (Lattice.trace payload) lookupSchemeAdr
+        Debug.traceIO $ T.pack $ "store traced"
+        reachableValues <- Set.unions <$> mapM lookupSchemeAdr (Set.toList reachableAdrs)
+        Debug.traceIO $ T.pack "reachable values computed"
         let reachableVariables = foldMap Symbolic.strictVariables reachableValues
+        Debug.traceIO $ T.pack "reachable variables computed"
         -- liftIO (Debug.traceIO $ T.pack $ "reachable variables " ++ show reachableVariables)
         pc <- SCV.getPc
         -- liftIO (Debug.traceIO $ T.pack $ "original pc " ++ show pc)
         -- liftIO (Debug.traceIO $ T.pack $ "restrict pc (no simplification) " ++ show (SCV.restrictPC reachableVariables pc))
         -- liftIO (Debug.traceIO $ T.pack $ "retained path constraints " ++ show (SCV.simplifyPC $ SCV.restrictPC reachableVariables pc))
         return $ message payload $ SCV.simplifyPC $ SCV.restrictPC reachableVariables pc
-    where lookupSchemeAdr :: forall m . (SchemeStoreM Exp ActorVlu m, MonadJoinable m) => Store.SchemeAdr Exp K -> m (Maybe ActorVlu)
+    where lookupSchemeAdr :: forall m . (SchemeStoreM Exp ActorVlu m, MonadJoinable m) => Store.SchemeAdr Exp K -> m (Set ActorVlu)
           lookupSchemeAdr = \case 
             Store.SStrAdr _ -> 
                 -- strings do not contain values from the variable domain
-                return Nothing
+                return Set.empty
             Store.SPaiAdr adr -> 
                  ifM (hasAdr adr) (do
                     pairValue <- lookupAdr @_ @(Scheme.PaiDom ActorVlu) adr 
-                    mjoin (return (Just $ car pairValue))
-                          (return (Just $ cdr pairValue)))
-                 (return Nothing)
+                    return $ Set.fromList [car pairValue, cdr pairValue])
+                 (return Set.empty)
             Store.SVecAdr adr -> 
                 ifM (hasAdr adr) 
                     (do 
                         (PIVector _ c) <- lookupAdr @_ @(Scheme.VecDom ActorVlu) adr 
-                        return (Just c))
-                    (return Nothing)
+                        return (Set.singleton c))
+                    (return Set.empty)
             Store.SVarAdr adr -> 
                 ifM (hasAdr adr)
-                    (Just <$> lookupAdr @_ @ActorVlu adr)
-                    (return Nothing)
+                    (Set.singleton <$> lookupAdr @_ @ActorVlu adr)
+                    (return Set.empty)
 
 instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVlu m, MonadMultiStore ActorSto m, MonadAnalysisState ix m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
   send ref v = do
       -- actually "send" the message
+      Debug.traceIO $ T.pack "before constructing message context"
       v' <- addMessageCtx v
+      Debug.traceIO $ T.pack "after constructing message context"
       liftIntraT $ liftInterTurnT $ do
         oldOutbox <- use outbox
         outbox . at ref . non MB.empty %= MB.enqueue Lattice.bottom Lattice.bottom v'
@@ -516,6 +520,7 @@ instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVl
       -- and their corresponding values for addresses referenced from the message payload
       -- TODO: garbage collect here so that only values referenced from the message payload 
       -- are used.
+      Debug.traceIO $ T.pack "after updating mailbox"
       currentSto <- getMultiStore
       modifyAnalysisState (over spawnStore (Map.insertWith Lattice.join ref currentSto))
   select expr env' dyn' = liftIntraT $ throwError (expr, env', dyn') -- throwError is only here for its escaping mechanism, not for actually reporting an error

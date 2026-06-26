@@ -138,9 +138,13 @@ translateAtomic (Fresh _) = fresh
 -- with the SMTLib format.
 translate' :: TranslateM i m => Formula i -> m String
 translate' (Conjunction fs) =
-   printf "(and %s)". unwords  <$> mapM translate' (Set.toList fs)
+   if Set.null fs 
+   then return "true" 
+   else printf "(and %s)". unwords  <$> mapM translate' (Set.toList fs)
 translate' (Disjunction fs) =
-   printf "(or %s)" . unwords <$> mapM translate' (Set.toList fs)
+   if Set.null fs
+   then return "true"
+   else printf "(or %s)" . unwords <$> mapM translate' (Set.toList fs)
 translate' (Negation f1) =
    printf "(not %s)" <$> translate' f1
 translate' (Atomic prop) =
