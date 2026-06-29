@@ -8,3 +8,10 @@ notes.txt
 maf2-analysis/programs/python/zensor/
 maf2-analysis/ECOPIPE.png
 .claude/
+
+# agentic workflow artifacts
+/reviews/
+/testing/
+/agents/
+/PROMPT.md
+/TODO.md
