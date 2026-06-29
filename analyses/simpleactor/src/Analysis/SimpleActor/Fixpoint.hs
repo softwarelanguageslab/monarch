@@ -654,8 +654,10 @@ intraTurn beh selfRef st = do
           intra :: ProcKey -> StateT InterTurnState (AnalysisSystemT ix m) ()
           intra k = do 
                   logEvent (IntraStarted (spanOfCmp k))
-                  runAroundFixT @(AnalysisT ix m) around Semantics.eval k
-                  & mapStateT (runIntraAnalysis k . fmap fst . runSchemeStoreT @Exp @K @ActorVlu Store.emptySchemeStore . runStoreHookT)
+                  result <- runAroundFixT @(AnalysisT ix m) around Semantics.eval k
+                          & mapStateT (runIntraAnalysis k . fmap fst . runSchemeStoreT @Exp @K @ActorVlu Store.emptySchemeStore . runStoreHookT)
+                  logEvent (IntraEnded (spanOfCmp k))
+                  return result
           {-# SCC intra #-}
           -- Instrumentation around every recursive component call: snapshot the
           -- caller's store into the callee's input store, analyze, then adopt the
