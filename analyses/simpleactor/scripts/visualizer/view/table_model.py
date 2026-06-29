@@ -6,7 +6,7 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 
 from ..viewmodel.summary import SummaryViewModel
 
-_HEADERS = ("Name", "Average", "Median", "P25", "P75", "Avg Time (ms)", "# Iterations")
+_HEADERS = ("Name", "Average", "Median", "P25", "P75", "Avg Self-Time (ms)", "Time (ms)", "# Iterations")
 
 
 # The identity formatter 
@@ -70,10 +70,11 @@ class SummaryTableModel(QAbstractTableModel):
             self.with_stats(row, lambda stats: stats.p25),
             self.with_stats(row, lambda stats: stats.p75),
             lambda: self._vm.average_time_at(row) * 1000,
+            lambda: self._vm.total_time_at(row) * 1000,
             lambda: float(self._vm.iterations_at(row)),
         ]
 
-        formatters = [ identity, f2f, f2f, f2f, f2f, f2f, f2f ] 
+        formatters = [ identity, f2f, f2f, f2f, f2f, f2f, f2f, f2f ] 
         formatter = identity if role == self.SORT_ROLE else formatters[column]
 
         value = columns[column]()
