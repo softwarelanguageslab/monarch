@@ -52,7 +52,7 @@ import Analysis.Monad.Partition (MonadPartition (..))
 import Analysis.Actors.Monad (MonadActorLocal (..))
 import qualified Domain.Actor
 import Analysis.Monad.Allocation (AllocM (..))
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Analysis.Monad.ComponentTracking (ComponentTrackingT)
 import Data.Bifunctor
 import qualified Analysis.Fixpoint as Fix
@@ -103,6 +103,9 @@ import Domain.Scheme.Store (SchemeStore)
 import Control.Monad.Identity
 import Control.Monad.Join (MonadJoinable(..))
 import qualified RIO.Text as T
+import Data.Aeson (ToJSON)
+import qualified Data.Aeson as JSON
+import qualified RIO.ByteString.Lazy as ByteString
 
 ------------------------------------------------------------
 -- Shorthands
@@ -224,6 +227,11 @@ turnKey :: ActorRef -> Turn -> Maybe ProcKey
 turnKey selfRef (Turn (Become beh) st) = pure $ entryKey selfRef beh st
 -- Turn has terminated, ignore.
 turnKey _ _ = Nothing
+
+-- | Returns the span of the expression represented by the component
+spanOfCmp :: ProcKey -> Span
+spanOfCmp (cmp ::*:: _ ::*:: _ ::*:: _) = spanOf cmp
+spanOfCmp _ = error "unreachable pattern"
 
 ------------------------------------------------------------
 -- Monads
@@ -401,11 +409,12 @@ instance ( Monad m
          ) => MonadNonDetHook (StoreHookT m) where
     -- Reset the working store to the input store recorded for this index.
     preBranch = StoreHookT $ upperM $ do
-        Debug.traceIO $ T.pack "** preBranch **"
+        logEvent PreBranch
         idx <- toIndex @ix <$> currentCmp
         putMultiStore =<< getStoreIn idx
     -- Fold the resulting working store into the output store for this index.
     postBranch = StoreHookT $ upperM $ do
+        logEvent PostBranch
         idx <- toIndex @ix <$> currentCmp
         getMultiStore >>= joinStoreOut idx
 
@@ -473,16 +482,9 @@ instance Monad m => MonadPartition Partition (IntraT m) where
 addMessageCtx :: (SCV.FormulaSolver Domain.SymVar m, MonadIO m, SchemeStoreM Exp ActorVlu m) => MsgPayload ->  (ProcT (IntraT m) Msg)
 addMessageCtx payload = do 
         reachableAdrs <- traceStore (Lattice.trace payload) lookupSchemeAdr
-        Debug.traceIO $ T.pack $ "store traced"
         reachableValues <- Set.unions <$> mapM lookupSchemeAdr (Set.toList reachableAdrs)
-        Debug.traceIO $ T.pack "reachable values computed"
         let reachableVariables = foldMap Symbolic.strictVariables reachableValues
-        Debug.traceIO $ T.pack "reachable variables computed"
-        -- liftIO (Debug.traceIO $ T.pack $ "reachable variables " ++ show reachableVariables)
         pc <- SCV.getPc
-        -- liftIO (Debug.traceIO $ T.pack $ "original pc " ++ show pc)
-        -- liftIO (Debug.traceIO $ T.pack $ "restrict pc (no simplification) " ++ show (SCV.restrictPC reachableVariables pc))
-        -- liftIO (Debug.traceIO $ T.pack $ "retained path constraints " ++ show (SCV.simplifyPC $ SCV.restrictPC reachableVariables pc))
         return $ message payload $ SCV.simplifyPC $ SCV.restrictPC reachableVariables pc
     where lookupSchemeAdr :: forall m . (SchemeStoreM Exp ActorVlu m, MonadJoinable m) => Store.SchemeAdr Exp K -> m (Set ActorVlu)
           lookupSchemeAdr = \case 
@@ -508,9 +510,7 @@ addMessageCtx payload = do
 instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVlu m, MonadMultiStore ActorSto m, MonadAnalysisState ix m) => MonadMailbox Partition ActorRef ActorVlu MsgContext (ProcT (IntraT m)) where
   send ref v = do
       -- actually "send" the message
-      Debug.traceIO $ T.pack "before constructing message context"
       v' <- addMessageCtx v
-      Debug.traceIO $ T.pack "after constructing message context"
       liftIntraT $ liftInterTurnT $ do
         oldOutbox <- use outbox
         outbox . at ref . non MB.empty %= MB.enqueue Lattice.bottom Lattice.bottom v'
@@ -520,7 +520,6 @@ instance (MonadIO m, SCV.FormulaSolver Domain.SymVar m, SchemeStoreM Exp ActorVl
       -- and their corresponding values for addresses referenced from the message payload
       -- TODO: garbage collect here so that only values referenced from the message payload 
       -- are used.
-      Debug.traceIO $ T.pack "after updating mailbox"
       currentSto <- getMultiStore
       modifyAnalysisState (over spawnStore (Map.insertWith Lattice.join ref currentSto))
   select expr env' dyn' = liftIntraT $ throwError (expr, env', dyn') -- throwError is only here for its escaping mechanism, not for actually reporting an error
@@ -606,6 +605,32 @@ traceSystem :: Monad m => System -> AnalysisGlobalT ix m System
 traceSystem sys = (trace %= (sys:)) $> sys
 
 ------------------------------------------------------------
+-- Logging & observability
+------------------------------------------------------------
+
+-- | Analysis events that can be logged in the JSON format
+data LoggingEvent = 
+    -- | Emitted when at the start of an intra-analysis and 
+    -- reports which component is being analyzed. 
+    -- Each component is identified by its source-code location (span). 
+      IntraStarted Span
+    -- | Emitted at the end of an intra-analysis
+    | IntraEnded Span
+    -- | Emitted before the start of a branch, always happens after 
+    -- the start, and before the end of an intra-analysis.
+    | PreBranch 
+    -- | Emitted after a branch has been fully evaluated, always happens 
+    -- after the start, and before the end of an intra-analysis.
+    | PostBranch
+    deriving (Ord, Eq, Show, Generic)
+
+instance NFData LoggingEvent
+instance ToJSON LoggingEvent
+
+logEvent :: MonadIO m => LoggingEvent -> m ()
+logEvent = liftIO . ByteString.putStrLn . JSON.encode
+
+------------------------------------------------------------
 -- Fixpoints
 ------------------------------------------------------------
 
@@ -628,7 +653,7 @@ intraTurn beh selfRef st = do
     where key'  = entryKey selfRef beh st
           intra :: ProcKey -> StateT InterTurnState (AnalysisSystemT ix m) ()
           intra k = do 
-                  Debug.traceIO $ T.pack "***intra***"
+                  logEvent (IntraStarted (spanOfCmp k))
                   runAroundFixT @(AnalysisT ix m) around Semantics.eval k
                   & mapStateT (runIntraAnalysis k . fmap fst . runSchemeStoreT @Exp @K @ActorVlu Store.emptySchemeStore . runStoreHookT)
           {-# SCC intra #-}
