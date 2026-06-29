@@ -416,7 +416,7 @@ instance ( Monad m
     postBranch = StoreHookT $ upperM $ do
         logEvent PostBranch
         idx <- toIndex @ix <$> currentCmp
-        getMultiStore >>= joinStoreOut idx
+        getMultiStore >>= putStoreOut idx
 
 ------------------------------------------------------------
 
@@ -599,6 +599,10 @@ getStoreOut = fmap (fromMaybe Lattice.bottom) . MapM.get @(Out ix ActorSto) . Ma
 -- | Join a store into the output store recorded for an index.
 joinStoreOut :: forall ix m . (Ord ix, MapM (Out ix ActorSto) ActorSto m) => ix -> ActorSto -> m ()
 joinStoreOut idx = MapM.joinWith @(Out ix ActorSto) (MapM.Out idx)
+
+-- | Destructively update the store at the given index.
+putStoreOut :: forall ix m . (Ord ix, MapM (Out ix ActorSto) ActorSto m) => ix -> ActorSto -> m ()
+putStoreOut idx = MapM.put @(Out ix ActorSto) (MapM.Out idx)
 
 -- | Register a system after a inter-actor turn, and returns the registered system
 traceSystem :: Monad m => System -> AnalysisGlobalT ix m System
