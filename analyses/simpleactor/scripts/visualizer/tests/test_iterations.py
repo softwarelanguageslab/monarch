@@ -60,6 +60,21 @@ def test_open_iteration_count_updates_live():
     assert tracker.branching_factors(A) == [2]
 
 
+def test_durations_measured_per_completed_iteration():
+    clock = iter([10.0, 13.5, 100.0, 102.0]).__next__
+    tracker = IterationTracker(clock=clock)
+    for event in (IntraStarted(A), PreBranch(), IntraEnded(A), IntraStarted(A), IntraEnded(A)):
+        tracker.consume(event)
+    assert tracker.durations(A) == [3.5, 2.0]
+
+
+def test_open_iteration_has_no_recorded_duration():
+    clock = iter([5.0]).__next__
+    tracker = IterationTracker(clock=clock)
+    tracker.consume(IntraStarted(A))
+    assert tracker.durations(A) == []
+
+
 def test_end_after_start_already_closed_is_ignored():
     tracker = IterationTracker()
     for event in (IntraStarted(A), IntraStarted(B), IntraEnded(A)):

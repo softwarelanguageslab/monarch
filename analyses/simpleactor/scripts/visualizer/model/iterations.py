@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
+import time
+from typing import Callable, Dict, List
 
 from ..observable import Observable
 from .events import (
@@ -24,14 +25,18 @@ class IterationTracker:
     ``PreBranch`` events observed while it is open. ``changed`` emits a span
     whenever its branching factors change: when an iteration starts, on each
     ``PreBranch`` that grows the open iteration, and when an iteration completes,
-    so callers can render the running iteration's count live.
+    so callers can render the running iteration's count live. Each completed
+    iteration's wall-clock duration is measured from ``clock`` (seconds).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
         self.changed: Observable = Observable()
+        self._clock = clock
         self._completed: Dict[Span, List[int]] = {}
+        self._durations: Dict[Span, List[float]] = {}
         self._open_span: Span | None = None
         self._open_count: int = 0
+        self._open_started: float = 0.0
 
     def components(self) -> List[Span]:
         """Return the spans that have a completed or in-progress iteration."""
@@ -52,12 +57,17 @@ class IterationTracker:
             factors.append(self._open_count)
         return factors
 
+    def durations(self, span: Span) -> List[float]:
+        """Return the wall-clock duration in seconds of ``span``'s completed iterations."""
+        return list(self._durations.get(span, ()))
+
     def consume(self, event: Event) -> None:
         """Advance the tracker state with a single event."""
         if isinstance(event, IntraStarted):
             self._close_open()
             self._open_span = event.span
             self._open_count = 0
+            self._open_started = self._clock()
             self.changed.emit(event.span)
         elif isinstance(event, IntraEnded):
             if self._open_span is not None and event.span == self._open_span:
@@ -75,6 +85,7 @@ class IterationTracker:
             return
         span = self._open_span
         self._completed.setdefault(span, []).append(self._open_count)
+        self._durations.setdefault(span, []).append(self._clock() - self._open_started)
         self._open_span = None
         self._open_count = 0
         self.changed.emit(span)

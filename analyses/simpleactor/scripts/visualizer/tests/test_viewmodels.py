@@ -56,6 +56,17 @@ def test_summary_updates_existing_row():
     assert summary.statistics_at(0).average == 3.0
 
 
+def test_summary_reports_average_iteration_time():
+    clock = iter([0.0, 2.0, 10.0, 14.0]).__next__
+    tracker = IterationTracker(clock=clock)
+    summary = SummaryViewModel(tracker)
+
+    run_iteration(tracker, A, 1)
+    run_iteration(tracker, A, 1)
+
+    assert summary.average_time_at(0) == 3.0
+
+
 def test_summary_preserves_first_seen_order():
     tracker = IterationTracker()
     summary = SummaryViewModel(tracker)

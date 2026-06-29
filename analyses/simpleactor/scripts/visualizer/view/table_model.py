@@ -6,7 +6,7 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 
 from ..viewmodel.summary import SummaryViewModel
 
-_HEADERS = ("Name", "Average", "Median", "P25", "P75")
+_HEADERS = ("Name", "Average", "Median", "P25", "P75", "Avg Time (ms)")
 
 
 class SummaryTableModel(QAbstractTableModel):
@@ -14,11 +14,16 @@ class SummaryTableModel(QAbstractTableModel):
 
     Row insertions and statistic updates from the view model are translated into
     the corresponding Qt model notifications so a bound view refreshes live.
+    ``SORT_ROLE`` returns the raw numeric value of each cell so a sorting proxy
+    orders the rows by magnitude rather than by formatted text.
     """
+
+    SORT_ROLE = Qt.UserRole
 
     def __init__(self, view_model: SummaryViewModel) -> None:
         super().__init__()
         self._vm = view_model
+        self._rows = 0
         view_model.row_inserted.subscribe(self._on_row_inserted)
         view_model.row_updated.subscribe(self._on_row_updated)
 
@@ -26,7 +31,7 @@ class SummaryTableModel(QAbstractTableModel):
         """Number of component rows (no children for valid parents)."""
         if parent.isValid():
             return 0
-        return self._vm.row_count()
+        return self._rows
 
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
         """Fixed number of summary columns."""
@@ -41,14 +46,20 @@ class SummaryTableModel(QAbstractTableModel):
         return _HEADERS[section]
 
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
-        """Return the displayed cell value for ``index``."""
-        if not index.isValid() or role != Qt.DisplayRole:
+        """Return the displayed or sort value for ``index``."""
+        if not index.isValid() or role not in (Qt.DisplayRole, self.SORT_ROLE):
             return None
+        row = index.row()
         column = index.column()
         if column == 0:
-            return self._vm.span_at(index.row()).display_name
-        stats = self._vm.statistics_at(index.row())
-        value = (stats.average, stats.median, stats.p25, stats.p75)[column - 1]
+            return self._vm.span_at(row).display_name
+        if column == 5:
+            value = self._vm.average_time_at(row) * 1000.0
+        else:
+            stats = self._vm.statistics_at(row)
+            value = (stats.average, stats.median, stats.p25, stats.p75)[column - 1]
+        if role == self.SORT_ROLE:
+            return value
         return f"{value:.2f}"
 
     def span_at(self, row: int):
@@ -56,12 +67,18 @@ class SummaryTableModel(QAbstractTableModel):
         return self._vm.span_at(row)
 
     def _on_row_inserted(self, index: int) -> None:
-        """Translate a view-model insertion into a Qt row insertion."""
+        """Translate a view-model insertion into a Qt row insertion.
+
+        The internal count is advanced inside the begin/end bracket so that
+        ``rowCount`` reports the pre-insertion value while the insertion is in
+        progress, as a sorting proxy model requires.
+        """
         self.beginInsertRows(QModelIndex(), index, index)
+        self._rows = index + 1
         self.endInsertRows()
 
     def _on_row_updated(self, index: int) -> None:
         """Translate a view-model update into a Qt ``dataChanged`` signal."""
         top_left = self.index(index, 0)
         bottom_right = self.index(index, len(_HEADERS) - 1)
-        self.dataChanged.emit(top_left, bottom_right, [Qt.DisplayRole])
+        self.dataChanged.emit(top_left, bottom_right)

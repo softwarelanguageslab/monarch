@@ -7,7 +7,7 @@ from typing import Dict, List
 from ..model.events import Span
 from ..model.iterations import IterationTracker
 from ..observable import Observable
-from .statistics import BranchingStatistics
+from .statistics import BranchingStatistics, mean
 
 
 class SummaryViewModel:
@@ -24,6 +24,7 @@ class SummaryViewModel:
         self._tracker = tracker
         self._order: List[Span] = []
         self._stats: Dict[Span, BranchingStatistics] = {}
+        self._average_times: Dict[Span, float] = {}
         tracker.changed.subscribe(self._on_component_changed)
 
     def row_count(self) -> int:
@@ -38,13 +39,20 @@ class SummaryViewModel:
         """Return the statistics shown on row ``index``."""
         return self._stats[self._order[index]]
 
+    def average_time_at(self, index: int) -> float:
+        """Return the mean completed-iteration duration in seconds for row ``index``."""
+        return self._average_times[self._order[index]]
+
     def _on_component_changed(self, span: Span) -> None:
         """Recompute ``span``'s statistics and emit the matching notification."""
         stats = BranchingStatistics.from_values(self._tracker.branching_factors(span))
+        average_time = mean(self._tracker.durations(span))
         if span in self._stats:
             self._stats[span] = stats
+            self._average_times[span] = average_time
             self.row_updated.emit(self._order.index(span))
         else:
             self._stats[span] = stats
+            self._average_times[span] = average_time
             self._order.append(span)
             self.row_inserted.emit(len(self._order) - 1)
