@@ -25,6 +25,7 @@ class SummaryViewModel:
         self._order: List[Span] = []
         self._stats: Dict[Span, BranchingStatistics] = {}
         self._average_times: Dict[Span, float] = {}
+        self._iteration_counts: Dict[Span, int] = {}
         tracker.changed.subscribe(self._on_component_changed)
 
     def row_count(self) -> int:
@@ -39,6 +40,9 @@ class SummaryViewModel:
         """Return the statistics shown on row ``index``."""
         return self._stats[self._order[index]]
 
+    def iterations_at(self, index: int) -> int: 
+        return self._iteration_counts[self._order[index]]
+
     def average_time_at(self, index: int) -> float:
         """Return the mean completed-iteration duration in seconds for row ``index``."""
         return self._average_times[self._order[index]]
@@ -47,12 +51,14 @@ class SummaryViewModel:
         """Recompute ``span``'s statistics and emit the matching notification."""
         stats = BranchingStatistics.from_values(self._tracker.branching_factors(span))
         average_time = mean(self._tracker.durations(span))
-        if span in self._stats:
-            self._stats[span] = stats
-            self._average_times[span] = average_time
+    
+        was_in_stats = span in self._stats
+        self._stats[span] = stats
+        self._average_times[span] = average_time
+        self._iteration_counts[span] = self._tracker._iterations[span]
+
+        if was_in_stats:
             self.row_updated.emit(self._order.index(span))
         else:
-            self._stats[span] = stats
-            self._average_times[span] = average_time
             self._order.append(span)
             self.row_inserted.emit(len(self._order) - 1)

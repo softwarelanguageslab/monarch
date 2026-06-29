@@ -6,8 +6,15 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 
 from ..viewmodel.summary import SummaryViewModel
 
-_HEADERS = ("Name", "Average", "Median", "P25", "P75", "Avg Time (ms)")
+_HEADERS = ("Name", "Average", "Median", "P25", "P75", "Avg Time (ms)", "# Iterations")
 
+
+# The identity formatter 
+def identity(x): 
+    return x 
+
+def f2f(x):
+    return f"{x:.2f}"
 
 class SummaryTableModel(QAbstractTableModel):
     """Bind a :class:`SummaryViewModel` to a Qt item view.
@@ -45,22 +52,32 @@ class SummaryTableModel(QAbstractTableModel):
             return None
         return _HEADERS[section]
 
+    def with_stats(self, row, f): 
+        stats = self._vm.statistics_at(row)
+        return lambda: f(stats)
+
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
         """Return the displayed or sort value for ``index``."""
         if not index.isValid() or role not in (Qt.DisplayRole, self.SORT_ROLE):
             return None
         row = index.row()
         column = index.column()
-        if column == 0:
-            return self._vm.span_at(row).display_name
-        if column == 5:
-            value = self._vm.average_time_at(row) * 1000.0
-        else:
-            stats = self._vm.statistics_at(row)
-            value = (stats.average, stats.median, stats.p25, stats.p75)[column - 1]
-        if role == self.SORT_ROLE:
-            return value
-        return f"{value:.2f}"
+
+        columns = [
+            lambda: self._vm.span_at(row).display_name,
+            self.with_stats(row, lambda stats: stats.average), 
+            self.with_stats(row, lambda stats: stats.median),
+            self.with_stats(row, lambda stats: stats.p25),
+            self.with_stats(row, lambda stats: stats.p75),
+            lambda: self._vm.average_time_at(row) * 1000,
+            lambda: float(self._vm.iterations_at(row)),
+        ]
+
+        formatters = [ identity, f2f, f2f, f2f, f2f, f2f, f2f ] 
+        formatter = identity if role == self.SORT_ROLE else formatters[column]
+
+        value = columns[column]()
+        return formatter(value)
 
     def span_at(self, row: int):
         """Return the span associated with ``row``."""

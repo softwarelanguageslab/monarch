@@ -34,6 +34,7 @@ class IterationTracker:
         self._clock = clock
         self._completed: Dict[Span, List[int]] = {}
         self._durations: Dict[Span, List[float]] = {}
+        self._iterations: Dict[Span, Int] = {}
         self._open_span: Span | None = None
         self._open_count: int = 0
         self._open_started: float = 0.0
@@ -65,6 +66,7 @@ class IterationTracker:
         """Advance the tracker state with a single event."""
         if isinstance(event, IntraStarted):
             self._close_open()
+            self._iterations[event.span] = self._iterations.get(event.span, 0) + 1
             self._open_span = event.span
             self._open_count = 0
             self._open_started = self._clock()
