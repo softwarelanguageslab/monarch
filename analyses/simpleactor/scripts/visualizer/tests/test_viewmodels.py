@@ -50,7 +50,8 @@ def test_summary_updates_existing_row():
     run_iteration(tracker, A, 2)
     run_iteration(tracker, A, 4)
 
-    assert updated == [0]
+    assert updated  # row 0 is updated live on every PreBranch and on close
+    assert set(updated) == {0}
     assert summary.row_count() == 1
     assert summary.statistics_at(0).average == 3.0
 
@@ -66,7 +67,7 @@ def test_summary_preserves_first_seen_order():
     assert summary.span_at(1) == B
 
 
-def test_detail_reports_history_and_notifies():
+def test_detail_reports_live_history_and_notifies():
     tracker = IterationTracker()
     detail = DetailViewModel(tracker, A)
     notifications = []
@@ -77,7 +78,11 @@ def test_detail_reports_history_and_notifies():
     run_iteration(tracker, B, 5)
 
     assert detail.branching_factors() == [1, 3]
-    assert notifications == [[1], [1, 3]]
+    # The open iteration's trailing count grows live on every PreBranch.
+    assert notifications == [
+        [0], [1], [1],
+        [1, 0], [1, 1], [1, 2], [1, 3], [1, 3],
+    ]
 
 
 def test_detail_dispose_stops_notifications():
@@ -90,4 +95,4 @@ def test_detail_dispose_stops_notifications():
     detail.dispose()
     run_iteration(tracker, A, 3)
 
-    assert notifications == [[1]]
+    assert notifications == [[0], [1], [1]]

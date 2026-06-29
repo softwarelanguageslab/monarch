@@ -12,8 +12,9 @@ from ..observable import Observable
 class DetailViewModel:
     """Expose one component's ordered per-iteration branching factors.
 
-    ``changed`` emits whenever a new iteration completes for the tracked span.
-    The class is free of any GUI dependency.
+    ``changed`` emits whenever the tracked span's branching factors change,
+    including while its current iteration is still running. The class is free of
+    any GUI dependency.
     """
 
     def __init__(self, tracker: IterationTracker, span: Span) -> None:
@@ -28,7 +29,11 @@ class DetailViewModel:
         return self._span
 
     def branching_factors(self) -> List[int]:
-        """Completed branching factors for the tracked span, in arrival order."""
+        """Branching factors for the tracked span, in arrival order.
+
+        Includes the in-progress iteration's running count as a trailing entry
+        while one is open.
+        """
         return self._tracker.branching_factors(self._span)
 
     def dispose(self) -> None:
@@ -36,6 +41,6 @@ class DetailViewModel:
         self._unsubscribe()
 
     def _on_component_changed(self, span: Span) -> None:
-        """Re-emit a change when the tracked span gains an iteration."""
+        """Re-emit a change when the tracked span's branching factors change."""
         if span == self._span:
             self.changed.emit()

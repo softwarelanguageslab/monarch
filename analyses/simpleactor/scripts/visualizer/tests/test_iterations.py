@@ -38,14 +38,26 @@ def test_next_start_closes_previous_iteration():
     for event in (IntraStarted(A), PreBranch(), IntraStarted(B), PreBranch(), PreBranch()):
         tracker.consume(event)
     assert tracker.branching_factors(A) == [1]
-    assert tracker.branching_factors(B) == []
+    assert tracker.branching_factors(B) == [2]
 
 
 def test_unmatched_end_is_ignored():
     tracker = IterationTracker()
     for event in (IntraStarted(A), PreBranch(), IntraEnded(B)):
         tracker.consume(event)
-    assert tracker.branching_factors(A) == []
+    assert tracker.branching_factors(A) == [1]
+
+
+def test_open_iteration_count_updates_live():
+    tracker = IterationTracker()
+    tracker.consume(IntraStarted(A))
+    assert tracker.branching_factors(A) == [0]
+    tracker.consume(PreBranch())
+    assert tracker.branching_factors(A) == [1]
+    tracker.consume(PreBranch())
+    assert tracker.branching_factors(A) == [2]
+    tracker.consume(IntraEnded(A))
+    assert tracker.branching_factors(A) == [2]
 
 
 def test_end_after_start_already_closed_is_ignored():
@@ -53,7 +65,7 @@ def test_end_after_start_already_closed_is_ignored():
     for event in (IntraStarted(A), IntraStarted(B), IntraEnded(A)):
         tracker.consume(event)
     assert tracker.branching_factors(A) == [0]
-    assert tracker.branching_factors(B) == []
+    assert tracker.branching_factors(B) == [0]
 
 
 def test_multiple_iterations_accumulate():
@@ -74,18 +86,18 @@ def test_prebranch_outside_iteration_is_ignored():
     assert tracker.branching_factors(A) == [0]
 
 
-def test_changed_notifies_on_iteration_close():
+def test_changed_notifies_on_start_branch_and_close():
     tracker = IterationTracker()
     seen = []
     tracker.changed.subscribe(seen.append)
     for event in (IntraStarted(A), PreBranch(), IntraEnded(A)):
         tracker.consume(event)
-    assert seen == [A]
+    assert seen == [A, A, A]
 
 
-def test_components_lists_only_completed():
+def test_components_includes_open_iteration():
     tracker = IterationTracker()
     tracker.consume(IntraStarted(A))
-    assert tracker.components() == []
+    assert tracker.components() == [A]
     tracker.consume(IntraEnded(A))
     assert tracker.components() == [A]

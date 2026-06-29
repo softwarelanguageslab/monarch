@@ -41,10 +41,11 @@ table still visible, and the title bar is annotated with `(stream ended)`.
 
 An *iteration* for a component starts at its `IntraStarted` and ends at the
 matching `IntraEnded` **or** at the next `IntraStarted` of any component,
-whichever comes first. A component's row (and its detail graph) is updated only
-when one of its iterations *completes*. As a consequence, a component whose
-iteration is still open — including the one left open when the stream ends — does
-not yet appear in the table; it shows up once that iteration closes.
+whichever comes first. A component appears in the table as soon as its iteration
+starts, and its branching count — the running number of `PreBranch` events —
+updates live while the iteration is in progress. The open iteration is shown as
+the trailing point in the detail graph and is included in the summary statistics;
+its value is finalized when the iteration closes.
 
 ## Architecture
 
