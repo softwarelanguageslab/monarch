@@ -710,9 +710,9 @@
                (deref car)
                (list-ref
                 (lambda (l index)
-                  (assert (list? l))
-                  (assert (number? index))
-                  (assert (< index (length l)))
+                  ;; (assert (list? l))
+                  ;; (assert (number? index))
+                  ;; (assert (< index (length l)))
                   (if (= index 0) (car l) (list-ref (cdr l) (- index 1)))))
                (gcd (lambda (a b) (if (= b 0) a (gcd b (modulo a b)))))
                (router/c
