@@ -48,7 +48,7 @@ ghc-options:
 - -Wno-x-partial
 - -Wmissing-home-modules
 - -Wpartial-fields
-- -O0
+- -O3
 - -fspecialise
 - -fexpose-all-unfoldings
 - -flate-dmd-anal

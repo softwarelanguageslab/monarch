@@ -74,7 +74,7 @@ ghc-options:
 - -Wpartial-fields
 - -Wredundant-constraints
 - -fno-warn-type-defaults
-- -O0
+- -O3
 - -fprint-potential-instances
 - -fprof-auto
 - -fprof-cafs

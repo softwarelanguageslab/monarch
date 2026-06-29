@@ -143,7 +143,7 @@ library
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
-  ghc-options: -fspecialise-aggressively -fexpose-all-unfoldings -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O0 -fprint-potential-instances -fprof-auto -fprof-cafs -Werror
+  ghc-options: -fspecialise-aggressively -fexpose-all-unfoldings -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O3 -fprint-potential-instances -fprof-auto -fprof-cafs -Werror
   build-depends:
       HUnit
     , QuickCheck >=2.14.2
@@ -201,7 +201,7 @@ executable maf-exe
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
-  ghc-options: -fspecialise-aggressively -fexpose-all-unfoldings -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O0 -fprint-potential-instances -fprof-auto -fprof-cafs -Werror -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -fspecialise-aggressively -fexpose-all-unfoldings -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O3 -fprint-potential-instances -fprof-auto -fprof-cafs -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HUnit
     , QuickCheck >=2.14.2
@@ -260,7 +260,7 @@ test-suite maf2-analysis-test
       MultiParamTypeClasses
       FunctionalDependencies
       GeneralizedNewtypeDeriving
-  ghc-options: -fspecialise-aggressively -fexpose-all-unfoldings -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O0 -fprint-potential-instances -fprof-auto -fprof-cafs -Werror -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -fspecialise-aggressively -fexpose-all-unfoldings -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -fno-warn-type-defaults -O3 -fprint-potential-instances -fprof-auto -fprof-cafs -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HUnit
     , QuickCheck >=2.14.2

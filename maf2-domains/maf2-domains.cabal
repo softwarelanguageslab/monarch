@@ -161,7 +161,7 @@ library
       LambdaCase
       EmptyCase
       NoDeriveAnyClass
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -O3
   build-depends:
       base >=4.7 && <5
     , containers
@@ -215,7 +215,7 @@ test-suite maf2-domains-test
       LambdaCase
       EmptyCase
       NoDeriveAnyClass
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -O3 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HUnit
     , QuickCheck >=2.14.2
