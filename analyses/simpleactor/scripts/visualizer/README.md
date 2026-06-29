@@ -8,7 +8,8 @@ The main window shows a reactive table with one row per component and the
 average, median, 25th-percentile and 75th-percentile of that component's
 per-iteration branching factor, plus the average wall-clock time per iteration in
 milliseconds. Clicking a column header sorts the table by that column and clicking
-it again reverses the order. Double-clicking a row opens a live line graph of the
+it again reverses the order. An "Export CSV" button writes the table, as currently
+displayed, to a file. Double-clicking a row opens a live line graph of the
 branching factor per iteration.
 
 ## Installation
