@@ -46,7 +46,7 @@ import Data.Singletons (SingI, sing)
 import Domain.Class (Domain)
 import qualified Domain.Class as Domain
 import Domain (CPDictionary)
-import Domain.Python.Objects.DataFrame (DataFrame)
+import Domain.Python.Objects.DataFrame (DataFrame, Series)
 import Lattice.Trace (Trace(..))
 import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)))
 import Data.Maybe (fromJust)
@@ -156,7 +156,7 @@ type PyDomain obj vlu = (PyVal vlu,
                          Abs obj StrPrm ~ CP String,
                          Abs obj DctPrm ~ CPDictionary String vlu, 
                          Abs obj DfrPrm ~ DataFrame vlu,
-                         Abs obj SrsPrm ~ CP Bool)
+                         Abs obj SrsPrm ~ Series vlu)
 
 new'' :: PyDomain obj vlu => vlu -> [(String, vlu)] -> [BindingFrom (PyPrmMap obj)] -> obj
 new'' cls attrs = new $ (attrStr ClassAttr, cls):attrs 

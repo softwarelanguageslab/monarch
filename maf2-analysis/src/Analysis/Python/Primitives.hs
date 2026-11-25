@@ -45,8 +45,12 @@ import Domain.Python.Objects.DataFrame
 --- Primitives implementation
 ---
 
--- | The implementation of a primitive, applied to its keyword arguments and its positional arguments
-type PrimFn pyM vlu = PyLoc -> [(String, vlu)] -> [vlu] -> pyM vlu
+-- | Calls a Python value (e.g., a closure) with the given positional arguments, at the given call site
+type Caller pyM vlu = PyLoc -> vlu -> [vlu] -> pyM vlu
+
+-- | The implementation of a primitive, applied to a 'Caller' for calling
+-- Python values, its keyword arguments and its positional arguments
+type PrimFn pyM vlu = PyLoc -> Caller pyM vlu -> [(String, vlu)] -> [vlu] -> pyM vlu
 
 applyPrim :: forall pyM obj vlu . PyM pyM obj vlu => PyPrim -> PrimFn pyM vlu
 -- int primitives
@@ -141,7 +145,7 @@ applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref'' @StrPrm (\col -> n
 applyPrim DataFrameEmpty        = prim1' @DfrPrm          $ \loc _        -> pyStore loc (from @BlnPrm boolTop)
 applyPrim DataFrameRename       = prim2' @DfrPrm @DctPrm  $ \loc df _     -> pyStore loc (from @DfrPrm $ collapse (rowsIndependent df) [df])
 -- dropna(subset=[...]) is a row filter whose condition reads the columns in 'subset' (or all columns)
-applyPrim DataFrameDropNA       = \loc kwa -> \case
+applyPrim DataFrameDropNA       = \loc _ kwa -> \case
                                        [a1] -> pyDeref'' @DfrPrm (\df -> withSubset kwa (pyDerefN (const $ pyStore loc $ from @DfrPrm df) . readColumns df)) a1
                                        _    -> pyError ArityError
         where -- the names of the columns in 'subset', where 'Top' stands for all columns
@@ -152,20 +156,29 @@ applyPrim DataFrameDropNA       = \loc kwa -> \case
                 | Top `elem` names = allColumns df
                 | otherwise        = [ c | col <- names, BL.Value c <- [lookupColumn col df] ]
 applyPrim DataFrameAppend       = prim2' @DfrPrm @DfrPrm  $ \loc df1 df2  -> pyStore loc (from @DfrPrm $ collapse (rowsIndependent df1 `Domain.or` rowsIndependent df2) [df1, df2])
-applyPrim DataFrameFromSeries   = prim1 $ \loc s -> pyDeref'' @SrsPrm (\rows -> pyStore loc $ from @DfrPrm $ fromColumns rows [] (BL.Value s)) s
--- the columns are kept as they are; the mapped function is not called
-applyPrim DataFrameMap          = prim2  $ \loc a1 _    -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm) a1   -- TODO: should also deref 2nd arg
+applyPrim DataFrameFromSeries   = prim1 $ \loc s -> pyDeref'' @SrsPrm (\srs -> pyStore loc $ from @DfrPrm $ fromColumns (seriesRowsIndependent srs) [] (BL.Value s)) s
+-- df.map(f) calls f on an element of each column, and each column of the result is a new Series of these results
+applyPrim DataFrameMap          = \loc caller _ -> \case
+                                       [a1, f] -> pyDeref'' @DfrPrm (mapDataFrame loc caller f) a1
+                                       _       -> pyError ArityError
+        where mapDataFrame :: PyLoc -> Caller pyM vlu -> vlu -> DataFrame vlu -> pyM vlu
+              mapDataFrame loc caller f df = do
+                 named <- mapM (\(col, c) -> (col,) <$> mapColumn caller loc col f c) (Map.toList (namedColumns df))
+                 other <- case otherColumns df of
+                             BL.Value c -> BL.Value <$> mapColumn caller loc "" f c
+                             BL.Bottom  -> return BL.Bottom
+                 pyStore loc $ from @DfrPrm $ df { namedColumns = Map.fromList named, otherColumns = other }
 applyPrim DataFrameRemoveOutliers = prim4 $ \loc a1 _ _ _ -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm . collapse Domain.false . pure) a1
 applyPrim DataFrameApplyAverage = prim3 $ \loc a1 _ _   -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm . collapse Domain.false . pure) a1
 applyPrim DataFrameApplyStatsPerMovement = prim3 $ \loc a1 _ _  -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm . collapse Domain.false . pure) a1
 applyPrim DataFrameCalcIncDiff = prim2 $ \loc a1 _ -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm . collapse Domain.false . pure) a1
-applyPrim DataFrameWindowedPrim1 = \loc _ -> \case
+applyPrim DataFrameWindowedPrim1 = \loc _ _ -> \case
                                              (dfr:_) -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm . collapse Domain.false . pure) dfr
                                              _       -> pyError ArityError
-applyPrim DataFrameWindowedPrim2 = \loc _ -> \case
+applyPrim DataFrameWindowedPrim2 = \loc _ _ -> \case
                                              (df1:df2:_) -> pyDeref2'' @DfrPrm @DfrPrm (\d1 d2 -> pyStore loc (from @DfrPrm $ collapse Domain.false [d1, d2])) df1 df2
                                              _           -> pyError ArityError
-applyPrim DataFrameWindowedPrim3 = \loc _ -> \case
+applyPrim DataFrameWindowedPrim3 = \loc _ _ -> \case
                                              (df1:df2:df3:_) -> pyDeref2'' @DfrPrm @DfrPrm (\d1 d2 -> pyDeref'' @DfrPrm (\d3 -> pyStore loc (from @DfrPrm $ collapse Domain.false [d1, d2, d3])) df3) df1 df2
                                              _               -> pyError ArityError
 -- the DataFrameGroupBy object and its iterator keep the columns of the grouped DataFrame
@@ -178,7 +191,15 @@ applyPrim DataFrameGroupByIteratorNext = prim1 $ \loc -> pyDeref'' @DfrPrm $ \df
 applyPrim SeriesAsType  = prim2 $ \_ self _ -> return self
 applyPrim SeriesMerge   = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm $ setColumnWeak Top self $ collapse (rowsIndependent df) [df])) self a1
 -- comparing a Series results in a (boolean) Series that depends on both operands
-applyPrim SeriesCompare = prim2 $ \loc self other -> pyDeref'' @SrsPrm (\rows -> pyDeref' (\_ -> pyStore loc (from @SrsPrm rows)) other) self
+applyPrim SeriesCompare = prim2 $ \loc self other -> pyDeref'' @SrsPrm (\srs -> pyDeref' (const $ compareResult loc srs) other) self
+        where compareResult :: PyLoc -> Series vlu -> pyM vlu
+              compareResult loc srs = do
+                 el <- pyStore (tagAs (SrsElm "") loc) (from @BlnPrm boolTop)
+                 pyStore loc (from @SrsPrm (Series (seriesRowsIndependent srs) el))
+-- s.map(f) calls f on an element of the Series, and results in a new Series of these results
+applyPrim SeriesMap     = \loc caller _ -> \case
+                                [self, f] -> mapColumn caller loc "" f self
+                                _         -> pyError ArityError
 -- other primitives
 applyPrim NoneBool = prim1 $ \_ _ -> return $ constant False
 applyPrim BoolBool = prim1'' @BlnPrm @BlnPrm return
@@ -193,14 +214,14 @@ none = ($> constant None)
 prim0 :: forall pyM obj vlu . PyM pyM obj vlu
         => (PyLoc -> pyM vlu)            -- ^ the primitive function
         -> PrimFn pyM vlu   -- ^ the resulting function   
-prim0 f loc _ [] = f loc
-prim0 _ _ _   _  = pyError ArityError
+prim0 f loc _ _ [] = f loc
+prim0 _ _ _ _   _  = pyError ArityError
 
 prim1 :: forall pyM obj vlu . PyM pyM obj vlu
         => (PyLoc -> vlu   -> pyM vlu)      -- ^ the primitive function
         -> PrimFn pyM vlu      -- ^ the resulting function   
-prim1 f loc _ [a] = f loc a
-prim1 _ _ _   _  = pyError ArityError
+prim1 f loc _ _ [a] = f loc a
+prim1 _ _ _ _   _  = pyError ArityError
 
 -- | version of prim1 that derefs the argument
 prim1' :: forall a pyM obj vlu . (SingI a, PyM pyM obj vlu)
@@ -220,8 +241,8 @@ prim1'' f = prim1 $ \loc -> pyDeref'
 prim2 :: PyM pyM obj vlu
         => (PyLoc -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
         -> PrimFn pyM vlu     -- ^ the resulting function 
-prim2 f loc _ [a1, a2] = f loc a1 a2
-prim2 _ _ _ _          = pyError ArityError
+prim2 f loc _ _ [a1, a2] = f loc a1 a2
+prim2 _ _ _ _ _          = pyError ArityError
 -- | version of prim2 that derefs the arguments
 prim2' :: forall a1 a2 pyM obj vlu . (SingI a1, SingI a2, PyM pyM obj vlu)
         => (PyLoc -> Abs obj a1 -> Abs obj a2 -> pyM vlu)   -- ^ the primitive function
@@ -238,14 +259,14 @@ prim2'' f = prim2 $ \loc -> pyDeref2' (\o1 o2 -> pyStore loc =<< f o1 o2)
 prim3 :: PyM pyM obj vlu
         => (PyLoc -> vlu -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
         -> PrimFn pyM vlu     -- ^ the resulting function 
-prim3 f loc _ [a1, a2, a3] = f loc a1 a2 a3
-prim3 _ _ _ _              = pyError ArityError
+prim3 f loc _ _ [a1, a2, a3] = f loc a1 a2 a3
+prim3 _ _ _ _ _              = pyError ArityError
 
 prim4 :: PyM pyM obj vlu
         => (PyLoc -> vlu -> vlu -> vlu -> vlu -> pyM vlu)     -- ^ the primitive function
         -> PrimFn pyM vlu     -- ^ the resulting function 
-prim4 f loc _ [a1, a2, a3, a4] = f loc a1 a2 a3 a4
-prim4 _ _ _ _                  = pyError ArityError
+prim4 f loc _ _ [a1, a2, a3, a4] = f loc a1 a2 a3 a4
+prim4 _ _ _ _ _                  = pyError ArityError
 
 intBinop :: forall r1 r2 pyM obj vlu . (PyM pyM obj vlu, SingI r1, SingI r2)
           => (Abs obj IntPrm -> Abs obj IntPrm -> pyM (Abs obj r1))   -- the function for integers
@@ -291,3 +312,14 @@ listElements (SeqDomain.TopList v)     = [v]
 fromBottomLifted :: PyM pyM obj vlu => BottomLifted vlu -> pyM vlu
 fromBottomLifted (BL.Value v) = return v
 fromBottomLifted BL.Bottom    = mbottom
+
+-- | Calls the given function on the element of the given column (a reference
+-- to a Series), and results in a reference to a new Series of the results.
+--
+-- The function is called while the column is dereferenced, so that it is
+-- analysed in the taint context of the column, and each column has its own
+-- call site, so that the calls for different columns are analysed separately.
+mapColumn :: forall pyM obj vlu . PyM pyM obj vlu => Caller pyM vlu -> PyLoc -> String -> vlu -> vlu -> pyM vlu
+mapColumn caller loc col f column = pyDeref'' @SrsPrm (\srs -> do
+      result <- caller (tagAs (DfrCol col) loc) f [seriesElement srs]
+      pyDeref' (\_ -> pyStore (tagAs (DfrCol col) loc) (from @SrsPrm (srs { seriesElement = result }))) result) column

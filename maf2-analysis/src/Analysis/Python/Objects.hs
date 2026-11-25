@@ -20,7 +20,8 @@ import qualified Domain.Core.SeqDomain as SeqDomain
 import Domain.Core.SeqDomain (CPList(..))
 import Control.Monad.Join
 import Control.Monad.Escape ( orElse )
-import Domain ( BoolDomain, BoolLattice(..) )
+import Domain ( BoolDomain, BoolLattice(..), boolTop )
+import qualified Domain
 import Domain.Python.Objects
 import qualified Domain.Python.Objects as PyObj
 import Domain.Python.World
@@ -33,7 +34,10 @@ import Control.Monad ((>=>), (<=<))
 import Data.Bifunctor
 import Analysis.Monad hiding (has)
 import Data.Map (Map)
-import Lattice ( join, eql )
+import Lattice ( join, eql, top, CP(..) )
+import qualified Data.List as List
+import Data.Maybe (fromMaybe)
+import Data.TypeLevel.HMap (Sigma((:&:)))
 
 --
 -- Python constants 
@@ -176,3 +180,35 @@ pyIf prd csq alt = prd >>= pyDeref' (\obj -> cond (PyObj.get @BlnPrm obj) csq al
 
 pyIf_ :: PyM m obj vlu => m vlu -> m () -> m () -> m ()
 pyIf_ prd csq alt = prd >>= pyDeref_ (\_ obj -> cond (PyObj.get @BlnPrm obj) csq alt)
+
+--
+-- pandas dtypes
+--
+
+-- | The prefix of a dtype that marks a column as sensitive (e.g., "sensitive_float64")
+sensitiveDtypePrefix :: String
+sensitiveDtypePrefix = "sensitive_"
+
+-- | An abstract element of a pandas column with the given dtype. A sensitive
+-- dtype has the elements of the dtype that follows its prefix.
+dtypeElement :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> CP String -> pyM vlu
+dtypeElement loc (Constant dtype) = elementOf (fromMaybe dtype (List.stripPrefix sensitiveDtypePrefix dtype))
+   where elementOf d
+           | any (`List.isPrefixOf` d) ["int", "uint"]  = pyStore loc (from @IntPrm top)
+           | "float" `List.isPrefixOf` d                = pyStore loc . from @ReaPrm =<< anyReal @pyM @obj
+           | d `Prelude.elem` ["bool", "boolean"]       = pyStore loc (from @BlnPrm boolTop)
+           | d `Prelude.elem` ["str", "string"]         = pyStore loc (from @StrPrm Top)
+           | otherwise                                  = anyCellValue loc
+dtypeElement loc Top = anyCellValue loc
+
+-- | An abstract value that may be any value of a cell in a DataFrame read from
+-- a file: an integer, a float (including NaN for missing values), a boolean or
+-- a string
+anyCellValue :: forall pyM obj vlu . PyM pyM obj vlu => PyLoc -> pyM vlu
+anyCellValue loc = do rea <- anyReal @pyM @obj
+                      pyStore loc $ new'' cls [] [SIntPrm :&: top, SReaPrm :&: rea, SBlnPrm :&: boolTop, SStrPrm :&: Top]
+   where cls = Prelude.foldr1 join (Prelude.map typeVal [IntType, FloatType, BoolType, StringType])
+
+-- | An abstract value that may be any float
+anyReal :: forall pyM obj vlu . PyM pyM obj vlu => pyM (Abs obj ReaPrm)
+anyReal = Domain.toReal @_ @(Abs obj BlnPrm) @(Abs obj StrPrm) (top :: Abs obj IntPrm)

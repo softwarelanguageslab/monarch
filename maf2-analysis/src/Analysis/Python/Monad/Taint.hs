@@ -35,7 +35,8 @@ import Lattice.TopLattice()
 import Domain.Python.Objects.Class
 import Control.Monad.Identity
 import Analysis.Python.Diagnostics
-import Domain.Python.Objects.DataFrame (fromColumns, rowsIndependent)
+import Domain.Python.Objects.DataFrame (fromColumns, rowsIndependent, Series(..))
+import Analysis.Python.Objects (anyCellValue)
 import qualified Lattice.BottomLiftedLattice as BottomLifted
 
 newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (IdentityT m a)
@@ -111,7 +112,8 @@ instance (
                                   _        -> pyError ArityError
                                   where 
                                     -- a DataFrame whose columns are unknown
-                                    dataFrame = do col <- pyStore (tagAs (DfrCol "") loc) (from' @SrsPrm Prelude.True)
+                                    dataFrame = do el  <- anyCellValue (tagAs (SrsElm "") loc)
+                                                   col <- pyStore (tagAs (DfrCol "") loc) (from @SrsPrm (Series (Lattice.Constant Prelude.True) el))
                                                    pyStore loc (from @DfrPrm (fromColumns (Lattice.Constant Prelude.True) [] (BottomLifted.Value col)))
                                     toTaint :: CP String -> Taint 
                                     toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)

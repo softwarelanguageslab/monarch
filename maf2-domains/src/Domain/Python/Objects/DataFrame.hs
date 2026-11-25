@@ -3,12 +3,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
--- | Abstraction of a pandas DataFrame as a collection of columns.
+-- | Abstraction of pandas DataFrames and Series.
 --
--- Each column is an abstract value (e.g., a reference to a Series object).
--- Columns are either named, or covered by a single value that stands for all
--- columns without a known name.
+-- A DataFrame is a collection of columns, each an abstract value (e.g., a
+-- reference to a Series object). Columns are either named, or covered by a
+-- single value that stands for all columns without a known name.
+--
+-- A Series is abstracted by a single abstract value (e.g., a reference) that
+-- stands for all of its elements.
 module Domain.Python.Objects.DataFrame (
+   Series(..),
    DataFrame(..),
    fromColumns,
    allColumns,
@@ -28,6 +32,25 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
+
+-- | An abstract Series
+data Series v = Series {
+   -- | Whether the rows of the Series are independent of each other
+   seriesRowsIndependent :: CP Bool,
+   -- | Stands for every element of the Series
+   seriesElement         :: v
+} deriving (Eq, Ord, Show, Generic)
+
+instance (NFData v) => NFData (Series v)
+
+instance Joinable v => Joinable (Series v) where
+   join (Series rows1 el1) (Series rows2 el2) = Series (join rows1 rows2) (join el1 el2)
+
+instance PartialOrder v => PartialOrder (Series v) where
+   leq (Series rows1 el1) (Series rows2 el2) = leq rows1 rows2 && leq el1 el2
+
+instance (Ord adr, Trace adr v) => Trace adr (Series v) where
+   trace = trace . seriesElement
 
 -- | An abstract DataFrame.
 --

@@ -88,6 +88,7 @@ data PyTag = FrmTag
            | IffNxt
            | DctKey String
            | DfrCol String
+           | SrsElm String
    deriving (Eq, Ord, Show, Generic)
 
 instance NFData PyTag where

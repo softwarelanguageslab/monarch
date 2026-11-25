@@ -10,7 +10,7 @@ import Domain.Core
 import Domain.Core.SeqDomain
 import Domain.Python.World 
 import Domain.Python.Objects.Class 
-import Domain.Python.Objects.DataFrame (DataFrame)
+import Domain.Python.Objects.DataFrame (DataFrame, Series)
 
 import Domain.Core.HMapDomain (HMapAbs(..))
 import qualified Domain.Core.HMapDomain as HMapDomain 
@@ -60,7 +60,7 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
     LstPrm ::-> CPList (Assoc VluKey m),
     DctPrm ::-> CPDictionary String (Assoc VluKey m),
     DfrPrm ::-> DataFrame (Assoc VluKey m),
-    SrsPrm ::-> CP Bool    -- are rows independent in a series
+    SrsPrm ::-> Series (Assoc VluKey m)
   ]
 
 --

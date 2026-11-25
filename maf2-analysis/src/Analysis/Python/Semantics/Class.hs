@@ -204,7 +204,8 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
     callPrm :: PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Set (Either PyPrim XPyPrim) -> m vlu
     callPrm loc ags kwa = mjoinMap apply
         where kws = map (\(ide, v) -> (ideName ide, v)) kwa
-              apply (Left prm)  = applyPrim prm loc kws ags
+              caller l f args = call l args [] f
+              apply (Left prm)  = applyPrim prm loc caller kws ags
               apply (Right prm) = applyXPrim (Debug.traceShowId prm) loc kws ags  
 
     callBnd :: PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Map ObjAdr vlu -> m vlu

@@ -52,7 +52,8 @@ import qualified Lattice.ConstantPropagationLattice as CP
 import Domain.Core.DictionaryDomain.CPDict (CPDictionary(..))
 import qualified Data.List as List
 import Lattice.Trace (Trace(..))
-import Domain.Python.Objects.DataFrame (fromColumns)
+import Domain.Python.Objects.DataFrame (fromColumns, Series(..))
+import Analysis.Python.Objects (sensitiveDtypePrefix, dtypeElement)
 import qualified Data.Map as Map
 
 
@@ -105,7 +106,7 @@ extendTainted (Tainted a t) s = Tainted a (extendTaint t s)
 
 -- | Whether a pandas dtype marks a column as sensitive (e.g., "sensitive_float64")
 isSensitiveDtype :: CP String -> CP Bool
-isSensitiveDtype (CP.Constant dtype) = CP.Constant ("sensitive_" `List.isPrefixOf` dtype)
+isSensitiveDtype (CP.Constant dtype) = CP.Constant (sensitiveDtypePrefix `List.isPrefixOf` dtype)
 isSensitiveDtype CP.Top              = CP.Top
 
 -- | The join of the taint of the given reference and the taints of all
@@ -203,11 +204,12 @@ instance (
                                               dataFrame [] . join col =<< untaintedColumn
           -- a column with the given dtype
           column col dtype = pyDeref'' @StrPrm (\d -> condCP (return $ isSensitiveDtype d)
-                                                              (withTaint @Taint (source loc) (addTaint =<< series col))
-                                                              (series col)) dtype
+                                                              (withTaint @Taint (source loc) (addTaint =<< series col d))
+                                                              (series col d)) dtype
           -- a column that is not listed in dtype
-          untaintedColumn = series ""
-          series col = pyStore (tagAs (DfrCol col) loc) (from' @SrsPrm Prelude.True)
+          untaintedColumn = series "" CP.Top
+          series col d = do el <- dtypeElement (tagAs (SrsElm col) loc) d
+                            pyStore (tagAs (DfrCol col) loc) (from @SrsPrm (Series (CP.Constant Prelude.True) el))
           dataFrame named other = pyStore loc (from @DfrPrm (fromColumns (CP.Constant Prelude.True) named (BottomLifted.Value other)))
   applyXPrim _ _ _ = error "primitive not implemented"
 
