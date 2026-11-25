@@ -312,6 +312,9 @@ compileCall :: Expr PyLoc -> [Argument PyLoc] -> PyLoc -> Exp PyLoc AfterSimplif
 compileCall fun args = Call (compileExp fun) posArgs kwArgs
    where (posArgs, kwArgs) = compileArgs args
 
+-- TODO: support @f(*args)@ and @f(**kwargs)@. Keyword arguments are compiled to
+-- a list of statically known names, which @**kwargs@ cannot be represented as
+-- (see 'applyXPrim' in "Analysis.Python.Monad.Class").
 compileArgs :: [Argument PyLoc] -> ([Exp PyLoc AfterSimplification], [(Ide PyLoc, Exp PyLoc AfterSimplification)])
 compileArgs args = (posCompiled, kwCompiled)
    where (posArgs, kwArgs) = args & span (\case ArgExpr{} -> True

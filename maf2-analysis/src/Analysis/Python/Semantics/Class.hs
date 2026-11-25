@@ -189,7 +189,7 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
             (pyIf   (obj `isType` CloType)
                     (callClo loc pos kwa (at @CloPrm obj))
                     (pyIf   (obj `isType` PrimType)
-                            (callPrm loc pos (at @PrmPrm obj))
+                            (callPrm loc pos kwa (at @PrmPrm obj))
                             (pyIf (obj `isType` TypeType)
                                   (callTyp loc pos kwa (injectAdr adr))  --TODO: metaclasses...
                        {- else -} (pyError NotCallable)))))
@@ -201,10 +201,11 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
                                  return ref
         where obj = new'' typ [] [] 
 
-    callPrm :: PyLoc -> [vlu] -> Set (Either PyPrim XPyPrim) -> m vlu
-    callPrm pos ags = mjoinMap apply
-        where apply (Left prm)  = applyPrim prm pos ags
-              apply (Right prm) = applyXPrim (Debug.traceShowId prm) pos ags  
+    -- | Applies a primitive; only extra primitives receive the keyword arguments
+    callPrm :: PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Set (Either PyPrim XPyPrim) -> m vlu
+    callPrm loc ags kwa = mjoinMap apply
+        where apply (Left prm)  = applyPrim prm loc ags
+              apply (Right prm) = applyXPrim (Debug.traceShowId prm) loc (map (\(ide, v) -> (ideName ide, v)) kwa) ags  
 
     callBnd :: PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Map ObjAdr vlu -> m vlu
     callBnd loc pos kwa = mjoinMap apply . Map.toList

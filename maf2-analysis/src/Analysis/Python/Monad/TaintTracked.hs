@@ -47,6 +47,12 @@ import Control.Monad.Reader
 import Syntax.Span
 import Control.Lens
 import qualified Lattice.TopLiftedLattice as TopLifted
+import qualified Lattice.BottomLiftedLattice as BottomLifted
+import qualified Lattice.ConstantPropagationLattice as CP
+import Domain.Core.DictionaryDomain.CPDict (CPDictionary(..))
+import qualified Domain
+import qualified Data.List as List
+import qualified Data.Map as Map
 
 
 -- | This is the same as the 'Analysis.Python.Monad.Taint' monad, but also keeps track
@@ -95,6 +101,16 @@ extendTaint t s = Set.map (over dependentsSpan (Set.union s)) <$> t
 
 extendTainted :: PyRefTaint -> Set Span -> PyRefTaint
 extendTainted (Tainted a t) s = Tainted a (extendTaint t s)
+
+-- | Whether a pandas dtype marks a column as sensitive (e.g., "sensitive_float64")
+isSensitiveDtype :: CP String -> CP Bool
+isSensitiveDtype (CP.Constant dtype) = CP.Constant ("sensitive_" `List.isPrefixOf` dtype)
+isSensitiveDtype CP.Top              = CP.Top
+
+-- | All values that the given dictionary may contain
+dictValues :: CPDictionary String v -> [v]
+dictValues (CPDict _ dct dflt) = Map.elems dct ++ [v | BottomLifted.Value v <- [dflt]]
+dictValues (TopDict _ v)       = [v]
 
 type PyRefTaint = Tainted Taint ObjAddrSet
 type PyRetTaint = Tainted Taint (Set (PyEsc PyRefTaint))
@@ -148,21 +164,32 @@ instance (
   pyLookupSto = lookupAdr
   pyWithCtx loc = withCtx (take kcfa . (loc:))
 
-  applyXPrim TaintSink loc = \case
+  applyXPrim TaintSink loc _ = \case
                               [_, v@(Tainted _ t)] -> do
                                  condCP (pure $ Debug.traceWith (("isTainted>> " ++) . show) $ isTainted t)
                                         (reportDiagnostic loc (TaintViolation (fmap (Set.map trackingToTuple) t) v) >> return v)
                                         (return v)
                               _ -> Debug.trace "arity error" $ pyError ArityError
 
-  applyXPrim Log loc = \case
+  applyXPrim Log loc _ = \case
                               [v@(Tainted _ t)] -> do
                                  condCP (pure $ Debug.traceWith (("isTainted>> " ++) . show) $ isTainted t)
                                         (reportDiagnostic loc (TaintViolation (fmap (Set.map trackingToTuple) t) v) >> return v)
                                         (return v)
                               _ -> Debug.trace "arity error" $ pyError ArityError
-  applyXPrim ObjectTaint loc = \case
+  applyXPrim ObjectTaint loc _ = \case
                                 [a] -> withTaint @Taint (source loc) (addTaint a)
                                 _   -> pyError ArityError
-  applyXPrim _ _ = error "primitive not implemented"
+  -- pandas.read_csv(path, dtype={column: dtype}) reads a DataFrame, which is
+  -- a source of tainted data when the dtype of any column is sensitive.
+  applyXPrim PandasReadCsv loc kwa = \case
+                                [_] -> maybe (readCsv Domain.false) readCsvWithDtypes (List.lookup "dtype" kwa)
+                                _   -> pyError ArityError
+    where readCsvWithDtypes = pyDeref'' @DctPrm (pyDerefN' @StrPrm (readCsv . sensitive) . dictValues)
+          sensitive = foldr (Domain.or . isSensitiveDtype) Domain.false
+          readCsv isSensitive = condCP (return isSensitive)
+                                       (withTaint @Taint (source loc) (addTaint =<< dataFrame))
+                                       dataFrame
+          dataFrame = pyStore loc (from' @DfrPrm Prelude.True)
+  applyXPrim _ _ _ = error "primitive not implemented"
 
