@@ -40,6 +40,7 @@ import Data.Graph
 import Analysis.Store (CountingMap)
 import Data.Foldable (traverse_)
 import Analysis.Python.Diagnostics
+import Lattice.Trace (Trace)
 
 type PyCtx = [PyLoc]
 type Store obj = CountingMap ObjAdr obj
@@ -58,6 +59,7 @@ type IntraT obj m  = MonadStack '[
 type IntraT' obj m = IntraT obj (IntraAnalysisT PyCmp m)    -- needed to avoid cycles in IntraT type synonym
 
 type AnalysisM m obj = (PyDomain obj PyRefTaint,
+                        Trace PyRefTaint obj,
                         MapM PyCmp PyRes m,
                         MapM PyCmpTaint Taint m,
                         MapM PyCmpStoreIn (Store obj) m,
@@ -123,7 +125,7 @@ inter prg = do let cmp = ((Main prg, initialEnv), [])
 
 type PyTaintDiagnostic = Diagnostic (DiagnosticType PyRefTaint)
 
-analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
+analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint, Trace PyRefTaint obj) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
 analyze prg = (rsto, osto, graph, reports)
     where (((osto, graph), rsto), reports) = inter @obj prg
                                     & runWithGraph @(SimpleGraph (CP String) (CP Bool))
@@ -145,7 +147,7 @@ analyze prg = (rsto, osto, graph, reports)
 initialStore :: forall m obj . AnalysisM m obj => m (Store obj)
 initialStore = snd <$> runWithStore @(Store obj) @ObjAdr @obj init
 
-analyzeREPL :: forall obj . (PyDomain obj PyRefTaint, Typeable obj, Show obj)
+analyzeREPL :: forall obj . (PyDomain obj PyRefTaint, Trace PyRefTaint obj, Typeable obj, Show obj)
     => IO PyPrg         -- a read function
     -> (obj -> IO ())   -- a display function
     -> IO ()

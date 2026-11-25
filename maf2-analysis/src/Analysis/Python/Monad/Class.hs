@@ -86,8 +86,9 @@ class (PyDomain obj vlu, AbstractM m) => PyM m obj vlu | m -> obj vlu where
   -- extra primitives -- 
   -- | Applies an extra primitive to its keyword arguments and its positional arguments
   --
-  -- TODO: keyword arguments are a list of names and values, which assumes that
-  -- every keyword name is known statically. This holds because the compiler
+  -- TODO: keyword arguments are a list of names and values (here and in
+  -- 'Analysis.Python.Primitives.applyPrim'), which assumes that every keyword
+  -- name is known statically. This holds because the compiler
   -- rejects @f(**kwargs)@ (and @f(*args)@). Once those are supported, the names
   -- of keyword arguments may be unknown (e.g., the keys of @kwargs@ are 'Top'),
   -- so keyword arguments should become an abstract dictionary instead. The same

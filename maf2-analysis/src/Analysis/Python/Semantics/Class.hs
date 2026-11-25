@@ -201,11 +201,11 @@ class (PyM m obj vlu) => PySemantics m obj vlu where
                                  return ref
         where obj = new'' typ [] [] 
 
-    -- | Applies a primitive; only extra primitives receive the keyword arguments
     callPrm :: PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Set (Either PyPrim XPyPrim) -> m vlu
     callPrm loc ags kwa = mjoinMap apply
-        where apply (Left prm)  = applyPrim prm loc ags
-              apply (Right prm) = applyXPrim (Debug.traceShowId prm) loc (map (\(ide, v) -> (ideName ide, v)) kwa) ags  
+        where kws = map (\(ide, v) -> (ideName ide, v)) kwa
+              apply (Left prm)  = applyPrim prm loc kws ags
+              apply (Right prm) = applyXPrim (Debug.traceShowId prm) loc kws ags  
 
     callBnd :: PyLoc -> [vlu] -> [(Ide PyLoc, vlu)] -> Map ObjAdr vlu -> m vlu
     callBnd loc pos kwa = mjoinMap apply . Map.toList

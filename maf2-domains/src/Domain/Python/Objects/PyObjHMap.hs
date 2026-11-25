@@ -10,6 +10,7 @@ import Domain.Core
 import Domain.Core.SeqDomain
 import Domain.Python.World 
 import Domain.Python.Objects.Class 
+import Domain.Python.Objects.DataFrame (DataFrame)
 
 import Domain.Core.HMapDomain (HMapAbs(..))
 import qualified Domain.Core.HMapDomain as HMapDomain 
@@ -31,6 +32,7 @@ import Control.Monad.Join (MonadBottom(..))
 import qualified Domain.Core.DictionaryDomain.CPDict as CPDict
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
+import Lattice.Trace (Trace(..))
 
 --
 -- Configuring the abstractions 
@@ -57,7 +59,7 @@ type PyPrm (m :: [PyAbsKey :-> Type]) =
     TupPrm ::-> CPList (Assoc VluKey m),                -- TODO: could use a more optimised representation (e.g., CPVector)
     LstPrm ::-> CPList (Assoc VluKey m),
     DctPrm ::-> CPDictionary String (Assoc VluKey m),
-    DfrPrm ::-> CP Bool,   -- are rows independent in a dataframe 
+    DfrPrm ::-> DataFrame (Assoc VluKey m),
     SrsPrm ::-> CP Bool    -- are rows independent in a series
   ]
 
@@ -148,3 +150,7 @@ type PyObjCP vlu adr clo = PyObjHMap '[IntKey ::-> CP Integer,
                                        VluKey ::-> vlu,
                                        AdrKey ::-> adr, 
                                        CloKey ::-> clo]
+
+-- | Traces the attributes and the primitive values of the object
+instance (Ord adr, Trace adr (CPDictionary String (Assoc VluKey m)), Trace adr (HMapAbs (PyPrm m))) => Trace adr (PyObjHMap m) where
+  trace (PyObjHMap dct prm) = Set.union (trace dct) (trace prm)

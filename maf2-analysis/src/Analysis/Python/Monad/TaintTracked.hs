@@ -45,13 +45,14 @@ import Analysis.Python.Diagnostics
 import qualified Data.Set as Set
 import Control.Monad.Reader
 import Syntax.Span
-import Control.Lens
+import Control.Lens hiding (from)
 import qualified Lattice.TopLiftedLattice as TopLifted
 import qualified Lattice.BottomLiftedLattice as BottomLifted
 import qualified Lattice.ConstantPropagationLattice as CP
 import Domain.Core.DictionaryDomain.CPDict (CPDictionary(..))
-import qualified Domain
 import qualified Data.List as List
+import Lattice.Trace (Trace(..))
+import Domain.Python.Objects.DataFrame (fromColumns)
 import qualified Data.Map as Map
 
 
@@ -107,10 +108,22 @@ isSensitiveDtype :: CP String -> CP Bool
 isSensitiveDtype (CP.Constant dtype) = CP.Constant ("sensitive_" `List.isPrefixOf` dtype)
 isSensitiveDtype CP.Top              = CP.Top
 
--- | All values that the given dictionary may contain
-dictValues :: CPDictionary String v -> [v]
-dictValues (CPDict _ dct dflt) = Map.elems dct ++ [v | BottomLifted.Value v <- [dflt]]
-dictValues (TopDict _ v)       = [v]
+-- | The join of the taint of the given reference and the taints of all
+-- references reachable from it through the store, without following closures.
+--
+-- The variables that a closure captures only affect the result of calling it,
+-- and that result is tainted by them where the closure is called. A closure
+-- that is not called does not reveal them. This assumes that a sink does not
+-- serialize the closures it receives (as, e.g., cloudpickle does).
+reachableTaint :: forall obj m . (StoreM ObjAdr obj m, PyObj obj, Trace PyRefTaint obj) => PyRefTaint -> m Taint
+reachableTaint ref = go Set.empty [ref] (TopLifted.Value Set.empty)
+   where go :: Set ObjAdr -> [PyRefTaint] -> Taint -> m Taint
+         go _    []                       acc = return acc
+         go seen (Tainted adrSet t : refs) acc = do
+            let unseen = addrs adrSet `Set.difference` seen
+            objs <- mapM (lookupAdr @ObjAdr @obj) (Set.toList unseen)
+            let contained = concatMap (Set.toList . trace @PyRefTaint . setPrm SCloPrm Set.empty) objs
+            go (Set.union seen unseen) (contained ++ refs) (join acc t)
 
 type PyRefTaint = Tainted Taint ObjAddrSet
 type PyRetTaint = Tainted Taint (Set (PyEsc PyRefTaint))
@@ -132,7 +145,8 @@ instance (
           AllocM m PyLoc ObjAdr,
           GraphM (CP String) (CP Bool) m,
           MonadReport (DiagnosticType vlu) m,
-          StoreM ObjAdr obj m)
+          StoreM ObjAdr obj m,
+          Trace PyRefTaint obj)
           =>
           PyM (PythonTaintAnalysisT m) obj vlu where
   pyStoreSize = storeSize @ObjAdr @obj @(PythonTaintAnalysisT m)
@@ -164,32 +178,45 @@ instance (
   pyLookupSto = lookupAdr
   pyWithCtx loc = withCtx (take kcfa . (loc:))
 
+  -- a sink reports the taint of its argument, including the taint of everything reachable from it
   applyXPrim TaintSink loc _ = \case
-                              [_, v@(Tainted _ t)] -> do
-                                 condCP (pure $ Debug.traceWith (("isTainted>> " ++) . show) $ isTainted t)
-                                        (reportDiagnostic loc (TaintViolation (fmap (Set.map trackingToTuple) t) v) >> return v)
-                                        (return v)
+                              [_, v] -> reportReachableTaint loc v
                               _ -> Debug.trace "arity error" $ pyError ArityError
 
   applyXPrim Log loc _ = \case
-                              [v@(Tainted _ t)] -> do
-                                 condCP (pure $ Debug.traceWith (("isTainted>> " ++) . show) $ isTainted t)
-                                        (reportDiagnostic loc (TaintViolation (fmap (Set.map trackingToTuple) t) v) >> return v)
-                                        (return v)
+                              [v] -> reportReachableTaint loc v
                               _ -> Debug.trace "arity error" $ pyError ArityError
   applyXPrim ObjectTaint loc _ = \case
                                 [a] -> withTaint @Taint (source loc) (addTaint a)
                                 _   -> pyError ArityError
-  -- pandas.read_csv(path, dtype={column: dtype}) reads a DataFrame, which is
-  -- a source of tainted data when the dtype of any column is sensitive.
+  -- pandas.read_csv(path, dtype={column: dtype}) reads a DataFrame whose
+  -- columns are sources of tainted data when their dtype is sensitive (e.g.,
+  -- "sensitive_float64"). Columns that dtype does not list are not tainted.
+  -- This is only sound because sensitivity is encoded in dtype and the Series
+  -- abstraction does not contain any data of the file.
   applyXPrim PandasReadCsv loc kwa = \case
-                                [_] -> maybe (readCsv Domain.false) readCsvWithDtypes (List.lookup "dtype" kwa)
+                                [_] -> maybe (dataFrame [] =<< untaintedColumn) (pyDeref'' @DctPrm withDtypes) (List.lookup "dtype" kwa)
                                 _   -> pyError ArityError
-    where readCsvWithDtypes = pyDeref'' @DctPrm (pyDerefN' @StrPrm (readCsv . sensitive) . dictValues)
-          sensitive = foldr (Domain.or . isSensitiveDtype) Domain.false
-          readCsv isSensitive = condCP (return isSensitive)
-                                       (withTaint @Taint (source loc) (addTaint =<< dataFrame))
-                                       dataFrame
-          dataFrame = pyStore loc (from' @DfrPrm Prelude.True)
+    where withDtypes (CPDict _ dtypes _) = do named <- mapM (\(col, dtype) -> (col,) <$> column col dtype) (Map.toList dtypes)
+                                              dataFrame named =<< untaintedColumn
+          withDtypes (TopDict _ dtype)   = do col <- column "" dtype
+                                              dataFrame [] . join col =<< untaintedColumn
+          -- a column with the given dtype
+          column col dtype = pyDeref'' @StrPrm (\d -> condCP (return $ isSensitiveDtype d)
+                                                              (withTaint @Taint (source loc) (addTaint =<< series col))
+                                                              (series col)) dtype
+          -- a column that is not listed in dtype
+          untaintedColumn = series ""
+          series col = pyStore (tagAs (DfrCol col) loc) (from' @SrsPrm Prelude.True)
+          dataFrame named other = pyStore loc (from @DfrPrm (fromColumns (CP.Constant Prelude.True) named (BottomLifted.Value other)))
   applyXPrim _ _ _ = error "primitive not implemented"
 
+-- | Reports a taint violation at the given location if the given value, or
+-- anything reachable from it, is tainted
+reportReachableTaint :: forall obj m . (StoreM ObjAdr obj m, PyObj obj, Trace PyRefTaint obj, MonadReport (DiagnosticType PyRefTaint) m, MonadJoin m)
+                     => PyLoc -> PyRefTaint -> m PyRefTaint
+reportReachableTaint loc v = do
+   t <- reachableTaint @obj v
+   condCP (pure $ Debug.traceWith ((("isTainted " ++ show loc ++ ">> ") ++) . show) $ isTainted t)
+          (reportDiagnostic loc (TaintViolation (fmap (Set.map trackingToTuple) t) v) >> return v)
+          (return v)

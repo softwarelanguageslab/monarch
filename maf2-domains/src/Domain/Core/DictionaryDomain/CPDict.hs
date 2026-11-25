@@ -21,6 +21,7 @@ import Control.Monad.DomainError (DomainError(..))
 import Control.Monad.Escape
 import Lattice.BottomLiftedLattice (BottomLifted, joinWithBL, joinsBL)
 import qualified Lattice.BottomLiftedLattice as BL
+import Lattice.Trace (Trace(..))
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 
@@ -109,3 +110,7 @@ instance CPDict k v => DictionaryDomain (CPDictionary k v) where
    isEmpty (TopDict kys _) 
       | Set.null kys = boolTop      -- if there are no keys that are guaranteed to be present, it may be empty 
       | otherwise = false           -- otherwise, we don't know 
+
+instance (Ord adr, Trace adr v) => Trace adr (CPDictionary k v) where
+   trace (CPDict _ dct _) = foldMap trace dct
+   trace (TopDict _ vlu)  = trace vlu

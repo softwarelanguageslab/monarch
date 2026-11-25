@@ -6,6 +6,8 @@ import Control.DeepSeq (NFData)
 import GHC.Generics (Generic)
 import Domain.Core.BoolDomain.Class
 import Lattice.ConstantPropagationLattice (CP)
+import Lattice.Trace (Trace(..))
+import qualified Data.Set as Set
 
 data Tainted t a = Tainted a t
     deriving (Eq, Ord, Generic)
@@ -32,3 +34,7 @@ instance (Joinable a, Joinable t) => Joinable (Tainted t a) where
     join (Tainted a1 t1) (Tainted a2 t2) = Tainted (a1 `join` a2) (t1 `join` t2)
 instance (PartialOrder a, PartialOrder t) => PartialOrder (Tainted t a) where
     leq (Tainted a1 t1) (Tainted a2 t2) = a1 `leq` a2 && t1 `leq` t2 
+
+-- | When tracing tainted values themselves, a tainted value contains only itself
+instance (Ord t, Ord a) => Trace (Tainted t a) (Tainted t a) where
+    trace = Set.singleton

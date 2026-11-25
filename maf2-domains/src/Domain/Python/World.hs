@@ -10,6 +10,8 @@ import Data.Singletons (Sing)
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 import Syntax.Python (PyLoc)
+import Lattice.Trace (Trace(..))
+import qualified Data.Set as Set
 
 
 -- | Built-in types in Python
@@ -131,7 +133,13 @@ methods DataFrameType     = [(GetItemAttr, DataFrameGetItem),
                              (RemoveOutliersAttr, DataFrameRemoveOutliers),
                              (CalcIncDiffAttr, DataFrameCalcIncDiff)]
 methods SeriesType        = [(AsTypeAttr, SeriesAsType),
-                             (MergeAttr,  SeriesMerge)]
+                             (MergeAttr,  SeriesMerge),
+                             (EqAttr,     SeriesCompare),
+                             (NeAttr,     SeriesCompare),
+                             (LtAttr,     SeriesCompare),
+                             (GtAttr,     SeriesCompare),
+                             (LeAttr,     SeriesCompare),
+                             (GeAttr,     SeriesCompare)]
 methods DataFrameGroupByType = [(IterAttr, DataFrameGroupByIter)]
 methods DataFrameGroupByIteratorType = [(NextAttr, DataFrameGroupByIteratorNext)]
 methods TaintType = []
@@ -216,6 +224,7 @@ data PyPrim     =
                 -- series primitives
                 | SeriesAsType 
                 | SeriesMerge
+                | SeriesCompare
                 -- 
                 | NoneBool
                 | BoolBool
@@ -444,3 +453,9 @@ data PyError = AttributeNotFound
              | InvalidMRO
              | TaintError PyLoc -- TODO: move this to Monad/Taint.hs and have the errors wrapped
   deriving (Eq, Ord, Show)
+
+instance Ord adr => Trace adr PyPrim where
+  trace = const Set.empty
+
+instance Ord adr => Trace adr XPyPrim where
+  trace = const Set.empty

@@ -9,6 +9,7 @@ import Control.Monad.Join hiding (fromBL)
 import Domain.Core.NumberDomain.ConstantPropagation ()
 import Lattice.BottomLiftedLattice (BottomLifted, joinsBL, fromBL, joinWithBL)
 import qualified Lattice.BottomLiftedLattice as BL
+import Lattice.Trace (Trace(..))
 
 -- | A simple abstraction (preserving precision for lists with a known length)
 data CPList v = CPList [v] Integer (BottomLifted v)   -- representing a list of a certain known length
@@ -201,3 +202,7 @@ instance (Eq v, Joinable v) => SeqDomain (CPList v) where
 --   set Top v seq             = return (TopList (vlu seq `join` v) (len seq)) 
 --                               `mjoin` 
 --                               escape IndexOutOfBounds 
+
+instance (Ord adr, Trace adr v) => Trace adr (CPList v) where
+  trace (CPList vs _ _) = foldMap trace vs
+  trace (TopList v)     = trace v

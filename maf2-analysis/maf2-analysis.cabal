@@ -237,6 +237,7 @@ test-suite maf2-analysis-test
   other-modules:
       MailboxSpec
       PythonSmokeSpec
+      PythonTaintSpec
       SchemeSmokeSpec
       SoundnessSpec
       Paths_maf2_analysis

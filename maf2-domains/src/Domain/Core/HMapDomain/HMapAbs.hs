@@ -17,6 +17,7 @@ import Data.Singletons
 import GHC.Generics (Generic)
 import Domain.Python.World (PyPrmKey)
 import Control.DeepSeq (NFData)
+import Lattice.Trace (Trace(..))
 
 -- | HMapDomain instance
 -- TODO: should also have an explicit bottom!
@@ -53,3 +54,5 @@ instance (HMapKey m,
     insert :: forall kt . Sing kt -> Assoc kt m -> HMapAbs m -> HMapAbs m
     insert s v (HMapAbs (hmap, rset)) = HMapAbs (HMap.setWithSing s v hmap, RSet.insert (fromSing s) rset)    
 
+instance (Ord adr, Trace adr (HMap m)) => Trace adr (HMapAbs m) where
+  trace (HMapAbs (hm, _)) = trace hm

@@ -35,6 +35,8 @@ import Lattice.TopLattice()
 import Domain.Python.Objects.Class
 import Control.Monad.Identity
 import Analysis.Python.Diagnostics
+import Domain.Python.Objects.DataFrame (fromColumns, rowsIndependent)
+import qualified Lattice.BottomLiftedLattice as BottomLifted
 
 newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (IdentityT m a)
   deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache)
@@ -105,14 +107,17 @@ instance (
                                 [a] -> withTaint @Taint TopLattice.Top (addTaint a)
                                 _   -> pyError ArityError
   applyXPrim DatabaseRead loc _ = \case
-                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< pyStore loc (from' @DfrPrm Prelude.True)) str
+                                  [_, str] -> pyDeref'' @StrPrm (\nam -> withTaint @Taint (toTaint nam) $ addTaint =<< dataFrame) str
                                   _        -> pyError ArityError
                                   where 
+                                    -- a DataFrame whose columns are unknown
+                                    dataFrame = do col <- pyStore (tagAs (DfrCol "") loc) (from' @SrsPrm Prelude.True)
+                                                   pyStore loc (from @DfrPrm (fromColumns (Lattice.Constant Prelude.True) [] (BottomLifted.Value col)))
                                     toTaint :: CP String -> Taint 
                                     toTaint (Lattice.Constant str) = TopLattice.Value (Set.singleton str)
                                     toTaint Lattice.Top            = TopLattice.Top
   applyXPrim DatabaseWrite _ _ = \case
-                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\dfr nam -> currentTaint @Taint >>= \t -> addEdges nam t dfr $> constant None) df str
+                                  [_, df, str] -> pyDeref2'' @DfrPrm @StrPrm (\dfr nam -> currentTaint @Taint >>= \t -> addEdges nam t (rowsIndependent dfr) $> constant None) df str
                                   _            -> pyError ArityError
                                 where 
                                       addEdges to TopLattice.Top       dfr = addEdge Lattice.Top to dfr

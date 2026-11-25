@@ -35,6 +35,7 @@ import Domain.Python.Syntax
 
 import Prelude hiding (True, False, all)
 import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set 
 import Domain.Python.Objects
@@ -45,6 +46,8 @@ import Data.Singletons (SingI, sing)
 import Domain.Class (Domain)
 import qualified Domain.Class as Domain
 import Domain (CPDictionary)
+import Domain.Python.Objects.DataFrame (DataFrame)
+import Lattice.Trace (Trace(..))
 import Data.TypeLevel.HMap (BindingFrom, Sigma((:&:)))
 import Data.Maybe (fromJust)
 import GHC.Generics (Generic)
@@ -152,7 +155,7 @@ type PyDomain obj vlu = (PyVal vlu,
                          Abs obj TupPrm ~ CPList vlu,
                          Abs obj StrPrm ~ CP String,
                          Abs obj DctPrm ~ CPDictionary String vlu, 
-                         Abs obj DfrPrm ~ CP Bool,
+                         Abs obj DfrPrm ~ DataFrame vlu,
                          Abs obj SrsPrm ~ CP Bool)
 
 new'' :: PyDomain obj vlu => vlu -> [(String, vlu)] -> [BindingFrom (PyPrmMap obj)] -> obj
@@ -175,3 +178,9 @@ cloLoc o = map getCloLoc $ Set.toList $ fromJust $ Domain.Python.Objects.get @Cl
 
 cloParams :: (PyDomain obj vlu) => obj -> [String]
 cloParams o = foldr (\c app -> getCloParams c ++ app ) [] $ Set.toList $ fromJust $ Domain.Python.Objects.get @CloPrm o 
+
+-- | A closure contains (untainted) references to the frames of its enclosing
+-- scopes, which hold the variables it captures. Global variables are not part
+-- of a closure: they are looked up in the global frame when it is called.
+instance (Ord t, BottomLattice t) => Trace (Tainted t ObjAddrSet) PyClo where
+  trace (PyClo _ _ _ _ env) = Set.singleton (Tainted (ObjAddrSet (Set.fromList (Map.elems env))) bottom)
