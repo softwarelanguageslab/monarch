@@ -231,6 +231,7 @@ data XPyPrim = ObjectTaint
              | DatabaseWrite
              | TaintSink
              | Log
+             | PandasReadCsv
   deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance NFData XPyPrim where
@@ -359,6 +360,7 @@ moduleName PandasCoreFrameModule = "frame"
 -- | The members of a module. Submodules are members of their parent module.
 moduleMembers :: PyModule -> [(String, PyConstant)]
 moduleMembers PandasModule          = [("DataFrame", TypeObject DataFrameType),
+                                       ("read_csv",  XPrimObject PandasReadCsv),
                                        ("Series",    TypeObject SeriesType),
                                        (moduleName PandasCoreModule, ModuleObject PandasCoreModule)]
 moduleMembers PandasCoreModule      = [(moduleName PandasCoreFrameModule, ModuleObject PandasCoreFrameModule)]
