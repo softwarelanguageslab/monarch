@@ -1,6 +1,6 @@
 # from pandas import *
 def foo():
-    return 42
+    return DataFrame()
 
-df = foo(42)
+df = foo()
 df
