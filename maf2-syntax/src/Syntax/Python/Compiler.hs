@@ -14,7 +14,8 @@ module Syntax.Python.Compiler(
     , PyLoc(..)
     , PyTag(..)
     , tagAs
-    , emptyPyLoc) where
+    , emptyPyLoc
+    , moduleGlobal) where
 
 
 import Syntax.Python.AST
@@ -162,8 +163,8 @@ compileStmt (While cnd bdy els a)         = Loop () (compileExp cnd) <$> compile
 compileStmt (AsyncFun def _)              = error "not supported AsyncFun"
 compileStmt (AST.Conditional grds els a)  = Conditional () <$> mapM (\(exp, st) -> fmap (compileExp exp,) (compileSequence st)) grds <*> compileSequence els <*> pure a
 compileStmt (StmtExpr e a)                = pure (StmtExp () (compileExp e) a)
-compileStmt (Import items _)              = error "import not supported"
-compileStmt (FromImport items _ _)        = error "import not supported"
+compileStmt (Import items _)              = makeSeq <$> mapM compileImportItem items
+compileStmt (FromImport mdl items _)      = compileFromImport mdl items
 compileStmt (For vrs gen bdy els a)       = compileFor vrs gen bdy els a
 compileStmt (Class nam ags bdy a)         = do
    assignment <- assign (Ide nam) (compileClassInstance a (ident_string nam) ags)
@@ -195,6 +196,36 @@ compileStmt (AnnotatedAssign {})          = error "unsupported exp"
 compileStmt (Print {})                    = error "unsupported exp"
 compileStmt (Exec {})                     = error "unsupported exp"
 
+
+-- | The name under which a built-in module is bound in the global environment.
+-- It is not a valid Python identifier, so programs cannot bind or shadow it.
+moduleGlobal :: String -> String
+moduleGlobal = ("$module:" ++)
+
+-- | An expression that refers to the module at the given dotted path:
+-- the top-level module is read from the global environment and each
+-- submodule is an attribute of its parent.
+compileModulePath :: DottedName PyLoc -> Exp PyLoc AfterSimplification
+compileModulePath []       = todo "empty module path"
+compileModulePath (m : ms) = foldl readSubmodule topLevel ms
+   where topLevel = Var (Ide (Ident (moduleGlobal (ident_string m)) (ident_annot m)))
+         readSubmodule e nam = Read e (Ide nam) (ident_annot nam)
+
+-- | Compile an item of an @import@ statement into an assignment.
+-- @import a.b.c@ binds @a@ to the top-level module, while
+-- @import a.b.c as x@ binds @x@ to the innermost module.
+compileImportItem :: SimplifyM m PyLoc => ImportItem PyLoc -> m (Stmt PyLoc AfterSimplification)
+compileImportItem (ImportItem nam (Just as) _) = assign (Ide as) (compileModulePath nam)
+compileImportItem (ImportItem (top : _) Nothing _) = assign (Ide top) (compileModulePath [top])
+compileImportItem (ImportItem [] Nothing _)        = todo "empty module path"
+
+-- | Compile a @from ... import ...@ statement into a sequence of assignments,
+-- one for each imported member.
+compileFromImport :: SimplifyM m PyLoc => ImportRelative PyLoc -> FromItems PyLoc -> m (Stmt PyLoc AfterSimplification)
+compileFromImport (ImportRelative 0 (Just mdl) _) (FromItems items _) = makeSeq <$> mapM compileItem items
+   where compileItem (FromItem nam as _) = assign (Ide (fromMaybe nam as)) (Read (compileModulePath mdl) (Ide nam) (ident_annot nam))
+compileFromImport (ImportRelative 0 (Just _) _) (ImportEverything _)  = todo "from ... import *"
+compileFromImport _ _                                                 = todo "relative imports"
 
 compileRaiseExp :: RaiseExpr PyLoc -> Exp PyLoc AfterSimplification
 compileRaiseExp (RaiseV3 (Just (expr, Nothing))) = compileExp expr

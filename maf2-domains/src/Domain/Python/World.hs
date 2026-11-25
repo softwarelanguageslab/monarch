@@ -37,6 +37,7 @@ data PyType = NoneType
             | SeriesType
             | TaintType
             | TaintedValueExceptionType
+            | ModuleType
   deriving (Eq, Ord, Enum, Bounded, Show, Generic) 
 
 instance NFData PyType where
@@ -67,6 +68,7 @@ name DataFrameGroupByType = "DataFrameGroupBy"
 name DataFrameGroupByIteratorType = "DataFrameGroupByIteratorType"
 name SeriesType       = "Series"
 name TaintType        = "Taint"
+name ModuleType       = "module"
 
 -- | The methods of a built-in Python type 
 methods :: PyType -> [(PyAttr, PyPrim)]
@@ -134,6 +136,7 @@ methods DataFrameGroupByType = [(IterAttr, DataFrameGroupByIter)]
 methods DataFrameGroupByIteratorType = [(NextAttr, DataFrameGroupByIteratorNext)]
 methods TaintType = []
 methods TaintedValueExceptionType = []
+methods ModuleType        = []
 
 extraMethods :: PyType -> [(PyAttr, XPyPrim)]
 extraMethods ObjectType = [(TaintAttr, ObjectTaint)]
@@ -339,6 +342,38 @@ attrStr CalcIncDiffAttr       = "calc_inc_diff"
 -- Taint
 attrStr TaintSinkAttr         = "sink"
 
+-- | Built-in modules that Python programs can import
+data PyModule = PandasModule
+              | PandasCoreModule
+              | PandasCoreFrameModule
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
+
+instance NFData PyModule where
+
+-- | The name of a module, without the names of its parent modules
+moduleName :: PyModule -> String
+moduleName PandasModule          = "pandas"
+moduleName PandasCoreModule      = "core"
+moduleName PandasCoreFrameModule = "frame"
+
+-- | The members of a module. Submodules are members of their parent module.
+moduleMembers :: PyModule -> [(String, PyConstant)]
+moduleMembers PandasModule          = [("DataFrame", TypeObject DataFrameType),
+                                       ("Series",    TypeObject SeriesType),
+                                       (moduleName PandasCoreModule, ModuleObject PandasCoreModule)]
+moduleMembers PandasCoreModule      = [(moduleName PandasCoreFrameModule, ModuleObject PandasCoreFrameModule)]
+moduleMembers PandasCoreFrameModule = [("DataFrame", TypeObject DataFrameType)]
+
+-- | The parent of a submodule, or 'Nothing' for a top-level module
+moduleParent :: PyModule -> Maybe PyModule
+moduleParent PandasModule          = Nothing
+moduleParent PandasCoreModule      = Just PandasModule
+moduleParent PandasCoreFrameModule = Just PandasCoreModule
+
+-- | Whether the module is a top-level module (i.e., not a submodule)
+topLevel :: PyModule -> Bool
+topLevel = null . moduleParent
+
 -- | Built-in objects in Python 
 data PyConstant = None
                 | True
@@ -351,6 +386,7 @@ data PyConstant = None
                 | XPrimObject XPyPrim
                 | Random
                 | LogFunction
+                | ModuleObject PyModule
   deriving (Eq, Ord, Show, Generic)
 
 instance NFData PyConstant where
@@ -362,6 +398,7 @@ instance Finite PyConstant where
         ++ map TypeMRO     all
         ++ map PrimObject  all
         ++ map XPrimObject all 
+        ++ map ModuleObject all
 
 -- | Built-in primitive fields in Python
 data PyPrmKey = IntPrm
