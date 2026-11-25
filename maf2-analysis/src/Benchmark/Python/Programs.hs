@@ -3,6 +3,7 @@ module Benchmark.Python.Programs (
   quick,
   mopsaBasic,
   scoping,
+  imports,
   soundnessBenchmarks,
   allBenchmarks
 ) where
@@ -60,11 +61,11 @@ mopsaBasic = [
    "programs/python/mopsa-basic/list_pop.py",
    -- "programs/python/mopsa-basic/list_slice.py", -- unsupported expression as LHS in assignment
    "programs/python/mopsa-basic/list.py",
-   -- "programs/python/mopsa-basic/module_math.py", -- import not supported
+   -- "programs/python/mopsa-basic/module_math.py", -- module math not supported
    "programs/python/mopsa-basic/multi_compare.py",
    "programs/python/mopsa-basic/num_loop.py",
    "programs/python/mopsa-basic/object_in_condition.py",
-   -- "programs/python/mopsa-basic/object_in_loop.py", -- import not supported
+   -- "programs/python/mopsa-basic/object_in_loop.py", -- module math not supported
    "programs/python/mopsa-basic/operators.py",
    "programs/python/mopsa-basic/range_iter.py",
    "programs/python/mopsa-basic/range_to_list.py",
@@ -87,16 +88,28 @@ scoping = [
     -- "programs/python/tests/scoping/nonlocal_var.py" --Var previously declared GlobalScope is now declared LocalScope
     ]
 
+-- | Programs that import built-in modules
+imports :: [String]
+imports = [
+    "programs/python/tests/imports/import_as.py",
+    "programs/python/tests/imports/import_plain.py",
+    "programs/python/tests/imports/from_import.py",
+    "programs/python/tests/imports/import_dotted.py",
+    "programs/python/tests/imports/import_in_function.py"
+    ]
+
 soundnessBenchmarks :: [String]
-soundnessBenchmarks = allBenchmarks \\ 
+soundnessBenchmarks = (allBenchmarks \\ 
                      [ -- these are benchmarks that cannot be ran in the concrete interpreter
                         "programs/python/debug.py", -- Database() is undefined
                         "programs/python/exceptions.py", -- raise Exception()
                         "programs/python/taint.py" -- no attribute __taint__ 
                         -- todo: fill in list
-                     ]
+                     ])
+                     \\ imports -- the concrete interpreter needs the imported modules to be installed
 
 allBenchmarks :: [String]
 allBenchmarks = quick 
                 ++ scoping
+                ++ imports
                 ++ mopsaBasic

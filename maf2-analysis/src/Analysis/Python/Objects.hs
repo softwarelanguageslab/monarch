@@ -63,6 +63,9 @@ initialCst = map (\typ -> (name typ, TypeObject typ)) (all :: [PyType])
           -- ergonomically, please change this. Signed off: @bramvdbogaerde.
           ++ [("random", Random),
               ("log",    LogFunction)]
+          -- Top-level modules are bound under a reserved name, which the
+          -- compiler emits for import statements (see 'moduleGlobal').
+          ++ [(moduleGlobal (moduleName m), ModuleObject m) | m <- all, topLevel m]
 
 injectPyConstant :: PyDomain obj vlu => PyConstant -> obj
 injectPyConstant True              = from' @BlnPrm Prelude.True
@@ -70,6 +73,7 @@ injectPyConstant False             = from' @BlnPrm Prelude.False
 injectPyConstant None              = new' NoneType [] [] 
 injectPyConstant Random            = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left RandomNumber)
 injectPyConstant LogFunction       = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Right Log) 
+injectPyConstant (ModuleObject m)  = new' ModuleType (map (second constant) (moduleMembers m)) []
 injectPyConstant GlobalFrame       = new' FrameType (map (second constant) initialCst) [] 
 injectPyConstant (TypeName typ)    = from' @StrPrm (name typ)
 injectPyConstant (PrimObject prm)  = from' @PrmPrm @_ @(Either PyPrim XPyPrim) (Left prm)
