@@ -23,7 +23,7 @@ import Language.Python.Common qualified as Py
 import Relude.Extra.Lens
 import Relude.Unsafe (fromJust)
 import Syntax.Python qualified as Py
-import Syntax.Span (Span (..))
+import Syntax.Span (Span, ESpan(..))
 import Syntax.Span qualified as Span
 
 -------------------------------
@@ -75,7 +75,7 @@ instance ToJSON InfluencedLinesResponse where
 
 -- Convert a Syntax.Span to SpanInfo
 spanToSpanInfo :: Span -> SpanInfo
-spanToSpanInfo Span {..} =
+spanToSpanInfo ESpan {..} =
   SpanInfo
     { startLine = Span.line startPosition,
       startColumn = Span.column startPosition,
@@ -85,7 +85,7 @@ spanToSpanInfo Span {..} =
 
 -- Check if an LSP Position is within a Syntax.Span
 positionInSpan :: Language.LSP.Protocol.Types.Position -> Span -> Bool
-positionInSpan (Language.LSP.Protocol.Types.Position lspLine lspCol) Span {..} =
+positionInSpan (Language.LSP.Protocol.Types.Position lspLine lspCol) ESpan {..} =
   let line' = fromIntegral lspLine + 1 -- Convert to 1-indexed
       col' = fromIntegral lspCol + 1 -- Convert to 1-indexed
       startL = Span.line startPosition
