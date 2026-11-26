@@ -200,6 +200,10 @@ applyPrim SeriesCompare = prim2 $ \loc self other -> pyDeref'' @SrsPrm (\srs -> 
 applyPrim SeriesMap     = \loc caller _ -> \case
                                 [self, f] -> mapColumn caller loc "" f self
                                 _         -> pyError ArityError
+applyPrim SeriesAdd     = seriesArithmetic AddAttr
+applyPrim SeriesSub     = seriesArithmetic SubAttr
+applyPrim SeriesMul     = seriesArithmetic MulAttr
+applyPrim SeriesTrueDiv = seriesArithmetic TrueDivAttr
 -- other primitives
 applyPrim NoneBool = prim1 $ \_ _ -> return $ constant False
 applyPrim BoolBool = prim1'' @BlnPrm @BlnPrm return
@@ -323,3 +327,20 @@ mapColumn :: forall pyM obj vlu . PyM pyM obj vlu => Caller pyM vlu -> PyLoc -> 
 mapColumn caller loc col f column = pyDeref'' @SrsPrm (\srs -> do
       result <- caller (tagAs (DfrCol col) loc) f [seriesElement srs]
       pyDeref' (\_ -> pyStore (tagAs (DfrCol col) loc) (from @SrsPrm (srs { seriesElement = result }))) result) column
+
+
+-- | An arithmetic operator on a Series (e.g., @s * other@), where the other
+-- operand is a Series or a single value. The result is a new Series whose
+-- element is the result of the operator on the element of the Series and the
+-- element of the other operand (or the other operand itself). It depends on
+-- both operands.
+seriesArithmetic :: forall pyM obj vlu . PyM pyM obj vlu => PyAttr -> PrimFn pyM vlu
+seriesArithmetic op loc caller _ = \case
+      [self, other] -> pyDeref'' @SrsPrm (\srs -> pyDeref' (apply srs other) other) self
+      _             -> pyError ArityError
+   where apply :: Series vlu -> vlu -> obj -> pyM vlu
+         apply srs other otherObj = do
+            rhs <- condCP (return $ has @SrsPrm otherObj) (seriesElement <$> get @SrsPrm otherObj) (return other)
+            mtd <- lookupAttr (tagAs SrsBnd loc) (attrStr op) (seriesElement srs)
+            el  <- caller (tagAs (SrsElm "") loc) mtd [rhs]
+            pyStore loc (from @SrsPrm (srs { seriesElement = el }))

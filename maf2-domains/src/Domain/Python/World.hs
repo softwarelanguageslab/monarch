@@ -135,6 +135,10 @@ methods DataFrameType     = [(GetItemAttr, DataFrameGetItem),
 methods SeriesType        = [(AsTypeAttr, SeriesAsType),
                              (MergeAttr,  SeriesMerge),
                              (MapAttr,    SeriesMap),
+                             (AddAttr,     SeriesAdd),
+                             (SubAttr,     SeriesSub),
+                             (MulAttr,     SeriesMul),
+                             (TrueDivAttr, SeriesTrueDiv),
                              (EqAttr,     SeriesCompare),
                              (NeAttr,     SeriesCompare),
                              (LtAttr,     SeriesCompare),
@@ -227,6 +231,10 @@ data PyPrim     =
                 | SeriesMerge
                 | SeriesCompare
                 | SeriesMap
+                | SeriesAdd
+                | SeriesSub
+                | SeriesMul
+                | SeriesTrueDiv
                 -- 
                 | NoneBool
                 | BoolBool

@@ -22,6 +22,8 @@ programs = [
       ("programs/python/tests/taint/dataframe-map-closure.py",      ["10:12"]),
       ("programs/python/tests/taint/dataframe-map-chain.py",        []),
       ("programs/python/tests/taint/series-map.py",                 ["11:12"]),
+      ("programs/python/tests/taint/dataframe-arithmetic.py",       ["14:12"]),
+      ("programs/python/tests/taint/dataframe-bonus.py",            ["8:5"]),
       ("programs/python/tests/taint/dataframe-column.py",           ["11:12"]),
       ("programs/python/tests/taint/dataframe-sink-whole.py",       ["8:12"]),
       ("programs/python/tests/taint/dataframe-no-dtype.py",         []),
