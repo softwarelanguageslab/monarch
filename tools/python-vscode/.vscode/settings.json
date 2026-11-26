@@ -1,0 +1,14 @@
+{
+    "calva.autoOpenREPLWindow": true,
+    "calva.outputDestinations": {
+        "evalResults": [
+            "repl-window"
+        ],
+        "evalOutput": [
+            "repl-window"
+        ],
+        "otherOutput": [
+            "repl-window"
+        ]
+    }
+}
