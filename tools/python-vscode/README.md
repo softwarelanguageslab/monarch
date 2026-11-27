@@ -13,6 +13,17 @@ This extension provides the following settings:
 - `pythonIfcLsp.serverPath`: Path to the `python-ifc-lsp` executable. Defaults to 'python-ifc-lsp' which will look for the executable in `PATH`.
 - `pythonIfcLsp.trace.server`: Traces the communication between VS Code and the language server (off/messages/verbose).
 - `pythonIfcLsp.enabled`: Enable/disable the Python IFC Language Server.
+- `pythonIfcLsp.taintGranularity`: `column` (only the sensitive columns of a DataFrame are tainted) or `object` (a DataFrame with a sensitive column is tainted as a whole).
+
+## Switching the Taint Granularity
+
+The current granularity is always shown in the status bar (`Taint: Column` / `Taint: Object`, highlighted in object mode). To switch:
+
+- click the status bar item, or the icon button in the title bar of a Python editor;
+- press `Cmd+Alt+T` (macOS) / `Ctrl+Alt+T` in a Python editor;
+- run `Monarch: Toggle Taint Granularity`, `Monarch: Use Column-Level Taint Tracking` or `Monarch: Use Object-Level Taint Tracking` from the command palette.
+
+After a switch, open documents are re-analysed and a notification compares the number of findings before and after.
 
 ## Installation
 

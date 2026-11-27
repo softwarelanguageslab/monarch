@@ -1,6 +1,7 @@
 import { commands, ExtensionContext, window, workspace } from 'vscode';
 import { MonarchCommands } from './commands';
 import { EditorService } from './editor';
+import { TaintGranularityControl } from './granularity';
 import { MonarchLensProvider } from './lens';
 import { resolveExecutable } from './exec';
 import { MonarchLspClient } from './lspclient';
@@ -43,7 +44,8 @@ export async function activate(context: ExtensionContext) {
             editor,
             lsp,
             new MonarchCommands(lsp, editor),
-            new MonarchLensProvider(editor)
+            new MonarchLensProvider(editor),
+            new TaintGranularityControl()
         );
 
         await lsp.start();

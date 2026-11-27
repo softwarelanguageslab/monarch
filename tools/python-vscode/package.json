@@ -26,6 +26,35 @@
         "command": "monarch.resetDecorations",
         "title": "Remove taint explanations",
         "category": "Monarch"
+      },
+      {
+        "command": "monarch.toggleTaintGranularity",
+        "title": "Toggle Taint Granularity (Column ↔ Object)",
+        "category": "Monarch"
+      },
+      {
+        "command": "monarch.useColumnTaint",
+        "title": "Use Column-Level Taint Tracking",
+        "category": "Monarch",
+        "icon": "$(symbol-field)"
+      },
+      {
+        "command": "monarch.useObjectTaint",
+        "title": "Use Object-Level Taint Tracking",
+        "category": "Monarch",
+        "icon": "$(table)"
+      },
+      {
+        "command": "monarch.taintGranularity.columnActive",
+        "title": "Taint tracking: column-level (click to switch to object-level)",
+        "category": "Monarch",
+        "icon": "$(symbol-field)"
+      },
+      {
+        "command": "monarch.taintGranularity.objectActive",
+        "title": "Taint tracking: object-level (click to switch to column-level)",
+        "category": "Monarch",
+        "icon": "$(table)"
       }
     ],
     "configuration": {
@@ -66,7 +95,47 @@
           "description": "Whether sources taint only the sensitive columns of a DataFrame, or the DataFrame as a whole."
         }
       }
-    }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "monarch.taintGranularity.columnActive",
+          "when": "editorLangId == python && config.pythonIfcLsp.taintGranularity != 'object'",
+          "group": "navigation@-100"
+        },
+        {
+          "command": "monarch.taintGranularity.objectActive",
+          "when": "editorLangId == python && config.pythonIfcLsp.taintGranularity == 'object'",
+          "group": "navigation@-100"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "monarch.taintGranularity.columnActive",
+          "when": "false"
+        },
+        {
+          "command": "monarch.taintGranularity.objectActive",
+          "when": "false"
+        },
+        {
+          "command": "monarch.useColumnTaint",
+          "when": "config.pythonIfcLsp.taintGranularity == 'object'"
+        },
+        {
+          "command": "monarch.useObjectTaint",
+          "when": "config.pythonIfcLsp.taintGranularity != 'object'"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "monarch.toggleTaintGranularity",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t",
+        "when": "editorLangId == python"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

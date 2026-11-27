@@ -7,7 +7,7 @@ import { HighlightState } from './editor';
 
 /** Source of the diagnostics published by the Monarch language server
   * (see `diagnosticsSource` in python-ifc-lsp) */
-const MONARCH_DIAGNOSTIC_SOURCE = 'Monarch';
+export const MONARCH_DIAGNOSTIC_SOURCE = 'Monarch';
 
 /** Provides code lenses for explaining taint flows:
   *  - "Explain taint flow" above every line with a Monarch diagnostic;
