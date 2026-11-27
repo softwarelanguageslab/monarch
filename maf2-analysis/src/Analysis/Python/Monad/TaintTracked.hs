@@ -160,7 +160,10 @@ instance (
     addTaint (extendTainted v ctx) >>= \v' -> updateWith (setAttr k v') (setAttrWeak k v') a
   pyAssign k v =
     unwrapTainted_ (mjoinMap (pyAssignAt k v) . addrs) --- important
-  pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do v' <- addTaint v
+  -- like 'pyAssignAt', a value stored in a primitive (e.g., @d[k] = v@ or
+  -- @df["c"] = v@) depends on the statements in the current execution context
+  pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do ctx <- asks Set.fromList
+                                                  v' <- addTaint (extendTainted v ctx)
                                                   old <- getPrm s obj
                                                   upd <- f v' old
                                                   let obj' = setPrm s upd obj

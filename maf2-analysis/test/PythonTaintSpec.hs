@@ -3,7 +3,9 @@ module PythonTaintSpec(spec) where
 import Test
 
 import Analysis.Python.Fixpoint.TaintTracked (analyzeCP)
-import Analysis.Python.Diagnostics (Diagnostic(..))
+import Analysis.Python.Diagnostics (Diagnostic(..), DiagnosticType(..))
+import qualified Lattice.TopLiftedLattice as TL
+import Syntax.Span (ESpan(..), Position(..))
 import Domain.Python.Syntax (parse)
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
@@ -34,7 +36,29 @@ programs = [
    ]
 
 spec :: Spec
-spec = describe "Python taint analysis" $ mapM_ reportsViolations programs
+spec = describe "Python taint analysis" $ do
+   mapM_ reportsViolations programs
+   mapM_ explainsViolations explanations
+
+-- | Programs for the taint analysis, each with the lines of the statements
+-- that the explanation of its taint violations (the sources and the spans
+-- that influenced them) should cover
+explanations :: [(FilePath, [Int])]
+explanations = [
+      -- the column assignment @df["bonus"] = ...@ (line 7) influences the sink
+      ("programs/python/tests/taint/dataframe-bonus.py",            [6, 7])
+   ]
+
+explainsViolations :: (FilePath, [Int]) -> Spec
+explainsViolations (file, expected) =
+   it (file ++ " explains its taint violations with lines " ++ show expected) $ do
+      contents <- readFile file
+      let program = fromMaybe (error $ "could not parse " ++ file) (parse file contents)
+          (_, _, _, diagnostics) = analyzeCP program
+          influenced (Diagnostic (TaintViolation (TL.Value sources) _) _) = Set.unions (Set.map (uncurry Set.insert) sources)
+          influenced _ = Set.empty
+          lines' = Set.map (line . startPosition) (Set.unions (Set.map influenced diagnostics))
+      Set.fromList expected `Set.isSubsetOf` lines' `shouldBe` True
 
 reportsViolations :: (FilePath, [String]) -> Spec
 reportsViolations (file, expected) =
