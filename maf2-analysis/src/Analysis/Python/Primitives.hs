@@ -37,9 +37,12 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.List as List
 import Data.TypeLevel.HMap (Sigma((:&:)))
-import Lattice.BottomLiftedLattice (BottomLifted)
 import qualified Lattice.BottomLiftedLattice as BL
 import Domain.Python.Objects.DataFrame
+import qualified Lattice.ConstantPropagationLattice as CP
+import Data.Maybe (listToMaybe, isJust, mapMaybe)
+import Lattice.PresenceLattice (Presence(..), presentValue)
+import Control.Applicative ((<|>))
 
 ---
 --- Primitives implementation
@@ -134,14 +137,19 @@ applyPrim ObjectBool = prim1 $ \_ _ -> return $ constant True
 applyPrim DataFrameGetItem = prim2 $ \loc a1 a2 -> pyDeref'' @DfrPrm (\df -> pyDeref' (getWithIndex loc df) a2) a1
         where
              getWithIndex :: PyLoc -> DataFrame vlu -> obj -> pyM vlu
-             getWithIndex loc df idx = condCP (return $ has @StrPrm idx)                    -- df["c"]: the column itself
-                                              (get @StrPrm idx >>= \col -> fromBottomLifted (lookupColumn col df))
+             getWithIndex loc df idx = condCP (return $ has @StrPrm idx)                    -- df["c"]: the column itself, if it is in df
+                                              (get @StrPrm idx >>= \col -> fromPresence (lookupColumn col df))
                                               (condCP (return $ has @LstPrm idx)            -- df[["a", "b"]]: a DataFrame with those columns
                                                       (get @LstPrm idx >>= pyDerefN' @StrPrm (\names -> pyStore loc $ from @DfrPrm $ selectColumns names df) . listElements)
                                                       (condCP (return $ has @SrsPrm idx)    -- df[mask]: a row filter on the condition 'mask'
                                                               (pyStore loc $ from @DfrPrm df)
-                                                              mbottom)) -- TODO: improve error reporting here
-applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref'' @StrPrm (\col -> none $ pyAssignInPrm SDfrPrm (\v -> return . setColumnWeak col v) a3 a1) a2
+                                                              -- any other index: pandas looks it up as a column label,
+                                                              -- but columns are only named by strings here, so it is
+                                                              -- not a column. Note that pandas also supports indices
+                                                              -- that are not modelled here (e.g., slices of rows and
+                                                              -- callables), which then raise this error as well.
+                                                              (pyError KeyError)))
+applyPrim DataFrameSetItem = prim3 $ \_ a1 a2 a3 -> pyDeref'' @StrPrm (\col -> none $ pyAssignInPrm SDfrPrm (\v -> return . setColumn col v) a3 a1) a2
 applyPrim DataFrameEmpty        = prim1' @DfrPrm          $ \loc _        -> pyStore loc (from @BlnPrm boolTop)
 applyPrim DataFrameRename       = prim2' @DfrPrm @DctPrm  $ \loc df _     -> pyStore loc (from @DfrPrm $ collapse (rowsIndependent df) [df])
 -- dropna(subset=[...]) is a row filter whose condition reads the columns in 'subset' (or all columns)
@@ -154,7 +162,79 @@ applyPrim DataFrameDropNA       = \loc _ kwa -> \case
               readColumns :: DataFrame vlu -> [CP String] -> [vlu]
               readColumns df names
                 | Top `elem` names = allColumns df
-                | otherwise        = [ c | col <- names, BL.Value c <- [lookupColumn col df] ]
+                | otherwise        = mapMaybe (presentValue . flip lookupColumn df) names
+-- df.drop removes columns or rows from a DataFrame:
+--
+--   * df.drop(columns=names)              removes the columns with these names
+--   * df.drop(labels, axis=1 / "columns") removes the columns named by 'labels'
+--   * df.drop(labels) (axis=0 / "index")  removes the rows with these labels
+--   * df.drop(index=labels)               removes the rows with these labels
+--
+-- where 'names' and 'labels' are a single name or a list of names, and
+-- 'labels' can be passed positionally or as a keyword argument.
+--
+-- Like in pandas, passing both 'labels' and 'columns' (or 'index'), or none of
+-- 'labels', 'index' and 'columns', raises a ValueError. A label that is not in
+-- the DataFrame raises a KeyError (unless errors="ignore"). Whether a label is
+-- in the DataFrame is not known statically, so every drop may raise it.
+--
+-- Removing a column removes its values (and hence their taint) from the
+-- resulting DataFrame. Removing rows does not change the abstract DataFrame:
+-- which rows are removed depends on their labels, not on the data in the
+-- DataFrame, and a Series abstracts all its rows by a single element.
+applyPrim DataFrameDrop         = \loc _ kwa -> \case
+                                       (self:pos) -> pyDeref'' @DfrPrm (dropFrom loc kwa (listToMaybe pos)) self
+                                       _          -> pyError ArityError
+        where -- | The result of dropping from the given DataFrame, given the keyword
+              -- arguments and the first positional argument ('labels'), if any
+              dropFrom :: PyLoc -> [(String, vlu)] -> Maybe vlu -> DataFrame vlu -> pyM vlu
+              dropFrom loc kwa pos df =
+                 case (List.lookup "columns" kwa, List.lookup "labels" kwa <|> pos) of
+                    -- like pandas: "Cannot specify both 'labels' and 'index'/'columns'"
+                    (Just _, Just _)     -> pyError ValueError
+                    -- drop(columns=...) (possibly with index=...): 'axis' is only used to
+                    -- interpret 'labels', so pandas ignores it here, even if it is 0 or
+                    -- "index". 'index' names the rows to drop, and rows are not modelled
+                    -- in the abstract DataFrame, so it is ignored.
+                    (Just cols, Nothing) -> mayMissLabels $ withNames cols dropCols
+                    -- drop(labels, axis=...): 'axis' decides whether 'labels' names columns or rows
+                    (Nothing, Just lbls) -> mayMissLabels $ withAxis kwa (withNames lbls dropCols) keepRows
+                    -- drop(index=...): 'index' names the rows to drop, and rows are not
+                    -- modelled in the abstract DataFrame, so it stays the same
+                    (Nothing, Nothing)
+                       | isJust (List.lookup "index" kwa) -> mayMissLabels keepRows
+                       -- drop(): "Need to specify at least one of 'labels', 'index' or 'columns'"
+                       | otherwise                        -> pyError ValueError
+                 where store          = pyStore loc . from @DfrPrm
+                       dropCols names = store (dropColumns names df)
+                       keepRows       = store df
+                       -- the given result, joined with the KeyError raised if a label is
+                       -- not in the DataFrame, unless that error is ignored (errors="ignore")
+                       mayMissLabels m = m `mjoin` maybe keyError (pyDeref'' @StrPrm raisesOn) (List.lookup "errors" kwa)
+                       raisesOn (CP.Constant "ignore") = mbottom
+                       raisesOn _                      = keyError
+                       keyError = pyError KeyError
+
+              -- | Calls the continuation with the column names in the given value,
+              -- which is either a single name or a list of names
+              withNames :: vlu -> ([CP String] -> pyM vlu) -> pyM vlu
+              withNames v k = pyDeref' (\o -> condCP (return $ has @StrPrm o)
+                                                     (get @StrPrm o >>= k . pure)                               -- a single name
+                                                     (get @LstPrm o >>= pyDerefN' @StrPrm k . listElements)) v  -- a list of names
+
+              -- | Continues with the first computation if the 'axis' keyword argument
+              -- selects the columns (1 or "columns"), and with the second if it
+              -- selects the rows (0 or "index", the default). If the axis is not
+              -- known precisely, both computations are joined.
+              withAxis :: [(String, vlu)] -> pyM vlu -> pyM vlu -> pyM vlu
+              withAxis kwa cols rows = maybe rows (pyDeref' axis) (List.lookup "axis" kwa)
+                 where axis o = condCP (return $ has @IntPrm o)
+                                       -- an integer axis: 1 for the columns
+                                       (get @IntPrm o >>= \n -> cond (Domain.eq @_ @(Abs obj BlnPrm) n (Domain.inject (1 :: Integer))) cols rows)
+                                       -- a named axis: "columns" for the columns
+                                       (get @StrPrm o >>= \case CP.Constant "columns" -> cols
+                                                                CP.Constant _         -> rows
+                                                                CP.Top                -> mjoin cols rows)
 applyPrim DataFrameAppend       = prim2' @DfrPrm @DfrPrm  $ \loc df1 df2  -> pyStore loc (from @DfrPrm $ collapse (rowsIndependent df1 `Domain.or` rowsIndependent df2) [df1, df2])
 applyPrim DataFrameFromSeries   = prim1 $ \loc s -> pyDeref'' @SrsPrm (\srs -> pyStore loc $ from @DfrPrm $ fromColumns (seriesRowsIndependent srs) [] (BL.Value s)) s
 -- df.map(f) calls f on an element of each column, and each column of the result is a new Series of these results
@@ -163,11 +243,12 @@ applyPrim DataFrameMap          = \loc caller _ -> \case
                                        _       -> pyError ArityError
         where mapDataFrame :: PyLoc -> Caller pyM vlu -> vlu -> DataFrame vlu -> pyM vlu
               mapDataFrame loc caller f df = do
-                 named <- mapM (\(col, c) -> (col,) <$> mapColumn caller loc col f c) (Map.toList (namedColumns df))
-                 other <- case otherColumns df of
+                 -- the presence of each column stays the same
+                 named <- Map.traverseWithKey (\col -> traverse (mapColumn caller loc col f)) (namedColumns df)
+                 dflt  <- case defaultColumn df of
                              BL.Value c -> BL.Value <$> mapColumn caller loc "" f c
                              BL.Bottom  -> return BL.Bottom
-                 pyStore loc $ from @DfrPrm $ df { namedColumns = Map.fromList named, otherColumns = other }
+                 pyStore loc $ from @DfrPrm $ df { namedColumns = named, defaultColumn = dflt }
 applyPrim DataFrameRemoveOutliers = prim4 $ \loc a1 _ _ _ -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm . collapse Domain.false . pure) a1
 applyPrim DataFrameApplyAverage = prim3 $ \loc a1 _ _   -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm . collapse Domain.false . pure) a1
 applyPrim DataFrameApplyStatsPerMovement = prim3 $ \loc a1 _ _  -> pyDeref'' @DfrPrm (pyStore loc . from @DfrPrm . collapse Domain.false . pure) a1
@@ -189,7 +270,7 @@ applyPrim DataFrameGroupByIteratorNext = prim1 $ \loc -> pyDeref'' @DfrPrm $ \df
                                                                           pyStore (tagAs NxtExc loc) (new' StopIterationExceptionType [] [])
 -- Series primitives
 applyPrim SeriesAsType  = prim2 $ \_ self _ -> return self
-applyPrim SeriesMerge   = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm $ setColumnWeak Top self $ collapse (rowsIndependent df) [df])) self a1
+applyPrim SeriesMerge   = prim4 $ \loc self a1 _ _ -> pyDeref2'' @SrsPrm @DfrPrm (\_ df -> pyStore loc (from @DfrPrm $ setColumn Top self $ collapse (rowsIndependent df) [df])) self a1
 -- comparing a Series results in a (boolean) Series that depends on both operands
 applyPrim SeriesCompare = prim2 $ \loc self other -> pyDeref'' @SrsPrm (\srs -> pyDeref' (const $ compareResult loc srs) other) self
         where compareResult :: PyLoc -> Series vlu -> pyM vlu
@@ -312,10 +393,13 @@ listElements :: SeqDomain.CPList v -> [v]
 listElements (SeqDomain.CPList vs _ _) = vs
 listElements (SeqDomain.TopList v)     = [v]
 
--- | The value in the given 'BottomLifted' value, or no value if it is 'BL.Bottom'
-fromBottomLifted :: PyM pyM obj vlu => BottomLifted vlu -> pyM vlu
-fromBottomLifted (BL.Value v) = return v
-fromBottomLifted BL.Bottom    = mbottom
+-- | The value of a column with the given presence. Looking up a column that
+-- may not be in the DataFrame raises a KeyError.
+fromPresence :: PyM pyM obj vlu => Presence vlu -> pyM vlu
+fromPresence (Present v)      = return v
+fromPresence (MaybePresent v) = return v `mjoin` pyError KeyError
+fromPresence Absent           = pyError KeyError
+
 
 -- | Calls the given function on the element of the given column (a reference
 -- to a Series), and results in a reference to a new Series of the results.

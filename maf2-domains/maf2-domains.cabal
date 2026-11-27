@@ -124,6 +124,7 @@ library
       Lattice.MaybeLattice
       Lattice.NonOverlappingListLattice
       Lattice.PointerSetLattice
+      Lattice.PresenceLattice
       Lattice.ProductLattice
       Lattice.ReversePowerSetLattice
       Lattice.SetLattice

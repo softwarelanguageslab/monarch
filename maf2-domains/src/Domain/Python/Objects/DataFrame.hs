@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -6,19 +7,22 @@
 -- | Abstraction of pandas DataFrames and Series.
 --
 -- A DataFrame is a collection of columns, each an abstract value (e.g., a
--- reference to a Series object). Columns are either named, or covered by a
--- single value that stands for all columns without a known name.
+-- reference to a Series object). Columns are either named, together with
+-- whether they are in the DataFrame, or covered by a single default value that
+-- stands for all columns without a known name.
 --
 -- A Series is abstracted by a single abstract value (e.g., a reference) that
 -- stands for all of its elements.
 module Domain.Python.Objects.DataFrame (
    Series(..),
    DataFrame(..),
+   defaultPresence,
    fromColumns,
    allColumns,
    lookupColumn,
    selectColumns,
-   setColumnWeak,
+   dropColumns,
+   setColumn,
    collapse
 ) where
 
@@ -30,6 +34,8 @@ import qualified Lattice.BottomLiftedLattice as BL
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Data.Maybe (mapMaybe)
+import Lattice.PresenceLattice (Presence(..), presentValue, mayBeAbsent)
 import GHC.Generics (Generic)
 import Control.DeepSeq (NFData)
 
@@ -54,51 +60,80 @@ instance (Ord adr, Trace adr v) => Trace adr (Series v) where
 
 -- | An abstract DataFrame.
 --
--- A column whose name is a key of 'namedColumns' is described only by its
--- value there; 'otherColumns' describes the remaining columns. Operations
--- that combine DataFrames (e.g., 'join') therefore look up each name in both
--- DataFrames with 'lookupColumn', which falls back to 'otherColumns'.
+-- A DataFrame is a map with a default: a column whose name is a key of
+-- 'namedColumns' is described only by its 'Presence' there, and every other
+-- column by 'defaultColumn'. Operations that combine DataFrames (e.g., 'join')
+-- therefore look up each name in both DataFrames with 'lookupColumn', which
+-- falls back to 'defaultColumn'.
 data DataFrame v = DataFrame {
    -- | Whether the rows of the DataFrame are independent of each other
    rowsIndependent :: CP Bool,
-   -- | The columns whose name is known statically. For a DataFrame loaded with
-   -- @read_csv@, these are the columns listed in its @dtype@ argument.
-   namedColumns    :: Map String v,
-   -- | The value of every column that is not in 'namedColumns' ('Bottom' if
-   -- there are no such columns). For a DataFrame loaded with @read_csv@, these
-   -- are the columns of the file that its @dtype@ argument does not list.
-   otherColumns    :: BottomLifted v
+   -- | The columns whose name is known statically, and whether they are in the
+   -- DataFrame. For a DataFrame loaded with @read_csv@, these are the columns
+   -- listed in its @dtype@ argument, which are assumed to be in the file
+   -- ('Present'). A column that is removed (e.g., with @drop@) is 'Absent'.
+   namedColumns    :: Map String (Presence v),
+   -- | The value of every column whose name is not a key of 'namedColumns'.
+   -- Not every name is a column, so such a column may be in the DataFrame
+   -- ('Value'), or there are no such columns ('Bottom'): see 'defaultPresence'.
+   -- For a DataFrame loaded with @read_csv@, these are the columns of the file
+   -- that its @dtype@ argument does not list.
+   defaultColumn   :: BottomLifted v
 } deriving (Eq, Ord, Show, Generic)
 
 instance (NFData v) => NFData (DataFrame v)
 
--- | Construct a DataFrame from its named columns and the value of all other columns
+-- | The presence of a column whose name is not a key of 'namedColumns'
+defaultPresence :: BottomLifted v -> Presence v
+defaultPresence (Value v) = MaybePresent v
+defaultPresence Bottom    = Absent
+
+-- | Construct a DataFrame from its named columns, which are all in the
+-- DataFrame, and the value of all other columns
 fromColumns :: CP Bool -> [(String, v)] -> BottomLifted v -> DataFrame v
-fromColumns rows named = DataFrame rows (Map.fromList named)
+fromColumns rows named = DataFrame rows (Map.fromList [ (name, Present v) | (name, v) <- named ])
 
--- | All column values of the DataFrame
+-- | All values of the columns that may be in the DataFrame
 allColumns :: DataFrame v -> [v]
-allColumns (DataFrame _ named other) = Map.elems named ++ [v | Value v <- [other]]
+allColumns (DataFrame _ named dflt) = mapMaybe presentValue (Map.elems named) ++ [ v | Value v <- [dflt] ]
 
--- | The value of the column with the given name, or 'Bottom' if there is no such column
-lookupColumn :: Joinable v => CP String -> DataFrame v -> BottomLifted v
-lookupColumn (Constant name) (DataFrame _ named other) = maybe other Value (Map.lookup name named)
-lookupColumn Top df = joinsBL (allColumns df)
+-- | Whether the column with the given name is in the DataFrame, and its value.
+-- An unknown name may be any of the columns, or no column at all ('Absent').
+lookupColumn :: Joinable v => CP String -> DataFrame v -> Presence v
+lookupColumn (Constant name) (DataFrame _ named dflt) = Map.findWithDefault (defaultPresence dflt) name named
+lookupColumn Top (DataFrame _ named dflt)             = foldr join Absent (defaultPresence dflt : Map.elems named)
 
--- | A DataFrame with only the columns with the given names.
--- An unknown name may select any column.
+-- | A DataFrame with only the columns with the given names, each as present as
+-- in the given DataFrame. An unknown name may select any column.
 selectColumns :: Joinable v => [CP String] -> DataFrame v -> DataFrame v
-selectColumns names df = DataFrame (rowsIndependent df) named other
-   where named = Map.fromList [ (name, v) | Constant name <- names, Value v <- [lookupColumn (Constant name) df] ]
-         other | Top `elem` names = joinsBL (allColumns df)
-               | otherwise        = Bottom
+selectColumns names df = DataFrame (rowsIndependent df) named dflt
+   where named = Map.fromList [ (name, lookupColumn (Constant name) df) | Constant name <- names ]
+         dflt | Top `elem` names = joinsBL (allColumns df)
+              | otherwise        = Bottom
 
--- | Updates the column with the given name by joining it with the given value
-setColumnWeak :: Joinable v => CP String -> v -> DataFrame v -> DataFrame v
-setColumnWeak (Constant name) v df@(DataFrame rows named other) =
-   DataFrame rows (Map.insert name (BL.joinWithBL (lookupColumn (Constant name) df) v) named) other
-setColumnWeak Top v (DataFrame rows named other) =
-   DataFrame rows (Map.map (join v) named) (Value (BL.joinWithBL other v))
+-- | A DataFrame without the columns with the given names. A column with a
+-- known name is definitely removed ('Absent'), even if its name is not a key
+-- of 'namedColumns' yet. An unknown name may remove any column, so a column
+-- that was definitely in the DataFrame may not be anymore ('mayBeAbsent').
+-- The columns described by 'defaultColumn' may already be absent, so it stays
+-- the same.
+dropColumns :: [CP String] -> DataFrame v -> DataFrame v
+dropColumns names (DataFrame rows named dflt) = DataFrame rows (Map.union removed named') dflt
+   where removed = Map.fromList [ (name, Absent) | Constant name <- names ]
+         named' | Top `elem` names = Map.map mayBeAbsent named
+                | otherwise        = named
+
+-- | Sets the column with the given name to the given value, so the column is
+-- definitely in the DataFrame afterwards. This is a strong update: it is up to
+-- the store to join the updated DataFrame with the old one when the DataFrame
+-- may stand for several DataFrames (e.g., 'updateAdr' on a 'CountingMap').
+-- An unknown name may set any column (or add a new one), so every column is
+-- joined with the given value instead.
+setColumn :: Joinable v => CP String -> v -> DataFrame v -> DataFrame v
+setColumn (Constant name) v (DataFrame rows named dflt) =
+   DataFrame rows (Map.insert name (Present v) named) dflt
+setColumn Top v (DataFrame rows named dflt) =
+   DataFrame rows (Map.map (join (Present v)) named) (Value (BL.joinWithBL dflt v))
 
 -- | A DataFrame without named columns, whose columns may contain any value from
 -- the columns of the given DataFrames
@@ -109,15 +144,22 @@ collapse rows dfs = DataFrame rows Map.empty (joinsBL (concatMap allColumns dfs)
 -- Lattice instances
 ------------------------------------------------------------
 
+-- The named columns are joined name by name, but not with a plain join of the
+-- maps (e.g., 'Map.unionWith'): that would treat a name that is a key in only
+-- one of the maps as bottom, and keep its presence from the other map (e.g.,
+-- 'Present'). In the DataFrame without the key, however, that column is
+-- described by its 'defaultColumn' (i.e., 'MaybePresent' or 'Absent'), so each
+-- name is looked up in both DataFrames with 'lookupColumn'.
 instance Joinable v => Joinable (DataFrame v) where
-   join df1@(DataFrame rows1 named1 other1) df2@(DataFrame rows2 named2 other2) =
-      DataFrame (join rows1 rows2) named (join other1 other2)
+   join df1@(DataFrame rows1 named1 dflt1) df2@(DataFrame rows2 named2 dflt2) =
+      DataFrame (join rows1 rows2) named (join dflt1 dflt2)
       where named = Map.fromSet joinColumn (Set.union (Map.keysSet named1) (Map.keysSet named2))
-            joinColumn name = BL.fromBL (join (lookupColumn (Constant name) df1) (lookupColumn (Constant name) df2))
+            joinColumn name = join (lookupColumn (Constant name) df1) (lookupColumn (Constant name) df2)
 
+-- Like 'join', compares the named columns name by name with 'lookupColumn'
 instance (Joinable v, PartialOrder v) => PartialOrder (DataFrame v) where
-   leq df1@(DataFrame rows1 named1 other1) df2@(DataFrame rows2 named2 other2) =
-      leq rows1 rows2 && leq other1 other2 && all leqColumn (Set.union (Map.keysSet named1) (Map.keysSet named2))
+   leq df1@(DataFrame rows1 named1 dflt1) df2@(DataFrame rows2 named2 dflt2) =
+      leq rows1 rows2 && leq dflt1 dflt2 && all leqColumn (Set.union (Map.keysSet named1) (Map.keysSet named2))
       where leqColumn name = leq (lookupColumn (Constant name) df1) (lookupColumn (Constant name) df2)
 
 instance (Ord adr, Trace adr v) => Trace adr (DataFrame v) where

@@ -124,6 +124,7 @@ methods DataFrameType     = [(GetItemAttr, DataFrameGetItem),
                              (EmptyAttr,  DataFrameEmpty),
                              (RenameAttr, DataFrameRename),
                              (DropNAAttr, DataFrameDropNA),
+                             (DropAttr,   DataFrameDrop),
                              (AppendAttr, DataFrameAppend),
                              (FromSeriesAttr, DataFrameFromSeries),
                              (MapAttr, DataFrameMap),
@@ -209,6 +210,7 @@ data PyPrim     =
                 | DataFrameEmpty
                 | DataFrameRename
                 | DataFrameDropNA
+                | DataFrameDrop
                 | DataFrameGetItem
                 | DataFrameSetItem 
                 | DataFrameAppend 
@@ -293,6 +295,7 @@ data PyAttr = ClassAttr
             | EmptyAttr
             | RenameAttr 
             | DropNAAttr
+            | DropAttr
             | AsTypeAttr 
             | KeysAttr 
             | AppendAttr 
@@ -347,6 +350,7 @@ attrStr WriteAttr     = "write"
 attrStr EmptyAttr     = "empty"
 attrStr RenameAttr    = "rename"
 attrStr DropNAAttr    = "dropna"
+attrStr DropAttr      = "drop"
 attrStr AsTypeAttr    = "astype"
 attrStr KeysAttr      = "keys"
 attrStr AppendAttr    = "append"
@@ -460,6 +464,8 @@ data PyError = AttributeNotFound
              | NotCallable
              | ArityError
              | TypeMismatch
+             | ValueError      -- an argument has the right type but an invalid value (Python's ValueError)
+             | KeyError        -- a key (e.g., a label of a DataFrame) is not found (Python's KeyError)
              | InvalidMRO
              | TaintError PyLoc -- TODO: move this to Monad/Taint.hs and have the errors wrapped
   deriving (Eq, Ord, Show)
