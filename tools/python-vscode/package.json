@@ -51,6 +51,19 @@
           "type": "boolean",
           "default": true,
           "description": "Enable/disable the Python IFC Language Server"
+        },
+        "pythonIfcLsp.taintGranularity": {
+          "type": "string",
+          "enum": [
+            "column",
+            "object"
+          ],
+          "enumDescriptions": [
+            "Only the sensitive columns of a DataFrame are tainted",
+            "A DataFrame with a sensitive column is tainted as a whole"
+          ],
+          "default": "column",
+          "description": "Whether sources taint only the sensitive columns of a DataFrame, or the DataFrame as a whole."
         }
       }
     }

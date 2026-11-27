@@ -4,6 +4,9 @@
 module Analysis.Python.Monad.TaintTracked (
   PythonTaintAnalysisT,
   runPythonTaintAnalysisT,
+  TaintGranularity(..),
+  granularityName,
+  parseGranularity,
   kcfa,
   Taint,
   TaintTracking(..),
@@ -55,17 +58,47 @@ import Lattice.Trace (Trace(..))
 import Domain.Python.Objects.DataFrame (fromColumns, Series(..))
 import Analysis.Python.Objects (sensitiveDtypePrefix, dtypeElement)
 import qualified Data.Map as Map
+import Data.Aeson (FromJSON(..), ToJSON(..))
 
 
 -- | This is the same as the 'Analysis.Python.Monad.Taint' monad, but also keeps track
 -- of an execution context that is used for correlating tainted values to the source
 -- locations manipulating them.
-newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (ReaderT [Span] m a)
-  deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache, MonadReader [Span])
 
+-- | The granularity at which sources taint a DataFrame
+data TaintGranularity = ColumnLevel  -- ^ only the sensitive columns of a DataFrame are tainted
+                      | ObjectLevel  -- ^ a DataFrame with a sensitive column is tainted as a whole
+  deriving (Eq, Ord, Show, Enum, Bounded)
 
-runPythonTaintAnalysisT :: PythonTaintAnalysisT m a -> m a
-runPythonTaintAnalysisT (PythonTaintAnalysisT m) = runReaderT m []
+-- | The name of the granularity, as used on the command line and in the
+-- settings of the language server
+granularityName :: TaintGranularity -> String
+granularityName ColumnLevel = "column"
+granularityName ObjectLevel = "object"
+
+-- | The granularity with the given name (see 'granularityName')
+parseGranularity :: String -> Either String TaintGranularity
+parseGranularity str = maybe (Left unknown) Right (List.find ((== str) . granularityName) granularities)
+  where granularities = [minBound .. maxBound]
+        unknown = "unknown taint granularity " ++ show str ++ ", expected one of: " ++ List.intercalate ", " (map granularityName granularities)
+
+-- | A granularity is encoded in JSON by its name (see 'granularityName')
+instance FromJSON TaintGranularity where
+  parseJSON v = either fail pure . parseGranularity =<< parseJSON v
+
+instance ToJSON TaintGranularity where
+  toJSON = toJSON . granularityName
+
+-- | The configuration of the analysis, and the execution context of the
+-- statement that is being analysed (see 'withExecutionContext')
+data TaintContext = TaintContext { _taintGranularity :: TaintGranularity, _executionContext :: [Span] }
+$(makeLenses ''TaintContext)
+
+newtype PythonTaintAnalysisT m a = PythonTaintAnalysisT (ReaderT TaintContext m a)
+  deriving (Functor, Applicative, Monad, MonadJoinable, MonadLayer, MonadEscape, MonadCache, MonadReader TaintContext)
+
+runPythonTaintAnalysisT :: TaintGranularity -> PythonTaintAnalysisT m a -> m a
+runPythonTaintAnalysisT granularity (PythonTaintAnalysisT m) = runReaderT m (TaintContext granularity [])
 
 
 -- Taint analysis instance
@@ -89,14 +122,14 @@ source :: SpanOf a => a -> Taint
 source = TopLifted.Value . Set.singleton . flip TaintTracking Set.empty . spanOf
 
 -- | Changes the execution context of the given computation
-withExecutionContext :: (MonadReader [Span] m) => Span -> m a -> m a
-withExecutionContext ctx = local (ctx:)
+withExecutionContext :: (MonadReader TaintContext m) => Span -> m a -> m a
+withExecutionContext ctx = local (over executionContext (ctx:))
 
 -- | Executes the given computation by extending the tainted value with the current execution context
-addExecutionContext :: (MonadReader [Span] m, TaintM Taint m) => m a -> m a
+addExecutionContext :: (MonadReader TaintContext m, TaintM Taint m) => m a -> m a
 addExecutionContext m = do
   t   <- currentTaint
-  (flip withTaint m . extendTaint t . Set.fromList) =<< ask
+  (flip withTaint m . extendTaint t . Set.fromList) =<< view executionContext
 
 extendTaint :: Taint -> Set Span -> Taint
 extendTaint t s = Set.map (over dependentsSpan (Set.union s)) <$> t
@@ -156,13 +189,13 @@ instance (
   pyDeref f = unwrapTainted (deref f . addrs)
   pyDeref_ f = unwrapTainted_ (deref f . addrs)
   pyAssignAt k v a = do
-    ctx <- asks Set.fromList 
+    ctx <- views executionContext Set.fromList
     addTaint (extendTainted v ctx) >>= \v' -> updateWith (setAttr k v') (setAttrWeak k v') a
   pyAssign k v =
     unwrapTainted_ (mjoinMap (pyAssignAt k v) . addrs) --- important
   -- like 'pyAssignAt', a value stored in a primitive (e.g., @d[k] = v@ or
   -- @df["c"] = v@) depends on the statements in the current execution context
-  pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do ctx <- asks Set.fromList
+  pyAssignInPrm s f v = pyDeref_ $ \adr obj -> do ctx <- views executionContext Set.fromList
                                                   v' <- addTaint (extendTainted v ctx)
                                                   old <- getPrm s obj
                                                   upd <- f v' old
@@ -198,6 +231,12 @@ instance (
   -- "sensitive_float64"). Columns that dtype does not list are not tainted.
   -- This is only sound because sensitivity is encoded in dtype and the Series
   -- abstraction does not contain any data of the file.
+  --
+  -- With 'ObjectLevel' taint, the DataFrame itself is tainted by the taint of
+  -- its columns, so the DataFrame is tainted as a whole if one of its columns
+  -- is. Everything computed from it (e.g., any of its columns, or the DataFrame
+  -- without its sensitive columns) is then tainted as well, since it is
+  -- computed by dereferencing the DataFrame.
   applyXPrim PandasReadCsv loc kwa = \case
                                 [_] -> maybe (dataFrame [] =<< untaintedColumn) (pyDeref'' @DctPrm withDtypes) (List.lookup "dtype" kwa)
                                 _   -> pyError ArityError
@@ -213,7 +252,12 @@ instance (
           untaintedColumn = series "" CP.Top
           series col d = do el <- dtypeElement (tagAs (SrsElm col) loc) d
                             pyStore (tagAs (DfrCol col) loc) (from @SrsPrm (Series (CP.Constant Prelude.True) el))
-          dataFrame named other = pyStore loc (from @DfrPrm (fromColumns (CP.Constant Prelude.True) named (BottomLifted.Value other)))
+          dataFrame named other = do
+             df <- pyStore loc (from @DfrPrm (fromColumns (CP.Constant Prelude.True) named (BottomLifted.Value other)))
+             view taintGranularity >>= \case
+                ColumnLevel -> return df
+                ObjectLevel -> let columnTaint = joins [ t | Tainted _ t <- other : map snd named ]
+                               in withTaint @Taint columnTaint (addTaint df)
   applyXPrim _ _ _ = error "primitive not implemented"
 
 -- | Reports a taint violation at the given location if the given value, or

@@ -156,6 +156,7 @@ library
     , hspec
     , language-python
     , layers-mtl
+    , aeson
     , lens
     , list-t
     , maf2-domains

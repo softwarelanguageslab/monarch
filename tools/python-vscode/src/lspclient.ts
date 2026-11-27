@@ -54,7 +54,10 @@ export class MonarchLspClient implements Disposable {
                 { scheme: 'file', language: 'python' }
             ],
             synchronize: {
-                fileEvents: workspace.createFileSystemWatcher('**/*.py')
+                fileEvents: workspace.createFileSystemWatcher('**/*.py'),
+                // notify the server when the settings change, which then
+                // requests them (e.g., `pythonIfcLsp.taintGranularity`)
+                configurationSection: 'pythonIfcLsp'
             },
             outputChannelName: 'Python IFC Language Server'
         };

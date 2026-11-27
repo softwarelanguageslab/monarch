@@ -86,13 +86,13 @@ newtype PyCmpStoreOut = PyCmpStoreOut PyCmp
 type PyCmp = Key (IntraT () Identity) PyBdy
 type PyRes = Val (IntraT () Identity) PyRefTaint  
 
-intra :: forall obj m . AnalysisM m obj => PyCmp -> m ()
-intra cmp = m 
+intra :: forall obj m . AnalysisM m obj => TaintGranularity -> PyCmp -> m ()
+intra granularity cmp = m 
                 & runIntraAnalysis cmp 
     where m = do t <- fromJust <$> Analysis.Monad.get (PyCmpTaint cmp)
                  s <- fromJust <$> Analysis.Monad.get (PyCmpStoreIn cmp)
                  r <- cache' cmp (\bdy -> evalBdy bdy 
-                                            & runPythonTaintAnalysisT
+                                            & runPythonTaintAnalysisT granularity
                                             & runCallT (uncurry callFix))
                         & runAlloc allocPtr
                         & runWithTaint t 
@@ -115,19 +115,27 @@ intra cmp = m
                                      putStore s 
                                      return v 
 
-inter :: forall obj m . AnalysisM m obj => PyPrg -> m (Store obj)
-inter prg = do let cmp = ((Main prg, initialEnv), [])
-               add cmp                                                             -- add the main component to the worklist
+inter :: forall obj m . AnalysisM m obj => TaintGranularity -> PyPrg -> m (Store obj)
+inter granularity prg = do
+               let cmp = ((Main prg, initialEnv), [])
+               add cmp                                                            -- add the main component to the worklist
                Analysis.Monad.put (PyCmpTaint cmp) mempty 
                Analysis.Monad.put (PyCmpStoreIn cmp) =<< initialStore
-               iterateWL (intra @obj)                                              -- start the analysis 
+               iterateWL (intra @obj granularity)                                  -- start the analysis 
                Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
 
 type PyTaintDiagnostic = Diagnostic (DiagnosticType PyRefTaint)
 
-analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint, Trace PyRefTaint obj) => PyPrg -> (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
-analyze prg = (rsto, osto, graph, reports)
-    where (((osto, graph), rsto), reports) = inter @obj prg
+-- | The result of the taint analysis: the result of each component, the
+-- resulting store, the dependency graph and the reported diagnostics
+type TaintAnalysisResult obj = (Map PyCmp PyRes, Store obj, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
+
+analyze :: forall obj . (Typeable obj, Show obj, PyDomain obj PyRefTaint, Trace PyRefTaint obj)
+        => TaintGranularity   -- ^ whether sources taint DataFrame columns or whole DataFrames
+        -> PyPrg              -- ^ the program to analyse
+        -> TaintAnalysisResult obj
+analyze granularity prg = (rsto, osto, graph, reports)
+    where (((osto, graph), rsto), reports) = inter @obj granularity prg
                                     & runWithGraph @(SimpleGraph (CP String) (CP Bool))
                                     & runWithMapping' @PyCmpStoreIn
                                     & runWithMapping' @PyCmpStoreOut 
@@ -148,10 +156,11 @@ initialStore :: forall m obj . AnalysisM m obj => m (Store obj)
 initialStore = snd <$> runWithStore @(Store obj) @ObjAdr @obj init
 
 analyzeREPL :: forall obj . (PyDomain obj PyRefTaint, Trace PyRefTaint obj, Typeable obj, Show obj)
-    => IO PyPrg         -- a read function
+    => TaintGranularity -- whether sources taint DataFrame columns or whole DataFrames
+    -> IO PyPrg         -- a read function
     -> (obj -> IO ())   -- a display function
     -> IO ()
-analyzeREPL read display = 
+analyzeREPL granularity read display = 
     void $ (initialStore >>= putStore >> repl) 
             & runWithGraph @(SimpleGraph (CP String) (CP Bool))
             & runWithMapping' @PyCmpStoreIn
@@ -172,7 +181,7 @@ analyzeREPL read display =
                               add cmp 
                               Analysis.Monad.put (PyCmpTaint cmp) mempty
                               Analysis.Monad.put (PyCmpStoreIn cmp) =<< currentStore
-                              iterateWL (intra @obj)
+                              iterateWL (intra @obj granularity)
                               putStore =<< Analysis.Monad.getOrBot (PyCmpStoreOut cmp)
                               res <- fromJust <$> Analysis.Monad.get @PyCmp @PyRes cmp 
                               traverse_ ((\(Tainted s _) -> mapM lookupAdr (Set.toList (addrs s))) >=> liftIO . display . joins1) res 
@@ -192,5 +201,9 @@ locOfCmp ((FuncBdy loc _, _), _) = Just loc
 
 type PyDomainCP = PyObjCP PyRefTaint ObjAdr PyClo
 
-analyzeCP :: PyPrg -> (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
-analyzeCP = analyze @PyDomainCP
+-- | The analysis with column-level taint (see 'analyzeCPWith')
+analyzeCP :: PyPrg -> TaintAnalysisResult PyDomainCP
+analyzeCP = analyzeCPWith ColumnLevel
+
+analyzeCPWith :: TaintGranularity -> PyPrg -> TaintAnalysisResult PyDomainCP
+analyzeCPWith = analyze @PyDomainCP

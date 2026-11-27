@@ -1,5 +1,5 @@
 -- | Interaction with the Monarch analysis
-module Analysis(AnalysisResult(..), analyze) where
+module Analysis(AnalysisResult(..), TaintGranularity(..), analyze) where
 
 import Syntax.Python
 import Data.Maybe
@@ -33,7 +33,7 @@ import Analysis.Monad.FunctionCharacteristics
 import "maf2-analysis" Data.Graph hiding (fromList)
 import Syntax.Python qualified as Py
 import Analysis.Python.Diagnostics
-import Analysis.Python.Monad.TaintTracked (PyRefTaint)
+import Analysis.Python.Monad.TaintTracked (PyRefTaint, TaintGranularity(..))
 import Analysis.Python.Fixpoint.TaintTracked qualified as Py hiding (analyze)
 import qualified Analysis.Python.Escape as Py
 import qualified Data.Map.Lazy as Data.Map
@@ -52,7 +52,7 @@ data AnalysisResult = AnalysisResult {
     influencedLines ::  Map Span (Set Span)
   } deriving (Ord, Eq, Show)
 
-type TaintResult = (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
+type TaintResult = TaintAnalysisResult PyDomainCP
 toResult :: TaintResult -> AnalysisResult
 toResult (_, _, _, diagnostics) =
     AnalysisResult
@@ -79,8 +79,9 @@ toResult (_, _, _, diagnostics) =
 
 
 -- | Parse and analyze the given string, returns "Nothing" if the file could not be parsed
-analyze :: String -- ^ name of the file to analyze (for correctly assigning filenames to AST's spans)
-        -> String -- ^ contents of the file to analyze
+analyze :: TaintGranularity -- ^ whether sources taint DataFrame columns or whole DataFrames
+        -> String           -- ^ name of the file to analyze (for correctly assigning filenames to AST's spans)
+        -> String           -- ^ contents of the file to analyze
         -> Maybe AnalysisResult
-analyze filename contents =
-  parse filename contents <&> toResult . Taint.analyzeCP
+analyze granularity filename contents =
+  parse filename contents <&> toResult . Taint.analyzeCPWith granularity

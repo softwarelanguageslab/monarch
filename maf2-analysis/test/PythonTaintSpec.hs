@@ -2,7 +2,8 @@ module PythonTaintSpec(spec) where
 
 import Test
 
-import Analysis.Python.Fixpoint.TaintTracked (analyzeCP)
+import Analysis.Python.Fixpoint.TaintTracked (analyzeCP, analyzeCPWith)
+import Analysis.Python.Monad.TaintTracked (TaintGranularity(..))
 import Analysis.Python.Diagnostics (Diagnostic(..), DiagnosticType(..))
 import qualified Lattice.TopLiftedLattice as TL
 import Syntax.Span (ESpan(..), Position(..))
@@ -49,6 +50,7 @@ programs = [
 spec :: Spec
 spec = describe "Python taint analysis" $ do
    mapM_ reportsViolations programs
+   describe "with object-level taint" $ mapM_ (reportsViolationsWith ObjectLevel) objectLevelPrograms
    mapM_ explainsViolations explanations
 
 -- | Programs for the taint analysis, each with the lines of the statements
@@ -71,11 +73,29 @@ explainsViolations (file, expected) =
           lines' = Set.map (line . startPosition) (Set.unions (Set.map influenced diagnostics))
       Set.fromList expected `Set.isSubsetOf` lines' `shouldBe` True
 
+-- | Programs for the taint analysis with object-level taint (a DataFrame with
+-- a sensitive column is tainted as a whole), each with the locations of the
+-- sinks at which the analysis should report a taint violation. These programs
+-- do not pass sensitive columns to their sinks, so they report no violations
+-- with column-level taint (see 'programs').
+objectLevelPrograms :: [(FilePath, [String])]
+objectLevelPrograms = [
+      ("programs/python/tests/taint/dataframe-map.py",              ["9:12"]),
+      ("programs/python/tests/taint/dataframe-filter-clean.py",     ["9:12"]),
+      ("programs/python/tests/taint/dataframe-dropna-subset.py",    ["8:12"]),
+      ("programs/python/tests/taint/dataframe-drop.py",             ["8:12"]),
+      -- without a sensitive column, the DataFrame is not tainted
+      ("programs/python/tests/taint/dataframe-no-dtype.py",         [])
+   ]
+
 reportsViolations :: (FilePath, [String]) -> Spec
-reportsViolations (file, expected) =
+reportsViolations = reportsViolationsWith ColumnLevel
+
+reportsViolationsWith :: TaintGranularity -> (FilePath, [String]) -> Spec
+reportsViolationsWith granularity (file, expected) =
    it (file ++ " reports taint violations at " ++ show expected) $ do
       contents <- readFile file
       let program = fromMaybe (error $ "could not parse " ++ file) (parse file contents)
-          (_, _, _, diagnostics) = analyzeCP program
+          (_, _, _, diagnostics) = analyzeCPWith granularity program
           locations = Set.map (\(Diagnostic _ loc) -> show loc) diagnostics
       locations `shouldBe` Set.fromList expected

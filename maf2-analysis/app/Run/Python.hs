@@ -5,13 +5,13 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Run.Python(main, Options, options, runREPL, runBenchmarks) where
+module Run.Python(main, Options, options, taintGranularityOption, runREPL, runBenchmarks) where
 
-import Data.Set (Set)
 import Syntax.Python
 import Options.Applicative
 import Data.Maybe
 import Analysis.Python.Fixpoint.TaintTracked
+import Analysis.Python.Monad.TaintTracked (TaintGranularity(..), granularityName, parseGranularity)
 import qualified Analysis.Python.Fixpoint.TaintTracked as Taint
 import qualified Analysis.Python.Fixpoint.Characteristics as Characteristics
 import Data.Map (Map)
@@ -36,13 +36,22 @@ import "maf2-analysis" Data.Graph
 -- Command-line parsing
 ------------------------------------------------------------
 
-data Options = Options { pythonFilename :: String, pythonAnalysis :: String }
+data Options = Options { pythonFilename :: String, pythonAnalysis :: String, taintGranularity :: TaintGranularity }
    deriving Show
 
 options :: Parser Options
 options = Options 
    <$> strOption (long "filename" <> short 'f' <> help "Name of the file to parse")
    <*> strOption (long "analysis" <> short 'a' <> help analysisHelp)
+   <*> taintGranularityOption
+
+-- | The @--taint-granularity@ option of the taint analysis
+taintGranularityOption :: Parser TaintGranularity
+taintGranularityOption =
+   option (eitherReader parseGranularity)
+          (long "taint-granularity" <> metavar (intercalate "|" (map granularityName [minBound .. maxBound]))
+           <> value ColumnLevel <> showDefaultWith granularityName
+           <> help "For the taint analysis: whether sources taint only the sensitive columns of a DataFrame (column), or the DataFrame as a whole (object)")
 
 ------------------------------------------------------------
 -- Types of analyses
@@ -61,11 +70,11 @@ instance PrintResult AnalysisResult where
 -- | An analysis takes an expression and produces an analysis result
 type Analysis = PyPrg -> AnalysisResult
 
--- | Maps a name to an analysis function
-analysisTypes :: Map String Analysis
-analysisTypes = Map.fromList [
+-- | Maps a name to an analysis function, given the command-line options
+analysisTypes :: Options -> Map String Analysis
+analysisTypes opts = Map.fromList [
       ("characteristics", AnalysisResult . CharacteristicsResult . Characteristics.analyzeCP),
-      ("taint", AnalysisResult . TaintResult . Taint.analyzeCP)
+      ("taint", AnalysisResult . TaintResult . Taint.analyzeCPWith (taintGranularity opts))
    ]
 
 -- | Analysis info text
@@ -101,8 +110,7 @@ instance PrintResult CharacteristicsResult where
 -- Taint analysis
 -----------------------------------------
 
-newtype TaintResult = TaintResult
-      (Map PyCmp PyRes, Store PyDomainCP, SimpleGraph (CP String) (CP Bool), Set PyTaintDiagnostic)
+newtype TaintResult = TaintResult (TaintAnalysisResult PyDomainCP)
 
 instance PrintResult TaintResult where
    printResult (TaintResult (rsto, osto, graph, _)) = do
@@ -151,9 +159,10 @@ printRSto m deref osto
 -- Runners
 ------------------------------------------------------------
 
-runREPL :: IO ()
-runREPL = do count <- newIORef 0
-             analyzeREPL @PyDomainCP (readPrg count) print
+runREPL :: TaintGranularity -> IO ()
+runREPL granularity = do
+             count <- newIORef 0
+             analyzeREPL @PyDomainCP granularity (readPrg count) print
       where readPrg count = do cur <- readIORef count
                                writeIORef count (cur + 1)
                                prompt cur
@@ -235,11 +244,11 @@ ecopipe = generateGraph [
                         ]
 
 main :: Options -> IO ()
-main (Options { .. }) = do
+main opts@(Options { .. }) = do
       parsed <- fromMaybe (error "could not parse file") . parse pythonFilename <$> readFile pythonFilename
       putStrLn "\nPROGRAM:\n"
       putStrLn (prettyString parsed)
-      printResult $ (fromMaybe (error $ "no such analysis" ++ pythonAnalysis) $ Map.lookup pythonAnalysis analysisTypes) parsed
+      printResult $ (fromMaybe (error $ "no such analysis" ++ pythonAnalysis) $ Map.lookup pythonAnalysis (analysisTypes opts)) parsed
 
 
 

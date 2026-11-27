@@ -6,7 +6,8 @@ module LSP (run) where
 
 import Analysis qualified as A
 import Control.Monad.IO.Class
-import Data.Aeson (FromJSON, ToJSON, object, (.:), (.=))
+import Data.Aeson (FromJSON, ToJSON, object, (.:), (.:?), (.!=), (.=))
+import Data.Aeson.Types qualified as Aeson
 import Data.Aeson qualified as Aeson
 import Data.Map.Lazy qualified as Map
 import Data.Proxy (Proxy (..))
@@ -25,6 +26,32 @@ import Relude.Unsafe (fromJust)
 import Syntax.Python qualified as Py
 import Syntax.Span (Span, ESpan(..))
 import Syntax.Span qualified as Span
+
+-------------------------------
+-- Configuration
+-------------------------------
+
+-- | The configuration of the language server, read from the client's
+-- @pythonIfcLsp@ settings section
+newtype Config = Config
+  { -- | Whether sources taint only the sensitive columns of a DataFrame, or
+    -- the DataFrame as a whole (@pythonIfcLsp.taintGranularity@)
+    taintGranularity :: A.TaintGranularity
+  }
+
+defaultConfig' :: Config
+defaultConfig' = Config A.ColumnLevel
+
+-- | Settings that are missing keep their default
+instance FromJSON Config where
+  parseJSON = Aeson.withObject "pythonIfcLsp" $ \o ->
+    Config <$> o .:? "taintGranularity" .!= taintGranularity defaultConfig'
+
+-- | Analyzes the given file with the current configuration
+analyzeWithConfig :: String -> Text -> LspM Config (Maybe A.AnalysisResult)
+analyzeWithConfig filename contents = do
+  Config {..} <- getConfig
+  return $ A.analyze taintGranularity filename (T.unpack contents)
 
 -------------------------------
 -- Analysis results processing
@@ -150,16 +177,23 @@ getWholeProgramRange contents =
           lastLineLength = T.length $ fromJust $ viaNonEmpty last $ T.lines contents
        in Range (Position 0 0) (Position (fromIntegral lineCount) (fromIntegral lastLineLength))
 
-analyzeAndPublish :: NormalizedUri -> Text -> LspM () ()
+analyzeAndPublish :: NormalizedUri -> Text -> LspM Config ()
 analyzeAndPublish uri' contents = do
+  analysisResults <- analyzeWithConfig (T.unpack $ getUri $ fromNormalizedUri uri') contents
+  let diagnostics = analysisResultToDiagnostic (getWholeProgramRange contents) <$> analysisResults
   flushDiagnosticsBySource 0 (Just diagnosticsSource)
   forM_ diagnostics (publishDiagnostics 1 uri' Nothing . partitionBySource)
-  where
-    analysisResults = A.analyze (T.unpack $ getUri $ fromNormalizedUri uri') (T.unpack contents)
-    diagnostics = analysisResultToDiagnostic (getWholeProgramRange contents) <$> analysisResults
+
+-- | Analyzes all open documents again (e.g., after the configuration changed)
+reanalyzeOpenDocuments :: LspM Config ()
+reanalyzeOpenDocuments = do
+  vfs <- getVirtualFiles
+  forM_ (Map.toList (vfs ^. vfsMap)) $ \case
+    (uri', Open vf) -> analyzeAndPublish uri' (virtualFileText vf)
+    _ -> return ()
 
 -- Handler for getting influenced lines at a specific position
-handleGetInfluencedLines :: GetInfluencedLinesParams -> LspM () (Either (TResponseError (Method_CustomMethod "monarch/getInfluencedLines")) Aeson.Value)
+handleGetInfluencedLines :: GetInfluencedLinesParams -> LspM Config (Either (TResponseError (Method_CustomMethod "monarch/getInfluencedLines")) Aeson.Value)
 handleGetInfluencedLines GetInfluencedLinesParams {..} = do
   let uri' = toNormalizedUri textDocumentUri
   mdoc <- getVirtualFile uri'
@@ -167,7 +201,7 @@ handleGetInfluencedLines GetInfluencedLinesParams {..} = do
     Just vf@(VirtualFile {}) -> do
       let contents = virtualFileText vf
       let filename = T.unpack $ getUri textDocumentUri
-      let analysisResults = A.analyze filename (T.unpack contents)
+      analysisResults <- analyzeWithConfig filename contents
       case analysisResults of
         Just A.AnalysisResult {..} -> do
           -- Find all spans that contain the current position
@@ -182,7 +216,7 @@ handleGetInfluencedLines GetInfluencedLinesParams {..} = do
       return $ Left $ TResponseError (InR ErrorCodes_InternalError) "File not found" Nothing
 
 -- Handler for code actions
-handleCodeAction :: TRequestMessage 'Method_TextDocumentCodeAction -> LspM () (Either (TResponseError 'Method_TextDocumentCodeAction) (MessageResult 'Method_TextDocumentCodeAction))
+handleCodeAction :: TRequestMessage 'Method_TextDocumentCodeAction -> LspM Config (Either (TResponseError 'Method_TextDocumentCodeAction) (MessageResult 'Method_TextDocumentCodeAction))
 handleCodeAction req = do
   let params' = req ^. L.params
   let uri' = params' ^. textDocument . uri
@@ -210,7 +244,7 @@ handleCodeAction req = do
               }
       return $ Right $ InL [InR codeAction]
 
-handlers :: Handlers (LspM ())
+handlers :: Handlers (LspM Config)
 handlers =
   mconcat
     [ notificationHandler SMethod_Initialized $ \_not -> do
@@ -271,10 +305,10 @@ run =
   void $
     runServer $
       ServerDefinition
-        { parseConfig = const $ const $ Right (),
-          onConfigChange = const $ pure (),
-          defaultConfig = (),
-          configSection = "monarch-python",
+        { parseConfig = const (first T.pack . Aeson.parseEither Aeson.parseJSON),
+          onConfigChange = const reanalyzeOpenDocuments,
+          defaultConfig = defaultConfig',
+          configSection = "pythonIfcLsp",
           doInitialize = \env _req -> pure $ Right env,
           staticHandlers = const handlers,
           interpretHandler = \env -> Iso (runLspT env) liftIO,

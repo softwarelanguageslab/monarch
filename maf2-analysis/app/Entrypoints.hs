@@ -7,12 +7,13 @@ import qualified Run.Scheme
 import qualified Run.Python
 import qualified Run.Erlang
 import qualified Run.Actor
+import Analysis.Python.Monad.TaintTracked (TaintGranularity)
 
 data Command =
    Interpreter Run.Interpreter.Options
  | PythonInterpreter Run.PythonInterpreter.Options
  | Python Run.Python.Options
- | PythonRapl
+ | PythonRapl TaintGranularity
  | PythonBenchmarks
  | Scheme Run.Scheme.Options
  | Actor Run.Actor.Options
@@ -27,7 +28,7 @@ pythonCommand :: Parser Command
 pythonCommand = Python <$> Run.Python.options
 
 pythonRaplCommand :: Parser Command
-pythonRaplCommand = pure PythonRapl
+pythonRaplCommand = PythonRapl <$> Run.Python.taintGranularityOption
 
 pythonBenchmarkCommand :: Parser Command
 pythonBenchmarkCommand = pure PythonBenchmarks
@@ -62,7 +63,7 @@ run = do
       PythonInterpreter options -> Run.PythonInterpreter.runPyEval options
       Scheme         options -> Run.Scheme.main options
       Python         options -> Run.Python.main options
-      PythonRapl             -> Run.Python.runREPL
+      PythonRapl granularity -> Run.Python.runREPL granularity
       PythonBenchmarks       -> Run.Python.runBenchmarks
       ParseErlang    options -> Run.Erlang.main options
       Actor          options -> Run.Actor.main options
